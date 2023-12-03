@@ -16,34 +16,63 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     success = 0;
 
-    await MongoDatasetCollection.updateMany({}, [
+    await MongoDatasetCollection.updateMany({ createTime: { $exists: false } }, [
       {
         $set: {
-          createTime: '$updateTime',
+          createTime: '$updateTime'
+        }
+      }
+    ]);
+    await MongoDatasetCollection.updateMany({ trainingType: { $exists: false } }, [
+      {
+        $set: {
           trainingType: {
             $cond: {
               if: { $ifNull: ['$a', false] },
               then: TrainingModeEnum.qa,
               else: TrainingModeEnum.chunk
             }
-          },
-          chunkSize: 0,
-          fileId: '$metadata.fileId',
+          }
+        }
+      }
+    ]);
+    await MongoDatasetCollection.updateMany({ chunkSize: { $exists: false } }, [
+      {
+        $set: {
+          chunkSize: 0
+        }
+      }
+    ]);
+    await MongoDatasetCollection.updateMany({ fileId: { $exists: false } }, [
+      {
+        $set: {
+          fileId: '$metadata.fileId'
+        }
+      }
+    ]);
+    await MongoDatasetCollection.updateMany({ rawLink: { $exists: false } }, [
+      {
+        $set: {
           rawLink: '$metadata.rawLink'
         }
       }
     ]);
 
     await MongoDatasetData.updateMany(
-      {},
+      { chunkIndex: { $exists: false } },
       {
-        chunkIndex: 0,
+        chunkIndex: 0
+      }
+    );
+    await MongoDatasetData.updateMany(
+      { updateTime: { $exists: false } },
+      {
         updateTime: new Date()
       }
     );
 
     await MongoDataset.updateMany(
-      {},
+      { status: { $exists: false } },
       {
         $set: {
           status: DatasetStatusEnum.active

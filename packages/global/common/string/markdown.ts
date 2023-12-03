@@ -1,6 +1,5 @@
 import { simpleText } from './tools';
-import TurndownService from 'turndown';
-import * as cheerio from 'cheerio';
+import { NodeHtmlMarkdown } from 'node-html-markdown';
 
 /* Delete redundant text in markdown */
 export const simpleMarkdownText = (rawText: string) => {
@@ -29,27 +28,58 @@ export const simpleMarkdownText = (rawText: string) => {
 export const htmlToMarkdown = (html?: string | null) => {
   if (!html) return '';
 
-  const turndownService = new TurndownService({
-    headingStyle: 'atx',
-    codeBlockStyle: 'fenced',
-    fence: '```',
-    linkStyle: 'inlined',
-    linkReferenceStyle: 'full',
-    defaultReplacement: (content, node) => {
-      if (node.nodeName === 'PRE' || node.nodeName === 'CODE') {
-        // @ts-ignore
-        const className = node?.getAttribute?.('class') || '';
-        const list = className.split('-');
-        const language = list[list.length - 1];
+  const surround = (source: string, surroundStr: string) => `${surroundStr}${source}${surroundStr}`;
 
-        return `\n\`\`\`${language}\n${node.textContent || content}\`\`\`\n`;
+  const nhm = new NodeHtmlMarkdown(
+    {
+      codeFence: '```',
+      codeBlockStyle: 'fenced',
+      ignore: ['i', 'script']
+    },
+    {
+      code: ({ node, parent, options: { codeFence, codeBlockStyle }, visitor }) => {
+        const isCodeBlock = ['PRE', 'WRAPPED-PRE'].includes(parent?.tagName!);
+
+        if (!isCodeBlock) {
+          return {
+            spaceIfRepeatingChar: true,
+            noEscape: true,
+            postprocess: ({ content }) => {
+              // Find longest occurring sequence of running backticks and add one more (so content is escaped)
+              const delimiter =
+                '`' + (content.match(/`+/g)?.sort((a, b) => b.length - a.length)?.[0] || '');
+              const padding = delimiter.length > 1 ? ' ' : '';
+
+              return surround(surround(content, padding), delimiter);
+            }
+          };
+        }
+
+        /* Handle code block */
+        if (codeBlockStyle === 'fenced') {
+          const language =
+            node.getAttribute('class')?.match(/language-(\S+)/)?.[1] ||
+            parent?.getAttribute('class')?.match(/language-(\S+)/)?.[1] ||
+            '';
+
+          return {
+            noEscape: true,
+            prefix: codeFence + language + '\n',
+            postfix: '\n' + codeFence,
+            childTranslators: visitor.instance.codeBlockTranslators
+          };
+        }
+
+        return {
+          noEscape: true,
+          postprocess: ({ content }) => content.replace(/^/gm, '    '),
+          childTranslators: visitor.instance.codeBlockTranslators
+        };
       }
-
-      return content;
     }
-  });
+  );
 
-  const markdown = turndownService.turndown(html).trim();
+  const markdown = nhm.translate(html).trim();
 
   return simpleMarkdownText(markdown);
 };

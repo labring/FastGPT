@@ -428,9 +428,10 @@ const CollectionCard = () => {
                 >
                   {datasetDetail.websiteConfig.url}
                 </Link>
-                {datasetDetail.status === DatasetStatusEnum.active ? (
+                {datasetDetail.status === DatasetStatusEnum.active && (
                   <Button onClick={onOpenWebsiteModal}>{t('common.Config')}</Button>
-                ) : (
+                )}
+                {datasetDetail.status === DatasetStatusEnum.syncing && (
                   <Flex
                     ml={3}
                     alignItems={'center'}

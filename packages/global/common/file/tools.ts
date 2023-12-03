@@ -26,13 +26,15 @@ export const cheerioToHtml = ({
   const originUrl = new URL(fetchUrl).origin;
 
   // remove i element
-  $('i').remove();
+  $('i,script').remove();
+
   // remove empty a element
   $('a')
     .filter((i, el) => {
       return $(el).text().trim() === '' && $(el).children().length === 0;
     })
     .remove();
+
   // if link,img startWith /, add origin url
   $('a').each((i, el) => {
     const href = $(el).attr('href');
@@ -56,7 +58,7 @@ export const urlsFetch = async ({
   urlList = urlList.filter((url) => /^(http|https):\/\/[^ "]+$/.test(url));
 
   const response = (
-    await Promise.allSettled(
+    await Promise.all(
       urlList.map(async (url) => {
         try {
           const fetchRes = await axios.get(url, {
@@ -78,6 +80,8 @@ export const urlsFetch = async ({
             content: md
           };
         } catch (error) {
+          console.log(error, 'fetch error');
+
           return {
             url,
             content: ''
@@ -85,10 +89,7 @@ export const urlsFetch = async ({
         }
       })
     )
-  )
-    .filter((item) => item.status === 'fulfilled')
-    .map((item: any) => item.value)
-    .filter((item) => item.content);
+  ).filter((item) => item.content);
 
   return response;
 };
