@@ -1,6 +1,6 @@
 import { getFileViewUrl, postChunks2Dataset } from '@/web/core/dataset/api';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { delay } from '@/utils/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 

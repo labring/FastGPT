@@ -4,7 +4,8 @@ import {
   PatchIndexesProps,
   UpdateDatasetDataProps
 } from '@fastgpt/global/core/dataset/controller';
-import { deletePgDataById, insertData2Pg, updatePgDataById } from './pg';
+import { deletePgDataById } from '@fastgpt/service/core/dataset/data/pg';
+import { insertData2Pg, updatePgDataById } from './pg';
 import { Types } from 'mongoose';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
@@ -212,30 +213,4 @@ export async function updateData2Dataset({
   return {
     tokenLen
   };
-}
-
-/* delete all data by datasetIds */
-export async function delDataByDatasetId({ datasetIds }: { datasetIds: string[] }) {
-  datasetIds = datasetIds.map((item) => String(item));
-  // delete pg data
-  await deletePgDataById(`dataset_id IN ('${datasetIds.join("','")}')`);
-  // delete dataset.datas
-  await MongoDatasetData.deleteMany({ datasetId: { $in: datasetIds } });
-}
-/**
- * delete all data by collectionIds
- */
-export async function delDataByCollectionId({ collectionIds }: { collectionIds: string[] }) {
-  const ids = collectionIds.map((item) => String(item));
-  // delete pg data
-  await deletePgDataById(`collection_id IN ('${ids.join("','")}')`);
-  // delete dataset.datas
-  await MongoDatasetData.deleteMany({ collectionId: { $in: ids } });
-}
-/**
- * delete one data by mongoDataId
- */
-export async function deleteDataByDataId(mongoDataId: string) {
-  await deletePgDataById(['data_id', mongoDataId]);
-  await MongoDatasetData.findByIdAndDelete(mongoDataId);
 }

@@ -199,12 +199,12 @@ const InputDataModal = ({
         <Box p={5} borderRight={theme.borders.base}>
           <RawSourceText
             w={'200px'}
-            className=""
+            className="textEllipsis3"
             whiteSpace={'pre-wrap'}
             sourceName={collection.sourceName}
             sourceId={collection.sourceId}
             mb={6}
-            fontSize={['14px', '16px']}
+            fontSize={'sm'}
           />
           <SideTabs
             list={tabList}
@@ -220,14 +220,14 @@ const InputDataModal = ({
             }}
           />
         </Box>
-        <Flex flexDirection={'column'} px={5} py={3} flex={1} h={'100%'}>
-          <Box fontSize={'lg'} fontWeight={'bold'} mb={4}>
+        <Flex flexDirection={'column'} py={3} flex={1} h={'100%'}>
+          <Box fontSize={'lg'} px={5} fontWeight={'bold'} mb={4}>
             {currentTab === TabEnum.content && (
               <>{defaultValue.id ? t('dataset.data.Update Data') : t('dataset.data.Input Data')}</>
             )}
             {currentTab === TabEnum.index && <> {t('dataset.data.Index Edit')}</>}
           </Box>
-          <Box flex={1} overflow={'auto'}>
+          <Box flex={1} px={5} overflow={'auto'}>
             {currentTab === TabEnum.content && (
               <>
                 <Box>
@@ -358,7 +358,7 @@ const InputDataModal = ({
               </Grid>
             )}
           </Box>
-          <Flex justifyContent={'flex-end'} mt={4}>
+          <Flex justifyContent={'flex-end'} px={5} mt={4}>
             <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
               {t('common.Close')}
             </Button>

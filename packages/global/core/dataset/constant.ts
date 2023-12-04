@@ -3,15 +3,37 @@ export const PgDatasetTableName = 'modeldata';
 /* ------------ dataset -------------- */
 export enum DatasetTypeEnum {
   folder = 'folder',
-  dataset = 'dataset'
+  dataset = 'dataset',
+  websiteDataset = 'websiteDataset' // depp link
 }
-
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
-    name: 'folder'
+    icon: 'core/dataset/folderDataset',
+    label: 'core.dataset.Folder Dataset',
+    collectionLabel: 'common.Folder'
   },
   [DatasetTypeEnum.dataset]: {
-    name: 'dataset'
+    icon: 'core/dataset/commonDataset',
+    label: 'core.dataset.Common Dataset',
+    collectionLabel: 'common.File'
+  },
+  [DatasetTypeEnum.websiteDataset]: {
+    icon: 'core/dataset/websiteDataset',
+    label: 'core.dataset.Website Dataset',
+    collectionLabel: 'common.Website'
+  }
+};
+
+export enum DatasetStatusEnum {
+  active = 'active',
+  syncing = 'syncing'
+}
+export const DatasetStatusMap = {
+  [DatasetStatusEnum.active]: {
+    label: 'core.dataset.status.active'
+  },
+  [DatasetStatusEnum.syncing]: {
+    label: 'core.dataset.status.syncing'
   }
 };
 
@@ -19,7 +41,7 @@ export const DatasetTypeMap = {
 export enum DatasetCollectionTypeEnum {
   folder = 'folder',
   file = 'file',
-  link = 'link',
+  link = 'link', // one link
   virtual = 'virtual'
 }
 export const DatasetCollectionTypeMap = {

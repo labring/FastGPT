@@ -35,9 +35,9 @@ export const uploadFiles = ({
  */
 export const compressBase64ImgAndUpload = ({
   base64,
-  maxW = 200,
-  maxH = 200,
-  maxSize = 1024 * 100, // 100kb
+  maxW = 1080,
+  maxH = 1080,
+  maxSize = 1024 * 500, // 300kb
   expiredTime
 }: {
   base64: string;
@@ -77,7 +77,7 @@ export const compressBase64ImgAndUpload = ({
       }
 
       ctx.drawImage(img, 0, 0, width, height);
-      const compressedDataUrl = canvas.toDataURL(fileType, 0.8);
+      const compressedDataUrl = canvas.toDataURL(fileType, 1);
       // 移除 canvas 元素
       canvas.remove();
 
@@ -92,6 +92,7 @@ export const compressBase64ImgAndUpload = ({
         reject(error);
       }
     };
+    img.onerror = reject;
   });
 };
 export const compressImgFileAndUpload = async ({

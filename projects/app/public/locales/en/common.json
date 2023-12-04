@@ -3,7 +3,6 @@
   "Cancel": "No",
   "Confirm": "Yes",
   "Create New": "Create",
-  "Dataset": "Dataset",
   "Export": "Export",
   "Folder": "Folder",
   "Move": "Move",
@@ -129,6 +128,7 @@
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
+    "Config": "Config",
     "Confirm": "Confirm",
     "Confirm Create": "Create",
     "Confirm Move": "Move here",
@@ -138,7 +138,6 @@
     "Course": "",
     "Create Failed": "Create Failed",
     "Create Success": "Create Success",
-    "Create Virtual File Failed": "Create Virtual File Failed",
     "Custom Title": "Custom Title",
     "Delete": "Delete",
     "Delete Failed": "Delete Failed",
@@ -152,6 +151,7 @@
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
+    "Intro": "Intro",
     "Last Step": "Last",
     "Loading": "Loading",
     "Max credit": "Credit",
@@ -190,6 +190,14 @@
     "Update Time": "Update Time",
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
+    "Website": "Website",
+    "choosable": "choosable",
+    "confirm": {
+      "Common Tip": "Operational Confirm"
+    },
+    "empty": {
+      "Common Tip": "No data"
+    },
     "error": {
       "unKnow": "There was an accident"
     },
@@ -207,11 +215,15 @@
     "input": {
       "Repeat Value": "Repeat Value"
     },
+    "link": {
+      "UnValid": "UnValid Link"
+    },
     "speech": {
       "error tip": "Speech Failed"
     }
   },
   "core": {
+    "Max Token": "MaxTokens",
     "ai": {
       "Model": "Model",
       "Prompt": "Prompt"
@@ -238,12 +250,13 @@
         "Speech model": "Speech model",
         "Speech speed": "Speed",
         "Test Listen": "Test",
-        "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
+        "Test Listen Text": "Hello, this is a voice test, if you can hear this sentence, it means that the voice playback function is normal",
         "Web": "Browser (free)"
       }
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
+      "Quote Amount": "Dataset Quote:{{amount}}",
       "Record": "Speech",
       "Restart": "Restart",
       "Select File": "Select file",
@@ -252,23 +265,46 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "quote": {
+        "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
+        "Read Quote": "Read Quote",
+        "Read Source": "Read Source"
+      },
       "tts": {
         "Stop Speech": "Stop"
       }
     },
     "dataset": {
+      "All Dataset": "All Dataset",
       "Choose Dataset": "Choose Dataset",
+      "Common Dataset": "Common Dataset",
+      "Common Dataset Desc": "Knowledge bases can be built by importing files, web links, or manual entry",
       "Create dataset": "Create Dataset",
       "Dataset": "Dataset",
+      "Dataset Type": "Dataset Type",
+      "Delete Website Tips": "Confirm to delete the website",
+      "Empty Dataset": "",
+      "Empty Dataset Tips": "There is no knowledge base yet, go create one!",
+      "Folder Dataset": "Folder",
       "Go Dataset": "To Dataset",
+      "Intro Placeholder": "This dataset has not yet been introduced~",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
       "Search Top K": "Top K",
       "Set Empty Result Tip": ",Response empty text",
+      "Set Website Config": "Configuring Website",
       "Similarity": "Similarity",
       "Sync Time": "Update Time",
       "Virtual File": "Virtual File",
+      "Website Dataset": "Website Sync",
+      "Website Dataset Desc": "Web site synchronization allows you to build a knowledge base directly from a web link",
       "collection": {
+        "Click top config website": "Config",
+        "Empty Tip": "The collection is empty",
+        "Website Create Success": "Created successfully, data is being synchronized",
+        "Website Empty Tip": "No associated website yet,",
+        "Website Link": "Website Link",
+        "Website Sync": "Website",
         "metadata": {
           "Chunk Size": "Chunk Size",
           "Createtime": "Create Time",
@@ -280,6 +316,10 @@
           "source": "Source",
           "source name": "Source Name",
           "source size": "Source Size"
+        },
+        "status": {
+          "active": "Ready",
+          "syncing": "Syncing"
         },
         "training": {
           "type chunk": "Chunk",
@@ -295,6 +335,10 @@
       "file": "File",
       "folder": "Folder",
       "import": {
+        "Fetch Error": "Get link failed",
+        "Fetch Url": "Url",
+        "Fetch url placeholder": "Up to 10 links, one per line.",
+        "Fetch url tip": "Only static links can be read, please check the results",
         "Ideal chunk length": "Ideal chunk length",
         "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
       },
@@ -316,6 +360,10 @@
         },
         "search mode": "Search Mode"
       },
+      "status": {
+        "active": "Ready",
+        "syncing": "Syncing"
+      },
       "test": {
         "Test": "Start",
         "Test Result": "Results",
@@ -327,8 +375,18 @@
         "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
       },
       "training": {
+        "Website Sync": "Website Sync",
         "type chunk": "Chunk",
         "type qa": "QA"
+      },
+      "website": {
+        "Base Url": "BaseUrl",
+        "Config": "Website Configuring",
+        "Config Description": "The Web site synchronization function allows you to fill in the root address of a website, and the system will automatically crawl the relevant pages deeply for knowledge base training. Only crawls static websites, mainly project documents and blogs.",
+        "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
+        "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
+        "Selector": "Selector",
+        "Start Sync": "Start Sync"
       }
     },
     "module": {
@@ -434,7 +492,6 @@
       "Create Training Data": "Training-{{filename}}",
       "Create Virtual File Success": "Create Virtual File Success",
       "Data Amount": "Data Amount",
-      "Ready": "Ready",
       "Select Collection": "Select Collection",
       "Select One Collection To Store": "Select the collection to store"
     },
@@ -466,6 +523,10 @@
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "test": {
       "noResult": "Search results are empty"
+    },
+    "website": {
+      "Base Url": "BaseUrl",
+      "Selector": "Selector"
     }
   },
   "error": {
@@ -482,7 +543,6 @@
     "Fetch Url": "Fetch Url",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "If the imported file is garbled, please convert CSV to UTF-8 encoding format",
     "Parse": "{{name}} Parsing...",
-    "Ready": "Ready",
     "Release the mouse to upload the file": "Release the mouse to upload the file",
     "Select a maximum of 10 files": "Select a maximum of 10 files",
     "Uploading": "Uploading: {{name}}, Progress: {{percent}}%",
@@ -725,6 +785,10 @@
       "ReRank": "ReRank",
       "Whisper": "Whisper",
       "bill username": "User"
+    },
+    "moduleName": {
+      "index": "Index Generation",
+      "qa": "QA Generation"
     }
   }
 }

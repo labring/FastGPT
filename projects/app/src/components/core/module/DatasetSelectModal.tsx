@@ -7,29 +7,20 @@ import {
   ModalBody,
   ModalFooter,
   useTheme,
-  Textarea,
   Grid,
-  Divider,
-  Switch,
-  Image
+  Divider
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
-import { useForm } from 'react-hook-form';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useToast } from '@/web/common/hooks/useToast';
-import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
-import MyModal from '@/components/MyModal';
 import MyIcon from '@/components/Icon';
-import { DatasetSearchModeEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { useTranslation } from 'next-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { feConfigs } from '@/web/common/system/staticData';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import EmptyTip from '@/components/EmptyTip';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 
 export const DatasetSelectModal = ({
   isOpen,
@@ -132,9 +123,9 @@ export const DatasetSelectModal = ({
                   <MyTooltip
                     key={item._id}
                     label={
-                      item.type === DatasetTypeEnum.dataset
-                        ? t('dataset.Select Dataset')
-                        : t('dataset.Select Folder')
+                      item.type === DatasetTypeEnum.folder
+                        ? t('dataset.Select Folder')
+                        : t('dataset.Select Dataset')
                     }
                   >
                     <Card
@@ -149,7 +140,7 @@ export const DatasetSelectModal = ({
                       onClick={() => {
                         if (item.type === DatasetTypeEnum.folder) {
                           setParentId(item._id);
-                        } else if (item.type === DatasetTypeEnum.dataset) {
+                        } else {
                           const vectorModel = selectedDatasets[0]?.vectorModel?.model;
 
                           if (vectorModel && vectorModel !== item.vectorModel.model) {

@@ -7,7 +7,7 @@ import React, {
   ForwardedRef
 } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Button, FormControl, IconButton, Input } from '@chakra-ui/react';
+import { Box, Flex, Button, FormControl, IconButton, Input, Textarea } from '@chakra-ui/react';
 import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
 import { delDatasetById } from '@/web/core/dataset/api';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
@@ -18,21 +18,19 @@ import { UseFormReturn } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@/components/Avatar';
-import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
 import MySelect from '@/components/Select';
 import { qaModelList } from '@/web/common/system/staticData';
 
-export interface ComponentRef {
-  initInput: (tags: string) => void;
-}
-
-const Info = (
-  { datasetId, form }: { datasetId: string; form: UseFormReturn<DatasetItemType, any> },
-  ref: ForwardedRef<ComponentRef>
-) => {
+const Info = ({
+  datasetId,
+  form
+}: {
+  datasetId: string;
+  form: UseFormReturn<DatasetItemType, any>;
+}) => {
   const { t } = useTranslation();
   const { getValues, formState, setValue, register, handleSubmit } = form;
   const InputRef = useRef<HTMLInputElement>(null);
@@ -52,7 +50,7 @@ const Info = (
     multiple: false
   });
 
-  const { datasetDetail, loadDatasetDetail, loadDatasets, updateDataset } = useDatasetStore();
+  const { datasetDetail, loadDatasets, updateDataset } = useDatasetStore();
 
   /* 点击删除 */
   const onclickDelKb = useCallback(async () => {
@@ -121,8 +119,8 @@ const Info = (
       try {
         const src = await compressImgFileAndUpload({
           file,
-          maxW: 100,
-          maxH: 100
+          maxW: 300,
+          maxH: 300
         });
 
         setValue('avatar', src);
@@ -138,14 +136,6 @@ const Info = (
     [setRefresh, setValue, toast]
   );
 
-  useImperativeHandle(ref, () => ({
-    initInput: (tags: string) => {
-      if (InputRef.current) {
-        InputRef.current.value = tags;
-      }
-    }
-  }));
-
   return (
     <Box py={5} px={[5, 10]}>
       <Flex mt={5} w={'100%'} alignItems={'center'}>
@@ -154,18 +144,7 @@ const Info = (
         </Box>
         <Box flex={1}>{datasetDetail._id}</Box>
       </Flex>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          索引模型
-        </Box>
-        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
-      </Flex>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          MaxTokens
-        </Box>
-        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
-      </Flex>
+
       <Flex mt={5} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           知识库头像
@@ -183,7 +162,7 @@ const Info = (
           </MyTooltip>
         </Box>
       </Flex>
-      <FormControl mt={8} w={'100%'} display={'flex'} alignItems={'center'}>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           知识库名称
         </Box>
@@ -194,7 +173,19 @@ const Info = (
             required: '知识库名称不能为空'
           })}
         />
-      </FormControl>
+      </Flex>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          索引模型
+        </Box>
+        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
+      </Flex>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.Max Token')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
+      </Flex>
       <Flex mt={6} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('dataset.Agent Model')}
@@ -216,33 +207,9 @@ const Info = (
           />
         </Box>
       </Flex>
-      <Flex mt={8} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          标签
-          <MyTooltip label={'用空格隔开多个标签，便于搜索'} forceShow>
-            <QuestionOutlineIcon ml={1} />
-          </MyTooltip>
-        </Box>
-        <Input
-          flex={[1, '0 0 300px']}
-          ref={InputRef}
-          defaultValue={getValues('tags')}
-          placeholder={'标签,使用空格分割。'}
-          maxLength={30}
-          onChange={(e) => {
-            setValue('tags', e.target.value.split(' ').filter(Boolean));
-            setRefresh(!refresh);
-          }}
-        />
-        <Flex w={'100%'} pl={['90px', '160px']} mt={2}>
-          {getValues('tags')
-            .filter(Boolean)
-            .map((item, i) => (
-              <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>
-                {item}
-              </Tag>
-            ))}
-        </Flex>
+      <Flex mt={8} alignItems={'center'} w={'100%'}>
+        <Box flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</Box>
+        <Textarea flex={[1, '0 0 300px']} {...register('intro')} placeholder={t('common.Intro')} />
       </Flex>
       {datasetDetail.isOwner && (
         <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
@@ -292,4 +259,4 @@ const Info = (
   );
 };
 
-export default forwardRef(Info);
+export default React.memo(Info);

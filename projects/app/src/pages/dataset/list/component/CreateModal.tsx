@@ -1,14 +1,5 @@
-import React, { useCallback, useState, useRef } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  ModalHeader,
-  ModalFooter,
-  ModalBody,
-  Input,
-  Image
-} from '@chakra-ui/react';
+import React, { useCallback, useState } from 'react';
+import { Box, Flex, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -23,10 +14,11 @@ import MyModal from '@/components/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import MySelect from '@/components/Select';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { vectorModelList, qaModelList } from '@/web/common/system/staticData';
-import Tag from '@/components/Tag';
 import { useTranslation } from 'next-i18next';
+import MyRadio from '@/components/common/MyRadio';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { feConfigs } from '@/web/common/system/staticData';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -36,16 +28,15 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
   const { isPc } = useSystemStore();
   const { register, setValue, getValues, handleSubmit } = useForm<CreateDatasetParams>({
     defaultValues: {
+      parentId,
+      type: DatasetTypeEnum.dataset,
       avatar: '/icon/logo.svg',
       name: '',
-      tags: '',
+      intro: '',
       vectorModel: vectorModelList[0].model,
-      agentModel: qaModelList[0].model,
-      type: 'dataset',
-      parentId
+      agentModel: qaModelList[0].model
     }
   });
-  const InputRef = useRef<HTMLInputElement>(null);
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -59,8 +50,8 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       try {
         const src = await compressImgFileAndUpload({
           file,
-          maxW: 100,
-          maxH: 100
+          maxW: 300,
+          maxH: 300
         });
         setValue('avatar', src);
         setRefresh((state) => !state);
@@ -97,32 +88,67 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       w={'450px'}
     >
       <ModalBody>
-        <Box color={'myGray.800'} fontWeight={'bold'}>
-          取个名字
-        </Box>
-        <Flex mt={3} alignItems={'center'}>
-          <MyTooltip label={'点击设置头像'}>
-            <Avatar
-              flexShrink={0}
-              src={getValues('avatar')}
-              w={['28px', '32px']}
-              h={['28px', '32px']}
-              cursor={'pointer'}
-              borderRadius={'md'}
-              onClick={onOpenSelectFile}
-            />
-          </MyTooltip>
-          <Input
-            ml={3}
-            flex={1}
-            autoFocus
-            bg={'myWhite.600'}
-            maxLength={30}
-            {...register('name', {
-              required: '知识库名称不能为空~'
-            })}
+        <>
+          <Box mb={1} color={'myGray.800'} fontWeight={'bold'}>
+            {t('core.dataset.Dataset Type')}
+          </Box>
+          <MyRadio
+            gridGap={2}
+            gridTemplateColumns={'repeat(1,1fr)'}
+            list={[
+              {
+                title: t('core.dataset.Common Dataset'),
+                value: DatasetTypeEnum.dataset,
+                icon: 'core/dataset/commonDataset',
+                desc: t('core.dataset.Common Dataset Desc')
+              },
+              ...(feConfigs.isPlus
+                ? [
+                    {
+                      title: t('core.dataset.Website Dataset'),
+                      value: DatasetTypeEnum.websiteDataset,
+                      icon: 'core/dataset/websiteDataset',
+                      desc: t('core.dataset.Website Dataset Desc')
+                    }
+                  ]
+                : [])
+            ]}
+            value={getValues('type')}
+            onChange={(e) => {
+              setValue('type', e as `${DatasetTypeEnum}`);
+              setRefresh(!refresh);
+            }}
           />
-        </Flex>
+        </>
+        <Box mt={5}>
+          <Box color={'myGray.800'} fontWeight={'bold'}>
+            取个名字
+          </Box>
+          <Flex mt={1} alignItems={'center'}>
+            <MyTooltip label={'点击设置头像'}>
+              <Avatar
+                flexShrink={0}
+                src={getValues('avatar')}
+                w={['28px', '32px']}
+                h={['28px', '32px']}
+                cursor={'pointer'}
+                borderRadius={'md'}
+                onClick={onOpenSelectFile}
+              />
+            </MyTooltip>
+            <Input
+              ml={3}
+              flex={1}
+              autoFocus
+              bg={'myWhite.600'}
+              placeholder={t('common.Name')}
+              maxLength={30}
+              {...register('name', {
+                required: '知识库名称不能为空~'
+              })}
+            />
+          </Flex>
+        </Box>
         <Flex mt={6} alignItems={'center'}>
           <Box flex={'0 0 100px'}>索引模型</Box>
           <Box flex={1}>
@@ -157,42 +183,14 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             />
           </Box>
         </Flex>
-        <Flex mt={6} alignItems={'center'} w={'100%'}>
-          <Box flex={'0 0 100px'}>
-            标签
-            <MyTooltip label={'用空格隔开多个标签，便于搜索'} forceShow>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
-          </Box>
-          <Input
-            flex={1}
-            ref={InputRef}
-            placeholder={'标签,使用空格分割。'}
-            maxLength={30}
-            onChange={(e) => {
-              setValue('tags', e.target.value);
-              setRefresh(!refresh);
-            }}
-          />
-        </Flex>
-        <Flex mt={2} flexWrap={'wrap'}>
-          {getValues('tags')
-            .split(' ')
-            .filter(Boolean)
-            .map((item, i) => (
-              <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>
-                {item}
-              </Tag>
-            ))}
-        </Flex>
       </ModalBody>
 
       <ModalFooter>
         <Button variant={'base'} mr={3} onClick={onClose}>
-          取消
+          {t('common.Close')}
         </Button>
         <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          确认创建
+          {t('common.Confirm Create')}
         </Button>
       </ModalFooter>
 

@@ -35,7 +35,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>用户:</Box>
-          <Box>{bill.memberName}</Box>
+          <Box>{t(bill.memberName)}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>订单号:</Box>

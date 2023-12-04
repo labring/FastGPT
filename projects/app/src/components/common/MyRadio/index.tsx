@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, useTheme, Grid, type GridProps, theme } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Grid, type GridProps, theme, Image } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
 
@@ -45,8 +45,7 @@ const MyRadio = ({
             : {
                 bg: 'myWhite.300',
                 _hover: {
-                  bg: '#f5f8ff',
-                  borderColor: '#b2ccff'
+                  borderColor: 'myBlue.500'
                 }
               })}
           _after={{
@@ -71,7 +70,15 @@ const MyRadio = ({
           }}
           onClick={() => onChange(item.value)}
         >
-          {!!item.icon && <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />}
+          {!!item.icon && (
+            <>
+              {item.icon.startsWith('/') ? (
+                <Image src={item.icon} mr={'14px'} w={iconSize} alt={''} />
+              ) : (
+                <MyIcon mr={'14px'} name={item.icon as any} w={iconSize} />
+              )}
+            </>
+          )}
           <Box pr={2}>
             <Box>{t(item.title)}</Box>
             {!!item.desc && (

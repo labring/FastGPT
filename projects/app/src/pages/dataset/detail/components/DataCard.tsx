@@ -55,7 +55,10 @@ const DataCard = () => {
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { isPc } = useSystemStore();
-  const { collectionId = '' } = router.query as { collectionId: string };
+  const { collectionId = '', datasetId } = router.query as {
+    collectionId: string;
+    datasetId: string;
+  };
   const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -99,8 +102,18 @@ const DataCard = () => {
   );
 
   // get file info
-  const { data: collection } = useQuery(['getDatasetCollectionById', collectionId], () =>
-    getDatasetCollectionById(collectionId)
+  const { data: collection } = useQuery(
+    ['getDatasetCollectionById', collectionId],
+    () => getDatasetCollectionById(collectionId),
+    {
+      onError: () => {
+        router.replace({
+          query: {
+            datasetId
+          }
+        });
+      }
+    }
   );
 
   const canWrite = useMemo(
@@ -290,6 +303,7 @@ const DataCard = () => {
             </Flex>
             <Box
               maxH={'135px'}
+              minH={'90px'}
               overflow={'hidden'}
               wordBreak={'break-all'}
               pt={1}

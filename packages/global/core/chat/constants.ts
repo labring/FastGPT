@@ -5,7 +5,6 @@ export enum ChatRoleEnum {
   Function = 'Function',
   Tool = 'Tool'
 }
-
 export const ChatRoleMap = {
   [ChatRoleEnum.System]: {
     name: '系统提示词'
@@ -30,7 +29,6 @@ export enum ChatSourceEnum {
   share = 'share',
   api = 'api'
 }
-
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
     name: 'chat.logs.test'
