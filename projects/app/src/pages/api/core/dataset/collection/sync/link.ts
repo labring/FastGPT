@@ -9,6 +9,8 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { urlsFetch } from '@fastgpt/global/common/file/tools';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -42,6 +44,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return Promise.reject('Raw text is required');
     }
 
+    // create training bill
+    const { billId } = await createTrainingBill({
+      teamId: collection.teamId,
+      tmbId,
+      appName: collection.name,
+      billSource: BillSourceEnum.training,
+      vectorModel: collection.datasetId.vectorModel,
+      agentModel: collection.datasetId.agentModel
+    });
+
     // create a collection and delete old
     const id = await createOneCollection({
       teamId: collection.teamId,
@@ -61,7 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await loadingOneChunkCollection({
       collectionId: id,
       tmbId,
-      rawText
+      rawText,
+      billId
     });
 
     // delete old collection

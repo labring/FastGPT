@@ -3,8 +3,6 @@ import { MongoDatasetCollection } from './schema';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { createTrainingBill } from '../../../support/wallet/bill/controller';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { MongoDatasetTraining } from '../training/schema';
 
 /**
@@ -69,11 +67,13 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
 export const loadingOneChunkCollection = async ({
   collectionId,
   tmbId,
-  rawText
+  rawText,
+  billId
 }: {
   collectionId: string;
   tmbId: string;
   rawText: string;
+  billId?: string;
 }) => {
   const collection = (await MongoDatasetCollection.findById(collectionId).populate(
     'datasetId'
@@ -87,16 +87,6 @@ export const loadingOneChunkCollection = async ({
   const { chunks } = splitText2Chunks({
     text: rawText,
     chunkLen: collection.chunkSize || 512
-  });
-
-  // create training bill
-  const { billId } = await createTrainingBill({
-    teamId: collection.teamId,
-    tmbId,
-    appName: collection.name,
-    billSource: BillSourceEnum.training,
-    vectorModel: collection.datasetId.vectorModel,
-    agentModel: collection.datasetId.agentModel
   });
 
   // insert to training queue
