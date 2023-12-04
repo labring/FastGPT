@@ -4,7 +4,7 @@ description: "FastGPT 对接 chatgpt-on-wechat"
 icon: "chat"
 draft: false
 toc: true
-weight: 312
+weight: 504
 ---
 
 # 1 分钟对接 chatgpt-on-wechat

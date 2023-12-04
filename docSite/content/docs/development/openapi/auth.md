@@ -4,7 +4,7 @@ description: 'FastGPT Api Key 使用与鉴权'
 icon: 'key'
 draft: false
 toc: true
-weight: 561
+weight: 851
 ---
 
 ## 使用说明

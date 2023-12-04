@@ -4,7 +4,7 @@ description: "FastGPT AI 对话模块介绍"
 icon: "chat"
 draft: false
 toc: true
-weight: 123
+weight: 351
 ---
 
 ## 特点
@@ -21,7 +21,7 @@ weight: 123
 
 ### 对话模型
 
-可以通过 [config.json](/docs/installation/reference/models/) 配置可选的对话模型，通过 [one-api](/docs/installation/one-api/) 来实现多模型接入。
+可以通过 [config.json](/docs/development/configuration/) 配置可选的对话模型，通过 [one-api](/docs/development/one-api/) 来实现多模型接入。
 
 ### 温度 & 回复上限
 

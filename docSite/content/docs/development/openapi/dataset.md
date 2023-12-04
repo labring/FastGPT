@@ -4,7 +4,7 @@ description: 'FastGPT OpenAPI 知识库接口'
 icon: 'dataset'
 draft: false
 toc: true
-weight: 563
+weight: 853
 ---
 
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |

@@ -4,7 +4,7 @@ description: '通过接入 One API 来实现对各种大模型的支持'
 icon: 'Api'
 draft: false
 toc: true
-weight: 730
+weight: 708
 ---
 
 * 默认情况下，FastGPT 只配置了 GPT 的 3 个模型，如果你需要接入其他模型，需要进行一些额外配置。

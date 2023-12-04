@@ -23,7 +23,7 @@ FastGPT 默认使用了 OpenAI 的 LLM 模型和向量模型，如果想要私�
 也可以通过环境变量引入：sk-key。有关docker环境变量引入的方法请自寻教程，此处不再赘述。
 ```
 
-## 接入 [One API](/docs/installation/one-api/)
+## 接入 [One API](/docs/development/one-api/)
 
 为 chatglm2 和 m3e-large 各添加一个渠道，参数如下：
 

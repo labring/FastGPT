@@ -4,7 +4,7 @@ description: 'FastGPT 分享链接鉴权'
 icon: 'share'
 draft: false
 toc: true
-weight: 564
+weight: 860
 ---
 
 ## 使用说明

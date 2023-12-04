@@ -1,8 +1,8 @@
 ---
-weight: 1100
-title: '社区'
+weight: 1200
+title: '协议'
 description: '社区相关内容'
-icon: 'forum'
+icon: 'handshake'
 draft: false
 images: []
 ---

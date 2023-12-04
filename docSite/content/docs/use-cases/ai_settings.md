@@ -4,7 +4,7 @@ description: "FastGPT AI 高级配置说明"
 icon: "sign_language"
 draft: false
 toc: true
-weight: 310
+weight: 501
 ---
 
 在 FastGPT 的 AI 对话模块中，有一个 AI 高级配置，里面包含了 AI 模型的参数配置，本文详细介绍这些配置的含义。

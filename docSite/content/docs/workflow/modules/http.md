@@ -4,7 +4,7 @@ description: "FastGPT HTTP 模块介绍"
 icon: "http"
 draft: false
 toc: true
-weight: 129
+weight: 355
 ---
 
 ## 特点
@@ -101,4 +101,4 @@ export default async function (ctx: FunctionContext) {
 
 ## 作用
 
-基于 HTTP 模块可以无限扩展，比如操作数据库、执行联网搜索、发送邮箱等等。如果你有有趣的案例，欢迎提交 PR 到 [编排案例](/docs/category/examples)
+基于 HTTP 模块可以无限扩展，比如操作数据库、执行联网搜索、发送邮箱等等。如果你有有趣的案例，欢迎提交 PR 到 [编排案例](/docs/workflow/examples)
