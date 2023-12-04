@@ -364,7 +364,7 @@
         "Empty Tip": "这个集合还没有数据~",
         "Search data placeholder": "搜索相关数据",
         "Too Long": "总长度超长了",
-        "Total Amount": "({{total}})组",
+        "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
         "id": "数据ID"
       },

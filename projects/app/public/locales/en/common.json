@@ -364,7 +364,7 @@
         "Empty Tip": "This collection has no data yet",
         "Search data placeholder": "Search relevant data",
         "Too Long": "Content is too long",
-        "Total Amount": "({{total}}) Chunks",
+        "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
         "id": "Data ID"
       },
