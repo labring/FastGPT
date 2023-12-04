@@ -4,6 +4,8 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { MongoDatasetTraining } from '../training/schema';
+import { urlsFetch } from '@fastgpt/global/common/file/tools';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 
 /**
  * get all collection by top collectionId
@@ -67,13 +69,13 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
 export const loadingOneChunkCollection = async ({
   collectionId,
   tmbId,
-  rawText,
-  billId
+  billId,
+  rawText
 }: {
   collectionId: string;
   tmbId: string;
-  rawText: string;
   billId?: string;
+  rawText?: string;
 }) => {
   const collection = (await MongoDatasetCollection.findById(collectionId).populate(
     'datasetId'
@@ -83,9 +85,26 @@ export const loadingOneChunkCollection = async ({
     return Promise.reject(DatasetErrEnum.unCreateCollection);
   }
 
+  const newRawText = await (async () => {
+    if (rawText) return rawText;
+    // link
+    if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
+      // crawl new data
+      const result = await urlsFetch({
+        urlList: [collection.rawLink],
+        selector: collection.datasetId?.websiteConfig?.selector
+      });
+
+      return result[0].content;
+    }
+    // file
+
+    return '';
+  })();
+
   // split data
   const { chunks } = splitText2Chunks({
-    text: rawText,
+    text: newRawText,
     chunkLen: collection.chunkSize || 512
   });
 

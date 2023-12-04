@@ -6,7 +6,6 @@ import { loadingOneChunkCollection } from '@fastgpt/service/core/dataset/collect
 import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { urlsFetch } from '@fastgpt/global/common/file/tools';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
@@ -31,17 +30,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     if (collection.type !== DatasetCollectionTypeEnum.link || !collection.rawLink) {
       return Promise.reject(DatasetErrEnum.unLinkCollection);
-    }
-
-    // crawl new data
-    const result = await urlsFetch({
-      urlList: [collection.rawLink],
-      selector: collection.datasetId?.websiteConfig?.selector
-    });
-
-    const rawText = result[0].content;
-    if (!rawText) {
-      return Promise.reject('Raw text is required');
     }
 
     // create training bill
@@ -73,7 +61,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await loadingOneChunkCollection({
       collectionId: id,
       tmbId,
-      rawText,
       billId
     });
 
