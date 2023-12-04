@@ -10,6 +10,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -32,14 +33,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return Promise.reject(DatasetErrEnum.unLinkCollection);
     }
 
+    const vectorModelData = getVectorModel(collection.datasetId.vectorModel);
+    const agentModelData = getQAModel(collection.datasetId.agentModel);
     // create training bill
     const { billId } = await createTrainingBill({
       teamId: collection.teamId,
       tmbId,
       appName: 'core.dataset.collection.Sync Collection',
       billSource: BillSourceEnum.training,
-      vectorModel: collection.datasetId.vectorModel,
-      agentModel: collection.datasetId.agentModel
+      vectorModel: vectorModelData.name,
+      agentModel: agentModelData.name
     });
 
     // create a collection and delete old
