@@ -36,7 +36,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { billId } = await createTrainingBill({
       teamId: collection.teamId,
       tmbId,
-      appName: collection.name,
+      appName: 'core.dataset.collection.Sync Collection',
       billSource: BillSourceEnum.training,
       vectorModel: collection.datasetId.vectorModel,
       agentModel: collection.datasetId.agentModel

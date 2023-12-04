@@ -332,6 +332,7 @@
         "Website Link": "Website Link",
         "Website Sync": "Website",
         "id": "Id",
+        "Sync Collection": "Data Sync",
         "metadata": {
           "Chunk Size": "Chunk Size",
           "Createtime": "Create Time",
