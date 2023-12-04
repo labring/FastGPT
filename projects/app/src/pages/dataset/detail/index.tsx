@@ -1,10 +1,8 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Tabs from '@/components/Tabs';
@@ -24,7 +22,13 @@ import Script from 'next/script';
 import CollectionCard from './components/CollectionCard';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { DatasetTypeMap } from '../../../../../../packages/global/core/dataset/constant';
+import {
+  DatasetStatusEnum,
+  DatasetTypeEnum,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constant';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useRequest } from '@/web/common/hooks/useRequest';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false
@@ -46,16 +50,25 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useSystemStore();
-  const { datasetDetail, loadDatasetDetail } = useDatasetStore();
+  const { datasetDetail, loadDatasetDetail, startWebsiteSync } = useDatasetStore();
   const { userInfo } = useUserStore();
 
   const tabList = [
-    { label: '数据集', id: TabEnum.collectionCard, icon: 'overviewLight' },
-    { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
+    { label: t('core.dataset.Dataset'), id: TabEnum.collectionCard, icon: 'overviewLight' },
+    { label: t('core.dataset.test.Search Test'), id: TabEnum.test, icon: 'kbTest' },
     ...(userInfo?.team.canWrite && datasetDetail.isOwner
-      ? [{ label: '配置', id: TabEnum.info, icon: 'settingLight' }]
+      ? [{ label: t('common.Config'), id: TabEnum.info, icon: 'settingLight' }]
       : [])
   ];
+
+  const { ConfirmModal: ConfirmSyncModal, openConfirm: openConfirmSync } = useConfirm({
+    type: 'common'
+  });
+
+  const { mutate: onUpdateDatasetWebsiteConfig, isLoading: isUpdating } = useRequest({
+    mutationFn: () => startWebsiteSync(),
+    errorToast: t('common.Update Failed')
+  });
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -69,18 +82,11 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
     [datasetId, router]
   );
 
-  const form = useForm<DatasetItemType>({
-    defaultValues: datasetDetail
-  });
-
   useQuery([datasetId], () => loadDatasetDetail(datasetId), {
-    onSuccess(res) {
-      form.reset(res);
-    },
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({
-        title: getErrText(err, '获取知识库异常'),
+        title: getErrText(err, t('common.Load Failed')),
         status: 'error'
       });
     }
@@ -116,7 +122,26 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                     mr={1}
                     w={'16px'}
                   />
-                  <Box>{t(DatasetTypeMap[datasetDetail.type]?.label)}</Box>
+                  <Box flex={1}>{t(DatasetTypeMap[datasetDetail.type]?.label)}</Box>
+                  {datasetDetail.type === DatasetTypeEnum.websiteDataset &&
+                    datasetDetail.status === DatasetStatusEnum.active && (
+                      <MyTooltip label={t('core.dataset.website.Start Sync')}>
+                        <MyIcon
+                          mt={1}
+                          name={'common/refreshLight'}
+                          w={'12px'}
+                          color={'myGray.500'}
+                          cursor={'pointer'}
+                          onClick={() =>
+                            openConfirmSync(
+                              onUpdateDatasetWebsiteConfig,
+                              undefined,
+                              t('core.dataset.website.Confirm Create Tips')
+                            )()
+                          }
+                        />
+                      </MyTooltip>
+                    )}
                 </Flex>
               )}
               <SideTabs
@@ -188,11 +213,12 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               {currentTab === TabEnum.collectionCard && <CollectionCard />}
               {currentTab === TabEnum.dataCard && <DataCard />}
               {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
-              {currentTab === TabEnum.info && <Info datasetId={datasetId} form={form} />}
+              {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
             </Box>
           )}
         </Flex>
       </PageContainer>
+      <ConfirmSyncModal isLoading={isUpdating} />
     </>
   );
 };

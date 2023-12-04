@@ -44,7 +44,6 @@ const DatasetCollectionSchema = new Schema({
     enum: Object.keys(DatasetCollectionTypeMap),
     required: true
   },
-
   name: {
     type: String,
     required: true

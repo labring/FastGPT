@@ -4,7 +4,7 @@ description: "FastGPT 问题分类模块介绍"
 icon: "quiz"
 draft: false
 toc: true
-weight: 126
+weight: 358
 ---
 
 ## 特点

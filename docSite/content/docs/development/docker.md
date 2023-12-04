@@ -4,7 +4,7 @@ description: '使用 Docker Compose 快速部署 FastGPT'
 icon: ''
 draft: false
 toc: true
-weight: 720
+weight: 707
 ---
 
 ## 准备条件
@@ -13,13 +13,13 @@ weight: 720
 
 ### 1. 准备好代理环境（国外服务器可忽略）
 
-确保可以访问 OpenAI，具体方案可以参考：[代理方案](/docs/installation/proxy/)。或直接在 Sealos 上 [部署 OneAPI](/docs/installation/one-api)，既解决代理问题也能实现多 Key 轮询、接入其他大模型。
+确保可以访问 OpenAI，具体方案可以参考：[代理方案](/docs/development/proxy/)。或直接在 Sealos 上 [部署 OneAPI](/docs/development/one-api)，既解决代理问题也能实现多 Key 轮询、接入其他大模型。
 
 ### 2. 多模型支持
 
 FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、Azure 、国内主流模型和本地模型等。
 
-可选择 [Sealos 快速部署 OneAPI](/docs/installation/one-api)，更多部署方法可参考该项目的 [README](https://github.com/songquanpeng/one-api)，也可以直接通过以下按钮一键部署：
+可选择 [Sealos 快速部署 OneAPI](/docs/development/one-api)，更多部署方法可参考该项目的 [README](https://github.com/songquanpeng/one-api)，也可以直接通过以下按钮一键部署：
 
 [![](https://fastly.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Done-api)
 

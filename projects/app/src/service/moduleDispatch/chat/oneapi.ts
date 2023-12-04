@@ -76,7 +76,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     quoteTemplate
   });
 
-  if (modelConstantsData.censor) {
+  // censor model and system key
+  if (modelConstantsData.censor && !user.openaiAccount?.key) {
     await postTextCensor({
       text: `${systemPrompt}
       ${quoteText}

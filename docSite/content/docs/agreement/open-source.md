@@ -4,7 +4,7 @@ description: ' FastGPT 开源许可证'
 icon: 'verified_user'
 draft: false
 toc: true
-weight: 1120
+weight: 1210
 ---
 
 FastGPT 项目在 Apache License 2.0 许可下开源，同时包含以下附加条件：

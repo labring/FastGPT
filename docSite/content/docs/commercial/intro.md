@@ -4,7 +4,7 @@ description: 'FastGPT 商业版相关说明'
 icon: 'shopping_cart'
 draft: false
 toc: true
-weight: 20
+weight: 1001
 ---
 
 ## FastGPT 线上服务

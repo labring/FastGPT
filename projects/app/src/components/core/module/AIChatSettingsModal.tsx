@@ -25,6 +25,7 @@ import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
 import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type.d';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
+import { getDocPath } from '@/web/common/system/doc';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -77,7 +78,7 @@ const AIChatSettingsModal = ({
           {t('app.AI Advanced Settings')}
           {feConfigs?.docUrl && (
             <Link
-              href={`${feConfigs.docUrl}/docs/use-cases/ai_settings/`}
+              href={getDocPath('/docs/use-cases/ai_settings/')}
               target={'_blank'}
               ml={1}
               textDecoration={'underline'}

@@ -4,7 +4,7 @@ description: '赋予联网功能，将用户问题进行分类，细分后对接
 icon: 'search'
 draft: false
 toc: true
-weight: 143
+weight: 406
 ---
 
 ![](/imgs/versatile_assistant_1.png)

@@ -12,6 +12,7 @@ import MyIcon from '../Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '../MyTooltip';
+import { getDocPath } from '@/web/common/system/doc';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -181,7 +182,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             mb={0}
             color={'#9096a5'}
             onClick={() => {
-              window.open(`${feConfigs.docUrl}/docs/intro`);
+              window.open(getDocPath('/docs/intro'));
             }}
           >
             <MyIcon name={'common/courseLight'} width={'26px'} height={'26px'} />

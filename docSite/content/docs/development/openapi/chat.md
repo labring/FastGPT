@@ -4,7 +4,7 @@ description: 'FastGPT OpenAPI 对话接口'
 icon: 'chat'
 draft: false
 toc: true
-weight: 562
+weight: 852
 ---
 
 ## 发起对话

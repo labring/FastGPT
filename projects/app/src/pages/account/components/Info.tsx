@@ -30,6 +30,7 @@ import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
+import { getDocPath } from '@/web/common/system/doc';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'), {
@@ -261,7 +262,7 @@ const UserInfo = () => {
               cursor={'pointer'}
               userSelect={'none'}
               onClick={() => {
-                window.open(`${feConfigs.docUrl}/docs/intro`);
+                window.open(getDocPath('/docs/intro'));
               }}
             >
               <MyIcon name={'common/courseLight'} w={'18px'} />

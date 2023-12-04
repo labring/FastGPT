@@ -131,6 +131,7 @@
     "Config": "Config",
     "Confirm": "Confirm",
     "Confirm Create": "Create",
+    "Confirm Import": "Import",
     "Confirm Move": "Move here",
     "Confirm Update": "Update",
     "Copy": "Copy",
@@ -153,6 +154,7 @@
     "Input": "Input",
     "Intro": "Intro",
     "Last Step": "Last",
+    "Load Failed": "Load Failed",
     "Loading": "Loading",
     "Max credit": "Credit",
     "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
@@ -191,6 +193,10 @@
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
     "Website": "Website",
+    "avatar": {
+      "Select Avatar": "Select Avatar",
+      "Select Failed": "Select Failed"
+    },
     "choosable": "choosable",
     "confirm": {
       "Common Tip": "Operational Confirm"
@@ -203,6 +209,11 @@
     },
     "export": "",
     "file": {
+      "File Content": "File Content",
+      "File Name": "File Name",
+      "File content can not be empty": "File content can not be empty",
+      "Filename Can not Be Empty": "Filename Can not Be Empty",
+      "Read File Error": "Read file error",
       "Select file amount limit 100": "You can select a maximum of 100 files at a time"
     },
     "folder": {
@@ -218,6 +229,9 @@
     "link": {
       "UnValid": "UnValid Link"
     },
+    "price": {
+      "Amount": "{{amount}}{{unit}}"
+    },
     "speech": {
       "error tip": "Speech Failed"
     }
@@ -226,7 +240,11 @@
     "Max Token": "MaxTokens",
     "ai": {
       "Model": "Model",
-      "Prompt": "Prompt"
+      "Prompt": "Prompt",
+      "model": {
+        "Dataset Agent Model": "Agent Model",
+        "Vector Model": "Vector Model"
+      }
     },
     "app": {
       "App params config": "App Config",
@@ -276,18 +294,23 @@
     },
     "dataset": {
       "All Dataset": "All Dataset",
+      "Avatar": "Avatar",
       "Choose Dataset": "Choose Dataset",
       "Common Dataset": "Common Dataset",
       "Common Dataset Desc": "Knowledge bases can be built by importing files, web links, or manual entry",
       "Create dataset": "Create Dataset",
       "Dataset": "Dataset",
+      "Dataset ID": "Dataset ID",
       "Dataset Type": "Dataset Type",
+      "Delete Confirm": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
       "Delete Website Tips": "Confirm to delete the website",
       "Empty Dataset": "",
       "Empty Dataset Tips": "There is no knowledge base yet, go create one!",
       "Folder Dataset": "Folder",
       "Go Dataset": "To Dataset",
       "Intro Placeholder": "This dataset has not yet been introduced~",
+      "My Dataset": "My Dataset",
+      "Name": "Name",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
       "Search Top K": "Top K",
@@ -301,10 +324,15 @@
       "collection": {
         "Click top config website": "Config",
         "Empty Tip": "The collection is empty",
+        "QA Prompt": "QA Prompt",
+        "Start Sync Tip": "Are you sure to start synchronizing data? The old data will be deleted and then re-acquired, please confirm!",
+        "Sync": "Data Sync",
         "Website Create Success": "Created successfully, data is being synchronized",
-        "Website Empty Tip": "No associated website yet,",
+        "Website Empty Tip": "No associated website yet",
         "Website Link": "Website Link",
         "Website Sync": "Website",
+        "id": "Id",
+        "Sync Collection": "Data Sync",
         "metadata": {
           "Chunk Size": "Chunk Size",
           "Createtime": "Create Time",
@@ -328,19 +356,50 @@
         }
       },
       "data": {
+        "Auxiliary Data": "Auxiliary Data",
+        "Auxiliary Data Placeholder": "This section is optional, usually in conjunction with the previous [data content], to build a structured prompt word, for special scenarios, up to {{maxToken}} words.",
+        "Auxiliary Data Tip": "This section is divided into optional fields \n This content is usually designed to work with the previous data content to build structured prompt words for special scenarios",
+        "Data Content": "Data Content",
+        "Data Content Placeholder": "The input field is required, and the content is usually a description of the knowledge point, or it can be a user question, at most {{maxToken}} words.",
+        "Data Content Tip": "The input box is a required field \n The content is usually a description of the knowledge point, but also can be a user question.",
+        "Default Index Tip": "Cannot be edited, the default index will use the text of [related data content] and [auxiliary data] to generate an index directly, if the default index is not needed, you can delete it. Each piece of data must have more than one index. After all indexes are deleted, a default index is automatically generated.",
         "Edit": "Edit Data",
+        "Empty Tip": "This collection has no data yet",
+        "Search data placeholder": "Search relevant data",
+        "Too Long": "Content is too long",
+        "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
         "id": "Data ID"
+      },
+      "error": {
+        "Start Sync Failed": "Start Sync Failed"
       },
       "file": "File",
       "folder": "Folder",
       "import": {
+        "CSV Import": "CSV QA Import",
+        "CSV Import Tip": "Import q and a from csv, data is required to be sorted out in advance",
+        "Chunk Range": "Range: 100~{{max}}",
+        "Chunk Split": "Chunk Split",
+        "Chunk Split Tip": "Select the files and split the by sentences",
+        "Csv format error": "The csv file format is incorrect, please ensure that the index and content columns are two",
+        "Estimated Price": "Estimated Price",
+        "Estimated Price Tips": "Index generation is billed as: {{price}}/1k tokens",
         "Fetch Error": "Get link failed",
         "Fetch Url": "Url",
         "Fetch url placeholder": "Up to 10 links, one per line.",
         "Fetch url tip": "Only static links can be read, please check the results",
         "Ideal chunk length": "Ideal chunk length",
-        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
+        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200",
+        "Import Failed": "Import Failed",
+        "Import Success Tip": "The {{num}} group data is imported successfully. Please wait for training.",
+        "Import Tip": "This task cannot be terminated and takes some time to generate indexes. Please confirm the import. If the balance is insufficient, the unfinished task will be suspended and can continue after topping up.",
+        "Only Show First 50 Chunk": "Show only part",
+        "QA Import": "QA Split",
+        "QA Import Tip": "Select the files and let the LLM automatically generate QA",
+        "Re Preview": "RePreview",
+        "Set Chunk Error": "Split chunks error",
+        "Total Chunk Preview": "Chunk Preview: {{totalChunks}} "
       },
       "link": "Link",
       "search": {
@@ -365,6 +424,7 @@
         "syncing": "Syncing"
       },
       "test": {
+        "Search Test": "Search Test",
         "Test": "Start",
         "Test Result": "Results",
         "Test Text": "Text",
@@ -386,7 +446,8 @@
         "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
         "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
         "Selector": "Selector",
-        "Start Sync": "Start Sync"
+        "Start Sync": "Start Sync",
+        "UnValid Website Tip": "Your site may not be static and cannot be synchronized"
       }
     },
     "module": {
@@ -452,7 +513,6 @@
     }
   },
   "dataset": {
-    "Agent Model": "Learning Model",
     "Chunk Length": "Chunk Length",
     "Confirm move the folder": "Confirm Move",
     "Confirm to delete the data": "Confirm to delete the data?",
@@ -474,7 +534,6 @@
     "Manual Mark": "Manual Mark",
     "Mark Data": "Mark Data",
     "Move Failed": "Move Failed",
-    "My Dataset": "My Dataset",
     "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
     "Select Dataset": "Select Dataset",
     "Select Dataset Tips": "Select only knowledge bases with the same index model",
@@ -518,7 +577,6 @@
       },
       "input is empty": "The data content cannot be empty"
     },
-    "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "test": {

@@ -4,7 +4,7 @@ description: "使用 HTTP 代理实现中转"
 icon: "http"
 draft: false
 toc: true
-weight: 743
+weight: 952
 ---
 
 如果你有代理工具（例如 [Clash](https://github.com/Dreamacro/clash) 或者 [sing-box](https://github.com/SagerNet/sing-box)），也可以使用 HTTP 代理来访问 OpenAI。只需要添加以下两个环境变量即可：

@@ -137,7 +137,7 @@ const FileSelect = ({
           if (extension === 'csv') {
             const { header, data } = await readCsvContent(file);
             if (header[0] !== 'index' || header[1] !== 'content') {
-              throw new Error('csv 文件格式有误,请确保 index 和 content 两列');
+              throw new Error(t('core.dataset.import.Csv format error'));
             }
 
             const filterData = data
@@ -205,7 +205,7 @@ const FileSelect = ({
       } catch (error: any) {
         console.log(error);
         toast({
-          title: getErrText(error, '解析文件失败'),
+          title: getErrText(error, t('common.file.Read File Error')),
           status: 'error'
         });
       }

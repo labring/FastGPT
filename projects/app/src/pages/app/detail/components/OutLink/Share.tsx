@@ -44,6 +44,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';
+import { getDocPath } from '@/web/common/system/doc';
 
 const Share = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
@@ -357,7 +358,7 @@ function EditLinkModal({
               />
             </Flex>
             <Link
-              href={`${feConfigs.docUrl}/docs/development/openapi/share`}
+              href={getDocPath('/docs/development/openapi/share')}
               target={'_blank'}
               fontSize={'sm'}
               color={'myGray.500'}
