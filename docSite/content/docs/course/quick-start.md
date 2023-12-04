@@ -4,7 +4,7 @@ description: '快速体验 FastGPT 基础功能'
 icon: 'rocket_launch'
 draft: false
 toc: true
-weight: 30
+weight: 101
 ---
 
 更多使用技巧，[查看视屏教程](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.337.search-card.all.click&vd_source=903c2b09b7412037c2eddc6a8fb9828b)

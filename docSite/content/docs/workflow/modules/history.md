@@ -4,7 +4,7 @@ description: "FastGPT 历史记录模块介绍"
 icon: "history"
 draft: false
 toc: true
-weight: 128
+weight: 354
 ---
 
 # 特点

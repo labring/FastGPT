@@ -4,7 +4,7 @@ description: "使用 Sealos 部署 Nginx 实现中转"
 icon: "cloud_sync"
 draft: false
 toc: true
-weight: 741
+weight: 951
 ---
 
 ## 登录 Sealos

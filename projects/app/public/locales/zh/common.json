@@ -131,6 +131,7 @@
     "Config": "配置",
     "Confirm": "确认",
     "Confirm Create": "确认创建",
+    "Confirm Import": "确认导入",
     "Confirm Move": "移动到这",
     "Confirm Update": "确认更新",
     "Copy": "复制",
@@ -153,6 +154,7 @@
     "Input": "输入",
     "Intro": "介绍",
     "Last Step": "上一步",
+    "Load Failed": "加载失败",
     "Loading": "加载中",
     "Max credit": "最大金额",
     "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
@@ -177,7 +179,7 @@
     "Select File Failed": "选择文件异常",
     "Select One Folder": "选择一个目录",
     "Set Avatar": "点击设置头像",
-    "Set Name": "取个响亮的名字",
+    "Set Name": "取个名字",
     "Status": "状态",
     "Team": "团队",
     "Test": "测试",
@@ -191,6 +193,10 @@
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
     "Website": "网站",
+    "avatar": {
+      "Select Avatar": "点击选择头像",
+      "Select Failed": "选择头像异常"
+    },
     "choosable": "可选",
     "confirm": {
       "Common Tip": "操作确认"
@@ -203,6 +209,11 @@
     },
     "export": "",
     "file": {
+      "File Content": "文件内容",
+      "File Name": "文件名",
+      "File content can not be empty": "文件内容不能为空",
+      "Filename Can not Be Empty": "文件名不能为空",
+      "Read File Error": "解析文件失败",
       "Select file amount limit 100": "每次最多选择100个文件"
     },
     "folder": {
@@ -218,6 +229,9 @@
     "link": {
       "UnValid": "无效的链接"
     },
+    "price": {
+      "Amount": "{{amount}}{{unit}}"
+    },
     "speech": {
       "error tip": "语音转文字失败"
     }
@@ -226,7 +240,11 @@
     "Max Token": "单条数据上限",
     "ai": {
       "Model": "AI 模型",
-      "Prompt": "提示词"
+      "Prompt": "提示词",
+      "model": {
+        "Dataset Agent Model": "文件处理模型",
+        "Vector Model": "索引模型"
+      }
     },
     "app": {
       "App params config": "应用配置",
@@ -276,18 +294,23 @@
     },
     "dataset": {
       "All Dataset": "全部知识库",
+      "Avatar": "知识库头像",
       "Choose Dataset": "关联知识库",
       "Common Dataset": "通用知识库",
       "Common Dataset Desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
       "Create dataset": "创建一个知识库",
       "Dataset": "知识库",
+      "Dataset ID": "知识库 ID",
       "Dataset Type": "知识库类型",
+      "Delete Confirm": "确认删除该知识库？删除后数据无法恢复，请确认！",
       "Delete Website Tips": "确认删除该站点？",
       "Empty Dataset": "",
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
       "Folder Dataset": "文件夹",
       "Go Dataset": "前往知识库",
       "Intro Placeholder": "这个知识库还没有介绍~",
+      "My Dataset": "我的知识库",
+      "Name": "知识库名称",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
       "Search Top K": "单次搜索数量",
@@ -301,10 +324,15 @@
       "collection": {
         "Click top config website": "点击配置网站",
         "Empty Tip": "数据集空空如也",
+        "QA Prompt": "QA 拆分引导词",
+        "Start Sync Tip": "确认开始同步数据？将会删除旧数据后重新获取，请确认！",
+        "Sync": "同步数据",
         "Website Create Success": "创建成功，正在同步数据",
-        "Website Empty Tip": "还没有关联网站，",
+        "Website Empty Tip": "还没有关联网站",
         "Website Link": "Web 站点地址",
         "Website Sync": "Web 站点同步",
+        "id": "集合ID",
+        "Sync Collection": "数据同步",
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
@@ -328,19 +356,50 @@
         }
       },
       "data": {
+        "Auxiliary Data": "辅助数据",
+        "Auxiliary Data Placeholder": "该部分为可选填项, 通常是为了与前面的【数据内容】配合，构建结构化提示词，用于特殊场景，最多 {{maxToken}} 字。",
+        "Auxiliary Data Tip": "该部分为可选填项\n该内容通常是为了与前面的数据内容配合，构建结构化提示词，用于特殊场景",
+        "Data Content": "相关数据内容",
+        "Data Content Placeholder": "该输入框是必填项，该内容通常是对于知识点的描述，也可以是用户的问题，最多 {{maxToken}} 字。",
+        "Data Content Tip": "该输入框是必填项\n该内容通常是对于知识点的描述，也可以是用户的问题。",
+        "Default Index Tip": "无法编辑，默认索引会使用【相关数据内容】与【辅助数据】的文本直接生成索引，如不需要默认索引，可删除。 每条数据必须保证有一个以上索引，所有索引被删除后，会自动生成默认索引。",
         "Edit": "编辑数据",
+        "Empty Tip": "这个集合还没有数据~",
+        "Search data placeholder": "搜索相关数据",
+        "Too Long": "总长度超长了",
+        "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
         "id": "数据ID"
+      },
+      "error": {
+        "Start Sync Failed": "开始同步失败"
       },
       "file": "文件",
       "folder": "目录",
       "import": {
+        "CSV Import": "CSV 导入",
+        "CSV Import Tip": "通过批量导入问答对，要求提前整理好数据",
+        "Chunk Range": "范围: 100~{{max}}",
+        "Chunk Split": "直接分段",
+        "Chunk Split Tip": "选择文本文件，直接将其按分段进行处理",
+        "Csv format error": "csv 文件格式有误,请确保 index 和 content 两列",
+        "Estimated Price": "预估价格",
+        "Estimated Price Tips": "索引生成计费为: {{price}}/1k tokens",
         "Fetch Error": "获取链接失败",
         "Fetch Url": "网络链接",
         "Fetch url placeholder": "最多10个链接，每行一个。",
         "Fetch url tip": "仅支持读取静态链接，请注意检查结果",
         "Ideal chunk length": "理想分块长度",
-        "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200"
+        "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200",
+        "Import Failed": "导入文件失败",
+        "Import Success Tip": "共成功导入 {{num}} 组数据，请耐心等待训练.",
+        "Import Tip": "该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。",
+        "Only Show First 50 Chunk": "仅展示部分",
+        "QA Import": "QA拆分",
+        "QA Import Tip": "选择文本文件，让大模型自动生成问答对",
+        "Re Preview": "重新生成预览",
+        "Set Chunk Error": "文本分段异常",
+        "Total Chunk Preview": "分段预览({{totalChunks}}组)"
       },
       "link": "链接",
       "search": {
@@ -365,6 +424,7 @@
         "syncing": "同步中"
       },
       "test": {
+        "Search Test": "搜索测试",
         "Test": "测试",
         "Test Result": "测试结果",
         "Test Text": "测试文本",
@@ -386,7 +446,8 @@
         "Confirm Create Tips": "确认同步该站点，同步任务将随后开启，请确认！",
         "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！",
         "Selector": "选择器",
-        "Start Sync": "开始同步"
+        "Start Sync": "开始同步",
+        "UnValid Website Tip": "您的站点可能非静态站点，无法同步"
       }
     },
     "module": {
@@ -452,7 +513,6 @@
     }
   },
   "dataset": {
-    "Agent Model": "文件处理模型",
     "Chunk Length": "数据总量",
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",
@@ -474,7 +534,6 @@
     "Manual Mark": "手动标注",
     "Mark Data": "标注数据",
     "Move Failed": "移动出现错误~",
-    "My Dataset": "我的知识库",
     "Queue Desc": "该数据是指整个系统当前待训练的数量。{{title}} 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
     "Select Dataset": "选择该知识库",
     "Select Dataset Tips": "仅能选择同一个索引模型的知识库",
@@ -518,7 +577,6 @@
       },
       "input is empty": "数据内容不能为空 "
     },
-    "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
     "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
     "test": {

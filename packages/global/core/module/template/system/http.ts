@@ -21,7 +21,7 @@ export const HttpModule: FlowModuleTemplateType = {
       valueType: ModuleDataTypeEnum.string,
       label: '请求地址',
       description: '请求目标地址',
-      placeholder: 'https://api.fastgpt.run/getInventory',
+      placeholder: 'https://api.ai.com/getInventory',
       required: true,
       showTargetInApp: false,
       showTargetInPlugin: false

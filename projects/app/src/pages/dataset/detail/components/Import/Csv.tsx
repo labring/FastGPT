@@ -16,7 +16,7 @@ const CsvImport = () => {
     useImportStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: `该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。`
+    content: t('core.dataset.import.Import Tip')
   });
 
   return (
@@ -25,7 +25,7 @@ const CsvImport = () => {
         fileExtension={fileExtension}
         showUrlFetch={false}
         fileTemplate={{
-          filename: 'csv 模板.csv',
+          filename: 'csv templates.csv',
           value: csvTemplate,
           type: 'text/csv'
         }}
@@ -33,7 +33,11 @@ const CsvImport = () => {
       >
         <Flex mt={3}>
           <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
-            {uploading ? <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box> : '确认导入'}
+            {uploading ? (
+              <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box>
+            ) : (
+              t('common.Confirm Import')
+            )}
           </Button>
         </Flex>
       </SelectorContainer>

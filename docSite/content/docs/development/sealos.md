@@ -4,7 +4,7 @@ description: "使用 Sealos 一键部署 FastGPT"
 icon: "cloud"
 draft: false
 toc: true
-weight: 710
+weight: 706
 ---
 
 Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇

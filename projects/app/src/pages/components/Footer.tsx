@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
 import { useRouter } from 'next/router';
 import CommunityModal from '@/components/CommunityModal';
+import { getDocPath } from '@/web/common/system/doc';
 
 const Footer = () => {
   const { t } = useTranslation();
@@ -47,7 +48,7 @@ const Footer = () => {
           {
             label: t('home.Footer Docs'),
             onClick: () => {
-              window.open(`${feConfigs.docUrl}/docs/intro`, '_blank');
+              window.open(getDocPath('/docs/intro'), '_blank');
             }
           }
         ]

@@ -57,7 +57,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         setRefresh((state) => !state);
       } catch (err: any) {
         toast({
-          title: getErrText(err, '头像选择异常'),
+          title: getErrText(err, t('common.avatar.Select Failed')),
           status: 'warning'
         });
       }
@@ -71,8 +71,8 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       const id = await postCreateDataset(data);
       return id;
     },
-    successToast: '创建成功',
-    errorToast: '创建知识库出现意外',
+    successToast: t('common.Create Success'),
+    errorToast: t('common.Create Failed'),
     onSuccess(id) {
       router.push(`/dataset/detail?datasetId=${id}`);
     }
@@ -122,10 +122,10 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         </>
         <Box mt={5}>
           <Box color={'myGray.800'} fontWeight={'bold'}>
-            取个名字
+            {t('common.Set Name')}
           </Box>
           <Flex mt={1} alignItems={'center'}>
-            <MyTooltip label={'点击设置头像'}>
+            <MyTooltip label={t('common.avatar.Select Avatar')}>
               <Avatar
                 flexShrink={0}
                 src={getValues('avatar')}
@@ -143,14 +143,12 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
               bg={'myWhite.600'}
               placeholder={t('common.Name')}
               maxLength={30}
-              {...register('name', {
-                required: '知识库名称不能为空~'
-              })}
+              {...register('name')}
             />
           </Flex>
         </Box>
         <Flex mt={6} alignItems={'center'}>
-          <Box flex={'0 0 100px'}>索引模型</Box>
+          <Box flex={'0 0 100px'}>{t('core.ai.model.Vector Model')}</Box>
           <Box flex={1}>
             <MySelect
               w={'100%'}
@@ -167,7 +165,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
           </Box>
         </Flex>
         <Flex mt={6} alignItems={'center'}>
-          <Box flex={'0 0 100px'}>{t('dataset.Agent Model')}</Box>
+          <Box flex={'0 0 100px'}>{t('core.ai.model.Dataset Agent Model')}</Box>
           <Box flex={1}>
             <MySelect
               w={'100%'}

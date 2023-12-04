@@ -6,7 +6,9 @@ export enum DatasetErrEnum {
   unCreateCollection = 'unCreateCollection',
   unAuthDatasetCollection = 'unAuthDatasetCollection',
   unAuthDatasetData = 'unAuthDatasetData',
-  unAuthDatasetFile = 'unAuthDatasetFile'
+  unAuthDatasetFile = 'unAuthDatasetFile',
+
+  unLinkCollection = 'unLinkCollection'
 }
 const datasetErr = [
   {
@@ -28,6 +30,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.unCreateCollection,
     message: '无权创建数据集'
+  },
+  {
+    statusText: DatasetErrEnum.unLinkCollection,
+    message: 'core.dataset.error.unLinkCollection'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

@@ -4,7 +4,7 @@ description: "使用 Cloudflare Worker 实现中转"
 icon: "foggy"
 draft: false
 toc: true
-weight: 742
+weight: 953
 ---
 
 [参考 "不做了睡觉" 的教程](https://gravel-twister-d32.notion.site/FastGPT-API-ba7bb261d5fd4fd9bbb2f0607dacdc9e)
