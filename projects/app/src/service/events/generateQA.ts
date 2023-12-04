@@ -13,6 +13,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '../support/permission/auth/bill';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
 const reduceQueue = (retry = false) => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -104,14 +105,7 @@ export async function generateQA(): Promise<any> {
           tmbId: data.tmbId
         });
         console.log('余额不足，暂停【QA】生成任务');
-        await MongoDatasetTraining.updateMany(
-          {
-            teamId: data.teamId
-          },
-          {
-            lockTime: new Date('2999/5/5')
-          }
-        );
+        lockTrainingDataByTeamId(data.teamId);
       } catch (error) {}
     }
 
