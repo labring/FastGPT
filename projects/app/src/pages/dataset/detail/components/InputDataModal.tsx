@@ -28,6 +28,7 @@ import SideTabs from '@/components/SideTabs';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import DeleteIcon from '@/components/Icon/delete';
 import { defaultCollectionDetail } from '@/constants/dataset';
+import { getDocPath } from '@/web/common/system/doc';
 
 export type RawSourceTextProps = BoxProps & {
   sourceName?: string;
@@ -214,7 +215,7 @@ const InputDataModal = ({
                 return openConfirm(onDeleteData)();
               }
               if (e === TabEnum.doc) {
-                return window.open(`${feConfigs.docUrl}/docs/use-cases/datasetengine`, '_blank');
+                return window.open(getDocPath('/docs/use-cases/datasetengine'), '_blank');
               }
               setCurrentTab(e);
             }}
