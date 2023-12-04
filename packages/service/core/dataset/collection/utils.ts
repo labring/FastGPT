@@ -1,9 +1,7 @@
 import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type.d';
 import { MongoDatasetCollection } from './schema';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { urlsFetch } from '@fastgpt/global/common/file/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { createTrainingBill } from '../../../support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
@@ -68,12 +66,14 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
 }
 
 /* link collection start load data */
-export const loadingOneLinkCollection = async ({
+export const loadingOneChunkCollection = async ({
   collectionId,
-  tmbId
+  tmbId,
+  rawText
 }: {
   collectionId: string;
   tmbId: string;
+  rawText: string;
 }) => {
   const collection = (await MongoDatasetCollection.findById(collectionId).populate(
     'datasetId'
@@ -81,21 +81,6 @@ export const loadingOneLinkCollection = async ({
 
   if (!collection) {
     return Promise.reject(DatasetErrEnum.unCreateCollection);
-  }
-
-  if (collection.type !== DatasetCollectionTypeEnum.link || !collection.rawLink) {
-    throw new Error(DatasetErrEnum.unLinkCollection);
-  }
-
-  // crawl new data
-  const result = await urlsFetch({
-    urlList: [collection.rawLink],
-    selector: collection.datasetId?.websiteConfig?.selector
-  });
-  const rawText = result[0]?.content;
-
-  if (!rawText) {
-    throw new Error('Can not fetch the link data');
   }
 
   // split data
