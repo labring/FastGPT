@@ -7,10 +7,12 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useTranslation } from 'next-i18next';
 
 const fileExtension = '.txt, .docx, .pdf, .md';
 
 const QAImport = () => {
+  const { t } = useTranslation();
   const { datasetDetail } = useDatasetStore();
   const agentModel = datasetDetail.agentModel;
   const unitPrice = agentModel?.price || 3;
@@ -27,7 +29,7 @@ const QAImport = () => {
   } = useImportStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: `该任务无法终止！导入后会自动调用大模型生成问答对，会有一些细节丢失，请确认！如果余额不足，未完成的任务会被暂停。`
+    content: t('core.dataset.import.Import Tip')
   });
 
   const [prompt, setPrompt] = useState(Prompt_AgentQA.description);
@@ -38,7 +40,7 @@ const QAImport = () => {
         {/* prompt */}
         <Box p={3} bg={'myWhite.600'} borderRadius={'md'}>
           <Box mb={1} fontWeight={'bold'}>
-            QA 拆分引导词
+            {t('core.dataset.collection.QA Prompt')}
           </Box>
           <Box whiteSpace={'pre-wrap'} fontSize={'sm'}>
             <Textarea
@@ -55,24 +57,30 @@ const QAImport = () => {
         {/* price */}
         <Flex py={5} alignItems={'center'}>
           <Box>
-            预估价格
+            {t('core.dataset.import.Estimated Price')}
             <MyTooltip
-              label={`索引生成计费为: ${formatPrice(unitPrice, 1000)}/1k tokens`}
+              label={t('core.dataset.import.Estimated Price Tips', {
+                price: formatPrice(unitPrice, 1000)
+              })}
               forceShow
             >
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Box>
-          <Box ml={4}>{price}元</Box>
+          <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
         </Flex>
         <Flex mt={3}>
           {showRePreview && (
             <Button variant={'base'} mr={4} onClick={onReSplitChunks}>
-              重新生成预览
+              {t('core.dataset.import.Re Preview')}
             </Button>
           )}
           <Button isDisabled={uploading} onClick={openConfirm(() => onclickUpload({ prompt }))}>
-            {uploading ? <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box> : '确认导入'}
+            {uploading ? (
+              <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box>
+            ) : (
+              t('common.Confirm Import')
+            )}
           </Button>
         </Flex>
       </SelectorContainer>

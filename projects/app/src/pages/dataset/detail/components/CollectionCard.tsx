@@ -21,8 +21,7 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postDatasetCollection,
-  getDatasetCollectionPathById,
-  postWebsiteSync
+  getDatasetCollectionPathById
 } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
@@ -78,7 +77,7 @@ const CollectionCard = () => {
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
   const [searchText, setSearchText] = useState('');
-  const { datasetDetail, updateDataset, loadDatasetDetail } = useDatasetStore();
+  const { datasetDetail, updateDataset, startWebsiteSync, loadDatasetDetail } = useDatasetStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('dataset.Confirm to delete the file')
@@ -231,24 +230,11 @@ const CollectionCard = () => {
   const { mutate: onUpdateDatasetWebsiteConfig, isLoading: isUpdating } = useRequest({
     mutationFn: async (websiteConfig: DatasetSchemaType['websiteConfig']) => {
       onCloseWebsiteModal();
-      const [_, billId] = await Promise.all([
-        updateDataset({
-          id: datasetDetail._id,
-          websiteConfig,
-          status: DatasetStatusEnum.syncing
-        }),
-        postCreateTrainingBill({
-          name: 'core.dataset.training.Website Sync',
-          vectorModel: datasetDetail.vectorModel.model,
-          agentModel: datasetDetail.agentModel.model
-        })
-      ]);
-      return billId;
-    },
-    onSuccess(billId: string) {
-      try {
-        postWebsiteSync({ datasetId: datasetDetail._id, billId });
-      } catch (error) {}
+      await updateDataset({
+        id: datasetDetail._id,
+        websiteConfig
+      });
+      return startWebsiteSync();
     },
     errorToast: t('common.Update Failed')
   });
@@ -659,10 +645,28 @@ const CollectionCard = () => {
                 t('core.dataset.collection.Empty Tip')
               ) : (
                 <Flex>
-                  {t('core.dataset.collection.Website Empty Tip')}
-                  <Box textDecoration={'underline'} cursor={'pointer'} onClick={onOpenWebsiteModal}>
-                    {t('core.dataset.collection.Click top config website')}
-                  </Box>
+                  {datasetDetail.status === DatasetStatusEnum.syncing && (
+                    <>{t('core.dataset.status.syncing')}</>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.active && (
+                    <>
+                      {!datasetDetail?.websiteConfig?.url ? (
+                        <>
+                          {t('core.dataset.collection.Website Empty Tip')}
+                          {', '}
+                          <Box
+                            textDecoration={'underline'}
+                            cursor={'pointer'}
+                            onClick={onOpenWebsiteModal}
+                          >
+                            {t('core.dataset.collection.Click top config website')}
+                          </Box>
+                        </>
+                      ) : (
+                        <>{t('core.dataset.website.UnValid Website Tip')}</>
+                      )}
+                    </>
+                  )}
                 </Flex>
               )
             }
