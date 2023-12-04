@@ -46,6 +46,11 @@ export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/data
 
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
+export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
+  POST(`/plusApi/core/dataset/websiteSync`, data, {
+    timeout: 600000
+  }).catch();
+
 export const getCheckExportLimit = (datasetId: string) =>
   GET(`/core/dataset/checkExportLimit`, { datasetId });
 
@@ -66,10 +71,8 @@ export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
 export const delDatasetCollectionById = (params: { collectionId: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
-export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
-  POST(`/plusApi/core/dataset/websiteSync`, data, {
-    timeout: 600000
-  }).catch();
+export const postLinkCollectionSync = (collectionId: string) =>
+  POST(`/core/dataset/collection/sync/link`, { collectionId });
 
 /* =============================== data ==================================== */
 /* get dataset list */

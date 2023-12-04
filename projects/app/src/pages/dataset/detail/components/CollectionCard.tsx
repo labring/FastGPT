@@ -21,7 +21,8 @@ import {
   delDatasetCollectionById,
   putDatasetCollectionById,
   postDatasetCollection,
-  getDatasetCollectionPathById
+  getDatasetCollectionPathById,
+  postLinkCollectionSync
 } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
@@ -60,7 +61,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 const WebSiteConfigModal = dynamic(() => import('./Import/WebsiteConfig'), {});
@@ -79,9 +79,13 @@ const CollectionCard = () => {
   const [searchText, setSearchText] = useState('');
   const { datasetDetail, updateDataset, startWebsiteSync, loadDatasetDetail } = useDatasetStore();
 
-  const { openConfirm, ConfirmModal } = useConfirm({
+  const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('dataset.Confirm to delete the file')
   });
+  const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
+    content: t('core.dataset.collection.Start Sync Tip')
+  });
+
   const {
     isOpen: isOpenFileImportModal,
     onOpen: onOpenFileImportModal,
@@ -111,7 +115,7 @@ const CollectionCard = () => {
     Pagination,
     total,
     getData,
-    isLoading,
+    isLoading: isGetting,
     pageNum,
     pageSize
   } = usePagination<DatasetCollectionsListItemType>({
@@ -238,6 +242,15 @@ const CollectionCard = () => {
     },
     errorToast: t('common.Update Failed')
   });
+  const { mutate: onclickStartSync, isLoading: isSyncing } = useRequest({
+    mutationFn: (collectionId: string) => {
+      return postLinkCollectionSync(collectionId);
+    },
+    onSuccess() {
+      getData(pageNum);
+    },
+    errorToast: t('core.dataset.error.Start Sync Failed')
+  });
 
   const { data: paths = [] } = useQuery(['getDatasetCollectionPathById', parentId], () =>
     getDatasetCollectionPathById(parentId)
@@ -247,6 +260,16 @@ const CollectionCard = () => {
     () => !!formatCollections.find((item) => item.trainingAmount > 0),
     [formatCollections]
   );
+  const isLoading = useMemo(
+    () =>
+      isCreating ||
+      isDeleting ||
+      isUpdating ||
+      isSyncing ||
+      (isGetting && collections.length === 0),
+    [collections.length, isCreating, isDeleting, isGetting, isSyncing, isUpdating]
+  );
+
   useQuery(
     ['refreshCollection'],
     () => {
@@ -575,6 +598,23 @@ const CollectionCard = () => {
                         </MenuButton>
                       }
                       menuList={[
+                        ...(collection.type === DatasetCollectionTypeEnum.link
+                          ? [
+                              {
+                                child: (
+                                  <Flex alignItems={'center'}>
+                                    <MyIcon name={'common/refreshLight'} w={'14px'} mr={2} />
+                                    {t('core.dataset.collection.Sync')}
+                                  </Flex>
+                                ),
+                                onClick: () =>
+                                  openSyncConfirm(() => {
+                                    console.log(collection._id);
+                                    onclickStartSync(collection._id);
+                                  })()
+                              }
+                            ]
+                          : []),
                         {
                           child: (
                             <Flex alignItems={'center'}>
@@ -615,7 +655,7 @@ const CollectionCard = () => {
                             </Flex>
                           ),
                           onClick: () =>
-                            openConfirm(
+                            openDeleteConfirm(
                               () => {
                                 onDelCollection(collection._id);
                               },
@@ -673,11 +713,10 @@ const CollectionCard = () => {
           />
         )}
       </TableContainer>
-      <Loading
-        loading={isCreating || isDeleting || isUpdating || (isLoading && collections.length === 0)}
-      />
+      <Loading loading={isLoading} />
 
-      <ConfirmModal />
+      <ConfirmDeleteModal />
+      <ConfirmSyncModal />
       <EditTitleModal />
       <EditCreateVirtualFileModal />
       {isOpenFileImportModal && (

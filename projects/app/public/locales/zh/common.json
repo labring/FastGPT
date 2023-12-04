@@ -325,6 +325,8 @@
         "Click top config website": "点击配置网站",
         "Empty Tip": "数据集空空如也",
         "QA Prompt": "QA 拆分引导词",
+        "Start Sync Tip": "确认开始同步数据？将会删除旧数据后重新获取，请确认！",
+        "Sync": "同步数据",
         "Website Create Success": "创建成功，正在同步数据",
         "Website Empty Tip": "还没有关联网站",
         "Website Link": "Web 站点地址",
@@ -367,6 +369,9 @@
         "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
         "id": "数据ID"
+      },
+      "error": {
+        "Start Sync Failed": "开始同步失败"
       },
       "file": "文件",
       "folder": "目录",

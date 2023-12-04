@@ -325,6 +325,8 @@
         "Click top config website": "Config",
         "Empty Tip": "The collection is empty",
         "QA Prompt": "QA Prompt",
+        "Start Sync Tip": "Are you sure to start synchronizing data? The old data will be deleted and then re-acquired, please confirm!",
+        "Sync": "Data Sync",
         "Website Create Success": "Created successfully, data is being synchronized",
         "Website Empty Tip": "No associated website yet",
         "Website Link": "Website Link",
@@ -367,6 +369,9 @@
         "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
         "id": "Data ID"
+      },
+      "error": {
+        "Start Sync Failed": "Start Sync Failed"
       },
       "file": "File",
       "folder": "Folder",

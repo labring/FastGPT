@@ -1,11 +1,11 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoBill } from '@fastgpt/service/support/wallet/bill/schema';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { CreateTrainingBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
 import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -17,30 +17,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const vectorModelData = getVectorModel(vectorModel);
     const agentModelData = getQAModel(agentModel);
 
-    const { _id } = await MongoBill.create({
+    const { billId } = await createTrainingBill({
       teamId,
       tmbId,
       appName: name,
-      source: BillSourceEnum.training,
-      list: [
-        {
-          moduleName: 'wallet.moduleName.index',
-          model: vectorModelData.name,
-          amount: 0,
-          tokenLen: 0
-        },
-        {
-          moduleName: 'wallet.moduleName.qa',
-          model: agentModelData.name,
-          amount: 0,
-          tokenLen: 0
-        }
-      ],
-      total: 0
+      billSource: BillSourceEnum.training,
+      vectorModel: vectorModelData.name,
+      agentModel: agentModelData.name
     });
 
     jsonRes<string>(res, {
-      data: _id
+      data: billId
     });
   } catch (err) {
     jsonRes(res, {
