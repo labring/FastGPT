@@ -46,13 +46,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // create a collection and delete old
-    const id = await createOneCollection({
+    const { _id } = await MongoDatasetCollection.create({
+      parentId: collection.parentId,
       teamId: collection.teamId,
       tmbId: collection.tmbId,
-      name: collection.name,
-      parentId: collection.parentId,
       datasetId: collection.datasetId._id,
       type: collection.type,
+      name: collection.name,
+      createTime: collection.createTime,
       trainingType: collection.trainingType,
       chunkSize: collection.chunkSize,
       fileId: collection.fileId,
@@ -62,7 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // start load
     await loadingOneChunkCollection({
-      collectionId: id,
+      collectionId: _id,
       tmbId,
       billId
     });
