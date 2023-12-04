@@ -42,7 +42,7 @@ export async function delCollectionRelevantData({
   fileIds: string[];
 }) {
   collectionIds = collectionIds.map((item) => String(item));
-  const filterFileIds = fileIds.filter(Boolean);
+  const filterFileIds = fileIds.map((item) => String(item));
 
   // delete training data
   await MongoDatasetTraining.deleteMany({

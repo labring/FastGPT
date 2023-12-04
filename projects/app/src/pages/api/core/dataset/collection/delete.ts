@@ -30,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // delete
     await delCollectionRelevantData({
       collectionIds: delIdList,
-      fileIds: collections.map((item) => String(item.metadata?.fileId)).filter(Boolean)
+      fileIds: collections.map((item) => item.metadata?.fileId).filter(Boolean)
     });
 
     // delete collection
