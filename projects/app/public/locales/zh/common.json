@@ -327,12 +327,12 @@
         "QA Prompt": "QA 拆分引导词",
         "Start Sync Tip": "确认开始同步数据？将会删除旧数据后重新获取，请确认！",
         "Sync": "同步数据",
+        "Sync Collection": "数据同步",
         "Website Create Success": "创建成功，正在同步数据",
         "Website Empty Tip": "还没有关联网站",
         "Website Link": "Web 站点地址",
         "Website Sync": "Web 站点同步",
         "id": "集合ID",
-        "Sync Collection": "数据同步",
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
@@ -510,6 +510,10 @@
         "variable options": "选项"
       },
       "variable add option": "添加选项"
+    },
+    "shareChat": {
+      "Init Error": "初始化对话框失败",
+      "Init History Error": "初始化聊天记录失败"
     }
   },
   "dataset": {

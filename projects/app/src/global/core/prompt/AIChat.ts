@@ -33,9 +33,8 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 """
 回答要求：
 1. 优先使用知识库内容回答问题。
-2. 你可以回答我不知道。
-3. 不要提及你是从知识库获取的知识。
-4. 知识库包含 markdown 内容时，按 markdown 格式返回。
+2. 不要提及你是从知识库获取的知识。
+3. 知识库包含 markdown 内容时，按 markdown 格式返回。
 我的问题是:"{{question}}"`
   },
   {
@@ -47,9 +46,8 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 """
 回答要求：
 1. 优先使用知识库内容回答问题，其中 instruction 是相关介绍，output 是预期回答或补充。
-2. 你可以回答我不知道。
-3. 不要提及你是从知识库获取的知识。
-4. 知识库包含 markdown 内容时，按 markdown 格式返回。
+2. 不要提及你是从知识库获取的知识。
+3. 知识库包含 markdown 内容时，按 markdown 格式返回。
 我的问题是:"{{question}}"`
   },
   {

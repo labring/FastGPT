@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { getInitChatSiteInfo, delChatRecordById, putChatHistory } from '@/web/core/chat/api';
+import { getInitChatInfo, putChatHistory } from '@/web/core/chat/api';
 import {
   Box,
   Flex,
@@ -34,6 +34,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -52,10 +53,11 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     history,
     loadHistory,
     updateHistory,
-    delHistory,
-    clearHistory,
+    delOneHistory,
+    clearHistories,
     chatData,
-    setChatData
+    setChatData,
+    delOneHistoryItem
   } = useChatStore();
   const { myApps, loadMyApps } = useAppStore();
   const { userInfo } = useUserStore();
@@ -85,7 +87,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         prompts[1]?.value?.slice(0, 20) ||
         '新对话';
 
-      // update history
+      // new chat
       if (completionChatId !== chatId) {
         const newHistory: ChatHistoryItemType = {
           chatId: completionChatId,
@@ -105,6 +107,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
           });
         }
       } else {
+        // update chat
         const currentChat = history.find((item) => item.chatId === chatId);
         currentChat &&
           updateHistory({
@@ -117,30 +120,12 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       setChatData((state) => ({
         ...state,
         title: newTitle,
-        history: ChatBoxRef.current?.getChatHistory() || state.history
+        history: ChatBoxRef.current?.getChatHistories() || state.history
       }));
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
     [appId, chatId, history, router, setChatData, updateHistory]
-  );
-
-  // del one chat content
-  const delOneHistoryItem = useCallback(
-    async ({ contentId, index }: { contentId?: string; index: number }) => {
-      if (!chatId || !contentId) return;
-
-      try {
-        setChatData((state) => ({
-          ...state,
-          history: state.history.filter((_, i) => i !== index)
-        }));
-        await delChatRecordById({ chatId, contentId });
-      } catch (err) {
-        console.log(err);
-      }
-    },
-    [chatId, setChatData]
   );
 
   // get chat app info
@@ -156,10 +141,10 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     }) => {
       try {
         loading && setIsLoading(true);
-        const res = await getInitChatSiteInfo({ appId, chatId });
+        const res = await getInitChatInfo({ appId, chatId });
         const history = res.history.map((item) => ({
           ...item,
-          status: 'finish' as any
+          status: ChatStatusEnum.finish
         }));
 
         setChatData({
@@ -185,8 +170,13 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         });
         if (e?.code === 501) {
           router.replace('/app/list');
-        } else {
-          router.replace('/chat');
+        } else if (chatId) {
+          router.replace({
+            query: {
+              ...router.query,
+              chatId: ''
+            }
+          });
         }
       }
       setIsLoading(false);
@@ -306,9 +296,9 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                   onCloseSlider();
                 }
               }}
-              onDelHistory={delHistory}
+              onDelHistory={delOneHistory}
               onClearHistory={() => {
-                clearHistory(appId);
+                clearHistories({ appId });
                 router.replace({
                   query: {
                     appId
@@ -372,7 +362,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
-                onDelMessage={delOneHistoryItem}
+                onDelMessage={(e) => delOneHistoryItem({ ...e, chatId })}
               />
             </Box>
           </Flex>

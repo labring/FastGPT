@@ -1,14 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { DelHistoryProps } from '@/global/core/chat/api';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
-import type { DeleteChatItemProps } from '@/global/core/chat/api.d';
 
+/* clear chat history */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { chatId, contentId, shareId, outLinkUid } = req.query as DeleteChatItemProps;
+    const { chatId, shareId, outLinkUid } = req.query as DelHistoryProps;
 
     await autChatCrud({
       req,
@@ -19,8 +21,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       per: 'w'
     });
 
-    await MongoChatItem.deleteOne({
-      dataId: contentId,
+    await MongoChatItem.deleteMany({
+      chatId
+    });
+    await MongoChat.findOneAndRemove({
       chatId
     });
 

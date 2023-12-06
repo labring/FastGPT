@@ -327,12 +327,12 @@
         "QA Prompt": "QA Prompt",
         "Start Sync Tip": "Are you sure to start synchronizing data? The old data will be deleted and then re-acquired, please confirm!",
         "Sync": "Data Sync",
+        "Sync Collection": "Data Sync",
         "Website Create Success": "Created successfully, data is being synchronized",
         "Website Empty Tip": "No associated website yet",
         "Website Link": "Website Link",
         "Website Sync": "Website",
         "id": "Id",
-        "Sync Collection": "Data Sync",
         "metadata": {
           "Chunk Size": "Chunk Size",
           "Createtime": "Create Time",
@@ -510,6 +510,10 @@
         "variable options": "Options"
       },
       "variable add option": "Add Option"
+    },
+    "shareChat": {
+      "Init Error": "Init Chat Error",
+      "Init History Error": "Init History Error"
     }
   },
   "dataset": {

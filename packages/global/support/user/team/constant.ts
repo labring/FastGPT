@@ -45,4 +45,4 @@ export const TeamMemberStatusMap = {
     color: 'red.600'
   }
 };
-export const leaveStatus = { $ne: TeamMemberStatusEnum.leave };
+export const notLeaveStatus = { $ne: TeamMemberStatusEnum.leave };

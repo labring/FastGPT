@@ -62,9 +62,8 @@ const ChatSchema = new Schema({
   shareId: {
     type: String
   },
-  isInit: {
-    type: Boolean,
-    default: false
+  outLinkUid: {
+    type: String
   },
   content: {
     type: [
@@ -89,9 +88,10 @@ const ChatSchema = new Schema({
 });
 
 try {
-  ChatSchema.index({ tmbId: 1 });
-  ChatSchema.index({ updateTime: -1 });
   ChatSchema.index({ appId: 1 });
+  ChatSchema.index({ tmbId: 1 });
+  ChatSchema.index({ shareId: 1 });
+  ChatSchema.index({ updateTime: -1 });
 } catch (error) {
   console.log(error);
 }

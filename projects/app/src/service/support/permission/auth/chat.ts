@@ -1,0 +1,56 @@
+import { ChatSchema } from '@fastgpt/global/core/chat/type';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { AuthModeType } from '@fastgpt/service/support/permission/type';
+import { authOutLink } from './outLink';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+
+/* 
+  outLink: Must be the owner
+  token: team owner and chat owner have all permissions
+*/
+export async function autChatCrud({
+  chatId,
+  shareId,
+  outLinkUid,
+  per = 'owner',
+  ...props
+}: AuthModeType & {
+  chatId?: string;
+  shareId?: string;
+  outLinkUid?: string;
+}): Promise<{
+  chat?: ChatSchema;
+  isOutLink: boolean;
+}> {
+  const isOutLink = Boolean(shareId && outLinkUid);
+  if (!chatId) return { isOutLink };
+
+  const chat = await MongoChat.findOne({ chatId }).lean();
+
+  if (!chat) return { isOutLink };
+
+  await (async () => {
+    // outLink Auth
+    if (shareId && outLinkUid) {
+      const { uid } = await authOutLink({ shareId, outLinkUid });
+
+      if (chat.shareId === shareId && chat.outLinkUid === uid) {
+        return;
+      }
+      return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+
+    // req auth
+    const { tmbId, role } = await authUserRole(props);
+    if (role === TeamMemberRoleEnum.owner) return;
+    if (String(tmbId) === String(chat.tmbId)) return;
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  })();
+
+  return {
+    chat,
+    isOutLink
+  };
+}

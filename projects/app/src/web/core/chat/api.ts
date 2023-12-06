@@ -1,36 +1,47 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
-import type { InitChatResponse } from '@fastgpt/global/core/chat/api.d';
-import type { RequestPaging } from '@/types';
-import { UpdateHistoryProps } from '@fastgpt/global/core/chat/api.d';
-import type { AdminUpdateFeedbackParams } from '@fastgpt/global/core/chat/api.d';
-import { GetChatSpeechProps } from '@/global/core/chat/api.d';
+import type {
+  InitChatProps,
+  InitChatResponse,
+  InitOutLinkChatProps,
+  getHistoriesProps
+} from '@/global/core/chat/api.d';
+import type {
+  AdminUpdateFeedbackParams,
+  ClearHistoriesProps,
+  DelHistoryProps,
+  DeleteChatItemProps,
+  UpdateHistoryProps
+} from '@/global/core/chat/api.d';
 
 /**
  * 获取初始化聊天内容
  */
-export const getInitChatSiteInfo = (data: { appId: string; chatId?: string }) =>
+export const getInitChatInfo = (data: InitChatProps) =>
   GET<InitChatResponse>(`/core/chat/init`, data);
+export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
+  GET<InitChatResponse>(`/core/chat/outLink/init`, data);
 
 /**
- * 获取历史记录
+ * get current window history(appid or shareId)
  */
-export const getChatHistory = (data: RequestPaging & { appId: string }) =>
-  POST<ChatHistoryItemType[]>('/core/chat/list', data);
+export const getChatHistories = (data: getHistoriesProps) =>
+  POST<ChatHistoryItemType[]>('/core/chat/getHistories', data);
 
 /**
- * 删除一条历史记录
+ * delete one history
  */
-export const delChatHistoryById = (chatId: string) => DELETE(`/core/chat/delete`, { chatId });
+export const delChatHistoryById = (data: DelHistoryProps) => DELETE(`/core/chat/delHistory`, data);
 /**
  * clear all history by appid
  */
-export const clearChatHistoryByAppId = (appId: string) => DELETE(`/core/chat/delete`, { appId });
+export const clearChatHistoryByAppId = (data: ClearHistoriesProps) =>
+  DELETE(`/core/chat/clearHistories`, data);
 
 /**
- * 删除一句对话
+ * delete one chat record
  */
-export const delChatRecordById = (data: { chatId: string; contentId: string }) =>
+export const delChatRecordById = (data: DeleteChatItemProps) =>
   DELETE(`/core/chat/item/delete`, data);
 
 /**

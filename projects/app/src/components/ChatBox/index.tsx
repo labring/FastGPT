@@ -12,7 +12,7 @@ import Script from 'next/script';
 import { throttle } from 'lodash';
 import type { ExportChatType } from '@/types/chat.d';
 import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -80,7 +80,7 @@ export type StartChatFnProps = {
 };
 
 export type ComponentRef = {
-  getChatHistory: () => ChatSiteItemType[];
+  getChatHistories: () => ChatSiteItemType[];
   resetVariables: (data?: Record<string, any>) => void;
   resetHistory: (history: ChatSiteItemType[]) => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
@@ -134,7 +134,7 @@ const ChatBox = (
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { isPc } = useSystemStore();
+  const { isPc, setLoading } = useSystemStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
@@ -415,15 +415,20 @@ const ChatBox = (
     async (index: number) => {
       if (!onDelMessage) return;
       const delHistory = chatHistory.slice(index);
-      setChatHistory((state) => (index === 0 ? [] : state.slice(0, index)));
 
-      await Promise.all(
-        delHistory.map((item, i) => onDelMessage({ contentId: item.dataId, index: index + i }))
-      );
+      setLoading(true);
 
-      sendPrompt(variables, delHistory[0].value, chatHistory.slice(0, index));
+      try {
+        await Promise.all(
+          delHistory.map((item, i) => onDelMessage({ contentId: item.dataId, index: index + i }))
+        );
+        setChatHistory((state) => (index === 0 ? [] : state.slice(0, index)));
+
+        sendPrompt(variables, delHistory[0].value, chatHistory.slice(0, index));
+      } catch (error) {}
+      setLoading(false);
     },
-    [chatHistory, onDelMessage, sendPrompt, variables]
+    [chatHistory, onDelMessage, sendPrompt, setLoading, variables]
   );
   // delete one message
   const delOneMessage = useCallback(
@@ -439,7 +444,7 @@ const ChatBox = (
 
   // output data
   useImperativeHandle(ref, () => ({
-    getChatHistory: () => chatHistory,
+    getChatHistories: () => chatHistory,
     resetVariables(e) {
       const defaultVal: Record<string, any> = {};
       variableModules?.forEach((item) => {

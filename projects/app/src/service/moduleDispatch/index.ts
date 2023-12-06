@@ -3,7 +3,7 @@ import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { RunningModuleItemType } from '@/types/app';
 import { ModuleDispatchProps } from '@/types/core/chat/type';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { UserType } from '@fastgpt/global/support/user/type';

@@ -1,17 +1,24 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { UpdateHistoryProps } from '@fastgpt/global/core/chat/api.d';
+import { UpdateHistoryProps } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
-import { authChat } from '@fastgpt/service/support/permission/auth/chat';
+import { autChatCrud } from '@/service/support/permission/auth/chat';
 
-/* 更新聊天标题 */
+/* update chat top, custom title */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { chatId, customTitle, top } = req.body as UpdateHistoryProps;
+    const { chatId, shareId, outLinkUid, customTitle, top } = req.body as UpdateHistoryProps;
 
-    await authChat({ req, authToken: true, chatId });
+    await autChatCrud({
+      req,
+      authToken: true,
+      chatId,
+      shareId,
+      outLinkUid,
+      per: 'w'
+    });
 
     await MongoChat.findOneAndUpdate(
       { chatId },

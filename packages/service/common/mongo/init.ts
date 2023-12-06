@@ -26,9 +26,13 @@ export async function connectMongo({
       bufferCommands: true,
       maxConnecting: Number(process.env.DB_MAX_LINK || 5),
       maxPoolSize: Number(process.env.DB_MAX_LINK || 5),
-      minPoolSize: Number(process.env.DB_MAX_LINK || 10) * 0.5,
+      minPoolSize: Math.min(10, Number(process.env.DB_MAX_LINK || 10)),
       connectTimeoutMS: 60000,
-      waitQueueTimeoutMS: 60000
+      waitQueueTimeoutMS: 60000,
+      socketTimeoutMS: 60000,
+      maxIdleTimeMS: 300000,
+      retryWrites: true,
+      retryReads: true
     });
 
     console.log('mongo connected');
