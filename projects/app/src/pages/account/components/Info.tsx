@@ -177,7 +177,7 @@ const UserInfo = () => {
                 if (val === userInfo?.team?.memberName) return;
                 try {
                   putUpdateMemberName(val);
-                } catch (error) {}
+                } catch (error) { }
               }}
             />
           </Flex>
@@ -232,7 +232,7 @@ const UserInfo = () => {
             {t('user.Change')}
           </Button>
         </Flex>
-        <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
+        {/* <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
           <Flex alignItems={'center'}>
             <Box flex={'0 0 80px'} fontSize={'md'}>
               {t('user.team.Balance')}:&nbsp;
@@ -246,8 +246,8 @@ const UserInfo = () => {
               </Button>
             )}
           </Flex>
-        </Box>
-        {feConfigs?.docUrl && (
+        </Box> */}
+        {/* {feConfigs?.docUrl && (
           <>
             <Flex
               mt={4}
@@ -274,7 +274,7 @@ const UserInfo = () => {
               </Box>
             </Flex>
           </>
-        )}
+        )} */}
         {feConfigs?.show_openai_account && (
           <>
             <Divider my={3} />
