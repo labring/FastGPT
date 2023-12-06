@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 
@@ -9,13 +8,12 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { shareId, outLinkUid, chatIds } = req.body as {
-      shareId: string;
+    const { outLinkUid, chatIds } = req.body as {
       outLinkUid: string;
       chatIds: string[];
     };
 
-    if (!shareId || !outLinkUid) {
+    if (!outLinkUid) {
       throw new Error('shareId or outLinkUid is required');
     }
 
@@ -23,7 +21,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     await MongoChat.updateMany(
       {
-        shareId,
         chatId: { $in: sliceIds },
         source: ChatSourceEnum.share,
         outLinkUid: { $exists: false }
