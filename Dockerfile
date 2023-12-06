@@ -44,8 +44,8 @@ RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 RUN sed -i 's/https/http/' /etc/apk/repositories
-RUN apk  --no-cache add curl \
-  && apk  --no-cache add ca-certificates \
+RUN apk --no-cache add curl \
+  && apk --no-cache add ca-certificates \
   && update-ca-certificates
 
 # copy running files
