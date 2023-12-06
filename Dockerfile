@@ -30,7 +30,8 @@ COPY --from=deps /app/projects/$name/node_modules ./projects/$name/node_modules
 
 # Uncomment the following line in case you want to disable telemetry during the build.
 ENV NEXT_TELEMETRY_DISABLED 1
-RUN npm install -g pnpm
+RUN yum install -g pnpm  --ignore-engines
+#RUN npm install -g pnpm
 RUN pnpm --filter=$name run build
 
 FROM node:18.15-alpine AS runner
