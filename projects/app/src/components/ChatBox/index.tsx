@@ -216,14 +216,14 @@ const ChatBox = (
           ...item,
           ...(text
             ? {
-                value: item.value + text
-              }
+              value: item.value + text
+            }
             : {}),
           ...(status && name
             ? {
-                status,
-                moduleName: name
-              }
+              status,
+              moduleName: name
+            }
             : {})
         };
       })
@@ -268,7 +268,7 @@ const ChatBox = (
             scrollToBottom();
           }, 100);
         }
-      } catch (error) {}
+      } catch (error) { }
     },
     [questionGuide, scrollToBottom, router.query.shareId]
   );
@@ -362,9 +362,9 @@ const ChatBox = (
             history: newChatList.map((item, i) =>
               i === newChatList.length - 1
                 ? {
-                    ...item,
-                    value: responseText
-                  }
+                  ...item,
+                  value: responseText
+                }
                 : item
             )
           });
@@ -629,8 +629,8 @@ const ChatBox = (
                         onDelete={
                           onDelMessage
                             ? () => {
-                                delOneMessage({ dataId: item.dataId, index });
-                              }
+                              delOneMessage({ dataId: item.dataId, index });
+                            }
                             : undefined
                         }
                         onRetry={() => retryInput(index)}
@@ -667,59 +667,59 @@ const ChatBox = (
                         onDelete={
                           onDelMessage
                             ? () => {
-                                delOneMessage({ dataId: item.dataId, index });
-                              }
+                              delOneMessage({ dataId: item.dataId, index });
+                            }
                             : undefined
                         }
                         onMark={
                           showMarkIcon
                             ? () => {
-                                if (!item.dataId) return;
-                                if (item.adminFeedback) {
-                                  setAdminMarkData({
-                                    chatItemId: item.dataId,
-                                    datasetId: item.adminFeedback.datasetId,
-                                    collectionId: item.adminFeedback.collectionId,
-                                    dataId: item.adminFeedback.dataId,
-                                    q: item.adminFeedback.q || chatHistory[index - 1]?.value || '',
-                                    a: item.adminFeedback.a
-                                  });
-                                } else {
-                                  setAdminMarkData({
-                                    chatItemId: item.dataId,
-                                    q: chatHistory[index - 1]?.value || '',
-                                    a: item.value
-                                  });
-                                }
+                              if (!item.dataId) return;
+                              if (item.adminFeedback) {
+                                setAdminMarkData({
+                                  chatItemId: item.dataId,
+                                  datasetId: item.adminFeedback.datasetId,
+                                  collectionId: item.adminFeedback.collectionId,
+                                  dataId: item.adminFeedback.dataId,
+                                  q: item.adminFeedback.q || chatHistory[index - 1]?.value || '',
+                                  a: item.adminFeedback.a
+                                });
+                              } else {
+                                setAdminMarkData({
+                                  chatItemId: item.dataId,
+                                  q: chatHistory[index - 1]?.value || '',
+                                  a: item.value
+                                });
                               }
+                            }
                             : undefined
                         }
                         onReadFeedback={
                           feedbackType === FeedbackTypeEnum.admin
                             ? () =>
-                                setReadFeedbackData({
-                                  chatItemId: item.dataId || '',
-                                  content: item.userFeedback || '',
-                                  isMarked: !!item.adminFeedback
-                                })
+                              setReadFeedbackData({
+                                chatItemId: item.dataId || '',
+                                content: item.userFeedback || '',
+                                isMarked: !!item.adminFeedback
+                              })
                             : undefined
                         }
                         onFeedback={
                           feedbackType === FeedbackTypeEnum.user
                             ? item.userFeedback
                               ? () => {
-                                  if (!item.dataId) return;
-                                  setChatHistory((state) =>
-                                    state.map((chatItem) =>
-                                      chatItem.dataId === item.dataId
-                                        ? { ...chatItem, userFeedback: undefined }
-                                        : chatItem
-                                    )
-                                  );
-                                  try {
-                                    userUpdateChatFeedback({ chatItemId: item.dataId });
-                                  } catch (error) {}
-                                }
+                                if (!item.dataId) return;
+                                setChatHistory((state) =>
+                                  state.map((chatItem) =>
+                                    chatItem.dataId === item.dataId
+                                      ? { ...chatItem, userFeedback: undefined }
+                                      : chatItem
+                                  )
+                                );
+                                try {
+                                  userUpdateChatFeedback({ chatItemId: item.dataId });
+                                } catch (error) { }
+                              }
                               : () => setFeedbackId(item.dataId)
                             : undefined
                         }
@@ -796,9 +796,8 @@ const ChatBox = (
                               </Box>
                               <Box h={'1px'} bg={'myGray.300'} flex={'1'} />
                             </Flex>
-                            <Box whiteSpace={'pre'}>{`${item.adminFeedback.q || ''}${
-                              item.adminFeedback.a ? `\n${item.adminFeedback.a}` : ''
-                            }`}</Box>
+                            <Box whiteSpace={'pre'}>{`${item.adminFeedback.q || ''}${item.adminFeedback.a ? `\n${item.adminFeedback.a}` : ''
+                              }`}</Box>
                           </Box>
                         )}
                       </Card>
@@ -886,9 +885,9 @@ const ChatBox = (
               state.map((chatItem) =>
                 chatItem.dataId === adminMarkData.chatItemId
                   ? {
-                      ...chatItem,
-                      adminFeedback
-                    }
+                    ...chatItem,
+                    adminFeedback
+                  }
                   : chatItem
               )
             );
@@ -1030,20 +1029,20 @@ function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
 }
 
 function Empty() {
-  const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
-  const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
+  // const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
+  // const { data: versionIntro } = useMarkdown({ url: '/versionIntro.md' });
 
-  return (
-    <Box pt={6} w={'85%'} maxW={'600px'} m={'auto'} alignItems={'center'} justifyContent={'center'}>
-      {/* version intro */}
-      <Card p={4} mb={10} minH={'200px'}>
-        <Markdown source={versionIntro} />
-      </Card>
-      <Card p={4} minH={'600px'}>
-        <Markdown source={chatProblem} />
-      </Card>
-    </Box>
-  );
+  // return (
+  //   <Box pt={6} w={'85%'} maxW={'600px'} m={'auto'} alignItems={'center'} justifyContent={'center'}>
+  //     {/* version intro */}
+  //     <Card p={4} mb={10} minH={'200px'}>
+  //       <Markdown source={versionIntro} />
+  //     </Card>
+  //     <Card p={4} minH={'600px'}>
+  //       <Markdown source={chatProblem} />
+  //     </Card>
+  //   </Box>
+  // );
 }
 
 function ChatController({
@@ -1162,9 +1161,9 @@ function ChatController({
                   state.map((item) =>
                     item.dataId === chat.dataId
                       ? {
-                          ...item,
-                          ttsBuffer: response.buffer
-                        }
+                        ...item,
+                        ttsBuffer: response.buffer
+                      }
                       : item
                   )
                 );
@@ -1203,15 +1202,15 @@ function ChatController({
             {...controlIconStyle}
             {...(!!chat.userFeedback
               ? {
-                  color: 'white',
-                  bg: '#FC9663',
-                  fontWeight: 'bold',
-                  onClick: onFeedback
-                }
+                color: 'white',
+                bg: '#FC9663',
+                fontWeight: 'bold',
+                onClick: onFeedback
+              }
               : {
-                  _hover: { color: '#FB7C3C' },
-                  onClick: onFeedback
-                })}
+                _hover: { color: '#FB7C3C' },
+                onClick: onFeedback
+              })}
             name={'core/chat/feedback/badLight'}
           />
         </MyTooltip>
