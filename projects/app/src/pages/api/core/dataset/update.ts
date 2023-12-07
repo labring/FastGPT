@@ -15,8 +15,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('缺少参数');
     }
 
-    // 凭证校验
-    await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
+    if (permission) {
+      await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
+    } else {
+      await authDataset({ req, authToken: true, datasetId: id, per: 'w' });
+    }
 
     await MongoDataset.findOneAndUpdate(
       {
