@@ -2,7 +2,7 @@
 <div id="top-header" class="top-header d-print-none">
     <div class="header-bar d-flex justify-content-between">
         <div class="d-flex align-items-center">
-            <a href='{{ relLangURL "" }}' class="logo-icon me-3" aria-label="HomePage" alt="HomePage">
+            <a href='{{ with .Site.Params.docs.logoLinkURL }}{{ . }}{{ else }}{{ relLangURL "" }}{{ end }}' class="logo-icon me-3" aria-label="HomePage" alt="HomePage">
                 <div class="small">
                     {{ with resources.Get "images/logos/mark.svg" }}
                             {{ .Content | safeHTML }}
