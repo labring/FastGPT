@@ -55,7 +55,7 @@ const ChatHistorySlider = ({
   history: HistoryItemType[];
   activeChatId: string;
   onChangeChat: (chatId?: string) => void;
-  onDelHistory: (chatId: string) => void;
+  onDelHistory: (e: { chatId: string }) => void;
   onClearHistory: () => void;
   onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
   onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
@@ -261,7 +261,7 @@ const ChatHistorySlider = ({
                           _hover={{ color: 'red.500' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDelHistory(item.id);
+                            onDelHistory({ chatId: item.id });
                             if (item.id === activeChatId) {
                               onChangeChat();
                             }

@@ -10,11 +10,11 @@ import { dispatchModules } from '@/service/moduleDispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
-import { getChatHistory } from './getHistory';
+import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatBill } from '@/service/support/wallet/bill/push';
-import { authOutLinkChat } from '@/service/support/permission/auth/outLink';
+import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
 import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
@@ -22,9 +22,10 @@ import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/too
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
-import { getUserAndAuthBalance } from '@/service/support/permission/auth/user';
+import { getUserAndAuthBalance } from '@fastgpt/service/support/user/controller';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { autChatCrud } from '@/service/support/permission/auth/chat';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -32,7 +33,7 @@ type FastGptWebChatProps = {
 };
 type FastGptShareChatProps = {
   shareId?: string;
-  authToken?: string;
+  outLinkUid?: string;
 };
 export type Props = ChatCompletionCreateParams &
   FastGptWebChatProps &
@@ -56,11 +57,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     res.end();
   });
 
-  let {
+  const {
     chatId,
     appId,
     shareId,
-    authToken,
+    outLinkUid,
     stream = false,
     detail = false,
     messages = [],
@@ -93,22 +94,29 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('Question is empty');
     }
 
-    /*  auth app permission */
-    const { user, app, responseDetail, authType, apikey, canWrite } = await (async () => {
-      if (shareId) {
-        const { user, app, authType, responseDetail } = await authOutLinkChat({
+    /* auth app permission */
+    const { user, app, responseDetail, authType, apikey, canWrite, uid } = await (async () => {
+      if (shareId && outLinkUid) {
+        const { user, appId, authType, responseDetail, uid } = await authOutLinkChatStart({
           shareId,
           ip: requestIp.getClientIp(req),
-          authToken,
+          outLinkUid,
           question: question.value
         });
+        const app = await MongoApp.findById(appId);
+
+        if (!app) {
+          return Promise.reject('app is empty');
+        }
+
         return {
           user,
           app,
           responseDetail,
           apikey: '',
           authType,
-          canWrite: false
+          canWrite: false,
+          uid
         };
       }
 
@@ -146,11 +154,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         };
       }
 
+      // token auth
       if (!appId) {
         return Promise.reject('appId is empty');
       }
-
-      // token
       const { app, canWrite } = await authApp({
         req,
         authToken: true,
@@ -168,12 +175,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       };
     })();
 
-    // auth app, get history
-    const { history } = await getChatHistory({ chatId, tmbId: user.team.tmbId });
+    // auth chat permission
+    await autChatCrud({
+      req,
+      authToken: true,
+      authApiKey: true,
+      chatId,
+      shareId,
+      outLinkUid,
+      per: 'w'
+    });
 
-    const isAppOwner = !shareId && String(user.team.tmbId) === String(app.tmbId);
-
-    /* format prompts */
+    // get and concat history
+    const { history } = await getChatItems({ chatId, limit: 30, field: `dataId obj value` });
     const concatHistory = history.concat(chatMessages);
 
     /* start flow controller */
@@ -202,8 +216,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         teamId: user.team.teamId,
         tmbId: user.team.tmbId,
         variables,
-        updateUseTime: isAppOwner, // owner update use time
+        updateUseTime: !shareId && String(user.team.tmbId) === String(app.tmbId), // owner update use time
         shareId,
+        outLinkUid: uid,
         source: (() => {
           if (shareId) {
             return ChatSourceEnum.share;
@@ -281,7 +296,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     if (shareId) {
-      pushResult2Remote({ authToken, shareId, responseData });
+      pushResult2Remote({ outLinkUid, shareId, responseData });
       updateOutLinkUsage({
         shareId,
         total

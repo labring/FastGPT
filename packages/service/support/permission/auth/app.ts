@@ -19,6 +19,7 @@ export async function authApp({
   AuthResponseType & {
     teamOwner: boolean;
     app: AppDetailType;
+    role: `${TeamMemberRoleEnum}`;
   }
 > {
   const result = await parseHeaderCert(props);
@@ -65,6 +66,7 @@ export async function authApp({
   return {
     ...result,
     app,
+    role,
     isOwner,
     canWrite,
     teamOwner: role === TeamMemberRoleEnum.owner

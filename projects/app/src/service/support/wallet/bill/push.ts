@@ -1,6 +1,6 @@
 import { BillSourceEnum, PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
 import { getAudioSpeechModel, getQAModel } from '@/service/core/ai/model';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/mongo/controller';
 import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
@@ -41,7 +41,7 @@ export const pushChatBill = ({
   source: `${BillSourceEnum}`;
   response: ChatHistoryItemResType[];
 }) => {
-  const total = response.reduce((sum, item) => sum + item.price, 0);
+  const total = response.reduce((sum, item) => sum + (item.price || 0), 0);
 
   createBill({
     teamId,

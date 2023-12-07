@@ -20,11 +20,11 @@ export async function authCertAndShareId({
     return authCert(props);
   }
 
-  const { app } = await authOutLinkValid({ shareId });
+  const { shareChat } = await authOutLinkValid({ shareId });
 
   return {
-    teamId: String(app.teamId),
-    tmbId: String(app.tmbId),
+    teamId: String(shareChat.teamId),
+    tmbId: String(shareChat.tmbId),
     authType: AuthUserTypeEnum.outLink,
     apikey: '',
     isOwner: false,
