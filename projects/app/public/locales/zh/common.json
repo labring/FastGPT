@@ -283,6 +283,11 @@
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "markdown": {
+        "Edit Question": "编辑问题",
+        "Quick Question": "点我立即提问",
+        "Send Question": "发送问题"
+      },
       "quote": {
         "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新",
         "Read Quote": "查看引用",

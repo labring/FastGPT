@@ -283,6 +283,11 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "markdown": {
+        "Edit Question": "Edit Question",
+        "Quick Question": "Ask the question immediately",
+        "Send Question": "Send Question"
+      },
       "quote": {
         "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
         "Read Quote": "Read Quote",

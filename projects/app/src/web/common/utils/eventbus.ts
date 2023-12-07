@@ -1,5 +1,6 @@
 export enum EventNameEnum {
-  guideClick = 'guideClick',
+  sendQuestion = 'sendQuestion',
+  editQuestion = 'editQuestion',
   updaterNode = 'updaterNode'
 }
 type EventNameType = `${EventNameEnum}`;
