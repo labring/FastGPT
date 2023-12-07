@@ -357,6 +357,8 @@ export async function reRankSearchResult({
       }))
     });
 
+    if (!Array.isArray(results)) return data;
+
     // add new score to data
     const mergeResult = results
       .map((item) => {

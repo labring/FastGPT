@@ -15,6 +15,7 @@ import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import MyIcon from '../Icon';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
+import { MARKDOWN_QUOTE_SIGN } from '@fastgpt/global/core/chat/constants';
 
 const CodeLight = dynamic(() => import('./CodeLight'));
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
@@ -88,7 +89,7 @@ function A({ children, ...props }: any) {
   // quote link
   if (children?.length === 1 && typeof children?.[0] === 'string') {
     const text = String(children);
-    if (text === 'QUOTE SIGN' && props.href) {
+    if (text === MARKDOWN_QUOTE_SIGN && props.href) {
       return (
         <MyTooltip label={props.href}>
           <MyIcon
@@ -124,7 +125,8 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
 
   const formatSource = source
     .replace(/\\n/g, '\n&nbsp;')
-    .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2');
+    .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
+    .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
 
   return (
     <ReactMarkdown

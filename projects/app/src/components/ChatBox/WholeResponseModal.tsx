@@ -137,7 +137,7 @@ const WholeResponseModal = ({
                       pb={2}
                     >
                       <Box fontWeight={'bold'}>{item.obj}</Box>
-                      <Box>{item.value}</Box>
+                      <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
                     </Box>
                   ))}
                 </>
