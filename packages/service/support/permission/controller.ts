@@ -115,6 +115,18 @@ export async function parseHeaderCert({
     {}) as ReqHeaderAuthType;
 
   const { uid, teamId, tmbId, appId, openApiKey, authType } = await (async () => {
+    if (authApiKey && authorization) {
+      // apikey from authorization
+      const authResponse = await parseAuthorization(authorization);
+      return {
+        uid: authResponse.uid,
+        teamId: authResponse.teamId,
+        tmbId: authResponse.tmbId,
+        appId: authResponse.appId,
+        openApiKey: authResponse.apikey,
+        authType: AuthUserTypeEnum.apikey
+      };
+    }
     if (authToken && (cookie || token)) {
       // user token(from fastgpt web)
       const res = await authCookieToken(cookie, token);
@@ -152,18 +164,6 @@ export async function parseHeaderCert({
       };
     }
 
-    if (authApiKey && authorization) {
-      // apikey from authorization
-      const authResponse = await parseAuthorization(authorization);
-      return {
-        uid: authResponse.uid,
-        teamId: authResponse.teamId,
-        tmbId: authResponse.tmbId,
-        appId: authResponse.appId,
-        openApiKey: authResponse.apikey,
-        authType: AuthUserTypeEnum.apikey
-      };
-    }
     return {
       uid: '',
       teamId: '',
