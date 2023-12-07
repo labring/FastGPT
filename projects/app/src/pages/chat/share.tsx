@@ -55,8 +55,9 @@ const OutLink = ({
     clearLocalHistory // abandon
   } = useShareChatStore();
   const {
-    history,
-    loadHistory,
+    histories,
+    loadHistories,
+    pushHistory,
     updateHistory,
     delOneHistory,
     chatData,
@@ -98,7 +99,7 @@ const OutLink = ({
           appId,
           top: false
         };
-        updateHistory(newHistory);
+        pushHistory(newHistory);
         if (controller.signal.reason !== 'leave') {
           forbidRefresh.current = true;
           router.replace({
@@ -110,7 +111,7 @@ const OutLink = ({
         }
       } else {
         // update chat
-        const currentChat = history.find((item) => item.chatId === chatId);
+        const currentChat = histories.find((item) => item.chatId === chatId);
         currentChat &&
           updateHistory({
             ...currentChat,
@@ -147,7 +148,7 @@ const OutLink = ({
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [chatId, shareId, outLinkUid, setChatData, appId, updateHistory, router, history]
+    [chatId, shareId, outLinkUid, setChatData, appId, updateHistory, router, histories]
   );
 
   const loadChatInfo = useCallback(
@@ -210,9 +211,9 @@ const OutLink = ({
   });
 
   // load histories
-  useQuery(['loadHistory', outLinkUid, shareId], () => {
+  useQuery(['loadHistories', outLinkUid, shareId], () => {
     if (shareId && outLinkUid) {
-      return loadHistory({
+      return loadHistories({
         shareId,
         outLinkUid
       });
@@ -279,7 +280,7 @@ const OutLink = ({
                 appName={chatData.app.name}
                 appAvatar={chatData.app.avatar}
                 activeChatId={chatId}
-                history={history.map((item) => ({
+                history={histories.map((item) => ({
                   id: item.chatId,
                   title: item.title,
                   customTitle: item.customTitle,
@@ -305,6 +306,16 @@ const OutLink = ({
                       ...router.query,
                       chatId: ''
                     }
+                  });
+                }}
+                onSetHistoryTop={(e) => {
+                  updateHistory(e);
+                }}
+                onSetCustomTitle={async (e) => {
+                  updateHistory({
+                    chatId: e.chatId,
+                    title: e.title,
+                    customTitle: e.title
                   });
                 }}
               />

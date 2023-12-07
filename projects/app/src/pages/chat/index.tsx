@@ -50,8 +50,9 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     setLastChatAppId,
     lastChatId,
     setLastChatId,
-    history,
-    loadHistory,
+    histories,
+    loadHistories,
+    pushHistory,
     updateHistory,
     delOneHistory,
     clearHistories,
@@ -96,7 +97,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
           appId,
           top: false
         };
-        updateHistory(newHistory);
+        pushHistory(newHistory);
         if (controller.signal.reason !== 'leave') {
           forbidRefresh.current = true;
           router.replace({
@@ -108,7 +109,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         }
       } else {
         // update chat
-        const currentChat = history.find((item) => item.chatId === chatId);
+        const currentChat = histories.find((item) => item.chatId === chatId);
         currentChat &&
           updateHistory({
             ...currentChat,
@@ -125,7 +126,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [appId, chatId, history, router, setChatData, updateHistory]
+    [appId, chatId, histories, pushHistory, router, setChatData, updateHistory]
   );
 
   // get chat app info
@@ -240,7 +241,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     });
   });
 
-  useQuery(['loadHistory', appId], () => (appId ? loadHistory({ appId }) : null));
+  useQuery(['loadHistories', appId], () => (appId ? loadHistories({ appId }) : null));
 
   return (
     <Flex h={'100%'}>
@@ -279,7 +280,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
               onClose={onCloseSlider}
-              history={history.map((item, i) => ({
+              history={histories.map((item, i) => ({
                 id: item.chatId,
                 title: item.title,
                 customTitle: item.customTitle,
@@ -305,30 +306,15 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                   }
                 });
               }}
-              onSetHistoryTop={async (e) => {
-                try {
-                  await putChatHistory(e);
-                  const historyItem = history.find((item) => item.chatId === e.chatId);
-                  if (!historyItem) return;
-                  updateHistory({
-                    ...historyItem,
-                    top: e.top
-                  });
-                } catch (error) {}
+              onSetHistoryTop={(e) => {
+                updateHistory(e);
               }}
               onSetCustomTitle={async (e) => {
-                try {
-                  putChatHistory({
-                    chatId: e.chatId,
-                    customTitle: e.title
-                  });
-                  const historyItem = history.find((item) => item.chatId === e.chatId);
-                  if (!historyItem) return;
-                  updateHistory({
-                    ...historyItem,
-                    customTitle: e.title
-                  });
-                } catch (error) {}
+                updateHistory({
+                  chatId: e.chatId,
+                  title: e.title,
+                  customTitle: e.title
+                });
               }}
             />
           )}

@@ -47,7 +47,7 @@ export const delChatRecordById = (data: DeleteChatItemProps) =>
 /**
  * 修改历史记录: 标题/置顶
  */
-export const putChatHistory = (data: UpdateHistoryProps) => PUT('/core/chat/update', data);
+export const putChatHistory = (data: UpdateHistoryProps) => PUT('/core/chat/updateHistory', data);
 
 export const userUpdateChatFeedback = (data: { chatItemId: string; userFeedback?: string }) =>
   POST('/core/chat/feedback/userUpdate', data);

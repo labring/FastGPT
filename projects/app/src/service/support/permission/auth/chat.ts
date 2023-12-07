@@ -23,34 +23,37 @@ export async function autChatCrud({
 }): Promise<{
   chat?: ChatSchema;
   isOutLink: boolean;
+  uid?: string;
 }> {
   const isOutLink = Boolean(shareId && outLinkUid);
-  if (!chatId) return { isOutLink };
+  if (!chatId) return { isOutLink, uid: outLinkUid };
 
   const chat = await MongoChat.findOne({ chatId }).lean();
 
-  if (!chat) return { isOutLink };
+  if (!chat) return { isOutLink, uid: outLinkUid };
 
-  await (async () => {
+  const { uid } = await (async () => {
     // outLink Auth
     if (shareId && outLinkUid) {
       const { uid } = await authOutLink({ shareId, outLinkUid });
 
+      // auth outLinkUid
       if (chat.shareId === shareId && chat.outLinkUid === uid) {
-        return;
+        return { uid };
       }
       return Promise.reject(ChatErrEnum.unAuthChat);
     }
 
     // req auth
     const { tmbId, role } = await authUserRole(props);
-    if (role === TeamMemberRoleEnum.owner) return;
-    if (String(tmbId) === String(chat.tmbId)) return;
+    if (role === TeamMemberRoleEnum.owner) return { uid: outLinkUid };
+    if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();
 
   return {
     chat,
-    isOutLink
+    isOutLink,
+    uid
   };
 }

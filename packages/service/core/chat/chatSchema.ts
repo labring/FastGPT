@@ -50,10 +50,6 @@ const ChatSchema = new Schema({
   top: {
     type: Boolean
   },
-  variables: {
-    type: Object,
-    default: {}
-  },
   source: {
     type: String,
     enum: Object.keys(ChatSourceMap),
@@ -64,6 +60,15 @@ const ChatSchema = new Schema({
   },
   outLinkUid: {
     type: String
+  },
+  variables: {
+    type: Object,
+    default: {}
+  },
+  metadata: {
+    //For special storage
+    type: Object,
+    default: {}
   },
   content: {
     type: [

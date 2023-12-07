@@ -13,6 +13,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     const { appId, shareId, outLinkUid } = req.body as getHistoriesProps;
 
+    const limit = shareId && outLinkUid ? 20 : 30;
+
     const match = await (async () => {
       if (shareId && outLinkUid) {
         const { uid } = await authOutLink({ shareId, outLinkUid });
@@ -20,7 +22,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return {
           shareId,
           outLinkUid: uid,
-          source: ChatSourceEnum.share
+          source: ChatSourceEnum.share,
+          updateTime: {
+            $gte: new Date(new Date().setDate(new Date().getDate() - 30))
+          }
         };
       }
       if (appId) {
@@ -36,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const data = await MongoChat.find(match, 'chatId title top customTitle appId updateTime')
       .sort({ top: -1, updateTime: -1 })
-      .limit(20);
+      .limit(limit);
 
     jsonRes<ChatHistoryItemType[]>(res, {
       data: data.map((item) => ({
