@@ -46,6 +46,10 @@ export const splitText2Chunks = (props: {
     { reg: /([，]|,\s)/g, maxLen: chunkLen * 2 }
   ];
 
+  const checkIsMarkdownSplit = (step: number) => step <= 3;
+  const checkIndependentChunk = (step: number) => step <= 5;
+  const checkForbidOverlap = (step: number) => step <= 6;
+
   // if use markdown title split, Separate record title title
   const getSplitTexts = ({ text, step }: { text: string; step: number }) => {
     if (step >= stepReges.length) {
@@ -56,11 +60,13 @@ export const splitText2Chunks = (props: {
         }
       ];
     }
-    const isMarkdownSplit = step <= 3;
+    const isMarkdownSplit = checkIsMarkdownSplit(step);
+    const independentChunk = checkIndependentChunk(step);
+
     const { reg } = stepReges[step];
 
     const splitTexts = text
-      .replace(reg, isMarkdownSplit ? `${splitMarker}$1` : `$1${splitMarker}`)
+      .replace(reg, independentChunk ? `${splitMarker}$1` : `$1${splitMarker}`)
       .split(`${splitMarker}`)
       .filter((part) => part.trim());
 
@@ -77,7 +83,7 @@ export const splitText2Chunks = (props: {
   };
 
   const getOneTextOverlapText = ({ text, step }: { text: string; step: number }): string => {
-    const forbidOverlap = step <= 6;
+    const forbidOverlap = checkForbidOverlap(step);
     const maxOverlapLen = chunkLen * 0.4;
 
     // step >= stepReges.length: Do not overlap incomplete sentences
@@ -115,7 +121,7 @@ export const splitText2Chunks = (props: {
     lastText: string;
     mdTitle: string;
   }): string[] => {
-    const isMarkdownSplit = step <= 3;
+    const independentChunk = checkIndependentChunk(step);
 
     // mini text
     if (text.length <= chunkLen) {
@@ -171,8 +177,8 @@ export const splitText2Chunks = (props: {
           mdTitle: currentTitle
         });
         const lastChunk = innerChunks[innerChunks.length - 1];
-        // last chunk is too small, concat it to lastText
-        if (!isMarkdownSplit && lastChunk.length < minChunkLen) {
+        // last chunk is too small, concat it to lastText(next chunk start)
+        if (!independentChunk && lastChunk.length < minChunkLen) {
           chunks.push(...innerChunks.slice(0, -1));
           lastText = lastChunk;
         } else {
@@ -190,10 +196,10 @@ export const splitText2Chunks = (props: {
       lastText = newText;
 
       // markdown paragraph block: Direct addition; If the chunk size reaches, add a chunk
-      if ((isMarkdownSplit && newTextLen > mdMinChunkLen) || newTextLen >= chunkLen) {
+      if (independentChunk || newTextLen >= chunkLen) {
         chunks.push(`${currentTitle}${lastText}`);
 
-        lastText = isMarkdownSplit ? '' : getOneTextOverlapText({ text: lastText, step });
+        lastText = independentChunk ? '' : getOneTextOverlapText({ text: lastText, step });
       }
     }
 
