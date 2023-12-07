@@ -21,6 +21,7 @@ export const splitText2Chunks = (props: {
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkLen * overlapRatio);
+  const mdMinChunkLen = chunkLen * 0.5;
 
   // replace code block all \n to codeBlockMarker
   text = text.replace(/(```[\s\S]*?```|~~~[\s\S]*?~~~)/g, function (match) {
@@ -189,7 +190,7 @@ export const splitText2Chunks = (props: {
       lastText = newText;
 
       // markdown paragraph block: Direct addition; If the chunk size reaches, add a chunk
-      if (isMarkdownSplit || newTextLen >= chunkLen) {
+      if ((isMarkdownSplit && newTextLen > mdMinChunkLen) || newTextLen >= chunkLen) {
         chunks.push(`${currentTitle}${lastText}`);
 
         lastText = isMarkdownSplit ? '' : getOneTextOverlapText({ text: lastText, step });
