@@ -6,6 +6,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoDatasetCollection } from '../collection/schema';
 import { delDatasetFiles } from '../file/controller';
 import { delay } from '@fastgpt/global/common/system/utils';
+import { delImgByFileIdList } from '../../../common/file/image/controller';
 
 /* delete all data by datasetIds */
 export async function delDatasetRelevantData({ datasetIds }: { datasetIds: string[] }) {
@@ -49,17 +50,18 @@ export async function delCollectionRelevantData({
     collectionId: { $in: collectionIds }
   });
 
-  // delete file
-  await Promise.all(
-    filterFileIds.map((fileId) => {
+  // delete file and imgs
+  await Promise.all([
+    delImgByFileIdList(filterFileIds),
+    ...filterFileIds.map((fileId) => {
       return delFileById({
         bucketName: BucketNameEnum.dataset,
         fileId
       });
     })
-  );
+  ]);
 
-  await delay(1000);
+  await delay(500);
 
   // delete pg data
   await deletePgDataById(`collection_id IN ('${collectionIds.join("','")}')`);

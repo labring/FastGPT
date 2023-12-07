@@ -12,6 +12,9 @@ const ImageSchema = new Schema({
   },
   expiredTime: {
     type: Date
+  },
+  metadata: {
+    type: Object
   }
 });
 
@@ -21,7 +24,7 @@ try {
   console.log(error);
 }
 
-export const MongoImage: Model<{ teamId: string; binary: Buffer }> =
+export const MongoImage: Model<{ teamId: string; binary: Buffer; metadata?: Record<string, any> }> =
   models['image'] || model('image', ImageSchema);
 
 MongoImage.syncIndexes();

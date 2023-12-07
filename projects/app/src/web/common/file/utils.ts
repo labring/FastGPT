@@ -107,7 +107,7 @@ export const readPdfContent = (file: File) =>
 /**
  * read docx to markdown
  */
-export const readDocContent = (file: File) =>
+export const readDocContent = (file: File, metadata: Record<string, any>) =>
   new Promise<string>((resolve, reject) => {
     try {
       const reader = new FileReader();
@@ -120,7 +120,7 @@ export const readDocContent = (file: File) =>
             arrayBuffer: target.result as ArrayBuffer
           });
 
-          const rawText = await formatMarkdown(res?.value);
+          const rawText = await formatMarkdown(res?.value, metadata);
 
           resolve(rawText);
         } catch (error) {
@@ -173,7 +173,7 @@ export const readCsvContent = async (file: File) => {
  * 1. upload base64
  * 2. replace \
  */
-export const formatMarkdown = async (rawText: string = '') => {
+export const formatMarkdown = async (rawText: string = '', metadata: Record<string, any>) => {
   // match base64, upload and replace it
   const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
   const base64Arr = rawText.match(base64Regex) || [];
@@ -185,7 +185,8 @@ export const formatMarkdown = async (rawText: string = '') => {
           base64,
           maxW: 4329,
           maxH: 4329,
-          maxSize: 1024 * 1024 * 5
+          maxSize: 1024 * 1024 * 5,
+          metadata
         });
 
         rawText = rawText.replace(base64, str);

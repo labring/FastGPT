@@ -83,10 +83,11 @@ export async function delFileById({
   bucketName: `${BucketNameEnum}`;
   fileId: string;
 }) {
-  const bucket = getGridBucket(bucketName);
+  try {
+    const bucket = getGridBucket(bucketName);
 
-  await bucket.delete(new Types.ObjectId(fileId));
-  return true;
+    await bucket.delete(new Types.ObjectId(fileId));
+  } catch (error) {}
 }
 
 export async function getDownloadStream({

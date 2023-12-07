@@ -38,13 +38,15 @@ export const compressBase64ImgAndUpload = ({
   maxW = 1080,
   maxH = 1080,
   maxSize = 1024 * 500, // 300kb
-  expiredTime
+  expiredTime,
+  metadata
 }: {
   base64: string;
   maxW?: number;
   maxH?: number;
   maxSize?: number;
   expiredTime?: Date;
+  metadata?: Record<string, any>;
 }) => {
   return new Promise<string>((resolve, reject) => {
     const fileType = /^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/.exec(base64)?.[1] || 'image/jpeg';
@@ -86,7 +88,7 @@ export const compressBase64ImgAndUpload = ({
       }
 
       try {
-        const src = await postUploadImg(compressedDataUrl, expiredTime);
+        const src = await postUploadImg({ base64Img: compressedDataUrl, expiredTime, metadata });
         resolve(src);
       } catch (error) {
         reject(error);

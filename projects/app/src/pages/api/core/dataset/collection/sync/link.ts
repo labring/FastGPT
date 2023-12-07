@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { loadingOneChunkCollection } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
-import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
