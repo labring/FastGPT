@@ -18,7 +18,7 @@ export const splitText2Chunks = (props: {
   tokens: number;
   overlapRatio?: number;
 } => {
-  let { text = '', chunkLen, overlapRatio = 0.2, customReg = ['\n'] } = props;
+  let { text = '', chunkLen, overlapRatio = 0.2, customReg = [] } = props;
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkLen * overlapRatio);
