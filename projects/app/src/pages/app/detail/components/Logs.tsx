@@ -23,7 +23,7 @@ import { AppLogsListItemType } from '@/types/app';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';
 import { useQuery } from '@tanstack/react-query';
-import { getInitChatSiteInfo } from '@/web/core/chat/api';
+import { getInitChatInfo } from '@/web/core/chat/api';
 import Tag from '@/components/Tag';
 import MyModal from '@/components/MyModal';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
@@ -199,7 +199,7 @@ function DetailLogsModal({
 
   const { data: chat } = useQuery(
     ['getChatDetail', chatId],
-    () => getInitChatSiteInfo({ appId, chatId }),
+    () => getInitChatInfo({ appId, chatId }),
     {
       onSuccess(res) {
         const history = res.history.map((item) => ({

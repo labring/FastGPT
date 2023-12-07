@@ -79,8 +79,7 @@ export const useDatasetStore = create<State>()(
               item._id === data.id
                 ? {
                     ...item,
-                    ...data,
-                    tags: data.tags || []
+                    ...data
                   }
                 : item
             );

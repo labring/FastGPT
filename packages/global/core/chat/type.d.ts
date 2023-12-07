@@ -1,6 +1,6 @@
 import { ClassifyQuestionAgentItemType } from '../module/type';
 import { SearchDataResponseItemType } from '../dataset/type';
-import { ChatRoleEnum, ChatSourceEnum } from './constants';
+import { ChatRoleEnum, ChatSourceEnum, ChatStatusEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum } from '../module/constants';
 import { AppSchema } from '../app/type';
@@ -20,7 +20,7 @@ export type ChatSchema = {
   variables: Record<string, any>;
   source: `${ChatSourceEnum}`;
   shareId?: string;
-  isInit: boolean;
+  outLinkUid?: string;
   content: ChatItemType[];
 };
 
@@ -51,6 +51,7 @@ export type AdminFbkType = {
   a?: string;
 };
 
+/* --------- chat item ---------- */
 export type ChatItemType = {
   dataId?: string;
   obj: ChatItemSchema['obj'];
@@ -61,11 +62,12 @@ export type ChatItemType = {
 };
 
 export type ChatSiteItemType = ChatItemType & {
-  status: 'loading' | 'running' | 'finish';
+  status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
 };
 
+/* ---------- history ------------- */
 export type HistoryItemType = {
   chatId: string;
   updateTime: Date;
@@ -77,10 +79,10 @@ export type ChatHistoryItemType = HistoryItemType & {
   top: boolean;
 };
 
-// response data
+/* ------- response data ------------ */
 export type moduleDispatchResType = {
   moduleLogo?: string;
-  price: number;
+  price?: number;
   runningTime?: number;
   tokens?: number;
   model?: string;
@@ -111,4 +113,9 @@ export type moduleDispatchResType = {
 
   // plugin output
   pluginOutput?: Record<string, any>;
+};
+
+export type ChatHistoryItemResType = moduleDispatchResType & {
+  moduleType: `${FlowNodeTypeEnum}`;
+  moduleName: string;
 };

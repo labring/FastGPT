@@ -4,7 +4,9 @@ import { ErrType } from '../errorCode';
 export enum OutLinkErrEnum {
   unExist = 'unExist',
   unAuthLink = 'unAuthLink',
-  linkUnInvalid = 'linkUnInvalid'
+  linkUnInvalid = 'linkUnInvalid',
+
+  unAuthUser = 'unAuthUser'
 }
 const errList = [
   {
@@ -19,6 +21,10 @@ const errList = [
     code: 501,
     statusText: OutLinkErrEnum.linkUnInvalid,
     message: '分享链接无效'
+  },
+  {
+    statusText: OutLinkErrEnum.unAuthUser,
+    message: '身份校验失败'
   }
 ];
 export default errList.reduce((acc, cur, index) => {

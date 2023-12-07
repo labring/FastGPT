@@ -189,15 +189,6 @@ export async function searchDatasetData(props: SearchProps) {
     })
   ).filter((item) => item.score > similarity);
 
-  // (It's possible that rerank failed) concat rerank results and search results
-  set = new Set<string>(reRankResults.map((item) => item.id));
-  embeddingRecallResults.forEach((item) => {
-    if (!set.has(item.id) && item.score >= similarity) {
-      reRankResults.push(item);
-      set.add(item.id);
-    }
-  });
-
   return {
     searchRes: reRankResults.slice(0, limit),
     tokenLen
@@ -382,7 +373,7 @@ export async function reRankSearchResult({
   } catch (error) {
     console.log(error);
 
-    return [];
+    return data;
   }
 }
 // ------------------ search end ------------------

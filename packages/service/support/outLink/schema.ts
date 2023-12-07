@@ -12,10 +12,6 @@ const OutLinkSchema = new Schema({
     type: String,
     required: true
   },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,

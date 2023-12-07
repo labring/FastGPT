@@ -381,7 +381,7 @@ function datasetTemplate({
           key: 'similarity',
           value: 0.4,
           type: FlowNodeInputTypeEnum.slider,
-          label: '相似度',
+          label: '相关度',
           connected: true
         },
         {

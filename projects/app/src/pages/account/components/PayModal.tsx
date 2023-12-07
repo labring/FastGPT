@@ -54,7 +54,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       onSuccess(res) {
         if (!res) return;
         toast({
-          title: '充值成功',
+          title: res,
           status: 'success'
         });
         router.reload();

@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { Flex, BoxProps, useDisclosure, Image, useTheme, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';

@@ -6,9 +6,9 @@ import type { LLMModelItemType } from '../ai/model.d';
 export type DatasetUpdateBody = {
   id: string;
   parentId?: string;
-  tags?: string[];
   name?: string;
   avatar?: string;
+  intro?: string;
   permission?: DatasetSchemaType['permission'];
   agentModel?: LLMModelItemType;
   websiteConfig?: DatasetSchemaType['websiteConfig'];

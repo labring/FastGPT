@@ -316,7 +316,7 @@
       "Search Top K": "单次搜索数量",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Set Website Config": "开始配置网站信息",
-      "Similarity": "相似度",
+      "Similarity": "相关度",
       "Sync Time": "最后更新时间",
       "Virtual File": "虚拟文件",
       "Website Dataset": "Web 站点同步",
@@ -327,12 +327,12 @@
         "QA Prompt": "QA 拆分引导词",
         "Start Sync Tip": "确认开始同步数据？将会删除旧数据后重新获取，请确认！",
         "Sync": "同步数据",
+        "Sync Collection": "数据同步",
         "Website Create Success": "创建成功，正在同步数据",
         "Website Empty Tip": "还没有关联网站",
         "Website Link": "Web 站点地址",
         "Website Sync": "Web 站点同步",
         "id": "集合ID",
-        "Sync Collection": "数据同步",
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
@@ -405,17 +405,17 @@
       "search": {
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
-        "Min Similarity": "最低相似度",
-        "Min Similarity Tips": "不同索引模型的相似度有区别，请通过搜索测试来选择合适的数值",
+        "Min Similarity": "最低相关度",
+        "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
         "Params Setting": "搜索参数设置",
         "Top K": "单次搜索上限",
         "mode": {
           "embFullTextReRank": "混合检索",
-          "embFullTextReRank desc": "使用向量检索与全文检索混合结果进行 Rerank 进行重排，通常效果最佳",
+          "embFullTextReRank desc": "使用向量检索与全文检索混合结果进行 Rerank 进行重排，相关度通常差异明显，推荐。",
           "embedding": "语义检索",
           "embedding desc": "直接进行向量 topk 相关性查询",
           "embeddingReRank": "增强语义检索",
-          "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序"
+          "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序，相关度通常差异明显。"
         },
         "search mode": "检索模式"
       },
@@ -510,6 +510,10 @@
         "variable options": "选项"
       },
       "variable add option": "添加选项"
+    },
+    "shareChat": {
+      "Init Error": "初始化对话框失败",
+      "Init History Error": "初始化聊天记录失败"
     }
   },
   "dataset": {

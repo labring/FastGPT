@@ -15,6 +15,7 @@ type Props = {
   updateUseTime: boolean;
   source: `${ChatSourceEnum}`;
   shareId?: string;
+  outLinkUid?: string;
   content: [ChatItemType, ChatItemType];
 };
 
@@ -27,10 +28,11 @@ export async function saveChat({
   updateUseTime,
   source,
   shareId,
+  outLinkUid,
   content
 }: Props) {
   try {
-    const chatHistory = await MongoChat.findOne(
+    const chat = await MongoChat.findOne(
       {
         chatId,
         teamId,
@@ -57,7 +59,7 @@ export async function saveChat({
       content[1]?.value?.slice(0, 20) ||
       'Chat';
 
-    if (chatHistory) {
+    if (chat) {
       promise.push(
         MongoChat.updateOne(
           { chatId },
@@ -77,7 +79,8 @@ export async function saveChat({
           variables,
           title,
           source,
-          shareId
+          shareId,
+          outLinkUid
         })
       );
     }
