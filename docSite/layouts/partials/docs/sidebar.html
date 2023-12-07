@@ -2,7 +2,7 @@
 <nav id="sidebar" class="sidebar-wrapper">
     <div class="sidebar-brand">
         <!-- change -->
-        <a href='{{ relLangURL "" }}' aria-label="HomePage" alt="HomePage" style="text-transform: unset;">
+        <a href='{{ with .Site.Params.docs.logoLinkURL }}{{ . }}{{ else }}{{ relLangURL "" }}{{ end }}' aria-label="HomePage" alt="HomePage" style="text-transform: unset;">
             {{ with resources.Get "images/logos/logo.svg" }}
                 {{ .Content | safeHTML }}
                 &nbsp;

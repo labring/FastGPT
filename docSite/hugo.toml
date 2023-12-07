@@ -109,6 +109,11 @@ defaultContentLanguage = 'zh-cn'
 
         listDescTrunc   = 100                                 # Number of characters by which to truncate the list card description
 
+        # Link behaviour
+        intLinkTooltip  = true                                # Enable a tooltip for internal links that displays info about the destination? default false
+        # extLinkNewTab   = false                             # Open external links in a new Tab? default true
+        # logoLinkURL = ""                                    # Set a custom URL destination for the top header logo link.
+
     [params.flexsearch] # Parameters for FlexSearch
         # enabled             = true
         # tokenize            = "full"
