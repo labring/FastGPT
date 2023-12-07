@@ -86,7 +86,7 @@ const DatasetParamsModal = ({
               min={0}
               max={1}
               step={0.01}
-              value={getValues(ModuleInputKeyEnum.datasetSimilarity) || 0.5}
+              value={getValues(ModuleInputKeyEnum.datasetSimilarity) ?? 0.5}
               onChange={(val) => {
                 setValue(ModuleInputKeyEnum.datasetSimilarity, val);
                 setRefresh(!refresh);
@@ -107,7 +107,7 @@ const DatasetParamsModal = ({
                 ]}
                 min={1}
                 max={30}
-                value={getValues(ModuleInputKeyEnum.datasetLimit) || 5}
+                value={getValues(ModuleInputKeyEnum.datasetLimit) ?? 5}
                 onChange={(val) => {
                   setValue(ModuleInputKeyEnum.datasetLimit, val);
                   setRefresh(!refresh);

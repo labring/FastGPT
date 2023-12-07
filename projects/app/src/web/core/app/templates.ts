@@ -346,7 +346,7 @@ export const appTemplates: (AppItemType & {
           {
             key: 'similarity',
             type: 'slider',
-            label: '相似度',
+            label: '相关度',
             value: 0.4,
             min: 0,
             max: 1,
@@ -1398,7 +1398,7 @@ export const appTemplates: (AppItemType & {
           {
             key: 'similarity',
             type: 'slider',
-            label: '相似度',
+            label: '相关度',
             value: 0.76,
             min: 0,
             max: 1,
