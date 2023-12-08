@@ -201,6 +201,9 @@
     "confirm": {
       "Common Tip": "Operational Confirm"
     },
+    "course": {
+      "Read Course": "Read Course"
+    },
     "empty": {
       "Common Tip": "No data"
     },
@@ -283,6 +286,9 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "error": {
+        "Messages empty": "Interface content is empty, maybe the text is too long ~"
+      },
       "markdown": {
         "Edit Question": "Edit Question",
         "Quick Question": "Ask the question immediately",
@@ -295,9 +301,6 @@
       },
       "tts": {
         "Stop Speech": "Stop"
-      },
-      "error": {
-        "Messages empty": "Interface content is empty, maybe the text is too long ~"
       }
     },
     "dataset": {
@@ -379,13 +382,13 @@
         "id": "Data ID"
       },
       "error": {
+        "Start Sync Failed": "Start Sync Failed",
         "unAuthDataset": "No access to this knowledge base ",
         "unAuthDatasetCollection": "Not authorized to manipulate this data set ",
         "unAuthDatasetData": "Not authorized to manipulate this data ",
         "unAuthDatasetFile": "No permission to manipulate this file ",
         "unCreateCollection": "No permission to manipulate this data ",
-        "unLinkCollection": "not a network link collection ",
-        "Start Sync Failed": "Start Sync Failed"
+        "unLinkCollection": "not a network link collection "
       },
       "file": "File",
       "folder": "Folder",
@@ -462,6 +465,7 @@
         "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
         "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
         "Selector": "Selector",
+        "Selector Course": "Selector using tutorial",
         "Start Sync": "Start Sync",
         "UnValid Website Tip": "Your site may not be static and cannot be synchronized"
       }

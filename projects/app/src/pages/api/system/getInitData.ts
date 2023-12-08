@@ -20,6 +20,7 @@ import {
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { getFastGPTFeConfig } from '@fastgpt/service/common/system/config/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -73,7 +74,17 @@ export async function getInitConfig() {
       process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
     const res = JSON.parse(readFileSync(filename, 'utf-8')) as ConfigFileType;
 
-    setDefaultData(res);
+    // get config from database
+    const dbFeConfig = await getFastGPTFeConfig();
+    const concatConfig: ConfigFileType = {
+      ...res,
+      FeConfig: {
+        ...res.FeConfig,
+        ...dbFeConfig
+      }
+    };
+
+    setDefaultData(concatConfig);
   } catch (error) {
     setDefaultData();
     console.log('get init config error, set default', error);

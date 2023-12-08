@@ -97,7 +97,6 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
                 }}
                 overflow={'hidden'}
                 position={'relative'}
-                onClick={() => setQuoteModalData(quoteList)}
               >
                 <Image src={item.icon} alt={''} mr={1} w={'12px'} />
                 <Box className="textEllipsis" flex={'1 0 0'}>
@@ -106,7 +105,7 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
 
                 <Box
                   className="controller"
-                  display={['flex', 'none']}
+                  display={'none'}
                   pr={2}
                   position={'absolute'}
                   right={0}
@@ -126,6 +125,10 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
                       cursor={'pointer'}
                       _hover={{
                         color: 'green.600'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQuoteModalData(quoteList);
                       }}
                     />
                   </MyTooltip>

@@ -15,7 +15,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { LOGO_ICON } from '@fastgpt/global/core/chat/constants';
+import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;

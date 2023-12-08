@@ -1,7 +1,7 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { UserAuthTypeEnum } from '@/constants/common';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/constant';
 import { UserUpdateParams } from '@/types/user';
 import { UserType } from '@fastgpt/global/support/user/type.d';
 import type {

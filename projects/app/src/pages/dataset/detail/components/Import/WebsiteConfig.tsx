@@ -1,11 +1,13 @@
 import React from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
+import { Box, Button, Input, Link, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { getDocPath } from '@/web/common/system/doc';
+import { feConfigs } from '@/web/common/system/staticData';
 
 type FormType = {
   url?: string | undefined;
@@ -49,6 +51,16 @@ const WebsiteConfigModal = ({
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.600'}>
           {t('core.dataset.website.Config Description')}
+          {feConfigs?.docUrl && (
+            <Link
+              href={getDocPath('/docs/course/websync')}
+              target="_blank"
+              textDecoration={'underline'}
+              fontWeight={'bold'}
+            >
+              {t('common.course.Read Course')}
+            </Link>
+          )}
         </Box>
         <Box mt={2}>
           <Box>{t('core.dataset.website.Base Url')}</Box>

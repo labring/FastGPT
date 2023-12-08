@@ -49,7 +49,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
             </Box>
             <Box
               className="controller"
-              display={['flex', 'none']}
+              display={'none'}
               pr={2}
               position={'absolute'}
               right={0}

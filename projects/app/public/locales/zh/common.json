@@ -201,6 +201,9 @@
     "confirm": {
       "Common Tip": "操作确认"
     },
+    "course": {
+      "Read Course": "查看教程"
+    },
     "empty": {
       "Common Tip": "没有什么数据噢~"
     },
@@ -283,6 +286,9 @@
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "error": {
+        "Messages empty": "接口内容为空，可能文本超长了~"
+      },
       "markdown": {
         "Edit Question": "编辑问题",
         "Quick Question": "点我立即提问",
@@ -295,9 +301,6 @@
       },
       "tts": {
         "Stop Speech": "停止"
-      },
-      "error": {
-        "Messages empty": "接口内容为空，可能文本超长了~"
       }
     },
     "dataset": {
@@ -462,6 +465,7 @@
         "Confirm Create Tips": "确认同步该站点，同步任务将随后开启，请确认！",
         "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！",
         "Selector": "选择器",
+        "Selector Course": "选择器使用教程",
         "Start Sync": "开始同步",
         "UnValid Website Tip": "您的站点可能非静态站点，无法同步"
       }

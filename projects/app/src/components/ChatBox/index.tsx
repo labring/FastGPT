@@ -653,7 +653,6 @@ const ChatBox = (
                     <Box mt={['6px', 2]} textAlign={'right'}>
                       <Card
                         className="markdown"
-                        whiteSpace={'pre-wrap'}
                         {...MessageCardStyle}
                         bg={'myBlue.300'}
                         borderRadius={'8px 0 8px 8px'}
