@@ -5,7 +5,8 @@ const { Schema, model, models } = connectionMongo;
 const ImageSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
-    ref: TeamCollectionName
+    ref: TeamCollectionName,
+    required: true
   },
   binary: {
     type: Buffer

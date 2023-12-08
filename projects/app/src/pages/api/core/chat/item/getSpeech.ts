@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { GetChatSpeechProps } from '@/global/core/chat/api.d';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechBill } from '@/service/support/wallet/bill/push';
-import { authCertAndShareId } from '@fastgpt/service/support/permission/auth/common';
+import { authCertOrShareId } from '@fastgpt/service/support/permission/auth/common';
 import { authType2BillSource } from '@/service/support/wallet/bill/utils';
 import { getAudioSpeechModel } from '@/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('model or voice not found');
     }
 
-    const { teamId, tmbId, authType } = await authCertAndShareId({ req, authToken: true, shareId });
+    const { teamId, tmbId, authType } = await authCertOrShareId({ req, authToken: true, shareId });
 
     const ttsModel = getAudioSpeechModel(ttsConfig.model);
     const voiceData = ttsModel.voices?.find((item) => item.value === ttsConfig.voice);

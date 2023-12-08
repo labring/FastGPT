@@ -179,19 +179,19 @@ export const formatMarkdown = async (rawText: string = '', metadata: Record<stri
   const base64Arr = rawText.match(base64Regex) || [];
   // upload base64 and replace it
   await Promise.all(
-    base64Arr.map(async (base64) => {
+    base64Arr.map(async (base64Img) => {
       try {
         const str = await compressBase64ImgAndUpload({
-          base64,
+          base64Img,
           maxW: 4329,
           maxH: 4329,
           maxSize: 1024 * 1024 * 5,
           metadata
         });
 
-        rawText = rawText.replace(base64, str);
+        rawText = rawText.replace(base64Img, str);
       } catch (error) {
-        rawText = rawText.replace(base64, '');
+        rawText = rawText.replace(base64Img, '');
         rawText = rawText.replace(/!\[.*\]\(\)/g, '');
       }
     })

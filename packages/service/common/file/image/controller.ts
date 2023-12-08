@@ -24,7 +24,7 @@ export async function uploadMongoImg({
   const { _id } = await MongoImage.create({
     teamId,
     binary: Buffer.from(base64Data, 'base64'),
-    expiredTime,
+    expiredTime: expiredTime,
     metadata
   });
 

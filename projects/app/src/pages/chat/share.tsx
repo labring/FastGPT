@@ -349,7 +349,7 @@ const OutLink = ({
               feedbackType={'user'}
               onUpdateVariable={(e) => {}}
               onStartChat={startChat}
-              onDelMessage={(e) => delOneHistoryItem({ ...e, chatId })}
+              onDelMessage={(e) => delOneHistoryItem({ ...e, chatId, shareId, outLinkUid })}
             />
           </Box>
         </Flex>
