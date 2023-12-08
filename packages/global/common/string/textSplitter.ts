@@ -31,19 +31,19 @@ export const splitText2Chunks = (props: {
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const stepReges: { reg: RegExp; maxLen: number }[] = [
     ...customReg.map((text) => ({ reg: new RegExp(`([${text}])`, 'g'), maxLen: chunkLen * 1.4 })),
-    { reg: /^(#\s[^\n]+)\n/gm, maxLen: chunkLen * 1.4 },
-    { reg: /^(##\s[^\n]+)\n/gm, maxLen: chunkLen * 1.4 },
-    { reg: /^(###\s[^\n]+)\n/gm, maxLen: chunkLen * 1.4 },
-    { reg: /^(####\s[^\n]+)\n/gm, maxLen: chunkLen * 1.4 },
+    { reg: /^(#\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
+    { reg: /^(##\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
+    { reg: /^(###\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
+    { reg: /^(####\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
 
-    { reg: /([\n](`))/g, maxLen: chunkLen * 5 }, // code block
-    { reg: /([\n](?![\*\-|>0-9]))/g, maxLen: chunkLen * 1.8 }, // (?![\*\-|>`0-9]): markdown special char
-    { reg: /([\n])/g, maxLen: chunkLen * 1.4 },
+    { reg: /([\n]([`~]))/g, maxLen: chunkLen * 4 }, // code block
+    { reg: /([\n](?!\s*[\*\-|>0-9]))/g, maxLen: chunkLen * 2 }, // (?![\*\-|>`0-9]): markdown special char
+    { reg: /([\n])/g, maxLen: chunkLen * 1.2 },
 
-    { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkLen * 1.4 },
-    { reg: /([！]|!\s)/g, maxLen: chunkLen * 1.4 },
-    { reg: /([？]|\?\s)/g, maxLen: chunkLen * 1.6 },
-    { reg: /([；]|;\s)/g, maxLen: chunkLen * 1.8 },
+    { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkLen * 1.2 },
+    { reg: /([！]|!\s)/g, maxLen: chunkLen * 1.2 },
+    { reg: /([？]|\?\s)/g, maxLen: chunkLen * 1.4 },
+    { reg: /([；]|;\s)/g, maxLen: chunkLen * 1.6 },
     { reg: /([，]|,\s)/g, maxLen: chunkLen * 2 }
   ];
 
@@ -151,6 +151,7 @@ export const splitText2Chunks = (props: {
     const maxLen = splitTexts.length > 1 ? stepReges[step].maxLen : chunkLen;
     const minChunkLen = chunkLen * 0.7;
     const miniChunkLen = 30;
+    console.log(splitTexts, stepReges[step].reg);
 
     const chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {
