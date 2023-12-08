@@ -377,6 +377,13 @@
         "id": "Data ID"
       },
       "error": {
+        "unAuthDataset": "No access to this knowledge base ",
+        "unAuthDatasetCollection": "Not authorized to manipulate this data set ",
+        "unAuthDatasetData": "Not authorized to manipulate this data ",
+        "unAuthDatasetFile": "No permission to manipulate this file ",
+        "unCreateCollection": "No permission to manipulate this data ",
+        "unLinkCollection": "not a network link collection ",
+        "fileNotFound": "File not found ~",
         "Start Sync Failed": "Start Sync Failed"
       },
       "file": "File",
@@ -525,7 +532,6 @@
     }
   },
   "dataset": {
-    "Chunk Length": "Chunk Length",
     "Confirm move the folder": "Confirm Move",
     "Confirm to delete the data": "Confirm to delete the data?",
     "Confirm to delete the file": "Are you sure to delete the file and all its data?",
@@ -593,10 +599,6 @@
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "test": {
       "noResult": "Search results are empty"
-    },
-    "website": {
-      "Base Url": "BaseUrl",
-      "Selector": "Selector"
     }
   },
   "error": {

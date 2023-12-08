@@ -377,7 +377,14 @@
         "id": "数据ID"
       },
       "error": {
-        "Start Sync Failed": "开始同步失败"
+        "Start Sync Failed": "开始同步失败",
+        "unAuthDataset": "无权操作该知识库",
+        "unAuthDatasetCollection": "无权操作该数据集",
+        "unAuthDatasetData": "无权操作该数据",
+        "unAuthDatasetFile": "无权操作该文件",
+        "unCreateCollection": "无权操作该数据",
+        "unLinkCollection": "不是网络链接集合",
+        "fileNotFound": "文件找不到了~"
       },
       "file": "文件",
       "folder": "目录",
@@ -525,7 +532,6 @@
     }
   },
   "dataset": {
-    "Chunk Length": "数据总量",
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",
     "Confirm to delete the file": "确认删除该文件及其所有数据？",
@@ -593,10 +599,6 @@
     "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
     "test": {
       "noResult": "搜索结果为空"
-    },
-    "website": {
-      "Base Url": "",
-      "Selector": ""
     }
   },
   "error": {

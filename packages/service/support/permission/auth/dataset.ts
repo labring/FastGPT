@@ -167,6 +167,10 @@ export async function authDatasetFile({
 
   const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
 
+  if (!file) {
+    return Promise.reject(DatasetErrEnum.fileNotFound);
+  }
+
   if (file.metadata.teamId !== teamId) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);
   }

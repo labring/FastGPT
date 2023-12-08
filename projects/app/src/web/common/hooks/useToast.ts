@@ -4,7 +4,7 @@ export const useToast = (props?: UseToastOptions) => {
   const toast = uToast({
     position: 'top',
     duration: 2000,
-    ...props
+    ...(props && props)
   });
 
   return {

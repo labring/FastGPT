@@ -8,32 +8,38 @@ export enum DatasetErrEnum {
   unAuthDatasetData = 'unAuthDatasetData',
   unAuthDatasetFile = 'unAuthDatasetFile',
 
-  unLinkCollection = 'unLinkCollection'
+  unLinkCollection = 'unLinkCollection',
+
+  fileNotFound = 'fileNotFound'
 }
 const datasetErr = [
   {
     statusText: DatasetErrEnum.unAuthDataset,
-    message: '无权操作该知识库'
+    message: 'core.dataset.error.unAuthDataset'
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetCollection,
-    message: '无权操作该数据集'
+    message: 'core.dataset.error.unAuthDatasetCollection'
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetData,
-    message: '无权操作该数据'
+    message: 'core.dataset.error.unAuthDatasetData'
   },
   {
     statusText: DatasetErrEnum.unAuthDatasetFile,
-    message: '无权操作该文件'
+    message: 'core.dataset.error.unAuthDatasetFile'
   },
   {
     statusText: DatasetErrEnum.unCreateCollection,
-    message: '无权创建数据集'
+    message: 'core.dataset.error.unCreateCollection'
   },
   {
     statusText: DatasetErrEnum.unLinkCollection,
     message: 'core.dataset.error.unLinkCollection'
+  },
+  {
+    statusText: DatasetErrEnum.fileNotFound,
+    message: 'core.dataset.error.fileNotFound'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

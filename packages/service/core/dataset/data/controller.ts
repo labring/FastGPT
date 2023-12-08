@@ -1,10 +1,9 @@
 import { MongoDatasetData } from './schema';
 import { deletePgDataById } from './pg';
 import { MongoDatasetTraining } from '../training/schema';
-import { delFileById } from '../../../common/file/gridfs/controller';
+import { delFileByFileIdList, delFileByMetadata } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoDatasetCollection } from '../collection/schema';
-import { delDatasetFiles } from '../file/controller';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { delImgByFileIdList } from '../../../common/file/image/controller';
 
@@ -18,9 +17,11 @@ export async function delDatasetRelevantData({ datasetIds }: { datasetIds: strin
   });
 
   // delete related files
-  await Promise.all(datasetIds.map((id) => delDatasetFiles({ datasetId: id })));
+  await Promise.all(
+    datasetIds.map((id) => delFileByMetadata({ bucketName: BucketNameEnum.dataset, datasetId: id }))
+  );
 
-  await delay(1000);
+  await delay(500);
 
   // delete pg data
   await deletePgDataById(`dataset_id IN ('${datasetIds.join("','")}')`);
@@ -53,11 +54,9 @@ export async function delCollectionRelevantData({
   // delete file and imgs
   await Promise.all([
     delImgByFileIdList(filterFileIds),
-    ...filterFileIds.map((fileId) => {
-      return delFileById({
-        bucketName: BucketNameEnum.dataset,
-        fileId
-      });
+    delFileByFileIdList({
+      bucketName: BucketNameEnum.dataset,
+      fileIdList: filterFileIds
     })
   ]);
 
