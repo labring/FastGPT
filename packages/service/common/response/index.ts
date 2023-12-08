@@ -82,7 +82,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   } else if (error?.response?.data?.error?.message) {
     msg = error?.response?.data?.error?.message;
   } else if (error?.error?.message) {
-    msg = error?.error?.message;
+    msg = `${error?.error?.code} ${error?.error?.message}`;
   }
 
   addLog.error(`sse error: ${msg}`, error);

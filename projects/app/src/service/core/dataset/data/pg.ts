@@ -11,6 +11,7 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '../utils';
 import { reRankRecall } from '../../ai/rerank';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 
 export async function insertData2Pg({
   mongoDataId,
@@ -108,38 +109,51 @@ type SearchProps = {
   text: string;
   model: string;
   similarity?: number; // min distance
-  limit: number;
+  limit: number; // max Token limit
   datasetIds: string[];
   searchMode?: `${DatasetSearchModeEnum}`;
 };
 export async function searchDatasetData(props: SearchProps) {
-  let { text, similarity = 0, limit, searchMode = DatasetSearchModeEnum.embedding } = props;
+  let {
+    text,
+    similarity = 0,
+    limit: maxTokens,
+    searchMode = DatasetSearchModeEnum.embedding
+  } = props;
   searchMode = global.systemEnv.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
+
+  // Compatible with topk limit
+  if (maxTokens < 50) {
+    maxTokens = 1500;
+  }
 
   const rerank =
     searchMode === DatasetSearchModeEnum.embeddingReRank ||
     searchMode === DatasetSearchModeEnum.embFullTextReRank;
 
+  const oneChunkToken = 50;
   const { embeddingLimit, fullTextLimit } = (() => {
-    // Increase search range, reduce hnsw loss
+    const estimatedLen = Math.max(20, Math.ceil(maxTokens / oneChunkToken));
+
+    // Increase search range, reduce hnsw loss. 20 ~ 100
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return {
-        embeddingLimit: limit * 2,
+        embeddingLimit: Math.min(estimatedLen, 100),
         fullTextLimit: 0
       };
     }
     // 50 < 2*limit < value < 100
     if (searchMode === DatasetSearchModeEnum.embeddingReRank) {
       return {
-        embeddingLimit: Math.min(100, Math.max(50, limit * 2)),
+        embeddingLimit: Math.min(100, Math.max(50, estimatedLen * 2)),
         fullTextLimit: 0
       };
     }
-    // 50 < 3*limit < embedding < 80
+    // 50 < 2*limit < embedding < 80
     // 20 < limit < fullTextLimit < 40
     return {
-      embeddingLimit: Math.min(80, Math.max(50, limit * 2)),
-      fullTextLimit: Math.min(40, Math.max(20, limit))
+      embeddingLimit: Math.min(80, Math.max(50, estimatedLen * 2)),
+      fullTextLimit: Math.min(40, Math.max(20, estimatedLen))
     };
   })();
 
@@ -174,9 +188,14 @@ export async function searchDatasetData(props: SearchProps) {
     return true;
   });
 
+  // token slice
+
   if (!rerank) {
     return {
-      searchRes: filterSameDataResults.filter((item) => item.score >= similarity).slice(0, limit),
+      searchRes: filterResultsByMaxTokens(
+        filterSameDataResults.filter((item) => item.score >= similarity),
+        maxTokens
+      ),
       tokenLen
     };
   }
@@ -190,7 +209,10 @@ export async function searchDatasetData(props: SearchProps) {
   ).filter((item) => item.score > similarity);
 
   return {
-    searchRes: reRankResults.slice(0, limit),
+    searchRes: filterResultsByMaxTokens(
+      reRankResults.filter((item) => item.score >= similarity),
+      maxTokens
+    ),
     tokenLen
   };
 }
@@ -357,6 +379,8 @@ export async function reRankSearchResult({
       }))
     });
 
+    if (!Array.isArray(results)) return data;
+
     // add new score to data
     const mergeResult = results
       .map((item) => {
@@ -375,5 +399,23 @@ export async function reRankSearchResult({
 
     return data;
   }
+}
+export function filterResultsByMaxTokens(list: SearchDataResponseItemType[], maxTokens: number) {
+  const results: SearchDataResponseItemType[] = [];
+  let totalTokens = 0;
+
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    totalTokens += countPromptTokens(item.q + item.a);
+    if (totalTokens > maxTokens + 200) {
+      break;
+    }
+    results.push(item);
+    if (totalTokens > maxTokens) {
+      break;
+    }
+  }
+
+  return results;
 }
 // ------------------ search end ------------------

@@ -17,7 +17,7 @@ import {
   Grid,
   Switch
 } from '@chakra-ui/react';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
 import { onChangeNode, useFlowProviderStore } from '../../FlowProvider';
@@ -37,6 +37,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 import { feConfigs } from '@/web/common/system/staticData';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 const SelectAppModal = dynamic(() => import('../../SelectAppModal'));
@@ -635,15 +636,35 @@ const SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: 
 });
 
 const SelectDatasetParamsRender = React.memo(function SelectDatasetParamsRender({
+  item,
   inputs = [],
   moduleId
 }: RenderProps) {
+  const { nodes } = useFlowProviderStore();
+
   const { t } = useTranslation();
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,
     similarity: 0.5
   });
+
+  const tokenLimit = useMemo(() => {
+    let maxTokens = 3000;
+
+    nodes.forEach((item) => {
+      if (item.type === FlowNodeTypeEnum.chatNode) {
+        const model =
+          item.data.inputs.find((item) => item.key === ModuleInputKeyEnum.aiModel)?.value || '';
+        const quoteMaxToken =
+          chatModelList.find((item) => item.model === model)?.quoteMaxToken || 3000;
+
+        maxTokens = Math.max(maxTokens, quoteMaxToken);
+      }
+    });
+
+    return maxTokens;
+  }, [nodes]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -671,6 +692,7 @@ const SelectDatasetParamsRender = React.memo(function SelectDatasetParamsRender(
       {isOpen && (
         <DatasetParamsModal
           {...data}
+          maxTokens={tokenLimit}
           onClose={onClose}
           onSuccess={(e) => {
             for (let key in e) {

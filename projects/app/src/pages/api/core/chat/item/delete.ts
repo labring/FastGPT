@@ -10,6 +10,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     const { chatId, contentId, shareId, outLinkUid } = req.query as DeleteChatItemProps;
 
+    if (!contentId || !chatId) {
+      return jsonRes(res);
+    }
+
     await autChatCrud({
       req,
       authToken: true,

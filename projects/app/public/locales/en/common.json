@@ -283,6 +283,11 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "markdown": {
+        "Edit Question": "Edit Question",
+        "Quick Question": "Ask the question immediately",
+        "Send Question": "Send Question"
+      },
       "quote": {
         "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
         "Read Quote": "Read Quote",
@@ -290,6 +295,9 @@
       },
       "tts": {
         "Stop Speech": "Stop"
+      },
+      "error": {
+        "Messages empty": "Interface content is empty, maybe the text is too long ~"
       }
     },
     "dataset": {
@@ -313,7 +321,6 @@
       "Name": "Name",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
-      "Search Top K": "Top K",
       "Set Empty Result Tip": ",Response empty text",
       "Set Website Config": "Configuring Website",
       "Similarity": "Similarity",
@@ -372,6 +379,12 @@
         "id": "Data ID"
       },
       "error": {
+        "unAuthDataset": "No access to this knowledge base ",
+        "unAuthDatasetCollection": "Not authorized to manipulate this data set ",
+        "unAuthDatasetData": "Not authorized to manipulate this data ",
+        "unAuthDatasetFile": "No permission to manipulate this file ",
+        "unCreateCollection": "No permission to manipulate this data ",
+        "unLinkCollection": "not a network link collection ",
         "Start Sync Failed": "Start Sync Failed"
       },
       "file": "File",
@@ -403,8 +416,11 @@
       },
       "link": "Link",
       "search": {
+        "Dataset Search Params": "Dataset Search Params",
         "Empty result response": "Empty Response",
         "Empty result response Tips": "If you fill in the content, if no suitable content is found, you will directly reply to the content.",
+        "Max Tokens": "Max Tokens",
+        "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
         "Params Setting": "Params Setting",
@@ -517,7 +533,6 @@
     }
   },
   "dataset": {
-    "Chunk Length": "Chunk Length",
     "Confirm move the folder": "Confirm Move",
     "Confirm to delete the data": "Confirm to delete the data?",
     "Confirm to delete the file": "Are you sure to delete the file and all its data?",
@@ -585,13 +600,10 @@
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "test": {
       "noResult": "Search results are empty"
-    },
-    "website": {
-      "Base Url": "BaseUrl",
-      "Selector": "Selector"
     }
   },
   "error": {
+    "fileNotFound": "File not found ~",
     "team": {
       "overSize": "Team member exceeds limit"
     }

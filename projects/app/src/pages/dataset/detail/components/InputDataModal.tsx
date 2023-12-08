@@ -408,7 +408,7 @@ export function RawSourceText({
                   await getFileAndOpen(sourceId as string);
                 } catch (error) {
                   toast({
-                    title: getErrText(error, '获取文件地址失败'),
+                    title: t(getErrText(error, 'error.fileNotFound')),
                     status: 'error'
                   });
                 }

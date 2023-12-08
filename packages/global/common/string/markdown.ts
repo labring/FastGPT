@@ -26,10 +26,14 @@ export const simpleMarkdownText = (rawText: string) => {
   rawText = rawText.replace(/\\\\n/g, '\\n');
 
   // Remove headings and code blocks front spaces
-  ['####', '###', '##', '#', '```', '~~~'].forEach((item) => {
+  ['####', '###', '##', '#', '```', '~~~'].forEach((item, i) => {
+    const isMarkdown = i <= 3;
     const reg = new RegExp(`\\n\\s*${item}`, 'g');
     if (reg.test(rawText)) {
-      rawText = rawText.replace(new RegExp(`\\n\\s*(${item})`, 'g'), '\n$1');
+      rawText = rawText.replace(
+        new RegExp(`(\\n)\\s*(${item})`, 'g'),
+        isMarkdown ? '\n$1$2' : '$1$2'
+      );
     }
   });
 

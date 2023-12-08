@@ -283,6 +283,11 @@
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "markdown": {
+        "Edit Question": "编辑问题",
+        "Quick Question": "点我立即提问",
+        "Send Question": "发送问题"
+      },
       "quote": {
         "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新",
         "Read Quote": "查看引用",
@@ -290,6 +295,9 @@
       },
       "tts": {
         "Stop Speech": "停止"
+      },
+      "error": {
+        "Messages empty": "接口内容为空，可能文本超长了~"
       }
     },
     "dataset": {
@@ -313,7 +321,6 @@
       "Name": "知识库名称",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
-      "Search Top K": "单次搜索数量",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Set Website Config": "开始配置网站信息",
       "Similarity": "相关度",
@@ -372,7 +379,13 @@
         "id": "数据ID"
       },
       "error": {
-        "Start Sync Failed": "开始同步失败"
+        "Start Sync Failed": "开始同步失败",
+        "unAuthDataset": "无权操作该知识库",
+        "unAuthDatasetCollection": "无权操作该数据集",
+        "unAuthDatasetData": "无权操作该数据",
+        "unAuthDatasetFile": "无权操作该文件",
+        "unCreateCollection": "无权操作该数据",
+        "unLinkCollection": "不是网络链接集合"
       },
       "file": "文件",
       "folder": "目录",
@@ -403,8 +416,11 @@
       },
       "link": "链接",
       "search": {
+        "Dataset Search Params": "搜索参数",
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
+        "Max Tokens": "引用上限",
+        "Max Tokens Tips": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
         "Min Similarity": "最低相关度",
         "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
         "Params Setting": "搜索参数设置",
@@ -517,7 +533,6 @@
     }
   },
   "dataset": {
-    "Chunk Length": "数据总量",
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",
     "Confirm to delete the file": "确认删除该文件及其所有数据？",
@@ -585,13 +600,10 @@
     "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
     "test": {
       "noResult": "搜索结果为空"
-    },
-    "website": {
-      "Base Url": "",
-      "Selector": ""
     }
   },
   "error": {
+    "fileNotFound": "文件找不到了~",
     "team": {
       "overSize": "团队成员超出上限"
     }

@@ -30,7 +30,7 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
-import { eventBus } from '@/web/common/utils/eventbus';
+import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -48,7 +48,7 @@ import type { AdminMarkType } from './SelectMarkCollection';
 
 import MyIcon from '@/components/Icon';
 import Avatar from '@/components/Avatar';
-import Markdown from '@/components/Markdown';
+import Markdown, { CodeClassName } from '@/components/Markdown';
 import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
 import ChatBoxDivider from '@/components/core/chat/Divider';
@@ -64,6 +64,7 @@ import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import MessageInput from './MessageInput';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -132,6 +133,7 @@ const ChatBox = (
   const ChatBoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const router = useRouter();
+  const { shareId } = router.query as { shareId?: string };
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc, setLoading } = useSystemStore();
@@ -258,7 +260,7 @@ const ChatBox = (
         const result = await postQuestionGuide(
           {
             messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6),
-            shareId: router.query.shareId as string
+            shareId
           },
           abortSignal
         );
@@ -270,7 +272,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, scrollToBottom, router.query.shareId]
+    [questionGuide, scrollToBottom, shareId]
   );
 
   /**
@@ -323,7 +325,6 @@ const ChatBox = (
       setTimeout(() => {
         scrollToBottom();
       }, 100);
-
       try {
         // create abort obj
         const abortSignal = new AbortController();
@@ -518,16 +519,22 @@ const ChatBox = (
       }
     };
     window.addEventListener('message', windowMessage);
-    eventBus.on('guideClick', ({ text }: { text: string }) => {
+
+    eventBus.on(EventNameEnum.sendQuestion, ({ text }: { text: string }) => {
       if (!text) return;
       handleSubmit((data) => sendPrompt(data, text))();
     });
+    eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
+      if (!text) return;
+      resetInputVal(text);
+    });
 
     return () => {
-      eventBus.off('guideClick');
+      eventBus.off(EventNameEnum.sendQuestion);
+      eventBus.off(EventNameEnum.editQuestion);
       window.removeEventListener('message', windowMessage);
     };
-  }, [handleSubmit, sendPrompt]);
+  }, [handleSubmit, resetInputVal, sendPrompt]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -757,40 +764,30 @@ const ChatBox = (
                     <Box textAlign={'left'} mt={['6px', 2]}>
                       <Card bg={'white'} {...MessageCardStyle}>
                         <Markdown
-                          source={item.value}
+                          source={(() => {
+                            const text = item.value as string;
+
+                            // replace quote tag: [source1] 标识第一个来源，需要提取数字1，从而去数组里查找来源
+                            const quoteReg = /\[source:(.+)\]/g;
+                            const replaceText = text.replace(quoteReg, `[QUOTE SIGN]($1)`);
+
+                            // question guide
+                            if (
+                              index === chatHistory.length - 1 &&
+                              !isChatting &&
+                              questionGuides.length > 0
+                            ) {
+                              return `${replaceText}\n\`\`\`${
+                                CodeClassName.questionGuide
+                              }\n${JSON.stringify(questionGuides)}`;
+                            }
+                            return replaceText;
+                          })()}
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
+
                         <ResponseTags responseData={item.responseData} />
-                        {/* question guide */}
-                        {index === chatHistory.length - 1 &&
-                          !isChatting &&
-                          questionGuides.length > 0 && (
-                            <Box mt={2}>
-                              <ChatBoxDivider
-                                icon="core/chat/QGFill"
-                                text={t('chat.Question Guide Tips')}
-                              />
-                              <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
-                                {questionGuides.map((item) => (
-                                  <Button
-                                    key={item}
-                                    borderRadius={'md'}
-                                    variant={'outline'}
-                                    colorScheme={'gray'}
-                                    size={'xs'}
-                                    whiteSpace={'pre-wrap'}
-                                    h={'auto'}
-                                    py={1}
-                                    onClick={() => {
-                                      resetInputVal(item);
-                                    }}
-                                  >
-                                    {item}
-                                  </Button>
-                                ))}
-                              </Flex>
-                            </Box>
-                          )}
+
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (
                           <Box>

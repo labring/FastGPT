@@ -116,7 +116,9 @@ const OutLink = ({
           updateHistory({
             ...currentChat,
             updateTime: new Date(),
-            title: newTitle
+            title: newTitle,
+            shareId,
+            outLinkUid
           });
       }
 
@@ -148,7 +150,7 @@ const OutLink = ({
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [chatId, shareId, outLinkUid, setChatData, appId, updateHistory, router, histories]
+    [chatId, shareId, outLinkUid, setChatData, appId, pushHistory, router, histories, updateHistory]
   );
 
   const loadChatInfo = useCallback(
@@ -309,13 +311,19 @@ const OutLink = ({
                   });
                 }}
                 onSetHistoryTop={(e) => {
-                  updateHistory(e);
+                  updateHistory({
+                    ...e,
+                    shareId,
+                    outLinkUid
+                  });
                 }}
                 onSetCustomTitle={async (e) => {
                   updateHistory({
                     chatId: e.chatId,
                     title: e.title,
-                    customTitle: e.title
+                    customTitle: e.title,
+                    shareId,
+                    outLinkUid
                   });
                 }}
               />
@@ -349,7 +357,7 @@ const OutLink = ({
               feedbackType={'user'}
               onUpdateVariable={(e) => {}}
               onStartChat={startChat}
-              onDelMessage={(e) => delOneHistoryItem({ ...e, chatId })}
+              onDelMessage={(e) => delOneHistoryItem({ ...e, chatId, shareId, outLinkUid })}
             />
           </Box>
         </Flex>
