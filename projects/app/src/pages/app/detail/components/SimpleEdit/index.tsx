@@ -366,8 +366,8 @@ function ConfigForm({
               )}
             </Flex>
             <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-              {t('core.dataset.Similarity')}: {getValues('dataset.similarity')},{' '}
-              {t('core.dataset.Search Top K')}: {getValues('dataset.limit')}
+              {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')},{' '}
+              {t('core.dataset.search.Max Tokens')}: {getValues('dataset.limit')}
               {getValues('dataset.searchEmptyText') === ''
                 ? ''
                 : t('core.dataset.Set Empty Result Tip')}
