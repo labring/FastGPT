@@ -151,6 +151,7 @@ export async function parseHeaderCert({
         authType: AuthUserTypeEnum.root
       };
     }
+    // apikey: abandon
     if (authApiKey && apikey) {
       // apikey
       const parseResult = await authOpenApiKey({ apikey });
@@ -164,20 +165,8 @@ export async function parseHeaderCert({
       };
     }
 
-    return {
-      uid: '',
-      teamId: '',
-      tmbId: '',
-      appId: '',
-      openApiKey: '',
-      authType: AuthUserTypeEnum.token
-    };
-  })();
-
-  // not rootUser and no uid, reject request
-  if (!rootkey && !uid && !teamId && !tmbId) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
+  })();
 
   return {
     userId: String(uid),
