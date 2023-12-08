@@ -8,9 +8,7 @@ export enum DatasetErrEnum {
   unAuthDatasetData = 'unAuthDatasetData',
   unAuthDatasetFile = 'unAuthDatasetFile',
 
-  unLinkCollection = 'unLinkCollection',
-
-  fileNotFound = 'fileNotFound'
+  unLinkCollection = 'unLinkCollection'
 }
 const datasetErr = [
   {
@@ -36,10 +34,6 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.unLinkCollection,
     message: 'core.dataset.error.unLinkCollection'
-  },
-  {
-    statusText: DatasetErrEnum.fileNotFound,
-    message: 'core.dataset.error.fileNotFound'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

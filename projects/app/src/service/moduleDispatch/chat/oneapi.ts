@@ -124,6 +124,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     ))
   ];
 
+  if (concatMessages.length === 0) {
+    return Promise.reject('core.chat.error.Messages empty');
+  }
+
   const response = await ai.chat.completions.create(
     {
       model,

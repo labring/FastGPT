@@ -85,7 +85,7 @@ export async function delFileByFileIdList({
   bucketName: `${BucketNameEnum}`;
   fileIdList: string[];
   retry?: number;
-}) {
+}): Promise<any> {
   try {
     const bucket = getGridBucket(bucketName);
 

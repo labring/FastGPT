@@ -6,6 +6,7 @@ import pluginErr from './code/plugin';
 import outLinkErr from './code/outLink';
 import teamErr from './code/team';
 import userErr from './code/user';
+import commonErr from './code/common';
 
 export const ERROR_CODE: { [key: number]: string } = {
   400: '请求失败',
@@ -96,5 +97,6 @@ export const ERROR_RESPONSE: Record<
   ...outLinkErr,
   ...teamErr,
   ...userErr,
-  ...pluginErr
+  ...pluginErr,
+  ...commonErr
 };

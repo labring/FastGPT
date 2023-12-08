@@ -408,7 +408,7 @@ export function RawSourceText({
                   await getFileAndOpen(sourceId as string);
                 } catch (error) {
                   toast({
-                    title: t(getErrText(error, 'core.dataset.error.fileNotFound')),
+                    title: t(getErrText(error, 'error.fileNotFound')),
                     status: 'error'
                   });
                 }
