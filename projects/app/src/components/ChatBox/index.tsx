@@ -133,6 +133,7 @@ const ChatBox = (
   const ChatBoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const router = useRouter();
+  const { shareId } = router.query as { shareId?: string };
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc, setLoading } = useSystemStore();
@@ -259,7 +260,7 @@ const ChatBox = (
         const result = await postQuestionGuide(
           {
             messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6),
-            shareId: router.query.shareId as string
+            shareId
           },
           abortSignal
         );
@@ -271,7 +272,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, scrollToBottom, router.query.shareId]
+    [questionGuide, scrollToBottom, shareId]
   );
 
   /**

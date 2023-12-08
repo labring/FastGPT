@@ -10,6 +10,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
     const { messages, shareId } = req.body as CreateQuestionGuideParams;
+
     const { tmbId, teamId } = await authCertOrShareId({
       req,
       authToken: true,
