@@ -296,7 +296,7 @@ const CodeLight = ({
 }) => {
   const { copyData } = useCopyData();
 
-  if (!inline && match) {
+  if (!inline) {
     return (
       <Box my={3} borderRadius={'md'} overflow={'overlay'} backgroundColor={'#222'}>
         <Flex

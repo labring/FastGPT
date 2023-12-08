@@ -151,6 +151,7 @@ export const splitText2Chunks = (props: {
     const maxLen = splitTexts.length > 1 ? stepReges[step].maxLen : chunkLen;
     const minChunkLen = chunkLen * 0.7;
     const miniChunkLen = 30;
+    // console.log(splitTexts, stepReges[step].reg);
 
     const chunks: string[] = [];
     for (let i = 0; i < splitTexts.length; i++) {
