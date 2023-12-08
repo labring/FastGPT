@@ -126,9 +126,9 @@ const WholeResponseModal = ({
             rawDom={
               activeModule.historyPreview ? (
                 <>
-                  {activeModule.historyPreview?.map((item) => (
+                  {activeModule.historyPreview?.map((item, i) => (
                     <Box
-                      key={item.dataId}
+                      key={i}
                       _notLast={{
                         borderBottom: '1px solid',
                         borderBottomColor: 'myWhite.700',
