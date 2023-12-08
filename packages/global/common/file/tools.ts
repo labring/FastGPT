@@ -49,7 +49,14 @@ export const cheerioToHtml = ({
     }
   });
 
-  return $(selector || 'body').html();
+  const html = $(selector || 'body')
+    .map((item, dom) => {
+      return $(dom).html();
+    })
+    .get()
+    .join('\n');
+
+  return html;
 };
 export const urlsFetch = async ({
   urlList,

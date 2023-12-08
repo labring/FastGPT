@@ -55,3 +55,5 @@ export const LOGO_ICON = `/icon/logo.svg`;
 
 export const IMG_BLOCK_KEY = 'img-block';
 export const FILE_BLOCK_KEY = 'file-block';
+
+export const MARKDOWN_QUOTE_SIGN = 'QUOTE SIGN';

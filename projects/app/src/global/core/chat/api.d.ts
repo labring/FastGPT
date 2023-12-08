@@ -65,7 +65,7 @@ export type ClearHistoriesProps = {
 /* -------- chat item ---------- */
 export type DeleteChatItemProps = {
   chatId: string;
-  contentId: string;
+  contentId?: string;
   shareId?: string;
   outLinkUid?: string;
 };

@@ -9,7 +9,6 @@ import { oauthLogin } from '@/web/support/user/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const provider = ({ code, state }: { code: string; state: string }) => {

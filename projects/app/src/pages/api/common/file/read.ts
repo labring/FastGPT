@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authFileToken } from '@fastgpt/service/support/permission/controller';
 import { detect } from 'jschardet';
 import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,6 +22,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       getFileById({ bucketName, fileId }),
       getDownloadStream({ bucketName, fileId })
     ]);
+
+    if (!file) {
+      return Promise.reject(CommonErrEnum.fileNotFound);
+    }
 
     // get encoding
     let buffers: Buffer = Buffer.from([]);

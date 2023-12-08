@@ -12,7 +12,7 @@ export const authCert = async (props: AuthModeType) => {
     canWrite: true
   };
 };
-export async function authCertAndShareId({
+export async function authCertOrShareId({
   shareId,
   ...props
 }: AuthModeType & { shareId?: string }) {

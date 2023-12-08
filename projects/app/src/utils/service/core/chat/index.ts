@@ -10,7 +10,6 @@ export function selectShareResponse({
     'moduleName',
     'moduleLogo',
     'runningTime',
-    'historyPreview',
     'quoteList',
     'question'
   ];

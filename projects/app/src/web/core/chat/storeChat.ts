@@ -7,7 +7,8 @@ import type {
   getHistoriesProps,
   ClearHistoriesProps,
   DelHistoryProps,
-  UpdateHistoryProps
+  UpdateHistoryProps,
+  DeleteChatItemProps
 } from '@/global/core/chat/api';
 import {
   delChatHistoryById,
@@ -31,7 +32,7 @@ type State = {
   setLastChatAppId: (id: string) => void;
   lastChatId: string;
   setLastChatId: (id: string) => void;
-  delOneHistoryItem: (e: { chatId: string; contentId?: string; index: number }) => Promise<any>;
+  delOneHistoryItem: (e: DeleteChatItemProps & { index: number }) => Promise<any>;
 };
 
 export const useChatStore = create<State>()(
@@ -119,7 +120,8 @@ export const useChatStore = create<State>()(
             });
           }
         },
-        async delOneHistoryItem({ chatId, contentId, index }) {
+        async delOneHistoryItem({ index, ...props }) {
+          const { chatId, contentId } = props;
           if (!chatId || !contentId) return;
 
           try {
@@ -127,7 +129,7 @@ export const useChatStore = create<State>()(
               ...state,
               history: state.history.filter((_, i) => i !== index)
             }));
-            await delChatRecordById({ chatId, contentId });
+            await delChatRecordById(props);
           } catch (err) {
             console.log(err);
           }

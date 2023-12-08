@@ -315,7 +315,7 @@ const CodeLight = ({
           </Flex>
         </Flex>
         <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre">
-          {String(children)}
+          {String(children).replace(/&nbsp;/g, ' ')}
         </SyntaxHighlighter>
       </Box>
     );

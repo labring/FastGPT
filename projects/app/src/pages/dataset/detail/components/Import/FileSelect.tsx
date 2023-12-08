@@ -173,7 +173,9 @@ const FileSelect = ({
               case 'pdf':
                 return readPdfContent(file);
               case 'docx':
-                return readDocContent(file);
+                return readDocContent(file, {
+                  fileId
+                });
             }
             return '';
           })();

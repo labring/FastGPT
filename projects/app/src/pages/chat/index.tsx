@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { getInitChatInfo, putChatHistory } from '@/web/core/chat/api';
+import { getInitChatInfo } from '@/web/core/chat/api';
 import {
   Box,
   Flex,

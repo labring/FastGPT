@@ -3,6 +3,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import fsp from 'fs/promises';
 import fs from 'fs';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
+import { delImgByFileIdList } from '../image/controller';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   return connectionMongo.connection.db.collection(`${bucket}.files`);
@@ -69,24 +70,65 @@ export async function getFileById({
     _id: new Types.ObjectId(fileId)
   });
 
-  if (!file) {
-    return Promise.reject('File not found');
-  }
+  // if (!file) {
+  //   return Promise.reject('File not found');
+  // }
 
-  return file;
+  return file || undefined;
 }
 
-export async function delFileById({
+export async function delFileByFileIdList({
   bucketName,
-  fileId
+  fileIdList,
+  retry = 3
 }: {
   bucketName: `${BucketNameEnum}`;
-  fileId: string;
+  fileIdList: string[];
+  retry?: number;
+}): Promise<any> {
+  try {
+    const bucket = getGridBucket(bucketName);
+
+    await Promise.all(fileIdList.map((id) => bucket.delete(new Types.ObjectId(id))));
+  } catch (error) {
+    if (retry > 0) {
+      return delFileByFileIdList({ bucketName, fileIdList, retry: retry - 1 });
+    }
+  }
+}
+// delete file by metadata(datasetId)
+export async function delFileByMetadata({
+  bucketName,
+  datasetId
+}: {
+  bucketName: `${BucketNameEnum}`;
+  datasetId?: string;
 }) {
   const bucket = getGridBucket(bucketName);
 
-  await bucket.delete(new Types.ObjectId(fileId));
-  return true;
+  const files = await bucket
+    .find(
+      {
+        ...(datasetId && { 'metadata.datasetId': datasetId })
+      },
+      {
+        projection: {
+          _id: 1
+        }
+      }
+    )
+    .toArray();
+
+  const idList = files.map((item) => String(item._id));
+
+  // delete img
+  await delImgByFileIdList(idList);
+
+  // delete file
+  await delFileByFileIdList({
+    bucketName,
+    fileIdList: idList
+  });
 }
 
 export async function getDownloadStream({

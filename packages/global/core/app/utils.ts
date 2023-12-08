@@ -24,7 +24,7 @@ export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEd
     dataset: {
       datasets: [],
       similarity: 0.4,
-      limit: 5,
+      limit: 1500,
       searchEmptyText: '',
       searchMode: DatasetSearchModeEnum.embedding
     },

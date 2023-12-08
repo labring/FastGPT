@@ -4,7 +4,7 @@ import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 export const defaultApp: AppDetailType = {
   _id: '',
   userId: 'userId',
-  name: '模型加载中',
+  name: '应用加载中',
   type: 'simple',
   simpleTemplateId: 'fastgpt-universal',
   avatar: '/icon/logo.svg',

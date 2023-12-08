@@ -82,7 +82,7 @@ const MyRadio = ({
           <Box pr={2}>
             <Box>{t(item.title)}</Box>
             {!!item.desc && (
-              <Box fontSize={'sm'} color={'myGray.500'}>
+              <Box fontSize={['xs', 'sm']} color={'myGray.500'}>
                 {t(item.desc)}
               </Box>
             )}
