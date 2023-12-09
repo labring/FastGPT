@@ -72,6 +72,9 @@ const DatasetCollectionSchema = new Schema({
   rawLink: {
     type: String
   },
+  qaPrompt: {
+    type: String
+  },
   metadata: {
     type: Object,
     default: {}

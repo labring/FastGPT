@@ -56,6 +56,7 @@ export async function generateQA(): Promise<any> {
           collectionId: 1,
           q: 1,
           model: 1,
+          chunkIndex: 1,
           billId: 1,
           prompt: 1
         })
@@ -130,7 +131,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const ai = getAIApi(undefined, 600000);
     const chatResponse = await ai.chat.completions.create({
       model,
-      temperature: 0.01,
+      temperature: 0.3,
       messages,
       stream: false
     });
@@ -144,7 +145,10 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
-      data: qaArr,
+      data: qaArr.map((item) => ({
+        ...item,
+        chunkIndex: data.chunkIndex
+      })),
       mode: TrainingModeEnum.chunk,
       billId: data.billId
     });

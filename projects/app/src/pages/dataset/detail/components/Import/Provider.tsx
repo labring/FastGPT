@@ -158,7 +158,8 @@ const Provider = ({
           fileId: file.fileId,
           rawLink: file.rawLink,
           chunkSize: chunkLen,
-          trainingType: collectionTrainingType
+          trainingType: collectionTrainingType,
+          qaPrompt: mode === TrainingModeEnum.qa ? prompt : ''
         });
 
         // upload data

@@ -45,6 +45,7 @@ export type DatasetCollectionSchemaType = {
   chunkSize: number;
   fileId?: string;
   rawLink?: string;
+  qaPrompt?: string;
   metadata?: Record<string, any>;
 };
 
