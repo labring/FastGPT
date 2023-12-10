@@ -785,7 +785,7 @@ const ChatBox = (
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
 
-                        <ResponseTags responseData={item.responseData} />
+                        <ResponseTags responseData={item.responseData} isShare={!!shareId} />
 
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (

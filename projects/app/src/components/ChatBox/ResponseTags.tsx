@@ -13,12 +13,19 @@ import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import MyIcon from '../Icon';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
 
-const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemResType[] }) => {
+const ResponseTags = ({
+  responseData = [],
+  isShare
+}: {
+  responseData?: ChatHistoryItemResType[];
+  isShare: boolean;
+}) => {
   const theme = useTheme();
   const { isPc } = useSystemStore();
   const { t } = useTranslation();
@@ -62,12 +69,13 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
         .map((item) => ({
           sourceName: item.sourceName,
           sourceId: item.sourceId,
-          icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName })
+          icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+          canReadQuote: !isShare || strIsLink(item.sourceId)
         })),
       historyPreview: chatData?.historyPreview,
       runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
-  }, [responseData]);
+  }, [isShare, responseData]);
 
   const TagStyles: BoxProps = {
     mr: 2,
@@ -132,7 +140,7 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
                       }}
                     />
                   </MyTooltip>
-                  {item.sourceId && (
+                  {item.sourceId && item.canReadQuote && (
                     <MyTooltip label={t('core.chat.quote.Read Source')}>
                       <MyIcon
                         ml={4}
@@ -204,7 +212,11 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
         </MyTooltip>
 
         {!!quoteModalData && (
-          <QuoteModal rawSearch={quoteModalData} onClose={() => setQuoteModalData(undefined)} />
+          <QuoteModal
+            rawSearch={quoteModalData}
+            isShare={isShare}
+            onClose={() => setQuoteModalData(undefined)}
+          />
         )}
         {!!contextModalData && (
           <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
