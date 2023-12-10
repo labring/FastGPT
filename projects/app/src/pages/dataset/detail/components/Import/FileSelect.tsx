@@ -35,7 +35,7 @@ export type FileItemType = {
   id: string; // fileId / raw Link
   filename: string;
   chunks: PushDatasetDataChunkProps[];
-  text: string; // raw text
+  rawText: string; // raw text
   icon: string;
   tokens: number; // total tokens
   type: DatasetCollectionTypeEnum.file | DatasetCollectionTypeEnum.link;
@@ -152,7 +152,7 @@ const FileSelect = ({
               filename: file.name,
               icon,
               tokens: filterData.reduce((sum, item) => sum + countPromptTokens(item.q), 0),
-              text: `${header.join(',')}\n${data
+              rawText: `${header.join(',')}\n${data
                 .map((item) => `"${item[0]}","${item[1]}"`)
                 .join('\n')}`,
               chunks: filterData,
@@ -192,7 +192,7 @@ const FileSelect = ({
               id: nanoid(),
               filename: file.name,
               icon,
-              text,
+              rawText: text,
               tokens: splitRes.tokens,
               type: DatasetCollectionTypeEnum.file,
               fileId,
@@ -228,7 +228,7 @@ const FileSelect = ({
           id: nanoid(),
           filename: url,
           icon: '/imgs/files/link.svg',
-          text: content,
+          rawText: content,
           tokens: splitRes.tokens,
           type: DatasetCollectionTypeEnum.link,
           rawLink: url,
@@ -270,7 +270,7 @@ const FileSelect = ({
           id: nanoid(),
           filename,
           icon: '/imgs/files/txt.svg',
-          text: content,
+          rawText: content,
           tokens: splitRes.tokens,
           type: DatasetCollectionTypeEnum.file,
           fileId: fileIds[0],

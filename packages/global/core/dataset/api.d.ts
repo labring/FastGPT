@@ -26,6 +26,7 @@ export type CreateDatasetCollectionParams = {
   fileId?: string;
   rawLink?: string;
   qaPrompt?: string;
+  hashRawText?: string;
   metadata?: Record<string, any>;
 };
 

@@ -46,6 +46,7 @@ export type DatasetCollectionSchemaType = {
   fileId?: string;
   rawLink?: string;
   qaPrompt?: string;
+  hashRawText?: string;
   metadata?: Record<string, any>;
 };
 
