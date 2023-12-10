@@ -4,7 +4,7 @@ import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
