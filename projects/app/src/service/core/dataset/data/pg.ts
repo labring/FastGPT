@@ -13,15 +13,7 @@ import { jiebaSplit } from '../utils';
 import { reRankRecall } from '../../ai/rerank';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 
-export async function insertData2Pg({
-  mongoDataId,
-  input,
-  model,
-  teamId,
-  tmbId,
-  datasetId,
-  collectionId
-}: {
+export async function insertData2Pg(props: {
   mongoDataId: string;
   input: string;
   model: string;
@@ -29,42 +21,42 @@ export async function insertData2Pg({
   tmbId: string;
   datasetId: string;
   collectionId: string;
-}) {
-  let retry = 2;
-  async function insertPg(): Promise<{ insertId: string; vectors: number[][]; tokenLen: number }> {
-    try {
-      // get vector
-      const { vectors, tokenLen } = await getVectorsByText({
-        model,
-        input: [input]
-      });
-      const { rows } = await PgClient.insert(PgDatasetTableName, {
-        values: [
-          [
-            { key: 'vector', value: `[${vectors[0]}]` },
-            { key: 'team_id', value: String(teamId) },
-            { key: 'tmb_id', value: String(tmbId) },
-            { key: 'dataset_id', value: datasetId },
-            { key: 'collection_id', value: collectionId },
-            { key: 'data_id', value: String(mongoDataId) }
-          ]
+  retry?: number;
+}): Promise<{ insertId: string; vectors: number[][]; tokenLen: number }> {
+  const { mongoDataId, input, model, teamId, tmbId, datasetId, collectionId, retry = 3 } = props;
+  try {
+    // get vector
+    const { vectors, tokenLen } = await getVectorsByText({
+      model,
+      input: [input]
+    });
+    const { rows } = await PgClient.insert(PgDatasetTableName, {
+      values: [
+        [
+          { key: 'vector', value: `[${vectors[0]}]` },
+          { key: 'team_id', value: String(teamId) },
+          { key: 'tmb_id', value: String(tmbId) },
+          { key: 'dataset_id', value: datasetId },
+          { key: 'collection_id', value: collectionId },
+          { key: 'data_id', value: String(mongoDataId) }
         ]
-      });
-      return {
-        insertId: rows[0].id,
-        vectors,
-        tokenLen
-      };
-    } catch (error) {
-      if (--retry < 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return insertPg();
+      ]
+    });
+    return {
+      insertId: rows[0].id,
+      vectors,
+      tokenLen
+    };
+  } catch (error) {
+    if (retry <= 0) {
+      return Promise.reject(error);
     }
+    await delay(500);
+    return insertData2Pg({
+      ...props,
+      retry: retry - 1
+    });
   }
-
-  return insertPg();
 }
 
 export async function updatePgDataById({
@@ -128,8 +120,9 @@ export async function searchDatasetData(props: SearchProps) {
   }
 
   const rerank =
-    searchMode === DatasetSearchModeEnum.embeddingReRank ||
-    searchMode === DatasetSearchModeEnum.embFullTextReRank;
+    global.reRankModels?.[0] &&
+    (searchMode === DatasetSearchModeEnum.embeddingReRank ||
+      searchMode === DatasetSearchModeEnum.embFullTextReRank);
 
   const oneChunkToken = 50;
   const { embeddingLimit, fullTextLimit } = (() => {
@@ -395,8 +388,6 @@ export async function reRankSearchResult({
 
     return mergeResult;
   } catch (error) {
-    console.log(error);
-
     return data;
   }
 }

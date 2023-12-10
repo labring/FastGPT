@@ -8,6 +8,10 @@ const ImageSchema = new Schema({
     ref: TeamCollectionName,
     required: true
   },
+  createTime: {
+    type: Date,
+    default: () => new Date()
+  },
   binary: {
     type: Buffer
   },

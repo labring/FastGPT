@@ -379,14 +379,14 @@ function datasetTemplate({
         },
         {
           key: 'similarity',
-          value: 0.4,
+          value: 0.1,
           type: FlowNodeInputTypeEnum.slider,
           label: '相关度',
           connected: true
         },
         {
           key: 'limit',
-          value: 8,
+          value: 2000,
           type: FlowNodeInputTypeEnum.slider,
           label: '单次搜索上限',
           connected: true
