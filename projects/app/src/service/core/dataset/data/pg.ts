@@ -181,8 +181,6 @@ export async function searchDatasetData(props: SearchProps) {
     return true;
   });
 
-  // token slice
-
   if (!rerank) {
     return {
       searchRes: filterResultsByMaxTokens(
@@ -257,7 +255,7 @@ export async function embeddingRecall({
       {
         _id: { $in: filterRows.map((item) => item.data_id?.trim()) }
       },
-      'datasetId collectionId q a indexes'
+      'datasetId collectionId q a chunkIndex indexes'
     ).lean()
   ]);
   const formatResult = filterRows
@@ -274,6 +272,7 @@ export async function embeddingRecall({
         id: String(data._id),
         q: data.q,
         a: data.a,
+        chunkIndex: data.chunkIndex,
         indexes: data.indexes,
         datasetId: String(data.datasetId),
         collectionId: String(data.collectionId),
@@ -315,7 +314,8 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
             collectionId: 1,
             q: 1,
             a: 1,
-            indexes: 1
+            indexes: 1,
+            chunkIndex: 1
           }
         )
           .sort({ score: { $meta: 'textScore' } })
@@ -347,6 +347,7 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
         sourceId: collection?.fileId || collection?.rawLink,
         q: item.q,
         a: item.a,
+        chunkIndex: item.chunkIndex,
         indexes: item.indexes,
         // @ts-ignore
         score: item.score

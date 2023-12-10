@@ -136,6 +136,7 @@ export type DatasetDataItemType = {
   sourceId?: string;
   q: string;
   a: string;
+  chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
   canWrite: boolean;
