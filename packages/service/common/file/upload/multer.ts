@@ -26,7 +26,8 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
       preservePath: true,
       storage: multer.diskStorage({
         filename: (_req, file, cb) => {
-          const { ext } = path.parse(decodeURIComponent(file.originalname));
+          const filename = decodeURIComponent(file.originalname);
+          const { ext } = path.parse(filename);
           cb(null, nanoid() + ext);
         }
       })
@@ -38,7 +39,6 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
         metadata: T;
         bucketName?: `${BucketNameEnum}`;
       }>((resolve, reject) => {
-        // @ts-ignore
         this.uploader(req, res, (error) => {
           if (error) {
             return reject(error);
@@ -46,12 +46,10 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
 
           resolve({
             ...req.body,
-            files:
-              // @ts-ignore
-              req.files?.map((file) => ({
-                ...file,
-                originalname: decodeURIComponent(file.originalname)
-              })) || [],
+            files: req.files?.map((file) => ({
+              ...file,
+              originalname: decodeURIComponent(file.originalname)
+            })) || [],
             metadata: (() => {
               if (!req.body?.metadata) return {};
               try {
