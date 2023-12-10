@@ -29,7 +29,10 @@ try {
   console.log(error);
 }
 
-export const MongoImage: Model<{ teamId: string; binary: Buffer; metadata?: Record<string, any> }> =
-  models['image'] || model('image', ImageSchema);
+export const MongoImage: Model<{
+  teamId: string;
+  binary: Buffer;
+  metadata?: { fileId?: string };
+}> = models['image'] || model('image', ImageSchema);
 
 MongoImage.syncIndexes();
