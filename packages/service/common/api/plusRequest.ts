@@ -70,7 +70,7 @@ instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
-  if (!global.systemEnv?.pluginBaseUrl) {
+  if (global.systemEnv && !global.systemEnv?.pluginBaseUrl) {
     return Promise.reject('该功能为商业版特有...');
   }
 
