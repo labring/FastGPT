@@ -39,7 +39,7 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
         metadata: T;
         bucketName?: `${BucketNameEnum}`;
       }>((resolve, reject) => {
-        this.uploader(req, res, (error) => {
+        this.uploader(req as unknown as Request, res, (error) => {
           if (error) {
             return reject(error);
           }
