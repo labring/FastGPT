@@ -886,8 +886,9 @@ const ChatBox = (
         />
       ) : null}
       {/* user feedback modal */}
-      {!!feedbackId && (
+      {!!feedbackId && chatId && (
         <FeedbackModal
+          chatId={chatId}
           chatItemId={feedbackId}
           onClose={() => setFeedbackId(undefined)}
           onSuccess={(content: string) => {

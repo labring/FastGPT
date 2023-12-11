@@ -6,10 +6,12 @@ import { useTranslation } from 'next-i18next';
 import { updateChatUserFeedback } from '@/web/core/chat/api';
 
 const FeedbackModal = ({
+  chatId,
   chatItemId,
   onSuccess,
   onClose
 }: {
+  chatId: string;
   chatItemId: string;
   onSuccess: (e: string) => void;
   onClose: () => void;
@@ -21,6 +23,7 @@ const FeedbackModal = ({
     mutationFn: async () => {
       const val = ref.current?.value || t('core.chat.feedback.No Content');
       return updateChatUserFeedback({
+        chatId,
         chatItemId,
         userBadFeedback: val
       });
