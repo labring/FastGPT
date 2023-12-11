@@ -43,7 +43,7 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
-import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';
+import { updateChatAdminFeedback, updateChatUserFeedback } from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';
 
 import MyIcon from '@/components/Icon';
@@ -51,7 +51,6 @@ import Avatar from '@/components/Avatar';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
-import ChatBoxDivider from '@/components/core/chat/Divider';
 import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
@@ -64,7 +63,6 @@ import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import MessageInput from './MessageInput';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -104,6 +102,9 @@ type Props = {
   userGuideModule?: ModuleItemType;
   showFileSelector?: boolean;
   active?: boolean; // can use
+  chatId?: string;
+  shareId?: string;
+  outLinkUid?: string;
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
     responseText: string;
@@ -124,6 +125,9 @@ const ChatBox = (
     userGuideModule,
     showFileSelector,
     active = true,
+    chatId,
+    shareId,
+    outLinkUid,
     onUpdateVariable,
     onStartChat,
     onDelMessage
@@ -133,7 +137,6 @@ const ChatBox = (
   const ChatBoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const router = useRouter();
-  const { shareId } = router.query as { shareId?: string };
   const { t } = useTranslation();
   const { toast } = useToast();
   const { isPc, setLoading } = useSystemStore();
@@ -147,10 +150,8 @@ const ChatBox = (
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
-    // read feedback modal data
     chatItemId: string;
     content: string;
-    isMarked: boolean;
   }>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
@@ -705,33 +706,90 @@ const ChatBox = (
                               }
                             : undefined
                         }
-                        onReadFeedback={
+                        onAddUserLike={(() => {
+                          if (feedbackType !== FeedbackTypeEnum.user || item.userBadFeedback) {
+                            return;
+                          }
+                          return () => {
+                            if (!item.dataId || !chatId) return;
+
+                            const isGoodFeedback = !!item.userGoodFeedback;
+                            setChatHistory((state) =>
+                              state.map((chatItem) =>
+                                chatItem.dataId === item.dataId
+                                  ? {
+                                      ...chatItem,
+                                      userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                                    }
+                                  : chatItem
+                              )
+                            );
+                            try {
+                              updateChatUserFeedback({
+                                chatId,
+                                chatItemId: item.dataId,
+                                shareId,
+                                outLinkUid,
+                                userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                              });
+                            } catch (error) {}
+                          };
+                        })()}
+                        onCloseUserLike={
                           feedbackType === FeedbackTypeEnum.admin
-                            ? () =>
-                                setReadFeedbackData({
-                                  chatItemId: item.dataId || '',
-                                  content: item.userFeedback || '',
-                                  isMarked: !!item.adminFeedback
-                                })
+                            ? () => {
+                                if (!item.dataId || !chatId) return;
+                                setChatHistory((state) =>
+                                  state.map((chatItem) =>
+                                    chatItem.dataId === item.dataId
+                                      ? { ...chatItem, userGoodFeedback: undefined }
+                                      : chatItem
+                                  )
+                                );
+                                updateChatUserFeedback({
+                                  chatId,
+                                  chatItemId: item.dataId,
+                                  userGoodFeedback: undefined
+                                });
+                              }
                             : undefined
                         }
-                        onFeedback={
-                          feedbackType === FeedbackTypeEnum.user
-                            ? item.userFeedback
-                              ? () => {
-                                  if (!item.dataId) return;
-                                  setChatHistory((state) =>
-                                    state.map((chatItem) =>
-                                      chatItem.dataId === item.dataId
-                                        ? { ...chatItem, userFeedback: undefined }
-                                        : chatItem
-                                    )
-                                  );
-                                  try {
-                                    userUpdateChatFeedback({ chatItemId: item.dataId });
-                                  } catch (error) {}
-                                }
-                              : () => setFeedbackId(item.dataId)
+                        onAddUserDislike={(() => {
+                          if (feedbackType !== FeedbackTypeEnum.user || item.userGoodFeedback) {
+                            return;
+                          }
+                          if (item.userBadFeedback) {
+                            return () => {
+                              if (!item.dataId || !chatId) return;
+                              setChatHistory((state) =>
+                                state.map((chatItem) =>
+                                  chatItem.dataId === item.dataId
+                                    ? { ...chatItem, userBadFeedback: undefined }
+                                    : chatItem
+                                )
+                              );
+                              try {
+                                updateChatUserFeedback({
+                                  chatId,
+                                  chatItemId: item.dataId,
+                                  shareId,
+                                  outLinkUid
+                                });
+                              } catch (error) {}
+                            };
+                          } else {
+                            return () => setFeedbackId(item.dataId);
+                          }
+                        })()}
+                        onReadUserDislike={
+                          feedbackType === FeedbackTypeEnum.admin
+                            ? () => {
+                                if (!item.dataId) return;
+                                setReadFeedbackData({
+                                  chatItemId: item.dataId || '',
+                                  content: item.userBadFeedback || ''
+                                });
+                              }
                             : undefined
                         }
                       />
@@ -827,7 +885,6 @@ const ChatBox = (
           showFileSelector={showFileSelector}
         />
       ) : null}
-
       {/* user feedback modal */}
       {!!feedbackId && (
         <FeedbackModal
@@ -836,7 +893,7 @@ const ChatBox = (
           onSuccess={(content: string) => {
             setChatHistory((state) =>
               state.map((item) =>
-                item.dataId === feedbackId ? { ...item, userFeedback: content } : item
+                item.dataId === feedbackId ? { ...item, userBadFeedback: content } : item
               )
             );
             setFeedbackId(undefined);
@@ -846,27 +903,23 @@ const ChatBox = (
       {/* admin read feedback modal */}
       {!!readFeedbackData && (
         <ReadFeedbackModal
-          {...readFeedbackData}
+          content={readFeedbackData.content}
           onClose={() => setReadFeedbackData(undefined)}
-          onMark={() => {
-            const index = chatHistory.findIndex(
-              (item) => item.dataId === readFeedbackData.chatItemId
-            );
-            if (index === -1) return setReadFeedbackData(undefined);
-            setAdminMarkData({
-              chatItemId: readFeedbackData.chatItemId,
-              q: chatHistory[index - 1]?.value || '',
-              a: chatHistory[index]?.value || ''
-            });
-          }}
-          onSuccess={() => {
+          onCloseFeedback={() => {
             setChatHistory((state) =>
               state.map((chatItem) =>
                 chatItem.dataId === readFeedbackData.chatItemId
-                  ? { ...chatItem, userFeedback: undefined }
+                  ? { ...chatItem, userBadFeedback: undefined }
                   : chatItem
               )
             );
+            try {
+              if (!chatId) return;
+              updateChatUserFeedback({
+                chatId,
+                chatItemId: readFeedbackData.chatItemId
+              });
+            } catch (error) {}
             setReadFeedbackData(undefined);
           }}
         />
@@ -878,7 +931,7 @@ const ChatBox = (
           setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
           onClose={() => setAdminMarkData(undefined)}
           onSuccess={(adminFeedback) => {
-            adminUpdateChatFeedback({
+            updateChatAdminFeedback({
               chatItemId: adminMarkData.chatItemId,
               ...adminFeedback
             });
@@ -894,15 +947,16 @@ const ChatBox = (
               )
             );
 
-            if (readFeedbackData) {
-              userUpdateChatFeedback({
+            if (readFeedbackData && chatId) {
+              updateChatUserFeedback({
+                chatId,
                 chatItemId: readFeedbackData.chatItemId,
-                userFeedback: undefined
+                userBadFeedback: undefined
               });
               setChatHistory((state) =>
                 state.map((chatItem) =>
                   chatItem.dataId === readFeedbackData.chatItemId
-                    ? { ...chatItem, userFeedback: undefined }
+                    ? { ...chatItem, userBadFeedback: undefined }
                     : chatItem
                 )
               );
@@ -1053,11 +1107,13 @@ function ChatController({
   display,
   showVoiceIcon,
   ttsConfig,
-  onReadFeedback,
+  onReadUserDislike,
+  onCloseUserLike,
   onMark,
   onRetry,
   onDelete,
-  onFeedback,
+  onAddUserDislike,
+  onAddUserLike,
   ml,
   mr
 }: {
@@ -1068,8 +1124,10 @@ function ChatController({
   onRetry?: () => void;
   onDelete?: () => void;
   onMark?: () => void;
-  onReadFeedback?: () => void;
-  onFeedback?: () => void;
+  onReadUserDislike?: () => void;
+  onCloseUserLike?: () => void;
+  onAddUserLike?: () => void;
+  onAddUserDislike?: () => void;
 } & FlexProps) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -1183,39 +1241,62 @@ function ChatController({
           />
         </MyTooltip>
       )}
-      {!!onReadFeedback && (
-        <MyTooltip label={t('chat.Read User Feedback')}>
+      {!!onCloseUserLike && chat.userGoodFeedback && (
+        <MyTooltip label={t('core.chat.feedback.Close User Like')}>
           <MyIcon
-            display={chat.userFeedback ? 'block' : 'none'}
+            {...controlIconStyle}
+            color={'white'}
+            bg={'green.500'}
+            fontWeight={'bold'}
+            name={'core/chat/feedback/goodLight'}
+            onClick={onCloseUserLike}
+          />
+        </MyTooltip>
+      )}
+      {!!onReadUserDislike && chat.userBadFeedback && (
+        <MyTooltip label={t('core.chat.feedback.Read User dislike')}>
+          <MyIcon
             {...controlIconStyle}
             color={'white'}
             bg={'#FC9663'}
             fontWeight={'bold'}
             name={'core/chat/feedback/badLight'}
-            onClick={onReadFeedback}
+            onClick={onReadUserDislike}
           />
         </MyTooltip>
       )}
-      {!!onFeedback && (
-        <MyTooltip
-          label={chat.userFeedback ? `取消反馈。\n您当前反馈内容为:\n${chat.userFeedback}` : '反馈'}
-        >
-          <MyIcon
-            {...controlIconStyle}
-            {...(!!chat.userFeedback
-              ? {
-                  color: 'white',
-                  bg: '#FC9663',
-                  fontWeight: 'bold',
-                  onClick: onFeedback
-                }
-              : {
-                  _hover: { color: '#FB7C3C' },
-                  onClick: onFeedback
-                })}
-            name={'core/chat/feedback/badLight'}
-          />
-        </MyTooltip>
+      {!!onAddUserLike && (
+        <MyIcon
+          {...controlIconStyle}
+          {...(!!chat.userGoodFeedback
+            ? {
+                color: 'white',
+                bg: 'green.500',
+                fontWeight: 'bold'
+              }
+            : {
+                _hover: { color: 'green.600' }
+              })}
+          name={'core/chat/feedback/goodLight'}
+          onClick={onAddUserLike}
+        />
+      )}
+      {!!onAddUserDislike && (
+        <MyIcon
+          {...controlIconStyle}
+          {...(!!chat.userBadFeedback
+            ? {
+                color: 'white',
+                bg: '#FC9663',
+                fontWeight: 'bold',
+                onClick: onAddUserDislike
+              }
+            : {
+                _hover: { color: '#FB7C3C' },
+                onClick: onAddUserDislike
+              })}
+          name={'core/chat/feedback/badLight'}
+        />
       )}
     </Flex>
   );

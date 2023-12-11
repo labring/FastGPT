@@ -358,6 +358,9 @@ const OutLink = ({
               onUpdateVariable={(e) => {}}
               onStartChat={startChat}
               onDelMessage={(e) => delOneHistoryItem({ ...e, chatId, shareId, outLinkUid })}
+              chatId={chatId}
+              shareId={shareId}
+              outLinkUid={outLinkUid}
             />
           </Box>
         </Flex>
