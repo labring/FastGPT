@@ -94,12 +94,17 @@ async function functionCall({
     ...history,
     {
       obj: ChatRoleEnum.Human,
-      value: `<提取要求>
-${description || '从文本中提取指定的 JSON 字段'}
+      value: `<要求>
+根据用户要求提取适当的 JSON 字符串。
+</要求>
+<提取要求>
+- 如果字段为空，你返回空字符串。
+- 不要换行。
+- 结合历史记录和文本进行提取。
 </提取要求>
-
-文本: ${content}
-`
+<文本>
+${content}
+</文本>`
     }
   ];
   const filterMessages = ChatContextFilter({
@@ -125,7 +130,7 @@ ${description || '从文本中提取指定的 JSON 字段'}
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: `Extract the json field from the text`,
+    description,
     parameters: {
       type: 'object',
       properties,
@@ -155,7 +160,7 @@ ${description || '从文本中提取指定的 JSON 字段'}
       );
     } catch (error) {
       console.log(agentFunction.parameters);
-      console.log(response.choices?.[0]?.message);
+      console.log(response.choices?.[0]?.message?.tool_calls?.[0]?.function);
       console.log('Your model may not support tool_call', error);
       return {};
     }
