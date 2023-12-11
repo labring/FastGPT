@@ -57,15 +57,15 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
       value: [
         {
           value: '打招呼',
-          key: 'fasw'
+          key: 'wqre'
         },
         {
           value: '关于 xxx 的问题',
-          key: 'fqsw'
+          key: 'sdfa'
         },
         {
           value: '其他问题',
-          key: 'fesw'
+          key: 'agex'
         }
       ],
       showTargetInApp: false,

@@ -23,7 +23,7 @@ type Response = {
   [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
 };
 
-const agentFunName = 'agent_extract_data';
+const agentFunName = 'extract_json_data';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
@@ -94,7 +94,12 @@ async function functionCall({
     ...history,
     {
       obj: ChatRoleEnum.Human,
-      value: content
+      value: `<提取要求>
+${description || '从文本中提取指定的 JSON 字段'}
+</提取要求>
+
+文本: ${content}
+`
     }
   ];
   const filterMessages = ChatContextFilter({
@@ -120,7 +125,7 @@ async function functionCall({
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: `${description}\n如果内容不存在，返回空字符串。`,
+    description: `Extract the json field from the text`,
     parameters: {
       type: 'object',
       properties,
@@ -134,17 +139,24 @@ async function functionCall({
     model: extractModel.model,
     temperature: 0,
     messages: [...adaptMessages],
-    function_call: { name: agentFunName },
-    functions: [agentFunction]
+    tools: [
+      {
+        type: 'function',
+        function: agentFunction
+      }
+    ],
+    tool_choice: { type: 'function', function: { name: agentFunName } }
   });
 
   const arg: Record<string, any> = (() => {
     try {
-      return JSON.parse(response.choices?.[0]?.message?.function_call?.arguments || '{}');
+      return JSON.parse(
+        response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '{}'
+      );
     } catch (error) {
       console.log(agentFunction.parameters);
       console.log(response.choices?.[0]?.message);
-      console.log('Your model may not support function_call', error);
+      console.log('Your model may not support tool_call', error);
       return {};
     }
   })();
@@ -169,9 +181,7 @@ async function completions({
         json: extractKeys
           .map(
             (item) =>
-              `key="${item.key}"，描述="${item.desc}"，required="${
-                item.required ? 'true' : 'false'
-              }"`
+              `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}}}`
           )
           .join('\n'),
         text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}

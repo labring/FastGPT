@@ -97,7 +97,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                           });
                         }}
                       />
-                      <SourceHandle handleKey={item.key} valueType={ModuleDataTypeEnum.boolean} />
+                      <SourceHandle handleKey={item.key} valueType={ModuleDataTypeEnum.string} />
                     </Box>
                   </Box>
                 ))}
