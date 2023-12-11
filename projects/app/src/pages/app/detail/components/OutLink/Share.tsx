@@ -34,7 +34,7 @@ import { formatTimeToChatTime } from '@/utils/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/app';
-import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
@@ -45,12 +45,16 @@ import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
+import dynamic from 'next/dynamic';
+
+const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
 const Share = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
+  const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema>();
   const { toast } = useToast();
 
   const {
@@ -142,6 +146,15 @@ const Share = ({ appId }: { appId: string }) => {
                     </MenuButton>
                     <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
                       <MenuItem
+                        onClick={() => {
+                          setSelectedLinkData(item);
+                        }}
+                        py={[2, 3]}
+                      >
+                        <MyIcon name={'copy'} w={['14px', '16px']} />
+                        <Box ml={[1, 2]}>{t('core.app.outLink.Select Mode')}</Box>
+                      </MenuItem>
+                      <MenuItem
                         onClick={() =>
                           setEditLinkData({
                             _id: item._id,
@@ -154,28 +167,6 @@ const Share = ({ appId }: { appId: string }) => {
                       >
                         <MyIcon name={'edit'} w={['14px', '16px']} />
                         <Box ml={[1, 2]}>{t('common.Edit')}</Box>
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => {
-                          const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
-                          copyData(url, '已复制分享链接，可直接分享使用');
-                        }}
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'copy'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('common.Copy')}</Box>
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() => {
-                          const url = `${location.origin}/chat/share?shareId=${item.shareId}`;
-                          const src = `${location.origin}/js/iframe.js`;
-                          const script = `<script src="${src}" id="fastgpt-iframe" data-src="${url}" data-color="#4e83fd"></script>`;
-                          copyData(script, '已复制嵌入 Script，可在应用 HTML 底部嵌入', 3000);
-                        }}
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'apiLight'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('outlink.Copy IFrame')}</Box>
                       </MenuItem>
                       <MenuItem
                         onClick={async () => {
@@ -230,6 +221,12 @@ const Share = ({ appId }: { appId: string }) => {
             setEditLinkData(undefined);
           }}
           onClose={() => setEditLinkData(undefined)}
+        />
+      )}
+      {!!selectedLinkData && (
+        <SelectUsingWayModal
+          share={selectedLinkData}
+          onClose={() => setSelectedLinkData(undefined)}
         />
       )}
       <Loading loading={isFetching} fixed={false} />

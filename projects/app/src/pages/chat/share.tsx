@@ -343,6 +343,7 @@ const OutLink = ({
             appAvatar={chatData.app.avatar}
             appName={chatData.app.name}
             history={chatData.history}
+            showHistory={showHistory === '1'}
             onOpenSlider={onOpenSlider}
           />
           {/* chat box */}

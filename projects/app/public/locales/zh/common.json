@@ -265,6 +265,20 @@
       "logs": {
         "Source And Time": "来源 & 时间"
       },
+      "outLink": {
+        "Can Drag": "图标可拖拽",
+        "Default open": "默认打开",
+        "Iframe block title": "复制下面 Iframe 加入到你的网站中",
+        "Link block title": "将下面链接复制到浏览器打开",
+        "Script Close Icon": "关闭图标",
+        "Script Icon": "图标",
+        "Script Open Icon": "打开图标",
+        "Script block title": "将下面代码加入到你的网站中",
+        "Select Mode": "开始使用",
+        "Select Using Way": "选择使用方式",
+        "Show History": "展示历史对话",
+        "Web Link": "网络链接"
+      },
       "setting": "应用信息设置",
       "simple": {
         "mode template select": "简易模板"
@@ -297,9 +311,9 @@
       "feedback": {
         "Close User Good Feedback": "",
         "Close User Like": "用户表示赞同\n点击关闭该标记",
+        "Feedback Close": "关闭反馈",
         "No Content": "用户没有填写具体反馈内容",
-        "Read User dislike": "用户表示反对\n点击查看内容",
-        "Feedback Close": "关闭反馈"
+        "Read User dislike": "用户表示反对\n点击查看内容"
       },
       "markdown": {
         "Edit Question": "编辑问题",
