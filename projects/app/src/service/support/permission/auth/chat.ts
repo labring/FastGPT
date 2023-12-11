@@ -45,9 +45,16 @@ export async function autChatCrud({
     }
 
     // req auth
-    const { tmbId, role } = await authUserRole(props);
+    const { teamId, tmbId, role } = await authUserRole(props);
+
+    if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
+
     if (role === TeamMemberRoleEnum.owner) return { uid: outLinkUid };
     if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
+
+    // admin
+    if (per === 'r' && role === TeamMemberRoleEnum.admin) return { uid: outLinkUid };
+
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();
 

@@ -6,6 +6,8 @@ import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset
 import { MongoDatasetCollection } from './schema';
 
 export async function createOneCollection({
+  teamId,
+  tmbId,
   name,
   parentId,
   datasetId,
@@ -14,8 +16,8 @@ export async function createOneCollection({
   chunkSize = 0,
   fileId,
   rawLink,
-  teamId,
-  tmbId,
+  qaPrompt,
+  hashRawText,
   metadata = {}
 }: CreateDatasetCollectionParams & { teamId: string; tmbId: string }) {
   const { _id } = await MongoDatasetCollection.create({
@@ -29,6 +31,8 @@ export async function createOneCollection({
     chunkSize,
     fileId,
     rawLink,
+    qaPrompt,
+    hashRawText,
     metadata
   });
 
@@ -71,3 +75,19 @@ export function createDefaultCollection({
     updateTime: new Date('2099')
   });
 }
+
+// check same collection
+export const getSameRawTextCollection = async ({
+  datasetId,
+  hashRawText
+}: {
+  datasetId: string;
+  hashRawText?: string;
+}) => {
+  const collection = await MongoDatasetCollection.findOne({
+    datasetId,
+    hashRawText
+  });
+
+  return collection;
+};

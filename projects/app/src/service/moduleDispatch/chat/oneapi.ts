@@ -223,6 +223,7 @@ function filterQuote({
       score: item.score?.toFixed(4)
     });
   }
+
   const sliceResult = sliceMessagesTB({
     maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item, index) => ({
@@ -234,13 +235,30 @@ function filterQuote({
   // slice filterSearch
   const filterQuoteQA = quoteQA.slice(0, sliceResult.length);
 
+  // filterQuoteQA按collectionId聚合在一起后，再按chunkIndex从小到大排序
+  const sortQuoteQAMap: Record<string, SearchDataResponseItemType[]> = {};
+  filterQuoteQA.forEach((item) => {
+    if (sortQuoteQAMap[item.collectionId]) {
+      sortQuoteQAMap[item.collectionId].push(item);
+    } else {
+      sortQuoteQAMap[item.collectionId] = [item];
+    }
+  });
+  const sortQuoteQAList = Object.values(sortQuoteQAMap).flat();
+  sortQuoteQAList.sort((a, b) => {
+    if (a.collectionId === b.collectionId) {
+      return a.chunkIndex - b.chunkIndex;
+    }
+    return 0;
+  });
+
   const quoteText =
     filterQuoteQA.length > 0
       ? `${filterQuoteQA.map((item, index) => getValue(item, index)).join('\n')}`
       : '';
 
   return {
-    filterQuoteQA,
+    filterQuoteQA: sortQuoteQAList,
     quoteText
   };
 }

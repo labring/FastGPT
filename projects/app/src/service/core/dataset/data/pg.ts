@@ -13,15 +13,7 @@ import { jiebaSplit } from '../utils';
 import { reRankRecall } from '../../ai/rerank';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 
-export async function insertData2Pg({
-  mongoDataId,
-  input,
-  model,
-  teamId,
-  tmbId,
-  datasetId,
-  collectionId
-}: {
+export async function insertData2Pg(props: {
   mongoDataId: string;
   input: string;
   model: string;
@@ -29,42 +21,42 @@ export async function insertData2Pg({
   tmbId: string;
   datasetId: string;
   collectionId: string;
-}) {
-  let retry = 2;
-  async function insertPg(): Promise<{ insertId: string; vectors: number[][]; tokenLen: number }> {
-    try {
-      // get vector
-      const { vectors, tokenLen } = await getVectorsByText({
-        model,
-        input: [input]
-      });
-      const { rows } = await PgClient.insert(PgDatasetTableName, {
-        values: [
-          [
-            { key: 'vector', value: `[${vectors[0]}]` },
-            { key: 'team_id', value: String(teamId) },
-            { key: 'tmb_id', value: String(tmbId) },
-            { key: 'dataset_id', value: datasetId },
-            { key: 'collection_id', value: collectionId },
-            { key: 'data_id', value: String(mongoDataId) }
-          ]
+  retry?: number;
+}): Promise<{ insertId: string; vectors: number[][]; tokenLen: number }> {
+  const { mongoDataId, input, model, teamId, tmbId, datasetId, collectionId, retry = 3 } = props;
+  try {
+    // get vector
+    const { vectors, tokenLen } = await getVectorsByText({
+      model,
+      input: [input]
+    });
+    const { rows } = await PgClient.insert(PgDatasetTableName, {
+      values: [
+        [
+          { key: 'vector', value: `[${vectors[0]}]` },
+          { key: 'team_id', value: String(teamId) },
+          { key: 'tmb_id', value: String(tmbId) },
+          { key: 'dataset_id', value: datasetId },
+          { key: 'collection_id', value: collectionId },
+          { key: 'data_id', value: String(mongoDataId) }
         ]
-      });
-      return {
-        insertId: rows[0].id,
-        vectors,
-        tokenLen
-      };
-    } catch (error) {
-      if (--retry < 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return insertPg();
+      ]
+    });
+    return {
+      insertId: rows[0].id,
+      vectors,
+      tokenLen
+    };
+  } catch (error) {
+    if (retry <= 0) {
+      return Promise.reject(error);
     }
+    await delay(500);
+    return insertData2Pg({
+      ...props,
+      retry: retry - 1
+    });
   }
-
-  return insertPg();
 }
 
 export async function updatePgDataById({
@@ -128,8 +120,9 @@ export async function searchDatasetData(props: SearchProps) {
   }
 
   const rerank =
-    searchMode === DatasetSearchModeEnum.embeddingReRank ||
-    searchMode === DatasetSearchModeEnum.embFullTextReRank;
+    global.reRankModels?.[0] &&
+    (searchMode === DatasetSearchModeEnum.embeddingReRank ||
+      searchMode === DatasetSearchModeEnum.embFullTextReRank);
 
   const oneChunkToken = 50;
   const { embeddingLimit, fullTextLimit } = (() => {
@@ -187,8 +180,6 @@ export async function searchDatasetData(props: SearchProps) {
     set.add(str);
     return true;
   });
-
-  // token slice
 
   if (!rerank) {
     return {
@@ -264,7 +255,7 @@ export async function embeddingRecall({
       {
         _id: { $in: filterRows.map((item) => item.data_id?.trim()) }
       },
-      'datasetId collectionId q a indexes'
+      'datasetId collectionId q a chunkIndex indexes'
     ).lean()
   ]);
   const formatResult = filterRows
@@ -281,6 +272,7 @@ export async function embeddingRecall({
         id: String(data._id),
         q: data.q,
         a: data.a,
+        chunkIndex: data.chunkIndex,
         indexes: data.indexes,
         datasetId: String(data.datasetId),
         collectionId: String(data.collectionId),
@@ -322,7 +314,8 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
             collectionId: 1,
             q: 1,
             a: 1,
-            indexes: 1
+            indexes: 1,
+            chunkIndex: 1
           }
         )
           .sort({ score: { $meta: 'textScore' } })
@@ -354,6 +347,7 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
         sourceId: collection?.fileId || collection?.rawLink,
         q: item.q,
         a: item.a,
+        chunkIndex: item.chunkIndex,
         indexes: item.indexes,
         // @ts-ignore
         score: item.score
@@ -395,8 +389,6 @@ export async function reRankSearchResult({
 
     return mergeResult;
   } catch (error) {
-    console.log(error);
-
     return data;
   }
 }

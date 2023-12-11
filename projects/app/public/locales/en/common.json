@@ -65,7 +65,6 @@
     "Confirm to clear share chat history": " Are you sure to delete all chats?",
     "Converting to text": "Converting to text...",
     "Exit Chat": "Exit",
-    "Feedback Close": "Close Feedback",
     "Feedback Failed": "Feedback Failed",
     "Feedback Mark": "Mark",
     "Feedback Modal": "Feedback",
@@ -81,7 +80,6 @@
     "Question Guide Tips": "I guess what you're asking is",
     "Quote": "Quote",
     "Read Mark Description": "Read mark description",
-    "Read User Feedback": "Read user feedback",
     "Select Mark Kb": "Select Dataset",
     "Select Mark Kb Desc": "Select a dataset to store the expected answers",
     "You need to a chat app": "You need to a chat app",
@@ -201,6 +199,9 @@
     "confirm": {
       "Common Tip": "Operational Confirm"
     },
+    "course": {
+      "Read Course": "Read Course"
+    },
     "empty": {
       "Common Tip": "No data"
     },
@@ -234,6 +235,10 @@
     },
     "speech": {
       "error tip": "Speech Failed"
+    },
+    "system": {
+      "Help Chatbot": "Chatbot Helper",
+      "Use Helper": "UsingHelp"
     }
   },
   "core": {
@@ -257,6 +262,9 @@
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
+      "logs": {
+        "Source And Time": "Source & Time"
+      },
       "setting": "App Setting",
       "simple": {
         "mode template select": "Template"
@@ -283,6 +291,16 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "error": {
+        "Messages empty": "Interface content is empty, maybe the text is too long ~"
+      },
+      "feedback": {
+        "Close User Good Feedback": "",
+        "Close User Like": "The user like\nClick to close the tag",
+        "No Content": "The user did not fill in the specific feedback content",
+        "Read User dislike": "User dislike\nClick to view content",
+        "Feedback Close": "Close Feedback"
+      },
       "markdown": {
         "Edit Question": "Edit Question",
         "Quick Question": "Ask the question immediately",
@@ -295,9 +313,6 @@
       },
       "tts": {
         "Stop Speech": "Stop"
-      },
-      "error": {
-        "Messages empty": "Interface content is empty, maybe the text is too long ~"
       }
     },
     "dataset": {
@@ -379,13 +394,13 @@
         "id": "Data ID"
       },
       "error": {
+        "Start Sync Failed": "Start Sync Failed",
         "unAuthDataset": "No access to this knowledge base ",
         "unAuthDatasetCollection": "Not authorized to manipulate this data set ",
         "unAuthDatasetData": "Not authorized to manipulate this data ",
         "unAuthDatasetFile": "No permission to manipulate this file ",
         "unCreateCollection": "No permission to manipulate this data ",
-        "unLinkCollection": "not a network link collection ",
-        "Start Sync Failed": "Start Sync Failed"
+        "unLinkCollection": "not a network link collection "
       },
       "file": "File",
       "folder": "Folder",
@@ -462,6 +477,7 @@
         "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
         "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
         "Selector": "Selector",
+        "Selector Course": "Selector using tutorial",
         "Start Sync": "Start Sync",
         "UnValid Website Tip": "Your site may not be static and cannot be synchronized"
       }
@@ -669,6 +685,10 @@
     "Visual AI orchestration": "Visual AI orchestration",
     "Why FastGPT": "Why {{title}}",
     "desc": "AI knowledge base question and answer platform based on LLM large model",
+    "navbar": {
+      "Use guidance": "Use Guidance",
+      "chatbot": "Chatbot"
+    },
     "slogan": "Let the AI know more about you"
   },
   "module": {

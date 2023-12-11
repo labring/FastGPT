@@ -6,7 +6,7 @@ import {
   delFileByFileIdList,
   getGFSCollection
 } from '@fastgpt/service/common/file/gridfs/controller';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { delay } from '@fastgpt/global/common/system/utils';
 

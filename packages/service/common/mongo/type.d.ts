@@ -3,5 +3,4 @@ import type { Logger } from 'winston';
 
 declare global {
   var mongodb: Mongoose | undefined;
-  var logger: Logger;
 }

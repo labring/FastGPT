@@ -60,12 +60,30 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         },
         {
           $addFields: {
-            feedbackCount: {
+            userGoodFeedbackCount: {
               $size: {
                 $filter: {
                   input: '$chatitems',
                   as: 'item',
-                  cond: { $ifNull: ['$$item.userFeedback', false] }
+                  cond: { $ifNull: ['$$item.userGoodFeedback', false] }
+                }
+              }
+            },
+            userBadFeedbackCount: {
+              $size: {
+                $filter: {
+                  input: '$chatitems',
+                  as: 'item',
+                  cond: { $ifNull: ['$$item.userBadFeedback', false] }
+                }
+              }
+            },
+            robotBadFeedbackCount: {
+              $size: {
+                $filter: {
+                  input: '$chatitems',
+                  as: 'item',
+                  cond: { $ifNull: ['$$item.robotBadFeedback', false] }
                 }
               }
             },
@@ -80,7 +98,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         },
-        { $sort: { feedbackCount: -1, updateTime: -1 } },
+        {
+          $sort: {
+            userBadFeedbackCount: -1,
+            userGoodFeedbackCount: -1,
+            robotBadFeedbackCount: -1,
+            updateTime: -1
+          }
+        },
         { $skip: (pageNum - 1) * pageSize },
         { $limit: pageSize },
         {
@@ -91,7 +116,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             source: 1,
             time: '$updateTime',
             messageCount: { $size: '$chatitems' },
-            feedbackCount: 1,
+            userGoodFeedbackCount: 1,
+            userBadFeedbackCount: 1,
+            robotBadFeedbackCount: 1,
             markCount: 1
           }
         }

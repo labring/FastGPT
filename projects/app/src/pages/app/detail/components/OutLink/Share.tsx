@@ -91,11 +91,10 @@ const Share = ({ appId }: { appId: string }) => {
           <Thead>
             <Tr>
               <Th>名称</Th>
-              <Th>金额消耗(￥)</Th>
+              <Th>金额消耗</Th>
               <Th>返回详情</Th>
               {feConfigs?.isPlus && (
                 <>
-                  <Th>金额限制(￥)</Th>
                   <Th>IP限流（人/分钟）</Th>
                   <Th>过期时间</Th>
                   <Th>身份校验</Th>
@@ -109,13 +108,19 @@ const Share = ({ appId }: { appId: string }) => {
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
-                <Td>{formatPrice(item.total)}</Td>
+                <Td>
+                  {formatPrice(item.total)}
+                  {feConfigs?.isPlus
+                    ? `${
+                        item.limit && item.limit.credit > -1
+                          ? ` / ${item.limit.credit}元`
+                          : ' / 无限制'
+                      }`
+                    : ''}
+                </Td>
                 <Td>{item.responseDetail ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
                   <>
-                    <Td>
-                      {item.limit && item.limit.credit > -1 ? `${item.limit.credit}元` : '无限制'}
-                    </Td>
                     <Td>{item?.limit?.QPM || '-'}</Td>
                     <Td>
                       {item?.limit?.expiredTime

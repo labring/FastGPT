@@ -13,8 +13,7 @@
     "nextjs-cors": "^2.1.2",
     "pg": "^8.10.0",
     "tunnel": "^0.0.6",
-    "winston": "^3.10.0",
-    "winston-mongodb": "^5.1.1"
+    "dayjs": "^1.11.7"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.2",
