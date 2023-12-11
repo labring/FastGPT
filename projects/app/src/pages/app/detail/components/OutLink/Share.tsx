@@ -287,7 +287,7 @@ function EditLinkModal({
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 90px'}>{t('Name')}:</Box>
+          <Box flex={'0 0 90px'}>{t('Name')}</Box>
           <Input
             placeholder={t('outlink.Link Name') || 'Link Name'}
             maxLength={20}
@@ -300,7 +300,7 @@ function EditLinkModal({
           <>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                QPM:
+                QPM
                 <MyTooltip label={t('outlink.QPM Tips' || '')}>
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
@@ -317,7 +317,7 @@ function EditLinkModal({
             </Flex>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('common.Max credit')}:
+                {t('common.Max credit')}
                 <MyTooltip label={t('common.Max credit tips' || '')}>
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
@@ -333,7 +333,7 @@ function EditLinkModal({
             </Flex>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('common.Expired Time')}:
+                {t('common.Expired Time')}
               </Flex>
               <Input
                 type="datetime-local"
@@ -348,7 +348,7 @@ function EditLinkModal({
               />
             </Flex>
             <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'}>
+              <Flex flex={'0 0 90px'} alignItems={'center'}>
                 {t('outlink.token auth')}
                 <MyTooltip label={t('outlink.token auth Tips') || ''}>
                   <QuestionOutlineIcon ml={1} />
@@ -372,7 +372,7 @@ function EditLinkModal({
 
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('outlink.Response Detail')}:
+            {t('outlink.Response Detail')}
             <MyTooltip label={t('outlink.Response Detail tips' || '')}>
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
