@@ -175,18 +175,17 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </Box>
       )}
-      {feConfigs?.docUrl && (
-        <MyTooltip label={t('home.Docs')} placement={'right-end'}>
-          <Box
+      {(feConfigs?.docUrl || feConfigs?.chatbotUrl) && (
+        <MyTooltip label={t('common.system.Use Helper')} placement={'right-end'}>
+          <Link
             {...itemStyles}
+            href={feConfigs?.chatbotUrl || getDocPath('/docs/intro')}
+            target="_blank"
             mb={0}
             color={'#9096a5'}
-            onClick={() => {
-              window.open(getDocPath('/docs/intro'));
-            }}
           >
             <MyIcon name={'common/courseLight'} width={'26px'} height={'26px'} />
-          </Box>
+          </Link>
         </MyTooltip>
       )}
       {feConfigs?.show_git && (

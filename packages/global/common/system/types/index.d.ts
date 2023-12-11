@@ -9,6 +9,7 @@ export type FeConfigsType = {
   hide_app_flow?: boolean;
   concatMd?: string;
   docUrl?: string;
+  chatbotUrl?: string;
   openAPIDocUrl?: string;
   systemTitle?: string;
   googleClientVerKey?: string;

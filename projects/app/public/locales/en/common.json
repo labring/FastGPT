@@ -237,6 +237,10 @@
     },
     "speech": {
       "error tip": "Speech Failed"
+    },
+    "system": {
+      "Help Chatbot": "Chatbot Helper",
+      "Use Helper": "UsingHelp"
     }
   },
   "core": {
@@ -673,6 +677,10 @@
     "Visual AI orchestration": "Visual AI orchestration",
     "Why FastGPT": "Why {{title}}",
     "desc": "AI knowledge base question and answer platform based on LLM large model",
+    "navbar": {
+      "Use guidance": "Use Guidance",
+      "chatbot": "Chatbot"
+    },
     "slogan": "Let the AI know more about you"
   },
   "module": {

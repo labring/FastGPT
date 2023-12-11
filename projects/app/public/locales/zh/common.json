@@ -237,6 +237,10 @@
     },
     "speech": {
       "error tip": "语音转文字失败"
+    },
+    "system": {
+      "Help Chatbot": "机器人助手",
+      "Use Helper": "使用帮助"
     }
   },
   "core": {
@@ -673,6 +677,10 @@
     "Visual AI orchestration": "可视化 AI 编排",
     "Why FastGPT": "为什么选择 {{title}}",
     "desc": "基于 LLM 大模型的 AI 知识库问答平台",
+    "navbar": {
+      "Use guidance": "使用引导",
+      "chatbot": "问答机器人"
+    },
     "slogan": "让 AI 更懂你的知识"
   },
   "module": {
