@@ -2,7 +2,7 @@ import { BillSourceEnum, PRICE_SCALE } from '@fastgpt/global/support/wallet/bill
 import { getAudioSpeechModel, getQAModel } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
 import { defaultQGModels } from '@fastgpt/global/core/ai/model';
 import { POST } from '@fastgpt/service/common/api/plusRequest';

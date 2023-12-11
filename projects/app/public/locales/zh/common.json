@@ -65,7 +65,6 @@
     "Confirm to clear share chat history": "确认删除所有聊天记录？",
     "Converting to text": "正在转换为文本...",
     "Exit Chat": "退出聊天",
-    "Feedback Close": "关闭反馈",
     "Feedback Failed": "提交反馈异常",
     "Feedback Mark": "标注",
     "Feedback Modal": "结果反馈",
@@ -81,7 +80,6 @@
     "Question Guide Tips": "猜你想问",
     "Quote": "引用",
     "Read Mark Description": "查看标注功能介绍",
-    "Read User Feedback": "查看用户反馈",
     "Select Mark Kb": "选择知识库",
     "Select Mark Kb Desc": "选择一个知识库存储预期答案",
     "You need to a chat app": "你需要创建一个应用",
@@ -201,6 +199,9 @@
     "confirm": {
       "Common Tip": "操作确认"
     },
+    "course": {
+      "Read Course": "查看教程"
+    },
     "empty": {
       "Common Tip": "没有什么数据噢~"
     },
@@ -234,6 +235,10 @@
     },
     "speech": {
       "error tip": "语音转文字失败"
+    },
+    "system": {
+      "Help Chatbot": "机器人助手",
+      "Use Helper": "使用帮助"
     }
   },
   "core": {
@@ -257,6 +262,9 @@
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
+      "logs": {
+        "Source And Time": "来源 & 时间"
+      },
       "setting": "应用信息设置",
       "simple": {
         "mode template select": "简易模板"
@@ -283,6 +291,16 @@
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "error": {
+        "Messages empty": "接口内容为空，可能文本超长了~"
+      },
+      "feedback": {
+        "Close User Good Feedback": "",
+        "Close User Like": "用户表示赞同\n点击关闭该标记",
+        "No Content": "用户没有填写具体反馈内容",
+        "Read User dislike": "用户表示反对\n点击查看内容",
+        "Feedback Close": "关闭反馈"
+      },
       "markdown": {
         "Edit Question": "编辑问题",
         "Quick Question": "点我立即提问",
@@ -295,9 +313,6 @@
       },
       "tts": {
         "Stop Speech": "停止"
-      },
-      "error": {
-        "Messages empty": "接口内容为空，可能文本超长了~"
       }
     },
     "dataset": {
@@ -462,6 +477,7 @@
         "Confirm Create Tips": "确认同步该站点，同步任务将随后开启，请确认！",
         "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！",
         "Selector": "选择器",
+        "Selector Course": "选择器使用教程",
         "Start Sync": "开始同步",
         "UnValid Website Tip": "您的站点可能非静态站点，无法同步"
       }
@@ -669,6 +685,10 @@
     "Visual AI orchestration": "可视化 AI 编排",
     "Why FastGPT": "为什么选择 {{title}}",
     "desc": "基于 LLM 大模型的 AI 知识库问答平台",
+    "navbar": {
+      "Use guidance": "使用引导",
+      "chatbot": "问答机器人"
+    },
     "slogan": "让 AI 更懂你的知识"
   },
   "module": {

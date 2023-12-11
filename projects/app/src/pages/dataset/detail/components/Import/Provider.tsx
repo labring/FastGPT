@@ -13,6 +13,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
@@ -158,7 +159,9 @@ const Provider = ({
           fileId: file.fileId,
           rawLink: file.rawLink,
           chunkSize: chunkLen,
-          trainingType: collectionTrainingType
+          trainingType: collectionTrainingType,
+          qaPrompt: mode === TrainingModeEnum.qa ? prompt : '',
+          hashRawText: hashStr(file.rawText)
         });
 
         // upload data
@@ -193,7 +196,7 @@ const Provider = ({
       setFiles((state) =>
         state.map((file) => {
           const splitRes = splitText2Chunks({
-            text: file.text,
+            text: file.rawText,
             chunkLen,
             overlapRatio: chunkOverlapRatio
           });
@@ -287,7 +290,7 @@ export const PreviewFileOrChunk = () => {
             px={[4, 8]}
             my={4}
             contentEditable
-            dangerouslySetInnerHTML={{ __html: previewFile.text }}
+            dangerouslySetInnerHTML={{ __html: previewFile.rawText }}
             fontSize={'sm'}
             whiteSpace={'pre-wrap'}
             wordBreak={'break-all'}

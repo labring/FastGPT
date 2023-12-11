@@ -38,7 +38,9 @@ export type ChatItemSchema = {
   time: Date;
   obj: `${ChatRoleEnum}`;
   value: string;
-  userFeedback?: string;
+  userGoodFeedback?: string;
+  userBadFeedback?: string;
+  robotBadFeedback?: string;
   adminFeedback?: AdminFbkType;
   [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
@@ -56,7 +58,8 @@ export type ChatItemType = {
   dataId?: string;
   obj: ChatItemSchema['obj'];
   value: any;
-  userFeedback?: string;
+  userGoodFeedback?: string;
+  userBadFeedback?: string;
   adminFeedback?: ChatItemSchema['feedback'];
   [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };

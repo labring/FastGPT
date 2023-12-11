@@ -18,7 +18,8 @@ import { useTranslation } from 'next-i18next';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api';
 import dayjs from 'dayjs';
-import { ChatSourceMap, HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { AppLogsListItemType } from '@/types/app';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';
@@ -48,7 +49,8 @@ const Logs = ({ appId }: { appId: string }) => {
     data: logs,
     isLoading,
     Pagination,
-    getData
+    getData,
+    pageNum
   } = usePagination<AppLogsListItemType>({
     api: getAppChatLogs,
     pageSize: 20,
@@ -90,8 +92,7 @@ const Logs = ({ appId }: { appId: string }) => {
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>{t('app.Logs Source')}</Th>
-              <Th>{t('app.Logs Time')}</Th>
+              <Th>{t('core.app.logs.Source And Time')}</Th>
               <Th>{t('app.Logs Title')}</Th>
               <Th>{t('app.Logs Message Total')}</Th>
               <Th>{t('app.Feedback Count')}</Th>
@@ -107,35 +108,55 @@ const Logs = ({ appId }: { appId: string }) => {
                 title={'点击查看对话详情'}
                 onClick={() => setDetailLogsId(item.id)}
               >
-                <Td>{t(ChatSourceMap[item.source]?.name || 'UnKnow')}</Td>
-                <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Td>
+                <Td>
+                  <Box>{t(ChatSourceMap[item.source]?.name || 'UnKnow')}</Box>
+                  <Box color={'myGray.500'}>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Box>
+                </Td>
                 <Td className="textEllipsis" maxW={'250px'}>
                   {item.title}
                 </Td>
                 <Td>{item.messageCount}</Td>
                 <Td w={'100px'}>
-                  {!!item?.feedbackCount ? (
-                    <Box display={'inline-block'}>
-                      <Flex
-                        bg={'#FFF2EC'}
+                  {!!item?.userGoodFeedbackCount && (
+                    <Flex
+                      mb={item?.userGoodFeedbackCount ? 1 : 0}
+                      bg={'green.100'}
+                      color={'green.600'}
+                      px={3}
+                      py={1}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      borderRadius={'lg'}
+                      fontWeight={'bold'}
+                    >
+                      <MyIcon
+                        mr={1}
+                        name={'core/chat/feedback/goodLight'}
+                        color={'green.600'}
+                        w={'14px'}
+                      />
+                      {item.userGoodFeedbackCount}
+                    </Flex>
+                  )}
+                  {!!item?.userBadFeedbackCount && (
+                    <Flex
+                      bg={'#FFF2EC'}
+                      color={'#C96330'}
+                      px={3}
+                      py={1}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      borderRadius={'lg'}
+                      fontWeight={'bold'}
+                    >
+                      <MyIcon
+                        mr={1}
+                        name={'core/chat/feedback/badLight'}
                         color={'#C96330'}
-                        px={3}
-                        py={1}
-                        alignItems={'center'}
-                        borderRadius={'lg'}
-                        fontWeight={'bold'}
-                      >
-                        <MyIcon
-                          mr={1}
-                          name={'core/chat/feedback/badLight'}
-                          color={'#C96330'}
-                          w={'14px'}
-                        />
-                        {item.feedbackCount}
-                      </Flex>
-                    </Box>
-                  ) : (
-                    <>-</>
+                        w={'14px'}
+                      />
+                      {item.userBadFeedbackCount}
+                    </Flex>
                   )}
                 </Td>
                 <Td>{item.markCount}</Td>
@@ -168,7 +189,10 @@ const Logs = ({ appId }: { appId: string }) => {
         <DetailLogsModal
           appId={appId}
           chatId={detailLogsId}
-          onClose={() => setDetailLogsId(undefined)}
+          onClose={() => {
+            setDetailLogsId(undefined);
+            getData(pageNum);
+          }}
         />
       )}
       <MyModal
@@ -297,6 +321,7 @@ function DetailLogsModal({
             showMarkIcon
             showVoiceIcon={false}
             userGuideModule={chat?.app?.userGuideModule}
+            chatId={chatId}
           />
         </Box>
       </Flex>

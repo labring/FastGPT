@@ -49,7 +49,7 @@ const ImportData = ({
         collectionTrainingType: DatasetCollectionTrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
-        defaultChunkLen: agentModel?.maxContext * 0.6 || 8000,
+        defaultChunkLen: agentModel?.maxContext * 0.55 || 8000,
         chunkOverlapRatio: 0,
         unitPrice: agentModel?.price || 3,
         mode: TrainingModeEnum.qa,

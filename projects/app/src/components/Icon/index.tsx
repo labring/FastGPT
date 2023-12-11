@@ -78,6 +78,7 @@ const iconPaths = {
   'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),
   'core/app/logsLight': () => import('./icons/core/app/logsLight.svg'),
   'core/chat/feedback/badLight': () => import('./icons/core/chat/feedback/badLight.svg'),
+  'core/chat/feedback/goodLight': () => import('./icons/core/chat/feedback/goodLight.svg'),
   'core/app/markLight': () => import('./icons/core/app/markLight.svg'),
   'common/retryLight': () => import('./icons/common/retryLight.svg'),
   'common/rightArrowLight': () => import('./icons/common/rightArrowLight.svg'),

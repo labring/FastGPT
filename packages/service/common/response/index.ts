@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { sseResponseEventEnum } from './constant';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { addLog } from '../mongo/controller';
+import { addLog } from '../system/log';
 import { clearCookie } from '../../support/permission/controller';
 
 export interface ResponseType<T = any> {
