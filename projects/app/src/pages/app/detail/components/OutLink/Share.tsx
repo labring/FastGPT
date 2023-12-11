@@ -356,6 +356,7 @@ function EditLinkModal({
               </Flex>
               <Input
                 placeholder={t('outlink.token auth Tips') || ''}
+                fontSize={'sm'}
                 {...register('limit.hookUrl')}
               />
             </Flex>
