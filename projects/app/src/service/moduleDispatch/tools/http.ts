@@ -47,19 +47,19 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     return Promise.reject('url is empty');
   })();
 
-  console.log(requestBody);
+  const formatBody = transformFlatJson({ ...requestBody });
 
   try {
     const response = await fetchData({
       url: requestUrl,
       auth: httpReqAuth,
-      body: requestBody
+      body: formatBody
     });
 
     return {
       responseData: {
         price: 0,
-        body: requestBody,
+        body: formatBody,
         httpResult: response
       },
       ...response
@@ -69,7 +69,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
       [ModuleOutputKeyEnum.failed]: true,
       responseData: {
         price: 0,
-        body: requestBody,
+        body: formatBody,
         httpResult: { error }
       }
     };
@@ -133,23 +133,33 @@ async function fetchData({
   return parseJson(response);
 }
 
-function transformJson(obj: Record<string, any>) {
+function transformFlatJson(obj: Record<string, any>) {
   for (let key in obj) {
-    if (typeof obj[key] === 'object' && obj[key] !== null) {
-      obj[key] = transformJson(obj[key]);
+    if (typeof obj[key] === 'object') {
+      transformFlatJson(obj[key]);
     }
     if (key.includes('.')) {
       let parts = key.split('.');
+      if (parts.length <= 1) continue;
 
-      // parts.forEach((part) => {
-      //   if (!obj[part]){
-      //     obj[part] = {}
-      //   }
-      //   nestedObj = nestedObj[part];
-      // });
+      const firstKey = parts.shift();
 
-      // nestedObj[nestedKey] = obj[key];
-      // delete obj[key];
+      if (!firstKey) continue;
+
+      const lastKey = parts.join('.');
+
+      if (obj[firstKey]) {
+        obj[firstKey] = {
+          ...obj[firstKey],
+          [lastKey]: obj[key]
+        };
+      } else {
+        obj[firstKey] = { [lastKey]: obj[key] };
+      }
+
+      transformFlatJson(obj[firstKey]);
+
+      delete obj[key];
     }
   }
   return obj;
