@@ -1,4 +1,5 @@
 export type UpdateChatFeedbackProps = {
+  appId: string;
   chatId: string;
   chatItemId: string;
   shareId?: string;

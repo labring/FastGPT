@@ -21,6 +21,7 @@ import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constant
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { getFastGPTFeConfig } from '@fastgpt/service/common/system/config/controller';
+import { connectToDatabase } from '@/service/mongo';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -68,6 +69,7 @@ const defaultFeConfigs: FeConfigsType = {
 export async function getInitConfig() {
   try {
     if (global.feConfigs) return;
+    await connectToDatabase();
     initGlobal();
 
     const filename =

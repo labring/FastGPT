@@ -29,7 +29,7 @@ import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
-import { chatModelList } from '@/web/common/system/staticData';
+import { chatModelList, cqModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
@@ -229,8 +229,11 @@ const RenderInput = ({
                 {item.type === FlowNodeInputTypeEnum.aiSettings && (
                   <AISetting inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowNodeInputTypeEnum.selectChatModel && (
-                  <SelectChatModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
+                {[
+                  FlowNodeInputTypeEnum.selectChatModel,
+                  FlowNodeInputTypeEnum.selectCQModel
+                ].includes(item.type as any) && (
+                  <SelectAIModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowNodeInputTypeEnum.selectDataset && (
                   <SelectDatasetRender item={item} moduleId={moduleId} />
@@ -446,12 +449,21 @@ const AISetting = React.memo(function AISetting({ inputs = [], moduleId }: Rende
   );
 });
 
-const SelectChatModelRender = React.memo(function SelectChatModelRender({
+const SelectAIModelRender = React.memo(function SelectAIModelRender({
   inputs = [],
   item,
   moduleId
 }: RenderProps) {
-  const modelList = chatModelList || [];
+  const modelList = (() => {
+    if (item.type === FlowNodeInputTypeEnum.selectChatModel) return chatModelList;
+    if (item.type === FlowNodeInputTypeEnum.selectCQModel) return cqModelList;
+    return [];
+  })().map((item) => ({
+    model: item.model,
+    name: item.name,
+    maxResponse: item.maxResponse,
+    price: item.price
+  }));
 
   const onChangeModel = useCallback(
     (e: string) => {

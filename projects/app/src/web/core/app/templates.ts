@@ -27,7 +27,6 @@ export const appTemplates: (AppItemType & {
             key: 'welcomeText',
             type: 'input',
             label: '开场白',
-            value: '',
             connected: true
           }
         ],
@@ -59,46 +58,6 @@ export const appTemplates: (AppItemType & {
               {
                 moduleId: 'chatModule',
                 key: 'userChatInput'
-              }
-            ]
-          }
-        ]
-      },
-      {
-        moduleId: 'history',
-        name: '聊天记录',
-        flowType: 'historyNode',
-        position: {
-          x: 452.5466249541586,
-          y: 1276.3930310334215
-        },
-        inputs: [
-          {
-            key: 'maxContext',
-            type: 'numberInput',
-            label: '最长记录数',
-            value: 6,
-            min: 0,
-            max: 50,
-            connected: true
-          },
-          {
-            key: 'history',
-            type: 'hidden',
-            label: '聊天记录',
-            connected: true
-          }
-        ],
-        outputs: [
-          {
-            key: 'history',
-            label: '聊天记录',
-            valueType: 'chatHistory',
-            type: 'source',
-            targets: [
-              {
-                moduleId: 'chatModule',
-                key: 'history'
               }
             ]
           }
@@ -171,7 +130,6 @@ export const appTemplates: (AppItemType & {
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
-            value: '',
             connected: true
           },
           {
@@ -193,7 +151,8 @@ export const appTemplates: (AppItemType & {
             type: 'target',
             label: '聊天记录',
             valueType: 'chatHistory',
-            connected: true
+            connected: true,
+            value: 6
           },
           {
             key: 'userChatInput',
@@ -280,46 +239,6 @@ export const appTemplates: (AppItemType & {
               {
                 moduleId: 'datasetSearch',
                 key: 'userChatInput'
-              }
-            ]
-          }
-        ]
-      },
-      {
-        moduleId: 'history',
-        name: '聊天记录',
-        flowType: 'historyNode',
-        position: {
-          x: 452.5466249541586,
-          y: 1276.3930310334215
-        },
-        inputs: [
-          {
-            key: 'maxContext',
-            type: 'numberInput',
-            label: '最长记录数',
-            value: 6,
-            min: 0,
-            max: 50,
-            connected: true
-          },
-          {
-            key: 'history',
-            type: 'hidden',
-            label: '聊天记录',
-            connected: true
-          }
-        ],
-        outputs: [
-          {
-            key: 'history',
-            label: '聊天记录',
-            valueType: 'chatHistory',
-            type: 'source',
-            targets: [
-              {
-                moduleId: 'chatModule',
-                key: 'history'
               }
             ]
           }
@@ -495,7 +414,6 @@ export const appTemplates: (AppItemType & {
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
-            value: '',
             connected: true
           },
           {
@@ -517,7 +435,8 @@ export const appTemplates: (AppItemType & {
             type: 'target',
             label: '聊天记录',
             valueType: 'chatHistory',
-            connected: true
+            connected: true,
+            value: 6
           },
           {
             key: 'userChatInput',
@@ -679,46 +598,6 @@ export const appTemplates: (AppItemType & {
         ]
       },
       {
-        moduleId: 'history',
-        name: '聊天记录',
-        flowType: 'historyNode',
-        position: {
-          x: 452.5466249541586,
-          y: 1276.3930310334215
-        },
-        inputs: [
-          {
-            key: 'maxContext',
-            type: 'numberInput',
-            label: '最长记录数',
-            value: 2,
-            min: 0,
-            max: 50,
-            connected: true
-          },
-          {
-            key: 'history',
-            type: 'hidden',
-            label: '聊天记录',
-            connected: true
-          }
-        ],
-        outputs: [
-          {
-            key: 'history',
-            label: '聊天记录',
-            valueType: 'chatHistory',
-            type: 'source',
-            targets: [
-              {
-                moduleId: 'chatModule',
-                key: 'history'
-              }
-            ]
-          }
-        ]
-      },
-      {
         moduleId: 'chatModule',
         name: 'AI 对话',
         flowType: 'chatNode',
@@ -793,7 +672,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容模板',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {
@@ -801,7 +679,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容提示词',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {
@@ -824,7 +701,8 @@ export const appTemplates: (AppItemType & {
             type: 'target',
             label: '聊天记录',
             valueType: 'chatHistory',
-            connected: true
+            connected: true,
+            value: 6
           },
           {
             key: 'userChatInput',
@@ -907,46 +785,6 @@ export const appTemplates: (AppItemType & {
         ]
       },
       {
-        moduleId: 'xj0c9p',
-        name: '聊天记录',
-        flowType: 'historyNode',
-        position: {
-          x: 1770.497690708367,
-          y: 1820.2355054321215
-        },
-        inputs: [
-          {
-            key: 'maxContext',
-            type: 'numberInput',
-            label: '最长记录数',
-            value: 6,
-            min: 0,
-            max: 50,
-            connected: true
-          },
-          {
-            key: 'history',
-            type: 'hidden',
-            label: '聊天记录',
-            connected: true
-          }
-        ],
-        outputs: [
-          {
-            key: 'history',
-            label: '聊天记录',
-            valueType: 'chatHistory',
-            type: 'source',
-            targets: [
-              {
-                moduleId: 'nlfwkc',
-                key: 'history'
-              }
-            ]
-          }
-        ]
-      },
-      {
         moduleId: 'remuj3',
         name: '问题分类',
         flowType: 'classifyQuestion',
@@ -980,7 +818,8 @@ export const appTemplates: (AppItemType & {
             type: 'target',
             label: '聊天记录',
             valueType: 'chatHistory',
-            connected: true
+            connected: true,
+            value: 6
           },
           {
             key: 'userChatInput',
@@ -997,15 +836,15 @@ export const appTemplates: (AppItemType & {
             value: [
               {
                 value: '打招呼、问候等问题',
-                key: 'fasw'
+                key: 'wqre'
               },
               {
-                value: '“laf” 的问题',
-                key: 'fqsw'
+                value: '关于 xxx 的问题',
+                key: 'sdfa'
               },
               {
                 value: '商务问题',
-                key: 'fesw'
+                key: 'agex'
               },
               {
                 value: '其他问题',
@@ -1017,7 +856,7 @@ export const appTemplates: (AppItemType & {
         ],
         outputs: [
           {
-            key: 'fasw',
+            key: 'wqre',
             label: '',
             type: 'hidden',
             targets: [
@@ -1028,7 +867,7 @@ export const appTemplates: (AppItemType & {
             ]
           },
           {
-            key: 'fqsw',
+            key: 'sdfa',
             label: '',
             type: 'hidden',
             targets: [
@@ -1039,7 +878,7 @@ export const appTemplates: (AppItemType & {
             ]
           },
           {
-            key: 'fesw',
+            key: 'agex',
             label: '',
             type: 'hidden',
             targets: [
@@ -1255,7 +1094,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容模板',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {
@@ -1263,7 +1101,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容提示词',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {
@@ -1286,7 +1123,8 @@ export const appTemplates: (AppItemType & {
             type: 'target',
             label: '聊天记录',
             valueType: 'chatHistory',
-            connected: true
+            connected: true,
+            value: 6
           },
           {
             key: 'userChatInput',
@@ -1321,46 +1159,6 @@ export const appTemplates: (AppItemType & {
             valueType: 'chatHistory',
             type: 'source',
             targets: []
-          }
-        ]
-      },
-      {
-        moduleId: 's4v9su',
-        name: '聊天记录',
-        flowType: 'historyNode',
-        position: {
-          x: 193.3803955457983,
-          y: 1316.251200765746
-        },
-        inputs: [
-          {
-            key: 'maxContext',
-            type: 'numberInput',
-            label: '最长记录数',
-            value: 2,
-            min: 0,
-            max: 50,
-            connected: true
-          },
-          {
-            key: 'history',
-            type: 'hidden',
-            label: '聊天记录',
-            connected: true
-          }
-        ],
-        outputs: [
-          {
-            key: 'history',
-            label: '聊天记录',
-            valueType: 'chatHistory',
-            type: 'source',
-            targets: [
-              {
-                moduleId: 'remuj3',
-                key: 'history'
-              }
-            ]
           }
         ]
       },

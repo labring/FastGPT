@@ -10,11 +10,12 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getCQModel } from '@/service/core/ai/model';
+import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
   [ModuleInputKeyEnum.aiSystemPrompt]?: string;
-  [ModuleInputKeyEnum.history]?: ChatItemType[];
+  [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
@@ -23,13 +24,14 @@ type CQResponse = {
   [key: string]: any;
 };
 
-const agentFunName = 'agent_user_question';
+const agentFunName = 'classify_question';
 
 /* request openai chat */
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     user,
-    inputs: { model, agents, userChatInput }
+    histories,
+    inputs: { model, history = 6, agents, userChatInput }
   } = props as Props;
 
   if (!userChatInput) {
@@ -42,11 +44,13 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     if (cqModel.functionCall) {
       return functionCall({
         ...props,
+        histories: getHistories(history, histories),
         cqModel
       });
     }
     return completions({
       ...props,
+      histories: getHistories(history, histories),
       cqModel
     });
   })();
@@ -54,7 +58,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
   return {
-    [result.key]: 1,
+    [result.key]: result.value,
     [ModuleOutputKeyEnum.responseData]: {
       price: user.openaiAccount?.key ? 0 : cqModel.price * tokens,
       model: cqModel.name || '',
@@ -69,18 +73,19 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 async function functionCall({
   user,
   cqModel,
-  inputs: { agents, systemPrompt, history = [], userChatInput }
+  histories,
+  inputs: { agents, systemPrompt, userChatInput }
 }: Props & { cqModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
-    ...history,
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: systemPrompt
-        ? `补充的背景知识:
-"""
+        ? `<背景知识>
 ${systemPrompt}
-"""
-我的问题: ${userChatInput}
+</背景知识>
+
+问题: "${userChatInput}"
       `
         : userChatInput
     }
@@ -95,18 +100,19 @@ ${systemPrompt}
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: '请根据对话记录及补充的背景知识，判断用户的问题类型，并返回对应的字段',
+    description: '根据对话记录及补充的背景知识，对问题进行分类，并返回对应的类型字段',
     parameters: {
       type: 'object',
       properties: {
         type: {
           type: 'string',
-          description: `判断用户的问题类型，并返回对应的字段。下面是几种问题类型: ${agents
+          description: `问题类型。下面是几种可选的问题类型: ${agents
             .map((item) => `${item.value}，返回：'${item.key}'`)
             .join('；')}`,
           enum: agents.map((item) => item.key)
         }
-      }
+      },
+      required: ['type']
     }
   };
   const ai = getAIApi(user.openaiAccount, 48000);
@@ -115,12 +121,19 @@ ${systemPrompt}
     model: cqModel.model,
     temperature: 0,
     messages: [...adaptMessages],
-    function_call: { name: agentFunName },
-    functions: [agentFunction]
+    tools: [
+      {
+        type: 'function',
+        function: agentFunction
+      }
+    ],
+    tool_choice: { type: 'function', function: { name: agentFunName } }
   });
 
   try {
-    const arg = JSON.parse(response.choices?.[0]?.message?.function_call?.arguments || '');
+    const arg = JSON.parse(
+      response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
+    );
 
     return {
       arg,
@@ -130,7 +143,7 @@ ${systemPrompt}
     console.log(agentFunction.parameters);
     console.log(response.choices?.[0]?.message);
 
-    console.log('Your model may not support function_call', error);
+    console.log('Your model may not support toll_call', error);
 
     return {
       arg: {},
@@ -142,15 +155,16 @@ ${systemPrompt}
 async function completions({
   cqModel,
   user,
-  inputs: { agents, systemPrompt = '', history = [], userChatInput }
+  histories,
+  inputs: { agents, systemPrompt = '', userChatInput }
 }: Props & { cqModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
       value: replaceVariable(cqModel.functionPrompt || Prompt_CQJson, {
         systemPrompt,
-        typeList: agents.map((item) => `ID: "${item.key}", 问题类型:${item.value}`).join('\n'),
-        text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}
+        typeList: agents.map((item) => `{"${item.value}": ${item.key}}`).join('\n'),
+        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
 Human:${userChatInput}`
       })
     }

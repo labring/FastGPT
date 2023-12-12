@@ -66,9 +66,9 @@
   ],
   "CQModels": [
     {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "maxContext": 16000,
+      "model": "gpt-3.5-turbo",
+      "name": "GPT35",
+      "maxContext": 4000,
       "maxResponse": 4000,
       "price": 0,
       "functionCall": true,

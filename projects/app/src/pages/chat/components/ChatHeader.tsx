@@ -15,6 +15,7 @@ const ChatHeader = ({
   appAvatar,
   chatModels,
   appId,
+  showHistory,
   onOpenSlider
 }: {
   history: ChatItemType[];
@@ -22,6 +23,7 @@ const ChatHeader = ({
   appAvatar: string;
   chatModels?: string[];
   appId?: string;
+  showHistory?: boolean;
   onOpenSlider: () => void;
 }) => {
   const router = useRouter();
@@ -63,7 +65,16 @@ const ChatHeader = ({
         </>
       ) : (
         <>
-          <MyIcon name={'menu'} w={'20px'} h={'20px'} color={'myGray.900'} onClick={onOpenSlider} />
+          {showHistory && (
+            <MyIcon
+              name={'menu'}
+              w={'20px'}
+              h={'20px'}
+              color={'myGray.900'}
+              onClick={onOpenSlider}
+            />
+          )}
+
           <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
             <Avatar src={appAvatar} w={'16px'} />
             <Box

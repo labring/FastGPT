@@ -265,6 +265,20 @@
       "logs": {
         "Source And Time": "Source & Time"
       },
+      "outLink": {
+        "Can Drag": "Icon Drag",
+        "Default open": "Default Open",
+        "Iframe block title": "Copy the Iframe below and add it to your web page",
+        "Link block title": "Copy the link below to your browser to open",
+        "Script Close Icon": "Close Icon",
+        "Script Icon": "Icon",
+        "Script Open Icon": "Open Script",
+        "Script block title": "Add the following code to your website",
+        "Select Mode": "Select Mode",
+        "Select Using Way": "Select use mode",
+        "Show History": "Show History",
+        "Web Link": "Web Link"
+      },
       "setting": "App Setting",
       "simple": {
         "mode template select": "Template"
@@ -297,9 +311,9 @@
       "feedback": {
         "Close User Good Feedback": "",
         "Close User Like": "The user like\nClick to close the tag",
+        "Feedback Close": "Close Feedback",
         "No Content": "The user did not fill in the specific feedback content",
-        "Read User dislike": "User dislike\nClick to view content",
-        "Feedback Close": "Close Feedback"
+        "Read User dislike": "User dislike\nClick to view content"
       },
       "markdown": {
         "Edit Question": "Edit Question",

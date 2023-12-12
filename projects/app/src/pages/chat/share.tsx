@@ -300,7 +300,9 @@ const OutLink = ({
                     onCloseSlider();
                   }
                 }}
-                onDelHistory={({ chatId }) => delOneHistory({ chatId, shareId, outLinkUid })}
+                onDelHistory={({ chatId }) =>
+                  delOneHistory({ appId: chatData.appId, chatId, shareId, outLinkUid })
+                }
                 onClearHistory={() => {
                   clearHistories({ shareId, outLinkUid });
                   router.replace({
@@ -313,12 +315,14 @@ const OutLink = ({
                 onSetHistoryTop={(e) => {
                   updateHistory({
                     ...e,
+                    appId: chatData.appId,
                     shareId,
                     outLinkUid
                   });
                 }}
                 onSetCustomTitle={async (e) => {
                   updateHistory({
+                    appId: chatData.appId,
                     chatId: e.chatId,
                     title: e.title,
                     customTitle: e.title,
@@ -343,6 +347,7 @@ const OutLink = ({
             appAvatar={chatData.app.avatar}
             appName={chatData.app.name}
             history={chatData.history}
+            showHistory={showHistory === '1'}
             onOpenSlider={onOpenSlider}
           />
           {/* chat box */}
@@ -357,7 +362,10 @@ const OutLink = ({
               feedbackType={'user'}
               onUpdateVariable={(e) => {}}
               onStartChat={startChat}
-              onDelMessage={(e) => delOneHistoryItem({ ...e, chatId, shareId, outLinkUid })}
+              onDelMessage={(e) =>
+                delOneHistoryItem({ ...e, appId: chatData.appId, chatId, shareId, outLinkUid })
+              }
+              appId={chatData.appId}
               chatId={chatId}
               shareId={shareId}
               outLinkUid={outLinkUid}
