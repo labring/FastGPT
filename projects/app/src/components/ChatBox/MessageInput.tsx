@@ -429,7 +429,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
               >
                 {isChatting ? (
                   <MyIcon
-                    className={styles.stopIcon}
+                    animation={'zoomStopIcon 0.4s infinite alternate'}
                     width={['22px', '25px']}
                     height={['22px', '25px']}
                     cursor={'pointer'}

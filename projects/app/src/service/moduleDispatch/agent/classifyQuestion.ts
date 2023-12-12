@@ -10,11 +10,12 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getCQModel } from '@/service/core/ai/model';
+import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
   [ModuleInputKeyEnum.aiSystemPrompt]?: string;
-  [ModuleInputKeyEnum.history]?: ChatItemType[];
+  [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
@@ -29,7 +30,8 @@ const agentFunName = 'classify_question';
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     user,
-    inputs: { model, agents, userChatInput }
+    histories,
+    inputs: { model, history = 6, agents, userChatInput }
   } = props as Props;
 
   if (!userChatInput) {
@@ -42,11 +44,13 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     if (cqModel.functionCall) {
       return functionCall({
         ...props,
+        histories: getHistories(history, histories),
         cqModel
       });
     }
     return completions({
       ...props,
+      histories: getHistories(history, histories),
       cqModel
     });
   })();
@@ -69,10 +73,11 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 async function functionCall({
   user,
   cqModel,
-  inputs: { agents, systemPrompt, history = [], userChatInput }
+  histories,
+  inputs: { agents, systemPrompt, userChatInput }
 }: Props & { cqModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
-    ...history,
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: systemPrompt
@@ -150,7 +155,8 @@ ${systemPrompt}
 async function completions({
   cqModel,
   user,
-  inputs: { agents, systemPrompt = '', history = [], userChatInput }
+  histories,
+  inputs: { agents, systemPrompt = '', userChatInput }
 }: Props & { cqModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     {
@@ -158,7 +164,7 @@ async function completions({
       value: replaceVariable(cqModel.functionPrompt || Prompt_CQJson, {
         systemPrompt,
         typeList: agents.map((item) => `{"${item.value}": ${item.key}}`).join('\n'),
-        text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}
+        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
 Human:${userChatInput}`
       })
     }

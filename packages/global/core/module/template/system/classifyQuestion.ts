@@ -75,19 +75,19 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   outputs: [
     // custom output
     {
-      key: 'fasw',
+      key: 'wqre',
       label: '',
       type: FlowNodeOutputTypeEnum.hidden,
       targets: []
     },
     {
-      key: 'fqsw',
+      key: 'sdfa',
       label: '',
       type: FlowNodeOutputTypeEnum.hidden,
       targets: []
     },
     {
-      key: 'fesw',
+      key: 'agex',
       label: '',
       type: FlowNodeOutputTypeEnum.hidden,
       targets: []

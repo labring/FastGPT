@@ -9,6 +9,7 @@ import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -28,7 +29,8 @@ const agentFunName = 'extract_json_data';
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
-    inputs: { content, description, extractKeys }
+    histories,
+    inputs: { content, history = 6, description, extractKeys }
   } = props;
 
   if (!content) {
@@ -41,11 +43,13 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     if (extractModel.functionCall) {
       return functionCall({
         ...props,
+        histories: getHistories(history, histories),
         extractModel
       });
     }
     return completions({
       ...props,
+      histories: getHistories(history, histories),
       extractModel
     });
   })();
@@ -88,10 +92,11 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 async function functionCall({
   extractModel,
   user,
-  inputs: { history = [], content, extractKeys, description }
+  histories,
+  inputs: { content, extractKeys, description }
 }: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
-    ...history,
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: `<要求>
@@ -176,7 +181,8 @@ ${content}
 async function completions({
   extractModel,
   user,
-  inputs: { history = [], content, extractKeys, description }
+  histories,
+  inputs: { content, extractKeys, description }
 }: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     {
@@ -189,7 +195,7 @@ async function completions({
               `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}}}`
           )
           .join('\n'),
-        text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}
+        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
 Human: ${content}`
       })
     }

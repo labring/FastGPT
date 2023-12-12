@@ -3,7 +3,7 @@ import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { RunningModuleItemType } from '@/types/app';
 import { ModuleDispatchProps } from '@/types/core/chat/type';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { UserType } from '@fastgpt/global/support/user/type';
@@ -25,7 +25,6 @@ import { dispatchAppRequest } from './tools/runApp';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 /* running */
 export async function dispatchModules({
@@ -36,7 +35,8 @@ export async function dispatchModules({
   appId,
   modules,
   chatId,
-  params = {},
+  histories = [],
+  startParams = {},
   variables = {},
   stream = false,
   detail = false
@@ -48,7 +48,8 @@ export async function dispatchModules({
   appId: string;
   modules: ModuleItemType[];
   chatId?: string;
-  params?: Record<string, any>;
+  histories: ChatItemType[];
+  startParams?: Record<string, any>;
   variables?: Record<string, any>;
   stream?: boolean;
   detail?: boolean;
@@ -185,6 +186,7 @@ export async function dispatchModules({
       stream,
       detail,
       variables,
+      histories,
       outputs: module.outputs,
       inputs: params
     };
@@ -230,7 +232,12 @@ export async function dispatchModules({
 
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
-  initModules.map((module) => moduleInput(module, params));
+  initModules.map((module) =>
+    moduleInput(module, {
+      ...startParams,
+      history: [] // abandon history field. History module will get histories from other fields.
+    })
+  );
   await checkModulesCanRun(initModules);
 
   // focus try to run pluginOutput
