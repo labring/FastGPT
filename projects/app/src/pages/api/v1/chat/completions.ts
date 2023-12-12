@@ -180,6 +180,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       req,
       authToken: true,
       authApiKey: true,
+      appId: app._id,
       chatId,
       shareId,
       outLinkUid,

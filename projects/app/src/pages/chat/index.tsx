@@ -297,7 +297,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                   onCloseSlider();
                 }
               }}
-              onDelHistory={delOneHistory}
+              onDelHistory={(e) => delOneHistory({ ...e, appId })}
               onClearHistory={() => {
                 clearHistories({ appId });
                 router.replace({
@@ -307,10 +307,11 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 });
               }}
               onSetHistoryTop={(e) => {
-                updateHistory(e);
+                updateHistory({ ...e, appId });
               }}
               onSetCustomTitle={async (e) => {
                 updateHistory({
+                  appId,
                   chatId: e.chatId,
                   title: e.title,
                   customTitle: e.title
@@ -349,7 +350,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
-                onDelMessage={(e) => delOneHistoryItem({ ...e, chatId })}
+                onDelMessage={(e) => delOneHistoryItem({ ...e, appId, chatId })}
                 chatId={chatId}
               />
             </Box>
