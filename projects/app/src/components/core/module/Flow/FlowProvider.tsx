@@ -28,8 +28,8 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -449,7 +449,7 @@ export function flowNode2Modules({
     flowType: item.data.flowType,
     showStatus: item.data.showStatus,
     position: item.position,
-    inputs: item.data.inputs,
+    inputs: [...item.data.inputs],
     outputs: item.data.outputs.map((item) => ({
       ...item,
       targets: [] as FlowNodeOutputTargetItemType[]
@@ -463,6 +463,7 @@ export function flowNode2Modules({
         (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
       );
     });
+
     module.outputs.forEach((output) => {
       output.targets = edges
         .filter(
