@@ -1,10 +1,10 @@
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
-import { Input_Template_TFSwitch } from '../input';
-import { Output_Template_Finish } from '../output';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
+import { FlowModuleTemplateType } from '../../../type';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../../constants';
+import { Input_Template_TFSwitch } from '../../input';
+import { Output_Template_Finish } from '../../output';
 
-export const HttpModule: FlowModuleTemplateType = {
+export const Abandon_HttpModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.httpRequest,
   templateType: ModuleTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.httpRequest,

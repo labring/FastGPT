@@ -6,7 +6,7 @@ import { DatasetSearchModule } from '@fastgpt/global/core/module/template/system
 import { AssignedAnswerModule } from '@fastgpt/global/core/module/template/system/assignedAnswer';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/module/template/system/classifyQuestion';
 import { ContextExtractModule } from '@fastgpt/global/core/module/template/system/contextExtract';
-import { HttpModule } from '@fastgpt/global/core/module/template/system/http';
+import { Abandon_HttpModule } from '@fastgpt/global/core/module/template/system/abandon/http';
 import { EmptyModule } from '@fastgpt/global/core/module/template/system/empty';
 import { RunAppModule } from '@fastgpt/global/core/module/template/system/runApp';
 import { PluginInputModule } from '@fastgpt/global/core/module/template/system/pluginInput';
@@ -26,8 +26,7 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   DatasetSearchModule,
   RunAppModule,
   ClassifyQuestionModule,
-  ContextExtractModule,
-  HttpModule
+  ContextExtractModule
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -37,8 +36,7 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   DatasetSearchModule,
   RunAppModule,
   ClassifyQuestionModule,
-  ContextExtractModule,
-  HttpModule
+  ContextExtractModule
 ];
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
@@ -49,7 +47,7 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   AssignedAnswerModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule,
+  Abandon_HttpModule,
   EmptyModule,
   RunAppModule,
   PluginInputModule,
