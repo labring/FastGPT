@@ -365,6 +365,7 @@ const OutLink = ({
               onDelMessage={(e) =>
                 delOneHistoryItem({ ...e, appId: chatData.appId, chatId, shareId, outLinkUid })
               }
+              appId={chatData.appId}
               chatId={chatId}
               shareId={shareId}
               outLinkUid={outLinkUid}

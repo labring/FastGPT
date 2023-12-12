@@ -10,7 +10,6 @@ import React, {
 } from 'react';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';

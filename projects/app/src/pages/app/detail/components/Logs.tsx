@@ -321,6 +321,7 @@ function DetailLogsModal({
             showMarkIcon
             showVoiceIcon={false}
             userGuideModule={chat?.app?.userGuideModule}
+            appId={appId}
             chatId={chatId}
           />
         </Box>

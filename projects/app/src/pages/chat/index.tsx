@@ -351,6 +351,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
                 onDelMessage={(e) => delOneHistoryItem({ ...e, appId, chatId })}
+                appId={appId}
                 chatId={chatId}
               />
             </Box>
