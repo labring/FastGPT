@@ -112,7 +112,7 @@ export async function searchDatasetData(props: SearchProps) {
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding
   } = props;
-  searchMode = global.systemEnv.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
+  searchMode = global.systemEnv?.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
 
   // Compatible with topk limit
   if (maxTokens < 50) {

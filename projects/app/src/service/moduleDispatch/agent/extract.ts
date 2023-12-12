@@ -9,6 +9,7 @@ import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -23,12 +24,13 @@ type Response = {
   [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
 };
 
-const agentFunName = 'agent_extract_data';
+const agentFunName = 'extract_json_data';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
-    inputs: { content, description, extractKeys }
+    histories,
+    inputs: { content, history = 6, description, extractKeys }
   } = props;
 
   if (!content) {
@@ -41,11 +43,13 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     if (extractModel.functionCall) {
       return functionCall({
         ...props,
+        histories: getHistories(history, histories),
         extractModel
       });
     }
     return completions({
       ...props,
+      histories: getHistories(history, histories),
       extractModel
     });
   })();
@@ -88,13 +92,24 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 async function functionCall({
   extractModel,
   user,
-  inputs: { history = [], content, extractKeys, description }
+  histories,
+  inputs: { content, extractKeys, description }
 }: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
-    ...history,
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: content
+      value: `<任务描述>
+${description || '根据用户要求提取适当的 JSON 字符串。'}
+
+- 如果字段为空，你返回空字符串。
+- 不要换行。
+- 结合历史记录和文本进行提取。
+</任务描述>
+
+<文本>
+${content}
+</文本>`
     }
   ];
   const filterMessages = ChatContextFilter({
@@ -120,7 +135,7 @@ async function functionCall({
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: `${description}\n如果内容不存在，返回空字符串。`,
+    description,
     parameters: {
       type: 'object',
       properties,
@@ -134,17 +149,24 @@ async function functionCall({
     model: extractModel.model,
     temperature: 0,
     messages: [...adaptMessages],
-    function_call: { name: agentFunName },
-    functions: [agentFunction]
+    tools: [
+      {
+        type: 'function',
+        function: agentFunction
+      }
+    ],
+    tool_choice: { type: 'function', function: { name: agentFunName } }
   });
 
   const arg: Record<string, any> = (() => {
     try {
-      return JSON.parse(response.choices?.[0]?.message?.function_call?.arguments || '{}');
+      return JSON.parse(
+        response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '{}'
+      );
     } catch (error) {
       console.log(agentFunction.parameters);
-      console.log(response.choices?.[0]?.message);
-      console.log('Your model may not support function_call', error);
+      console.log(response.choices?.[0]?.message?.tool_calls?.[0]?.function);
+      console.log('Your model may not support tool_call', error);
       return {};
     }
   })();
@@ -159,7 +181,8 @@ async function functionCall({
 async function completions({
   extractModel,
   user,
-  inputs: { history = [], content, extractKeys, description }
+  histories,
+  inputs: { content, extractKeys, description }
 }: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     {
@@ -169,12 +192,10 @@ async function completions({
         json: extractKeys
           .map(
             (item) =>
-              `key="${item.key}"，描述="${item.desc}"，required="${
-                item.required ? 'true' : 'false'
-              }"`
+              `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}}}`
           )
           .join('\n'),
-        text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}
+        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
 Human: ${content}`
       })
     }

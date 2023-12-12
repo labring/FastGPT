@@ -180,6 +180,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       req,
       authToken: true,
       authApiKey: true,
+      appId: app._id,
       chatId,
       shareId,
       outLinkUid,
@@ -188,7 +189,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // get and concat history
     const { history } = await getChatItems({ chatId, limit: 30, field: `dataId obj value` });
-    const concatHistory = history.concat(chatMessages);
+    const concatHistories = history.concat(chatMessages);
 
     /* start flow controller */
     const { responseData, answerText } = await dispatchModules({
@@ -200,8 +201,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       teamId: user.team.teamId,
       tmbId: user.team.tmbId,
       variables,
-      params: {
-        history: concatHistory,
+      histories: concatHistories,
+      startParams: {
         userChatInput: question.value
       },
       stream,

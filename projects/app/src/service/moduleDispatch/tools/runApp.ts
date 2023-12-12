@@ -56,8 +56,8 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     ...props,
     appId: app.id,
     modules: appData.modules,
-    params: {
-      history,
+    histories: history,
+    startParams: {
       userChatInput
     }
   });

@@ -14,9 +14,13 @@ export const Input_Template_TFSwitch: FlowNodeInputItemType = {
 
 export const Input_Template_History: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.history,
-  type: FlowNodeInputTypeEnum.target,
+  type: FlowNodeInputTypeEnum.numberInput,
   label: 'core.module.input.label.chat history',
+  required: true,
+  min: 0,
+  max: 30,
   valueType: ModuleDataTypeEnum.chatHistory,
+  value: 6,
   showTargetInApp: true,
   showTargetInPlugin: true
 };

@@ -102,9 +102,13 @@ type Props = {
   userGuideModule?: ModuleItemType;
   showFileSelector?: boolean;
   active?: boolean; // can use
+
+  // not chat test params
+  appId?: string;
   chatId?: string;
   shareId?: string;
   outLinkUid?: string;
+
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
     responseText: string;
@@ -125,6 +129,7 @@ const ChatBox = (
     userGuideModule,
     showFileSelector,
     active = true,
+    appId,
     chatId,
     shareId,
     outLinkUid,
@@ -711,7 +716,7 @@ const ChatBox = (
                             return;
                           }
                           return () => {
-                            if (!item.dataId || !chatId) return;
+                            if (!item.dataId || !chatId || !appId) return;
 
                             const isGoodFeedback = !!item.userGoodFeedback;
                             setChatHistory((state) =>
@@ -726,6 +731,7 @@ const ChatBox = (
                             );
                             try {
                               updateChatUserFeedback({
+                                appId,
                                 chatId,
                                 chatItemId: item.dataId,
                                 shareId,
@@ -738,7 +744,7 @@ const ChatBox = (
                         onCloseUserLike={
                           feedbackType === FeedbackTypeEnum.admin
                             ? () => {
-                                if (!item.dataId || !chatId) return;
+                                if (!item.dataId || !chatId || !appId) return;
                                 setChatHistory((state) =>
                                   state.map((chatItem) =>
                                     chatItem.dataId === item.dataId
@@ -747,6 +753,7 @@ const ChatBox = (
                                   )
                                 );
                                 updateChatUserFeedback({
+                                  appId,
                                   chatId,
                                   chatItemId: item.dataId,
                                   userGoodFeedback: undefined
@@ -760,7 +767,7 @@ const ChatBox = (
                           }
                           if (item.userBadFeedback) {
                             return () => {
-                              if (!item.dataId || !chatId) return;
+                              if (!item.dataId || !chatId || !appId) return;
                               setChatHistory((state) =>
                                 state.map((chatItem) =>
                                   chatItem.dataId === item.dataId
@@ -770,6 +777,7 @@ const ChatBox = (
                               );
                               try {
                                 updateChatUserFeedback({
+                                  appId,
                                   chatId,
                                   chatItemId: item.dataId,
                                   shareId,
@@ -886,8 +894,9 @@ const ChatBox = (
         />
       ) : null}
       {/* user feedback modal */}
-      {!!feedbackId && chatId && (
+      {!!feedbackId && chatId && appId && (
         <FeedbackModal
+          appId={appId}
           chatId={chatId}
           chatItemId={feedbackId}
           onClose={() => setFeedbackId(undefined)}
@@ -915,8 +924,9 @@ const ChatBox = (
               )
             );
             try {
-              if (!chatId) return;
+              if (!chatId || !appId) return;
               updateChatUserFeedback({
+                appId,
                 chatId,
                 chatItemId: readFeedbackData.chatItemId
               });
@@ -948,8 +958,9 @@ const ChatBox = (
               )
             );
 
-            if (readFeedbackData && chatId) {
+            if (readFeedbackData && chatId && appId) {
               updateChatUserFeedback({
+                appId,
                 chatId,
                 chatItemId: readFeedbackData.chatItemId,
                 userBadFeedback: undefined

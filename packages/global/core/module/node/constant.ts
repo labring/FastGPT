@@ -12,8 +12,11 @@ export enum FlowNodeInputTypeEnum {
   selectApp = 'selectApp',
   // chat special input
   aiSettings = 'aiSettings',
-  // maxToken = 'maxToken',
+
+  // model select
   selectChatModel = 'selectChatModel',
+  selectCQModel = 'selectCQModel',
+
   // dataset special input
   selectDataset = 'selectDataset',
   selectDatasetParamsModal = 'selectDatasetParamsModal',

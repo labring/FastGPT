@@ -16,7 +16,6 @@ export const HttpModule: FlowModuleTemplateType = {
     Input_Template_TFSwitch,
     {
       key: ModuleInputKeyEnum.httpUrl,
-      value: '',
       type: FlowNodeInputTypeEnum.input,
       valueType: ModuleDataTypeEnum.string,
       label: '请求地址',

@@ -87,7 +87,6 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容模板',
       valueType: ModuleDataTypeEnum.string,
-      value: '',
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -96,7 +95,6 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容提示词',
       valueType: ModuleDataTypeEnum.string,
-      value: '',
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -104,7 +102,6 @@ export const AiChatModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.aiChatSettingModal,
       type: FlowNodeInputTypeEnum.aiSettings,
       label: '',
-      connected: false,
       valueType: ModuleDataTypeEnum.any,
       showTargetInApp: false,
       showTargetInPlugin: false
@@ -118,21 +115,19 @@ export const AiChatModule: FlowModuleTemplateType = {
       valueType: ModuleDataTypeEnum.string,
       description: chatNodeSystemPromptTip,
       placeholder: chatNodeSystemPromptTip,
-      value: '',
       showTargetInApp: true,
       showTargetInPlugin: true
     },
+    Input_Template_History,
     {
       key: ModuleInputKeyEnum.aiChatDatasetQuote,
       type: FlowNodeInputTypeEnum.target,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
       valueType: ModuleDataTypeEnum.datasetQuote,
-      connected: false,
       showTargetInApp: true,
       showTargetInPlugin: true
     },
-    Input_Template_History,
     Input_Template_UserChatInput
   ],
   outputs: [

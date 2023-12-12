@@ -22,11 +22,12 @@ import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { getHistories } from '../utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatModuleProps & {
     [ModuleInputKeyEnum.userChatInput]: string;
-    [ModuleInputKeyEnum.history]?: ChatItemType[];
+    [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
     [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
@@ -43,12 +44,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     stream = false,
     detail = false,
     user,
+    histories,
     outputs,
     inputs: {
       model,
       temperature = 0,
       maxToken = 4000,
-      history = [],
+      history = 6,
       quoteQA = [],
       userChatInput,
       isResponseAnswerText = true,
@@ -62,6 +64,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   }
 
   stream = stream && isResponseAnswerText;
+
+  const chatHistories = getHistories(history, histories);
 
   // temperature adapt
   const modelConstantsData = getChatModel(model);
@@ -88,7 +92,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const { messages, filterMessages } = getChatMessages({
     model: modelConstantsData,
-    history,
+    histories: chatHistories,
     quoteText,
     quotePrompt,
     userChatInput,
@@ -265,14 +269,14 @@ function filterQuote({
 function getChatMessages({
   quotePrompt,
   quoteText,
-  history = [],
+  histories = [],
   systemPrompt,
   userChatInput,
   model
 }: {
   quotePrompt?: string;
   quoteText: string;
-  history: ChatProps['inputs']['history'];
+  histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
   model: ChatModelItemType;
@@ -293,7 +297,7 @@ function getChatMessages({
           }
         ]
       : []),
-    ...history,
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: question
@@ -319,7 +323,7 @@ function getMaxTokens({
 }: {
   maxToken: number;
   model: ChatModelItemType;
-  filterMessages: ChatProps['inputs']['history'];
+  filterMessages: ChatItemType[];
 }) {
   const tokensLimit = model.maxContext;
 

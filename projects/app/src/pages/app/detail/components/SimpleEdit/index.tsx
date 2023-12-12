@@ -51,6 +51,7 @@ import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constant
 import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
 import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
@@ -635,10 +636,19 @@ function ChatTest({ appId }: { appId: string }) {
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const historyMaxLen =
-        modules
-          ?.find((item) => item.flowType === FlowNodeTypeEnum.historyNode)
-          ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
+      let historyMaxLen = 0;
+
+      modules.forEach((module) => {
+        module.inputs.forEach((input) => {
+          if (
+            (input.key === ModuleInputKeyEnum.history ||
+              input.key === ModuleInputKeyEnum.historyMaxAmount) &&
+            typeof input.value === 'number'
+          ) {
+            historyMaxLen = Math.max(historyMaxLen, input.value);
+          }
+        });
+      });
       const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据

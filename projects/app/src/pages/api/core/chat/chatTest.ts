@@ -64,8 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId,
       modules,
       variables,
-      params: {
-        history,
+      histories: history,
+      startParams: {
         userChatInput: prompt
       },
       stream: true,

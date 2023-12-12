@@ -35,7 +35,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       ...module,
       showStatus: false
     })),
-    params: data
+    startParams: data
   });
 
   const output = responseData.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
