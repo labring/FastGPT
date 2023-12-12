@@ -449,7 +449,10 @@ export function flowNode2Modules({
     flowType: item.data.flowType,
     showStatus: item.data.showStatus,
     position: item.position,
-    inputs: [...item.data.inputs],
+    inputs: item.data.inputs.map((input) => ({
+      ...input,
+      connected: false
+    })),
     outputs: item.data.outputs.map((item) => ({
       ...item,
       targets: [] as FlowNodeOutputTargetItemType[]
