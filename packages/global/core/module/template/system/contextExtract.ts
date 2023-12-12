@@ -26,7 +26,6 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.description,
       type: FlowNodeInputTypeEnum.textarea,
       valueType: ModuleDataTypeEnum.string,
-      value: '',
       label: '提取要求描述',
       description: '给AI一些对应的背景知识或要求描述，引导AI更好的完成任务',
       required: true,

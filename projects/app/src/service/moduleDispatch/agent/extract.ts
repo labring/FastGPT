@@ -99,14 +99,14 @@ async function functionCall({
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: `<要求>
-根据用户要求提取适当的 JSON 字符串。
-</要求>
-<提取要求>
+      value: `<任务描述>
+${description || '根据用户要求提取适当的 JSON 字符串。'}
+
 - 如果字段为空，你返回空字符串。
 - 不要换行。
 - 结合历史记录和文本进行提取。
-</提取要求>
+</任务描述>
+
 <文本>
 ${content}
 </文本>`

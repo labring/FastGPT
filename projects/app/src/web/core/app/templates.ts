@@ -27,7 +27,6 @@ export const appTemplates: (AppItemType & {
             key: 'welcomeText',
             type: 'input',
             label: '开场白',
-            value: '',
             connected: true
           }
         ],
@@ -131,7 +130,6 @@ export const appTemplates: (AppItemType & {
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
-            value: '',
             connected: true
           },
           {
@@ -416,7 +414,6 @@ export const appTemplates: (AppItemType & {
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             placeholder:
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
-            value: '',
             connected: true
           },
           {
@@ -675,7 +672,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容模板',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {
@@ -683,7 +679,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容提示词',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {
@@ -1099,7 +1094,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容模板',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {
@@ -1107,7 +1101,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '引用内容提示词',
             valueType: 'string',
-            value: '',
             connected: true
           },
           {

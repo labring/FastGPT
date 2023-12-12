@@ -150,7 +150,6 @@ function simpleChatTemplate({
           type: 'hidden',
           label: '引用内容模板',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {
@@ -158,7 +157,6 @@ function simpleChatTemplate({
           type: 'hidden',
           label: '引用内容提示词',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {
@@ -460,7 +458,6 @@ function datasetTemplate({
           type: 'hidden',
           label: '引用内容模板',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {
@@ -468,7 +465,6 @@ function datasetTemplate({
           type: 'hidden',
           label: '引用内容提示词',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {

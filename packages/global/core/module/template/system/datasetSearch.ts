@@ -74,7 +74,6 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.datasetParamsModal,
       type: FlowNodeInputTypeEnum.selectDatasetParamsModal,
       label: '',
-      connected: false,
       valueType: ModuleDataTypeEnum.any,
       showTargetInApp: false,
       showTargetInPlugin: false
