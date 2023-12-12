@@ -14,7 +14,7 @@ export async function getChatItems({
     return { history: [] };
   }
 
-  const history = await MongoChatItem.find({ chatId }, field).sort({ _id: -1 }).limit(limit);
+  const history = await MongoChatItem.find({ chatId }, field).sort({ _id: -1 }).limit(limit).lean();
 
   history.reverse();
 
