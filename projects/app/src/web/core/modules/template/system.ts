@@ -1,12 +1,12 @@
 import { UserGuideModule } from '@fastgpt/global/core/module/template/system/userGuide';
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
-import { HistoryModule } from '@fastgpt/global/core/module/template/system/history';
+import { HistoryModule } from '@fastgpt/global/core/module/template/system/abandon/history';
 import { AiChatModule } from '@fastgpt/global/core/module/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/module/template/system/datasetSearch';
 import { AssignedAnswerModule } from '@fastgpt/global/core/module/template/system/assignedAnswer';
 import { ClassifyQuestionModule } from '@fastgpt/global/core/module/template/system/classifyQuestion';
 import { ContextExtractModule } from '@fastgpt/global/core/module/template/system/contextExtract';
-import { Abandon_HttpModule } from '@fastgpt/global/core/module/template/system/abandon/http';
+import { HttpModule } from '@fastgpt/global/core/module/template/system/http';
 import { EmptyModule } from '@fastgpt/global/core/module/template/system/empty';
 import { RunAppModule } from '@fastgpt/global/core/module/template/system/runApp';
 import { PluginInputModule } from '@fastgpt/global/core/module/template/system/pluginInput';
@@ -26,7 +26,8 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   DatasetSearchModule,
   RunAppModule,
   ClassifyQuestionModule,
-  ContextExtractModule
+  ContextExtractModule,
+  HttpModule
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -36,7 +37,8 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   DatasetSearchModule,
   RunAppModule,
   ClassifyQuestionModule,
-  ContextExtractModule
+  ContextExtractModule,
+  HttpModule
 ];
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
@@ -47,7 +49,7 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   AssignedAnswerModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  Abandon_HttpModule,
+  HttpModule,
   EmptyModule,
   RunAppModule,
   PluginInputModule,
@@ -107,43 +109,3 @@ export const moduleTemplatesList: moduleTemplateListType = [
     list: []
   }
 ];
-// export const appSystemModuleTemplates = [
-//   {
-//     label: '引导模块',
-//     list: [UserGuideModule]
-//   },
-//   {
-//     label: '输入模块',
-//     list: [UserInputModule, HistoryModule]
-//   },
-//   {
-//     label: '内容生成',
-//     list: [AiChatModule, AssignedAnswerModule]
-//   },
-//   {
-//     label: '核心调用',
-//     list: [DatasetSearchModule, RunAppModule]
-//   },
-//   {
-//     label: '函数模块',
-//     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
-//   }
-// ];
-// export const pluginModuleTemplates = [
-//   {
-//     label: '输入输出',
-//     list: [PluginInputModule, PluginOutputModule, HistoryModule]
-//   },
-//   {
-//     label: '内容生成',
-//     list: [AiChatModule, AssignedAnswerModule]
-//   },
-//   {
-//     label: '核心调用',
-//     list: [DatasetSearchModule, RunAppModule]
-//   },
-//   {
-//     label: '函数模块',
-//     list: [ClassifyQuestionModule, ContextExtractModule, HttpModule]
-//   }
-// ];

@@ -2,9 +2,9 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
-} from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
+} from '../../../node/constant';
+import { FlowModuleTemplateType } from '../../../type';
+import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../../constants';
 
 export const HistoryModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.historyNode,

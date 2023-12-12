@@ -69,7 +69,9 @@ export enum ModuleInputKeyEnum {
   extractKeys = 'extractKeys',
 
   // http
-  httpUrl = 'url',
+  httpReqUrl = 'httpReqUrl',
+  httpReqAuth = 'httpReqAuth',
+  abandon_httpUrl = 'url',
 
   // app
   runAppSelectApp = 'app',
