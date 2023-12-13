@@ -45,6 +45,7 @@ export enum FlowNodeTypeEnum {
   pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
+  textEditor = 'textEditor',
 
   // abandon
   variable = 'variable'

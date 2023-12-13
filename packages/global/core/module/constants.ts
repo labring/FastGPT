@@ -1,6 +1,7 @@
 export enum ModuleTemplateTypeEnum {
   userGuide = 'userGuide',
   systemInput = 'systemInput',
+  tools = 'tools',
   textAnswer = 'textAnswer',
   dataset = 'dataset',
   functionCall = 'functionCall',
@@ -77,7 +78,10 @@ export enum ModuleInputKeyEnum {
   runAppSelectApp = 'app',
 
   // plugin
-  pluginId = 'pluginId'
+  pluginId = 'pluginId',
+
+  // text editor
+  textEditorInput = 'textEditorInput'
 }
 
 export enum ModuleOutputKeyEnum {
@@ -89,6 +93,7 @@ export enum ModuleOutputKeyEnum {
   answerText = 'answerText', //  answer module text key
   success = 'success',
   failed = 'failed',
+  text = 'text',
 
   // dataset
   datasetIsEmpty = 'isEmpty',

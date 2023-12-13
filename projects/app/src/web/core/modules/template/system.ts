@@ -12,6 +12,7 @@ import { RunAppModule } from '@fastgpt/global/core/module/template/system/runApp
 import { PluginInputModule } from '@fastgpt/global/core/module/template/system/pluginInput';
 import { PluginOutputModule } from '@fastgpt/global/core/module/template/system/pluginOutput';
 import { RunPluginModule } from '@fastgpt/global/core/module/template/system/runPlugin';
+import { TextEditorModule } from '@fastgpt/global/core/module/template/system/textEditor';
 import type {
   FlowModuleTemplateType,
   moduleTemplateListType
@@ -27,7 +28,8 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule
+  HttpModule,
+  TextEditorModule
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -38,7 +40,8 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule
+  HttpModule,
+  TextEditorModule
 ];
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
@@ -54,7 +57,8 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   RunAppModule,
   PluginInputModule,
   PluginOutputModule,
-  RunPluginModule
+  RunPluginModule,
+  TextEditorModule
 ];
 
 export const moduleTemplatesList: moduleTemplateListType = [
@@ -66,6 +70,11 @@ export const moduleTemplatesList: moduleTemplateListType = [
   {
     type: ModuleTemplateTypeEnum.systemInput,
     label: '系统输入',
+    list: []
+  },
+  {
+    type: ModuleTemplateTypeEnum.tools,
+    label: '工具',
     list: []
   },
   {

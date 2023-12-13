@@ -25,6 +25,7 @@ import { dispatchAppRequest } from './tools/runApp';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
+import { dispatchTextEditor } from './tools/textEditor';
 
 /* running */
 export async function dispatchModules({
@@ -204,7 +205,8 @@ export async function dispatchModules({
         [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
         [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
         [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
+        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
+        [FlowNodeTypeEnum.textEditor]: dispatchTextEditor
       };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);

@@ -3,7 +3,6 @@ import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import {
   Box,
-  Textarea,
   Input,
   NumberInput,
   NumberInputField,
@@ -15,7 +14,8 @@ import {
   Button,
   useTheme,
   Grid,
-  Switch
+  Switch,
+  Textarea
 } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -38,6 +38,7 @@ import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal
 import { feConfigs } from '@/web/common/system/staticData';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import PromptTextarea from '@/components/common/Textarea/PromptTextarea';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 const SelectAppModal = dynamic(() => import('../../SelectAppModal'));
@@ -81,7 +82,7 @@ export const Label = React.memo(function Label({
       <Box position={'relative'}>
         {t(label)}
         {description && (
-          <MyTooltip label={description} forceShow>
+          <MyTooltip label={t(description)} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
         )}
@@ -328,10 +329,12 @@ const SwitchRender = React.memo(function SwitchRender({ item, moduleId }: Render
 });
 
 const TextareaRender = React.memo(function TextareaRender({ item, moduleId }: RenderProps) {
+  const { t } = useTranslation();
   return (
-    <Textarea
+    <PromptTextarea
       rows={5}
-      placeholder={item.placeholder}
+      bg={'myWhite.400'}
+      placeholder={t(item.placeholder || '')}
       resize={'both'}
       defaultValue={item.value}
       onBlur={(e) => {

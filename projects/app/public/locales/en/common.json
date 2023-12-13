@@ -239,6 +239,11 @@
     "system": {
       "Help Chatbot": "Chatbot Helper",
       "Use Helper": "UsingHelp"
+    },
+    "ui": {
+      "textarea": {
+        "Magnifying": "Magnifying"
+      }
     }
   },
   "core": {
@@ -262,6 +267,9 @@
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
+      "edit": {
+        "Prompt Editor": "Prompt Editor"
+      },
       "logs": {
         "Source And Time": "Source & Time"
       },
@@ -324,6 +332,9 @@
         "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
         "Read Quote": "Read Quote",
         "Read Source": "Read Source"
+      },
+      "response": {
+        "text output": "Text Output"
       },
       "tts": {
         "Stop Speech": "Stop"
@@ -507,10 +518,15 @@
       "Variable": "Variable",
       "Variable Setting": "Variable Setting",
       "input": {
+        "Add Input": "Add Input",
+        "description": {
+          "textEditor textarea": "The passed variable can be referenced by {{key}}."
+        },
         "label": {
-          "chat history": "",
-          "switch": "",
-          "user question": ""
+          "chat history": "chat history",
+          "switch": "Switch",
+          "textEditor textarea": "Text Edit",
+          "user question": "User question"
         }
       },
       "inputType": {
@@ -524,11 +540,20 @@
       },
       "output": {
         "description": {
-          "running done": "running done"
+          "running done": "Triggered when the module call ends"
         },
         "label": {
-          "running done": "running done"
+          "running done": "End of module call ",
+          "text": "Text output"
         }
+      },
+      "template": {
+        "UnKnow Module": "UnKnow Module",
+        "textEditor": "Text Editor",
+        "textEditor intro": "Output of fixed or incoming text after edit"
+      },
+      "textEditor": {
+        "Text Edit": "Text Edit"
       },
       "valueType": {
         "any": "Any",

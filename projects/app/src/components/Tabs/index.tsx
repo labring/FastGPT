@@ -35,6 +35,7 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
         };
     }
   }, [size]);
+  console.log(list);
 
   return (
     <Grid

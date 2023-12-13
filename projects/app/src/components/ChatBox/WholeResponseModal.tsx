@@ -21,6 +21,7 @@ function Row({
   value?: string | number;
   rawDom?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const val = value || rawDom;
   const strValue = `${value}`;
@@ -29,7 +30,7 @@ function Row({
   return val !== undefined && val !== '' && val !== 'undefined' ? (
     <Box mb={3}>
       <Box fontSize={['sm', 'md']} mb={isCodeBlock ? 0 : 1} flex={'0 0 90px'}>
-        {label}:
+        {t(label)}:
       </Box>
       <Box
         borderRadius={'md'}
@@ -69,12 +70,12 @@ const WholeResponseModal = ({
               alt={''}
               w={['14px', '16px']}
             />
-            {item.moduleName}
+            {t(item.moduleName)}
           </Flex>
         ),
         id: `${i}`
       })),
-    [response]
+    [response, t]
   );
 
   const [currentTab, setCurrentTab] = useState(`0`);
@@ -103,7 +104,7 @@ const WholeResponseModal = ({
           <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
         </Box>
         <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
-          <Row label={t('chat.response.module name')} value={activeModule?.moduleName} />
+          <Row label={t('chat.response.module name')} value={t(activeModule.moduleName)} />
           {activeModule?.price !== undefined && (
             <Row
               label={t('chat.response.module price')}
@@ -207,6 +208,9 @@ const WholeResponseModal = ({
               value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
             />
           )}
+
+          {/* text editor */}
+          <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
         </Box>
       </Flex>
     </MyModal>

@@ -24,10 +24,11 @@ type Props = FlowModuleItemType & {
 };
 
 const NodeCard = (props: Props) => {
+  const { t } = useTranslation();
   const {
     children,
     avatar = LOGO_ICON,
-    name = '未知模块',
+    name = t('core.module.template.UnKnow Module'),
     intro,
     minW = '300px',
     moduleId,
@@ -36,7 +37,6 @@ const NodeCard = (props: Props) => {
     isPreview
   } = props;
   const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
-  const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
@@ -147,10 +147,10 @@ const NodeCard = (props: Props) => {
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
         <Avatar src={avatar} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
-          {name}
+          {t(name)}
         </Box>
         {intro && (
-          <MyTooltip label={intro} forceShow>
+          <MyTooltip label={t(intro)} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} mb={'1px'} ml={1} />
           </MyTooltip>
         )}

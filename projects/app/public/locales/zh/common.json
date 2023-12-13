@@ -239,6 +239,11 @@
     "system": {
       "Help Chatbot": "机器人助手",
       "Use Helper": "使用帮助"
+    },
+    "ui": {
+      "textarea": {
+        "Magnifying": "放大"
+      }
     }
   },
   "core": {
@@ -262,6 +267,9 @@
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
+      "edit": {
+        "Prompt Editor": "提示词编辑"
+      },
       "logs": {
         "Source And Time": "来源 & 时间"
       },
@@ -324,6 +332,9 @@
         "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新",
         "Read Quote": "查看引用",
         "Read Source": "查看来源"
+      },
+      "response": {
+        "text output": "文本输出"
       },
       "tts": {
         "Stop Speech": "停止"
@@ -507,9 +518,14 @@
       "Variable": "参数变量",
       "Variable Setting": "变量设置",
       "input": {
+        "Add Input": "添加入参",
+        "description": {
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。"
+        },
         "label": {
           "chat history": "聊天记录",
           "switch": "触发器",
+          "textEditor textarea": "文本编辑",
           "user question": "用户问题"
         }
       },
@@ -527,8 +543,17 @@
           "running done": "模块调用结束时触发"
         },
         "label": {
-          "running done": "模块调用结束"
+          "running done": "模块调用结束",
+          "text": "文本输出"
         }
+      },
+      "template": {
+        "UnKnow Module": "未知模块",
+        "textEditor": "文本加工",
+        "textEditor intro": "可对固定或传入的文本进行加工后输出"
+      },
+      "textEditor": {
+        "Text Edit": "文本加工"
       },
       "valueType": {
         "any": "任意",

@@ -199,7 +199,7 @@ const RenderList = React.memo(function RenderList({
           <Box key={item.type}>
             <Flex>
               <Box fontWeight={'bold'} flex={1}>
-                {item.label}
+                {t(item.label)}
               </Box>
               {isPlugin && item.type === ModuleTemplateTypeEnum.personalPlugin && (
                 <Flex
@@ -248,9 +248,9 @@ const RenderList = React.memo(function RenderList({
                     borderRadius={'0'}
                   />
                   <Box ml={5} flex={'1 0 0'}>
-                    <Box color={'black'}>{template.name}</Box>
+                    <Box color={'black'}>{t(template.name)}</Box>
                     <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
-                      {template.intro}
+                      {t(template.intro)}
                     </Box>
                   </Box>
                 </Flex>
