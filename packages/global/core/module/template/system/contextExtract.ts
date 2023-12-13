@@ -23,6 +23,15 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
+      key: ModuleInputKeyEnum.aiModel,
+      type: FlowNodeInputTypeEnum.selectExtractModel,
+      valueType: ModuleDataTypeEnum.string,
+      label: '提取模型',
+      required: true,
+      showTargetInApp: false,
+      showTargetInPlugin: false
+    },
+    {
       key: ModuleInputKeyEnum.description,
       type: FlowNodeInputTypeEnum.textarea,
       valueType: ModuleDataTypeEnum.string,
@@ -50,7 +59,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       label: '目标字段',
       valueType: ModuleDataTypeEnum.any,
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
-      value: [], // {desc: string; key: string; required: boolean;}[]
+      value: [], // {desc: string; key: string; required: boolean; enum: string[]}[]
       showTargetInApp: false,
       showTargetInPlugin: false
     }

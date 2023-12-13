@@ -517,12 +517,27 @@
       "Plugin output must connect": "Custom outputs must all be connected",
       "Variable": "Variable",
       "Variable Setting": "Variable Setting",
+      "extract": {
+        "Enum Description": "Lists the possible values for the field, one per row",
+        "Enum Value": "Enum",
+        "Field Description Placeholder": "Name/age /sql statement......",
+        "Field Setting Title": "Extract field configuration"
+      },
       "input": {
         "Add Input": "Add Input",
         "description": {
+          "Http Request Header": "",
+          "Http Request Url": "",
+          "TFSwitch textarea": "",
+          "anyInput": "",
           "textEditor textarea": "The passed variable can be referenced by {{key}}."
         },
         "label": {
+          "Http Request Header": "",
+          "Http Request Method": "",
+          "Http Request Url": "",
+          "TFSwitch textarea": "",
+          "anyInput": "",
           "chat history": "chat history",
           "switch": "Switch",
           "textEditor textarea": "Text Edit",
@@ -543,11 +558,15 @@
           "running done": "Triggered when the module call ends"
         },
         "label": {
+          "result false": "",
+          "result true": "",
           "running done": "End of module call ",
           "text": "Text output"
         }
       },
       "template": {
+        "TFSwitch": "",
+        "TFSwitch intro": "",
         "UnKnow Module": "UnKnow Module",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"

@@ -517,25 +517,31 @@
       "Plugin output must connect": "自定义输出必须全部连接",
       "Variable": "参数变量",
       "Variable Setting": "变量设置",
+      "extract": {
+        "Enum Description": "列举出该字段可能的值，每行一个",
+        "Enum Value": "枚举值",
+        "Field Description Placeholder": "姓名/年龄/sql语句……",
+        "Field Setting Title": "提取字段配置"
+      },
       "input": {
         "Add Input": "添加入参",
         "description": {
-          "anyInput": "可传入任意内容",
-          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
-          "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
           "Http Request Header": "自定义请求头，请严格填入JSON字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如: {\"Authorization\":\"Bearer xxx\"}",
-          "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。"
+          "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
+          "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
+          "anyInput": "可传入任意内容",
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
         },
         "label": {
+          "Http Request Header": "请求头",
+          "Http Request Method": "请求方式",
+          "Http Request Url": "请求地址",
+          "TFSwitch textarea": "自定义 False 匹配规则",
           "anyInput": "任意内容输入",
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
-          "user question": "用户问题",
-          "Http Request Method": "请求方式",
-          "Http Request Url": "请求地址",
-          "Http Request Header": "请求头",
-          "TFSwitch textarea": "自定义 False 匹配规则"
+          "user question": "用户问题"
         }
       },
       "inputType": {
@@ -552,18 +558,18 @@
           "running done": "模块调用结束时触发"
         },
         "label": {
-          "running done": "模块调用结束",
-          "text": "文本输出",
+          "result false": "False",
           "result true": "True",
-          "result false": "False"
+          "running done": "模块调用结束",
+          "text": "文本输出"
         }
       },
       "template": {
+        "TFSwitch": "判断器",
+        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。",
         "UnKnow Module": "未知模块",
         "textEditor": "文本加工",
-        "textEditor intro": "可对固定或传入的文本进行加工后输出",
-        "TFSwitch": "判断器",
-        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。"
+        "textEditor intro": "可对固定或传入的文本进行加工后输出"
       },
       "textEditor": {
         "Text Edit": "文本加工"

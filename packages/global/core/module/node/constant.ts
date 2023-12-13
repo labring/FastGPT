@@ -16,6 +16,7 @@ export enum FlowNodeInputTypeEnum {
   // model select
   selectChatModel = 'selectChatModel',
   selectCQModel = 'selectCQModel',
+  selectExtractModel = 'selectExtractModel',
 
   // dataset special input
   selectDataset = 'selectDataset',

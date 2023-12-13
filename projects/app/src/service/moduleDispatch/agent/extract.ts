@@ -100,11 +100,11 @@ async function functionCall({
     {
       obj: ChatRoleEnum.Human,
       value: `<任务描述>
-${description || '根据用户要求提取适当的 JSON 字符串。'}
+${description || '根据用户要求获取适当的 JSON 字符串。'}
 
 - 如果字段为空，你返回空字符串。
 - 不要换行。
-- 结合历史记录和文本进行提取。
+- 结合历史记录和文本进行获取。
 </任务描述>
 
 <文本>
@@ -128,7 +128,8 @@ ${content}
   extractKeys.forEach((item) => {
     properties[item.key] = {
       type: 'string',
-      description: item.desc
+      description: item.desc,
+      ...(item.enum ? { enum: item.enum.split('\n') } : {})
     };
   });
 
@@ -192,7 +193,9 @@ async function completions({
         json: extractKeys
           .map(
             (item) =>
-              `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}}}`
+              `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}${
+                item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
+              }}`
           )
           .join('\n'),
         text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}

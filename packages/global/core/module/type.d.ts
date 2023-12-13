@@ -72,4 +72,5 @@ export type ContextExtractAgentItemType = {
   desc: string;
   key: string;
   required: boolean;
+  enum?: string;
 };

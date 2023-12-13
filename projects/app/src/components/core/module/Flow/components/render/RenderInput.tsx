@@ -29,7 +29,7 @@ import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
-import { chatModelList, cqModelList } from '@/web/common/system/staticData';
+import { chatModelList, cqModelList, extractModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
@@ -232,7 +232,8 @@ const RenderInput = ({
                 )}
                 {[
                   FlowNodeInputTypeEnum.selectChatModel,
-                  FlowNodeInputTypeEnum.selectCQModel
+                  FlowNodeInputTypeEnum.selectCQModel,
+                  FlowNodeInputTypeEnum.selectExtractModel
                 ].includes(item.type as any) && (
                   <SelectAIModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
@@ -461,6 +462,8 @@ const SelectAIModelRender = React.memo(function SelectAIModelRender({
   const modelList = (() => {
     if (item.type === FlowNodeInputTypeEnum.selectChatModel) return chatModelList;
     if (item.type === FlowNodeInputTypeEnum.selectCQModel) return cqModelList;
+    if (item.type === FlowNodeInputTypeEnum.selectExtractModel) return extractModelList;
+
     return [];
   })().map((item) => ({
     model: item.model,
