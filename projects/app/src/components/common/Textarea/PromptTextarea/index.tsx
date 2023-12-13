@@ -35,9 +35,9 @@ const PromptTextarea = (props: Props) => {
             <Editor
               {...childProps}
               value={value}
+              minH={'300px'}
               maxH={'auto'}
               minW={['100%', '512px']}
-              minH={'300px'}
               showSetModalModeIcon={false}
             />
           </ModalBody>
@@ -61,7 +61,7 @@ const Editor = React.memo(function Editor({
 
   return (
     <Box h={'100%'} position={'relative'}>
-      <Textarea wordBreak={'break-all'} {...props} />
+      <Textarea wordBreak={'break-all'} maxW={'100%'} {...props} />
       {showSetModalModeIcon && (
         <Box
           zIndex={1}

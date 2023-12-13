@@ -1,11 +1,13 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import axios from 'axios';
 
 export type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
+  [ModuleInputKeyEnum.httpMethod]: string;
   [ModuleInputKeyEnum.httpReqUrl]: string;
-  [ModuleInputKeyEnum.httpReqAuth]: string;
+  [ModuleInputKeyEnum.httpHeader]: string;
   [key: string]: any;
 }>;
 export type HttpResponse = {
@@ -19,41 +21,67 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     appId,
     chatId,
     variables,
-    inputs: { url: abandonUrl, httpReqUrl, httpReqAuth, ...body }
+    inputs: { httpMethod, url: abandonUrl, httpReqUrl, httpHeader, ...body }
   } = props;
 
-  const { requestUrl, requestBody } = await (() => {
+  const { requestMethod, requestUrl, requestHeader, requestBody, requestQuery } = await (() => {
     // 2024-2-12 clear
-    if (abandonUrl)
+    if (abandonUrl) {
       return {
+        requestMethod: 'POST',
         requestUrl: abandonUrl,
+        requestHeader: httpHeader,
         requestBody: {
           ...body,
           appId,
           chatId,
           variables
-        }
+        },
+        requestQuery: {}
       };
-    if (httpReqUrl)
+    }
+    if (httpReqUrl) {
       return {
+        requestMethod: httpMethod,
         requestUrl: httpReqUrl,
+        requestHeader: httpHeader,
         requestBody: {
           appId,
           chatId,
           variables,
           data: body
+        },
+        requestQuery: {
+          appId,
+          chatId,
+          ...variables,
+          ...body
         }
       };
+    }
+
     return Promise.reject('url is empty');
   })();
 
   const formatBody = transformFlatJson({ ...requestBody });
 
+  // parse header
+  const headers = await (() => {
+    try {
+      if (!requestHeader) return {};
+      return JSON.parse(requestHeader);
+    } catch (error) {
+      return Promise.reject('Header 为非法 JSON 格式');
+    }
+  })();
+
   try {
     const response = await fetchData({
+      method: requestMethod,
       url: requestUrl,
-      auth: httpReqAuth,
-      body: formatBody
+      headers,
+      body: formatBody,
+      query: requestQuery
     });
 
     return {
@@ -65,6 +93,8 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
       ...response
     };
   } catch (error) {
+    console.log(error);
+
     return {
       [ModuleOutputKeyEnum.failed]: true,
       responseData: {
@@ -77,22 +107,28 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
 };
 
 async function fetchData({
+  method,
   url,
-  auth,
-  body
+  headers,
+  body,
+  query
 }: {
+  method: string;
   url: string;
-  auth: string;
+  headers: Record<string, any>;
   body: Record<string, any>;
+  query: Record<string, any>;
 }): Promise<Record<string, any>> {
-  const response: Record<string, any> = await fetch(url, {
-    method: 'POST',
+  const { data: response } = await axios<Record<string, any>>({
+    method,
+    url,
     headers: {
       'Content-Type': 'application/json',
-      Authorization: auth
+      ...headers
     },
-    body: JSON.stringify(body)
-  }).then((res) => res.json());
+    params: method === 'GET' ? query : {},
+    data: method === 'POST' ? body : {}
+  });
 
   /* 
     parse the json:

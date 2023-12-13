@@ -332,6 +332,7 @@ const TextareaRender = React.memo(function TextareaRender({ item, moduleId }: Re
   const { t } = useTranslation();
   return (
     <PromptTextarea
+      title={t(item.label)}
       rows={5}
       bg={'myWhite.400'}
       placeholder={t(item.placeholder || '')}

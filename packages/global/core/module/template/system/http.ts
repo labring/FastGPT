@@ -15,24 +15,43 @@ export const HttpModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
+      key: ModuleInputKeyEnum.httpMethod,
+      type: FlowNodeInputTypeEnum.select,
+      valueType: ModuleDataTypeEnum.string,
+      label: 'core.module.input.label.Http Request Method',
+      value: 'POST',
+      list: [
+        {
+          label: 'GET',
+          value: 'GET'
+        },
+        {
+          label: 'POST',
+          value: 'POST'
+        }
+      ],
+      required: true,
+      showTargetInApp: false,
+      showTargetInPlugin: false
+    },
+    {
       key: ModuleInputKeyEnum.httpReqUrl,
       type: FlowNodeInputTypeEnum.input,
       valueType: ModuleDataTypeEnum.string,
-      label: 'HTTP请求地址',
-      description:
-        '新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。',
+      label: 'core.module.input.label.Http Request Url',
+      description: 'core.module.input.description.Http Request Url',
       placeholder: 'https://api.ai.com/getInventory',
       required: false,
       showTargetInApp: false,
       showTargetInPlugin: false
     },
     {
-      key: ModuleInputKeyEnum.httpReqAuth,
-      type: FlowNodeInputTypeEnum.input,
+      key: ModuleInputKeyEnum.httpHeader,
+      type: FlowNodeInputTypeEnum.textarea,
       valueType: ModuleDataTypeEnum.string,
-      label: '安全校验凭证',
-      description: '会在 Header 中添加 Authorization 字段',
-      placeholder: 'Bearer xxx',
+      label: 'core.module.input.label.Http Request Header',
+      description: 'core.module.input.description.Http Request Header',
+      placeholder: 'core.module.input.description.Http Request Header',
       required: false,
       showTargetInApp: false,
       showTargetInPlugin: false

@@ -71,7 +71,8 @@ export enum ModuleInputKeyEnum {
 
   // http
   httpReqUrl = 'httpReqUrl',
-  httpReqAuth = 'httpReqAuth',
+  httpHeader = 'httpHeader',
+  httpMethod = 'httpMethod',
   abandon_httpUrl = 'url',
 
   // app

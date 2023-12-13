@@ -520,13 +520,18 @@
       "input": {
         "Add Input": "添加入参",
         "description": {
-          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。"
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。",
+          "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
+          "Http Request Header": "自定义请求头，请严格填入JSON字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如: {\"Authorization\":\"Bearer xxx\"}"
         },
         "label": {
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
-          "user question": "用户问题"
+          "user question": "用户问题",
+          "Http Request Method": "请求方式",
+          "Http Request Url": "请求地址",
+          "Http Request Header": "请求头"
         }
       },
       "inputType": {
