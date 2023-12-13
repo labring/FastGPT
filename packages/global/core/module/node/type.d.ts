@@ -48,12 +48,12 @@ export type FlowNodeOutputTargetItemType = {
   key: string;
 };
 export type FlowNodeOutputItemType = {
+  type: `${FlowNodeOutputTypeEnum}`;
   key: `${ModuleOutputKeyEnum}` | string;
   label?: string;
   edit?: boolean;
   description?: string;
   valueType?: `${ModuleDataTypeEnum}`;
-  type?: `${FlowNodeOutputTypeEnum}`;
   targets: FlowNodeOutputTargetItemType[];
 };
 

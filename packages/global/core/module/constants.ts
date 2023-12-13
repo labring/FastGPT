@@ -47,6 +47,7 @@ export enum ModuleInputKeyEnum {
   description = 'description',
   anyInput = 'anyInput',
   textareaInput = 'textareaInput',
+  addInputParam = 'addInputParam',
 
   // history
   historyMaxAmount = 'maxContext',
@@ -94,6 +95,7 @@ export enum ModuleOutputKeyEnum {
   success = 'success',
   failed = 'failed',
   text = 'text',
+  addOutputParam = 'addOutputParam',
 
   // dataset
   datasetIsEmpty = 'isEmpty',

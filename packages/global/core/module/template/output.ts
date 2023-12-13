@@ -11,3 +11,11 @@ export const Output_Template_Finish: FlowNodeOutputItemType = {
   type: FlowNodeOutputTypeEnum.source,
   targets: []
 };
+
+export const Output_Template_AddOutput: FlowNodeOutputItemType = {
+  key: ModuleOutputKeyEnum.addOutputParam,
+  type: FlowNodeOutputTypeEnum.addOutputParam,
+  valueType: ModuleDataTypeEnum.any,
+  label: '',
+  targets: []
+};

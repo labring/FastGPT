@@ -525,6 +525,7 @@
       },
       "input": {
         "Add Input": "添加入参",
+        "Input Number": "入参: {{length}}",
         "description": {
           "Http Request Header": "自定义请求头，请严格填入JSON字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如: {\"Authorization\":\"Bearer xxx\"}",
           "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
@@ -554,6 +555,8 @@
         "textarea": "段落输入"
       },
       "output": {
+        "Output Number": "出参: {{length}}",
+        "Add Output": "添加出参",
         "description": {
           "running done": "模块调用结束时触发"
         },

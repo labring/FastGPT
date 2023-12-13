@@ -1,20 +1,16 @@
-import React, { useMemo, useState } from 'react';
-import type { FlowNodeOutputItemType } from '@fastgpt/global/core/module/node/type';
-import { Box, Flex } from '@chakra-ui/react';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MyTooltip from '@/components/MyTooltip';
-import SourceHandle from './SourceHandle';
-import MyIcon from '@/components/Icon';
-import dynamic from 'next/dynamic';
-import { onChangeNode } from '../../FlowProvider';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeOutputItemType } from '@fastgpt/global/core/module/node/type';
+import React, { useState } from 'react';
+import FieldEditModal, { EditFieldModeType, EditFieldType } from '../../modules/FieldEditModal';
 import { useTranslation } from 'next-i18next';
+import { Box, Flex } from '@chakra-ui/react';
+import MyIcon from '@/components/Icon';
+import { onChangeNode } from '../../../FlowProvider';
+import MyTooltip from '@/components/MyTooltip';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import SourceHandle from '../SourceHandle';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
-import type { EditFieldType, EditFieldModeType } from '../modules/FieldEditModal';
-const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
-
-export const Label = ({
+const OutputLabel = ({
   moduleId,
   outputKey,
   outputs,
@@ -79,6 +75,10 @@ export const Label = ({
       )}
       <Box>{t(label)}</Box>
 
+      {item.type === FlowNodeOutputTypeEnum.source && (
+        <SourceHandle handleKey={item.key} valueType={item.valueType} />
+      )}
+
       {!!editField && (
         <FieldEditModal
           mode={editFiledType}
@@ -113,48 +113,4 @@ export const Label = ({
   );
 };
 
-const RenderOutput = ({
-  moduleId,
-  flowOutputList,
-  editFiledType
-}: {
-  moduleId: string;
-  flowOutputList: FlowNodeOutputItemType[];
-  editFiledType?: EditFieldModeType;
-}) => {
-  const sortOutput = useMemo(
-    () =>
-      [...flowOutputList].sort((a, b) => {
-        if (a.key === ModuleOutputKeyEnum.finish) return -1;
-        if (b.key === ModuleOutputKeyEnum.finish) return 1;
-        return 0;
-      }),
-    [flowOutputList]
-  );
-
-  return (
-    <>
-      {sortOutput.map(
-        (item) =>
-          item.type !== FlowNodeOutputTypeEnum.hidden && (
-            <Box key={item.key} _notLast={{ mb: 7 }} position={'relative'}>
-              <Label
-                editFiledType={editFiledType}
-                moduleId={moduleId}
-                outputKey={item.key}
-                outputs={sortOutput}
-                {...item}
-              />
-              <Box mt={FlowNodeOutputTypeEnum.answer ? 0 : 2} className={'nodrag'}>
-                {item.type === FlowNodeOutputTypeEnum.source && (
-                  <SourceHandle handleKey={item.key} valueType={item.valueType} />
-                )}
-              </Box>
-            </Box>
-          )
-      )}
-    </>
-  );
-};
-
-export default React.memo(RenderOutput);
+export default React.memo(OutputLabel);

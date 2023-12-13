@@ -2,18 +2,21 @@ export enum FlowNodeInputTypeEnum {
   systemInput = 'systemInput', // history, userChatInput, variableInput
 
   input = 'input', // one line input
-  textarea = 'textarea',
   numberInput = 'numberInput',
   select = 'select',
   slider = 'slider',
-  custom = 'custom',
   target = 'target', // data input
   switch = 'switch',
+  textarea = 'textarea',
+
+  addInputParam = 'addInputParam', // params input
+
   selectApp = 'selectApp',
+
   // chat special input
   aiSettings = 'aiSettings',
 
-  // model select
+  // ai model select
   selectChatModel = 'selectChatModel',
   selectCQModel = 'selectCQModel',
   selectExtractModel = 'selectExtractModel',
@@ -22,13 +25,16 @@ export enum FlowNodeInputTypeEnum {
   selectDataset = 'selectDataset',
   selectDatasetParamsModal = 'selectDatasetParamsModal',
 
-  hidden = 'hidden'
+  hidden = 'hidden',
+  custom = 'custom'
 }
 
 export enum FlowNodeOutputTypeEnum {
   answer = 'answer',
   source = 'source',
-  hidden = 'hidden'
+  hidden = 'hidden',
+
+  addOutputParam = 'addOutputParam'
 }
 
 export enum FlowNodeTypeEnum {

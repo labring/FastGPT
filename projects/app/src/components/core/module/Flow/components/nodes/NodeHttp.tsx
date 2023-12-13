@@ -25,54 +25,10 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
     <NodeCard minW={'350px'} {...data}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
         <RenderInput moduleId={moduleId} flowInputList={inputs} />
-        <Button
-          variant={'base'}
-          mt={5}
-          leftIcon={<SmallAddIcon />}
-          onClick={() => {
-            const key = nanoid();
-            onChangeNode({
-              moduleId,
-              type: 'addInput',
-              key,
-              value: {
-                key,
-                valueType: ModuleDataTypeEnum.string,
-                type: FlowNodeInputTypeEnum.target,
-                label: `入参${inputs.length - 1}`,
-                edit: true
-              }
-            });
-          }}
-        >
-          添加入参
-        </Button>
       </Container>
       <Divider text="Output" />
       <Container>
         <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
-        <Box textAlign={'right'} mt={5}>
-          <Button
-            variant={'base'}
-            leftIcon={<SmallAddIcon />}
-            onClick={() => {
-              onChangeNode({
-                moduleId,
-                type: 'addOutput',
-                value: {
-                  key: nanoid(),
-                  label: `出参${outputs.length}`,
-                  valueType: ModuleDataTypeEnum.string,
-                  type: FlowNodeOutputTypeEnum.source,
-                  edit: true,
-                  targets: []
-                }
-              });
-            }}
-          >
-            添加出参
-          </Button>
-        </Box>
       </Container>
     </NodeCard>
   );

@@ -34,3 +34,13 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   showTargetInApp: true,
   showTargetInPlugin: true
 };
+
+export const Input_Template_AddInputParam: FlowNodeInputItemType = {
+  key: ModuleInputKeyEnum.addInputParam,
+  type: FlowNodeInputTypeEnum.addInputParam,
+  valueType: ModuleDataTypeEnum.any,
+  label: '',
+  required: false,
+  showTargetInApp: false,
+  showTargetInPlugin: false
+};

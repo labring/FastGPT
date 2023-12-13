@@ -10,7 +10,7 @@ import {
   ModuleOutputKeyEnum,
   ModuleTemplateTypeEnum
 } from '../../constants';
-import { Input_Template_TFSwitch } from '../input';
+import { Input_Template_AddInputParam, Input_Template_TFSwitch } from '../input';
 
 export const TextEditorModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.textEditor,
@@ -32,7 +32,8 @@ export const TextEditorModule: FlowModuleTemplateType = {
       required: false,
       showTargetInApp: true,
       showTargetInPlugin: true
-    }
+    },
+    Input_Template_AddInputParam
   ],
   outputs: [
     {

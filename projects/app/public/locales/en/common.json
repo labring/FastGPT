@@ -525,6 +525,7 @@
       },
       "input": {
         "Add Input": "Add Input",
+        "Input Number": "Input: {{length}}",
         "description": {
           "Http Request Header": "",
           "Http Request Url": "",
@@ -554,6 +555,8 @@
         "textarea": "Textarea"
       },
       "output": {
+        "Output Number": "Output: {{length}}",
+        "Add Output": "Add Output",
         "description": {
           "running done": "Triggered when the module call ends"
         },
