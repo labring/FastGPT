@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { NodeProps } from 'reactflow';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { onChangeNode } from '../../FlowProvider';
 import dynamic from 'next/dynamic';

@@ -1,7 +1,7 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Button, Flex, Textarea } from '@chakra-ui/react';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Divider from '../modules/Divider';
 import Container from '../modules/Container';

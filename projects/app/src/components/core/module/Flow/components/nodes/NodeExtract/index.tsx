@@ -3,7 +3,7 @@ import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@c
 import { NodeProps } from 'reactflow';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { useTranslation } from 'next-i18next';
-import NodeCard from '../../modules/NodeCard';
+import NodeCard from '../../render/NodeCard';
 import Container from '../../modules/Container';
 import { AddIcon } from '@chakra-ui/icons';
 import RenderInput from '../../render/RenderInput';

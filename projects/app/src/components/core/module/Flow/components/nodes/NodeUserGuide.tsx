@@ -24,7 +24,7 @@ import VariableEdit from '../modules/VariableEdit';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../render/NodeCard';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
 import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
