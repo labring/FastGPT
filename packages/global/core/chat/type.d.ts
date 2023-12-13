@@ -119,6 +119,9 @@ export type moduleDispatchResType = {
 
   // text editor
   textOutput?: string;
+
+  // tf switch
+  tfSwitchResult?: boolean;
 };
 
 export type ChatHistoryItemResType = moduleDispatchResType & {

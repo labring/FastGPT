@@ -27,7 +27,7 @@ const NodeTextEditor = ({ data }: NodeProps<FlowModuleItemType>) => {
           moduleId={moduleId}
           flowInputList={inputs}
           CustomComponent={{
-            [ModuleInputKeyEnum.textEditorInput](item) {
+            [ModuleInputKeyEnum.textareaInput](item) {
               return (
                 <PromptTextarea
                   title={t('core.module.textEditor.Text Edit')}

@@ -520,18 +520,22 @@
       "input": {
         "Add Input": "添加入参",
         "description": {
-          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。",
+          "anyInput": "可传入任意内容",
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
           "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
-          "Http Request Header": "自定义请求头，请严格填入JSON字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如: {\"Authorization\":\"Bearer xxx\"}"
+          "Http Request Header": "自定义请求头，请严格填入JSON字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如: {\"Authorization\":\"Bearer xxx\"}",
+          "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。"
         },
         "label": {
+          "anyInput": "任意内容输入",
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
           "user question": "用户问题",
           "Http Request Method": "请求方式",
           "Http Request Url": "请求地址",
-          "Http Request Header": "请求头"
+          "Http Request Header": "请求头",
+          "TFSwitch textarea": "自定义 False 匹配规则"
         }
       },
       "inputType": {
@@ -549,13 +553,17 @@
         },
         "label": {
           "running done": "模块调用结束",
-          "text": "文本输出"
+          "text": "文本输出",
+          "result true": "True",
+          "result false": "False"
         }
       },
       "template": {
         "UnKnow Module": "未知模块",
         "textEditor": "文本加工",
-        "textEditor intro": "可对固定或传入的文本进行加工后输出"
+        "textEditor intro": "可对固定或传入的文本进行加工后输出",
+        "TFSwitch": "判断器",
+        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。"
       },
       "textEditor": {
         "Text Edit": "文本加工"

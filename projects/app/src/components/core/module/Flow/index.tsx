@@ -30,7 +30,8 @@ const nodeTypes = {
   [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodePluginInput')),
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
-  [FlowNodeTypeEnum.textEditor]: dynamic(() => import('./components/nodes/NodeTextEditor'))
+  [FlowNodeTypeEnum.textEditor]: dynamic(() => import('./components/nodes/NodeTextEditor')),
+  [FlowNodeTypeEnum.tfSwitch]: NodeSimple
 };
 const edgeTypes = {
   buttonedge: ButtonEdge

@@ -13,6 +13,8 @@ import { PluginInputModule } from '@fastgpt/global/core/module/template/system/p
 import { PluginOutputModule } from '@fastgpt/global/core/module/template/system/pluginOutput';
 import { RunPluginModule } from '@fastgpt/global/core/module/template/system/runPlugin';
 import { TextEditorModule } from '@fastgpt/global/core/module/template/system/textEditor';
+import { TFSwitchModule } from '@fastgpt/global/core/module/template/system/tfSwitch';
+
 import type {
   FlowModuleTemplateType,
   moduleTemplateListType
@@ -29,7 +31,8 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule,
-  TextEditorModule
+  TextEditorModule,
+  TFSwitchModule
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -41,7 +44,8 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule,
-  TextEditorModule
+  TextEditorModule,
+  TFSwitchModule
 ];
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
@@ -58,7 +62,8 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
   RunPluginModule,
-  TextEditorModule
+  TextEditorModule,
+  TFSwitchModule
 ];
 
 export const moduleTemplatesList: moduleTemplateListType = [

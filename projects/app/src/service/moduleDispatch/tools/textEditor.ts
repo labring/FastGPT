@@ -4,7 +4,7 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 
 type HttpRequestProps = ModuleDispatchProps<{
-  [ModuleInputKeyEnum.textEditorInput]: string;
+  [ModuleInputKeyEnum.textareaInput]: string;
   [key: string]: any;
 }>;
 type HttpResponse = {
@@ -14,12 +14,12 @@ type HttpResponse = {
 
 export const dispatchTextEditor = async (props: HttpRequestProps): Promise<HttpResponse> => {
   const {
-    inputs: { textEditorInput, ...obj }
+    inputs: { textareaInput, ...obj }
   } = props;
 
   delete obj[ModuleInputKeyEnum.switch];
 
-  const textResult = replaceVariable(textEditorInput, obj);
+  const textResult = replaceVariable(textareaInput, obj);
 
   return {
     responseData: {

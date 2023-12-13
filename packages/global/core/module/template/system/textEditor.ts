@@ -23,7 +23,7 @@ export const TextEditorModule: FlowModuleTemplateType = {
   inputs: [
     Input_Template_TFSwitch,
     {
-      key: ModuleInputKeyEnum.textEditorInput,
+      key: ModuleInputKeyEnum.textareaInput,
       type: FlowNodeInputTypeEnum.custom,
       valueType: ModuleDataTypeEnum.string,
       label: 'core.module.input.label.textEditor textarea',

@@ -26,6 +26,24 @@ import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 import { dispatchTextEditor } from './tools/textEditor';
+import { dispatchTFSwitch } from './tools/tfSwitch';
+
+const callbackMap: Record<string, Function> = {
+  [FlowNodeTypeEnum.historyNode]: dispatchHistory,
+  [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
+  [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+  [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+  [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+  [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+  [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
+  [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
+  [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+  [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
+  [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
+  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
+  [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
+  [FlowNodeTypeEnum.tfSwitch]: dispatchTFSwitch
+};
 
 /* running */
 export async function dispatchModules({
@@ -193,21 +211,6 @@ export async function dispatchModules({
     };
 
     const dispatchRes: Record<string, any> = await (async () => {
-      const callbackMap: Record<string, Function> = {
-        [FlowNodeTypeEnum.historyNode]: dispatchHistory,
-        [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
-        [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
-        [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
-        [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-        [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-        [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
-        [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
-        [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
-        [FlowNodeTypeEnum.textEditor]: dispatchTextEditor
-      };
       if (callbackMap[module.flowType]) {
         return callbackMap[module.flowType](props);
       }

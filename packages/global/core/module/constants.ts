@@ -45,6 +45,8 @@ export enum ModuleInputKeyEnum {
   aiModel = 'model',
   aiSystemPrompt = 'systemPrompt',
   description = 'description',
+  anyInput = 'anyInput',
+  textareaInput = 'textareaInput',
 
   // history
   historyMaxAmount = 'maxContext',
@@ -79,10 +81,7 @@ export enum ModuleInputKeyEnum {
   runAppSelectApp = 'app',
 
   // plugin
-  pluginId = 'pluginId',
-
-  // text editor
-  textEditorInput = 'textEditorInput'
+  pluginId = 'pluginId'
 }
 
 export enum ModuleOutputKeyEnum {
@@ -102,7 +101,11 @@ export enum ModuleOutputKeyEnum {
   datasetQuoteQA = 'quoteQA',
 
   // context extract
-  contextExtractFields = 'fields'
+  contextExtractFields = 'fields',
+
+  // tf switch
+  resultTrue = 'resultTrue',
+  resultFalse = 'resultFalse'
 }
 
 export enum VariableInputEnum {
