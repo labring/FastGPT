@@ -28,7 +28,7 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -449,9 +449,9 @@ export function flowNode2Modules({
     flowType: item.data.flowType,
     showStatus: item.data.showStatus,
     position: item.position,
-    inputs: item.data.inputs.map((item) => ({
-      ...item,
-      connected: Boolean(item.value ?? item.connected ?? item.type !== FlowNodeInputTypeEnum.target)
+    inputs: item.data.inputs.map((input) => ({
+      ...input,
+      connected: false
     })),
     outputs: item.data.outputs.map((item) => ({
       ...item,
@@ -462,10 +462,11 @@ export function flowNode2Modules({
   // update inputs and outputs
   modules.forEach((module) => {
     module.inputs.forEach((input) => {
-      input.connected =
-        input.connected ||
-        !!edges.find((edge) => edge.target === module.moduleId && edge.targetHandle === input.key);
+      input.connected = !!edges.find(
+        (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
+      );
     });
+
     module.outputs.forEach((output) => {
       output.targets = edges
         .filter(

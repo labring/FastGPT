@@ -17,7 +17,7 @@ import {
   Grid,
   Switch
 } from '@chakra-ui/react';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
 import { onChangeNode, useFlowProviderStore } from '../../FlowProvider';
@@ -29,7 +29,7 @@ import TargetHandle from './TargetHandle';
 import MyIcon from '@/components/Icon';
 import { useTranslation } from 'next-i18next';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
-import { chatModelList } from '@/web/common/system/staticData';
+import { chatModelList, cqModelList } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
@@ -37,6 +37,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { EditFieldModeType, EditFieldType } from '../modules/FieldEditModal';
 import { feConfigs } from '@/web/common/system/staticData';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
 const SelectAppModal = dynamic(() => import('../../SelectAppModal'));
@@ -228,8 +229,11 @@ const RenderInput = ({
                 {item.type === FlowNodeInputTypeEnum.aiSettings && (
                   <AISetting inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
-                {item.type === FlowNodeInputTypeEnum.selectChatModel && (
-                  <SelectChatModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
+                {[
+                  FlowNodeInputTypeEnum.selectChatModel,
+                  FlowNodeInputTypeEnum.selectCQModel
+                ].includes(item.type as any) && (
+                  <SelectAIModelRender inputs={sortInputs} item={item} moduleId={moduleId} />
                 )}
                 {item.type === FlowNodeInputTypeEnum.selectDataset && (
                   <SelectDatasetRender item={item} moduleId={moduleId} />
@@ -445,12 +449,21 @@ const AISetting = React.memo(function AISetting({ inputs = [], moduleId }: Rende
   );
 });
 
-const SelectChatModelRender = React.memo(function SelectChatModelRender({
+const SelectAIModelRender = React.memo(function SelectAIModelRender({
   inputs = [],
   item,
   moduleId
 }: RenderProps) {
-  const modelList = chatModelList || [];
+  const modelList = (() => {
+    if (item.type === FlowNodeInputTypeEnum.selectChatModel) return chatModelList;
+    if (item.type === FlowNodeInputTypeEnum.selectCQModel) return cqModelList;
+    return [];
+  })().map((item) => ({
+    model: item.model,
+    name: item.name,
+    maxResponse: item.maxResponse,
+    price: item.price
+  }));
 
   const onChangeModel = useCallback(
     (e: string) => {
@@ -635,15 +648,35 @@ const SelectAppRender = React.memo(function SelectAppRender({ item, moduleId }: 
 });
 
 const SelectDatasetParamsRender = React.memo(function SelectDatasetParamsRender({
+  item,
   inputs = [],
   moduleId
 }: RenderProps) {
+  const { nodes } = useFlowProviderStore();
+
   const { t } = useTranslation();
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,
     similarity: 0.5
   });
+
+  const tokenLimit = useMemo(() => {
+    let maxTokens = 3000;
+
+    nodes.forEach((item) => {
+      if (item.type === FlowNodeTypeEnum.chatNode) {
+        const model =
+          item.data.inputs.find((item) => item.key === ModuleInputKeyEnum.aiModel)?.value || '';
+        const quoteMaxToken =
+          chatModelList.find((item) => item.model === model)?.quoteMaxToken || 3000;
+
+        maxTokens = Math.max(maxTokens, quoteMaxToken);
+      }
+    });
+
+    return maxTokens;
+  }, [nodes]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -671,6 +704,7 @@ const SelectDatasetParamsRender = React.memo(function SelectDatasetParamsRender(
       {isOpen && (
         <DatasetParamsModal
           {...data}
+          maxTokens={tokenLimit}
           onClose={onClose}
           onSuccess={(e) => {
             for (let key in e) {

@@ -9,17 +9,26 @@ import 'katex/dist/katex.min.css';
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
-import CodeLight from './CodeLight';
+import { Link, Button } from '@chakra-ui/react';
+import MyTooltip from '../MyTooltip';
+import { useTranslation } from 'next-i18next';
+import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import MyIcon from '../Icon';
+import { getFileAndOpen } from '@/web/core/dataset/utils';
+import { MARKDOWN_QUOTE_SIGN } from '@fastgpt/global/core/chat/constants';
 
+const CodeLight = dynamic(() => import('./CodeLight'));
 const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
 const MdImage = dynamic(() => import('./img/Image'));
-const ChatGuide = dynamic(() => import('./chat/Guide'));
 const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'));
-const QuoteBlock = dynamic(() => import('./chat/Quote'));
+
+const ChatGuide = dynamic(() => import('./chat/Guide'));
+const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'));
 const ImageBlock = dynamic(() => import('./chat/Image'));
 
 export enum CodeClassName {
   guide = 'guide',
+  questionGuide = 'questionGuide',
   mermaid = 'mermaid',
   echarts = 'echarts',
   quote = 'quote',
@@ -37,11 +46,11 @@ function Code({ inline, className, children }: any) {
   if (codeType === CodeClassName.guide) {
     return <ChatGuide text={String(children)} />;
   }
+  if (codeType === CodeClassName.questionGuide) {
+    return <QuestionGuide text={String(children)} />;
+  }
   if (codeType === CodeClassName.echarts) {
     return <EChartsCodeBlock code={String(children)} />;
-  }
-  if (codeType === CodeClassName.quote) {
-    return <QuoteBlock code={String(children)} />;
   }
   if (codeType === CodeClassName.img) {
     return <ImageBlock images={String(children)} />;
@@ -55,6 +64,52 @@ function Code({ inline, className, children }: any) {
 function Image({ src }: { src?: string }) {
   return <MdImage src={src} />;
 }
+function A({ children, ...props }: any) {
+  const { t } = useTranslation();
+
+  // empty href link
+  if (!props.href && typeof children?.[0] === 'string') {
+    const text = useMemo(() => String(children), [children]);
+
+    return (
+      <MyTooltip label={t('core.chat.markdown.Quick Question')}>
+        <Button
+          variant={'base'}
+          size={'xs'}
+          borderRadius={'md'}
+          my={1}
+          onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
+        >
+          {text}
+        </Button>
+      </MyTooltip>
+    );
+  }
+
+  // quote link
+  if (children?.length === 1 && typeof children?.[0] === 'string') {
+    const text = String(children);
+    if (text === MARKDOWN_QUOTE_SIGN && props.href) {
+      return (
+        <MyTooltip label={props.href}>
+          <MyIcon
+            name={'core/chat/quoteSign'}
+            transform={'translateY(-2px)'}
+            w={'18px'}
+            color={'myBlue.600'}
+            cursor={'pointer'}
+            _hover={{
+              color: 'myBlue.800'
+            }}
+            onClick={() => getFileAndOpen(props.href)}
+          />
+        </MyTooltip>
+      );
+    }
+  }
+
+  return <Link {...props}>{children}</Link>;
+}
 
 const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
   const components = useMemo(
@@ -62,14 +117,16 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
       img: Image,
       pre: 'div',
       p: 'div',
-      code: Code
+      code: Code,
+      a: A
     }),
     []
   );
 
   const formatSource = source
     .replace(/\\n/g, '\n&nbsp;')
-    .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2');
+    .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
+    .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
 
   return (
     <ReactMarkdown

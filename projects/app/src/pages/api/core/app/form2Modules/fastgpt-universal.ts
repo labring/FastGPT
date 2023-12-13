@@ -90,16 +90,17 @@ function chatModelInput(formData: AppSimpleEditFormType): FlowNodeInputItemType[
       connected: formData.dataset.datasets.length > 0 && !!formData.dataset.searchEmptyText
     },
     {
+      key: 'history',
+      type: 'target',
+      label: 'core.module.input.label.chat history',
+      connected: true,
+      value: 6
+    },
+    {
       key: 'quoteQA',
       type: 'target',
       label: '引用内容',
       connected: formData.dataset.datasets.length > 0
-    },
-    {
-      key: 'history',
-      type: 'target',
-      label: '聊天记录',
-      connected: true
     },
     {
       key: 'userChatInput',
@@ -138,41 +139,6 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         y: 1602.2698463081606
       },
       moduleId: 'userChatInput'
-    },
-    {
-      name: '聊天记录',
-      flowType: FlowNodeTypeEnum.historyNode,
-      inputs: [
-        {
-          key: 'maxContext',
-          value: 6,
-          connected: true,
-          type: 'numberInput',
-          label: '最长记录数'
-        },
-        {
-          key: 'history',
-          type: 'hidden',
-          label: '聊天记录',
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'history',
-          targets: [
-            {
-              moduleId: 'chatModule',
-              key: 'history'
-            }
-          ]
-        }
-      ],
-      position: {
-        x: 452.5466249541586,
-        y: 1276.3930310334215
-      },
-      moduleId: 'history'
     },
     {
       name: 'AI 对话',
@@ -239,41 +205,6 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
       moduleId: 'userChatInput'
     },
     {
-      name: '聊天记录',
-      flowType: FlowNodeTypeEnum.historyNode,
-      inputs: [
-        {
-          key: 'maxContext',
-          value: 6,
-          connected: true,
-          type: 'numberInput',
-          label: '最长记录数'
-        },
-        {
-          key: 'history',
-          type: 'hidden',
-          label: '聊天记录',
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'history',
-          targets: [
-            {
-              moduleId: 'chatModule',
-              key: 'history'
-            }
-          ]
-        }
-      ],
-      position: {
-        x: 452.5466249541586,
-        y: 1276.3930310334215
-      },
-      moduleId: 'history'
-    },
-    {
       name: '知识库搜索',
       flowType: FlowNodeTypeEnum.datasetSearchNode,
       showStatus: true,
@@ -289,7 +220,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           key: 'similarity',
           value: formData.dataset.similarity,
           type: FlowNodeInputTypeEnum.slider,
-          label: '相似度',
+          label: '相关度',
           connected: false
         },
         {

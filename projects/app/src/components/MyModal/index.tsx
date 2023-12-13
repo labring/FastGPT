@@ -9,6 +9,8 @@ import {
   Box,
   Image
 } from '@chakra-ui/react';
+import MyIcon from '../Icon';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
@@ -29,12 +31,13 @@ const MyModal = ({
   maxW = ['90vw', '600px'],
   ...props
 }: MyModalProps) => {
+  const { isPc } = useSystemStore();
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => onClose && onClose()}
       autoFocus={false}
-      isCentered={isCentered}
+      isCentered={isPc ? isCentered : true}
     >
       <ModalOverlay />
       <ModalContent
@@ -56,7 +59,15 @@ const MyModal = ({
             roundedTop={'lg'}
             py={'10px'}
           >
-            {iconSrc && <Image mr={3} objectFit={'contain'} alt="" src={iconSrc} w={'20px'} />}
+            {iconSrc && (
+              <>
+                {iconSrc.startsWith('/') ? (
+                  <Image mr={3} objectFit={'contain'} alt="" src={iconSrc} w={'20px'} />
+                ) : (
+                  <MyIcon mr={3} name={iconSrc as any} w={'20px'} />
+                )}
+              </>
+            )}
             {title}
             <Box flex={1} />
             {onClose && <ModalCloseButton position={'relative'} top={0} right={0} />}

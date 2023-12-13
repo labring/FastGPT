@@ -1,6 +1,10 @@
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 
-export function selectShareResponse({ responseData }: { responseData: ChatHistoryItemResType[] }) {
+export function selectShareResponse({
+  responseData = []
+}: {
+  responseData?: ChatHistoryItemResType[];
+}) {
   const filedList = [
     'moduleType',
     'moduleName',
@@ -17,6 +21,6 @@ export function selectShareResponse({ responseData }: { responseData: ChatHistor
         obj[key] = item[key];
       }
     }
-    return obj;
+    return obj as ChatHistoryItemResType;
   });
 }

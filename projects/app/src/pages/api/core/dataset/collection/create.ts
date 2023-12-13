@@ -4,15 +4,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import type { CreateDatasetCollectionParams } from '@/global/core/api/datasetReq.d';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import {
-  TrainingModeEnum,
-  DatasetCollectionTypeEnum,
-  DatasetCollectionTrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -41,69 +36,4 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
-
-export async function createOneCollection({
-  name,
-  parentId,
-  datasetId,
-  type,
-  trainingType = DatasetCollectionTrainingModeEnum.manual,
-  chunkSize = 0,
-  fileId,
-  rawLink,
-  teamId,
-  tmbId
-}: CreateDatasetCollectionParams & { teamId: string; tmbId: string }) {
-  const { _id } = await MongoDatasetCollection.create({
-    name,
-    teamId,
-    tmbId,
-    datasetId,
-    parentId: parentId || null,
-    type,
-    trainingType,
-    chunkSize,
-    fileId,
-    rawLink
-  });
-
-  // create default collection
-  if (type === DatasetCollectionTypeEnum.folder) {
-    await createDefaultCollection({
-      datasetId,
-      parentId: _id,
-      teamId,
-      tmbId
-    });
-  }
-
-  return _id;
-}
-
-// create default collection
-export function createDefaultCollection({
-  name = '手动录入',
-  datasetId,
-  parentId,
-  teamId,
-  tmbId
-}: {
-  name?: '手动录入' | '手动标注';
-  datasetId: string;
-  parentId?: string;
-  teamId: string;
-  tmbId: string;
-}) {
-  return MongoDatasetCollection.create({
-    name,
-    teamId,
-    tmbId,
-    datasetId,
-    parentId,
-    type: DatasetCollectionTypeEnum.virtual,
-    trainingType: DatasetCollectionTrainingModeEnum.manual,
-    chunkSize: 0,
-    updateTime: new Date('2099')
-  });
 }

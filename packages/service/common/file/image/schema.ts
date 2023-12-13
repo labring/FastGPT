@@ -5,13 +5,21 @@ const { Schema, model, models } = connectionMongo;
 const ImageSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
-    ref: TeamCollectionName
+    ref: TeamCollectionName,
+    required: true
+  },
+  createTime: {
+    type: Date,
+    default: () => new Date()
   },
   binary: {
     type: Buffer
   },
   expiredTime: {
     type: Date
+  },
+  metadata: {
+    type: Object
   }
 });
 
@@ -21,7 +29,10 @@ try {
   console.log(error);
 }
 
-export const MongoImage: Model<{ teamId: string; binary: Buffer }> =
-  models['image'] || model('image', ImageSchema);
+export const MongoImage: Model<{
+  teamId: string;
+  binary: Buffer;
+  metadata?: { fileId?: string };
+}> = models['image'] || model('image', ImageSchema);
 
 MongoImage.syncIndexes();

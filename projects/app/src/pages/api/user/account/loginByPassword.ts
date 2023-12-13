@@ -1,11 +1,11 @@
-// Next.js API route support: https://nextjs.org/docs/api-routes/introduction
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { createJWT, setCookie } from '@fastgpt/service/support/permission/controller';
 import { connectToDatabase } from '@/service/mongo';
-import { getUserDetail } from '@/service/support/user/controller';
+import { getUserDetail } from '@fastgpt/service/support/user/controller';
 import type { PostLoginProps } from '@fastgpt/global/support/user/api.d';
+import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -17,11 +17,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // 检测用户是否存在
-    const authCert = await MongoUser.findOne({
-      username
-    });
+    const authCert = await MongoUser.findOne(
+      {
+        username
+      },
+      'status'
+    );
     if (!authCert) {
       throw new Error('用户未注册');
+    }
+
+    if (authCert.status === UserStatusEnum.forbidden) {
+      throw new Error('账号已停用，无法登录');
     }
 
     const user = await MongoUser.findOne({

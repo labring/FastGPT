@@ -1,7 +1,7 @@
 import type { NextApiResponse } from 'next';
 import { sseResponseEventEnum } from './constant';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { addLog } from '../mongo/controller';
+import { addLog } from '../system/log';
 import { clearCookie } from '../../support/permission/controller';
 
 export interface ResponseType<T = any> {
@@ -82,7 +82,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   } else if (error?.response?.data?.error?.message) {
     msg = error?.response?.data?.error?.message;
   } else if (error?.error?.message) {
-    msg = error?.error?.message;
+    msg = `${error?.error?.code} ${error?.error?.message}`;
   }
 
   addLog.error(`sse error: ${msg}`, error);

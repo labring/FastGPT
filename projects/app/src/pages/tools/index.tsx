@@ -6,6 +6,7 @@ import { useRouter } from 'next/router';
 import { feConfigs } from '@/web/common/system/staticData';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
+import { getDocPath } from '@/web/common/system/doc';
 
 const Tools = () => {
   const { t } = useTranslation();
@@ -44,7 +45,7 @@ const Tools = () => {
           {
             icon: 'common/courseLight',
             label: '使用文档',
-            link: `${feConfigs.docUrl}/docs/intro`
+            link: getDocPath('/docs/intro')
           }
         ]
       : [])

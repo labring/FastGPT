@@ -49,7 +49,7 @@ export const FlowValueTypeMap = {
     example: `{
   obj: System | Human | AI;
   value: string;
-}`
+}[]`
   },
   [ModuleDataTypeEnum.datasetQuote]: {
     label: 'core.module.valueType.datasetQuote',
@@ -62,7 +62,7 @@ export const FlowValueTypeMap = {
   sourceId?: string;
   q: string;
   a: string
-}`
+}[]`
   },
   [ModuleDataTypeEnum.any]: {
     label: 'core.module.valueType.any',

@@ -39,13 +39,13 @@ const DatasetCollectionSchema = new Schema({
     ref: DatasetCollectionName,
     required: true
   },
-  name: {
-    type: String,
-    required: true
-  },
   type: {
     type: String,
     enum: Object.keys(DatasetCollectionTypeMap),
+    required: true
+  },
+  name: {
+    type: String,
     required: true
   },
   createTime: {
@@ -72,6 +72,12 @@ const DatasetCollectionSchema = new Schema({
   rawLink: {
     type: String
   },
+  qaPrompt: {
+    type: String
+  },
+  hashRawText: {
+    type: String
+  },
   metadata: {
     type: Object,
     default: {}
@@ -82,6 +88,7 @@ try {
   DatasetCollectionSchema.index({ datasetId: 1 });
   DatasetCollectionSchema.index({ datasetId: 1, parentId: 1 });
   DatasetCollectionSchema.index({ updateTime: -1 });
+  DatasetCollectionSchema.index({ hashRawText: -1 });
 } catch (error) {
   console.log(error);
 }

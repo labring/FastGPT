@@ -26,12 +26,11 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.description,
       type: FlowNodeInputTypeEnum.textarea,
       valueType: ModuleDataTypeEnum.string,
-      value: '',
       label: '提取要求描述',
-      description: '写一段提取要求，告诉 AI 需要提取哪些内容',
+      description: '给AI一些对应的背景知识或要求描述，引导AI更好的完成任务',
       required: true,
       placeholder:
-        '例如: \n1. 你是一个实验室预约助手。根据用户问题，提取出姓名、实验室号和预约时间',
+        '例如: \n1. 你是一个实验室预约助手，你的任务是帮助用户预约实验室。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。',
       showTargetInApp: true,
       showTargetInPlugin: true
     },

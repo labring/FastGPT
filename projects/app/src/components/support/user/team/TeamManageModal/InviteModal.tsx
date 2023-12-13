@@ -82,7 +82,7 @@ const InviteModal = ({
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody>
-        <Box mb={2}>{t('common.Username')}</Box>
+        <Box mb={2}>{t('user.Account')}</Box>
         <TagTextarea defaultValues={inviteUsernames} onUpdate={setInviteUsernames} />
         <Box mt={4}>
           <MySelect list={inviteTypes} value={selectedInviteType} onchange={setSelectInviteType} />

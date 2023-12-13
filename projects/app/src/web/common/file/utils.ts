@@ -1,6 +1,7 @@
 import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { compressBase64ImgAndUpload } from './controller';
+import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 
 /**
  * 读取 txt 文件内容
@@ -106,7 +107,7 @@ export const readPdfContent = (file: File) =>
 /**
  * read docx to markdown
  */
-export const readDocContent = (file: File) =>
+export const readDocContent = (file: File, metadata: Record<string, any>) =>
   new Promise<string>((resolve, reject) => {
     try {
       const reader = new FileReader();
@@ -119,7 +120,7 @@ export const readDocContent = (file: File) =>
             arrayBuffer: target.result as ArrayBuffer
           });
 
-          const rawText = await formatMarkdown(res?.value);
+          const rawText = await formatMarkdown(res?.value, metadata);
 
           resolve(rawText);
         } catch (error) {
@@ -172,41 +173,37 @@ export const readCsvContent = async (file: File) => {
  * 1. upload base64
  * 2. replace \
  */
-export const formatMarkdown = async (rawText: string = '') => {
+export const formatMarkdown = async (rawText: string = '', metadata: Record<string, any>) => {
   // match base64, upload and replace it
   const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
   const base64Arr = rawText.match(base64Regex) || [];
   // upload base64 and replace it
   await Promise.all(
-    base64Arr.map(async (base64) => {
+    base64Arr.map(async (base64Img) => {
       try {
         const str = await compressBase64ImgAndUpload({
-          base64,
-          maxW: 800,
-          maxH: 800,
-          maxSize: 1024 * 1024 * 2
+          base64Img,
+          maxW: 4329,
+          maxH: 4329,
+          maxSize: 1024 * 1024 * 5,
+          metadata
         });
-        rawText = rawText.replace(base64, str);
+
+        rawText = rawText.replace(base64Img, str);
       } catch (error) {
-        rawText = rawText.replace(base64, '');
+        rawText = rawText.replace(base64Img, '');
         rawText = rawText.replace(/!\[.*\]\(\)/g, '');
       }
     })
   );
+
   // Remove white space on both sides of the picture
   const trimReg = /\s*(!\[.*\]\(.*\))\s*/g;
   if (trimReg.test(rawText)) {
     rawText = rawText.replace(/\s*(!\[.*\]\(.*\))\s*/g, '$1');
   }
 
-  // replace \
-  const reg1 = /\\([-.!`_(){}\[\]])/g;
-  if (reg1.test(rawText)) {
-    rawText = rawText.replace(/\\([`!*()+-_\[\]{}\\.])/g, '$1');
-  }
-  rawText = rawText.replace(/\\\\n/g, '\\n');
-
-  return rawText;
+  return simpleMarkdownText(rawText);
 };
 
 /**
@@ -236,10 +233,10 @@ export const fileDownload = ({
 };
 
 export const fileToBase64 = (file: File) => {
-  return new Promise((resolve, reject) => {
+  return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsDataURL(file);
-    reader.onload = () => resolve(reader.result);
+    reader.onload = () => resolve(reader.result as string);
     reader.onerror = (error) => reject(error);
   });
 };

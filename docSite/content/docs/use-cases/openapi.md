@@ -4,7 +4,7 @@ description: "通过与 OpenAI 兼容的 API 对接第三方应用"
 icon: "model_training"
 draft: false
 toc: true
-weight: 312
+weight: 505
 ---
 
 ## 获取 API 秘钥

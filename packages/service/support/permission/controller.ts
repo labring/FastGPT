@@ -115,6 +115,18 @@ export async function parseHeaderCert({
     {}) as ReqHeaderAuthType;
 
   const { uid, teamId, tmbId, appId, openApiKey, authType } = await (async () => {
+    if (authApiKey && authorization) {
+      // apikey from authorization
+      const authResponse = await parseAuthorization(authorization);
+      return {
+        uid: authResponse.uid,
+        teamId: authResponse.teamId,
+        tmbId: authResponse.tmbId,
+        appId: authResponse.appId,
+        openApiKey: authResponse.apikey,
+        authType: AuthUserTypeEnum.apikey
+      };
+    }
     if (authToken && (cookie || token)) {
       // user token(from fastgpt web)
       const res = await authCookieToken(cookie, token);
@@ -139,6 +151,7 @@ export async function parseHeaderCert({
         authType: AuthUserTypeEnum.root
       };
     }
+    // apikey: abandon
     if (authApiKey && apikey) {
       // apikey
       const parseResult = await authOpenApiKey({ apikey });
@@ -152,32 +165,8 @@ export async function parseHeaderCert({
       };
     }
 
-    if (authApiKey && authorization) {
-      // apikey from authorization
-      const authResponse = await parseAuthorization(authorization);
-      return {
-        uid: authResponse.uid,
-        teamId: authResponse.teamId,
-        tmbId: authResponse.tmbId,
-        appId: authResponse.appId,
-        openApiKey: authResponse.apikey,
-        authType: AuthUserTypeEnum.apikey
-      };
-    }
-    return {
-      uid: '',
-      teamId: '',
-      tmbId: '',
-      appId: '',
-      openApiKey: '',
-      authType: AuthUserTypeEnum.token
-    };
-  })();
-
-  // not rootUser and no uid, reject request
-  if (!rootkey && !uid && !teamId && !tmbId) {
     return Promise.reject(ERROR_ENUM.unAuthorization);
-  }
+  })();
 
   return {
     userId: String(uid),

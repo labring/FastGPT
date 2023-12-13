@@ -4,7 +4,7 @@ import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
@@ -12,6 +12,8 @@ import { pushDataToDatasetCollection } from '@/pages/api/core/dataset/data/pushD
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '../support/permission/auth/bill';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
 const reduceQueue = (retry = false) => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -54,6 +56,7 @@ export async function generateQA(): Promise<any> {
           collectionId: 1,
           q: 1,
           model: 1,
+          chunkIndex: 1,
           billId: 1,
           prompt: 1
         })
@@ -91,26 +94,22 @@ export async function generateQA(): Promise<any> {
   // auth balance
   try {
     await authTeamBalance(data.teamId);
-  } catch (error) {
-    // send inform and lock data
-    try {
-      sendOneInform({
-        type: 'system',
-        title: '文本训练任务中止',
-        content:
-          '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-        tmbId: data.tmbId
-      });
-      console.log('余额不足，暂停【QA】生成任务');
-      await MongoDatasetTraining.updateMany(
-        {
-          teamId: data.teamId
-        },
-        {
-          lockTime: new Date('2999/5/5')
-        }
-      );
-    } catch (error) {}
+  } catch (error: any) {
+    if (error?.statusText === UserErrEnum.balanceNotEnough) {
+      // send inform and lock data
+      try {
+        sendOneInform({
+          type: 'system',
+          title: '文本训练任务中止',
+          content:
+            '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+          tmbId: data.tmbId
+        });
+        console.log('余额不足，暂停【QA】生成任务');
+        lockTrainingDataByTeamId(data.teamId);
+      } catch (error) {}
+    }
+
     reduceQueue();
     return generateQA();
   }
@@ -132,7 +131,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const ai = getAIApi(undefined, 600000);
     const chatResponse = await ai.chat.completions.create({
       model,
-      temperature: 0.01,
+      temperature: 0.3,
       messages,
       stream: false
     });
@@ -146,7 +145,10 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
-      data: qaArr,
+      data: qaArr.map((item) => ({
+        ...item,
+        chunkIndex: data.chunkIndex
+      })),
       mode: TrainingModeEnum.chunk,
       billId: data.billId
     });

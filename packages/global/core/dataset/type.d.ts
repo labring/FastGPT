@@ -4,6 +4,7 @@ import { PushDatasetDataChunkProps } from './api';
 import {
   DatasetCollectionTypeEnum,
   DatasetDataIndexTypeEnum,
+  DatasetStatusEnum,
   DatasetTypeEnum,
   TrainingModeEnum
 } from './constant';
@@ -20,9 +21,14 @@ export type DatasetSchemaType = {
   name: string;
   vectorModel: string;
   agentModel: string;
-  tags: string[];
+  intro: string;
   type: `${DatasetTypeEnum}`;
+  status: `${DatasetStatusEnum}`;
   permission: `${PermissionTypeEnum}`;
+  websiteConfig?: {
+    url: string;
+    selector: string;
+  };
 };
 
 export type DatasetCollectionSchemaType = {
@@ -39,6 +45,9 @@ export type DatasetCollectionSchemaType = {
   chunkSize: number;
   fileId?: string;
   rawLink?: string;
+  qaPrompt?: string;
+  hashRawText?: string;
+  metadata?: Record<string, any>;
 };
 
 export type DatasetDataIndexItemType = {
@@ -91,6 +100,18 @@ export type DatasetDataWithCollectionType = Omit<DatasetDataSchemaType, 'collect
 };
 
 /* ================= dataset ===================== */
+export type DatasetListItemType = {
+  _id: string;
+  parentId: string;
+  avatar: string;
+  name: string;
+  intro: string;
+  type: `${DatasetTypeEnum}`;
+  isOwner: boolean;
+  canWrite: boolean;
+  permission: `${PermissionTypeEnum}`;
+  vectorModel: VectorModelItemType;
+};
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;
@@ -115,6 +136,7 @@ export type DatasetDataItemType = {
   sourceId?: string;
   q: string;
   a: string;
+  chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
   canWrite: boolean;

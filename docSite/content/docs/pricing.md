@@ -4,7 +4,7 @@ description: 'FastGPT 线上版定价'
 icon: 'currency_yen'
 draft: false
 toc: true
-weight: 11
+weight: 1200
 ---
 
 ## Tokens 说明

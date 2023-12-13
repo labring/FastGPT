@@ -4,7 +4,7 @@ description: "FastGPT 接入微信和企业微信 "
 icon: "chat"
 draft: false
 toc: true
-weight: 322
+weight: 506
 ---
 
 # FastGPT 三分钟接入微信/企业微信

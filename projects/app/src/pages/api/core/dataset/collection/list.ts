@@ -6,7 +6,10 @@ import { Types } from '@fastgpt/service/common/mongo';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { PagingData } from '@/types';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import {
+  DatasetColCollectionName,
+  MongoDatasetCollection
+} from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
@@ -45,7 +48,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // not count data amount
     if (simple) {
-      const collections = await MongoDatasetCollection.find(match, '_id name type parentId')
+      const collections = await MongoDatasetCollection.find(match, '_id parentId type name')
         .sort({
           updateTime: -1
         })
@@ -72,6 +75,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         {
           $match: match
         },
+        // count training data
         {
           $lookup: {
             from: DatasetTrainingCollectionName,
@@ -89,6 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             as: 'trainings'
           }
         },
+        // count collection total data
         {
           $lookup: {
             from: DatasetDataCollectionName,
@@ -106,7 +111,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             as: 'datas'
           }
         },
-        // 统计子集合的数量和子训练的数量
         {
           $project: {
             _id: 1,
@@ -114,6 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             tmbId: 1,
             name: 1,
             type: 1,
+            status: 1,
             updateTime: 1,
             dataAmount: { $size: '$datas' },
             trainingAmount: { $size: '$trainings' },

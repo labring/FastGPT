@@ -4,7 +4,7 @@ description: "FastGPT 接入飞书机器人 "
 icon: "chat"
 draft: false
 toc: true
-weight: 322
+weight: 503
 ---
 
 # FastGPT 一分钟接入飞书

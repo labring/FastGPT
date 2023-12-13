@@ -21,7 +21,6 @@ import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { chatModelList, simpleModeTemplates } from '@/web/common/system/staticData';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
-import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
@@ -52,6 +51,7 @@ import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constant
 import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
 import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
@@ -67,7 +67,6 @@ function ConfigForm({
 }) {
   const theme = useTheme();
   const router = useRouter();
-  const { toast } = useToast();
   const { t } = useTranslation();
   const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
@@ -123,6 +122,13 @@ function ConfigForm({
       SimpleModeTemplate_FastGPT_Universal,
     [getValues, refresh]
   );
+
+  const tokenLimit = useMemo(() => {
+    return (
+      chatModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
+      3000
+    );
+  }, [getValues, refresh]);
 
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
@@ -361,8 +367,8 @@ function ConfigForm({
               )}
             </Flex>
             <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-              {t('core.dataset.Similarity')}: {getValues('dataset.similarity')},{' '}
-              {t('core.dataset.Search Top K')}: {getValues('dataset.limit')}
+              {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')},{' '}
+              {t('core.dataset.search.Max Tokens')}: {getValues('dataset.limit')}
               {getValues('dataset.searchEmptyText') === ''
                 ? ''
                 : t('core.dataset.Set Empty Result Tip')}
@@ -458,6 +464,7 @@ function ConfigForm({
       {isOpenDatasetParams && (
         <DatasetParamsModal
           {...getValues('dataset')}
+          maxTokens={tokenLimit}
           onClose={onCloseKbParams}
           onSuccess={(e) => {
             setValue('dataset', {
@@ -629,10 +636,19 @@ function ChatTest({ appId }: { appId: string }) {
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const historyMaxLen =
-        modules
-          ?.find((item) => item.flowType === FlowNodeTypeEnum.historyNode)
-          ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
+      let historyMaxLen = 0;
+
+      modules.forEach((module) => {
+        module.inputs.forEach((input) => {
+          if (
+            (input.key === ModuleInputKeyEnum.history ||
+              input.key === ModuleInputKeyEnum.historyMaxAmount) &&
+            typeof input.value === 'number'
+          ) {
+            historyMaxLen = Math.max(historyMaxLen, input.value);
+          }
+        });
+      });
       const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据

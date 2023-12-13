@@ -54,7 +54,14 @@ const ChatItemSchema = new Schema({
     type: String,
     default: ''
   },
-  userFeedback: {
+  userGoodFeedback: {
+    type: String
+  },
+  userFeedback: String,
+  userBadFeedback: {
+    type: String
+  },
+  robotBadFeedback: {
     type: String
   },
   adminFeedback: {
@@ -77,7 +84,10 @@ try {
   ChatItemSchema.index({ userId: 1 });
   ChatItemSchema.index({ appId: 1 });
   ChatItemSchema.index({ chatId: 1 });
-  ChatItemSchema.index({ userFeedback: 1 });
+  ChatItemSchema.index({ userGoodFeedback: 1 });
+  ChatItemSchema.index({ userBadFeedback: 1 });
+  ChatItemSchema.index({ robotBadFeedback: 1 });
+  ChatItemSchema.index({ adminFeedback: 1 });
 } catch (error) {
   console.log(error);
 }

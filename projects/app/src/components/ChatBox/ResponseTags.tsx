@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { Flex, BoxProps, useDisclosure, Image, useTheme } from '@chakra-ui/react';
+import { Flex, BoxProps, useDisclosure, Image, useTheme, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -11,12 +11,21 @@ import MyTooltip from '../MyTooltip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
+import MyIcon from '../Icon';
+import { getFileAndOpen } from '@/web/core/dataset/utils';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
 
-const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemResType[] }) => {
+const ResponseTags = ({
+  responseData = [],
+  isShare
+}: {
+  responseData?: ChatHistoryItemResType[];
+  isShare: boolean;
+}) => {
   const theme = useTheme();
   const { isPc } = useSystemStore();
   const { t } = useTranslation();
@@ -59,12 +68,14 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
         .flat()
         .map((item) => ({
           sourceName: item.sourceName,
-          icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName })
+          sourceId: item.sourceId,
+          icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+          canReadQuote: !isShare || strIsLink(item.sourceId)
         })),
       historyPreview: chatData?.historyPreview,
       runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
-  }, [responseData]);
+  }, [isShare, responseData]);
 
   const TagStyles: BoxProps = {
     mr: 2,
@@ -83,18 +94,70 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
                 alignItems={'center'}
                 flexWrap={'wrap'}
                 fontSize={'sm'}
-                cursor={'pointer'}
                 border={theme.borders.sm}
                 py={1}
                 px={2}
                 borderRadius={'md'}
                 _hover={{
-                  bg: 'myBlue.100'
+                  '.controller': {
+                    display: 'flex'
+                  }
                 }}
-                onClick={() => setQuoteModalData(quoteList)}
+                overflow={'hidden'}
+                position={'relative'}
               >
                 <Image src={item.icon} alt={''} mr={1} w={'12px'} />
-                {item.sourceName}
+                <Box className="textEllipsis" flex={'1 0 0'}>
+                  {item.sourceName}
+                </Box>
+
+                <Box
+                  className="controller"
+                  display={'none'}
+                  pr={2}
+                  position={'absolute'}
+                  right={0}
+                  left={0}
+                  justifyContent={'flex-end'}
+                  alignItems={'center'}
+                  h={'100%'}
+                  lineHeight={0}
+                  bg={`linear-gradient(to left, white,white ${
+                    item.sourceId ? '60px' : '30px'
+                  }, rgba(255,255,255,0) 80%)`}
+                >
+                  <MyTooltip label={t('core.chat.quote.Read Quote')}>
+                    <MyIcon
+                      name="common/viewLight"
+                      w={'14px'}
+                      cursor={'pointer'}
+                      _hover={{
+                        color: 'green.600'
+                      }}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQuoteModalData(quoteList);
+                      }}
+                    />
+                  </MyTooltip>
+                  {item.sourceId && item.canReadQuote && (
+                    <MyTooltip label={t('core.chat.quote.Read Source')}>
+                      <MyIcon
+                        ml={4}
+                        name="common/routePushLight"
+                        w={'14px'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'myBlue.600' }}
+                        onClick={async (e) => {
+                          e.stopPropagation();
+
+                          if (!item.sourceId) return;
+                          await getFileAndOpen(item.sourceId);
+                        }}
+                      />
+                    </MyTooltip>
+                  )}
+                </Box>
               </Flex>
             ))}
           </Flex>
@@ -149,7 +212,11 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
         </MyTooltip>
 
         {!!quoteModalData && (
-          <QuoteModal rawSearch={quoteModalData} onClose={() => setQuoteModalData(undefined)} />
+          <QuoteModal
+            rawSearch={quoteModalData}
+            isShare={isShare}
+            onClose={() => setQuoteModalData(undefined)}
+          />
         )}
         {!!contextModalData && (
           <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />

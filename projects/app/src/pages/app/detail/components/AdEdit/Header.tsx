@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
@@ -14,6 +14,7 @@ import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
 import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { useToast } from '@/web/common/hooks/useToast';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
@@ -31,6 +32,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   setTestModules: React.Dispatch<ModuleItemType[] | undefined>;
 }) {
   const theme = useTheme();
+  const { toast } = useToast();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
@@ -38,8 +40,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
   const { nodes, edges, onFixView } = useFlowProviderStore();
 
-  const { mutate: onclickSave, isLoading } = useRequest({
-    mutationFn: () => {
+  const flow2ModulesAndCheck = useCallback(
+    (tip = false) => {
       const modules = flowNode2Modules({ nodes, edges });
       // check required connect
       for (let i = 0; i < modules.length; i++) {
@@ -51,12 +53,24 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             return false;
           })
         ) {
-          return Promise.reject(`【${item.name}】存在未填或未连接参数`);
+          const msg = `【${item.name}】存在未填或未连接参数`;
+          tip &&
+            toast({
+              status: 'warning',
+              title: msg
+            });
+          return Promise.reject(msg);
         }
       }
+      return modules;
+    },
+    [edges, nodes, toast]
+  );
 
+  const { mutate: onclickSave, isLoading } = useRequest({
+    mutationFn: async () => {
       return updateAppDetail(app._id, {
-        modules,
+        modules: await flow2ModulesAndCheck(),
         type: AppTypeEnum.advanced,
         permission: undefined
       });
@@ -139,8 +153,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
               borderRadius={'lg'}
               aria-label={'save'}
               variant={'base'}
-              onClick={() => {
-                setTestModules(flowNode2Modules({ nodes, edges }));
+              onClick={async () => {
+                setTestModules(await flow2ModulesAndCheck(true));
               }}
             />
           </MyTooltip>

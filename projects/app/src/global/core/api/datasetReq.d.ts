@@ -12,15 +12,6 @@ import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant'
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 /* ===== dataset ===== */
-export type DatasetUpdateParams = {
-  id: string;
-  parentId?: string;
-  tags?: string[];
-  name?: string;
-  avatar?: string;
-  permission?: `${PermissionTypeEnum}`;
-  agentModel?: LLMModelItemType;
-};
 
 /* ======= collections =========== */
 export type GetDatasetCollectionsProps = RequestPaging & {
@@ -30,16 +21,7 @@ export type GetDatasetCollectionsProps = RequestPaging & {
   simple?: boolean;
   selectFolder?: boolean;
 };
-export type CreateDatasetCollectionParams = {
-  datasetId: string;
-  parentId?: string;
-  name: string;
-  type: `${DatasetCollectionTypeEnum}`;
-  trainingType?: `${DatasetCollectionTrainingModeEnum}`;
-  chunkSize?: number;
-  fileId?: string;
-  rawLink?: string;
-};
+
 export type UpdateDatasetCollectionParams = {
   id: string;
   parentId?: string;

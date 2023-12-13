@@ -1,5 +1,5 @@
-import { UserModelSchema } from '../type';
-import { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
+import type { UserModelSchema } from '../type';
+import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 
 export type TeamSchema = {
   _id: string;
@@ -20,6 +20,16 @@ export type TeamMemberSchema = {
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   defaultTeam: boolean;
+};
+
+export type TeamMemberWithUserSchema = TeamMemberSchema & {
+  userId: UserModelSchema;
+};
+export type TeamMemberWithTeamSchema = TeamMemberSchema & {
+  teamId: TeamSchema;
+};
+export type TeamMemberWithTeamAndUserSchema = TeamMemberWithTeamSchema & {
+  userId: UserModelSchema;
 };
 
 export type TeamItemType = {

@@ -173,7 +173,6 @@
 }
 .markdown ul,
 .markdown ol {
-  margin-bottom: 0;
   padding-left: 14px;
 }
 .markdown dl {
@@ -308,8 +307,9 @@
 }
 .markdown code,
 .markdown tt {
-  border: 1px solid #eaeaea;
-  border-radius: 3px 3px 3px 3px;
+  border: 1px solid #dee0e2;
+  background-color: #f4f6f8;
+  border-radius: 3px;
   margin: 0 2px;
   padding: 0 5px;
 }

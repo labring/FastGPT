@@ -2,10 +2,12 @@ import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { sendOneInform } from '../support/user/inform/api';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
 const reduceQueue = (retry = false) => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -93,26 +95,22 @@ export async function generateVector(): Promise<any> {
   // auth balance
   try {
     await authTeamBalance(data.teamId);
-  } catch (error) {
-    // send inform and lock data
-    try {
-      sendOneInform({
-        type: 'system',
-        title: '文本训练任务中止',
-        content:
-          '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-        tmbId: data.tmbId
-      });
-      console.log('余额不足，暂停【向量】生成任务');
-      await MongoDatasetTraining.updateMany(
-        {
-          teamId: data.teamId
-        },
-        {
-          lockTime: new Date('2999/5/5')
-        }
-      );
-    } catch (error) {}
+  } catch (error: any) {
+    if (error?.statusText === UserErrEnum.balanceNotEnough) {
+      // send inform and lock data
+      try {
+        sendOneInform({
+          type: 'system',
+          title: '文本训练任务中止',
+          content:
+            '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+          tmbId: data.tmbId
+        });
+        console.log('余额不足，暂停【向量】生成任务');
+        lockTrainingDataByTeamId(data.teamId);
+      } catch (error) {}
+    }
+
     reduceQueue();
     return generateVector();
   }

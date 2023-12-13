@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { delay } from '@/utils/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '@/service/core/dataset/utils';
@@ -17,10 +17,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     console.log(
       'total',
-      await MongoDatasetData.countDocuments({ fullTextToken: { $exists: false } })
+      await MongoDatasetData.countDocuments({
+        fullTextToken: { $exists: false },
+        updateTime: { $lt: new Date() }
+      })
     );
 
-    await initFullTextToken(limit);
+    await initFullTextToken(limit, new Date());
 
     jsonRes(res, {
       message: 'success'
@@ -34,9 +37,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
-export async function initFullTextToken(limit = 50): Promise<any> {
+export async function initFullTextToken(limit = 50, endDate: Date): Promise<any> {
   try {
-    const dataList = await MongoDatasetData.find({ fullTextToken: { $exists: false } }, '_id q a')
+    const dataList = await MongoDatasetData.find(
+      { fullTextToken: { $exists: false }, updateTime: { $lt: endDate } },
+      '_id q a'
+    )
       .limit(limit)
       .lean();
     if (dataList.length === 0) return;
@@ -56,9 +62,9 @@ export async function initFullTextToken(limit = 50): Promise<any> {
 
     success += result.filter((item) => item.status === 'fulfilled').length;
     console.log(`success: ${success}`);
-    return initFullTextToken(limit);
+    return initFullTextToken(limit, endDate);
   } catch (error) {
     await delay(1000);
-    return initFullTextToken(limit);
+    return initFullTextToken(limit, endDate);
   }
 }

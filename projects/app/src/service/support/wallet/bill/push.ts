@@ -1,25 +1,29 @@
 import { BillSourceEnum, PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
 import { getAudioSpeechModel, getQAModel } from '@/service/core/ai/model';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
 import { defaultQGModels } from '@fastgpt/global/core/ai/model';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 
 export function createBill(data: CreateBillProps) {
-  if (!global.systemEnv.pluginBaseUrl) return;
+  if (!global.systemEnv?.pluginBaseUrl) return;
   if (data.total === 0) {
     addLog.info('0 Bill', data);
   }
-  POST('/support/wallet/bill/createBill', data);
+  try {
+    POST('/support/wallet/bill/createBill', data);
+  } catch (error) {}
 }
 export function concatBill(data: ConcatBillProps) {
-  if (!global.systemEnv.pluginBaseUrl) return;
+  if (!global.systemEnv?.pluginBaseUrl) return;
   if (data.total === 0) {
     addLog.info('0 Bill', data);
   }
-  POST('/support/wallet/bill/concatBill', data);
+  try {
+    POST('/support/wallet/bill/concatBill', data);
+  } catch (error) {}
 }
 
 export const pushChatBill = ({
@@ -37,7 +41,7 @@ export const pushChatBill = ({
   source: `${BillSourceEnum}`;
   response: ChatHistoryItemResType[];
 }) => {
-  const total = response.reduce((sum, item) => sum + item.price, 0);
+  const total = response.reduce((sum, item) => sum + (item.price || 0), 0);
 
   createBill({
     teamId,
@@ -92,7 +96,7 @@ export const pushQABill = async ({
   return { total };
 };
 
-export const pushGenerateVectorBill = async ({
+export const pushGenerateVectorBill = ({
   billId,
   teamId,
   tmbId,
@@ -250,7 +254,7 @@ export function pushReRankBill({
   source: `${BillSourceEnum}`;
 }) {
   const model = global.reRankModels[0];
-  if (!model) return;
+  if (!model) return { total: 0 };
 
   const total = model.price * PRICE_SCALE;
   const name = 'wallet.bill.ReRank';
@@ -270,4 +274,6 @@ export function pushReRankBill({
       }
     ]
   });
+
+  return { total };
 }
