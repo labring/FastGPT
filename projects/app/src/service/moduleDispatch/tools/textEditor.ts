@@ -14,7 +14,7 @@ type HttpResponse = {
 
 export const dispatchTextEditor = async (props: HttpRequestProps): Promise<HttpResponse> => {
   const {
-    inputs: { textareaInput, ...obj }
+    inputs: { system_textareaInput: textareaInput, ...obj }
   } = props;
 
   delete obj[ModuleInputKeyEnum.switch];

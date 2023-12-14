@@ -1,16 +1,18 @@
-import React from 'react';
+import React, { useState } from 'react';
 import type { RenderOutputProps } from '../type';
 import { onChangeNode } from '../../../../FlowProvider';
 import { Box, Button } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
-import { customAlphabet } from 'nanoid';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-const AddOutputParam = ({ outputs = [], moduleId }: RenderOutputProps) => {
+import dynamic from 'next/dynamic';
+import { EditNodeFieldType } from '@fastgpt/global/core/module/node/type';
+
+const FieldEditModal = dynamic(() => import('../../FieldEditModal'));
+
+const AddOutputParam = ({ outputs = [], item, moduleId }: RenderOutputProps) => {
   const { t } = useTranslation();
+  const [editField, setEditField] = useState<EditNodeFieldType>();
 
   return (
     <Box textAlign={'right'}>
@@ -18,22 +20,38 @@ const AddOutputParam = ({ outputs = [], moduleId }: RenderOutputProps) => {
         variant={'base'}
         leftIcon={<SmallAddIcon />}
         onClick={() => {
-          onChangeNode({
-            moduleId,
-            type: 'addOutput',
-            value: {
-              key: nanoid(),
-              label: t('core.module.output.Output Number', { length: outputs.length - 1 }),
-              valueType: ModuleDataTypeEnum.string,
-              type: FlowNodeOutputTypeEnum.source,
-              edit: true,
-              targets: []
-            }
-          });
+          setEditField(item.defaultEditField || {});
         }}
       >
         {t('core.module.output.Add Output')}
       </Button>
+      {!!editField && (
+        <FieldEditModal
+          editField={item.editField}
+          defaultField={editField}
+          keys={outputs.map((output) => output.key)}
+          onClose={() => setEditField(undefined)}
+          onSubmit={({ data }) => {
+            onChangeNode({
+              moduleId,
+              type: 'addOutput',
+              key: data.key,
+              value: {
+                type: data.outputType,
+                valueType: data.valueType,
+                key: data.key,
+                label: data.label,
+                description: data.description,
+                required: data.required,
+                edit: true,
+                editField: item.editField,
+                targets: []
+              }
+            });
+            setEditField(undefined);
+          }}
+        />
+      )}
     </Box>
   );
 };

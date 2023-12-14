@@ -45,9 +45,9 @@ export enum ModuleInputKeyEnum {
   aiModel = 'model',
   aiSystemPrompt = 'systemPrompt',
   description = 'description',
-  anyInput = 'anyInput',
-  textareaInput = 'textareaInput',
-  addInputParam = 'addInputParam',
+  anyInput = 'system_anyInput',
+  textareaInput = 'system_textareaInput',
+  addInputParam = 'system_addInputParam',
 
   // history
   historyMaxAmount = 'maxContext',
@@ -73,9 +73,9 @@ export enum ModuleInputKeyEnum {
   extractKeys = 'extractKeys',
 
   // http
-  httpReqUrl = 'httpReqUrl',
-  httpHeader = 'httpHeader',
-  httpMethod = 'httpMethod',
+  httpReqUrl = 'system_httpReqUrl',
+  httpHeader = 'system_httpHeader',
+  httpMethod = 'system_httpMethod',
   abandon_httpUrl = 'url',
 
   // app
@@ -94,8 +94,8 @@ export enum ModuleOutputKeyEnum {
   answerText = 'answerText', //  answer module text key
   success = 'success',
   failed = 'failed',
-  text = 'text',
-  addOutputParam = 'addOutputParam',
+  text = 'system_text',
+  addOutputParam = 'system_addOutputParam',
 
   // dataset
   datasetIsEmpty = 'isEmpty',
@@ -106,8 +106,8 @@ export enum ModuleOutputKeyEnum {
   contextExtractFields = 'fields',
 
   // tf switch
-  resultTrue = 'resultTrue',
-  resultFalse = 'resultFalse'
+  resultTrue = 'system_resultTrue',
+  resultFalse = 'system_resultFalse'
 }
 
 export enum VariableInputEnum {

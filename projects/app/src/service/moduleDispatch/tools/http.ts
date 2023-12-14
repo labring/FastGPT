@@ -21,7 +21,13 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     appId,
     chatId,
     variables,
-    inputs: { httpMethod, url: abandonUrl, httpReqUrl, httpHeader, ...body }
+    inputs: {
+      system_httpMethod: httpMethod,
+      url: abandonUrl,
+      system_httpReqUrl: httpReqUrl,
+      system_httpHeader: httpHeader,
+      ...body
+    }
   } = props;
 
   const { requestMethod, requestUrl, requestHeader, requestBody, requestQuery } = await (() => {

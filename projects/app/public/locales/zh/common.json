@@ -517,6 +517,9 @@
       "Plugin output must connect": "自定义输出必须全部连接",
       "Variable": "参数变量",
       "Variable Setting": "变量设置",
+      "edit": {
+        "Field Already Exist": "key 重复"
+      },
       "extract": {
         "Enum Description": "列举出该字段可能的值，每行一个",
         "Enum Value": "枚举值",
@@ -555,8 +558,8 @@
         "textarea": "段落输入"
       },
       "output": {
-        "Output Number": "出参: {{length}}",
         "Add Output": "添加出参",
+        "Output Number": "出参: {{length}}",
         "description": {
           "running done": "模块调用结束时触发"
         },

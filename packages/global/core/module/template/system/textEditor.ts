@@ -33,7 +33,22 @@ export const TextEditorModule: FlowModuleTemplateType = {
       showTargetInApp: true,
       showTargetInPlugin: true
     },
-    Input_Template_AddInputParam
+    {
+      ...Input_Template_AddInputParam,
+      editField: {
+        key: true,
+        name: true,
+        description: true
+      },
+      defaultEditField: {
+        label: '',
+        key: '',
+        description: '',
+        inputType: FlowNodeInputTypeEnum.target,
+        valueType: ModuleDataTypeEnum.string,
+        required: true
+      }
+    }
   ],
   outputs: [
     {

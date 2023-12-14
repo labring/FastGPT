@@ -7,7 +7,7 @@ import Container from '../modules/Container';
 import RenderOutput from '../render/RenderOutput';
 
 const QuestionInputNode = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { moduleId, inputs, outputs } = data;
+  const { moduleId, outputs } = data;
 
   return (
     <NodeCard minW={'240px'} {...data}>

@@ -1,6 +1,7 @@
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './constant';
 import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
 import { SelectedDatasetType } from '../api';
+import { EditInputFieldMap, EditOutputFieldMap } from './type';
 
 export type FlowNodeChangeProps = {
   moduleId: string;
@@ -20,27 +21,31 @@ export type FlowNodeChangeProps = {
 };
 
 export type FlowNodeInputItemType = {
-  key: `${ModuleInputKeyEnum}` | string;
-  type: `${FlowNodeInputTypeEnum}`; // Decide on a render style
-  value?: any;
   valueType?: `${ModuleDataTypeEnum}`; // data type
+  type: `${FlowNodeInputTypeEnum}`; // Node Type. Decide on a render style
+  key: `${ModuleInputKeyEnum}` | string;
+  value?: any;
   label: string;
   description?: string;
   required?: boolean;
+
   edit?: boolean; // Whether to allow editing
-  connected?: boolean; // unConnected field will be deleted
+  editField?: EditInputFieldMap;
+  defaultEditField?: EditNodeFieldType;
+
+  connected?: boolean; // There are incoming data
 
   showTargetInApp?: boolean;
   showTargetInPlugin?: boolean;
 
   placeholder?: string; // input,textarea
-  list?: { label: string; value: any }[]; // select
-  step?: number; // slider max?: number;
-  max?: number;
-  min?: number;
-  markList?: { label: string; value: any }[]; // slider
 
-  plusField?: boolean; // plus system will show
+  list?: { label: string; value: any }[]; // select
+
+  markList?: { label: string; value: any }[]; // slider
+  step?: number; // slider
+  max?: number; // slider, number input
+  min?: number; // slider, number input
 };
 
 export type FlowNodeOutputTargetItemType = {
@@ -50,11 +55,37 @@ export type FlowNodeOutputTargetItemType = {
 export type FlowNodeOutputItemType = {
   type: `${FlowNodeOutputTypeEnum}`;
   key: `${ModuleOutputKeyEnum}` | string;
+  valueType?: `${ModuleDataTypeEnum}`;
+
   label?: string;
+  description?: string;
+
   edit?: boolean;
+  editField?: EditOutputFieldMap;
+  defaultEditField?: EditNodeFieldType;
+
+  targets: FlowNodeOutputTargetItemType[];
+};
+
+/* --------------- edit field ------------------- */
+export type EditInputFieldMap = EditOutputFieldMap & {
+  inputType?: boolean;
+  required?: boolean;
+};
+export type EditOutputFieldMap = {
+  name?: boolean;
+  key?: boolean;
+  description?: boolean;
+  dataType?: boolean;
+};
+export type EditNodeFieldType = {
+  inputType?: `${FlowNodeInputTypeEnum}`; // input type
+  outputType?: `${FlowNodeOutputTypeEnum}`;
+  required?: boolean;
+  key?: string;
+  label?: string;
   description?: string;
   valueType?: `${ModuleDataTypeEnum}`;
-  targets: FlowNodeOutputTargetItemType[];
 };
 
 /* ------------- item type --------------- */

@@ -3,8 +3,6 @@ import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/typ
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import dynamic from 'next/dynamic';
-import type { EditFieldModeType } from '../../modules/FieldEditModal';
-import { feConfigs } from '@/web/common/system/staticData';
 
 import InputLabel from './Label';
 import type { RenderInputProps } from './type.d';
@@ -70,32 +68,28 @@ const RenderList: {
 const RenderInput = ({
   flowInputList,
   moduleId,
-  CustomComponent = {},
-  editFiledType
+  CustomComponent = {}
 }: {
   flowInputList: FlowNodeInputItemType[];
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
-  editFiledType?: EditFieldModeType;
 }) => {
   const sortInputs = useMemo(
     () =>
-      flowInputList
-        .filter((item) => !item.plusField || feConfigs.isPlus)
-        .sort((a, b) => {
-          if (a.type === FlowNodeInputTypeEnum.addInputParam) {
-            return 1;
-          }
-          if (b.type === FlowNodeInputTypeEnum.addInputParam) {
-            return -1;
-          }
+      flowInputList.sort((a, b) => {
+        if (a.type === FlowNodeInputTypeEnum.addInputParam) {
+          return 1;
+        }
+        if (b.type === FlowNodeInputTypeEnum.addInputParam) {
+          return -1;
+        }
 
-          if (a.type === FlowNodeInputTypeEnum.switch) {
-            return -1;
-          }
+        if (a.type === FlowNodeInputTypeEnum.switch) {
+          return -1;
+        }
 
-          return 0;
-        }),
+        return 0;
+      }),
     [flowInputList]
   );
 
@@ -115,14 +109,7 @@ const RenderInput = ({
         return (
           input.type !== FlowNodeInputTypeEnum.hidden && (
             <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
-              {!!input.label && (
-                <InputLabel
-                  editFiledType={editFiledType}
-                  moduleId={moduleId}
-                  inputKey={input.key}
-                  {...input}
-                />
-              )}
+              {!!input.label && <InputLabel moduleId={moduleId} inputKey={input.key} {...input} />}
               {!!RenderComponent && (
                 <Box mt={2} className={'nodrag'}>
                   {RenderComponent}

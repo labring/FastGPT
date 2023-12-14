@@ -16,30 +16,31 @@ import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
 import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-
-export type EditFieldModeType = 'input' | 'output' | 'pluginInput';
-export type EditFieldType = {
-  type?: `${FlowNodeInputTypeEnum}`; // input type
-  key: string;
-  label?: string;
-  valueType?: `${ModuleDataTypeEnum}`;
-  description?: string;
-  required?: boolean;
-  createSign?: boolean;
-};
+import { EditInputFieldMap, EditNodeFieldType } from '@fastgpt/global/core/module/node/type.d';
+import { useToast } from '@/web/common/hooks/useToast';
 
 const FieldEditModal = ({
-  mode,
+  editField = {
+    key: true,
+    name: true,
+    description: true,
+    dataType: true
+  },
   defaultField,
+  keys = [],
   onClose,
   onSubmit
 }: {
-  mode: EditFieldModeType;
-  defaultField: EditFieldType;
+  editField?: EditInputFieldMap;
+  defaultField: EditNodeFieldType;
+  keys: string[];
   onClose: () => void;
-  onSubmit: (data: EditFieldType) => void;
+  onSubmit: (e: { data: EditNodeFieldType; updateKey: boolean }) => void;
 }) => {
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const isCreate = useMemo(() => !defaultField.key, [defaultField.key]);
+
   const inputTypeList = [
     {
       label: t('core.module.inputType.target'),
@@ -74,34 +75,31 @@ const FieldEditModal = ({
       value: item.value
     }));
 
-  const { register, getValues, setValue, handleSubmit } = useForm<EditFieldType>({
+  const { register, getValues, setValue, handleSubmit } = useForm<EditNodeFieldType>({
     defaultValues: defaultField
   });
   const [refresh, setRefresh] = useState(false);
 
-  const title = ['input', 'pluginInput'].includes(mode)
-    ? t('app.Input Field Settings')
-    : t('app.Output Field Settings');
-
-  const showValueTypeSelect = useMemo(() => {
-    return getValues('type') === FlowNodeInputTypeEnum.target || mode === 'output';
-  }, [getValues, mode, refresh]);
-
   return (
-    <MyModal isOpen={true} iconSrc="/imgs/module/extract.png" title={title} onClose={onClose}>
-      <ModalBody minH={'260px'} overflow={'visible'}>
+    <MyModal
+      isOpen={true}
+      iconSrc="/imgs/module/extract.png"
+      title={t('app.Input Field Settings')}
+      onClose={onClose}
+    >
+      <ModalBody overflow={'visible'}>
         {/* input type select: target, input, textarea.... */}
-        {mode === 'pluginInput' && (
+        {editField.inputType && (
           <Flex alignItems={'center'} mb={5}>
             <Box flex={'0 0 70px'}>{t('core.module.Input Type')}</Box>
             <MySelect
               w={'288px'}
               list={inputTypeList}
-              value={getValues('type')}
+              value={getValues('inputType')}
               onchange={(e: string) => {
                 const type = e as `${FlowNodeInputTypeEnum}`;
                 const selectedItem = inputTypeList.find((item) => item.value === type);
-                setValue('type', type);
+                setValue('inputType', type);
                 setValue('valueType', selectedItem?.valueType);
 
                 if (type === FlowNodeInputTypeEnum.selectDataset) {
@@ -113,13 +111,13 @@ const FieldEditModal = ({
             />
           </Flex>
         )}
-        {['input', 'pluginInput'].includes(mode) && (
+        {editField.required && (
           <Flex alignItems={'center'} mb={5}>
             <Box flex={'0 0 70px'}>{t('common.Require Input')}</Box>
             <Switch {...register('required')} />
           </Flex>
         )}
-        {showValueTypeSelect && (
+        {editField.dataType && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Data Type')}</Box>
             <MySelect
@@ -143,53 +141,50 @@ const FieldEditModal = ({
             />
           </Flex>
         )}
-
-        <Flex mb={5} alignItems={'center'}>
-          <Box flex={'0 0 70px'}>{t('core.module.Field Name')}</Box>
-          <Input
-            placeholder="预约字段/sql语句……"
-            {...register('label', { required: '字段名不能为空' })}
-          />
-        </Flex>
-        <Flex mb={5} alignItems={'center'}>
-          <Box flex={'0 0 70px'}>{t('core.module.Field key')}</Box>
-          <Input
-            placeholder="appointment/sql"
-            {...register('key', { required: '字段 key 不能为空' })}
-          />
-        </Flex>
-        <Flex mb={5} alignItems={'flex-start'}>
-          <Box flex={'0 0 70px'}>{t('core.module.Field Description')}</Box>
-          <Textarea placeholder="可选" rows={3} {...register('description')} />
-        </Flex>
+        {editField.name && (
+          <Flex mb={5} alignItems={'center'}>
+            <Box flex={'0 0 70px'}>{t('core.module.Field Name')}</Box>
+            <Input placeholder="预约字段/sql语句……" {...register('label', { required: true })} />
+          </Flex>
+        )}
+        {editField.key && (
+          <Flex mb={5} alignItems={'center'}>
+            <Box flex={'0 0 70px'}>{t('core.module.Field key')}</Box>
+            <Input placeholder="appointment/sql" {...register('key', { required: true })} />
+          </Flex>
+        )}
+        {editField.description && (
+          <Flex mb={5} alignItems={'flex-start'}>
+            <Box flex={'0 0 70px'}>{t('core.module.Field Description')}</Box>
+            <Textarea placeholder={t('common.choosable')} rows={3} {...register('description')} />
+          </Flex>
+        )}
       </ModalBody>
 
       <ModalFooter>
         <Button variant={'base'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
-        <Button onClick={handleSubmit(onSubmit)}>{t('common.Confirm')}</Button>
+        <Button
+          onClick={handleSubmit((data) => {
+            if (!data.key) return;
+            if (isCreate && keys.includes(data.key)) {
+              return toast({
+                status: 'warning',
+                title: t('core.module.edit.Field Already Exist')
+              });
+            }
+            onSubmit({
+              data,
+              updateKey: !keys.includes(data.key)
+            });
+          })}
+        >
+          {t('common.Confirm')}
+        </Button>
       </ModalFooter>
     </MyModal>
   );
 };
 
 export default React.memo(FieldEditModal);
-
-export const defaultInputField: EditFieldType = {
-  label: '',
-  key: '',
-  description: '',
-  type: FlowNodeInputTypeEnum.target,
-  valueType: ModuleDataTypeEnum.string,
-  required: true,
-  createSign: true
-};
-export const defaultOutputField: EditFieldType = {
-  label: '',
-  key: '',
-  description: '',
-  valueType: ModuleDataTypeEnum.string,
-  required: true,
-  createSign: true
-};

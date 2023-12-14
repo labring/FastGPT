@@ -517,6 +517,9 @@
       "Plugin output must connect": "Custom outputs must all be connected",
       "Variable": "Variable",
       "Variable Setting": "Variable Setting",
+      "edit": {
+        "Field Already Exist": "Key already exist"
+      },
       "extract": {
         "Enum Description": "Lists the possible values for the field, one per row",
         "Enum Value": "Enum",
@@ -555,8 +558,8 @@
         "textarea": "Textarea"
       },
       "output": {
-        "Output Number": "Output: {{length}}",
         "Add Output": "Add Output",
+        "Output Number": "Output: {{length}}",
         "description": {
           "running done": "Triggered when the module call ends"
         },

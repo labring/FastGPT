@@ -14,7 +14,7 @@ type HttpResponse = {
 
 export const dispatchTFSwitch = async (props: HttpRequestProps): Promise<HttpResponse> => {
   const {
-    inputs: { anyInput, textareaInput = '' }
+    inputs: { system_anyInput: anyInput, system_textareaInput: textareaInput = '' }
   } = props;
 
   const result = (() => {

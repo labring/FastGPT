@@ -1,4 +1,4 @@
-import React, { useMemo, useTransition } from 'react';
+import React, { useMemo } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { Handle, Position } from 'reactflow';
 import { FlowValueTypeStyle, FlowValueTypeMap } from '@/web/core/modules/constants/dataType';

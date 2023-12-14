@@ -1,6 +1,5 @@
-import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
+import { EditNodeFieldType, FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import React, { useMemo, useState } from 'react';
-import FieldEditModal, { EditFieldModeType, EditFieldType } from '../../modules/FieldEditModal';
 import { useTranslation } from 'react-i18next';
 import { onChangeNode, useFlowProviderStore } from '../../../FlowProvider';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -10,15 +9,17 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import TargetHandle from '../TargetHandle';
 import MyIcon from '@/components/Icon';
 
+import dynamic from 'next/dynamic';
+
+const FieldEditModal = dynamic(() => import('../FieldEditModal'));
+
 const InputLabel = ({
   moduleId,
   inputKey,
-  editFiledType = 'input',
   ...item
 }: FlowNodeInputItemType & {
   moduleId: string;
   inputKey: string;
-  editFiledType?: EditFieldModeType;
 }) => {
   const { t } = useTranslation();
   const { mode } = useFlowProviderStore();
@@ -32,7 +33,7 @@ const InputLabel = ({
     showTargetInApp,
     showTargetInPlugin
   } = item;
-  const [editField, setEditField] = useState<EditFieldType>();
+  const [editField, setEditField] = useState<EditNodeFieldType>();
 
   const targetHandle = useMemo(() => {
     if (type === FlowNodeInputTypeEnum.target) return true;
@@ -75,12 +76,12 @@ const InputLabel = ({
             _hover={{ color: 'myBlue.600' }}
             onClick={() =>
               setEditField({
-                label: item.label,
-                type: item.type,
-                valueType: item.valueType,
-                required: item.required,
+                inputType: type,
+                valueType: valueType,
                 key: inputKey,
-                description: item.description
+                required,
+                label,
+                description
               })
             }
           />
@@ -102,23 +103,32 @@ const InputLabel = ({
           />
         </>
       )}
-      {!!editField && (
+      {!!editField?.key && (
         <FieldEditModal
-          mode={editFiledType}
+          editField={item.editField}
+          keys={[editField.key]}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
-          onSubmit={(e) => {
-            const data = {
+          onSubmit={({ data, updateKey }) => {
+            if (!data.inputType || !data.key || !data.label) return;
+
+            const newInput: FlowNodeInputItemType = {
               ...item,
-              ...e
+              type: data.inputType,
+              valueType: data.valueType,
+              key: data.key,
+              required: data.required,
+              label: data.label,
+              description: data.description
             };
+
             // same key
-            if (editField.key === data.key) {
+            if (!updateKey) {
               onChangeNode({
                 moduleId,
                 type: 'updateInput',
-                key: data.key,
-                value: data
+                key: newInput.key,
+                value: newInput
               });
             } else {
               // diff key. del and add
@@ -126,7 +136,7 @@ const InputLabel = ({
                 moduleId,
                 type: 'replaceInput',
                 key: editField.key,
-                value: data
+                value: newInput
               });
             }
             setEditField(undefined);

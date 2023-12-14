@@ -1,4 +1,8 @@
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type';
 import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
 import { Input_Template_AddInputParam, Input_Template_TFSwitch } from '../input';
@@ -56,7 +60,42 @@ export const HttpModule: FlowModuleTemplateType = {
       showTargetInApp: false,
       showTargetInPlugin: false
     },
-    Input_Template_AddInputParam
+    {
+      ...Input_Template_AddInputParam,
+      editField: {
+        key: true,
+        name: true,
+        description: true,
+        required: true,
+        dataType: true
+      },
+      defaultEditField: {
+        label: '',
+        key: '',
+        description: '',
+        inputType: FlowNodeInputTypeEnum.target,
+        valueType: ModuleDataTypeEnum.string,
+        required: true
+      }
+    }
   ],
-  outputs: [Output_Template_Finish, Output_Template_AddOutput]
+  outputs: [
+    Output_Template_Finish,
+    {
+      ...Output_Template_AddOutput,
+      editField: {
+        key: true,
+        name: true,
+        description: true,
+        dataType: true
+      },
+      defaultEditField: {
+        label: '',
+        key: '',
+        description: '',
+        outputType: FlowNodeOutputTypeEnum.source,
+        valueType: ModuleDataTypeEnum.string
+      }
+    }
+  ]
 };

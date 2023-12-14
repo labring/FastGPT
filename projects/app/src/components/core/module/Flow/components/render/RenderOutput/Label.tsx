@@ -1,6 +1,5 @@
-import { FlowNodeOutputItemType } from '@fastgpt/global/core/module/node/type';
+import { EditNodeFieldType, FlowNodeOutputItemType } from '@fastgpt/global/core/module/node/type';
 import React, { useState } from 'react';
-import FieldEditModal, { EditFieldModeType, EditFieldType } from '../../modules/FieldEditModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
@@ -9,22 +8,23 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import SourceHandle from '../SourceHandle';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import dynamic from 'next/dynamic';
+
+const FieldEditModal = dynamic(() => import('../FieldEditModal'));
 
 const OutputLabel = ({
   moduleId,
   outputKey,
   outputs,
-  editFiledType = 'output',
   ...item
 }: FlowNodeOutputItemType & {
   outputKey: string;
   moduleId: string;
   outputs: FlowNodeOutputItemType[];
-  editFiledType?: EditFieldModeType;
 }) => {
   const { t } = useTranslation();
   const { label = '', description, edit } = item;
-  const [editField, setEditField] = useState<EditFieldType>();
+  const [editField, setEditField] = useState<EditNodeFieldType>();
 
   return (
     <Flex
@@ -44,10 +44,11 @@ const OutputLabel = ({
             _hover={{ color: 'myBlue.600' }}
             onClick={() =>
               setEditField({
-                label: item.label,
-                valueType: item.valueType,
                 key: outputKey,
-                description: item.description
+                label: item.label,
+                description: item.description,
+                valueType: item.valueType,
+                outputType: item.type
               })
             }
           />
@@ -76,32 +77,40 @@ const OutputLabel = ({
       <Box>{t(label)}</Box>
 
       {item.type === FlowNodeOutputTypeEnum.source && (
-        <SourceHandle handleKey={item.key} valueType={item.valueType} />
+        <SourceHandle handleKey={outputKey} valueType={item.valueType} />
       )}
 
       {!!editField && (
         <FieldEditModal
-          mode={editFiledType}
+          editField={item.editField}
           defaultField={editField}
+          keys={[outputKey]}
           onClose={() => setEditField(undefined)}
-          onSubmit={(e) => {
-            const data = {
+          onSubmit={({ data, updateKey }) => {
+            if (!data.outputType || !data.key) return;
+
+            const newOutput: FlowNodeOutputItemType = {
               ...item,
-              ...e
+              type: data.outputType,
+              valueType: data.valueType,
+              key: data.key,
+              label: data.label,
+              description: data.description
             };
-            if (editField.key === data.key) {
+
+            if (!updateKey) {
               onChangeNode({
                 moduleId,
                 type: 'updateOutput',
-                key: data.key,
-                value: data
+                key: newOutput.key,
+                value: newOutput
               });
             } else {
               onChangeNode({
                 moduleId,
                 type: 'replaceOutput',
                 key: editField.key,
-                value: data
+                value: newOutput
               });
             }
 

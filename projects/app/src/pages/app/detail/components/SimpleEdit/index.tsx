@@ -334,6 +334,7 @@ function ConfigForm({
                   </MyTooltip>
                 </Box>
                 <PromptTextarea
+                  flex={1}
                   bg={'myWhite.400'}
                   rows={5}
                   placeholder={chatNodeSystemPromptTip}

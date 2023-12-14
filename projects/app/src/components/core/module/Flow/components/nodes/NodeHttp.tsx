@@ -16,7 +16,6 @@ import {
 import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import { onChangeNode } from '../../FlowProvider';
 
 const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;

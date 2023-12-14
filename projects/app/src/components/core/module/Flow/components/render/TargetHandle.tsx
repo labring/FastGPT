@@ -26,7 +26,6 @@ const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
 
   return (
     <Box
-      key={handleKey}
       position={'absolute'}
       top={'50%'}
       left={'-16px'}

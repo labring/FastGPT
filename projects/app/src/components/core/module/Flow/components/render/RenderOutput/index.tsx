@@ -3,7 +3,6 @@ import type { FlowNodeOutputItemType } from '@fastgpt/global/core/module/node/ty
 import { Box } from '@chakra-ui/react';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { EditFieldModeType } from '../../modules/FieldEditModal';
 import OutputLabel from './Label';
 import { RenderOutputProps } from './type';
 import dynamic from 'next/dynamic';
@@ -20,12 +19,10 @@ const RenderList: {
 
 const RenderOutput = ({
   moduleId,
-  flowOutputList,
-  editFiledType
+  flowOutputList
 }: {
   moduleId: string;
   flowOutputList: FlowNodeOutputItemType[];
-  editFiledType?: EditFieldModeType;
 }) => {
   const sortOutputs = useMemo(
     () =>
@@ -59,7 +56,6 @@ const RenderOutput = ({
             <Box key={output.key} _notLast={{ mb: 7 }} position={'relative'}>
               {output.label && (
                 <OutputLabel
-                  editFiledType={editFiledType}
                   moduleId={moduleId}
                   outputKey={output.key}
                   outputs={sortOutputs}

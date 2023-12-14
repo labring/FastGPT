@@ -61,7 +61,6 @@ const Render = ({ pluginId }: Props) => {
       }
     }
   );
-  console.log(pluginDetail);
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
   const filterPlugins = useMemo(() => {

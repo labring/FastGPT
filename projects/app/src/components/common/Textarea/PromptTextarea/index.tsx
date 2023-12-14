@@ -60,7 +60,7 @@ const Editor = React.memo(function Editor({
   const { t } = useTranslation();
 
   return (
-    <Box h={'100%'} position={'relative'}>
+    <Box h={'100%'} w={'100%'} position={'relative'}>
       <Textarea wordBreak={'break-all'} maxW={'100%'} {...props} />
       {showSetModalModeIcon && (
         <Box
