@@ -28,7 +28,7 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -174,7 +174,7 @@ export const FlowProvider = ({
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
-          return ModuleDataTypeEnum.boolean;
+          return ModuleDataTypeEnum.string;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -207,8 +207,7 @@ export const FlowProvider = ({
         addEdge(
           {
             ...connect,
-            type: 'buttonedge',
-            animated: true,
+            type: EDGE_TYPE,
             data: {
               onDelete: onDelConnect
             }

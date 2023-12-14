@@ -2,8 +2,7 @@ import React, { useEffect } from 'react';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { edgeOptions, connectionLineStyle } from '@/web/core/modules/constants/flowUi';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 import dynamic from 'next/dynamic';
 
@@ -13,6 +12,7 @@ import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import CustomConnection from './components/CustomConnection';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes = {
@@ -34,7 +34,7 @@ const nodeTypes = {
   [FlowNodeTypeEnum.tfSwitch]: NodeSimple
 };
 const edgeTypes = {
-  buttonedge: ButtonEdge
+  [EDGE_TYPE]: ButtonEdge
 };
 type Props = {
   modules: ModuleItemType[];
@@ -98,8 +98,10 @@ const Container = React.memo(function Container(props: Props) {
           edges={edges}
           minZoom={0.1}
           maxZoom={1.5}
-          defaultEdgeOptions={edgeOptions}
-          connectionLineStyle={connectionLineStyle}
+          defaultEdgeOptions={{
+            animated: true
+          }}
+          connectionLineStyle={{ strokeWidth: 2, stroke: '#5A646Es' }}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}

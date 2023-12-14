@@ -53,7 +53,7 @@ export type FlowNodeOutputTargetItemType = {
   key: string;
 };
 export type FlowNodeOutputItemType = {
-  type: `${FlowNodeOutputTypeEnum}`;
+  type?: `${FlowNodeOutputTypeEnum}`;
   key: `${ModuleOutputKeyEnum}` | string;
   valueType?: `${ModuleDataTypeEnum}`;
 

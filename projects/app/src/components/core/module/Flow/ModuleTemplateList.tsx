@@ -35,8 +35,6 @@ export type ModuleTemplateProps = {
 type ModuleTemplateListProps = ModuleTemplateProps & {
   isOpen: boolean;
   onClose: () => void;
-  setNodes: useFlowProviderStoreType['setNodes'];
-  reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
 };
 type RenderListProps = {
   templates: FlowModuleTemplateType[];
@@ -53,7 +51,10 @@ const ModuleTemplateList = ({
   onClose,
   setNodes,
   reactFlowWrapper
-}: ModuleTemplateListProps) => {
+}: ModuleTemplateListProps & {
+  setNodes: useFlowProviderStoreType['setNodes'];
+  reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
+}) => {
   const { t } = useTranslation();
   const [templateType, setTemplateType] = React.useState(TemplateTypeEnum.system);
 

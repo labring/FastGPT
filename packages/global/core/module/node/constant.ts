@@ -60,3 +60,5 @@ export enum FlowNodeTypeEnum {
   // abandon
   variable = 'variable'
 }
+
+export const EDGE_TYPE = 'smoothstep';

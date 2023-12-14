@@ -45,7 +45,9 @@ const RenderOutput = ({
     <>
       {sortOutputs.map((output) => {
         const RenderComponent = (() => {
-          const Component = RenderList.find((item) => item.types.includes(output.type))?.Component;
+          const Component = RenderList.find(
+            (item) => output.type && item.types.includes(output.type)
+          )?.Component;
 
           if (!Component) return null;
           return <Component outputs={sortOutputs} item={output} moduleId={moduleId} />;
