@@ -15,7 +15,7 @@ import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
-import { useFlowProviderStore, onChangeNode } from '../../../FlowProvider';
+import { onChangeNode } from '../../../FlowProvider';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { inputs, outputs, moduleId } = data;

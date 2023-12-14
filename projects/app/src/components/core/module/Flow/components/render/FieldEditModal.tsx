@@ -35,7 +35,7 @@ const FieldEditModal = ({
   defaultField: EditNodeFieldType;
   keys: string[];
   onClose: () => void;
-  onSubmit: (e: { data: EditNodeFieldType; updateKey: boolean }) => void;
+  onSubmit: (e: { data: EditNodeFieldType; changeKey: boolean }) => void;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -176,7 +176,7 @@ const FieldEditModal = ({
             }
             onSubmit({
               data,
-              updateKey: !keys.includes(data.key)
+              changeKey: !keys.includes(data.key)
             });
           })}
         >

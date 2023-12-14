@@ -1,7 +1,11 @@
 import { EditNodeFieldType, FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { onChangeNode, useFlowProviderStore } from '../../../FlowProvider';
+import {
+  onChangeNode,
+  useFlowProviderStore,
+  useFlowProviderStoreType
+} from '../../../FlowProvider';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
@@ -13,16 +17,20 @@ import dynamic from 'next/dynamic';
 
 const FieldEditModal = dynamic(() => import('../FieldEditModal'));
 
+type Props = FlowNodeInputItemType & {
+  moduleId: string;
+  inputKey: string;
+};
+
 const InputLabel = ({
   moduleId,
   inputKey,
+  mode,
   ...item
-}: FlowNodeInputItemType & {
-  moduleId: string;
-  inputKey: string;
+}: Props & {
+  mode: useFlowProviderStoreType['mode'];
 }) => {
   const { t } = useTranslation();
-  const { mode } = useFlowProviderStore();
   const {
     required = false,
     description,
@@ -109,7 +117,7 @@ const InputLabel = ({
           keys={[editField.key]}
           defaultField={editField}
           onClose={() => setEditField(undefined)}
-          onSubmit={({ data, updateKey }) => {
+          onSubmit={({ data, changeKey }) => {
             if (!data.inputType || !data.key || !data.label) return;
 
             const newInput: FlowNodeInputItemType = {
@@ -122,20 +130,18 @@ const InputLabel = ({
               description: data.description
             };
 
-            // same key
-            if (!updateKey) {
-              onChangeNode({
-                moduleId,
-                type: 'updateInput',
-                key: newInput.key,
-                value: newInput
-              });
-            } else {
-              // diff key. del and add
+            if (changeKey) {
               onChangeNode({
                 moduleId,
                 type: 'replaceInput',
                 key: editField.key,
+                value: newInput
+              });
+            } else {
+              onChangeNode({
+                moduleId,
+                type: 'updateInput',
+                key: newInput.key,
                 value: newInput
               });
             }
@@ -147,4 +153,8 @@ const InputLabel = ({
   );
 };
 
-export default React.memo(InputLabel);
+export default React.memo(function (props: Props) {
+  const { mode } = useFlowProviderStore();
+
+  return <InputLabel {...props} mode={mode} />;
+});

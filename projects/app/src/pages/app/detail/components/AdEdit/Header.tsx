@@ -12,7 +12,8 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
-import { flowNode2Modules, useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { flowNode2Modules } from '@/components/core/module/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@/web/common/hooks/useToast';
 

@@ -7,7 +7,7 @@ import type {
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
-import { useFlowProviderStore } from './FlowProvider';
+import { useFlowProviderStore, type useFlowProviderStoreType } from './FlowProvider';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowNode } from '@/utils/adapt';
 import { useTranslation } from 'next-i18next';
@@ -32,15 +32,28 @@ export type ModuleTemplateProps = {
   pluginTemplates: FlowModuleTemplateType[];
 };
 
+type ModuleTemplateListProps = ModuleTemplateProps & {
+  isOpen: boolean;
+  onClose: () => void;
+  setNodes: useFlowProviderStoreType['setNodes'];
+  reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
+};
+type RenderListProps = {
+  templates: FlowModuleTemplateType[];
+  isPlugin?: boolean;
+  onClose: () => void;
+  setNodes: useFlowProviderStoreType['setNodes'];
+  reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
+};
+
 const ModuleTemplateList = ({
   systemTemplates,
   pluginTemplates,
   isOpen,
-  onClose
-}: ModuleTemplateProps & {
-  isOpen: boolean;
-  onClose: () => void;
-}) => {
+  onClose,
+  setNodes,
+  reactFlowWrapper
+}: ModuleTemplateListProps) => {
   const { t } = useTranslation();
   const [templateType, setTemplateType] = React.useState(TemplateTypeEnum.system);
 
@@ -49,15 +62,30 @@ const ModuleTemplateList = ({
       {
         type: TemplateTypeEnum.system,
         label: t('app.module.System Module'),
-        child: <RenderList templates={systemTemplates} onClose={onClose} />
+        child: (
+          <RenderList
+            templates={systemTemplates}
+            onClose={onClose}
+            setNodes={setNodes}
+            reactFlowWrapper={reactFlowWrapper}
+          />
+        )
       },
       {
         type: TemplateTypeEnum.plugin,
         label: t('plugin.Plugin Module'),
-        child: <RenderList templates={pluginTemplates} onClose={onClose} isPlugin />
+        child: (
+          <RenderList
+            templates={pluginTemplates}
+            onClose={onClose}
+            isPlugin
+            setNodes={setNodes}
+            reactFlowWrapper={reactFlowWrapper}
+          />
+        )
       }
     ],
-    [pluginTemplates, onClose, systemTemplates, t]
+    [t, systemTemplates, onClose, setNodes, reactFlowWrapper, pluginTemplates]
   );
   const TemplateItem = useMemo(
     () => typeList.find((item) => item.type === templateType)?.child,
@@ -118,21 +146,22 @@ const ModuleTemplateList = ({
   );
 };
 
-export default React.memo(ModuleTemplateList);
+export default React.memo(function (props: ModuleTemplateListProps) {
+  const { setNodes, reactFlowWrapper } = useFlowProviderStore();
+
+  return <ModuleTemplateList {...props} setNodes={setNodes} reactFlowWrapper={reactFlowWrapper} />;
+});
 
 const RenderList = React.memo(function RenderList({
   templates,
   isPlugin = false,
-  onClose
-}: {
-  templates: FlowModuleTemplateType[];
-  isPlugin?: boolean;
-  onClose: () => void;
-}) {
+  onClose,
+  setNodes,
+  reactFlowWrapper
+}: RenderListProps) {
   const { t } = useTranslation();
   const router = useRouter();
   const { isPc } = useSystemStore();
-  const { setNodes, reactFlowWrapper } = useFlowProviderStore();
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
   const { toast } = useToast();

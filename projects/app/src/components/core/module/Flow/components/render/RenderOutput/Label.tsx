@@ -86,7 +86,7 @@ const OutputLabel = ({
           defaultField={editField}
           keys={[outputKey]}
           onClose={() => setEditField(undefined)}
-          onSubmit={({ data, updateKey }) => {
+          onSubmit={({ data, changeKey }) => {
             if (!data.outputType || !data.key) return;
 
             const newOutput: FlowNodeOutputItemType = {
@@ -98,18 +98,18 @@ const OutputLabel = ({
               description: data.description
             };
 
-            if (!updateKey) {
+            if (changeKey) {
               onChangeNode({
                 moduleId,
-                type: 'updateOutput',
-                key: newOutput.key,
+                type: 'replaceOutput',
+                key: editField.key,
                 value: newOutput
               });
             } else {
               onChangeNode({
                 moduleId,
-                type: 'replaceOutput',
-                key: editField.key,
+                type: 'updateOutput',
+                key: newOutput.key,
                 value: newOutput
               });
             }

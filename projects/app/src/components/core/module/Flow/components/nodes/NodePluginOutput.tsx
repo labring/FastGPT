@@ -175,7 +175,7 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
           defaultField={editField}
           keys={[editField.key]}
           onClose={() => setEditField(undefined)}
-          onSubmit={({ data, updateKey }) => {
+          onSubmit={({ data, changeKey }) => {
             if (!data.inputType || !data.key || !data.label) return;
 
             // check key valid
@@ -199,21 +199,8 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
               key: data.key,
               label: data.label
             };
-            // not update key
-            if (!updateKey) {
-              onChangeNode({
-                moduleId,
-                type: 'updateInput',
-                key: newInput.key,
-                value: newInput
-              });
-              onChangeNode({
-                moduleId,
-                type: 'updateOutput',
-                key: newOutput.key,
-                value: newOutput
-              });
-            } else {
+
+            if (changeKey) {
               onChangeNode({
                 moduleId,
                 type: 'replaceInput',
@@ -224,6 +211,19 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
                 moduleId,
                 type: 'replaceOutput',
                 key: editField.key,
+                value: newOutput
+              });
+            } else {
+              onChangeNode({
+                moduleId,
+                type: 'updateInput',
+                key: newInput.key,
+                value: newInput
+              });
+              onChangeNode({
+                moduleId,
+                type: 'updateOutput',
+                key: newOutput.key,
                 value: newOutput
               });
             }

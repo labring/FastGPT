@@ -1,13 +1,22 @@
 import React from 'react';
 import type { RenderInputProps } from '../type';
-import { onChangeNode, useFlowProviderStore } from '../../../../FlowProvider';
+import {
+  onChangeNode,
+  useFlowProviderStore,
+  type useFlowProviderStoreType
+} from '../../../../FlowProvider';
 import { Box, Button, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
 
-const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
-  const { filterAppIds } = useFlowProviderStore();
+const SelectAppRender = ({
+  item,
+  moduleId,
+  filterAppIds
+}: RenderInputProps & {
+  filterAppIds: useFlowProviderStoreType['filterAppIds'];
+}) => {
   const theme = useTheme();
 
   const {
@@ -57,4 +66,7 @@ const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
   );
 };
 
-export default React.memo(SelectAppRender);
+export default React.memo(function (props: RenderInputProps) {
+  const { filterAppIds } = useFlowProviderStore();
+  return <SelectAppRender {...props} filterAppIds={filterAppIds} />;
+});
