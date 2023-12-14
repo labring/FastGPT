@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -12,9 +12,7 @@ import {
   Flex,
   Switch,
   Input,
-  Grid,
   FormControl,
-  useTheme,
   Image,
   Table,
   Thead,
@@ -39,6 +37,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { variableTip } from '@fastgpt/global/core/module/template/tip';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
+import MyRadio from '@/components/common/MyRadio';
 
 const VariableEdit = ({
   variables,
@@ -49,26 +48,28 @@ const VariableEdit = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const theme = useTheme();
   const [refresh, setRefresh] = useState(false);
 
-  const VariableTypeList = [
-    {
-      label: t('core.module.variable.input type'),
-      icon: 'core/app/variable/input',
-      key: VariableInputEnum.input
-    },
-    {
-      label: t('core.module.variable.textarea type'),
-      icon: 'core/app/variable/textarea',
-      key: VariableInputEnum.textarea
-    },
-    {
-      label: t('core.module.variable.select type'),
-      icon: 'core/app/variable/select',
-      key: VariableInputEnum.select
-    }
-  ];
+  const VariableTypeList = useMemo(
+    () => [
+      {
+        title: t('core.module.variable.input type'),
+        icon: 'core/app/variable/input',
+        value: VariableInputEnum.input
+      },
+      {
+        title: t('core.module.variable.textarea type'),
+        icon: 'core/app/variable/textarea',
+        value: VariableInputEnum.textarea
+      },
+      {
+        title: t('core.module.variable.select type'),
+        icon: 'core/app/variable/select',
+        value: VariableInputEnum.select
+      }
+    ],
+    [t]
+  );
 
   const { isOpen: isOpenEdit, onOpen: onOpenEdit, onClose: onCloseEdit } = useDisclosure();
   const {
@@ -102,9 +103,9 @@ const VariableEdit = ({
   const formatVariables = useMemo(() => {
     return variables.map((item) => ({
       ...item,
-      icon: VariableTypeList.find((type) => type.key === item.type)?.icon
+      icon: VariableTypeList.find((type) => type.value === item.type)?.icon
     }));
-  }, [variables]);
+  }, [VariableTypeList, variables]);
 
   return (
     <Box>
@@ -206,38 +207,18 @@ const VariableEdit = ({
           <Box mt={5} mb={2}>
             {t('core.module.Field Type')}
           </Box>
-          <Grid gridTemplateColumns={'repeat(3,1fr)'} gridGap={4}>
-            {VariableTypeList.map((item) => (
-              <Flex
-                key={item.key}
-                px={3}
-                py={3}
-                border={theme.borders.base}
-                borderRadius={'md'}
-                cursor={'pointer'}
-                {...(item.key === getValuesEdit('variable.type')
-                  ? {
-                      bg: 'myBlue.100',
-                      borderColor: 'myBlue.600',
-                      color: 'myBlue.600',
-                      fontWeight: 'bold'
-                    }
-                  : {
-                      color: 'myGray.600',
-                      _hover: {
-                        boxShadow: 'md'
-                      },
-                      onClick: () => {
-                        setValuesEdit('variable.type', item.key);
-                        setRefresh(!refresh);
-                      }
-                    })}
-              >
-                <MyIcon name={item.icon as any} w={'16px'} />
-                <Box ml={2}>{item.label}</Box>
-              </Flex>
-            ))}
-          </Grid>
+          <MyRadio
+            gridGap={4}
+            gridTemplateColumns={'repeat(3,1fr)'}
+            value={getValuesEdit('variable.type')}
+            list={VariableTypeList}
+            color={'myGray.600'}
+            hiddenCircle
+            onChange={(e) => {
+              setValuesEdit('variable.type', e as any);
+              setRefresh(!refresh);
+            }}
+          />
 
           {getValuesEdit('variable.type') === VariableInputEnum.input && (
             <>

@@ -1,10 +1,10 @@
 ---
-title: " 打造高质量 AI 知识库"
+title: " 打造高质量 AI 知识库(过期)"
 description: " 利用 FastGPT 打造高质量 AI 知识库"
 icon: "school"
 draft: false
 toc: true
-weight: 340
+weight: 699
 ---
 
 ## 前言

@@ -15,6 +15,7 @@ import Loading from '@/components/Loading';
 import SimpleEdit from './components/SimpleEdit';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
+import Head from 'next/head';
 
 const AdEdit = dynamic(() => import('./components/AdEdit'), {
   loading: () => <Loading />
@@ -92,90 +93,95 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   });
 
   return (
-    <PageContainer>
-      <Flex flexDirection={['column', 'row']} h={'100%'}>
-        {/* pc tab */}
-        <Box
-          display={['none', 'flex']}
-          flexDirection={'column'}
-          p={4}
-          w={'180px'}
-          borderRight={theme.borders.base}
-        >
-          <Flex mb={4} alignItems={'center'}>
-            <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'lg'} />
-            <Box ml={2} fontWeight={'bold'}>
+    <>
+      <Head>
+        <title>{appDetail.name}</title>
+      </Head>
+      <PageContainer>
+        <Flex flexDirection={['column', 'row']} h={'100%'}>
+          {/* pc tab */}
+          <Box
+            display={['none', 'flex']}
+            flexDirection={'column'}
+            p={4}
+            w={'180px'}
+            borderRight={theme.borders.base}
+          >
+            <Flex mb={4} alignItems={'center'}>
+              <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'lg'} />
+              <Box ml={2} fontWeight={'bold'} fontSize={'sm'}>
+                {appDetail.name}
+              </Box>
+            </Flex>
+            <SideTabs
+              flex={1}
+              mx={'auto'}
+              mt={2}
+              w={'100%'}
+              list={tabList}
+              activeId={currentTab}
+              onChange={(e: any) => {
+                if (e === 'startChat') {
+                  router.push(`/chat?appId=${appId}`);
+                } else {
+                  setCurrentTab(e);
+                }
+              }}
+            />
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              py={2}
+              px={3}
+              borderRadius={'md'}
+              _hover={{ bg: 'myGray.100' }}
+              onClick={() => router.replace('/app/list')}
+            >
+              <IconButton
+                mr={3}
+                icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+                bg={'white'}
+                boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+                h={'28px'}
+                size={'sm'}
+                borderRadius={'50%'}
+                aria-label={''}
+              />
+              我的应用
+            </Flex>
+          </Box>
+          {/* phone tab */}
+          <Box display={['block', 'none']} textAlign={'center'} py={3}>
+            <Box className="textlg" fontSize={'xl'} fontWeight={'bold'}>
               {appDetail.name}
             </Box>
-          </Flex>
-          <SideTabs
-            flex={1}
-            mx={'auto'}
-            mt={2}
-            w={'100%'}
-            list={tabList}
-            activeId={currentTab}
-            onChange={(e: any) => {
-              if (e === 'startChat') {
-                router.push(`/chat?appId=${appId}`);
-              } else {
-                setCurrentTab(e);
-              }
-            }}
-          />
-          <Flex
-            alignItems={'center'}
-            cursor={'pointer'}
-            py={2}
-            px={3}
-            borderRadius={'md'}
-            _hover={{ bg: 'myGray.100' }}
-            onClick={() => router.replace('/app/list')}
-          >
-            <IconButton
-              mr={3}
-              icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
-              bg={'white'}
-              boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-              h={'28px'}
+            <Tabs
+              mx={'auto'}
+              mt={2}
+              w={'100%'}
+              list={tabList}
               size={'sm'}
-              borderRadius={'50%'}
-              aria-label={''}
+              activeId={currentTab}
+              onChange={(e: any) => {
+                if (e === 'startChat') {
+                  router.push(`/chat?appId=${appId}`);
+                } else {
+                  setCurrentTab(e);
+                }
+              }}
             />
-            我的应用
-          </Flex>
-        </Box>
-        {/* phone tab */}
-        <Box display={['block', 'none']} textAlign={'center'} py={3}>
-          <Box className="textlg" fontSize={'xl'} fontWeight={'bold'}>
-            {appDetail.name}
           </Box>
-          <Tabs
-            mx={'auto'}
-            mt={2}
-            w={'100%'}
-            list={tabList}
-            size={'sm'}
-            activeId={currentTab}
-            onChange={(e: any) => {
-              if (e === 'startChat') {
-                router.push(`/chat?appId=${appId}`);
-              } else {
-                setCurrentTab(e);
-              }
-            }}
-          />
-        </Box>
-        <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
-          {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
-          {currentTab === TabEnum.adEdit && appDetail && (
-            <AdEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
-          )}
-          {currentTab === TabEnum.logs && <Logs appId={appId} />}
-          {currentTab === TabEnum.outLink && <OutLink appId={appId} />}
-        </Box>
-      </Flex>
-    </PageContainer>
+          <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
+            {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
+            {currentTab === TabEnum.adEdit && appDetail && (
+              <AdEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
+            )}
+            {currentTab === TabEnum.logs && <Logs appId={appId} />}
+            {currentTab === TabEnum.outLink && <OutLink appId={appId} />}
+          </Box>
+        </Flex>
+      </PageContainer>
+    </>
   );
 };
 

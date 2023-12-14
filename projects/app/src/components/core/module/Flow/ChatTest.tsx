@@ -10,13 +10,13 @@ import React, {
 } from 'react';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -40,10 +40,18 @@ const ChatTest = (
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const historyMaxLen =
-        modules
-          ?.find((item) => item.flowType === FlowNodeTypeEnum.historyNode)
-          ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
+      let historyMaxLen = 6;
+      modules.forEach((module) => {
+        module.inputs.forEach((input) => {
+          if (
+            (input.key === ModuleInputKeyEnum.history ||
+              input.key === ModuleInputKeyEnum.historyMaxAmount) &&
+            typeof input.value === 'number'
+          ) {
+            historyMaxLen = Math.max(historyMaxLen, input.value);
+          }
+        });
+      });
       const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据

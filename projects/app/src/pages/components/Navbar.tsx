@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar';
 import CommunityModal from '@/components/CommunityModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
+import { getDocPath } from '@/web/common/system/doc';
 
 const Navbar = () => {
   const router = useRouter();
@@ -47,7 +48,7 @@ const Navbar = () => {
             label: t('home.Docs'),
             key: 'docs',
             onClick: () => {
-              window.open(`${feConfigs.docUrl}/docs/intro`);
+              window.open(getDocPath('/docs/intro'));
             }
           }
         ]

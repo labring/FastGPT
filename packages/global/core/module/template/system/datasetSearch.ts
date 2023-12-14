@@ -54,17 +54,10 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.datasetLimit,
       type: FlowNodeInputTypeEnum.hidden,
-      label: '单次搜索上限',
-      description: '最多取 n 条记录作为本次问题引用',
-      value: 5,
+      label: '引用上限',
+      description: '单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens',
+      value: 1500,
       valueType: ModuleDataTypeEnum.number,
-      min: 1,
-      max: 20,
-      step: 1,
-      markList: [
-        { label: '1', value: 1 },
-        { label: '20', value: 20 }
-      ],
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -81,7 +74,6 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.datasetParamsModal,
       type: FlowNodeInputTypeEnum.selectDatasetParamsModal,
       label: '',
-      connected: false,
       valueType: ModuleDataTypeEnum.any,
       showTargetInApp: false,
       showTargetInPlugin: false

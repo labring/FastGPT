@@ -7,7 +7,8 @@ import {
   useTheme,
   Divider,
   Select,
-  Input
+  Input,
+  Link
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
@@ -30,6 +31,7 @@ import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
+import { getDocPath } from '@/web/common/system/doc';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'), {
@@ -248,32 +250,52 @@ const UserInfo = () => {
           </Flex>
         </Box>
         {feConfigs?.docUrl && (
-          <>
-            <Flex
-              mt={4}
-              w={['85%', '300px']}
-              py={3}
-              px={6}
-              border={theme.borders.sm}
-              borderWidth={'1.5px'}
-              borderRadius={'md'}
-              alignItems={'center'}
-              cursor={'pointer'}
-              userSelect={'none'}
-              onClick={() => {
-                window.open(`${feConfigs.docUrl}/docs/intro`);
-              }}
-            >
-              <MyIcon name={'common/courseLight'} w={'18px'} />
-              <Box ml={2} flex={1}>
-                {t('system.Help Document')}
-              </Box>
-              <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
-              <Box fontSize={'md'} ml={2}>
-                V{systemVersion}
-              </Box>
-            </Flex>
-          </>
+          <Link
+            href={getDocPath('/docs/intro')}
+            target="_blank"
+            display={'flex'}
+            mt={4}
+            w={['85%', '300px']}
+            py={3}
+            px={6}
+            border={theme.borders.sm}
+            borderWidth={'1.5px'}
+            borderRadius={'md'}
+            alignItems={'center'}
+            userSelect={'none'}
+            textDecoration={'none !important'}
+          >
+            <MyIcon name={'common/courseLight'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              {t('system.Help Document')}
+            </Box>
+            <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
+            <Box fontSize={'md'} ml={2}>
+              V{systemVersion}
+            </Box>
+          </Link>
+        )}
+        {feConfigs?.chatbotUrl && (
+          <Link
+            href={feConfigs.chatbotUrl}
+            target="_blank"
+            display={'flex'}
+            mt={4}
+            w={['85%', '300px']}
+            py={3}
+            px={6}
+            border={theme.borders.sm}
+            borderWidth={'1.5px'}
+            borderRadius={'md'}
+            alignItems={'center'}
+            userSelect={'none'}
+            textDecoration={'none !important'}
+          >
+            <MyIcon name={'core/app/aiLight'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              {t('common.system.Help Chatbot')}
+            </Box>
+          </Link>
         )}
         {feConfigs?.show_openai_account && (
           <>
@@ -282,7 +304,7 @@ const UserInfo = () => {
             <MyTooltip label={'点击配置账号'}>
               <Flex
                 w={['85%', '300px']}
-                py={3}
+                py={4}
                 px={6}
                 border={theme.borders.sm}
                 borderWidth={'1.5px'}

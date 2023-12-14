@@ -2,9 +2,17 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
-import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
+import {
+  getAllDataset,
+  getDatasets,
+  getDatasetById,
+  putDatasetById,
+  postWebsiteSync
+} from '@/web/core/dataset/api';
 import { defaultDatasetDetail } from '@/constants/dataset';
 import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
+import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constant';
+import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
 
 type State = {
   allDatasets: DatasetListItemType[];
@@ -15,6 +23,7 @@ type State = {
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
   updateDataset: (data: DatasetUpdateBody) => Promise<any>;
+  startWebsiteSync: () => Promise<any>;
 };
 
 export const useDatasetStore = create<State>()(
@@ -70,12 +79,27 @@ export const useDatasetStore = create<State>()(
               item._id === data.id
                 ? {
                     ...item,
-                    ...data,
-                    tags: data.tags || []
+                    ...data
                   }
                 : item
             );
           });
+        },
+        async startWebsiteSync() {
+          const [_, billId] = await Promise.all([
+            get().updateDataset({
+              id: get().datasetDetail._id,
+              status: DatasetStatusEnum.syncing
+            }),
+            postCreateTrainingBill({
+              name: 'core.dataset.training.Website Sync',
+              vectorModel: get().datasetDetail.vectorModel.model,
+              agentModel: get().datasetDetail.agentModel.model
+            })
+          ]);
+          try {
+            postWebsiteSync({ datasetId: get().datasetDetail._id, billId });
+          } catch (error) {}
         }
       })),
       {

@@ -10,7 +10,6 @@ const CsvImport = dynamic(() => import('./Csv'), {});
 import MyModal from '@/components/MyModal';
 import Provider from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { qaModelList } from '@/web/common/system/staticData';
 import {
   DatasetCollectionTrainingModeEnum,
   TrainingModeEnum
@@ -50,7 +49,7 @@ const ImportData = ({
         collectionTrainingType: DatasetCollectionTrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
-        defaultChunkLen: agentModel?.maxContext * 0.6 || 8000,
+        defaultChunkLen: agentModel?.maxContext * 0.55 || 8000,
         chunkOverlapRatio: 0,
         unitPrice: agentModel?.price || 3,
         mode: TrainingModeEnum.qa,
@@ -96,20 +95,20 @@ const ImportData = ({
             list={[
               {
                 icon: 'indexImport',
-                title: '直接分段',
-                desc: '选择文本文件，直接将其按分段进行处理',
+                title: t('core.dataset.import.Chunk Split'),
+                desc: t('core.dataset.import.Chunk Split Tip'),
                 value: ImportTypeEnum.chunk
               },
               {
                 icon: 'qaImport',
-                title: 'QA拆分',
-                desc: '选择文本文件，让大模型自动生成问答对',
+                title: t('core.dataset.import.QA Import'),
+                desc: t('core.dataset.import.QA Import Tip'),
                 value: ImportTypeEnum.qa
               },
               {
                 icon: 'csvImport',
-                title: 'CSV 导入',
-                desc: '批量导入问答对，是最精准的数据',
+                title: t('core.dataset.import.CSV Import'),
+                desc: t('core.dataset.import.CSV Import Tip'),
                 value: ImportTypeEnum.csv
               }
             ]}

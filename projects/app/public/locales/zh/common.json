@@ -65,7 +65,6 @@
     "Confirm to clear share chat history": "确认删除所有聊天记录？",
     "Converting to text": "正在转换为文本...",
     "Exit Chat": "退出聊天",
-    "Feedback Close": "关闭反馈",
     "Feedback Failed": "提交反馈异常",
     "Feedback Mark": "标注",
     "Feedback Modal": "结果反馈",
@@ -81,7 +80,6 @@
     "Question Guide Tips": "猜你想问",
     "Quote": "引用",
     "Read Mark Description": "查看标注功能介绍",
-    "Read User Feedback": "查看用户反馈",
     "Select Mark Kb": "选择知识库",
     "Select Mark Kb Desc": "选择一个知识库存储预期答案",
     "You need to a chat app": "你需要创建一个应用",
@@ -131,6 +129,7 @@
     "Config": "配置",
     "Confirm": "确认",
     "Confirm Create": "确认创建",
+    "Confirm Import": "确认导入",
     "Confirm Move": "移动到这",
     "Confirm Update": "确认更新",
     "Copy": "复制",
@@ -153,6 +152,7 @@
     "Input": "输入",
     "Intro": "介绍",
     "Last Step": "上一步",
+    "Load Failed": "加载失败",
     "Loading": "加载中",
     "Max credit": "最大金额",
     "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
@@ -177,7 +177,7 @@
     "Select File Failed": "选择文件异常",
     "Select One Folder": "选择一个目录",
     "Set Avatar": "点击设置头像",
-    "Set Name": "取个响亮的名字",
+    "Set Name": "取个名字",
     "Status": "状态",
     "Team": "团队",
     "Test": "测试",
@@ -191,9 +191,16 @@
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
     "Website": "网站",
+    "avatar": {
+      "Select Avatar": "点击选择头像",
+      "Select Failed": "选择头像异常"
+    },
     "choosable": "可选",
     "confirm": {
       "Common Tip": "操作确认"
+    },
+    "course": {
+      "Read Course": "查看教程"
     },
     "empty": {
       "Common Tip": "没有什么数据噢~"
@@ -203,6 +210,11 @@
     },
     "export": "",
     "file": {
+      "File Content": "文件内容",
+      "File Name": "文件名",
+      "File content can not be empty": "文件内容不能为空",
+      "Filename Can not Be Empty": "文件名不能为空",
+      "Read File Error": "解析文件失败",
       "Select file amount limit 100": "每次最多选择100个文件"
     },
     "folder": {
@@ -218,15 +230,26 @@
     "link": {
       "UnValid": "无效的链接"
     },
+    "price": {
+      "Amount": "{{amount}}{{unit}}"
+    },
     "speech": {
       "error tip": "语音转文字失败"
+    },
+    "system": {
+      "Help Chatbot": "机器人助手",
+      "Use Helper": "使用帮助"
     }
   },
   "core": {
     "Max Token": "单条数据上限",
     "ai": {
       "Model": "AI 模型",
-      "Prompt": "提示词"
+      "Prompt": "提示词",
+      "model": {
+        "Dataset Agent Model": "文件处理模型",
+        "Vector Model": "索引模型"
+      }
     },
     "app": {
       "App params config": "应用配置",
@@ -239,6 +262,23 @@
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
+      "logs": {
+        "Source And Time": "来源 & 时间"
+      },
+      "outLink": {
+        "Can Drag": "图标可拖拽",
+        "Default open": "默认打开",
+        "Iframe block title": "复制下面 Iframe 加入到你的网站中",
+        "Link block title": "将下面链接复制到浏览器打开",
+        "Script Close Icon": "关闭图标",
+        "Script Icon": "图标",
+        "Script Open Icon": "打开图标",
+        "Script block title": "将下面代码加入到你的网站中",
+        "Select Mode": "开始使用",
+        "Select Using Way": "选择使用方式",
+        "Show History": "展示历史对话",
+        "Web Link": "网络链接"
+      },
       "setting": "应用信息设置",
       "simple": {
         "mode template select": "简易模板"
@@ -265,6 +305,21 @@
       "Speaking": "我在听，请说...",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "error": {
+        "Messages empty": "接口内容为空，可能文本超长了~"
+      },
+      "feedback": {
+        "Close User Good Feedback": "",
+        "Close User Like": "用户表示赞同\n点击关闭该标记",
+        "Feedback Close": "关闭反馈",
+        "No Content": "用户没有填写具体反馈内容",
+        "Read User dislike": "用户表示反对\n点击查看内容"
+      },
+      "markdown": {
+        "Edit Question": "编辑问题",
+        "Quick Question": "点我立即提问",
+        "Send Question": "发送问题"
+      },
       "quote": {
         "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新",
         "Read Quote": "查看引用",
@@ -276,24 +331,28 @@
     },
     "dataset": {
       "All Dataset": "全部知识库",
+      "Avatar": "知识库头像",
       "Choose Dataset": "关联知识库",
       "Common Dataset": "通用知识库",
       "Common Dataset Desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
       "Create dataset": "创建一个知识库",
       "Dataset": "知识库",
+      "Dataset ID": "知识库 ID",
       "Dataset Type": "知识库类型",
+      "Delete Confirm": "确认删除该知识库？删除后数据无法恢复，请确认！",
       "Delete Website Tips": "确认删除该站点？",
       "Empty Dataset": "",
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
       "Folder Dataset": "文件夹",
       "Go Dataset": "前往知识库",
       "Intro Placeholder": "这个知识库还没有介绍~",
+      "My Dataset": "我的知识库",
+      "Name": "知识库名称",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
-      "Search Top K": "单次搜索数量",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Set Website Config": "开始配置网站信息",
-      "Similarity": "相似度",
+      "Similarity": "相关度",
       "Sync Time": "最后更新时间",
       "Virtual File": "虚拟文件",
       "Website Dataset": "Web 站点同步",
@@ -301,10 +360,15 @@
       "collection": {
         "Click top config website": "点击配置网站",
         "Empty Tip": "数据集空空如也",
+        "QA Prompt": "QA 拆分引导词",
+        "Start Sync Tip": "确认开始同步数据？将会删除旧数据后重新获取，请确认！",
+        "Sync": "同步数据",
+        "Sync Collection": "数据同步",
         "Website Create Success": "创建成功，正在同步数据",
-        "Website Empty Tip": "还没有关联网站，",
+        "Website Empty Tip": "还没有关联网站",
         "Website Link": "Web 站点地址",
         "Website Sync": "Web 站点同步",
+        "id": "集合ID",
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
@@ -328,35 +392,75 @@
         }
       },
       "data": {
+        "Auxiliary Data": "辅助数据",
+        "Auxiliary Data Placeholder": "该部分为可选填项, 通常是为了与前面的【数据内容】配合，构建结构化提示词，用于特殊场景，最多 {{maxToken}} 字。",
+        "Auxiliary Data Tip": "该部分为可选填项\n该内容通常是为了与前面的数据内容配合，构建结构化提示词，用于特殊场景",
+        "Data Content": "相关数据内容",
+        "Data Content Placeholder": "该输入框是必填项，该内容通常是对于知识点的描述，也可以是用户的问题，最多 {{maxToken}} 字。",
+        "Data Content Tip": "该输入框是必填项\n该内容通常是对于知识点的描述，也可以是用户的问题。",
+        "Default Index Tip": "无法编辑，默认索引会使用【相关数据内容】与【辅助数据】的文本直接生成索引，如不需要默认索引，可删除。 每条数据必须保证有一个以上索引，所有索引被删除后，会自动生成默认索引。",
         "Edit": "编辑数据",
+        "Empty Tip": "这个集合还没有数据~",
+        "Search data placeholder": "搜索相关数据",
+        "Too Long": "总长度超长了",
+        "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
         "id": "数据ID"
+      },
+      "error": {
+        "Start Sync Failed": "开始同步失败",
+        "unAuthDataset": "无权操作该知识库",
+        "unAuthDatasetCollection": "无权操作该数据集",
+        "unAuthDatasetData": "无权操作该数据",
+        "unAuthDatasetFile": "无权操作该文件",
+        "unCreateCollection": "无权操作该数据",
+        "unLinkCollection": "不是网络链接集合"
       },
       "file": "文件",
       "folder": "目录",
       "import": {
+        "CSV Import": "CSV 导入",
+        "CSV Import Tip": "通过批量导入问答对，要求提前整理好数据",
+        "Chunk Range": "范围: 100~{{max}}",
+        "Chunk Split": "直接分段",
+        "Chunk Split Tip": "选择文本文件，直接将其按分段进行处理",
+        "Csv format error": "csv 文件格式有误,请确保 index 和 content 两列",
+        "Estimated Price": "预估价格",
+        "Estimated Price Tips": "索引生成计费为: {{price}}/1k tokens",
         "Fetch Error": "获取链接失败",
         "Fetch Url": "网络链接",
         "Fetch url placeholder": "最多10个链接，每行一个。",
         "Fetch url tip": "仅支持读取静态链接，请注意检查结果",
         "Ideal chunk length": "理想分块长度",
-        "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200"
+        "Ideal chunk length Tips": "按结束符号进行分段。我们建议您的文档应合理的使用标点符号，以确保每个完整的句子长度不要超过该值\n中文文档建议400~1000\n英文文档建议600~1200",
+        "Import Failed": "导入文件失败",
+        "Import Success Tip": "共成功导入 {{num}} 组数据，请耐心等待训练.",
+        "Import Tip": "该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。",
+        "Only Show First 50 Chunk": "仅展示部分",
+        "QA Import": "QA拆分",
+        "QA Import Tip": "选择文本文件，让大模型自动生成问答对",
+        "Re Preview": "重新生成预览",
+        "Set Chunk Error": "文本分段异常",
+        "Total Chunk Preview": "分段预览({{totalChunks}}组)"
       },
       "link": "链接",
       "search": {
+        "Dataset Search Params": "搜索参数",
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
-        "Min Similarity": "最低相似度",
-        "Min Similarity Tips": "不同索引模型的相似度有区别，请通过搜索测试来选择合适的数值",
+        "Max Tokens": "引用上限",
+        "Max Tokens Tips": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
+        "Min Similarity": "最低相关度",
+        "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
         "Params Setting": "搜索参数设置",
         "Top K": "单次搜索上限",
         "mode": {
           "embFullTextReRank": "混合检索",
-          "embFullTextReRank desc": "使用向量检索与全文检索混合结果进行 Rerank 进行重排，通常效果最佳",
+          "embFullTextReRank desc": "使用向量检索与全文检索混合结果进行 Rerank 进行重排，相关度通常差异明显，推荐。",
           "embedding": "语义检索",
           "embedding desc": "直接进行向量 topk 相关性查询",
           "embeddingReRank": "增强语义检索",
-          "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序"
+          "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序，相关度通常差异明显。"
         },
         "search mode": "检索模式"
       },
@@ -365,6 +469,7 @@
         "syncing": "同步中"
       },
       "test": {
+        "Search Test": "搜索测试",
         "Test": "测试",
         "Test Result": "测试结果",
         "Test Text": "测试文本",
@@ -386,7 +491,9 @@
         "Confirm Create Tips": "确认同步该站点，同步任务将随后开启，请确认！",
         "Confirm Update Tips": "确认更新站点配置？会立即按新的配置开始同步，请确认！",
         "Selector": "选择器",
-        "Start Sync": "开始同步"
+        "Selector Course": "选择器使用教程",
+        "Start Sync": "开始同步",
+        "UnValid Website Tip": "您的站点可能非静态站点，无法同步"
       }
     },
     "module": {
@@ -449,11 +556,13 @@
         "variable options": "选项"
       },
       "variable add option": "添加选项"
+    },
+    "shareChat": {
+      "Init Error": "初始化对话框失败",
+      "Init History Error": "初始化聊天记录失败"
     }
   },
   "dataset": {
-    "Agent Model": "文件处理模型",
-    "Chunk Length": "数据总量",
     "Confirm move the folder": "确认移动到该目录",
     "Confirm to delete the data": "确认删除该数据？",
     "Confirm to delete the file": "确认删除该文件及其所有数据？",
@@ -474,7 +583,6 @@
     "Manual Mark": "手动标注",
     "Mark Data": "标注数据",
     "Move Failed": "移动出现错误~",
-    "My Dataset": "我的知识库",
     "Queue Desc": "该数据是指整个系统当前待训练的数量。{{title}} 采用排队训练的方式，如果待训练的数据过多，可能需要等待一段时间",
     "Select Dataset": "选择该知识库",
     "Select Dataset Tips": "仅能选择同一个索引模型的知识库",
@@ -518,18 +626,14 @@
       },
       "input is empty": "数据内容不能为空 "
     },
-    "deleteDatasetTips": "确认删除该知识库？删除后数据无法恢复，请确认！",
     "deleteFolderTips": "确认删除该文件夹及其包含的所有知识库？删除后数据无法恢复，请确认！",
     "import csv tip": "请确保CSV为UTF-8格式，否则会乱码",
     "test": {
       "noResult": "搜索结果为空"
-    },
-    "website": {
-      "Base Url": "",
-      "Selector": ""
     }
   },
   "error": {
+    "fileNotFound": "文件找不到了~",
     "team": {
       "overSize": "团队成员超出上限"
     }
@@ -595,6 +699,10 @@
     "Visual AI orchestration": "可视化 AI 编排",
     "Why FastGPT": "为什么选择 {{title}}",
     "desc": "基于 LLM 大模型的 AI 知识库问答平台",
+    "navbar": {
+      "Use guidance": "使用引导",
+      "chatbot": "问答机器人"
+    },
     "slogan": "让 AI 更懂你的知识"
   },
   "module": {

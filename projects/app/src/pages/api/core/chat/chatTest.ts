@@ -8,8 +8,9 @@ import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { authUser } from '@/service/support/permission/auth/user';
 import { dispatchModules } from '@/service/moduleDispatch';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { getUserAndAuthBalance } from '@fastgpt/service/support/user/controller';
 
 export type Props = {
   history: ChatItemType[];
@@ -40,14 +41,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     /* user auth */
-    const [{ teamId, tmbId }, { user }] = await Promise.all([
+    const [_, { teamId, tmbId }] = await Promise.all([
       authApp({ req, authToken: true, appId, per: 'r' }),
-      authUser({
+      authCert({
         req,
-        authToken: true,
-        minBalance: 0
+        authToken: true
       })
     ]);
+
+    // auth balance
+    const user = await getUserAndAuthBalance({
+      tmbId,
+      minBalance: 0
+    });
 
     /* start process */
     const { responseData } = await dispatchModules({
@@ -58,8 +64,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId,
       modules,
       variables,
-      params: {
-        history,
+      histories: history,
+      startParams: {
         userChatInput: prompt
       },
       stream: true,

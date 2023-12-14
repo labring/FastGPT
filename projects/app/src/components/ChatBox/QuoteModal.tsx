@@ -1,5 +1,5 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import { ModalBody, Box, useTheme, Flex, Progress, Link, Image } from '@chakra-ui/react';
+import React, { useCallback, useState } from 'react';
+import { ModalBody, Box, useTheme, Flex, Progress, Link } from '@chakra-ui/react';
 import { getDatasetDataItemById } from '@/web/core/dataset/api';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -11,7 +11,6 @@ import InputDataModal, {
 } from '@/pages/dataset/detail/components/InputDataModal';
 import MyModal from '../MyModal';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import MyTooltip from '../MyTooltip';
 import NextLink from 'next/link';
@@ -19,20 +18,19 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const QuoteModal = ({
   rawSearch = [],
-  onClose
+  onClose,
+  isShare
 }: {
   rawSearch: SearchDataResponseItemType[];
   onClose: () => void;
+  isShare: boolean;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystemStore();
   const theme = useTheme();
-  const router = useRouter();
   const { toast } = useToast();
   const { setIsLoading, Loading } = useLoading();
   const [editInputData, setEditInputData] = useState<InputDataType & { collectionId: string }>();
-
-  const isShare = useMemo(() => router.pathname === '/chat/share', [router.pathname]);
 
   /**
    * click edit, get new DataItem

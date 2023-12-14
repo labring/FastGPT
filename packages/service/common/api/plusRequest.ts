@@ -70,8 +70,9 @@ instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
-  if (!global.systemEnv?.pluginBaseUrl) {
-    return Promise.reject('该功能为商业版特有...');
+  if (!global.systemEnv || !global.systemEnv?.pluginBaseUrl) {
+    console.log('未部署商业版接口');
+    return Promise.reject('The The request was denied...');
   }
 
   /* 去空 */

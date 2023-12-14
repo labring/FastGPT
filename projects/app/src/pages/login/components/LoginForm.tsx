@@ -11,6 +11,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@/components/Icon';
 import { customAlphabet } from 'nanoid';
+import { getDocPath } from '@/web/common/system/doc';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
@@ -146,7 +147,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               <Box textAlign={'center'} mt={2} fontSize={'sm'}>
                 使用即代表你同意我们的{' '}
                 <Link
-                  href={`${feConfigs.docUrl}/docs/intro/#%e5%85%8d%e8%b4%a3%e5%a3%b0%e6%98%8e`}
+                  href={getDocPath('/docs/agreement/disclaimer/')}
                   target={'_blank'}
                   color={'myBlue.600'}
                 >

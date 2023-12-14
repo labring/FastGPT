@@ -41,7 +41,7 @@ const ChunkImport = () => {
   } = useImportStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: `该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。`
+    content: t('core.dataset.import.Import Tip')
   });
 
   return (
@@ -63,7 +63,11 @@ const ChunkImport = () => {
               }
             }}
           >
-            <MyTooltip label={`范围: 100~${datasetDetail.vectorModel.maxToken}`}>
+            <MyTooltip
+              label={t('core.dataset.import.Chunk Range', {
+                max: datasetDetail.vectorModel.maxToken
+              })}
+            >
               <NumberInput
                 ml={4}
                 defaultValue={chunkLen}
@@ -87,20 +91,22 @@ const ChunkImport = () => {
         {/* price */}
         <Flex py={4} alignItems={'center'}>
           <Box>
-            预估价格
+            {t('core.dataset.import.Estimated Price')}
             <MyTooltip
-              label={`索引生成计费为: ${formatPrice(unitPrice, 1000)}/1k tokens`}
+              label={t('core.dataset.import.Estimated Price Tips', {
+                price: formatPrice(unitPrice, 1000)
+              })}
               forceShow
             >
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Box>
-          <Box ml={4}>{price}元</Box>
+          <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
         </Flex>
         <Flex mt={3}>
           {showRePreview && (
             <Button variant={'base'} mr={4} onClick={onReSplitChunks}>
-              重新生成预览
+              {t('core.dataset.import.Re Preview')}
             </Button>
           )}
           <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>

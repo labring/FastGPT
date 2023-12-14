@@ -11,16 +11,9 @@ import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { jiebaSplit } from '../utils';
 import { reRankRecall } from '../../ai/rerank';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 
-export async function insertData2Pg({
-  mongoDataId,
-  input,
-  model,
-  teamId,
-  tmbId,
-  datasetId,
-  collectionId
-}: {
+export async function insertData2Pg(props: {
   mongoDataId: string;
   input: string;
   model: string;
@@ -28,42 +21,42 @@ export async function insertData2Pg({
   tmbId: string;
   datasetId: string;
   collectionId: string;
-}) {
-  let retry = 2;
-  async function insertPg(): Promise<{ insertId: string; vectors: number[][]; tokenLen: number }> {
-    try {
-      // get vector
-      const { vectors, tokenLen } = await getVectorsByText({
-        model,
-        input: [input]
-      });
-      const { rows } = await PgClient.insert(PgDatasetTableName, {
-        values: [
-          [
-            { key: 'vector', value: `[${vectors[0]}]` },
-            { key: 'team_id', value: String(teamId) },
-            { key: 'tmb_id', value: String(tmbId) },
-            { key: 'dataset_id', value: datasetId },
-            { key: 'collection_id', value: collectionId },
-            { key: 'data_id', value: String(mongoDataId) }
-          ]
+  retry?: number;
+}): Promise<{ insertId: string; vectors: number[][]; tokenLen: number }> {
+  const { mongoDataId, input, model, teamId, tmbId, datasetId, collectionId, retry = 3 } = props;
+  try {
+    // get vector
+    const { vectors, tokenLen } = await getVectorsByText({
+      model,
+      input: [input]
+    });
+    const { rows } = await PgClient.insert(PgDatasetTableName, {
+      values: [
+        [
+          { key: 'vector', value: `[${vectors[0]}]` },
+          { key: 'team_id', value: String(teamId) },
+          { key: 'tmb_id', value: String(tmbId) },
+          { key: 'dataset_id', value: datasetId },
+          { key: 'collection_id', value: collectionId },
+          { key: 'data_id', value: String(mongoDataId) }
         ]
-      });
-      return {
-        insertId: rows[0].id,
-        vectors,
-        tokenLen
-      };
-    } catch (error) {
-      if (--retry < 0) {
-        return Promise.reject(error);
-      }
-      await delay(500);
-      return insertPg();
+      ]
+    });
+    return {
+      insertId: rows[0].id,
+      vectors,
+      tokenLen
+    };
+  } catch (error) {
+    if (retry <= 0) {
+      return Promise.reject(error);
     }
+    await delay(500);
+    return insertData2Pg({
+      ...props,
+      retry: retry - 1
+    });
   }
-
-  return insertPg();
 }
 
 export async function updatePgDataById({
@@ -108,38 +101,52 @@ type SearchProps = {
   text: string;
   model: string;
   similarity?: number; // min distance
-  limit: number;
+  limit: number; // max Token limit
   datasetIds: string[];
   searchMode?: `${DatasetSearchModeEnum}`;
 };
 export async function searchDatasetData(props: SearchProps) {
-  let { text, similarity = 0, limit, searchMode = DatasetSearchModeEnum.embedding } = props;
-  searchMode = global.systemEnv.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
+  let {
+    text,
+    similarity = 0,
+    limit: maxTokens,
+    searchMode = DatasetSearchModeEnum.embedding
+  } = props;
+  searchMode = global.systemEnv?.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
+
+  // Compatible with topk limit
+  if (maxTokens < 50) {
+    maxTokens = 1500;
+  }
 
   const rerank =
-    searchMode === DatasetSearchModeEnum.embeddingReRank ||
-    searchMode === DatasetSearchModeEnum.embFullTextReRank;
+    global.reRankModels?.[0] &&
+    (searchMode === DatasetSearchModeEnum.embeddingReRank ||
+      searchMode === DatasetSearchModeEnum.embFullTextReRank);
 
+  const oneChunkToken = 50;
   const { embeddingLimit, fullTextLimit } = (() => {
-    // Increase search range, reduce hnsw loss
+    const estimatedLen = Math.max(20, Math.ceil(maxTokens / oneChunkToken));
+
+    // Increase search range, reduce hnsw loss. 20 ~ 100
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return {
-        embeddingLimit: limit * 2,
+        embeddingLimit: Math.min(estimatedLen, 100),
         fullTextLimit: 0
       };
     }
     // 50 < 2*limit < value < 100
     if (searchMode === DatasetSearchModeEnum.embeddingReRank) {
       return {
-        embeddingLimit: Math.min(100, Math.max(50, limit * 2)),
+        embeddingLimit: Math.min(100, Math.max(50, estimatedLen * 2)),
         fullTextLimit: 0
       };
     }
-    // 50 < 3*limit < embedding < 80
+    // 50 < 2*limit < embedding < 80
     // 20 < limit < fullTextLimit < 40
     return {
-      embeddingLimit: Math.min(80, Math.max(50, limit * 2)),
-      fullTextLimit: Math.min(40, Math.max(20, limit))
+      embeddingLimit: Math.min(80, Math.max(50, estimatedLen * 2)),
+      fullTextLimit: Math.min(40, Math.max(20, estimatedLen))
     };
   })();
 
@@ -176,7 +183,10 @@ export async function searchDatasetData(props: SearchProps) {
 
   if (!rerank) {
     return {
-      searchRes: filterSameDataResults.filter((item) => item.score >= similarity).slice(0, limit),
+      searchRes: filterResultsByMaxTokens(
+        filterSameDataResults.filter((item) => item.score >= similarity),
+        maxTokens
+      ),
       tokenLen
     };
   }
@@ -189,17 +199,11 @@ export async function searchDatasetData(props: SearchProps) {
     })
   ).filter((item) => item.score > similarity);
 
-  // (It's possible that rerank failed) concat rerank results and search results
-  set = new Set<string>(reRankResults.map((item) => item.id));
-  embeddingRecallResults.forEach((item) => {
-    if (!set.has(item.id) && item.score >= similarity) {
-      reRankResults.push(item);
-      set.add(item.id);
-    }
-  });
-
   return {
-    searchRes: reRankResults.slice(0, limit),
+    searchRes: filterResultsByMaxTokens(
+      reRankResults.filter((item) => item.score >= similarity),
+      maxTokens
+    ),
     tokenLen
   };
 }
@@ -251,7 +255,7 @@ export async function embeddingRecall({
       {
         _id: { $in: filterRows.map((item) => item.data_id?.trim()) }
       },
-      'datasetId collectionId q a indexes'
+      'datasetId collectionId q a chunkIndex indexes'
     ).lean()
   ]);
   const formatResult = filterRows
@@ -268,6 +272,7 @@ export async function embeddingRecall({
         id: String(data._id),
         q: data.q,
         a: data.a,
+        chunkIndex: data.chunkIndex,
         indexes: data.indexes,
         datasetId: String(data.datasetId),
         collectionId: String(data.collectionId),
@@ -309,7 +314,8 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
             collectionId: 1,
             q: 1,
             a: 1,
-            indexes: 1
+            indexes: 1,
+            chunkIndex: 1
           }
         )
           .sort({ score: { $meta: 'textScore' } })
@@ -341,6 +347,7 @@ export async function fullTextRecall({ text, limit, datasetIds = [] }: SearchPro
         sourceId: collection?.fileId || collection?.rawLink,
         q: item.q,
         a: item.a,
+        chunkIndex: item.chunkIndex,
         indexes: item.indexes,
         // @ts-ignore
         score: item.score
@@ -366,6 +373,8 @@ export async function reRankSearchResult({
       }))
     });
 
+    if (!Array.isArray(results)) return data;
+
     // add new score to data
     const mergeResult = results
       .map((item) => {
@@ -380,9 +389,25 @@ export async function reRankSearchResult({
 
     return mergeResult;
   } catch (error) {
-    console.log(error);
-
-    return [];
+    return data;
   }
+}
+export function filterResultsByMaxTokens(list: SearchDataResponseItemType[], maxTokens: number) {
+  const results: SearchDataResponseItemType[] = [];
+  let totalTokens = 0;
+
+  for (let i = 0; i < list.length; i++) {
+    const item = list[i];
+    totalTokens += countPromptTokens(item.q + item.a);
+    if (totalTokens > maxTokens + 200) {
+      break;
+    }
+    results.push(item);
+    if (totalTokens > maxTokens) {
+      break;
+    }
+  }
+
+  return results;
 }
 // ------------------ search end ------------------

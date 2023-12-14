@@ -14,7 +14,7 @@
       "datasets": true,
       "similarity": false,
       "limit": false,
-      "searchMode": "embedding",
+      "searchMode": false,
       "searchEmptyText": false
     },
     "userGuide": {

@@ -1,4 +1,5 @@
 import { postUploadImg, postUploadFiles } from '@/web/common/file/api';
+import { UploadImgProps } from '@fastgpt/global/common/file/api';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
 /**
@@ -34,23 +35,24 @@ export const uploadFiles = ({
  * @param maxSize The max size of the compressed image
  */
 export const compressBase64ImgAndUpload = ({
-  base64,
+  base64Img,
   maxW = 1080,
   maxH = 1080,
   maxSize = 1024 * 500, // 300kb
-  expiredTime
-}: {
-  base64: string;
+  expiredTime,
+  metadata,
+  shareId
+}: UploadImgProps & {
   maxW?: number;
   maxH?: number;
   maxSize?: number;
-  expiredTime?: Date;
 }) => {
   return new Promise<string>((resolve, reject) => {
-    const fileType = /^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/.exec(base64)?.[1] || 'image/jpeg';
+    const fileType =
+      /^data:([a-zA-Z0-9]+\/[a-zA-Z0-9-.+]+).*,/.exec(base64Img)?.[1] || 'image/jpeg';
 
     const img = new Image();
-    img.src = base64;
+    img.src = base64Img;
     img.onload = async () => {
       let width = img.width;
       let height = img.height;
@@ -86,7 +88,12 @@ export const compressBase64ImgAndUpload = ({
       }
 
       try {
-        const src = await postUploadImg(compressedDataUrl, expiredTime);
+        const src = await postUploadImg({
+          shareId,
+          base64Img: compressedDataUrl,
+          expiredTime,
+          metadata
+        });
         resolve(src);
       } catch (error) {
         reject(error);
@@ -100,18 +107,20 @@ export const compressImgFileAndUpload = async ({
   maxW,
   maxH,
   maxSize,
-  expiredTime
+  expiredTime,
+  shareId
 }: {
   file: File;
   maxW?: number;
   maxH?: number;
   maxSize?: number;
   expiredTime?: Date;
+  shareId?: string;
 }) => {
   const reader = new FileReader();
   reader.readAsDataURL(file);
 
-  const base64 = await new Promise<string>((resolve, reject) => {
+  const base64Img = await new Promise<string>((resolve, reject) => {
     reader.onload = async () => {
       resolve(reader.result as string);
     };
@@ -122,10 +131,11 @@ export const compressImgFileAndUpload = async ({
   });
 
   return compressBase64ImgAndUpload({
-    base64,
+    base64Img,
     maxW,
     maxH,
     maxSize,
-    expiredTime
+    expiredTime,
+    shareId
   });
 };

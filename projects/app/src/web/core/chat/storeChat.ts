@@ -2,35 +2,37 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
-import type { InitChatResponse } from '@fastgpt/global/core/chat/api';
-import { delChatHistoryById, getChatHistory, clearChatHistoryByAppId } from '@/web/core/chat/api';
+import type {
+  InitChatResponse,
+  getHistoriesProps,
+  ClearHistoriesProps,
+  DelHistoryProps,
+  UpdateHistoryProps,
+  DeleteChatItemProps
+} from '@/global/core/chat/api';
+import {
+  delChatHistoryById,
+  getChatHistories,
+  clearChatHistoryByAppId,
+  delChatRecordById,
+  putChatHistory
+} from '@/web/core/chat/api';
+import { defaultChatData } from '@/global/core/chat/constants';
 
 type State = {
-  history: ChatHistoryItemType[];
-  loadHistory: (data: { appId: string }) => Promise<null>;
-  delHistory(history: string): Promise<void>;
-  clearHistory(appId: string): Promise<void>;
-  updateHistory: (history: ChatHistoryItemType) => void;
+  histories: ChatHistoryItemType[];
+  loadHistories: (data: getHistoriesProps) => Promise<null>;
+  delOneHistory(data: DelHistoryProps): Promise<void>;
+  clearHistories(data: ClearHistoriesProps): Promise<void>;
+  pushHistory: (history: ChatHistoryItemType) => void;
+  updateHistory: (e: UpdateHistoryProps & { updateTime?: Date; title?: string }) => Promise<any>;
   chatData: InitChatResponse;
   setChatData: (e: InitChatResponse | ((e: InitChatResponse) => InitChatResponse)) => void;
   lastChatAppId: string;
   setLastChatAppId: (id: string) => void;
   lastChatId: string;
   setLastChatId: (id: string) => void;
-};
-
-const defaultChatData: InitChatResponse = {
-  chatId: '',
-  appId: '',
-  app: {
-    name: 'Loading',
-    avatar: '/icon/logo.svg',
-    intro: '',
-    canUse: false
-  },
-  title: '新对话',
-  variables: {},
-  history: []
+  delOneHistoryItem: (e: DeleteChatItemProps & { index: number }) => Promise<any>;
 };
 
 export const useChatStore = create<State>()(
@@ -49,49 +51,62 @@ export const useChatStore = create<State>()(
             state.lastChatId = id;
           });
         },
-        history: [],
-        async loadHistory({ appId }) {
-          const oneHistory = get().history[0];
-          if (oneHistory && oneHistory.appId === appId) return null;
-          const data = await getChatHistory({
-            appId,
-            pageNum: 1,
-            pageSize: 20
-          });
+        histories: [],
+        async loadHistories(e) {
+          const data = await getChatHistories(e);
           set((state) => {
-            state.history = data;
+            state.histories = data;
           });
           return null;
         },
-        async delHistory(chatId) {
+        async delOneHistory(props) {
           set((state) => {
-            state.history = state.history.filter((item) => item.chatId !== chatId);
+            state.histories = state.histories.filter((item) => item.chatId !== props.chatId);
           });
-          await delChatHistoryById(chatId);
+          await delChatHistoryById(props);
         },
-        async clearHistory(appId) {
+        async clearHistories(data) {
           set((state) => {
-            state.history = [];
+            state.histories = [];
           });
-          await clearChatHistoryByAppId(appId);
+          await clearChatHistoryByAppId(data);
         },
-        updateHistory(history) {
-          const index = get().history.findIndex((item) => item.chatId === history.chatId);
+        pushHistory(history) {
           set((state) => {
-            const newHistory = (() => {
-              if (index > -1) {
-                return [
-                  history,
-                  ...get().history.slice(0, index),
-                  ...get().history.slice(index + 1)
-                ];
-              } else {
-                return [history, ...state.history];
-              }
-            })();
+            state.histories = [history, ...state.histories];
+          });
+        },
+        async updateHistory(props) {
+          const { chatId, customTitle, top, title, updateTime } = props;
+          const index = get().histories.findIndex((item) => item.chatId === chatId);
 
-            state.history = newHistory;
-          });
+          if (index > -1) {
+            const newHistory = {
+              ...get().histories[index],
+              ...(title && { title }),
+              ...(updateTime && { updateTime }),
+              ...(customTitle !== undefined && { customTitle }),
+              ...(top !== undefined && { top })
+            };
+
+            if (customTitle !== undefined || top !== undefined) {
+              try {
+                putChatHistory(props);
+              } catch (error) {}
+            }
+
+            set((state) => {
+              const newHistories = (() => {
+                return [
+                  newHistory,
+                  ...get().histories.slice(0, index),
+                  ...get().histories.slice(index + 1)
+                ];
+              })();
+
+              state.histories = newHistories;
+            });
+          }
         },
         chatData: defaultChatData,
         setChatData(e = defaultChatData) {
@@ -103,6 +118,20 @@ export const useChatStore = create<State>()(
             set((state) => {
               state.chatData = e;
             });
+          }
+        },
+        async delOneHistoryItem({ index, ...props }) {
+          const { chatId, contentId } = props;
+          if (!chatId || !contentId) return;
+
+          try {
+            get().setChatData((state) => ({
+              ...state,
+              history: state.history.filter((_, i) => i !== index)
+            }));
+            await delChatRecordById(props);
+          } catch (err) {
+            console.log(err);
           }
         }
       })),

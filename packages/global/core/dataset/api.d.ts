@@ -6,9 +6,9 @@ import type { LLMModelItemType } from '../ai/model.d';
 export type DatasetUpdateBody = {
   id: string;
   parentId?: string;
-  tags?: string[];
   name?: string;
   avatar?: string;
+  intro?: string;
   permission?: DatasetSchemaType['permission'];
   agentModel?: LLMModelItemType;
   websiteConfig?: DatasetSchemaType['websiteConfig'];
@@ -25,6 +25,8 @@ export type CreateDatasetCollectionParams = {
   chunkSize?: number;
   fileId?: string;
   rawLink?: string;
+  qaPrompt?: string;
+  hashRawText?: string;
   metadata?: Record<string, any>;
 };
 
@@ -40,6 +42,7 @@ export type PgSearchRawType = {
 export type PushDatasetDataChunkProps = {
   q: string; // embedding content
   a?: string; // bonus content
+  chunkIndex?: number;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 

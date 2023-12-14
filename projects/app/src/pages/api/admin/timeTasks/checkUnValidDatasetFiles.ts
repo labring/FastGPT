@@ -2,8 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { delFileById, getGFSCollection } from '@fastgpt/service/common/file/gridfs/controller';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import {
+  delFileByFileIdList,
+  getGFSCollection
+} from '@fastgpt/service/common/file/gridfs/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { delay } from '@fastgpt/global/common/system/utils';
 
@@ -77,7 +80,7 @@ export async function checkFiles(start: Date, end: Date, limit: number) {
 
       // 3. if not found, delete file
       if (hasCollection === 0) {
-        await delFileById({ bucketName: 'dataset', fileId: String(_id) });
+        await delFileByFileIdList({ bucketName: 'dataset', fileIdList: [String(_id)] });
         console.log('delete file', _id);
         deleteFileAmount++;
       }

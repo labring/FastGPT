@@ -4,7 +4,7 @@ description: '利用 GPT 优化和完善知识库搜索词，实现上下文关�
 icon: 'search'
 draft: false
 toc: true
-weight: 144
+weight: 404
 ---
 
 ![](/imgs/demo_op_question1.png)

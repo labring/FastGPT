@@ -45,6 +45,8 @@ export type DatasetCollectionSchemaType = {
   chunkSize: number;
   fileId?: string;
   rawLink?: string;
+  qaPrompt?: string;
+  hashRawText?: string;
   metadata?: Record<string, any>;
 };
 
@@ -134,6 +136,7 @@ export type DatasetDataItemType = {
   sourceId?: string;
   q: string;
   a: string;
+  chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;
   canWrite: boolean;

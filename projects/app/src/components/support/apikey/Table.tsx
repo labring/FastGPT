@@ -39,6 +39,7 @@ import MyModal from '@/components/MyModal';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
+import { getDocPath } from '@/web/common/system/doc';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -82,9 +83,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
               API 秘钥管理
             </Box>
-            {feConfigs.docUrl && (
+            {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || `${feConfigs.docUrl}/docs/development/openapi`}
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
                 target={'_blank'}
                 ml={1}
                 color={'myBlue.600'}

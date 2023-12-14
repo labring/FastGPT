@@ -18,6 +18,7 @@ type DatasetParamsProps = {
   limit?: number;
   searchMode: `${DatasetSearchModeEnum}`;
   searchEmptyText?: string;
+  maxTokens?: number;
 };
 
 const DatasetParamsModal = ({
@@ -25,6 +26,7 @@ const DatasetParamsModal = ({
   limit,
   similarity,
   searchMode = DatasetSearchModeEnum.embedding,
+  maxTokens = 3000,
   onClose,
   onSuccess
 }: DatasetParamsProps & { onClose: () => void; onSuccess: (e: DatasetParamsProps) => void }) => {
@@ -52,8 +54,8 @@ const DatasetParamsModal = ({
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/params.svg"
-      title={'搜索参数调整'}
-      minW={['90vw', '500px']}
+      title={t('core.dataset.search.Dataset Search Params')}
+      w={['90vw', '550px']}
       h={['90vh', 'auto']}
       overflow={'unset'}
       isCentered={searchEmptyText !== undefined}
@@ -78,36 +80,42 @@ const DatasetParamsModal = ({
                 <QuestionOutlineIcon ml={1} />
               </MyTooltip>
             </Box>
-            <MySlider
-              markList={[
-                { label: '0', value: 0 },
-                { label: '1', value: 1 }
-              ]}
-              min={0}
-              max={1}
-              step={0.01}
-              value={getValues(ModuleInputKeyEnum.datasetSimilarity) || 0.5}
-              onChange={(val) => {
-                setValue(ModuleInputKeyEnum.datasetSimilarity, val);
-                setRefresh(!refresh);
-              }}
-            />
+            <Box flex={1} mx={4}>
+              <MySlider
+                markList={[
+                  { label: '0', value: 0 },
+                  { label: '1', value: 1 }
+                ]}
+                min={0}
+                max={1}
+                step={0.01}
+                value={getValues(ModuleInputKeyEnum.datasetSimilarity) ?? 0.5}
+                onChange={(val) => {
+                  setValue(ModuleInputKeyEnum.datasetSimilarity, val);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
           </Box>
         )}
         {limit !== undefined && (
           <Box display={['block', 'flex']} py={8}>
             <Box flex={'0 0 100px'} mb={[8, 0]}>
-              {t('core.dataset.search.Top K')}
+              {t('core.dataset.search.Max Tokens')}
+              <MyTooltip label={t('core.dataset.search.Max Tokens Tips')} forceShow>
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
             </Box>
-            <Box flex={1}>
+            <Box flex={1} mx={4}>
               <MySlider
                 markList={[
-                  { label: '1', value: 1 },
-                  { label: '30', value: 30 }
+                  { label: '300', value: 300 },
+                  { label: maxTokens, value: maxTokens }
                 ]}
-                min={1}
-                max={30}
-                value={getValues(ModuleInputKeyEnum.datasetLimit) || 5}
+                min={300}
+                max={maxTokens}
+                step={10}
+                value={getValues(ModuleInputKeyEnum.datasetLimit) ?? 1000}
                 onChange={(val) => {
                   setValue(ModuleInputKeyEnum.datasetLimit, val);
                   setRefresh(!refresh);

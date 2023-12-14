@@ -57,7 +57,7 @@ export const useConfirm = (props?: {
       [onOpen]
     ),
     ConfirmModal: useCallback(
-      () => (
+      ({ isLoading }: { isLoading?: boolean }) => (
         <MyModal
           isOpen={isOpen}
           onClose={onClose}
@@ -82,6 +82,7 @@ export const useConfirm = (props?: {
             <Button
               {...(bg && { bg: `${bg} !important` })}
               ml={4}
+              isLoading={isLoading}
               onClick={() => {
                 onClose();
                 typeof confirmCb.current === 'function' && confirmCb.current();

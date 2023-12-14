@@ -1,21 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authCert } from '@fastgpt/service/support/permission/auth/common';
+import { authCertOrShareId } from '@fastgpt/service/support/permission/auth/common';
 import { uploadMongoImg } from '@fastgpt/service/common/file/image/controller';
-
-type Props = { base64Img: string; expiredTime?: Date };
+import { UploadImgProps } from '@fastgpt/global/common/file/api';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { teamId } = await authCert({ req, authToken: true });
-    const { base64Img, expiredTime } = req.body as Props;
+    const { base64Img, expiredTime, metadata, shareId } = req.body as UploadImgProps;
+
+    const { teamId } = await authCertOrShareId({ req, shareId, authToken: true });
 
     const data = await uploadMongoImg({
       teamId,
       base64Img,
-      expiredTime
+      expiredTime,
+      metadata
     });
 
     jsonRes(res, { data });

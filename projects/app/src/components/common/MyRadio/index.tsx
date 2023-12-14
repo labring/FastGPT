@@ -5,11 +5,12 @@ import { useTranslation } from 'next-i18next';
 
 // @ts-ignore
 interface Props extends GridProps {
-  list: { icon?: string; title: string; desc?: string; value: string | number }[];
+  list: { icon?: string; title: string | React.ReactNode; desc?: string; value: any }[];
   iconSize?: string;
   align?: 'top' | 'center';
-  value: string | number;
-  onChange: (e: string | number) => void;
+  value: any;
+  hiddenCircle?: boolean;
+  onChange: (e: any) => void;
 }
 
 const MyRadio = ({
@@ -17,6 +18,8 @@ const MyRadio = ({
   value,
   align = 'center',
   iconSize = '18px',
+  hiddenCircle = false,
+  p,
   onChange,
   ...props
 }: Props) => {
@@ -32,7 +35,8 @@ const MyRadio = ({
           userSelect={'none'}
           py={3}
           pl={'14px'}
-          pr={'36px'}
+          pr={hiddenCircle ? '14px' : '36px'}
+          p={p !== undefined ? `${p} !important` : undefined}
           border={theme.borders.sm}
           borderWidth={'1.5px'}
           borderRadius={'md'}
@@ -50,6 +54,7 @@ const MyRadio = ({
               })}
           _after={{
             content: '""',
+            display: hiddenCircle ? 'none' : 'block',
             position: 'absolute',
             right: '14px',
             w: '16px',
@@ -79,10 +84,10 @@ const MyRadio = ({
               )}
             </>
           )}
-          <Box pr={2}>
-            <Box>{t(item.title)}</Box>
+          <Box pr={hiddenCircle ? 0 : 2} color={'myGray.800'}>
+            <Box>{typeof item.title === 'string' ? t(item.title) : item.title}</Box>
             {!!item.desc && (
-              <Box fontSize={'sm'} color={'myGray.500'}>
+              <Box fontSize={['xs', 'sm']} color={'myGray.500'}>
                 {t(item.desc)}
               </Box>
             )}

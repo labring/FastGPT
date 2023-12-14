@@ -78,21 +78,19 @@ export async function authOutLinkCrud({
   };
 }
 
+/* outLink exist and it app exist */
 export async function authOutLinkValid({ shareId }: { shareId?: string }) {
+  if (!shareId) {
+    return Promise.reject(OutLinkErrEnum.linkUnInvalid);
+  }
   const shareChat = await MongoOutLink.findOne({ shareId });
 
   if (!shareChat) {
     return Promise.reject(OutLinkErrEnum.linkUnInvalid);
   }
 
-  const app = await MongoApp.findById(shareChat.appId);
-
-  if (!app) {
-    return Promise.reject(AppErrEnum.unExist);
-  }
-
   return {
-    app,
+    appId: shareChat.appId,
     shareChat
   };
 }

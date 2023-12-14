@@ -13,6 +13,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
@@ -158,7 +159,9 @@ const Provider = ({
           fileId: file.fileId,
           rawLink: file.rawLink,
           chunkSize: chunkLen,
-          trainingType: collectionTrainingType
+          trainingType: collectionTrainingType,
+          qaPrompt: mode === TrainingModeEnum.qa ? prompt : '',
+          hashRawText: hashStr(file.rawText)
         });
 
         // upload data
@@ -178,12 +181,12 @@ const Provider = ({
     },
     onSuccess(num) {
       toast({
-        title: `共成功导入 ${num} 组数据，请耐心等待训练.`,
+        title: t('core.dataset.import.Import Success Tip', { num }),
         status: 'success'
       });
       onUploadSuccess();
     },
-    errorToast: '导入文件失败'
+    errorToast: t('core.dataset.import.Import Failed')
   });
 
   const onReSplitChunks = useCallback(async () => {
@@ -193,7 +196,7 @@ const Provider = ({
       setFiles((state) =>
         state.map((file) => {
           const splitRes = splitText2Chunks({
-            text: file.text,
+            text: file.rawText,
             chunkLen,
             overlapRatio: chunkOverlapRatio
           });
@@ -212,10 +215,10 @@ const Provider = ({
     } catch (error) {
       toast({
         status: 'warning',
-        title: getErrText(error, '文本分段异常')
+        title: getErrText(error, t('core.dataset.import.Set Chunk Error'))
       });
     }
-  }, [chunkLen, toast]);
+  }, [chunkLen, chunkOverlapRatio, t, toast]);
 
   const reset = useCallback(() => {
     setFiles([]);
@@ -255,6 +258,7 @@ export default React.memo(Provider);
 
 export const PreviewFileOrChunk = () => {
   const theme = useTheme();
+  const { t } = useTranslation();
   const { setFiles, previewFile, setPreviewFile, setReShowRePreview, totalChunks, files } =
     useImportStore();
 
@@ -286,7 +290,7 @@ export const PreviewFileOrChunk = () => {
             px={[4, 8]}
             my={4}
             contentEditable
-            dangerouslySetInnerHTML={{ __html: previewFile.text }}
+            dangerouslySetInnerHTML={{ __html: previewFile.rawText }}
             fontSize={'sm'}
             whiteSpace={'pre-wrap'}
             wordBreak={'break-all'}
@@ -312,11 +316,11 @@ export const PreviewFileOrChunk = () => {
         <Box pt={[3, 6]}>
           <Flex px={[4, 8]} alignItems={'center'}>
             <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
-              分段预览({totalChunks}组)
+              {t('core.dataset.import.Total Chunk Preview', { totalChunks })}
             </Box>
             {totalChunks > 50 && (
               <Box ml={2} fontSize={'sm'} color={'myhGray.500'}>
-                仅展示部分
+                {t('core.dataset.import.Only Show First 50 Chunk')}
               </Box>
             )}
           </Flex>

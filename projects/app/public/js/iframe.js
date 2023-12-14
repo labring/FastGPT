@@ -1,11 +1,17 @@
-async function embedChatbot() {
+function embedChatbot() {
   const chatBtnId = 'fastgpt-chatbot-button';
   const chatWindowId = 'fastgpt-chatbot-window';
-  const script = document.getElementById('fastgpt-iframe');
-  const botSrc = script?.getAttribute('data-src');
-  const primaryColor = script?.getAttribute('data-color') || '#4e83fd';
+  const script = document.getElementById('chatbot-iframe');
+  const botSrc = script?.getAttribute('data-bot-src');
   const defaultOpen = script?.getAttribute('data-default-open') === 'true';
-  
+  const canDrag = script?.getAttribute('data-drag') === 'true';
+  const MessageIcon =
+    script?.getAttribute('data-open-icon') ||
+    `data:image/svg+xml;base64,PHN2ZyB0PSIxNjkwNTMyNzg1NjY0IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjQxMzIiIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIj48cGF0aCBkPSJNNTEyIDMyQzI0Ny4wNCAzMiAzMiAyMjQgMzIgNDY0QTQxMC4yNCA0MTAuMjQgMCAwIDAgMTcyLjQ4IDc2OEwxNjAgOTY1LjEyYTI1LjI4IDI1LjI4IDAgMCAwIDM5LjA0IDIyLjRsMTY4LTExMkE1MjguNjQgNTI4LjY0IDAgMCAwIDUxMiA4OTZjMjY0Ljk2IDAgNDgwLTE5MiA0ODAtNDMyUzc3Ni45NiAzMiA1MTIgMzJ6IG0yNDQuOCA0MTZsLTM2MS42IDMwMS43NmExMi40OCAxMi40OCAwIDAgMS0xOS44NC0xMi40OGw1OS4yLTIzMy45MmgtMTYwYTEyLjQ4IDEyLjQ4IDAgMCAxLTcuMzYtMjMuMzZsMzYxLjYtMzAxLjc2YTEyLjQ4IDEyLjQ4IDAgMCAxIDE5Ljg0IDEyLjQ4bC01OS4yIDIzMy45MmgxNjBhMTIuNDggMTIuNDggMCAwIDEgOCAyMi4wOHoiIGZpbGw9IiM0ZTgzZmQiIHAtaWQ9IjQxMzMiPjwvcGF0aD48L3N2Zz4=`;
+  const CloseIcon =
+    script?.getAttribute('data-close-icon') ||
+    'data:image/svg+xml;base64,PHN2ZyB0PSIxNjkwNTM1NDQxNTI2IiBjbGFzcz0iaWNvbiIgdmlld0JveD0iMCAwIDEwMjQgMTAyNCIgdmVyc2lvbj0iMS4xIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHAtaWQ9IjYzNjciIHhtbG5zOnhsaW5rPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5L3hsaW5rIj48cGF0aCBkPSJNNTEyIDEwMjRBNTEyIDUxMiAwIDEgMSA1MTIgMGE1MTIgNTEyIDAgMCAxIDAgMTAyNHpNMzA1Ljk1NjU3MSAzNzAuMzk1NDI5TDQ0Ny40ODggNTEyIDMwNS45NTY1NzEgNjUzLjYwNDU3MWE0NS41NjggNDUuNTY4IDAgMSAwIDY0LjQzODg1OCA2NC40Mzg4NThMNTEyIDU3Ni41MTJsMTQxLjYwNDU3MSAxNDEuNTMxNDI5YTQ1LjU2OCA0NS41NjggMCAwIDAgNjQuNDM4ODU4LTY0LjQzODg1OEw1NzYuNTEyIDUxMmwxNDEuNTMxNDI5LTE0MS42MDQ1NzFhNDUuNTY4IDQ1LjU2OCAwIDEgMC02NC40Mzg4NTgtNjQuNDM4ODU4TDUxMiA0NDcuNDg4IDM3MC4zOTU0MjkgMzA1Ljk1NjU3MWE0NS41NjggNDUuNTY4IDAgMCAwLTY0LjQzODg1OCA2NC40Mzg4NTh6IiBmaWxsPSIjNGU4M2ZkIiBwLWlkPSI2MzY4Ij48L3BhdGg+PC9zdmc+';
+
   if (!botSrc) {
     console.error(`Can't find appid`);
     return;
@@ -14,17 +20,17 @@ async function embedChatbot() {
     return;
   }
 
-  const MessageIcon = `<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg t="1690532785664" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="4132" xmlns:xlink="http://www.w3.org/1999/xlink" ><path d="M512 32C247.04 32 32 224 32 464A410.24 410.24 0 0 0 172.48 768L160 965.12a25.28 25.28 0 0 0 39.04 22.4l168-112A528.64 528.64 0 0 0 512 896c264.96 0 480-192 480-432S776.96 32 512 32z m244.8 416l-361.6 301.76a12.48 12.48 0 0 1-19.84-12.48l59.2-233.92h-160a12.48 12.48 0 0 1-7.36-23.36l361.6-301.76a12.48 12.48 0 0 1 19.84 12.48l-59.2 233.92h160a12.48 12.48 0 0 1 8 22.08z" fill=${primaryColor} p-id="4133"></path></svg>`;
-
-  const CloseIcon = `<?xml version="1.0" standalone="no"?><!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd"><svg t="1690535441526" class="icon" viewBox="0 0 1024 1024" version="1.1" xmlns="http://www.w3.org/2000/svg" p-id="6367" xmlns:xlink="http://www.w3.org/1999/xlink"><path d="M512 1024A512 512 0 1 1 512 0a512 512 0 0 1 0 1024zM305.956571 370.395429L447.488 512 305.956571 653.604571a45.568 45.568 0 1 0 64.438858 64.438858L512 576.512l141.604571 141.531429a45.568 45.568 0 0 0 64.438858-64.438858L576.512 512l141.531429-141.604571a45.568 45.568 0 1 0-64.438858-64.438858L512 447.488 370.395429 305.956571a45.568 45.568 0 0 0-64.438858 64.438858z" fill=${primaryColor} p-id="6368"></path></svg>`;
-
   const ChatBtn = document.createElement('div');
   ChatBtn.id = chatBtnId;
   ChatBtn.style.cssText =
     'position: fixed; bottom: 1rem; right: 1rem; width: 40px; height: 40px; cursor: pointer; z-index: 2147483647; transition: 0;';
 
-  const ChatBtnDiv = document.createElement('div');
-  ChatBtnDiv.innerHTML = MessageIcon;
+  // btn icon
+  const ChatBtnDiv = document.createElement('img');
+  ChatBtnDiv.src = defaultOpen ? CloseIcon : MessageIcon;
+  ChatBtnDiv.setAttribute('width', '100%');
+  ChatBtnDiv.setAttribute('height', '100%');
+  ChatBtnDiv.draggable = false;
 
   const iframe = document.createElement('iframe');
   iframe.allow = 'fullscreen;microphone';
@@ -33,8 +39,8 @@ async function embedChatbot() {
   iframe.src = botSrc;
   iframe.style.cssText =
     'border: none; position: fixed; flex-direction: column; justify-content: space-between; box-shadow: rgba(150, 150, 150, 0.2) 0px 10px 30px 0px, rgba(150, 150, 150, 0.2) 0px 0px 0px 1px; bottom: 4rem; right: 1rem; width: 24rem; height: 40rem; max-width: 90vw; max-height: 85vh; border-radius: 0.75rem; display: flex; z-index: 2147483647; overflow: hidden; left: unset; background-color: #F3F4F6;';
-  iframe.style.visibility = defaultOpen ? 'unset' : 'hidden'; 
- 
+  iframe.style.visibility = defaultOpen ? 'unset' : 'hidden';
+
   document.body.appendChild(iframe);
 
   let chatBtnDragged = false;
@@ -52,14 +58,16 @@ async function embedChatbot() {
     const visibilityVal = chatWindow.style.visibility;
     if (visibilityVal === 'hidden') {
       chatWindow.style.visibility = 'unset';
-      ChatBtnDiv.innerHTML = CloseIcon;
+      ChatBtnDiv.src = CloseIcon;
     } else {
       chatWindow.style.visibility = 'hidden';
-      ChatBtnDiv.innerHTML = MessageIcon;
+      ChatBtnDiv.src = MessageIcon;
     }
   });
 
   ChatBtn.addEventListener('mousedown', (e) => {
+    e.stopPropagation();
+
     if (!chatBtnMouseX && !chatBtnMouseY) {
       chatBtnMouseX = e.clientX;
       chatBtnMouseY = e.clientY;
@@ -68,19 +76,21 @@ async function embedChatbot() {
     chatBtnDown = true;
   });
   ChatBtn.addEventListener('mousemove', (e) => {
-    if (!chatBtnDown) return;
+    e.stopPropagation();
+    if (!canDrag || !chatBtnDown) return;
+
     chatBtnDragged = true;
     const transformX = e.clientX - chatBtnMouseX;
     const transformY = e.clientY - chatBtnMouseY;
 
     ChatBtn.style.transform = `translate3d(${transformX}px, ${transformY}px, 0)`;
-
-    e.stopPropagation();
   });
   ChatBtn.addEventListener('mouseup', (e) => {
+    chatBtnDragged = false;
     chatBtnDown = false;
   });
-  ChatBtn.addEventListener('mouseleave', (e) => {
+  window.addEventListener('mouseup', (e) => {
+    chatBtnDragged = false;
     chatBtnDown = false;
   });
 

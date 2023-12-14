@@ -46,7 +46,7 @@ const MdImage = ({ src }: { src?: string }) => {
       />
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
-        <ModalContent maxW={'auto'} w="auto" bg={'transparent'}>
+        <ModalContent boxShadow={'none'} maxW={'auto'} w="auto" bg={'transparent'}>
           <Image
             borderRadius={'md'}
             src={src}

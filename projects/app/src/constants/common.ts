@@ -1,8 +1,3 @@
-export enum UserAuthTypeEnum {
-  register = 'register',
-  findPassword = 'findPassword'
-}
-
 export enum TrackEventName {
   windowError = 'windowError',
   pageError = 'pageError',

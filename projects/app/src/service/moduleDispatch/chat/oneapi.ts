@@ -22,11 +22,12 @@ import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { getHistories } from '../utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatModuleProps & {
     [ModuleInputKeyEnum.userChatInput]: string;
-    [ModuleInputKeyEnum.history]?: ChatItemType[];
+    [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
     [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
@@ -43,12 +44,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     stream = false,
     detail = false,
     user,
+    histories,
     outputs,
     inputs: {
       model,
       temperature = 0,
       maxToken = 4000,
-      history = [],
+      history = 6,
       quoteQA = [],
       userChatInput,
       isResponseAnswerText = true,
@@ -63,6 +65,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   stream = stream && isResponseAnswerText;
 
+  const chatHistories = getHistories(history, histories);
+
   // temperature adapt
   const modelConstantsData = getChatModel(model);
 
@@ -76,7 +80,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     quoteTemplate
   });
 
-  if (modelConstantsData.censor) {
+  // censor model and system key
+  if (modelConstantsData.censor && !user.openaiAccount?.key) {
     await postTextCensor({
       text: `${systemPrompt}
       ${quoteText}
@@ -87,7 +92,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const { messages, filterMessages } = getChatMessages({
     model: modelConstantsData,
-    history,
+    histories: chatHistories,
     quoteText,
     quotePrompt,
     userChatInput,
@@ -122,6 +127,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       }))
     ))
   ];
+
+  if (concatMessages.length === 0) {
+    return Promise.reject('core.chat.error.Messages empty');
+  }
 
   const response = await ai.chat.completions.create(
     {
@@ -218,6 +227,7 @@ function filterQuote({
       score: item.score?.toFixed(4)
     });
   }
+
   const sliceResult = sliceMessagesTB({
     maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item, index) => ({
@@ -229,27 +239,44 @@ function filterQuote({
   // slice filterSearch
   const filterQuoteQA = quoteQA.slice(0, sliceResult.length);
 
+  // filterQuoteQA按collectionId聚合在一起后，再按chunkIndex从小到大排序
+  const sortQuoteQAMap: Record<string, SearchDataResponseItemType[]> = {};
+  filterQuoteQA.forEach((item) => {
+    if (sortQuoteQAMap[item.collectionId]) {
+      sortQuoteQAMap[item.collectionId].push(item);
+    } else {
+      sortQuoteQAMap[item.collectionId] = [item];
+    }
+  });
+  const sortQuoteQAList = Object.values(sortQuoteQAMap).flat();
+  sortQuoteQAList.sort((a, b) => {
+    if (a.collectionId === b.collectionId) {
+      return a.chunkIndex - b.chunkIndex;
+    }
+    return 0;
+  });
+
   const quoteText =
     filterQuoteQA.length > 0
       ? `${filterQuoteQA.map((item, index) => getValue(item, index)).join('\n')}`
       : '';
 
   return {
-    filterQuoteQA,
+    filterQuoteQA: sortQuoteQAList,
     quoteText
   };
 }
 function getChatMessages({
   quotePrompt,
   quoteText,
-  history = [],
+  histories = [],
   systemPrompt,
   userChatInput,
   model
 }: {
   quotePrompt?: string;
   quoteText: string;
-  history: ChatProps['inputs']['history'];
+  histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
   model: ChatModelItemType;
@@ -270,7 +297,7 @@ function getChatMessages({
           }
         ]
       : []),
-    ...history,
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
       value: question
@@ -296,7 +323,7 @@ function getMaxTokens({
 }: {
   maxToken: number;
   model: ChatModelItemType;
-  filterMessages: ChatProps['inputs']['history'];
+  filterMessages: ChatItemType[];
 }) {
   const tokensLimit = model.maxContext;
 

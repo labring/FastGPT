@@ -8,15 +8,18 @@ import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { id, parentId, name, avatar, tags, permission, agentModel, websiteConfig, status } =
+    const { id, parentId, name, avatar, intro, permission, agentModel, websiteConfig, status } =
       req.body as DatasetUpdateBody;
 
     if (!id) {
       throw new Error('缺少参数');
     }
 
-    // 凭证校验
-    await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
+    if (permission) {
+      await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
+    } else {
+      await authDataset({ req, authToken: true, datasetId: id, per: 'w' });
+    }
 
     await MongoDataset.findOneAndUpdate(
       {
@@ -26,11 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...(parentId !== undefined && { parentId: parentId || null }),
         ...(name && { name }),
         ...(avatar && { avatar }),
-        ...(tags && { tags }),
         ...(permission && { permission }),
         ...(agentModel && { agentModel: agentModel.model }),
         ...(websiteConfig && { websiteConfig }),
-        ...(status && { status })
+        ...(status && { status }),
+        ...(intro && { intro })
       }
     );
 

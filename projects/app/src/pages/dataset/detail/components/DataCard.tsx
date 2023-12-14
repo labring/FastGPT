@@ -189,7 +189,7 @@ const DataCard = () => {
               textDecoration={'none'}
             />
             <Box fontSize={'sm'} color={'myGray.500'}>
-              文件ID:{' '}
+              {t('core.dataset.collection.id')}:{' '}
               <Box as={'span'} userSelect={'all'}>
                 {collection?._id}
               </Box>
@@ -229,7 +229,7 @@ const DataCard = () => {
       <Flex my={3} alignItems={'center'}>
         <Box>
           <Box as={'span'} fontSize={['md', 'lg']}>
-            {total}组
+            {t('core.dataset.data.Total Amount', { total })}
           </Box>
         </Box>
         <Box flex={1} mr={1} />
@@ -243,7 +243,7 @@ const DataCard = () => {
             />
           }
           w={['200px', '300px']}
-          placeholder="根据匹配知识，预期答案和来源进行搜索"
+          placeholder={t('core.dataset.data.Search data placeholder')}
           value={searchText}
           onChange={(e) => {
             setSearchText(e.target.value);
@@ -410,7 +410,7 @@ const DataCard = () => {
         <Flex flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            内容空空的，快创建一个吧！
+            {t('core.dataset.data.Empty Tip')}
           </Box>
         </Flex>
       )}

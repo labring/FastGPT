@@ -24,18 +24,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // find all delete id
-    const collections = await findCollectionAndChild(collectionId, '_id metadata');
+    const collections = await findCollectionAndChild(collectionId, '_id fileId');
     const delIdList = collections.map((item) => item._id);
 
     // delete
     await delCollectionRelevantData({
       collectionIds: delIdList,
-      fileIds: collections.map((item) => String(item.metadata?.fileId)).filter(Boolean)
-    });
-
-    // delete collection
-    await MongoDatasetCollection.deleteMany({
-      _id: { $in: delIdList }
+      fileIds: collections.map((item) => item?.fileId || '').filter(Boolean)
     });
 
     jsonRes(res);

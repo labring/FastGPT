@@ -69,78 +69,85 @@ const MessageInput = ({
     maxCount: 10
   });
 
-  const uploadFile = async (file: FileItemType) => {
-    if (file.type === FileTypeEnum.image) {
-      try {
-        const src = await compressImgFileAndUpload({
-          file: file.rawFile,
-          maxW: 4329,
-          maxH: 4329,
-          maxSize: 1024 * 1024 * 5,
-          // 30 day expired.
-          expiredTime: addDays(new Date(), 30)
-        });
-        setFileList((state) =>
-          state.map((item) =>
-            item.id === file.id
-              ? {
-                  ...item,
-                  src: `${location.origin}${src}`
-                }
-              : item
-          )
-        );
-      } catch (error) {
-        setFileList((state) => state.filter((item) => item.id !== file.id));
-        console.log(error);
+  const uploadFile = useCallback(
+    async (file: FileItemType) => {
+      if (file.type === FileTypeEnum.image) {
+        try {
+          const src = await compressImgFileAndUpload({
+            file: file.rawFile,
+            maxW: 4329,
+            maxH: 4329,
+            maxSize: 1024 * 1024 * 5,
+            // 30 day expired.
+            expiredTime: addDays(new Date(), 30),
+            shareId
+          });
+          setFileList((state) =>
+            state.map((item) =>
+              item.id === file.id
+                ? {
+                    ...item,
+                    src: `${location.origin}${src}`
+                  }
+                : item
+            )
+          );
+        } catch (error) {
+          setFileList((state) => state.filter((item) => item.id !== file.id));
+          console.log(error);
 
-        toast({
-          status: 'error',
-          title: t('common.Upload File Failed')
-        });
+          toast({
+            status: 'error',
+            title: t('common.Upload File Failed')
+          });
+        }
       }
-    }
-  };
-  const onSelectFile = useCallback(async (files: File[]) => {
-    if (!files || files.length === 0) {
-      return;
-    }
-    const loadFiles = await Promise.all(
-      files.map(
-        (file) =>
-          new Promise<FileItemType>((resolve, reject) => {
-            if (file.type.includes('image')) {
-              const reader = new FileReader();
-              reader.readAsDataURL(file);
-              reader.onload = () => {
-                const item = {
+    },
+    [shareId, t, toast]
+  );
+  const onSelectFile = useCallback(
+    async (files: File[]) => {
+      if (!files || files.length === 0) {
+        return;
+      }
+      const loadFiles = await Promise.all(
+        files.map(
+          (file) =>
+            new Promise<FileItemType>((resolve, reject) => {
+              if (file.type.includes('image')) {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = () => {
+                  const item = {
+                    id: nanoid(),
+                    rawFile: file,
+                    type: FileTypeEnum.image,
+                    name: file.name,
+                    icon: reader.result as string
+                  };
+                  uploadFile(item);
+                  resolve(item);
+                };
+                reader.onerror = () => {
+                  reject(reader.error);
+                };
+              } else {
+                resolve({
                   id: nanoid(),
                   rawFile: file,
-                  type: FileTypeEnum.image,
+                  type: FileTypeEnum.file,
                   name: file.name,
-                  icon: reader.result as string
-                };
-                uploadFile(item);
-                resolve(item);
-              };
-              reader.onerror = () => {
-                reject(reader.error);
-              };
-            } else {
-              resolve({
-                id: nanoid(),
-                rawFile: file,
-                type: FileTypeEnum.file,
-                name: file.name,
-                icon: 'pdf'
-              });
-            }
-          })
-      )
-    );
+                  icon: 'pdf'
+                });
+              }
+            })
+        )
+      );
 
-    setFileList((state) => [...state, ...loadFiles]);
-  }, []);
+      setFileList((state) => [...state, ...loadFiles]);
+    },
+    [uploadFile]
+  );
 
   const handleSend = useCallback(async () => {
     const textareaValue = TextareaDom.current?.value || '';
@@ -422,7 +429,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
               >
                 {isChatting ? (
                   <MyIcon
-                    className={styles.stopIcon}
+                    animation={'zoomStopIcon 0.4s infinite alternate'}
                     width={['22px', '25px']}
                     height={['22px', '25px']}
                     cursor={'pointer'}

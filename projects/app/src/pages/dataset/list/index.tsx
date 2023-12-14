@@ -57,8 +57,8 @@ const Kb = () => {
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('dataset.deleteFolderTips'),
-    [DatasetTypeEnum.dataset]: t('dataset.deleteDatasetTips'),
-    [DatasetTypeEnum.websiteDataset]: t('core.dataset.Delete Website Tips')
+    [DatasetTypeEnum.dataset]: t('core.dataset.Delete Confirm'),
+    [DatasetTypeEnum.websiteDataset]: t('core.dataset.Delete Confirm')
   });
 
   const { openConfirm, ConfirmModal } = useConfirm({
@@ -143,7 +143,7 @@ const Kb = () => {
             <Flex flex={1} alignItems={'center'}>
               <Image src={'/imgs/module/db.png'} alt={''} mr={2} h={'24px'} />
               <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-                {t('dataset.My Dataset')}
+                {t('core.dataset.My Dataset')}
               </Box>
             </Flex>
           }

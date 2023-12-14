@@ -65,7 +65,6 @@
     "Confirm to clear share chat history": " Are you sure to delete all chats?",
     "Converting to text": "Converting to text...",
     "Exit Chat": "Exit",
-    "Feedback Close": "Close Feedback",
     "Feedback Failed": "Feedback Failed",
     "Feedback Mark": "Mark",
     "Feedback Modal": "Feedback",
@@ -81,7 +80,6 @@
     "Question Guide Tips": "I guess what you're asking is",
     "Quote": "Quote",
     "Read Mark Description": "Read mark description",
-    "Read User Feedback": "Read user feedback",
     "Select Mark Kb": "Select Dataset",
     "Select Mark Kb Desc": "Select a dataset to store the expected answers",
     "You need to a chat app": "You need to a chat app",
@@ -131,6 +129,7 @@
     "Config": "Config",
     "Confirm": "Confirm",
     "Confirm Create": "Create",
+    "Confirm Import": "Import",
     "Confirm Move": "Move here",
     "Confirm Update": "Update",
     "Copy": "Copy",
@@ -153,6 +152,7 @@
     "Input": "Input",
     "Intro": "Intro",
     "Last Step": "Last",
+    "Load Failed": "Load Failed",
     "Loading": "Loading",
     "Max credit": "Credit",
     "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
@@ -191,9 +191,16 @@
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
     "Website": "Website",
+    "avatar": {
+      "Select Avatar": "Select Avatar",
+      "Select Failed": "Select Failed"
+    },
     "choosable": "choosable",
     "confirm": {
       "Common Tip": "Operational Confirm"
+    },
+    "course": {
+      "Read Course": "Read Course"
     },
     "empty": {
       "Common Tip": "No data"
@@ -203,6 +210,11 @@
     },
     "export": "",
     "file": {
+      "File Content": "File Content",
+      "File Name": "File Name",
+      "File content can not be empty": "File content can not be empty",
+      "Filename Can not Be Empty": "Filename Can not Be Empty",
+      "Read File Error": "Read file error",
       "Select file amount limit 100": "You can select a maximum of 100 files at a time"
     },
     "folder": {
@@ -218,15 +230,26 @@
     "link": {
       "UnValid": "UnValid Link"
     },
+    "price": {
+      "Amount": "{{amount}}{{unit}}"
+    },
     "speech": {
       "error tip": "Speech Failed"
+    },
+    "system": {
+      "Help Chatbot": "Chatbot Helper",
+      "Use Helper": "UsingHelp"
     }
   },
   "core": {
     "Max Token": "MaxTokens",
     "ai": {
       "Model": "Model",
-      "Prompt": "Prompt"
+      "Prompt": "Prompt",
+      "model": {
+        "Dataset Agent Model": "Agent Model",
+        "Vector Model": "Vector Model"
+      }
     },
     "app": {
       "App params config": "App Config",
@@ -239,6 +262,23 @@
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
+      "logs": {
+        "Source And Time": "Source & Time"
+      },
+      "outLink": {
+        "Can Drag": "Icon Drag",
+        "Default open": "Default Open",
+        "Iframe block title": "Copy the Iframe below and add it to your web page",
+        "Link block title": "Copy the link below to your browser to open",
+        "Script Close Icon": "Close Icon",
+        "Script Icon": "Icon",
+        "Script Open Icon": "Open Script",
+        "Script block title": "Add the following code to your website",
+        "Select Mode": "Select Mode",
+        "Select Using Way": "Select use mode",
+        "Show History": "Show History",
+        "Web Link": "Web Link"
+      },
       "setting": "App Setting",
       "simple": {
         "mode template select": "Template"
@@ -265,6 +305,21 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "error": {
+        "Messages empty": "Interface content is empty, maybe the text is too long ~"
+      },
+      "feedback": {
+        "Close User Good Feedback": "",
+        "Close User Like": "The user like\nClick to close the tag",
+        "Feedback Close": "Close Feedback",
+        "No Content": "The user did not fill in the specific feedback content",
+        "Read User dislike": "User dislike\nClick to view content"
+      },
+      "markdown": {
+        "Edit Question": "Edit Question",
+        "Quick Question": "Ask the question immediately",
+        "Send Question": "Send Question"
+      },
       "quote": {
         "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
         "Read Quote": "Read Quote",
@@ -276,21 +331,25 @@
     },
     "dataset": {
       "All Dataset": "All Dataset",
+      "Avatar": "Avatar",
       "Choose Dataset": "Choose Dataset",
       "Common Dataset": "Common Dataset",
       "Common Dataset Desc": "Knowledge bases can be built by importing files, web links, or manual entry",
       "Create dataset": "Create Dataset",
       "Dataset": "Dataset",
+      "Dataset ID": "Dataset ID",
       "Dataset Type": "Dataset Type",
+      "Delete Confirm": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
       "Delete Website Tips": "Confirm to delete the website",
       "Empty Dataset": "",
       "Empty Dataset Tips": "There is no knowledge base yet, go create one!",
       "Folder Dataset": "Folder",
       "Go Dataset": "To Dataset",
       "Intro Placeholder": "This dataset has not yet been introduced~",
+      "My Dataset": "My Dataset",
+      "Name": "Name",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
-      "Search Top K": "Top K",
       "Set Empty Result Tip": ",Response empty text",
       "Set Website Config": "Configuring Website",
       "Similarity": "Similarity",
@@ -301,10 +360,15 @@
       "collection": {
         "Click top config website": "Config",
         "Empty Tip": "The collection is empty",
+        "QA Prompt": "QA Prompt",
+        "Start Sync Tip": "Are you sure to start synchronizing data? The old data will be deleted and then re-acquired, please confirm!",
+        "Sync": "Data Sync",
+        "Sync Collection": "Data Sync",
         "Website Create Success": "Created successfully, data is being synchronized",
-        "Website Empty Tip": "No associated website yet,",
+        "Website Empty Tip": "No associated website yet",
         "Website Link": "Website Link",
         "Website Sync": "Website",
+        "id": "Id",
         "metadata": {
           "Chunk Size": "Chunk Size",
           "Createtime": "Create Time",
@@ -328,24 +392,64 @@
         }
       },
       "data": {
+        "Auxiliary Data": "Auxiliary Data",
+        "Auxiliary Data Placeholder": "This section is optional, usually in conjunction with the previous [data content], to build a structured prompt word, for special scenarios, up to {{maxToken}} words.",
+        "Auxiliary Data Tip": "This section is divided into optional fields \n This content is usually designed to work with the previous data content to build structured prompt words for special scenarios",
+        "Data Content": "Data Content",
+        "Data Content Placeholder": "The input field is required, and the content is usually a description of the knowledge point, or it can be a user question, at most {{maxToken}} words.",
+        "Data Content Tip": "The input box is a required field \n The content is usually a description of the knowledge point, but also can be a user question.",
+        "Default Index Tip": "Cannot be edited, the default index will use the text of [related data content] and [auxiliary data] to generate an index directly, if the default index is not needed, you can delete it. Each piece of data must have more than one index. After all indexes are deleted, a default index is automatically generated.",
         "Edit": "Edit Data",
+        "Empty Tip": "This collection has no data yet",
+        "Search data placeholder": "Search relevant data",
+        "Too Long": "Content is too long",
+        "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
         "id": "Data ID"
+      },
+      "error": {
+        "Start Sync Failed": "Start Sync Failed",
+        "unAuthDataset": "No access to this knowledge base ",
+        "unAuthDatasetCollection": "Not authorized to manipulate this data set ",
+        "unAuthDatasetData": "Not authorized to manipulate this data ",
+        "unAuthDatasetFile": "No permission to manipulate this file ",
+        "unCreateCollection": "No permission to manipulate this data ",
+        "unLinkCollection": "not a network link collection "
       },
       "file": "File",
       "folder": "Folder",
       "import": {
+        "CSV Import": "CSV QA Import",
+        "CSV Import Tip": "Import q and a from csv, data is required to be sorted out in advance",
+        "Chunk Range": "Range: 100~{{max}}",
+        "Chunk Split": "Chunk Split",
+        "Chunk Split Tip": "Select the files and split the by sentences",
+        "Csv format error": "The csv file format is incorrect, please ensure that the index and content columns are two",
+        "Estimated Price": "Estimated Price",
+        "Estimated Price Tips": "Index generation is billed as: {{price}}/1k tokens",
         "Fetch Error": "Get link failed",
         "Fetch Url": "Url",
         "Fetch url placeholder": "Up to 10 links, one per line.",
         "Fetch url tip": "Only static links can be read, please check the results",
         "Ideal chunk length": "Ideal chunk length",
-        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
+        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200",
+        "Import Failed": "Import Failed",
+        "Import Success Tip": "The {{num}} group data is imported successfully. Please wait for training.",
+        "Import Tip": "This task cannot be terminated and takes some time to generate indexes. Please confirm the import. If the balance is insufficient, the unfinished task will be suspended and can continue after topping up.",
+        "Only Show First 50 Chunk": "Show only part",
+        "QA Import": "QA Split",
+        "QA Import Tip": "Select the files and let the LLM automatically generate QA",
+        "Re Preview": "RePreview",
+        "Set Chunk Error": "Split chunks error",
+        "Total Chunk Preview": "Chunk Preview: {{totalChunks}} "
       },
       "link": "Link",
       "search": {
+        "Dataset Search Params": "Dataset Search Params",
         "Empty result response": "Empty Response",
         "Empty result response Tips": "If you fill in the content, if no suitable content is found, you will directly reply to the content.",
+        "Max Tokens": "Max Tokens",
+        "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
         "Params Setting": "Params Setting",
@@ -365,6 +469,7 @@
         "syncing": "Syncing"
       },
       "test": {
+        "Search Test": "Search Test",
         "Test": "Start",
         "Test Result": "Results",
         "Test Text": "Text",
@@ -386,7 +491,9 @@
         "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
         "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
         "Selector": "Selector",
-        "Start Sync": "Start Sync"
+        "Selector Course": "Selector using tutorial",
+        "Start Sync": "Start Sync",
+        "UnValid Website Tip": "Your site may not be static and cannot be synchronized"
       }
     },
     "module": {
@@ -449,11 +556,13 @@
         "variable options": "Options"
       },
       "variable add option": "Add Option"
+    },
+    "shareChat": {
+      "Init Error": "Init Chat Error",
+      "Init History Error": "Init History Error"
     }
   },
   "dataset": {
-    "Agent Model": "Learning Model",
-    "Chunk Length": "Chunk Length",
     "Confirm move the folder": "Confirm Move",
     "Confirm to delete the data": "Confirm to delete the data?",
     "Confirm to delete the file": "Are you sure to delete the file and all its data?",
@@ -474,7 +583,6 @@
     "Manual Mark": "Manual Mark",
     "Mark Data": "Mark Data",
     "Move Failed": "Move Failed",
-    "My Dataset": "My Dataset",
     "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
     "Select Dataset": "Select Dataset",
     "Select Dataset Tips": "Select only knowledge bases with the same index model",
@@ -518,18 +626,14 @@
       },
       "input is empty": "The data content cannot be empty"
     },
-    "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "test": {
       "noResult": "Search results are empty"
-    },
-    "website": {
-      "Base Url": "BaseUrl",
-      "Selector": "Selector"
     }
   },
   "error": {
+    "fileNotFound": "File not found ~",
     "team": {
       "overSize": "Team member exceeds limit"
     }
@@ -595,6 +699,10 @@
     "Visual AI orchestration": "Visual AI orchestration",
     "Why FastGPT": "Why {{title}}",
     "desc": "AI knowledge base question and answer platform based on LLM large model",
+    "navbar": {
+      "Use guidance": "Use Guidance",
+      "chatbot": "Chatbot"
+    },
     "slogan": "Let the AI know more about you"
   },
   "module": {

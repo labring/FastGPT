@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
 import Tabs from '../Tabs';
@@ -12,12 +12,21 @@ import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import Markdown from '../Markdown';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
 
-function Row({ label, value }: { label: string; value?: string | number }) {
+function Row({
+  label,
+  value,
+  rawDom
+}: {
+  label: string;
+  value?: string | number;
+  rawDom?: React.ReactNode;
+}) {
   const theme = useTheme();
+  const val = value || rawDom;
   const strValue = `${value}`;
   const isCodeBlock = strValue.startsWith('~~~json');
 
-  return value !== undefined && value !== '' && value !== 'undefined' ? (
+  return val !== undefined && val !== '' && val !== 'undefined' ? (
     <Box mb={3}>
       <Box fontSize={['sm', 'md']} mb={isCodeBlock ? 0 : 1} flex={'0 0 90px'}>
         {label}:
@@ -29,7 +38,8 @@ function Row({ label, value }: { label: string; value?: string | number }) {
           ? { transform: 'translateY(-3px)' }
           : { px: 3, py: 1, border: theme.borders.base })}
       >
-        <Markdown source={strValue} />
+        {value && <Markdown source={strValue} />}
+        {rawDom}
       </Box>
     </Box>
   ) : null;
@@ -113,12 +123,28 @@ const WholeResponseModal = ({
           <Row label={t('chat.response.module maxToken')} value={activeModule?.maxToken} />
           <Row
             label={t('chat.response.module historyPreview')}
-            value={(() => {
-              if (!activeModule?.historyPreview) return '';
-              return activeModule.historyPreview
-                .map((item, i) => `**${item.obj}**\n${item.value}`)
-                .join('\n\n---\n\n');
-            })()}
+            rawDom={
+              activeModule.historyPreview ? (
+                <>
+                  {activeModule.historyPreview?.map((item, i) => (
+                    <Box
+                      key={i}
+                      _notLast={{
+                        borderBottom: '1px solid',
+                        borderBottomColor: 'myWhite.700',
+                        mb: 2
+                      }}
+                      pb={2}
+                    >
+                      <Box fontWeight={'bold'}>{item.obj}</Box>
+                      <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                    </Box>
+                  ))}
+                </>
+              ) : (
+                ''
+              )
+            }
           />
           {activeModule.quoteList && activeModule.quoteList.length > 0 && (
             <Row

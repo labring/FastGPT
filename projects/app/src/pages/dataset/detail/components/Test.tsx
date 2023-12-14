@@ -236,7 +236,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   border={theme.borders.base}
                   _notLast={{ mb: 2 }}
                   cursor={'pointer'}
-                  title={'编辑'}
+                  title={t('common.Edit')}
                   onClick={async () => {
                     try {
                       setLoading(true);

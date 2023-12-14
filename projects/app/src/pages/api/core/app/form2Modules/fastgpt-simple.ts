@@ -72,47 +72,6 @@ function simpleChatTemplate({
       ]
     },
     {
-      moduleId: 'history',
-      name: '聊天记录',
-      avatar: '/imgs/module/history.png',
-      flowType: 'historyNode',
-      position: {
-        x: 452.5466249541586,
-        y: 1276.3930310334215
-      },
-      inputs: [
-        {
-          key: 'maxContext',
-          type: 'numberInput',
-          label: '最长记录数',
-          value: 10,
-          min: 0,
-          max: 50,
-          connected: true
-        },
-        {
-          key: 'history',
-          type: 'hidden',
-          label: '聊天记录',
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'history',
-          label: '聊天记录',
-          valueType: 'chatHistory',
-          type: 'source',
-          targets: [
-            {
-              moduleId: 'chatModule',
-              key: 'history'
-            }
-          ]
-        }
-      ]
-    },
-    {
       moduleId: 'chatModule',
       name: 'AI 对话',
       avatar: '/imgs/module/AI.png',
@@ -191,7 +150,6 @@ function simpleChatTemplate({
           type: 'hidden',
           label: '引用内容模板',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {
@@ -199,7 +157,6 @@ function simpleChatTemplate({
           type: 'hidden',
           label: '引用内容提示词',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {
@@ -234,7 +191,8 @@ function simpleChatTemplate({
           type: 'target',
           label: 'core.module.input.label.chat history',
           valueType: 'chatHistory',
-          connected: true
+          connected: true,
+          value: 8
         },
         {
           key: 'userChatInput',
@@ -319,47 +277,6 @@ function datasetTemplate({
       ]
     },
     {
-      moduleId: 'history',
-      name: '聊天记录',
-      avatar: '/imgs/module/history.png',
-      flowType: 'historyNode',
-      position: {
-        x: 452.5466249541586,
-        y: 1276.3930310334215
-      },
-      inputs: [
-        {
-          key: 'maxContext',
-          type: 'numberInput',
-          label: '最长记录数',
-          value: 6,
-          min: 0,
-          max: 50,
-          connected: true
-        },
-        {
-          key: 'history',
-          type: 'hidden',
-          label: '聊天记录',
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'history',
-          label: '聊天记录',
-          valueType: 'chatHistory',
-          type: 'source',
-          targets: [
-            {
-              moduleId: 'chatModule',
-              key: 'history'
-            }
-          ]
-        }
-      ]
-    },
-    {
       moduleId: 'datasetSearch',
       name: '知识库搜索',
       avatar: '/imgs/module/db.png',
@@ -379,14 +296,14 @@ function datasetTemplate({
         },
         {
           key: 'similarity',
-          value: 0.4,
+          value: 0.1,
           type: FlowNodeInputTypeEnum.slider,
-          label: '相似度',
+          label: '相关度',
           connected: true
         },
         {
           key: 'limit',
-          value: 8,
+          value: 2000,
           type: FlowNodeInputTypeEnum.slider,
           label: '单次搜索上限',
           connected: true
@@ -541,7 +458,6 @@ function datasetTemplate({
           type: 'hidden',
           label: '引用内容模板',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {
@@ -549,7 +465,6 @@ function datasetTemplate({
           type: 'hidden',
           label: '引用内容提示词',
           valueType: 'string',
-          value: '',
           connected: true
         },
         {
@@ -584,7 +499,8 @@ function datasetTemplate({
           type: 'target',
           label: 'core.module.input.label.chat history',
           valueType: 'chatHistory',
-          connected: true
+          connected: true,
+          value: 8
         },
         {
           key: 'userChatInput',

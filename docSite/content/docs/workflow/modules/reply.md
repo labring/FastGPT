@@ -4,7 +4,7 @@ description: "FastGPT 指定回复模块介绍"
 icon: "reply"
 draft: false
 toc: true
-weight: 130
+weight: 359
 ---
 
 ## 特点
