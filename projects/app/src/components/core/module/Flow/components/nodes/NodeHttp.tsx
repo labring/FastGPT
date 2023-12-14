@@ -13,7 +13,7 @@ import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 

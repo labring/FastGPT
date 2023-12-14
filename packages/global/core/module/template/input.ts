@@ -1,13 +1,13 @@
 import type { FlowNodeInputItemType } from '../node/type.d';
 import { ModuleInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum } from '../node/constant';
-import { ModuleDataTypeEnum } from '../constants';
+import { ModuleIOValueTypeEnum } from '../constants';
 
-export const Input_Template_TFSwitch: FlowNodeInputItemType = {
+export const Input_Template_Switch: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.switch,
   type: FlowNodeInputTypeEnum.target,
   label: 'core.module.input.label.switch',
-  valueType: ModuleDataTypeEnum.any,
+  valueType: ModuleIOValueTypeEnum.any,
   showTargetInApp: true,
   showTargetInPlugin: true
 };
@@ -19,7 +19,7 @@ export const Input_Template_History: FlowNodeInputItemType = {
   required: true,
   min: 0,
   max: 30,
-  valueType: ModuleDataTypeEnum.chatHistory,
+  valueType: ModuleIOValueTypeEnum.chatHistory,
   value: 6,
   showTargetInApp: true,
   showTargetInPlugin: true
@@ -30,7 +30,7 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   type: FlowNodeInputTypeEnum.target,
   label: 'core.module.input.label.user question',
   required: true,
-  valueType: ModuleDataTypeEnum.string,
+  valueType: ModuleIOValueTypeEnum.string,
   showTargetInApp: true,
   showTargetInPlugin: true
 };
@@ -38,7 +38,7 @@ export const Input_Template_UserChatInput: FlowNodeInputItemType = {
 export const Input_Template_AddInputParam: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.addInputParam,
   type: FlowNodeInputTypeEnum.addInputParam,
-  valueType: ModuleDataTypeEnum.any,
+  valueType: ModuleIOValueTypeEnum.any,
   label: '',
   required: false,
   showTargetInApp: false,

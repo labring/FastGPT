@@ -15,35 +15,36 @@ const Render = ({ app, onClose }: Props) => {
   const { nodes } = useFlowProviderStore();
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
-  const filterTemplates = useMemo(() => {
-    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(
+  const moduleTemplates = useMemo(() => {
+    const systemTemplates: FlowModuleTemplateType[] = JSON.parse(
       JSON.stringify(appSystemModuleTemplates)
     );
+
+    const concatTemplates = [...systemTemplates, ...pluginModuleTemplates];
 
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1
     };
 
-    // filter some template
+    // filter some template, There can only be one
     nodes.forEach((node) => {
       if (node.type && filterType[node.type]) {
-        copyTemplates.forEach((module, index) => {
+        concatTemplates.forEach((module, index) => {
           if (module.flowType === node.type) {
-            copyTemplates.splice(index, 1);
+            concatTemplates.splice(index, 1);
           }
         });
       }
     });
 
-    return copyTemplates;
-  }, [nodes]);
+    return concatTemplates;
+  }, [nodes, pluginModuleTemplates]);
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
 
   return (
     <Flow
-      systemTemplates={filterTemplates}
-      pluginTemplates={pluginModuleTemplates}
+      templates={moduleTemplates}
       modules={app.modules}
       Header={<Header app={app} onClose={onClose} />}
     />

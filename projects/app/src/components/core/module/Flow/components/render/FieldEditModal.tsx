@@ -11,11 +11,14 @@ import {
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
 import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { EditInputFieldMap, EditNodeFieldType } from '@fastgpt/global/core/module/node/type.d';
 import { useToast } from '@/web/common/hooks/useToast';
 
@@ -45,29 +48,30 @@ const FieldEditModal = ({
     {
       label: t('core.module.inputType.target'),
       value: FlowNodeInputTypeEnum.target,
-      valueType: ModuleDataTypeEnum.string
+      valueType: ModuleIOValueTypeEnum.string
     },
     {
       label: t('core.module.inputType.input'),
       value: FlowNodeInputTypeEnum.input,
-      valueType: ModuleDataTypeEnum.string
+      valueType: ModuleIOValueTypeEnum.string
     },
     {
       label: t('core.module.inputType.textarea'),
       value: FlowNodeInputTypeEnum.textarea,
-      valueType: ModuleDataTypeEnum.string
+      valueType: ModuleIOValueTypeEnum.string
     },
     {
       label: t('core.module.inputType.switch'),
       value: FlowNodeInputTypeEnum.switch,
-      valueType: ModuleDataTypeEnum.boolean
+      valueType: ModuleIOValueTypeEnum.boolean
     },
     {
       label: t('core.module.inputType.selectDataset'),
       value: FlowNodeInputTypeEnum.selectDataset,
-      valueType: ModuleDataTypeEnum.selectDataset
+      valueType: ModuleIOValueTypeEnum.selectDataset
     }
   ];
+
   const dataTypeSelectList = Object.values(FlowValueTypeMap)
     .slice(0, -2)
     .map((item) => ({
@@ -80,11 +84,23 @@ const FieldEditModal = ({
   });
   const [refresh, setRefresh] = useState(false);
 
+  const showDataTypeSelect = useMemo(() => {
+    if (!editField.dataType) return false;
+    const inputType = getValues('inputType');
+    const outputType = getValues('outputType');
+
+    if (inputType === FlowNodeInputTypeEnum.target) return true;
+
+    if (outputType === FlowNodeOutputTypeEnum.source) return true;
+
+    return false;
+  }, [editField.dataType, getValues, refresh]);
+
   return (
     <MyModal
       isOpen={true}
       iconSrc="/imgs/module/extract.png"
-      title={t('app.Input Field Settings')}
+      title={t('core.module.edit.Field Edit')}
       onClose={onClose}
     >
       <ModalBody overflow={'visible'}>
@@ -117,7 +133,7 @@ const FieldEditModal = ({
             <Switch {...register('required')} />
           </Flex>
         )}
-        {editField.dataType && (
+        {showDataTypeSelect && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Data Type')}</Box>
             <MySelect
@@ -125,12 +141,12 @@ const FieldEditModal = ({
               list={dataTypeSelectList}
               value={getValues('valueType')}
               onchange={(e: string) => {
-                const type = e as `${ModuleDataTypeEnum}`;
+                const type = e as `${ModuleIOValueTypeEnum}`;
                 setValue('valueType', type);
 
                 if (
-                  type === ModuleDataTypeEnum.chatHistory ||
-                  type === ModuleDataTypeEnum.datasetQuote
+                  type === ModuleIOValueTypeEnum.chatHistory ||
+                  type === ModuleIOValueTypeEnum.datasetQuote
                 ) {
                   const label = dataTypeSelectList.find((item) => item.value === type)?.label;
                   setValue('label', label);

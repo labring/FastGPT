@@ -1,5 +1,5 @@
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './constant';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
 import { SelectedDatasetType } from '../api';
 import { EditInputFieldMap, EditOutputFieldMap } from './type';
 
@@ -21,7 +21,7 @@ export type FlowNodeChangeProps = {
 };
 
 export type FlowNodeInputItemType = {
-  valueType?: `${ModuleDataTypeEnum}`; // data type
+  valueType?: `${ModuleIOValueTypeEnum}`; // data type
   type: `${FlowNodeInputTypeEnum}`; // Node Type. Decide on a render style
   key: `${ModuleInputKeyEnum}` | string;
   value?: any;
@@ -55,7 +55,7 @@ export type FlowNodeOutputTargetItemType = {
 export type FlowNodeOutputItemType = {
   type?: `${FlowNodeOutputTypeEnum}`;
   key: `${ModuleOutputKeyEnum}` | string;
-  valueType?: `${ModuleDataTypeEnum}`;
+  valueType?: `${ModuleIOValueTypeEnum}`;
 
   label?: string;
   description?: string;
@@ -85,7 +85,7 @@ export type EditNodeFieldType = {
   key?: string;
   label?: string;
   description?: string;
-  valueType?: `${ModuleDataTypeEnum}`;
+  valueType?: `${ModuleIOValueTypeEnum}`;
 };
 
 /* ------------- item type --------------- */

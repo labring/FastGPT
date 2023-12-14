@@ -3,18 +3,15 @@ export enum ModuleTemplateTypeEnum {
   systemInput = 'systemInput',
   tools = 'tools',
   textAnswer = 'textAnswer',
-  dataset = 'dataset',
   functionCall = 'functionCall',
   externalCall = 'externalCall',
 
   personalPlugin = 'personalPlugin',
-  communityPlugin = 'communityPlugin',
-  commercialPlugin = 'commercialPlugin',
 
   other = 'other'
 }
 
-export enum ModuleDataTypeEnum {
+export enum ModuleIOValueTypeEnum {
   string = 'string',
   number = 'number',
   boolean = 'boolean',

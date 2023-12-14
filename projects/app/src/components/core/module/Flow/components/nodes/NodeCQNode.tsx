@@ -11,7 +11,7 @@ import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
 import MyIcon from '@/components/Icon';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import SourceHandle from '../render/SourceHandle';
 import MyTooltip from '@/components/MyTooltip';
@@ -92,7 +92,10 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
                             });
                           }}
                         />
-                        <SourceHandle handleKey={item.key} valueType={ModuleDataTypeEnum.string} />
+                        <SourceHandle
+                          handleKey={item.key}
+                          valueType={ModuleIOValueTypeEnum.string}
+                        />
                       </Box>
                     </Box>
                   ))}

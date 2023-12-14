@@ -1,59 +1,59 @@
 import type { BoxProps } from '@chakra-ui/react';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 
-export const FlowValueTypeStyle: Record<`${ModuleDataTypeEnum}`, BoxProps> = {
-  [ModuleDataTypeEnum.string]: {
+export const FlowValueTypeStyle: Record<`${ModuleIOValueTypeEnum}`, BoxProps> = {
+  [ModuleIOValueTypeEnum.string]: {
     background: '#36ADEF'
   },
-  [ModuleDataTypeEnum.number]: {
+  [ModuleIOValueTypeEnum.number]: {
     background: '#FB7C3C'
   },
-  [ModuleDataTypeEnum.boolean]: {
+  [ModuleIOValueTypeEnum.boolean]: {
     background: '#E7D118'
   },
-  [ModuleDataTypeEnum.chatHistory]: {
+  [ModuleIOValueTypeEnum.chatHistory]: {
     background: '#00A9A6'
   },
-  [ModuleDataTypeEnum.datasetQuote]: {
+  [ModuleIOValueTypeEnum.datasetQuote]: {
     background: '#A558C9'
   },
-  [ModuleDataTypeEnum.any]: {
+  [ModuleIOValueTypeEnum.any]: {
     background: '#9CA2A8'
   },
-  [ModuleDataTypeEnum.selectApp]: {
+  [ModuleIOValueTypeEnum.selectApp]: {
     background: '#6a6efa'
   },
-  [ModuleDataTypeEnum.selectDataset]: {
+  [ModuleIOValueTypeEnum.selectDataset]: {
     background: '#21ba45'
   }
 };
 export const FlowValueTypeMap = {
-  [ModuleDataTypeEnum.string]: {
+  [ModuleIOValueTypeEnum.string]: {
     label: 'core.module.valueType.string',
-    value: ModuleDataTypeEnum.string,
+    value: ModuleIOValueTypeEnum.string,
     example: ''
   },
-  [ModuleDataTypeEnum.number]: {
+  [ModuleIOValueTypeEnum.number]: {
     label: 'core.module.valueType.number',
-    value: ModuleDataTypeEnum.number,
+    value: ModuleIOValueTypeEnum.number,
     example: ''
   },
-  [ModuleDataTypeEnum.boolean]: {
+  [ModuleIOValueTypeEnum.boolean]: {
     label: 'core.module.valueType.boolean',
-    value: ModuleDataTypeEnum.boolean,
+    value: ModuleIOValueTypeEnum.boolean,
     example: ''
   },
-  [ModuleDataTypeEnum.chatHistory]: {
+  [ModuleIOValueTypeEnum.chatHistory]: {
     label: 'core.module.valueType.chatHistory',
-    value: ModuleDataTypeEnum.chatHistory,
+    value: ModuleIOValueTypeEnum.chatHistory,
     example: `{
   obj: System | Human | AI;
   value: string;
 }[]`
   },
-  [ModuleDataTypeEnum.datasetQuote]: {
+  [ModuleIOValueTypeEnum.datasetQuote]: {
     label: 'core.module.valueType.datasetQuote',
-    value: ModuleDataTypeEnum.datasetQuote,
+    value: ModuleIOValueTypeEnum.datasetQuote,
     example: `{
   id: string;
   datasetId: string;
@@ -64,19 +64,19 @@ export const FlowValueTypeMap = {
   a: string
 }[]`
   },
-  [ModuleDataTypeEnum.any]: {
+  [ModuleIOValueTypeEnum.any]: {
     label: 'core.module.valueType.any',
-    value: ModuleDataTypeEnum.any,
+    value: ModuleIOValueTypeEnum.any,
     example: ''
   },
-  [ModuleDataTypeEnum.selectApp]: {
+  [ModuleIOValueTypeEnum.selectApp]: {
     label: 'core.module.valueType.selectApp',
-    value: ModuleDataTypeEnum.selectApp,
+    value: ModuleIOValueTypeEnum.selectApp,
     example: ''
   },
-  [ModuleDataTypeEnum.selectDataset]: {
+  [ModuleIOValueTypeEnum.selectDataset]: {
     label: 'core.module.valueType.selectDataset',
-    value: ModuleDataTypeEnum.selectDataset,
+    value: ModuleIOValueTypeEnum.selectDataset,
     example: ''
   }
 };

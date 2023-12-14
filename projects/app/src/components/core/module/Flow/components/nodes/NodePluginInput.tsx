@@ -19,7 +19,7 @@ import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/module/node/type.d';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 
 const FieldEditModal = dynamic(() => import('../render/FieldEditModal'));
@@ -29,7 +29,7 @@ const defaultCreateField: EditNodeFieldType = {
   key: '',
   description: '',
   inputType: FlowNodeInputTypeEnum.target,
-  valueType: ModuleDataTypeEnum.string,
+  valueType: ModuleIOValueTypeEnum.string,
   required: true
 };
 const createEditField = {
@@ -98,12 +98,12 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
               }}
             />
             {item.description && (
-              <MyTooltip label={item.description} forceShow>
+              <MyTooltip label={t(item.description)} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
               </MyTooltip>
             )}
             <Box position={'relative'}>
-              {item.label}
+              {t(item.label)}
               {item.required && (
                 <Box
                   position={'absolute'}

@@ -20,7 +20,7 @@ import {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/module/node/type';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 
 const FieldEditModal = dynamic(() => import('../render/FieldEditModal'));
@@ -30,7 +30,7 @@ const defaultCreateField: EditNodeFieldType = {
   key: '',
   description: '',
   inputType: FlowNodeInputTypeEnum.target,
-  valueType: ModuleDataTypeEnum.string,
+  valueType: ModuleIOValueTypeEnum.string,
   required: true
 };
 const createEditField = {

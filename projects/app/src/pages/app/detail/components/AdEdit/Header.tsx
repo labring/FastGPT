@@ -41,41 +41,39 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
   const { nodes, edges, onFixView } = useFlowProviderStore();
 
-  const flow2ModulesAndCheck = useCallback(
-    (tip = false) => {
-      const modules = flowNode2Modules({ nodes, edges });
-      // check required connect
-      for (let i = 0; i < modules.length; i++) {
-        const item = modules[i];
-        if (
-          item.inputs.find((input) => {
-            if (!input.required || input.connected) {
-              return false;
-            }
-            if (input.value === undefined || input.value === '' || input.value?.length === 0) {
-              return true;
-            }
-            return false;
-          })
-        ) {
-          const msg = `【${item.name}】存在未填或未连接参数`;
-          tip &&
-            toast({
-              status: 'warning',
-              title: msg
-            });
-          return Promise.reject(msg);
+  const flow2ModulesAndCheck = useCallback(() => {
+    const modules = flowNode2Modules({ nodes, edges });
+    // check required connect
+    for (let i = 0; i < modules.length; i++) {
+      const item = modules[i];
+
+      const unconnected = item.inputs.find((input) => {
+        if (!input.required || input.connected) {
+          return false;
         }
+        if (input.value === undefined || input.value === '' || input.value?.length === 0) {
+          return true;
+        }
+        return false;
+      });
+
+      if (unconnected) {
+        const msg = `【${item.name}】存在未填或未连接参数`;
+
+        toast({
+          status: 'warning',
+          title: msg
+        });
+        return false;
       }
-      return modules;
-    },
-    [edges, nodes, toast]
-  );
+    }
+    return modules;
+  }, [edges, nodes, toast]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
-    mutationFn: async () => {
+    mutationFn: async (modules: ModuleItemType[]) => {
       return updateAppDetail(app._id, {
-        modules: await flow2ModulesAndCheck(),
+        modules: modules,
         type: AppTypeEnum.advanced,
         permission: undefined
       });
@@ -158,8 +156,11 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
               borderRadius={'lg'}
               aria-label={'save'}
               variant={'base'}
-              onClick={async () => {
-                setTestModules(await flow2ModulesAndCheck(true));
+              onClick={() => {
+                const modules = flow2ModulesAndCheck();
+                if (modules) {
+                  setTestModules(modules);
+                }
               }}
             />
           </MyTooltip>
@@ -171,7 +172,12 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             borderRadius={'lg'}
             isLoading={isLoading}
             aria-label={'save'}
-            onClick={onclickSave}
+            onClick={() => {
+              const modules = flow2ModulesAndCheck();
+              if (modules) {
+                onclickSave(modules);
+              }
+            }}
           />
         </MyTooltip>
       </Flex>

@@ -13,7 +13,6 @@ import { appModule2FlowNode } from '@/utils/adapt';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import MyIcon from '@/components/Icon';
 import EmptyTip from '@/components/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
@@ -22,14 +21,8 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@/web/core/modules/template/system';
 import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
-enum TemplateTypeEnum {
-  system = 'system',
-  plugin = 'plugin'
-}
-
 export type ModuleTemplateProps = {
-  systemTemplates: FlowModuleTemplateType[];
-  pluginTemplates: FlowModuleTemplateType[];
+  templates: FlowModuleTemplateType[];
 };
 
 type ModuleTemplateListProps = ModuleTemplateProps & {
@@ -38,15 +31,13 @@ type ModuleTemplateListProps = ModuleTemplateProps & {
 };
 type RenderListProps = {
   templates: FlowModuleTemplateType[];
-  isPlugin?: boolean;
   onClose: () => void;
   setNodes: useFlowProviderStoreType['setNodes'];
   reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
 };
 
 const ModuleTemplateList = ({
-  systemTemplates,
-  pluginTemplates,
+  templates,
   isOpen,
   onClose,
   setNodes,
@@ -56,42 +47,6 @@ const ModuleTemplateList = ({
   reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
 }) => {
   const { t } = useTranslation();
-  const [templateType, setTemplateType] = React.useState(TemplateTypeEnum.system);
-
-  const typeList = useMemo(
-    () => [
-      {
-        type: TemplateTypeEnum.system,
-        label: t('app.module.System Module'),
-        child: (
-          <RenderList
-            templates={systemTemplates}
-            onClose={onClose}
-            setNodes={setNodes}
-            reactFlowWrapper={reactFlowWrapper}
-          />
-        )
-      },
-      {
-        type: TemplateTypeEnum.plugin,
-        label: t('plugin.Plugin Module'),
-        child: (
-          <RenderList
-            templates={pluginTemplates}
-            onClose={onClose}
-            isPlugin
-            setNodes={setNodes}
-            reactFlowWrapper={reactFlowWrapper}
-          />
-        )
-      }
-    ],
-    [t, systemTemplates, onClose, setNodes, reactFlowWrapper, pluginTemplates]
-  );
-  const TemplateItem = useMemo(
-    () => typeList.find((item) => item.type === templateType)?.child,
-    [templateType, typeList]
-  );
 
   return (
     <>
@@ -111,6 +66,7 @@ const ModuleTemplateList = ({
         position={'absolute'}
         top={'65px'}
         left={0}
+        pt={2}
         pb={4}
         h={isOpen ? 'calc(100% - 100px)' : '0'}
         w={isOpen ? ['100%', '360px'] : '0'}
@@ -121,27 +77,12 @@ const ModuleTemplateList = ({
         transition={'.2s ease'}
         userSelect={'none'}
       >
-        <Flex pt={4} pb={1} px={5} gap={4} alignItems={'center'} fontSize={['md', 'xl']}>
-          {typeList.map((item) => (
-            <Box
-              key={item.label}
-              borderBottom={'2px solid transparent'}
-              {...(item.type === templateType
-                ? {
-                    color: 'myBlue.700',
-                    borderBottomColor: 'myBlue.700',
-                    fontWeight: 'bold'
-                  }
-                : {
-                    cursor: 'pointer',
-                    onClick: () => setTemplateType(item.type)
-                  })}
-            >
-              {item.label}
-            </Box>
-          ))}
-        </Flex>
-        {TemplateItem}
+        <RenderList
+          templates={templates}
+          onClose={onClose}
+          setNodes={setNodes}
+          reactFlowWrapper={reactFlowWrapper}
+        />
       </Flex>
     </>
   );
@@ -155,7 +96,6 @@ export default React.memo(function (props: ModuleTemplateListProps) {
 
 const RenderList = React.memo(function RenderList({
   templates,
-  isPlugin = false,
   onClose,
   setNodes,
   reactFlowWrapper
@@ -231,7 +171,7 @@ const RenderList = React.memo(function RenderList({
               <Box fontWeight={'bold'} flex={1}>
                 {t(item.label)}
               </Box>
-              {isPlugin && item.type === ModuleTemplateTypeEnum.personalPlugin && (
+              {/* {isPlugin && item.type === ModuleTemplateTypeEnum.personalPlugin && (
                 <Flex
                   alignItems={'center'}
                   _hover={{ textDecoration: 'underline' }}
@@ -243,7 +183,7 @@ const RenderList = React.memo(function RenderList({
                   </Box>
                   <MyIcon name={'common/rightArrowLight'} w={'12px'} />
                 </Flex>
-              )}
+              )} */}
             </Flex>
             <>
               {item.list.map((template) => (

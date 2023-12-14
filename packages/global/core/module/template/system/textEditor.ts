@@ -5,12 +5,12 @@ import {
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type';
 import {
-  ModuleDataTypeEnum,
+  ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
   ModuleTemplateTypeEnum
 } from '../../constants';
-import { Input_Template_AddInputParam, Input_Template_TFSwitch } from '../input';
+import { Input_Template_AddInputParam, Input_Template_Switch } from '../input';
 
 export const TextEditorModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.textEditor,
@@ -21,11 +21,11 @@ export const TextEditorModule: FlowModuleTemplateType = {
   intro: 'core.module.template.textEditor intro',
   showStatus: false,
   inputs: [
-    Input_Template_TFSwitch,
+    Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.textareaInput,
       type: FlowNodeInputTypeEnum.custom,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       label: 'core.module.input.label.textEditor textarea',
       description: 'core.module.input.description.textEditor textarea',
       placeholder: 'core.module.input.description.textEditor textarea',
@@ -45,7 +45,7 @@ export const TextEditorModule: FlowModuleTemplateType = {
         key: '',
         description: '',
         inputType: FlowNodeInputTypeEnum.target,
-        valueType: ModuleDataTypeEnum.string,
+        valueType: ModuleIOValueTypeEnum.string,
         required: true
       }
     }
@@ -54,7 +54,7 @@ export const TextEditorModule: FlowModuleTemplateType = {
     {
       key: ModuleOutputKeyEnum.text,
       label: 'core.module.output.label.text',
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.source,
       targets: []
     }

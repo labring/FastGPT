@@ -14,7 +14,7 @@ import MyIcon from '@/components/Icon';
 import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { onChangeNode } from '../../../FlowProvider';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
@@ -143,7 +143,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
               key: data.key,
               label: `提取结果-${data.desc}`,
               description: '无法提取时不会返回',
-              valueType: ModuleDataTypeEnum.string,
+              valueType: ModuleIOValueTypeEnum.string,
               type: FlowNodeOutputTypeEnum.source,
               targets: []
             };

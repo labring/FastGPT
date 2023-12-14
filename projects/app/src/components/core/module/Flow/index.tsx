@@ -12,7 +12,6 @@ import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import CustomConnection from './components/CustomConnection';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes = {
@@ -30,8 +29,7 @@ const nodeTypes = {
   [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodePluginInput')),
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
-  [FlowNodeTypeEnum.textEditor]: dynamic(() => import('./components/nodes/NodeTextEditor')),
-  [FlowNodeTypeEnum.tfSwitch]: NodeSimple
+  [FlowNodeTypeEnum.textEditor]: dynamic(() => import('./components/nodes/NodeTextEditor'))
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
@@ -42,7 +40,7 @@ type Props = {
 } & ModuleTemplateProps;
 
 const Container = React.memo(function Container(props: Props) {
-  const { modules = [], Header, systemTemplates, pluginTemplates } = props;
+  const { modules = [], Header, templates } = props;
 
   const {
     isOpen: isOpenTemplate,
@@ -119,8 +117,7 @@ const Container = React.memo(function Container(props: Props) {
         </ReactFlow>
 
         <ModuleTemplateList
-          systemTemplates={systemTemplates}
-          pluginTemplates={pluginTemplates}
+          templates={templates}
           isOpen={isOpenTemplate}
           onClose={onCloseTemplate}
         />

@@ -13,7 +13,6 @@ import { PluginInputModule } from '@fastgpt/global/core/module/template/system/p
 import { PluginOutputModule } from '@fastgpt/global/core/module/template/system/pluginOutput';
 import { RunPluginModule } from '@fastgpt/global/core/module/template/system/runPlugin';
 import { TextEditorModule } from '@fastgpt/global/core/module/template/system/textEditor';
-import { TFSwitchModule } from '@fastgpt/global/core/module/template/system/tfSwitch';
 
 import type {
   FlowModuleTemplateType,
@@ -31,8 +30,7 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule,
-  TextEditorModule,
-  TFSwitchModule
+  TextEditorModule
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -44,8 +42,7 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule,
-  TextEditorModule,
-  TFSwitchModule
+  TextEditorModule
 ];
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
@@ -62,8 +59,7 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
   RunPluginModule,
-  TextEditorModule,
-  TFSwitchModule
+  TextEditorModule
 ];
 
 export const moduleTemplatesList: moduleTemplateListType = [
@@ -88,13 +84,8 @@ export const moduleTemplatesList: moduleTemplateListType = [
     list: []
   },
   {
-    type: ModuleTemplateTypeEnum.dataset,
-    label: '知识库',
-    list: []
-  },
-  {
     type: ModuleTemplateTypeEnum.functionCall,
-    label: '函数调用',
+    label: '功能调用',
     list: []
   },
   {
@@ -105,16 +96,6 @@ export const moduleTemplatesList: moduleTemplateListType = [
   {
     type: ModuleTemplateTypeEnum.personalPlugin,
     label: '个人插件',
-    list: []
-  },
-  {
-    type: ModuleTemplateTypeEnum.communityPlugin,
-    label: '社区插件',
-    list: []
-  },
-  {
-    type: ModuleTemplateTypeEnum.commercialPlugin,
-    label: '商业插件',
     list: []
   },
   {

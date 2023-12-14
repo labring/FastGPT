@@ -4,8 +4,8 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
-import { Input_Template_AddInputParam, Input_Template_TFSwitch } from '../input';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
+import { Input_Template_AddInputParam, Input_Template_Switch } from '../input';
 import { Output_Template_AddOutput, Output_Template_Finish } from '../output';
 
 export const HttpModule: FlowModuleTemplateType = {
@@ -17,11 +17,11 @@ export const HttpModule: FlowModuleTemplateType = {
   intro: '可以发出一个 HTTP POST 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,
   inputs: [
-    Input_Template_TFSwitch,
+    Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.httpMethod,
       type: FlowNodeInputTypeEnum.select,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       label: 'core.module.input.label.Http Request Method',
       value: 'POST',
       list: [
@@ -41,7 +41,7 @@ export const HttpModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.httpReqUrl,
       type: FlowNodeInputTypeEnum.input,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       label: 'core.module.input.label.Http Request Url',
       description: 'core.module.input.description.Http Request Url',
       placeholder: 'https://api.ai.com/getInventory',
@@ -52,7 +52,7 @@ export const HttpModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.httpHeader,
       type: FlowNodeInputTypeEnum.textarea,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       label: 'core.module.input.label.Http Request Header',
       description: 'core.module.input.description.Http Request Header',
       placeholder: 'core.module.input.description.Http Request Header',
@@ -74,7 +74,7 @@ export const HttpModule: FlowModuleTemplateType = {
         key: '',
         description: '',
         inputType: FlowNodeInputTypeEnum.target,
-        valueType: ModuleDataTypeEnum.string,
+        valueType: ModuleIOValueTypeEnum.string,
         required: true
       }
     }
@@ -94,7 +94,7 @@ export const HttpModule: FlowModuleTemplateType = {
         key: '',
         description: '',
         outputType: FlowNodeOutputTypeEnum.source,
-        valueType: ModuleDataTypeEnum.string
+        valueType: ModuleIOValueTypeEnum.string
       }
     }
   ]

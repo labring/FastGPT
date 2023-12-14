@@ -500,7 +500,7 @@ const ChatBox = (
 
     return {
       bg: colorMap[chatContent.status] || colorMap.loading,
-      name: chatContent.moduleName || t('common.Loading')
+      name: t(chatContent.moduleName || '') || t('common.Loading')
     };
   }, [chatHistory, isChatting, t]);
   /* style end */

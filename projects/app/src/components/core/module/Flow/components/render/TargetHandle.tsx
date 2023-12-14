@@ -4,23 +4,23 @@ import { Handle, OnConnect, Position } from 'reactflow';
 import { FlowValueTypeStyle, FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 
 interface Props extends BoxProps {
   handleKey: string;
-  valueType?: `${ModuleDataTypeEnum}`;
+  valueType?: `${ModuleIOValueTypeEnum}`;
   onConnect?: OnConnect;
 }
 
 const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
   const { t } = useTranslation();
 
-  const valType = valueType ?? ModuleDataTypeEnum.any;
+  const valType = valueType ?? ModuleIOValueTypeEnum.any;
   const valueStyle = useMemo(
     () =>
       valueType
         ? FlowValueTypeStyle[valueType]
-        : (FlowValueTypeStyle[ModuleDataTypeEnum.any] as any),
+        : (FlowValueTypeStyle[ModuleIOValueTypeEnum.any] as any),
     [valueType]
   );
 

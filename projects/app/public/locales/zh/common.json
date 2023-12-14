@@ -518,7 +518,8 @@
       "Variable": "参数变量",
       "Variable Setting": "变量设置",
       "edit": {
-        "Field Already Exist": "key 重复"
+        "Field Already Exist": "key 重复",
+        "Field Edit": "字段编辑"
       },
       "extract": {
         "Enum Description": "列举出该字段可能的值，每行一个",
@@ -549,6 +550,7 @@
         }
       },
       "inputType": {
+        "chat history": "历史记录",
         "input": "输入框",
         "selectApp": "应用选择",
         "selectChatModel": "对话模型选择",

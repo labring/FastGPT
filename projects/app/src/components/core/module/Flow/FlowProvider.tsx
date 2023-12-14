@@ -29,7 +29,7 @@ import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -174,7 +174,7 @@ export const FlowProvider = ({
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
-          return ModuleDataTypeEnum.string;
+          return ModuleIOValueTypeEnum.string;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -193,8 +193,8 @@ export const FlowProvider = ({
         });
       }
       if (
-        sourceType !== ModuleDataTypeEnum.any &&
-        targetType !== ModuleDataTypeEnum.any &&
+        sourceType !== ModuleIOValueTypeEnum.any &&
+        targetType !== ModuleIOValueTypeEnum.any &&
         sourceType !== targetType
       ) {
         return toast({

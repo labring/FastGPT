@@ -26,7 +26,6 @@ import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 import { dispatchTextEditor } from './tools/textEditor';
-import { dispatchTFSwitch } from './tools/tfSwitch';
 
 const callbackMap: Record<string, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -41,8 +40,7 @@ const callbackMap: Record<string, Function> = {
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
-  [FlowNodeTypeEnum.textEditor]: dispatchTextEditor,
-  [FlowNodeTypeEnum.tfSwitch]: dispatchTFSwitch
+  [FlowNodeTypeEnum.textEditor]: dispatchTextEditor
 };
 
 /* running */
@@ -130,6 +128,7 @@ export async function dispatchModules({
     Object.entries(data).map(([key, val]: any) => {
       updateInputValue(key, val);
     });
+
     return;
   }
   function moduleOutput(
@@ -237,6 +236,11 @@ export async function dispatchModules({
 
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
+
+  // runningModules.forEach((item) => {
+  //   console.log(item);
+  // });
+
   initModules.map((module) =>
     moduleInput(module, {
       ...startParams,

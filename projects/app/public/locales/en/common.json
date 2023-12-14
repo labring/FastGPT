@@ -518,7 +518,8 @@
       "Variable": "Variable",
       "Variable Setting": "Variable Setting",
       "edit": {
-        "Field Already Exist": "Key already exist"
+        "Field Already Exist": "Key already exist",
+        "Field Edit": "Field Edit"
       },
       "extract": {
         "Enum Description": "Lists the possible values for the field, one per row",
@@ -549,6 +550,7 @@
         }
       },
       "inputType": {
+        "chat history": "History",
         "input": "Input",
         "selectApp": "App Selector",
         "selectChatModel": "Select Chat Model",

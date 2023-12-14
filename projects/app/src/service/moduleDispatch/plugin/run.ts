@@ -46,6 +46,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   return {
     answerText,
+    // responseData, // debug
     responseData: {
       moduleLogo: plugin.avatar,
       price: responseData.reduce((sum, item) => sum + (item.price || 0), 0),
