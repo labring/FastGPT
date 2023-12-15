@@ -27,7 +27,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { total } = pushReRankBill({
       teamId,
       tmbId,
-      source: 'api'
+      source: 'api',
+      inputs
     });
 
     if (apikey) {

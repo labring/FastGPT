@@ -74,6 +74,12 @@ importers:
         specifier: ^5.0.4
         version: registry.npmmirror.com/@types/turndown@5.0.4
 
+  packages/plugins:
+    devDependencies:
+      '@types/node':
+        specifier: ^20.8.5
+        version: registry.npmmirror.com/@types/node@20.8.7
+
   packages/service:
     dependencies:
       '@fastgpt/global':
@@ -161,6 +167,9 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
+      '@fastgpt/plugins':
+        specifier: workspace:*
+        version: link:../../packages/plugins
       '@fastgpt/service':
         specifier: workspace:*
         version: link:../../packages/service

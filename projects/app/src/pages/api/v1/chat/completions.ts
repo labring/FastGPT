@@ -138,6 +138,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
       // openapi key
       if (authType === AuthUserTypeEnum.apikey) {
+        if (!apiKeyAppId) {
+          return Promise.reject(
+            'Key is error. You need to use the app key rather than the account key.'
+          );
+        }
         const app = await MongoApp.findById(apiKeyAppId);
 
         if (!app) {
