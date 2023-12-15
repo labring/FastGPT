@@ -517,7 +517,7 @@ const ChatBox = (
     };
   }, [router.query]);
 
-  // add guide text listener
+  // add listener
   useEffect(() => {
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
       if (data?.type === 'sendPrompt' && data?.text) {
@@ -536,9 +536,9 @@ const ChatBox = (
     });
 
     return () => {
+      window.removeEventListener('message', windowMessage);
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
-      window.removeEventListener('message', windowMessage);
     };
   }, [handleSubmit, resetInputVal, sendPrompt]);
 

@@ -26,7 +26,7 @@ import { POST } from '@/web/common/api/request';
 import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
+import MyBox from '@/components/common/MyBox';
 
 const OutLink = ({
   shareId,
@@ -44,10 +44,10 @@ const OutLink = ({
   const { toast } = useToast();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const { isPc } = useSystemStore();
-  const forbidRefresh = useRef(false);
-  const [isEmbed, setIdEmbed] = useState(true);
-
   const ChatBoxRef = useRef<ComponentRef>(null);
+  const forbidRefresh = useRef(false);
+  const initSign = useRef(false);
+  const [isEmbed, setIdEmbed] = useState(true);
 
   const {
     localUId,
@@ -161,7 +161,7 @@ const OutLink = ({
         const res = await getInitOutLinkChatInfo({
           chatId,
           shareId,
-          outLinkUid: authToken || localUId
+          outLinkUid
         });
         const history = res.history.map((item) => ({
           ...item,
@@ -176,12 +176,21 @@ const OutLink = ({
         ChatBoxRef.current?.resetHistory(history);
         ChatBoxRef.current?.resetVariables(res.variables);
 
-        if (res.history.length > 0) {
+        // send init message
+        if (!initSign.current) {
+          initSign.current = true;
+          if (window !== top) {
+            window.top?.postMessage({ type: 'shareChatReady' }, '*');
+          }
+        }
+
+        if (chatId && res.history.length > 0) {
           setTimeout(() => {
             ChatBoxRef.current?.scrollToBottom('auto');
           }, 500);
         }
       } catch (e: any) {
+        console.log(e);
         toast({
           status: 'error',
           title: getErrText(e, t('core.shareChat.Init Error'))
@@ -194,16 +203,14 @@ const OutLink = ({
             }
           });
         }
-        if (e?.statusText === OutLinkErrEnum.linkUnInvalid) {
-          router.replace('/');
-        }
       }
 
       return null;
     },
-    [authToken, localUId, router, setChatData, t, toast]
+    [outLinkUid, router, setChatData, t, toast]
   );
-  useQuery(['init', shareId, chatId], () => {
+
+  const { isFetching } = useQuery(['init', shareId, chatId], () => {
     if (forbidRefresh.current) {
       forbidRefresh.current = false;
       return null;
@@ -223,11 +230,8 @@ const OutLink = ({
     return null;
   });
 
-  // check is embed
+  // window init
   useEffect(() => {
-    if (window !== top) {
-      window.top?.postMessage({ type: 'shareChatReady' }, '*');
-    }
     setIdEmbed(window !== top);
   }, []);
 
@@ -258,7 +262,7 @@ const OutLink = ({
       <Head>
         <title>{chatData.app.name}</title>
       </Head>
-      <Flex h={'100%'} flexDirection={['column', 'row']}>
+      <MyBox isLoading={isFetching} h={'100%'} display={'flex'} flexDirection={['column', 'row']}>
         {showHistory === '1'
           ? ((children: React.ReactNode) => {
               return isPc ? (
@@ -372,7 +376,7 @@ const OutLink = ({
             />
           </Box>
         </Flex>
-      </Flex>
+      </MyBox>
     </PageContainer>
   );
 };
