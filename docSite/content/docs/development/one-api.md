@@ -50,7 +50,7 @@ BATCH_UPDATE_ENABLED=true
 BATCH_UPDATE_INTERVAL=60
 ```
 
-## 使用步骤
+## One API使用步骤
 
 ### 1. 登录 One API
 

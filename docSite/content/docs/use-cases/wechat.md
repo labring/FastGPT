@@ -43,7 +43,6 @@ weight: 506
 AIBOTK_KEY=微秘书 APIKEY   
 AIBOTK_SECRET=微秘书 APISECRET   
 WORK_PRO_TOKEN=你申请的企微 token   （企业微信需要填写，私人微信不需要）
-WECHATY_PUPPET_SERVICE_AUTHORITY=token-service-discovery-test.juzibot.com（企业微信需要填写，私人微信不需要）  
 ```
 
 这里最后两个变量只有部署企业微信才需要，私人微信只需要填写前两个即可。
@@ -56,7 +55,7 @@ WECHATY_PUPPET_SERVICE_AUTHORITY=token-service-discovery-test.juzibot.com（企�
 
 ![](/imgs/wechat7.png)
 
-`WORK_PRO_TOKEN` [点击这里](https://tss.juzibot.com?aff=aibotk)申请 token 然后填入即可。   
+`WORK_PRO_TOKEN` [点击这里](https://tss.rpachat.com/?aff=aibotk)申请 token 然后填入即可。   
 
 `WECHATY_PUPPET_SERVICE_AUTHORITY`的值复制过去就可以。
 
