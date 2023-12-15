@@ -1,0 +1,8 @@
+{
+  "name": "@fastgpt/plugins",
+  "version": "1.0.0",
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.8.5"
+  }
+}

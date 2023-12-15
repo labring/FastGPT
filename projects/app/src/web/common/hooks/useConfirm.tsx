@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDisclosure, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyModal from '@/components/MyModal';
@@ -7,7 +7,6 @@ export const useConfirm = (props?: {
   title?: string;
   iconSrc?: string | '';
   content?: string;
-  bg?: string;
   showCancel?: boolean;
   type?: 'common' | 'delete';
 }) => {
@@ -34,7 +33,6 @@ export const useConfirm = (props?: {
     title = map?.title || t('Warning'),
     iconSrc = map?.iconSrc,
     content,
-    bg = map?.bg,
     showCancel = true
   } = props || {};
   const [customContent, setCustomContent] = useState(content);
@@ -57,43 +55,72 @@ export const useConfirm = (props?: {
       [onOpen]
     ),
     ConfirmModal: useCallback(
-      ({ isLoading }: { isLoading?: boolean }) => (
-        <MyModal
-          isOpen={isOpen}
-          onClose={onClose}
-          iconSrc={iconSrc}
-          title={title}
-          maxW={['90vw', '500px']}
-        >
-          <ModalBody pt={5}>{customContent}</ModalBody>
-          <ModalFooter>
-            {showCancel && (
+      ({
+        closeText = t('Cancel'),
+        confirmText = t('Confirm'),
+        isLoading,
+        bg,
+        countDown = 0
+      }: {
+        closeText?: string;
+        confirmText?: string;
+        isLoading?: boolean;
+        bg?: string;
+        countDown?: number;
+      }) => {
+        const timer = useRef<any>();
+        const [countDownAmount, setCountDownAmount] = useState(countDown);
+
+        useEffect(() => {
+          timer.current = setInterval(() => {
+            setCountDownAmount((val) => {
+              if (val <= 0) {
+                clearInterval(timer.current);
+              }
+              return val - 1;
+            });
+          }, 1000);
+        }, []);
+
+        return (
+          <MyModal
+            isOpen={isOpen}
+            onClose={onClose}
+            iconSrc={iconSrc}
+            title={title}
+            maxW={['90vw', '500px']}
+          >
+            <ModalBody pt={5}>{customContent}</ModalBody>
+            <ModalFooter>
+              {showCancel && (
+                <Button
+                  variant={'base'}
+                  onClick={() => {
+                    onClose();
+                    typeof cancelCb.current === 'function' && cancelCb.current();
+                  }}
+                >
+                  {closeText}
+                </Button>
+              )}
+
               <Button
-                variant={'base'}
+                {...(bg && { bg: `${bg} !important` })}
+                isDisabled={countDownAmount > 0}
+                ml={4}
+                isLoading={isLoading}
                 onClick={() => {
                   onClose();
-                  typeof cancelCb.current === 'function' && cancelCb.current();
+                  typeof confirmCb.current === 'function' && confirmCb.current();
                 }}
               >
-                {t('Cancel')}
+                {countDownAmount > 0 ? `${countDownAmount}s` : confirmText}
               </Button>
-            )}
-
-            <Button
-              {...(bg && { bg: `${bg} !important` })}
-              ml={4}
-              isLoading={isLoading}
-              onClick={() => {
-                onClose();
-                typeof confirmCb.current === 'function' && confirmCb.current();
-              }}
-            >
-              {t('Confirm')}
-            </Button>
-          </ModalFooter>
-        </MyModal>
-      ),
-      [bg, customContent, iconSrc, isOpen, onClose, showCancel, t, title]
+            </ModalFooter>
+          </MyModal>
+        );
+      },
+      [customContent, iconSrc, isOpen, onClose, showCancel, t, title]
     )
   };
 };

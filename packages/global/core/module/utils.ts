@@ -1,7 +1,8 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from './node/constant';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum } from './constants';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
+import { Input_Template_Switch } from './template/input';
 
 export const getGuideModule = (modules: ModuleItemType[]) =>
   modules.find((item) => item.flowType === FlowNodeTypeEnum.userGuide);
@@ -29,42 +30,64 @@ export const splitGuideModule = (guideModules?: ModuleItemType) => {
   };
 };
 
-export function formatPluginToPreviewModule(
+export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
+  if (input.value !== undefined || !input.valueType) return input.value;
+
+  const map: Record<string, any> = {
+    [ModuleIOValueTypeEnum.boolean]: false,
+    [ModuleIOValueTypeEnum.number]: 0,
+    [ModuleIOValueTypeEnum.string]: ''
+  };
+
+  return map[input.valueType];
+};
+
+export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
+  if (input.type === FlowNodeInputTypeEnum.input || input.type === FlowNodeInputTypeEnum.textarea) {
+    return {
+      placeholder: input.placeholder || input.description
+    };
+  }
+  return {};
+};
+
+export function plugin2ModuleIO(
   pluginId: string,
   modules: ModuleItemType[]
 ): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 } {
-  function getPluginTemplatePluginIdInput(pluginId: string): FlowNodeInputItemType {
-    return {
-      key: ModuleInputKeyEnum.pluginId,
-      type: FlowNodeInputTypeEnum.hidden,
-      label: 'pluginId',
-      value: pluginId,
-      valueType: ModuleDataTypeEnum.string,
-      connected: true,
-      showTargetInApp: false,
-      showTargetInPlugin: false
-    };
-  }
-
   const pluginInput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginInput);
-  const customOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
+  const pluginOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
 
   return {
     inputs: pluginInput
       ? [
-          getPluginTemplatePluginIdInput(pluginId),
+          {
+            // plugin id
+            key: ModuleInputKeyEnum.pluginId,
+            type: FlowNodeInputTypeEnum.hidden,
+            label: 'pluginId',
+            value: pluginId,
+            valueType: ModuleIOValueTypeEnum.string,
+            connected: true,
+            showTargetInApp: false,
+            showTargetInPlugin: false
+          },
+          // switch
+          Input_Template_Switch,
           ...pluginInput.inputs.map((item) => ({
             ...item,
+            ...getModuleInputUiField(item),
+            value: getOrInitModuleInputValue(item),
             edit: false,
             connected: false
           }))
         ]
       : [],
-    outputs: customOutput
-      ? customOutput.outputs.map((item) => ({
+    outputs: pluginOutput
+      ? pluginOutput.outputs.map((item) => ({
           ...item,
           edit: false
         }))

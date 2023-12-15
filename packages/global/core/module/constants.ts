@@ -1,19 +1,17 @@
 export enum ModuleTemplateTypeEnum {
   userGuide = 'userGuide',
   systemInput = 'systemInput',
+  tools = 'tools',
   textAnswer = 'textAnswer',
-  dataset = 'dataset',
   functionCall = 'functionCall',
   externalCall = 'externalCall',
 
   personalPlugin = 'personalPlugin',
-  communityPlugin = 'communityPlugin',
-  commercialPlugin = 'commercialPlugin',
 
   other = 'other'
 }
 
-export enum ModuleDataTypeEnum {
+export enum ModuleIOValueTypeEnum {
   string = 'string',
   number = 'number',
   boolean = 'boolean',
@@ -44,6 +42,9 @@ export enum ModuleInputKeyEnum {
   aiModel = 'model',
   aiSystemPrompt = 'systemPrompt',
   description = 'description',
+  anyInput = 'system_anyInput',
+  textareaInput = 'system_textareaInput',
+  addInputParam = 'system_addInputParam',
 
   // history
   historyMaxAmount = 'maxContext',
@@ -69,7 +70,10 @@ export enum ModuleInputKeyEnum {
   extractKeys = 'extractKeys',
 
   // http
-  httpUrl = 'url',
+  httpReqUrl = 'system_httpReqUrl',
+  httpHeader = 'system_httpHeader',
+  httpMethod = 'system_httpMethod',
+  abandon_httpUrl = 'url',
 
   // app
   runAppSelectApp = 'app',
@@ -87,6 +91,8 @@ export enum ModuleOutputKeyEnum {
   answerText = 'answerText', //  answer module text key
   success = 'success',
   failed = 'failed',
+  text = 'system_text',
+  addOutputParam = 'system_addOutputParam',
 
   // dataset
   datasetIsEmpty = 'isEmpty',
@@ -94,7 +100,11 @@ export enum ModuleOutputKeyEnum {
   datasetQuoteQA = 'quoteQA',
 
   // context extract
-  contextExtractFields = 'fields'
+  contextExtractFields = 'fields',
+
+  // tf switch
+  resultTrue = 'system_resultTrue',
+  resultFalse = 'system_resultFalse'
 }
 
 export enum VariableInputEnum {
@@ -102,3 +112,5 @@ export enum VariableInputEnum {
   textarea = 'textarea',
   select = 'select'
 }
+
+export const DYNAMIC_INPUT_KEY = 'DYNAMIC_INPUT_KEY';

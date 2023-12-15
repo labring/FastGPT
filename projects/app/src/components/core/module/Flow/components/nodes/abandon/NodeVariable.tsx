@@ -3,7 +3,7 @@ import React, { useCallback, useMemo, useState } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
-import NodeCard from '../../modules/NodeCard';
+import NodeCard from '../../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Container from '../../modules/Container';
 import { VariableInputEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';

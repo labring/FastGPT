@@ -202,7 +202,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       query: userChatInput,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
-      historyPreview: getHistoryPreview(completeMessages)
+      historyPreview: getHistoryPreview(completeMessages),
+      contextTotalLen: completeMessages.length
     },
     history: completeMessages
   };

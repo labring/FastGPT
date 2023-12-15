@@ -5,7 +5,7 @@
 3. 新增 - 分享链接更多嵌入方式提示，更多DIY方式。
 4. 优化 - 历史记录模块。弃用旧的历史记录模块，直接在对应地方填写数值即可。
 5. 调整 - 知识库搜索模块 topk 逻辑，采用 MaxToken 计算，兼容不同长度的文本块
-6. 链接读取支持多选择器。参考[Web 站点同步用法](https://doc.fastgpt.in/docs/course/webSync)
+6. 链接读取支持多选择器。参考[Web 站点同步用法](https://doc.fastgpt.in/docs/course/websync)
 7. [知识库结构详解](https://doc.fastgpt.in/docs/use-cases/datasetengine/)
 8. [知识库提示词详解](https://doc.fastgpt.in/docs/use-cases/ai_settings/#引用模板--引用提示词)
 9. [使用文档](https://doc.fastgpt.in/docs/intro/)

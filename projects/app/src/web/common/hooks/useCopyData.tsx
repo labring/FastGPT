@@ -21,6 +21,8 @@ export const useCopyData = () => {
           throw new Error('');
         }
       } catch (error) {
+        console.log(error);
+
         const textarea = document.createElement('textarea');
         textarea.value = data;
         document.body.appendChild(textarea);

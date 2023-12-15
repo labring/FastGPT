@@ -19,9 +19,10 @@ import {
 } from '@fastgpt/global/core/ai/model';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
-import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { getFastGPTFeConfig } from '@fastgpt/service/common/system/config/controller';
 import { connectToDatabase } from '@/service/mongo';
+import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -251,12 +252,12 @@ function getSystemPlugin() {
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
   // read json file
-  const fileTemplates = filterFiles.map((item) => {
-    const content = readFileSync(`${basePath}/${item}`, 'utf-8');
+  const fileTemplates: PluginTemplateType[] = filterFiles.map((filename) => {
+    const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
-      id: `${PluginTypeEnum.community}-${item.replace('.json', '')}`,
-      type: PluginTypeEnum.community,
-      ...JSON.parse(content)
+      ...JSON.parse(content),
+      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
+      source: PluginSourceEnum.community
     };
   });
 

@@ -6,11 +6,10 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetIdTreeByTopDatasetId } from '@fastgpt/service/core/dataset/controller';
-import { Readable } from 'stream';
-import type { Cursor } from '@fastgpt/service/common/mongo';
 import { limitCheck } from './checkExportLimit';
+import { withNextCors } from '@fastgpt/service/common/middle/cors';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     let { datasetId } = req.query as {
@@ -81,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error: err
     });
   }
-}
+});
 
 export const config = {
   api: {

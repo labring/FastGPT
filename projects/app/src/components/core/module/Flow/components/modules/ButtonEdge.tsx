@@ -1,23 +1,33 @@
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from 'reactflow';
+import {
+  SmoothStepEdge,
+  EdgeLabelRenderer,
+  EdgeProps,
+  getSmoothStepPath,
+  MarkerType
+} from 'reactflow';
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 
-const ButtonEdge = ({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  style = {},
-  markerEnd,
-  data
-}: EdgeProps<{
-  onDelete: (id: string) => void;
-}>) => {
-  const [edgePath, labelX, labelY] = getBezierPath({
+const ButtonEdge = (
+  props: EdgeProps<{
+    onDelete: (id: string) => void;
+  }>
+) => {
+  const {
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    data,
+    selected,
+    style = {}
+  } = props;
+
+  const [edgePath, labelX, labelY] = getSmoothStepPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -26,9 +36,19 @@ const ButtonEdge = ({
     targetPosition
   });
 
+  const edgeStyle = {
+    ...style,
+    ...(selected
+      ? {
+          strokeWidth: 4,
+          stroke: '#3370ff'
+        }
+      : { strokeWidth: 2, stroke: '#BDC1C5' })
+  };
+
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <SmoothStepEdge {...props} style={edgeStyle} />
       <EdgeLabelRenderer>
         <Flex
           alignItems={'center'}
@@ -48,7 +68,11 @@ const ButtonEdge = ({
           }}
           onClick={() => data?.onDelete(id)}
         >
-          <MyIcon name="closeSolid" w={'100%'} color={'myGray.600'}></MyIcon>
+          <MyIcon
+            name="closeSolid"
+            w={'100%'}
+            color={selected ? 'myBlue.800' : 'myGray.500'}
+          ></MyIcon>
         </Flex>
       </EdgeLabelRenderer>
     </>
