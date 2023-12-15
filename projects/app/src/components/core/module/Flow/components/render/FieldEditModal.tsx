@@ -45,7 +45,6 @@ const FieldEditModal = ({
   const isCreate = useMemo(() => !defaultField.key, [defaultField.key]);
   const showDynamicInputSelect =
     !keys.includes(DYNAMIC_INPUT_KEY) || defaultField.key === DYNAMIC_INPUT_KEY;
-  console.log(defaultField);
 
   const inputTypeList = [
     {

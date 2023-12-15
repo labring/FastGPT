@@ -89,32 +89,6 @@
       "share": "外部链接调用",
       "test": "测试"
     },
-    "response": {
-      "module cq": "问题分类列表",
-      "module cq result": "分类结果",
-      "module extract description": "提取要求描述",
-      "module extract result": "提取结果",
-      "module historyPreview": "完整记录",
-      "module http body": "请求体",
-      "module http result": "响应体",
-      "module http url": "请求地址",
-      "module limit": "单次搜索上限",
-      "module maxToken": "最大 Tokens",
-      "module model": "模型",
-      "module name": "模型名",
-      "module price": "计费",
-      "module query": "问题/检索词",
-      "module question": "问题",
-      "module quoteList": "引用内容",
-      "module runningTime": "运行时长",
-      "module search query": "检索词",
-      "module search response": "搜索结果",
-      "module similarity": "相似度",
-      "module temperature": "温度",
-      "module time": "运行时长",
-      "module tokens": "Tokens",
-      "plugin output": "插件输出值"
-    },
     "retry": "重新生成"
   },
   "common": {
@@ -334,6 +308,31 @@
         "Read Source": "查看来源"
       },
       "response": {
+        "context total length": "上下文总长度",
+        "module cq": "问题分类列表",
+        "module cq result": "分类结果",
+        "module extract description": "提取要求描述",
+        "module extract result": "提取结果",
+        "module historyPreview": "完整记录",
+        "module http body": "请求体",
+        "module http result": "响应体",
+        "module http url": "请求地址",
+        "module limit": "单次搜索上限",
+        "module maxToken": "最大 Tokens",
+        "module model": "模型",
+        "module name": "模型名",
+        "module price": "计费",
+        "module query": "问题/检索词",
+        "module question": "问题",
+        "module quoteList": "引用内容",
+        "module runningTime": "运行时长",
+        "module search query": "检索词",
+        "module search response": "搜索结果",
+        "module similarity": "相似度",
+        "module temperature": "温度",
+        "module time": "运行时长",
+        "module tokens": "Tokens",
+        "plugin output": "插件输出值",
         "text output": "文本输出"
       },
       "tts": {
@@ -535,8 +534,8 @@
           "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
           "anyInput": "可传入任意内容",
-          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
-          "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入"
+          "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
         },
         "label": {
           "Http Request Header": "请求头",

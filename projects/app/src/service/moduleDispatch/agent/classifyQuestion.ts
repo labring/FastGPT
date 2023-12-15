@@ -40,17 +40,19 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const cqModel = getCQModel(model);
 
+  const chatHistories = getHistories(history, histories);
+
   const { arg, tokens } = await (async () => {
     if (cqModel.functionCall) {
       return functionCall({
         ...props,
-        histories: getHistories(history, histories),
+        histories: chatHistories,
         cqModel
       });
     }
     return completions({
       ...props,
-      histories: getHistories(history, histories),
+      histories: chatHistories,
       cqModel
     });
   })();
@@ -65,7 +67,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       query: userChatInput,
       tokens,
       cqList: agents,
-      cqResult: result.value
+      cqResult: result.value,
+      contextTotalLen: chatHistories.length + 2
     }
   };
 };

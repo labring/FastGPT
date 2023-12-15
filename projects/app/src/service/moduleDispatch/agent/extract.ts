@@ -38,18 +38,19 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   }
 
   const extractModel = global.extractModels[0];
+  const chatHistories = getHistories(history, histories);
 
   const { arg, tokens } = await (async () => {
     if (extractModel.functionCall) {
       return functionCall({
         ...props,
-        histories: getHistories(history, histories),
+        histories: chatHistories,
         extractModel
       });
     }
     return completions({
       ...props,
-      histories: getHistories(history, histories),
+      histories: chatHistories,
       extractModel
     });
   })();
@@ -84,7 +85,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       query: content,
       tokens,
       extractDescription: description,
-      extractResult: arg
+      extractResult: arg,
+      contextTotalLen: chatHistories.length + 2
     }
   };
 }

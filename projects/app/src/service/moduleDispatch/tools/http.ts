@@ -130,7 +130,7 @@ async function fetchData({
 }): Promise<Record<string, any>> {
   const { data: response } = await axios<Record<string, any>>({
     method,
-    baseURL: `http://localhost:${process.env.PORT || 3000}`,
+    baseURL: `http://${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`,
     url,
     headers: {
       'Content-Type': 'application/json',
