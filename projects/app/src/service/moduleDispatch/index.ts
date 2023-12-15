@@ -237,9 +237,9 @@ export async function dispatchModules({
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
 
-  // runningModules.forEach((item) => {
-  //   console.log(item);
-  // });
+  runningModules.forEach((item) => {
+    console.log(item);
+  });
 
   initModules.map((module) =>
     moduleInput(module, {

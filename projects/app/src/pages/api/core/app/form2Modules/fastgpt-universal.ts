@@ -120,7 +120,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           key: 'userChatInput',
           connected: false,
           label: '用户问题',
-          type: 'target'
+          type: 'systemInput'
         }
       ],
       outputs: [
@@ -179,7 +179,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         {
           key: 'userChatInput',
           label: '用户问题',
-          type: 'target',
+          type: 'systemInput',
           connected: false
         }
       ],
