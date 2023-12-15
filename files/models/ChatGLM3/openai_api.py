@@ -83,7 +83,7 @@ async def verify_token(request: Request):
         token_type, _, token = auth_header.partition(' ')
         if (
                 token_type.lower() == "bearer"
-                and token == "sk-aaabbbcccdddeeefffggghhhiiijjjkkk"
+                and token == args.auth_token
         ):  # 这里配置你的token
             return True
     raise HTTPException(
@@ -248,7 +248,9 @@ async def get_embeddings(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model_name", default="16", type=str, help="Model name")
+    parser.add_argument("--model_name", default="16", type=str, help="Model name Or The absolute model path.")
+    parser.add_argument("--auth_token", default="sk-aaabbbcccdddeeefffggghhhiiijjjkkk", type=str,
+                        help="Auth-Token like api-key, api-secret.")
     args = parser.parse_args()
 
     model_dict = {
@@ -256,8 +258,11 @@ if __name__ == "__main__":
         "8": "THUDM/chatglm3-6b-int8",
         "16": "THUDM/chatglm3-6b",
     }
-
-    model_name = model_dict.get(args.model_name, "THUDM/chatglm3-6b")
+    if model_dict.keys().__contains__(args.model_name):
+        model_name = model_dict.get(args.model_name, "THUDM/chatglm3-6b")
+    else:
+        model_name = args.model_name
+        print("Loading the model from local path:", model_name, "....")
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     model = AutoModel.from_pretrained(model_name, trust_remote_code=True).cuda()
