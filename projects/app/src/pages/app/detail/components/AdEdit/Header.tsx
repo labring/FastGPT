@@ -16,6 +16,7 @@ import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider
 import { flowNode2Modules } from '@/components/core/module/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@/web/common/hooks/useToast';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
@@ -36,10 +37,13 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { toast } = useToast();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
+  const { openConfirm: openConfirmOut, ConfirmModal } = useConfirm({
+    content: t('core.app.edit.Out Ad Edit')
+  });
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { updateAppDetail } = useAppStore();
 
-  const { nodes, edges, onFixView } = useFlowProviderStore();
+  const { nodes, edges } = useFlowProviderStore();
 
   const flow2ModulesAndCheck = useCallback(() => {
     const modules = flowNode2Modules({ nodes, edges });
@@ -94,7 +98,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         alignItems={'center'}
         userSelect={'none'}
       >
-        <MyTooltip label={'返回'} offset={[10, 10]}>
+        <MyTooltip label={t('common.Back')} offset={[10, 10]}>
           <IconButton
             size={'sm'}
             icon={<MyIcon name={'back'} w={'14px'} />}
@@ -102,10 +106,13 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             borderColor={'myGray.300'}
             variant={'base'}
             aria-label={''}
-            onClick={() => {
+            onClick={openConfirmOut(async () => {
+              const modules = flow2ModulesAndCheck();
+              if (modules) {
+                await onclickSave(modules);
+              }
               onClose();
-              onFixView();
-            }}
+            }, onClose)}
           />
         </MyTooltip>
         <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
@@ -182,6 +189,10 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         </MyTooltip>
       </Flex>
       {isOpenImport && <ImportSettings onClose={onCloseImport} />}
+      <ConfirmModal
+        closeText={t('core.app.edit.UnSave')}
+        confirmText={t('core.app.edit.Save and out')}
+      />
     </>
   );
 });

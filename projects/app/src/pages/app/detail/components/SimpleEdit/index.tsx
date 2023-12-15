@@ -103,8 +103,7 @@ function ConfigForm({
   } = useDisclosure();
 
   const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
-    content: t('app.Confirm Save App Tip'),
-    bg: appDetail.type === AppTypeEnum.simple ? '' : 'red.600'
+    content: t('core.app.edit.Confirm Save App Tip')
   });
 
   const chatModelSelectList = useMemo(() => {
@@ -446,7 +445,7 @@ function ConfigForm({
         )}
       </Box>
 
-      <ConfirmSaveModal />
+      <ConfirmSaveModal bg={appDetail.type === AppTypeEnum.simple ? '' : 'red.600'} countDown={5} />
       {isOpenAIChatSetting && (
         <AIChatSettingsModal
           onClose={onCloseAIChatSetting}

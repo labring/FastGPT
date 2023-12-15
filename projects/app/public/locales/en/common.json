@@ -22,7 +22,6 @@
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
     "Chat logs": "Chat Logs",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
-    "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
     "Copy Module Config": "Copy config",
@@ -242,7 +241,11 @@
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
       "edit": {
-        "Prompt Editor": "Prompt Editor"
+        "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
+        "Out Ad Edit": "You are about to exit the Advanced orchestration page, please confirm",
+        "Prompt Editor": "Prompt Editor",
+        "Save and out": "Save out",
+        "UnSave": "UnSave"
       },
       "logs": {
         "Source And Time": "Source & Time"

@@ -22,7 +22,6 @@
     "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
     "Chat logs": "对话日志",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
-    "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
     "Connection is invalid": "连接无效",
     "Connection type is different": "连接的类型不一致",
     "Copy Module Config": "复制配置",
@@ -242,7 +241,11 @@
       "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
       "edit": {
-        "Prompt Editor": "提示词编辑"
+        "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
+        "Out Ad Edit": "您即将退出高级编排页面，请确认",
+        "Prompt Editor": "提示词编辑",
+        "Save and out": "保存并退出",
+        "UnSave": "不保存"
       },
       "logs": {
         "Source And Time": "来源 & 时间"
