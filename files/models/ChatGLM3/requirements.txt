@@ -1,0 +1,11 @@
+fastapi==0.101.1
+numpy==1.24.3
+pydantic==1.10.7
+scikit_learn==1.2.2
+sentence_transformers==2.2.2
+sse_starlette==1.6.5
+starlette==0.27.0
+tiktoken==0.4.0
+torch==2.0.1
+transformers==4.31.0
+uvicorn==0.23.2
