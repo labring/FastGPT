@@ -138,16 +138,12 @@ async def create_chat_completion(request: ChatCompletionRequest, token: bool = D
         print("prev_msg:", prev_messages)
     if len(prev_messages) % 2 == 0:
         for i in range(0, len(prev_messages), 2):
-            if (
-                    prev_messages[i].role == "user"
-                    and prev_messages[i + 1].role == "assistant"
-            ):
-                history.append({
-                    "content": prev_messages[i].content,
-                    "role": prev_messages[i].role,
-                    "metadata": "",
-                    "tools": []
-                })
+            history.append({
+                "content": prev_messages[i].content,
+                "role": prev_messages[i].role,
+                "metadata": "",
+                "tools": []
+            })
     if args.debug:
         print("query:", query)
         print("history:", history)
