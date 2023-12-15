@@ -127,19 +127,12 @@ def expand_features(embedding, target_length):
 
 
 @app.post("/v1/chat/completions", response_model=ChatCompletionResponse)
-async def create_chat_completion(
-        request: ChatCompletionRequest, token: bool = Depends(verify_token)
-):
+async def create_chat_completion(request: ChatCompletionRequest, token: bool = Depends(verify_token)):
     global model, tokenizer
-
     if request.messages[-1].role != "user":
         raise HTTPException(status_code=400, detail="Invalid request")
     query = request.messages[-1].content
-
     prev_messages = request.messages[:-1]
-    if len(prev_messages) > 0 and prev_messages[0].role == "system":
-        query = prev_messages.pop(0).content + query
-
     history = []
     if args.debug:
         print("prev_msg:", prev_messages)
