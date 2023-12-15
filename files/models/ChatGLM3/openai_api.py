@@ -153,13 +153,16 @@ async def create_chat_completion(
                     "metadata": "",
                     "tools": []
                 })
-
+    if args.debug:
+        print("query:", query)
+        print("history:", history)
     if request.stream:
         generate = predict(query, history, request.model)
         return EventSourceResponse(generate, media_type="text/event-stream")
 
     response, _ = model.chat(tokenizer, query, history=history)
-    print("response:", response)
+    if args.debug:
+        print("response:", response)
     choice_data = ChatCompletionResponseChoice(
         index=0,
         message=ChatMessage(role="assistant", content=response),
@@ -171,7 +174,7 @@ async def create_chat_completion(
     )
 
 
-async def predict(query: str, history: List[List[str]], model_id: str):
+async def predict(query: str, history: List[dict], model_id: str):
     global model, tokenizer
 
     choice_data = ChatCompletionResponseStreamChoice(
@@ -251,6 +254,8 @@ if __name__ == "__main__":
     parser.add_argument("--model_name", default="16", type=str, help="Model name Or The absolute model path.")
     parser.add_argument("--auth_token", default="sk-aaabbbcccdddeeefffggghhhiiijjjkkk", type=str,
                         help="Auth-Token like api-key, api-secret.")
+    parser.add_argument("--debug", default=False, type=bool,
+                        help="Activate the debug mode.")
     args = parser.parse_args()
 
     model_dict = {
