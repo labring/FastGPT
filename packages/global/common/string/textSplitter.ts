@@ -232,7 +232,7 @@ export const splitText2Chunks = (props: {
       step: 0,
       lastText: '',
       mdTitle: ''
-    }).map((chunk) => chunk.replaceAll(codeBlockMarker, '\n')); // restore code block
+    }).map((chunk) => chunk?.replaceAll(codeBlockMarker, '\n') || ''); // restore code block
 
     const tokens = countTokens
       ? chunks.reduce((sum, chunk) => sum + countPromptTokens(chunk, 'system'), 0)
