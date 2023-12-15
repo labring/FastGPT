@@ -48,15 +48,18 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
-import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
-import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import PromptTextarea from '@/components/common/Textarea/PromptTextarea/index';
 
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
 const AIChatSettingsModal = dynamic(() => import('@/components/core/module/AIChatSettingsModal'));
+const TTSSelect = dynamic(
+  () => import('@/components/core/module/Flow/components/modules/TTSSelect')
+);
+const QGSwitch = dynamic(() => import('@/components/core/module/Flow/components/modules/QGSwitch'));
 
 function ConfigForm({
   divRef,
@@ -100,8 +103,7 @@ function ConfigForm({
   } = useDisclosure();
 
   const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
-    content: t('app.Confirm Save App Tip'),
-    bg: appDetail.type === AppTypeEnum.simple ? '' : 'red.600'
+    content: t('core.app.edit.Confirm Save App Tip')
   });
 
   const chatModelSelectList = useMemo(() => {
@@ -330,13 +332,18 @@ function ConfigForm({
                     <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
                   </MyTooltip>
                 </Box>
-                <Textarea
+                <PromptTextarea
+                  flex={1}
+                  bg={'myWhite.400'}
                   rows={5}
-                  minH={'60px'}
                   placeholder={chatNodeSystemPromptTip}
-                  borderColor={'myGray.100'}
-                  {...register('aiSettings.systemPrompt')}
-                ></Textarea>
+                  showSetModalModeIcon
+                  value={getValues('aiSettings.systemPrompt')}
+                  onChange={(e) => {
+                    setValue('aiSettings.systemPrompt', e.target.value || '');
+                    setRefresh(!refresh);
+                  }}
+                />
               </Flex>
             )}
           </Box>
@@ -438,7 +445,7 @@ function ConfigForm({
         )}
       </Box>
 
-      <ConfirmSaveModal />
+      <ConfirmSaveModal bg={appDetail.type === AppTypeEnum.simple ? '' : 'red.600'} countDown={5} />
       {isOpenAIChatSetting && (
         <AIChatSettingsModal
           onClose={onCloseAIChatSetting}

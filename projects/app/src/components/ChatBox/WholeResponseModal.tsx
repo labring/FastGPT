@@ -21,6 +21,7 @@ function Row({
   value?: string | number;
   rawDom?: React.ReactNode;
 }) {
+  const { t } = useTranslation();
   const theme = useTheme();
   const val = value || rawDom;
   const strValue = `${value}`;
@@ -29,7 +30,7 @@ function Row({
   return val !== undefined && val !== '' && val !== 'undefined' ? (
     <Box mb={3}>
       <Box fontSize={['sm', 'md']} mb={isCodeBlock ? 0 : 1} flex={'0 0 90px'}>
-        {label}:
+        {t(label)}:
       </Box>
       <Box
         borderRadius={'md'}
@@ -69,12 +70,12 @@ const WholeResponseModal = ({
               alt={''}
               w={['14px', '16px']}
             />
-            {item.moduleName}
+            {t(item.moduleName)}
           </Flex>
         ),
         id: `${i}`
       })),
-    [response]
+    [response, t]
   );
 
   const [currentTab, setCurrentTab] = useState(`0`);
@@ -103,26 +104,33 @@ const WholeResponseModal = ({
           <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
         </Box>
         <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
-          <Row label={t('chat.response.module name')} value={activeModule?.moduleName} />
+          <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
           {activeModule?.price !== undefined && (
             <Row
-              label={t('chat.response.module price')}
+              label={t('core.chat.response.module price')}
               value={`￥${formatPrice(activeModule?.price)}`}
             />
           )}
           <Row
-            label={t('chat.response.module time')}
+            label={t('core.chat.response.module time')}
             value={`${activeModule?.runningTime || 0}s`}
           />
-          <Row label={t('chat.response.module tokens')} value={`${activeModule?.tokens}`} />
-          <Row label={t('chat.response.module model')} value={activeModule?.model} />
-          <Row label={t('chat.response.module query')} value={activeModule?.query} />
+          <Row label={t('core.chat.response.module tokens')} value={`${activeModule?.tokens}`} />
+          <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
+          <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
+          <Row
+            label={t('core.chat.response.context total length')}
+            value={activeModule?.contextTotalLen}
+          />
 
           {/* ai chat */}
-          <Row label={t('chat.response.module temperature')} value={activeModule?.temperature} />
-          <Row label={t('chat.response.module maxToken')} value={activeModule?.maxToken} />
           <Row
-            label={t('chat.response.module historyPreview')}
+            label={t('core.chat.response.module temperature')}
+            value={activeModule?.temperature}
+          />
+          <Row label={t('core.chat.response.module maxToken')} value={activeModule?.maxToken} />
+          <Row
+            label={t('core.chat.response.module historyPreview')}
             rawDom={
               activeModule.historyPreview ? (
                 <>
@@ -148,7 +156,7 @@ const WholeResponseModal = ({
           />
           {activeModule.quoteList && activeModule.quoteList.length > 0 && (
             <Row
-              label={t('chat.response.module quoteList')}
+              label={t('core.chat.response.module quoteList')}
               value={`~~~json\n${JSON.stringify(activeModule.quoteList, null, 2)}`}
             />
           )}
@@ -161,27 +169,27 @@ const WholeResponseModal = ({
               value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
             />
           )}
-          <Row label={t('chat.response.module similarity')} value={activeModule?.similarity} />
-          <Row label={t('chat.response.module limit')} value={activeModule?.limit} />
+          <Row label={t('core.chat.response.module similarity')} value={activeModule?.similarity} />
+          <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
 
           {/* classify question */}
           <Row
-            label={t('chat.response.module cq')}
+            label={t('core.chat.response.module cq')}
             value={(() => {
               if (!activeModule?.cqList) return '';
               return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
             })()}
           />
-          <Row label={t('chat.response.module cq result')} value={activeModule?.cqResult} />
+          <Row label={t('core.chat.response.module cq result')} value={activeModule?.cqResult} />
 
           {/* extract */}
           <Row
-            label={t('chat.response.module extract description')}
+            label={t('core.chat.response.module extract description')}
             value={activeModule?.extractDescription}
           />
           {activeModule?.extractResult && (
             <Row
-              label={t('chat.response.module extract result')}
+              label={t('core.chat.response.module extract result')}
               value={`~~~json\n${JSON.stringify(activeModule?.extractResult, null, 2)}`}
             />
           )}
@@ -189,13 +197,13 @@ const WholeResponseModal = ({
           {/* http */}
           {activeModule?.body && (
             <Row
-              label={t('chat.response.module http body')}
+              label={t('core.chat.response.module http body')}
               value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`}
             />
           )}
           {activeModule?.httpResult && (
             <Row
-              label={t('chat.response.module http result')}
+              label={t('core.chat.response.module http result')}
               value={`~~~json\n${JSON.stringify(activeModule?.httpResult, null, 2)}`}
             />
           )}
@@ -203,10 +211,13 @@ const WholeResponseModal = ({
           {/* plugin */}
           {activeModule?.pluginOutput && (
             <Row
-              label={t('chat.response.plugin output')}
+              label={t('core.chat.response.plugin output')}
               value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
             />
           )}
+
+          {/* text editor */}
+          <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
         </Box>
       </Flex>
     </MyModal>

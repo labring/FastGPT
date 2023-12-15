@@ -15,16 +15,16 @@ const Render = ({ app, onClose }: Props) => {
   const { nodes } = useFlowProviderStore();
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
-  const filterTemplates = useMemo(() => {
-    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(
-      JSON.stringify(appSystemModuleTemplates)
-    );
+  const moduleTemplates = useMemo(() => {
+    const concatTemplates = [...appSystemModuleTemplates, ...pluginModuleTemplates];
+
+    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
 
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1
     };
 
-    // filter some template
+    // filter some template, There can only be one
     nodes.forEach((node) => {
       if (node.type && filterType[node.type]) {
         copyTemplates.forEach((module, index) => {
@@ -36,14 +36,13 @@ const Render = ({ app, onClose }: Props) => {
     });
 
     return copyTemplates;
-  }, [nodes]);
+  }, [nodes, pluginModuleTemplates]);
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
 
   return (
     <Flow
-      systemTemplates={filterTemplates}
-      pluginTemplates={pluginModuleTemplates}
+      templates={moduleTemplates}
       modules={app.modules}
       Header={<Header app={app} onClose={onClose} />}
     />

@@ -8,7 +8,11 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
+import {
+  useFlowProviderStore,
+  onChangeNode,
+  type useFlowProviderStoreType
+} from '../../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -23,20 +27,28 @@ type Props = FlowModuleItemType & {
   isPreview?: boolean;
 };
 
-const NodeCard = (props: Props) => {
+const NodeCard = (
+  props: Props & {
+    onCopyNode: useFlowProviderStoreType['onCopyNode'];
+    onResetNode: useFlowProviderStoreType['onResetNode'];
+    onDelNode: useFlowProviderStoreType['onDelNode'];
+  }
+) => {
+  const { t } = useTranslation();
   const {
     children,
     avatar = LOGO_ICON,
-    name = '未知模块',
+    name = t('core.module.template.UnKnow Module'),
     intro,
     minW = '300px',
     moduleId,
     flowType,
     inputs,
-    isPreview
+    isPreview,
+    onCopyNode,
+    onResetNode,
+    onDelNode
   } = props;
-  const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
-  const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
@@ -147,10 +159,10 @@ const NodeCard = (props: Props) => {
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
         <Avatar src={avatar} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
-          {name}
+          {t(name)}
         </Box>
         {intro && (
-          <MyTooltip label={intro} forceShow>
+          <MyTooltip label={t(intro)} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} mb={'1px'} ml={1} />
           </MyTooltip>
         )}
@@ -186,4 +198,10 @@ const NodeCard = (props: Props) => {
   );
 };
 
-export default React.memo(NodeCard);
+export default React.memo(function (props: Props) {
+  const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
+
+  return (
+    <NodeCard {...props} onCopyNode={onCopyNode} onResetNode={onResetNode} onDelNode={onDelNode} />
+  );
+});

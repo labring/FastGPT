@@ -1,7 +1,11 @@
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { dispatchModules } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  DYNAMIC_INPUT_KEY,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum
+} from '@fastgpt/global/core/module/constants';
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import { getPluginRuntimeById } from '@fastgpt/service/core/plugin/controller';
 import { authPluginCanUse } from '@fastgpt/service/support/permission/auth/plugin';
@@ -29,13 +33,37 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   await authPluginCanUse({ id: pluginId, teamId, tmbId });
   const plugin = await getPluginRuntimeById(pluginId);
 
+  // concat dynamic inputs
+  const inputModule = plugin.modules.find((item) => item.flowType === FlowNodeTypeEnum.pluginInput);
+  if (!inputModule) return Promise.reject('Plugin error, It has no set input.');
+  const hasDynamicInput = inputModule.inputs.find((input) => input.key === DYNAMIC_INPUT_KEY);
+
+  const startParams: Record<string, any> = (() => {
+    if (!hasDynamicInput) return data;
+
+    const params: Record<string, any> = {
+      [DYNAMIC_INPUT_KEY]: {}
+    };
+
+    for (const key in data) {
+      const input = inputModule.inputs.find((input) => input.key === key);
+      if (input) {
+        params[key] = data[key];
+      } else {
+        params[DYNAMIC_INPUT_KEY][key] = data[key];
+      }
+    }
+
+    return params;
+  })();
+
   const { responseData, answerText } = await dispatchModules({
     ...props,
     modules: plugin.modules.map((module) => ({
       ...module,
       showStatus: false
     })),
-    startParams: data
+    startParams
   });
 
   const output = responseData.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
@@ -46,6 +74,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   return {
     answerText,
+    // responseData, // debug
     responseData: {
       moduleLogo: plugin.avatar,
       price: responseData.reduce((sum, item) => sum + (item.price || 0), 0),

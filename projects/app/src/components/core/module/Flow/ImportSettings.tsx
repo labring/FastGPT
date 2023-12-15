@@ -3,13 +3,25 @@ import { Textarea, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useFlowProviderStore } from './FlowProvider';
+import { useFlowProviderStore, type useFlowProviderStoreType } from './FlowProvider';
 
-const ImportSettings = ({ onClose }: { onClose: () => void }) => {
+type Props = {
+  onClose: () => void;
+};
+
+const ImportSettings = ({
+  onClose,
+  setNodes,
+  setEdges,
+  initData
+}: Props & {
+  setNodes: useFlowProviderStoreType['setNodes'];
+  setEdges: useFlowProviderStoreType['setEdges'];
+  initData: useFlowProviderStoreType['initData'];
+}) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const [value, setValue] = useState('');
-  const { setNodes, setEdges, initData } = useFlowProviderStore();
 
   return (
     <MyModal
@@ -56,4 +68,8 @@ const ImportSettings = ({ onClose }: { onClose: () => void }) => {
   );
 };
 
-export default React.memo(ImportSettings);
+export default React.memo(function (props: Props) {
+  const { setNodes, setEdges, initData } = useFlowProviderStore();
+
+  return <ImportSettings {...props} setNodes={setNodes} setEdges={setEdges} initData={initData} />;
+});

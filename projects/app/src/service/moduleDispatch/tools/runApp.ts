@@ -8,6 +8,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
   userChatInput: string;
@@ -26,6 +27,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     user,
     stream,
     detail,
+    histories,
     inputs: { userChatInput, history = [], app }
   } = props;
 
@@ -52,17 +54,19 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     });
   }
 
+  const chatHistories = getHistories(history, histories);
+
   const { responseData, answerText } = await dispatchModules({
     ...props,
     appId: app.id,
     modules: appData.modules,
-    histories: history,
+    histories: chatHistories,
     startParams: {
       userChatInput
     }
   });
 
-  const completeMessages = history.concat([
+  const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
       value: userChatInput

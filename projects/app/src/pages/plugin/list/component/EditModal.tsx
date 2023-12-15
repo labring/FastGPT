@@ -1,14 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  ModalHeader,
-  ModalBody,
-  Input,
-  Textarea,
-  IconButton
-} from '@chakra-ui/react';
+import { Box, Flex, Button, ModalBody, Input, Textarea, IconButton } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -25,6 +16,8 @@ import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import MyIcon from '@/components/Icon';
 import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export type FormType = CreateOnePluginParams & {
   id?: string;
@@ -35,7 +28,7 @@ export const defaultForm: FormType = {
   intro: '',
   modules: [
     {
-      moduleId: 'w90mfp',
+      moduleId: nanoid(),
       name: '定义插件输入',
       avatar: '/imgs/module/input.png',
       flowType: 'pluginInput',
@@ -44,30 +37,11 @@ export const defaultForm: FormType = {
         x: 616.4226348688949,
         y: -165.05298493910115
       },
-      inputs: [
-        {
-          key: 'question',
-          valueType: 'string',
-          type: 'target',
-          label: '用户问题',
-          required: true,
-          edit: true,
-          connected: false
-        }
-      ],
-      outputs: [
-        {
-          key: 'question',
-          valueType: 'string',
-          label: '用户问题',
-          type: 'source',
-          edit: true,
-          targets: []
-        }
-      ]
+      inputs: [],
+      outputs: []
     },
     {
-      moduleId: 'tze1ju',
+      moduleId: nanoid(),
       name: '定义插件输出',
       avatar: '/imgs/module/output.png',
       flowType: 'pluginOutput',
@@ -76,27 +50,8 @@ export const defaultForm: FormType = {
         x: 1607.7142331269126,
         y: -151.8669210746189
       },
-      inputs: [
-        {
-          key: 'answer',
-          type: 'target',
-          valueType: 'string',
-          label: '答案',
-          required: true,
-          edit: true,
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'answer',
-          valueType: 'string',
-          label: '答案',
-          type: 'source',
-          edit: true,
-          targets: []
-        }
-      ]
+      inputs: [],
+      outputs: []
     }
   ]
 };
@@ -127,7 +82,7 @@ const CreateModal = ({
   });
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: '.jpg,.png,.svg',
+    fileType: 'image/*',
     multiple: false
   });
 

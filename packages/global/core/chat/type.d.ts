@@ -84,12 +84,14 @@ export type ChatHistoryItemType = HistoryItemType & {
 
 /* ------- response data ------------ */
 export type moduleDispatchResType = {
+  // common
   moduleLogo?: string;
   price?: number;
   runningTime?: number;
   tokens?: number;
   model?: string;
   query?: string;
+  contextTotalLen?: number;
 
   // chat
   temperature?: number;
@@ -116,6 +118,12 @@ export type moduleDispatchResType = {
 
   // plugin output
   pluginOutput?: Record<string, any>;
+
+  // text editor
+  textOutput?: string;
+
+  // tf switch
+  tfSwitchResult?: boolean;
 };
 
 export type ChatHistoryItemResType = moduleDispatchResType & {

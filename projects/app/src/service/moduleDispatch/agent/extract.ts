@@ -38,18 +38,19 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   }
 
   const extractModel = global.extractModels[0];
+  const chatHistories = getHistories(history, histories);
 
   const { arg, tokens } = await (async () => {
     if (extractModel.functionCall) {
       return functionCall({
         ...props,
-        histories: getHistories(history, histories),
+        histories: chatHistories,
         extractModel
       });
     }
     return completions({
       ...props,
-      histories: getHistories(history, histories),
+      histories: chatHistories,
       extractModel
     });
   })();
@@ -84,7 +85,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       query: content,
       tokens,
       extractDescription: description,
-      extractResult: arg
+      extractResult: arg,
+      contextTotalLen: chatHistories.length + 2
     }
   };
 }
@@ -100,11 +102,11 @@ async function functionCall({
     {
       obj: ChatRoleEnum.Human,
       value: `<任务描述>
-${description || '根据用户要求提取适当的 JSON 字符串。'}
+${description || '根据用户要求获取适当的 JSON 字符串。'}
 
 - 如果字段为空，你返回空字符串。
 - 不要换行。
-- 结合历史记录和文本进行提取。
+- 结合历史记录和文本进行获取。
 </任务描述>
 
 <文本>
@@ -128,7 +130,8 @@ ${content}
   extractKeys.forEach((item) => {
     properties[item.key] = {
       type: 'string',
-      description: item.desc
+      description: item.desc,
+      ...(item.enum ? { enum: item.enum.split('\n') } : {})
     };
   });
 
@@ -192,7 +195,9 @@ async function completions({
         json: extractKeys
           .map(
             (item) =>
-              `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}}}`
+              `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}${
+                item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
+              }}`
           )
           .join('\n'),
         text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
