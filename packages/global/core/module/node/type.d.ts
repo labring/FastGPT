@@ -38,6 +38,9 @@ export type FlowNodeInputItemType = {
   showTargetInApp?: boolean;
   showTargetInPlugin?: boolean;
 
+  hideInApp?: boolean;
+  hideInPlugin?: boolean;
+
   placeholder?: string; // input,textarea
 
   list?: { label: string; value: any }[]; // select

@@ -1,5 +1,3 @@
-import { EditNodeFieldType } from './type';
-
 export enum FlowNodeInputTypeEnum {
   systemInput = 'systemInput', // history, userChatInput, variableInput
 

@@ -190,7 +190,27 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
               key: data.key,
               required: data.required,
               label: data.label,
-              description: data.description
+              description: data.description,
+              ...(data.inputType === FlowNodeInputTypeEnum.addInputParam
+                ? {
+                    editField: {
+                      key: true,
+                      name: true,
+                      description: true,
+                      required: true,
+                      dataType: true,
+                      inputType: false
+                    },
+                    defaultEditField: {
+                      label: '',
+                      key: '',
+                      description: '',
+                      inputType: FlowNodeInputTypeEnum.target,
+                      valueType: ModuleIOValueTypeEnum.string,
+                      required: true
+                    }
+                  }
+                : {})
             };
             const newOutput: FlowNodeOutputItemType = {
               ...memOutput,

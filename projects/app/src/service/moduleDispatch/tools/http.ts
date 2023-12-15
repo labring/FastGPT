@@ -2,6 +2,7 @@ import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@/types/core/chat/type';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import axios from 'axios';
+import { flatDynamicParams } from '../utils';
 
 export type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
@@ -17,7 +18,7 @@ export type HttpResponse = {
 };
 
 export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<HttpResponse> => {
-  const {
+  let {
     appId,
     chatId,
     variables,
@@ -29,6 +30,8 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
       ...body
     }
   } = props;
+
+  body = flatDynamicParams(body);
 
   const { requestMethod, requestUrl, requestHeader, requestBody, requestQuery } = await (() => {
     // 2024-2-12 clear

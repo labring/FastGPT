@@ -1,5 +1,5 @@
 import type { FlowNodeInputItemType } from '../node/type.d';
-import { ModuleInputKeyEnum } from '../constants';
+import { DYNAMIC_INPUT_KEY, ModuleInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum } from '../node/constant';
 import { ModuleIOValueTypeEnum } from '../constants';
 
@@ -43,4 +43,16 @@ export const Input_Template_AddInputParam: FlowNodeInputItemType = {
   required: false,
   showTargetInApp: false,
   showTargetInPlugin: false
+};
+
+export const Input_Template_DynamicInput: FlowNodeInputItemType = {
+  key: DYNAMIC_INPUT_KEY,
+  type: FlowNodeInputTypeEnum.target,
+  valueType: ModuleIOValueTypeEnum.any,
+  label: 'core.module.inputType.dynamicTargetInput',
+  description: 'core.module.input.description.dynamic input',
+  required: false,
+  showTargetInApp: false,
+  showTargetInPlugin: true,
+  hideInApp: true
 };

@@ -25,7 +25,6 @@ import { dispatchAppRequest } from './tools/runApp';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { dispatchTextEditor } from './tools/textEditor';
 
 const callbackMap: Record<string, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -39,8 +38,7 @@ const callbackMap: Record<string, Function> = {
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
-  [FlowNodeTypeEnum.textEditor]: dispatchTextEditor
+  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
 };
 
 /* running */
@@ -137,6 +135,7 @@ export async function dispatchModules({
   ): Promise<any> {
     pushStore(module, result);
 
+    //
     const nextRunModules: RunningModuleItemType[] = [];
 
     // Assign the output value to the next module
@@ -159,18 +158,19 @@ export async function dispatchModules({
       });
     });
 
-    return checkModulesCanRun(nextRunModules);
-  }
-  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
+    // Ensure the uniqueness of running modules
     const set = new Set<string>();
-    const filterModules = modules.filter((module) => {
+    const filterModules = nextRunModules.filter((module) => {
       if (set.has(module.moduleId)) return false;
       set.add(module.moduleId);
       return true;
     });
 
+    return checkModulesCanRun(filterModules);
+  }
+  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
     return Promise.all(
-      filterModules.map((module) => {
+      modules.map((module) => {
         if (!module.inputs.find((item: any) => item.value === undefined)) {
           moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
           return moduleRun(module);

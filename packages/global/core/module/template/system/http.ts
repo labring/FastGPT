@@ -5,7 +5,11 @@ import {
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type';
 import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
-import { Input_Template_AddInputParam, Input_Template_Switch } from '../input';
+import {
+  Input_Template_AddInputParam,
+  Input_Template_DynamicInput,
+  Input_Template_Switch
+} from '../input';
 import { Output_Template_AddOutput, Output_Template_Finish } from '../output';
 
 export const HttpModule: FlowModuleTemplateType = {
@@ -60,6 +64,7 @@ export const HttpModule: FlowModuleTemplateType = {
       showTargetInApp: false,
       showTargetInPlugin: false
     },
+    Input_Template_DynamicInput,
     {
       ...Input_Template_AddInputParam,
       editField: {

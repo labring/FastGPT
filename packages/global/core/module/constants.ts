@@ -112,3 +112,5 @@ export enum VariableInputEnum {
   textarea = 'textarea',
   select = 'select'
 }
+
+export const DYNAMIC_INPUT_KEY = 'DYNAMIC_INPUT_KEY';

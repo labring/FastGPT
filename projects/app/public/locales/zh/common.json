@@ -52,7 +52,7 @@
       "My Modules": "",
       "No Modules": "还没有模块~",
       "System Module": "系统模块",
-      "type": "\"{{type}}\"类型\n{{example}}"
+      "type": "\"{{type}}\"类型\n{{description}}"
     },
     "modules": {
       "Title is required": "模块名不能为空"
@@ -535,7 +535,8 @@
           "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
           "anyInput": "可传入任意内容",
-          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
+          "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入"
         },
         "label": {
           "Http Request Header": "请求头",
@@ -551,6 +552,7 @@
       },
       "inputType": {
         "chat history": "历史记录",
+        "dynamicTargetInput": "动态外部数据",
         "input": "输入框",
         "selectApp": "应用选择",
         "selectChatModel": "对话模型选择",
@@ -587,6 +589,7 @@
         "boolean": "布尔",
         "chatHistory": "聊天记录",
         "datasetQuote": "引用内容",
+        "dynamicTargetInput": "动态字段输入",
         "number": "数字",
         "selectApp": "应用选择",
         "selectDataset": "知识库选择",

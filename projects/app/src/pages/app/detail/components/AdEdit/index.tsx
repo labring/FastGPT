@@ -16,11 +16,9 @@ const Render = ({ app, onClose }: Props) => {
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
   const moduleTemplates = useMemo(() => {
-    const systemTemplates: FlowModuleTemplateType[] = JSON.parse(
-      JSON.stringify(appSystemModuleTemplates)
-    );
+    const concatTemplates = [...appSystemModuleTemplates, ...pluginModuleTemplates];
 
-    const concatTemplates = [...systemTemplates, ...pluginModuleTemplates];
+    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
 
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1
@@ -29,15 +27,15 @@ const Render = ({ app, onClose }: Props) => {
     // filter some template, There can only be one
     nodes.forEach((node) => {
       if (node.type && filterType[node.type]) {
-        concatTemplates.forEach((module, index) => {
+        copyTemplates.forEach((module, index) => {
           if (module.flowType === node.type) {
-            concatTemplates.splice(index, 1);
+            copyTemplates.splice(index, 1);
           }
         });
       }
     });
 
-    return concatTemplates;
+    return copyTemplates;
   }, [nodes, pluginModuleTemplates]);
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());

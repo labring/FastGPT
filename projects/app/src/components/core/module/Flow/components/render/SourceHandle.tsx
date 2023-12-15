@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { Handle, Position } from 'reactflow';
-import { FlowValueTypeStyle, FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
+import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
@@ -18,9 +18,9 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
 
   const valueStyle = useMemo(
     () =>
-      valueType
-        ? FlowValueTypeStyle[valueType]
-        : (FlowValueTypeStyle[ModuleIOValueTypeEnum.any] as any),
+      valueType && FlowValueTypeMap[valueType]
+        ? FlowValueTypeMap[valueType]?.handlerStyle
+        : FlowValueTypeMap[ModuleIOValueTypeEnum.any]?.handlerStyle,
     [valueType]
   );
 
@@ -34,8 +34,8 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
     >
       <MyTooltip
         label={t('app.module.type', {
-          type: t(FlowValueTypeMap[valType].label),
-          example: FlowValueTypeMap[valType].example
+          type: t(FlowValueTypeMap[valType]?.label),
+          description: FlowValueTypeMap[valType]?.description
         })}
       >
         <Handle

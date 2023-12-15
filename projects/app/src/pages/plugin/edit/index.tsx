@@ -25,13 +25,10 @@ const Render = ({ pluginId }: Props) => {
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
   const moduleTemplates = useMemo(() => {
-    const systemTemplates: FlowModuleTemplateType[] = JSON.parse(
-      JSON.stringify(pluginSystemModuleTemplates)
-    );
-
     const pluginTemplates = pluginModuleTemplates.filter((item) => item.id !== pluginId);
+    const concatTemplates = [...pluginSystemModuleTemplates, ...pluginTemplates];
 
-    const concatTemplates = [...systemTemplates, ...pluginTemplates];
+    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
 
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1,
@@ -42,15 +39,20 @@ const Render = ({ pluginId }: Props) => {
     // filter some template
     nodes.forEach((node) => {
       if (node.type && filterType[node.type]) {
-        concatTemplates.forEach((module, index) => {
+        copyTemplates.forEach((module, index) => {
           if (module.flowType === node.type) {
-            concatTemplates.splice(index, 1);
+            copyTemplates.splice(index, 1);
           }
         });
       }
     });
 
-    return concatTemplates;
+    // filter hideInPlugin inputs
+    copyTemplates.forEach((template) => {
+      template.inputs = template.inputs.filter((input) => !input.hideInPlugin);
+    });
+
+    return copyTemplates;
   }, [nodes, pluginId, pluginModuleTemplates]);
 
   const { data: pluginDetail } = useQuery(

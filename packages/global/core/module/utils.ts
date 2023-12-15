@@ -42,6 +42,15 @@ export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
   return map[input.valueType];
 };
 
+export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
+  if (input.type === FlowNodeInputTypeEnum.input || input.type === FlowNodeInputTypeEnum.textarea) {
+    return {
+      placeholder: input.placeholder || input.description
+    };
+  }
+  return {};
+};
+
 export function plugin2ModuleIO(
   pluginId: string,
   modules: ModuleItemType[]
@@ -70,6 +79,7 @@ export function plugin2ModuleIO(
           Input_Template_Switch,
           ...pluginInput.inputs.map((item) => ({
             ...item,
+            ...getModuleInputUiField(item),
             value: getOrInitModuleInputValue(item),
             edit: false,
             connected: false

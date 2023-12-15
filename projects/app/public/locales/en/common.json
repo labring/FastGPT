@@ -52,7 +52,7 @@
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
-      "type": "{{type}}\n{{example}}"
+      "type": "{{type}}\n{{description}}"
     },
     "modules": {
       "Title is required": "Title is required"
@@ -535,6 +535,7 @@
           "Http Request Url": "",
           "TFSwitch textarea": "",
           "anyInput": "",
+          "dynamic input": "",
           "textEditor textarea": "The passed variable can be referenced by {{key}}."
         },
         "label": {
@@ -551,6 +552,7 @@
       },
       "inputType": {
         "chat history": "History",
+        "dynamicTargetInput": "dynamic Target Input",
         "input": "Input",
         "selectApp": "App Selector",
         "selectChatModel": "Select Chat Model",
@@ -587,6 +589,7 @@
         "boolean": "Boolean",
         "chatHistory": "History",
         "datasetQuote": "Dataset Quote",
+        "dynamicTargetInput": "Dynamic Input",
         "number": "Number",
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",

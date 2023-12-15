@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic';
 
 import InputLabel from './Label';
 import type { RenderInputProps } from './type.d';
+import { useFlowProviderStore, type useFlowProviderStoreType } from '../../../FlowProvider';
 
 const RenderList: {
   types: `${FlowNodeInputTypeEnum}`[];
@@ -65,14 +66,18 @@ const RenderList: {
   }
 ];
 
-const RenderInput = ({
-  flowInputList,
-  moduleId,
-  CustomComponent = {}
-}: {
+type Props = {
   flowInputList: FlowNodeInputItemType[];
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
+};
+const RenderInput = ({
+  flowInputList,
+  moduleId,
+  CustomComponent = {},
+  mode
+}: Props & {
+  mode: useFlowProviderStoreType['mode'];
 }) => {
   const sortInputs = useMemo(
     () =>
@@ -92,10 +97,20 @@ const RenderInput = ({
       }),
     [flowInputList]
   );
+  const filterInputs = useMemo(
+    () =>
+      sortInputs.filter((input) => {
+        if (mode === 'app' && input.hideInApp) return false;
+        if (mode === 'plugin' && input.hideInPlugin) return false;
+
+        return true;
+      }),
+    [mode, sortInputs]
+  );
 
   return (
     <>
-      {sortInputs.map((input) => {
+      {filterInputs.map((input) => {
         const RenderComponent = (() => {
           if (input.type === FlowNodeInputTypeEnum.custom && CustomComponent[input.key]) {
             return <>{CustomComponent[input.key]({ ...input })}</>;
@@ -103,7 +118,7 @@ const RenderInput = ({
           const Component = RenderList.find((item) => item.types.includes(input.type))?.Component;
 
           if (!Component) return null;
-          return <Component inputs={sortInputs} item={input} moduleId={moduleId} />;
+          return <Component inputs={filterInputs} item={input} moduleId={moduleId} />;
         })();
 
         return (
@@ -123,4 +138,7 @@ const RenderInput = ({
   );
 };
 
-export default React.memo(RenderInput);
+export default React.memo(function (props: Props) {
+  const { mode } = useFlowProviderStore();
+  return <RenderInput {...props} mode={mode} />;
+});

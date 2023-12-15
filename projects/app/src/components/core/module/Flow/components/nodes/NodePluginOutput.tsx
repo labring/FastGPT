@@ -63,7 +63,7 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
           >
             <TargetHandle handleKey={item.key} valueType={item.valueType} />
             <Box position={'relative'}>
-              {item.label}
+              {t(item.label)}
               <Box
                 position={'absolute'}
                 right={'-6px'}
@@ -75,11 +75,10 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
               </Box>
             </Box>
             {item.description && (
-              <MyTooltip label={item.description} forceShow>
+              <MyTooltip label={t(item.description)} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} ml={2} />
               </MyTooltip>
             )}
-
             <MyIcon
               name={'settingLight'}
               w={'14px'}

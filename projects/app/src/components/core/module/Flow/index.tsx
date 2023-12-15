@@ -28,8 +28,7 @@ const nodeTypes = {
   [FlowNodeTypeEnum.runApp]: NodeSimple,
   [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodePluginInput')),
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
-  [FlowNodeTypeEnum.pluginModule]: NodeSimple,
-  [FlowNodeTypeEnum.textEditor]: dynamic(() => import('./components/nodes/NodeTextEditor'))
+  [FlowNodeTypeEnum.pluginModule]: NodeSimple
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
