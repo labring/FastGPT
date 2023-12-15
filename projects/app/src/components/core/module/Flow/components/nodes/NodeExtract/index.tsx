@@ -3,25 +3,24 @@ import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@c
 import { NodeProps } from 'reactflow';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { useTranslation } from 'next-i18next';
-import NodeCard from '../modules/NodeCard';
-import Container from '../modules/Container';
+import NodeCard from '../../render/NodeCard';
+import Container from '../../modules/Container';
 import { AddIcon } from '@chakra-ui/icons';
-import RenderInput from '../render/RenderInput';
-import Divider from '../modules/Divider';
+import RenderInput from '../../render/RenderInput';
+import Divider from '../../modules/Divider';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
-import RenderOutput from '../render/RenderOutput';
+import RenderOutput from '../../render/RenderOutput';
 import MyIcon from '@/components/Icon';
-import ExtractFieldModal from '../modules/ExtractFieldModal';
+import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
-import { useFlowProviderStore, onChangeNode } from '../../FlowProvider';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
+import { onChangeNode } from '../../../FlowProvider';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { inputs, outputs, moduleId } = data;
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
-  const { onDelEdge } = useFlowProviderStore();
 
   return (
     <NodeCard minW={'400px'} {...data}>
@@ -42,13 +41,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
                   <Button
                     variant={'base'}
                     leftIcon={<AddIcon fontSize={'10px'} />}
-                    onClick={() =>
-                      setEditExtractField({
-                        desc: '',
-                        key: '',
-                        required: true
-                      })
-                    }
+                    onClick={() => setEditExtractField(defaultField)}
                   >
                     新增字段
                   </Button>
@@ -150,7 +143,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
               key: data.key,
               label: `提取结果-${data.desc}`,
               description: '无法提取时不会返回',
-              valueType: ModuleDataTypeEnum.string,
+              valueType: ModuleIOValueTypeEnum.string,
               type: FlowNodeOutputTypeEnum.source,
               targets: []
             };

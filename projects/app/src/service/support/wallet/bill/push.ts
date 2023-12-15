@@ -6,6 +6,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
 import { defaultQGModels } from '@fastgpt/global/core/ai/model';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
+import { PostReRankProps } from '@fastgpt/global/core/ai/api';
 
 export function createBill(data: CreateBillProps) {
   if (!global.systemEnv?.pluginBaseUrl) return;
@@ -247,16 +248,21 @@ export function pushWhisperBill({
 export function pushReRankBill({
   teamId,
   tmbId,
-  source
+  source,
+  inputs
 }: {
   teamId: string;
   tmbId: string;
   source: `${BillSourceEnum}`;
+  inputs: PostReRankProps['inputs'];
 }) {
   const model = global.reRankModels[0];
   if (!model) return { total: 0 };
 
-  const total = model.price * PRICE_SCALE;
+  const textLength = inputs.reduce((sum, item) => sum + item.text.length, 0);
+  const ratio = Math.ceil(textLength / 1000);
+
+  const total = model.price * PRICE_SCALE * ratio;
   const name = 'wallet.bill.ReRank';
 
   createBill({

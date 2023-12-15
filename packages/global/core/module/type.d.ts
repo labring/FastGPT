@@ -1,5 +1,5 @@
 import { FlowNodeTypeEnum } from './node/constant';
-import { ModuleDataTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from './constants';
+import { ModuleIOValueTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
@@ -72,4 +72,5 @@ export type ContextExtractAgentItemType = {
   desc: string;
   key: string;
   required: boolean;
+  enum?: string;
 };

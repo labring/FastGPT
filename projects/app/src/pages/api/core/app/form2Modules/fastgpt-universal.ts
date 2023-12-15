@@ -7,7 +7,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type.d';
 import { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api';
@@ -317,7 +317,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
                 key: ModuleInputKeyEnum.answerText,
                 value: formData.dataset.searchEmptyText,
                 type: FlowNodeInputTypeEnum.textarea,
-                valueType: ModuleDataTypeEnum.string,
+                valueType: ModuleIOValueTypeEnum.string,
                 label: '回复的内容',
                 connected: true
               }
