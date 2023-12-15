@@ -141,6 +141,8 @@ async def create_chat_completion(
         query = prev_messages.pop(0).content + query
 
     history = []
+    if args.debug:
+        print("prev_msg:", prev_messages)
     if len(prev_messages) % 2 == 0:
         for i in range(0, len(prev_messages), 2):
             if (
