@@ -1,5 +1,6 @@
 # coding=utf-8
 import argparse
+import os.path
 import time
 from contextlib import asynccontextmanager
 from typing import List, Literal, Optional, Union
@@ -242,6 +243,8 @@ async def get_embeddings(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--model_name", default="16", type=str, help="Model name Or The absolute model path.")
+    parser.add_argument("--embeddings_model", default="moka-ai/m3e-large", type=str,
+                        help="Provide model space name Or The absolute model path.")
     parser.add_argument("--auth_token", default="sk-aaabbbcccdddeeefffggghhhiiijjjkkk", type=str,
                         help="Auth-Token like api-key, api-secret.")
     parser.add_argument("--debug", default=False, type=bool,
@@ -261,6 +264,10 @@ if __name__ == "__main__":
 
     tokenizer = AutoTokenizer.from_pretrained(model_name, trust_remote_code=True)
     model = AutoModel.from_pretrained(model_name, trust_remote_code=True).cuda()
-    embeddings_model = SentenceTransformer('moka-ai/m3e-large', device='cpu')
+    if os.path.exists(args.embeddings_model):
+        print("Loading the embeddings model from local path:", args.embeddings_model)
+    else:
+        print("Download and loading the embeddings model:", args.embeddings_model)
+    embeddings_model = SentenceTransformer(args.embeddings_model, device='cpu')
 
     uvicorn.run(app, host='0.0.0.0', port=6006, workers=1)
