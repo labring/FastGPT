@@ -16,7 +16,7 @@ OPENAI_BASE_URL=http://192.168.1.122:32131/v1
 # 此处逻辑：优先走 ONEAPI_URL，如果填写了 ONEAPI_URL，key 也需要是 ONEAPI 的 key
 CHAT_API_KEY=sk-Q8cCnlNhY2v4jWpz5a3578E2B5Ce434f980896A747F7Aa35
 # mongo 数据库连接参数
-MONGODB_URI=mongodb://192.168.1.178:27017/tipdm_gpt?authSource=admin
+MONGODB_URI=mongodb://192.168.1.178:27017/tipdm_gpt
 # PG 数据库连接参数
 PG_URL=postgresql://postgres:tipdm@192.168.1.178:5432/postgres
 # 首页路径
