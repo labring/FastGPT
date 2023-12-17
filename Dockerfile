@@ -30,7 +30,7 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@8.6.0
 RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npm.taobao.org
 
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
-COPY ./worker/package.json ./worker/package.json
+COPY ./worker ./worker
 
 RUN pnpm i --production --filter @node/worker
 
@@ -77,7 +77,7 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/$name/.next/static ./pro
 COPY --from=builder /app/projects/$name/package.json ./package.json 
 # copy woker
 COPY --from=workdersDeps /app/node_modules ./node_modules
-COPY ./worker ./worker
+COPY --from=workdersDeps /app/worker ./worker
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1
@@ -88,6 +88,5 @@ EXPOSE 3000
 USER nextjs
 
 ENV serverPath=./projects/$name/server.js
-
 
 ENTRYPOINT ["sh","-c","node ${serverPath}"]

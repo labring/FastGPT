@@ -1,5 +1,5 @@
 ---
-title: "HTTP 模块"
+title: "新 HTTP 模块"
 description: "FastGPT HTTP 模块介绍"
 icon: "http"
 draft: false

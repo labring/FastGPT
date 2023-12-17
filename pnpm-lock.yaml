@@ -30,26 +30,14 @@ importers:
         specifier: ^0.7.1
         version: registry.npmmirror.com/zhlint@0.7.1
 
-  packages:
-
+  packages/global:
     dependencies:
       axios:
         specifier: ^1.5.1
         version: registry.npmmirror.com/axios@1.5.1
-      cheerio:
-        specifier: 1.0.0-rc.12
-        version: registry.npmmirror.com/cheerio@1.0.0-rc.12
       dayjs:
         specifier: ^1.11.7
         version: registry.npmmirror.com/dayjs@1.11.7
-
-    devDependencies:
-      '@types/node':
-        specifier: ^20.8.5
-        version: registry.npmmirror.com/@types/node@20.8.5
-
-  packages/global:
-    dependencies:
       encoding:
         specifier: ^0.1.13
         version: registry.npmmirror.com/encoding@0.1.13
@@ -57,11 +45,15 @@ importers:
         specifier: ^1.0.7
         version: registry.npmmirror.com/js-tiktoken@1.0.7
       openai:
-        specifier: ^4.20.1
+        specifier: 4.23.0
         version: registry.npmmirror.com/openai@4.23.0(encoding@0.1.13)
       timezones-list:
         specifier: ^3.0.2
         version: registry.npmmirror.com/timezones-list@3.0.2
+    devDependencies:
+      '@types/node':
+        specifier: ^20.8.5
+        version: registry.npmmirror.com/@types/node@20.8.5
 
   packages/plugins:
     devDependencies:
@@ -80,6 +72,12 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
+      axios:
+        specifier: ^1.5.1
+        version: registry.npmmirror.com/axios@1.5.1
+      cheerio:
+        specifier: 1.0.0-rc.12
+        version: registry.npmmirror.com/cheerio@1.0.0-rc.12
       cookie:
         specifier: ^0.5.0
         version: registry.npmmirror.com/cookie@0.5.0
@@ -233,9 +231,6 @@ importers:
       nprogress:
         specifier: ^0.2.0
         version: registry.npmmirror.com/nprogress@0.2.0
-      openai:
-        specifier: 4.23.0
-        version: registry.npmmirror.com/openai@4.23.0(encoding@0.1.13)
       papaparse:
         specifier: ^5.4.1
         version: registry.npmmirror.com/papaparse@5.4.1

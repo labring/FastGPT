@@ -8,8 +8,11 @@
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.0.2",
     "nanoid": "^4.0.1",
+    "dayjs": "^1.11.7",
     "next": "13.5.2",
     "multer": "1.4.5-lts.1",
+    "axios": "^1.5.1",
+    "cheerio": "1.0.0-rc.12",
     "nextjs-cors": "^2.1.2",
     "pg": "^8.10.0",
     "tunnel": "^0.0.6"

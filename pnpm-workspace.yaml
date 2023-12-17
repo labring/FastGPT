@@ -1,5 +1,4 @@
 packages:
-  - 'packages'
   - 'packages/*'
   - 'worker'
   - 'projects/*'
