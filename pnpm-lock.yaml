@@ -144,7 +144,7 @@ importers:
         version: registry.npmmirror.com/@chakra-ui/icons@2.0.17(@chakra-ui/system@2.5.8)(react@18.2.0)
       '@chakra-ui/react':
         specifier: ^2.7.0
-        version: registry.npmmirror.com/@chakra-ui/react@2.7.0(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(@types/react@18.0.28)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0)
+        version: registry.npmmirror.com/@chakra-ui/react@2.7.0(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(@types/react@18.2.0)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0)
       '@chakra-ui/styled-system':
         specifier: ^2.9.1
         version: registry.npmmirror.com/@chakra-ui/styled-system@2.9.1
@@ -153,10 +153,10 @@ importers:
         version: registry.npmmirror.com/@chakra-ui/system@2.5.8(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(react@18.2.0)
       '@emotion/react':
         specifier: ^11.10.6
-        version: registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0)
+        version: registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.2.0)(react@18.2.0)
       '@emotion/styled':
         specifier: ^11.10.6
-        version: registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.0.28)(react@18.2.0)
+        version: registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.2.0)(react@18.2.0)
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../../packages/global
@@ -234,7 +234,7 @@ importers:
         version: registry.npmmirror.com/react-hook-form@7.43.1(react@18.2.0)
       react-markdown:
         specifier: ^8.0.7
-        version: registry.npmmirror.com/react-markdown@8.0.7(@types/react@18.0.28)(react@18.2.0)
+        version: registry.npmmirror.com/react-markdown@8.0.7(@types/react@18.2.0)(react@18.2.0)
       react-syntax-highlighter:
         specifier: ^15.5.0
         version: registry.npmmirror.com/react-syntax-highlighter@15.5.0(react@18.2.0)
@@ -285,11 +285,11 @@ importers:
         specifier: ^5.3.7
         version: registry.npmmirror.com/@types/papaparse@5.3.7
       '@types/react':
-        specifier: 18.0.28
-        version: registry.npmmirror.com/@types/react@18.0.28
+        specifier: 18.2.0
+        version: registry.npmmirror.com/@types/react@18.2.0
       '@types/react-dom':
-        specifier: 18.0.11
-        version: registry.npmmirror.com/@types/react-dom@18.0.11
+        specifier: 18.2.0
+        version: registry.npmmirror.com/@types/react-dom@18.2.0
       '@types/react-syntax-highlighter':
         specifier: ^15.5.6
         version: registry.npmmirror.com/@types/react-syntax-highlighter@15.5.6
@@ -2160,7 +2160,7 @@ packages:
       '@emotion/react': '>=10.0.35'
       react: '>=18'
     dependencies:
-      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0)
+      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.2.0)(react@18.2.0)
       react: registry.npmmirror.com/react@18.2.0
     dev: false
 
@@ -2211,7 +2211,7 @@ packages:
     version: 2.0.8
     dev: false
 
-  registry.npmmirror.com/@chakra-ui/focus-lock@2.0.17(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/@chakra-ui/focus-lock@2.0.17(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-V+m4Ml9E8QY66DUpHX/imInVvz5XJ5zx59Tl0aNancXgeVY1Rt/ZdxuZdPLCAmPC/MF3GUOgnEA+WU8i+VL6Gw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@chakra-ui/focus-lock/-/focus-lock-2.0.17.tgz}
     id: registry.npmmirror.com/@chakra-ui/focus-lock/2.0.17
     name: '@chakra-ui/focus-lock'
@@ -2221,7 +2221,7 @@ packages:
     dependencies:
       '@chakra-ui/dom-utils': registry.npmmirror.com/@chakra-ui/dom-utils@2.1.0
       react: registry.npmmirror.com/react@18.2.0
-      react-focus-lock: registry.npmmirror.com/react-focus-lock@2.9.6(@types/react@18.0.28)(react@18.2.0)
+      react-focus-lock: registry.npmmirror.com/react-focus-lock@2.9.6(@types/react@18.2.0)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
     dev: false
@@ -2402,7 +2402,7 @@ packages:
       react: registry.npmmirror.com/react@18.2.0
     dev: false
 
-  registry.npmmirror.com/@chakra-ui/modal@2.2.12(@chakra-ui/system@2.5.8)(@types/react@18.0.28)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0):
+  registry.npmmirror.com/@chakra-ui/modal@2.2.12(@chakra-ui/system@2.5.8)(@types/react@18.2.0)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-F1nNmYGvyqlmxidbwaBM3y57NhZ/Qeyc8BE9tb1FL1v9nxQhkfrPvMQ9miK0O1syPN6aZ5MMj+uD3AsRFE+/tA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@chakra-ui/modal/-/modal-2.2.12.tgz}
     id: registry.npmmirror.com/@chakra-ui/modal/2.2.12
     name: '@chakra-ui/modal'
@@ -2414,7 +2414,7 @@ packages:
       react-dom: '>=18'
     dependencies:
       '@chakra-ui/close-button': registry.npmmirror.com/@chakra-ui/close-button@2.0.17(@chakra-ui/system@2.5.8)(react@18.2.0)
-      '@chakra-ui/focus-lock': registry.npmmirror.com/@chakra-ui/focus-lock@2.0.17(@types/react@18.0.28)(react@18.2.0)
+      '@chakra-ui/focus-lock': registry.npmmirror.com/@chakra-ui/focus-lock@2.0.17(@types/react@18.2.0)(react@18.2.0)
       '@chakra-ui/portal': registry.npmmirror.com/@chakra-ui/portal@2.0.16(react-dom@18.2.0)(react@18.2.0)
       '@chakra-ui/react-context': registry.npmmirror.com/@chakra-ui/react-context@2.0.8(react@18.2.0)
       '@chakra-ui/react-types': registry.npmmirror.com/@chakra-ui/react-types@2.0.7(react@18.2.0)
@@ -2426,7 +2426,7 @@ packages:
       framer-motion: registry.npmmirror.com/framer-motion@9.0.6(react-dom@18.2.0)(react@18.2.0)
       react: registry.npmmirror.com/react@18.2.0
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
-      react-remove-scroll: registry.npmmirror.com/react-remove-scroll@2.5.7(@types/react@18.0.28)(react@18.2.0)
+      react-remove-scroll: registry.npmmirror.com/react-remove-scroll@2.5.7(@types/react@18.2.0)(react@18.2.0)
     transitivePeerDependencies:
       - '@types/react'
     dev: false
@@ -2572,8 +2572,8 @@ packages:
       '@chakra-ui/react-env': registry.npmmirror.com/@chakra-ui/react-env@3.0.0(react@18.2.0)
       '@chakra-ui/system': registry.npmmirror.com/@chakra-ui/system@2.5.8(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(react@18.2.0)
       '@chakra-ui/utils': registry.npmmirror.com/@chakra-ui/utils@2.0.15
-      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0)
-      '@emotion/styled': registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.0.28)(react@18.2.0)
+      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.2.0)(react@18.2.0)
+      '@emotion/styled': registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.2.0)(react@18.2.0)
       react: registry.npmmirror.com/react@18.2.0
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
     dev: false
@@ -2858,7 +2858,7 @@ packages:
       react: registry.npmmirror.com/react@18.2.0
     dev: false
 
-  registry.npmmirror.com/@chakra-ui/react@2.7.0(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(@types/react@18.0.28)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0):
+  registry.npmmirror.com/@chakra-ui/react@2.7.0(@emotion/react@11.10.6)(@emotion/styled@11.10.6)(@types/react@18.2.0)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-+FcUFQMsPfhWuM9Iu7uqufwwhmHN2IX6FWsBixYGOalO86dpgETsILMZP9PuWfgj7GpWiy2Dum6HXekh0Tk2Mg==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@chakra-ui/react/-/react-2.7.0.tgz}
     id: registry.npmmirror.com/@chakra-ui/react/2.7.0
     name: '@chakra-ui/react'
@@ -2882,7 +2882,7 @@ packages:
       '@chakra-ui/counter': registry.npmmirror.com/@chakra-ui/counter@2.0.14(react@18.2.0)
       '@chakra-ui/css-reset': registry.npmmirror.com/@chakra-ui/css-reset@2.1.2(@emotion/react@11.10.6)(react@18.2.0)
       '@chakra-ui/editable': registry.npmmirror.com/@chakra-ui/editable@3.0.0(@chakra-ui/system@2.5.8)(react@18.2.0)
-      '@chakra-ui/focus-lock': registry.npmmirror.com/@chakra-ui/focus-lock@2.0.17(@types/react@18.0.28)(react@18.2.0)
+      '@chakra-ui/focus-lock': registry.npmmirror.com/@chakra-ui/focus-lock@2.0.17(@types/react@18.2.0)(react@18.2.0)
       '@chakra-ui/form-control': registry.npmmirror.com/@chakra-ui/form-control@2.0.18(@chakra-ui/system@2.5.8)(react@18.2.0)
       '@chakra-ui/hooks': registry.npmmirror.com/@chakra-ui/hooks@2.2.0(react@18.2.0)
       '@chakra-ui/icon': registry.npmmirror.com/@chakra-ui/icon@3.0.16(@chakra-ui/system@2.5.8)(react@18.2.0)
@@ -2892,7 +2892,7 @@ packages:
       '@chakra-ui/live-region': registry.npmmirror.com/@chakra-ui/live-region@2.0.13(react@18.2.0)
       '@chakra-ui/media-query': registry.npmmirror.com/@chakra-ui/media-query@3.2.12(@chakra-ui/system@2.5.8)(react@18.2.0)
       '@chakra-ui/menu': registry.npmmirror.com/@chakra-ui/menu@2.1.15(@chakra-ui/system@2.5.8)(framer-motion@9.0.6)(react@18.2.0)
-      '@chakra-ui/modal': registry.npmmirror.com/@chakra-ui/modal@2.2.12(@chakra-ui/system@2.5.8)(@types/react@18.0.28)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0)
+      '@chakra-ui/modal': registry.npmmirror.com/@chakra-ui/modal@2.2.12(@chakra-ui/system@2.5.8)(@types/react@18.2.0)(framer-motion@9.0.6)(react-dom@18.2.0)(react@18.2.0)
       '@chakra-ui/number-input': registry.npmmirror.com/@chakra-ui/number-input@2.0.19(@chakra-ui/system@2.5.8)(react@18.2.0)
       '@chakra-ui/pin-input': registry.npmmirror.com/@chakra-ui/pin-input@2.0.20(@chakra-ui/system@2.5.8)(react@18.2.0)
       '@chakra-ui/popover': registry.npmmirror.com/@chakra-ui/popover@2.1.12(@chakra-ui/system@2.5.8)(framer-motion@9.0.6)(react@18.2.0)
@@ -2922,8 +2922,8 @@ packages:
       '@chakra-ui/transition': registry.npmmirror.com/@chakra-ui/transition@2.0.16(framer-motion@9.0.6)(react@18.2.0)
       '@chakra-ui/utils': registry.npmmirror.com/@chakra-ui/utils@2.0.15
       '@chakra-ui/visually-hidden': registry.npmmirror.com/@chakra-ui/visually-hidden@2.0.15(@chakra-ui/system@2.5.8)(react@18.2.0)
-      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0)
-      '@emotion/styled': registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.0.28)(react@18.2.0)
+      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.2.0)(react@18.2.0)
+      '@emotion/styled': registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.2.0)(react@18.2.0)
       framer-motion: registry.npmmirror.com/framer-motion@9.0.6(react-dom@18.2.0)(react@18.2.0)
       react: registry.npmmirror.com/react@18.2.0
       react-dom: registry.npmmirror.com/react-dom@18.2.0(react@18.2.0)
@@ -3080,8 +3080,8 @@ packages:
       '@chakra-ui/styled-system': registry.npmmirror.com/@chakra-ui/styled-system@2.9.1
       '@chakra-ui/theme-utils': registry.npmmirror.com/@chakra-ui/theme-utils@2.0.18
       '@chakra-ui/utils': registry.npmmirror.com/@chakra-ui/utils@2.0.15
-      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0)
-      '@emotion/styled': registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.0.28)(react@18.2.0)
+      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.2.0)(react@18.2.0)
+      '@emotion/styled': registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.2.0)(react@18.2.0)
       react: registry.npmmirror.com/react@18.2.0
       react-fast-compare: registry.npmmirror.com/react-fast-compare@3.2.1
     dev: false
@@ -3348,7 +3348,7 @@ packages:
     version: 0.8.1
     dev: false
 
-  registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-6HT8jBmcSkfzO7mc+N1L9uwvOnlcGoix8Zn7srt+9ga0MjREo6lRpuVX0kzo6Jp6oTqDhREOFsygN6Ew4fEQbw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@emotion/react/-/react-11.10.6.tgz}
     id: registry.npmmirror.com/@emotion/react/11.10.6
     name: '@emotion/react'
@@ -3367,7 +3367,7 @@ packages:
       '@emotion/use-insertion-effect-with-fallbacks': registry.npmmirror.com/@emotion/use-insertion-effect-with-fallbacks@1.0.1(react@18.2.0)
       '@emotion/utils': registry.npmmirror.com/@emotion/utils@1.2.1
       '@emotion/weak-memoize': registry.npmmirror.com/@emotion/weak-memoize@0.3.1
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       hoist-non-react-statics: registry.npmmirror.com/hoist-non-react-statics@3.3.2
       react: registry.npmmirror.com/react@18.2.0
     dev: false
@@ -3390,7 +3390,7 @@ packages:
     version: 1.2.2
     dev: false
 
-  registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/@emotion/styled@11.10.6(@emotion/react@11.10.6)(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-OXtBzOmDSJo5Q0AFemHCfl+bUueT8BIcPSxu0EGTpGk6DmI5dnhSzQANm1e1ze0YZL7TDyAyy6s/b/zmGOS3Og==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@emotion/styled/-/styled-11.10.6.tgz}
     id: registry.npmmirror.com/@emotion/styled/11.10.6
     name: '@emotion/styled'
@@ -3406,11 +3406,11 @@ packages:
       '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.23.6
       '@emotion/babel-plugin': registry.npmmirror.com/@emotion/babel-plugin@11.11.0
       '@emotion/is-prop-valid': registry.npmmirror.com/@emotion/is-prop-valid@1.2.1
-      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.0.28)(react@18.2.0)
+      '@emotion/react': registry.npmmirror.com/@emotion/react@11.10.6(@types/react@18.2.0)(react@18.2.0)
       '@emotion/serialize': registry.npmmirror.com/@emotion/serialize@1.1.2
       '@emotion/use-insertion-effect-with-fallbacks': registry.npmmirror.com/@emotion/use-insertion-effect-with-fallbacks@1.0.1(react@18.2.0)
       '@emotion/utils': registry.npmmirror.com/@emotion/utils@1.2.1
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       react: registry.npmmirror.com/react@18.2.0
     dev: false
 
@@ -4622,7 +4622,7 @@ packages:
     name: '@types/hoist-non-react-statics'
     version: 3.3.5
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       hoist-non-react-statics: registry.npmmirror.com/hoist-non-react-statics@3.3.2
     dev: false
 
@@ -4781,12 +4781,12 @@ packages:
     version: 1.2.7
     dev: true
 
-  registry.npmmirror.com/@types/react-dom@18.0.11:
-    resolution: {integrity: sha512-O38bPbI2CWtgw/OoQoY+BRelw7uysmXbWvw3nLWO21H1HSh+GOlqPuXshJfjmpNlKiiSDG9cc1JZAaMmVdcTlw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/react-dom/-/react-dom-18.0.11.tgz}
+  registry.npmmirror.com/@types/react-dom@18.2.0:
+    resolution: {integrity: sha512-8yQrvS6sMpSwIovhPOwfyNf2Wz6v/B62LFSVYQ85+Rq3tLsBIG7rP5geMxaijTUxSkrO6RzN/IRuIAADYQsleA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/react-dom/-/react-dom-18.2.0.tgz}
     name: '@types/react-dom'
-    version: 18.0.11
+    version: 18.2.0
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
     dev: true
 
   registry.npmmirror.com/@types/react-syntax-highlighter@15.5.6:
@@ -4794,13 +4794,13 @@ packages:
     name: '@types/react-syntax-highlighter'
     version: 15.5.6
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
     dev: true
 
-  registry.npmmirror.com/@types/react@18.0.28:
-    resolution: {integrity: sha512-RD0ivG1kEztNBdoAK7lekI9M+azSnitIn85h4iOiaLjaTrMjzslhaqCGaI4IyCJ1RljWiLCEu4jyrLLgqxBTew==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/react/-/react-18.0.28.tgz}
+  registry.npmmirror.com/@types/react@18.2.0:
+    resolution: {integrity: sha512-0FLj93y5USLHdnhIhABk83rm8XEGA7kH3cr+YUlvxoUGp1xNt/DINUMvqPxLyOQMzLmZe8i4RTHbvb8MC7NmrA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@types/react/-/react-18.2.0.tgz}
     name: '@types/react'
-    version: 18.0.28
+    version: 18.2.0
     dependencies:
       '@types/prop-types': registry.npmmirror.com/@types/prop-types@15.7.11
       '@types/scheduler': registry.npmmirror.com/@types/scheduler@0.16.8
@@ -10904,7 +10904,7 @@ packages:
     version: 3.2.1
     dev: false
 
-  registry.npmmirror.com/react-focus-lock@2.9.6(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/react-focus-lock@2.9.6(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-B7gYnCjHNrNYwY2juS71dHbf0+UpXXojt02svxybj8N5bxceAkzPChKEncHuratjUHkIFNCn06k2qj1DRlzTug==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-focus-lock/-/react-focus-lock-2.9.6.tgz}
     id: registry.npmmirror.com/react-focus-lock/2.9.6
     name: react-focus-lock
@@ -10917,13 +10917,13 @@ packages:
         optional: true
     dependencies:
       '@babel/runtime': registry.npmmirror.com/@babel/runtime@7.23.6
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       focus-lock: registry.npmmirror.com/focus-lock@1.0.0
       prop-types: registry.npmmirror.com/prop-types@15.8.1
       react: registry.npmmirror.com/react@18.2.0
       react-clientside-effect: registry.npmmirror.com/react-clientside-effect@1.2.6(react@18.2.0)
-      use-callback-ref: registry.npmmirror.com/use-callback-ref@1.3.0(@types/react@18.0.28)(react@18.2.0)
-      use-sidecar: registry.npmmirror.com/use-sidecar@1.1.2(@types/react@18.0.28)(react@18.2.0)
+      use-callback-ref: registry.npmmirror.com/use-callback-ref@1.3.0(@types/react@18.2.0)(react@18.2.0)
+      use-sidecar: registry.npmmirror.com/use-sidecar@1.1.2(@types/react@18.2.0)(react@18.2.0)
     dev: false
 
   registry.npmmirror.com/react-hook-form@7.43.1(react@18.2.0):
@@ -10972,7 +10972,7 @@ packages:
     version: 18.2.0
     dev: false
 
-  registry.npmmirror.com/react-markdown@8.0.7(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/react-markdown@8.0.7(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-bvWbzG4MtOU62XqBx3Xx+zB2raaFFsq4mYiAzfjXJMEz2sixgeAfraA3tvzULF02ZdOMUOKTBFFaZJDDrq+BJQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-markdown/-/react-markdown-8.0.7.tgz}
     id: registry.npmmirror.com/react-markdown/8.0.7
     name: react-markdown
@@ -10983,7 +10983,7 @@ packages:
     dependencies:
       '@types/hast': registry.npmmirror.com/@types/hast@2.3.8
       '@types/prop-types': registry.npmmirror.com/@types/prop-types@15.7.11
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       '@types/unist': registry.npmmirror.com/@types/unist@2.0.10
       comma-separated-tokens: registry.npmmirror.com/comma-separated-tokens@2.0.3
       hast-util-whitespace: registry.npmmirror.com/hast-util-whitespace@2.0.1
@@ -11002,7 +11002,7 @@ packages:
       - supports-color
     dev: false
 
-  registry.npmmirror.com/react-remove-scroll-bar@2.3.4(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/react-remove-scroll-bar@2.3.4(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-63C4YQBUt0m6ALadE9XV56hV8BgJWDmmTPY758iIJjfQKt2nYwoUrPk0LXRXcB/yIj82T1/Ixfdpdk68LwIB0A==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-remove-scroll-bar/-/react-remove-scroll-bar-2.3.4.tgz}
     id: registry.npmmirror.com/react-remove-scroll-bar/2.3.4
     name: react-remove-scroll-bar
@@ -11015,13 +11015,13 @@ packages:
       '@types/react':
         optional: true
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       react: registry.npmmirror.com/react@18.2.0
-      react-style-singleton: registry.npmmirror.com/react-style-singleton@2.2.1(@types/react@18.0.28)(react@18.2.0)
+      react-style-singleton: registry.npmmirror.com/react-style-singleton@2.2.1(@types/react@18.2.0)(react@18.2.0)
       tslib: registry.npmmirror.com/tslib@2.6.2
     dev: false
 
-  registry.npmmirror.com/react-remove-scroll@2.5.7(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/react-remove-scroll@2.5.7(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-FnrTWO4L7/Bhhf3CYBNArEG/yROV0tKmTv7/3h9QCFvH6sndeFf1wPqOcbFVu5VAulS5dV1wGT3GZZ/1GawqiA==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-remove-scroll/-/react-remove-scroll-2.5.7.tgz}
     id: registry.npmmirror.com/react-remove-scroll/2.5.7
     name: react-remove-scroll
@@ -11034,16 +11034,16 @@ packages:
       '@types/react':
         optional: true
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       react: registry.npmmirror.com/react@18.2.0
-      react-remove-scroll-bar: registry.npmmirror.com/react-remove-scroll-bar@2.3.4(@types/react@18.0.28)(react@18.2.0)
-      react-style-singleton: registry.npmmirror.com/react-style-singleton@2.2.1(@types/react@18.0.28)(react@18.2.0)
+      react-remove-scroll-bar: registry.npmmirror.com/react-remove-scroll-bar@2.3.4(@types/react@18.2.0)(react@18.2.0)
+      react-style-singleton: registry.npmmirror.com/react-style-singleton@2.2.1(@types/react@18.2.0)(react@18.2.0)
       tslib: registry.npmmirror.com/tslib@2.6.2
-      use-callback-ref: registry.npmmirror.com/use-callback-ref@1.3.0(@types/react@18.0.28)(react@18.2.0)
-      use-sidecar: registry.npmmirror.com/use-sidecar@1.1.2(@types/react@18.0.28)(react@18.2.0)
+      use-callback-ref: registry.npmmirror.com/use-callback-ref@1.3.0(@types/react@18.2.0)(react@18.2.0)
+      use-sidecar: registry.npmmirror.com/use-sidecar@1.1.2(@types/react@18.2.0)(react@18.2.0)
     dev: false
 
-  registry.npmmirror.com/react-style-singleton@2.2.1(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/react-style-singleton@2.2.1(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-ZWj0fHEMyWkHzKYUr2Bs/4zU6XLmq9HsgBURm7g5pAVfyn49DgUiNgY2d4lXRlYSiCif9YBGpQleewkcqddc7g==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/react-style-singleton/-/react-style-singleton-2.2.1.tgz}
     id: registry.npmmirror.com/react-style-singleton/2.2.1
     name: react-style-singleton
@@ -11056,7 +11056,7 @@ packages:
       '@types/react':
         optional: true
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       get-nonce: registry.npmmirror.com/get-nonce@1.0.1
       invariant: registry.npmmirror.com/invariant@2.2.4
       react: registry.npmmirror.com/react@18.2.0
@@ -12535,7 +12535,7 @@ packages:
       qs: registry.npmmirror.com/qs@6.11.2
     dev: true
 
-  registry.npmmirror.com/use-callback-ref@1.3.0(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/use-callback-ref@1.3.0(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-3FT9PRuRdbB9HfXhEq35u4oZkvpJ5kuYbpqhCfmiZyReuRgpnhDlbr2ZEnnuS0RrJAPn6l23xjFg9kpDM+Ms7w==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/use-callback-ref/-/use-callback-ref-1.3.0.tgz}
     id: registry.npmmirror.com/use-callback-ref/1.3.0
     name: use-callback-ref
@@ -12548,12 +12548,12 @@ packages:
       '@types/react':
         optional: true
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       react: registry.npmmirror.com/react@18.2.0
       tslib: registry.npmmirror.com/tslib@2.6.2
     dev: false
 
-  registry.npmmirror.com/use-sidecar@1.1.2(@types/react@18.0.28)(react@18.2.0):
+  registry.npmmirror.com/use-sidecar@1.1.2(@types/react@18.2.0)(react@18.2.0):
     resolution: {integrity: sha512-epTbsLuzZ7lPClpz2TyryBfztm7m+28DlEv2ZCQ3MDr5ssiwyOwGH/e5F9CkfWjJ1t4clvI58yF822/GUkjjhw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/use-sidecar/-/use-sidecar-1.1.2.tgz}
     id: registry.npmmirror.com/use-sidecar/1.1.2
     name: use-sidecar
@@ -12566,7 +12566,7 @@ packages:
       '@types/react':
         optional: true
     dependencies:
-      '@types/react': registry.npmmirror.com/@types/react@18.0.28
+      '@types/react': registry.npmmirror.com/@types/react@18.2.0
       detect-node-es: registry.npmmirror.com/detect-node-es@1.1.0
       react: registry.npmmirror.com/react@18.2.0
       tslib: registry.npmmirror.com/tslib@2.6.2

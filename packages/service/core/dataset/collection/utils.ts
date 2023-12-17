@@ -105,7 +105,8 @@ export const loadingOneChunkCollection = async ({
   // split data
   const { chunks } = splitText2Chunks({
     text: newRawText,
-    chunkLen: collection.chunkSize || 512
+    chunkLen: collection.chunkSize || 512,
+    countTokens: false
   });
 
   // insert to training queue

@@ -1,5 +1,5 @@
 # --------- install dependence -----------
-FROM node:18.17-alpine AS deps
+FROM node:18.17-alpine AS appDeps
 WORKDIR /app
 
 ARG name
@@ -17,7 +17,7 @@ COPY ./projects/$name/package.json ./projects/$name/package.json
 
 RUN [ -f pnpm-lock.yaml ] || (echo "Lockfile not found." && exit 1)
 
-RUN pnpm install
+RUN pnpm i
 
 # --------- install worker dependence -----------
 FROM node:18.17-alpine AS workdersDeps
@@ -32,7 +32,7 @@ RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npm.taobao.org
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY ./worker/package.json ./worker/package.json
 
-RUN pnpm install --production --filter @node/worker
+RUN pnpm i --production --filter @node/worker
 
 # --------- builder -----------
 FROM node:18.17-alpine AS builder
@@ -43,10 +43,10 @@ ARG proxy
 
 # copy common node_modules and one project node_modules
 COPY package.json pnpm-workspace.yaml ./
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/packages ./packages
+COPY --from=appDeps /app/node_modules ./node_modules
+COPY --from=appDeps /app/packages ./packages
 COPY ./projects/$name ./projects/$name
-COPY --from=deps /app/projects/$name/node_modules ./projects/$name/node_modules
+COPY --from=appDeps /app/projects/$name/node_modules ./projects/$name/node_modules
 
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
