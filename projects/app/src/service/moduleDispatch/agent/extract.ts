@@ -195,7 +195,7 @@ async function completions({
         json: extractKeys
           .map(
             (item) =>
-              `{"key":"${item.key}", "description":"${item.required}", "required":${item.required}${
+              `{"key":"${item.key}", "description":"${item.desc}", "required":${item.required}${
                 item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
               }}`
           )

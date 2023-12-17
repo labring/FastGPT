@@ -1,6 +1,6 @@
 import { EditNodeFieldType, FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import React, { useMemo, useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import {
   onChangeNode,
   useFlowProviderStore,

@@ -1,0 +1,8 @@
+{
+  "name": "@node/worker",
+  "version": "1.0.0",
+  "dependencies": {
+    "domino-ext": "^2.1.4",
+    "turndown": "^7.1.2"
+  }
+}

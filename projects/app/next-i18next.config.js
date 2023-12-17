@@ -6,10 +6,10 @@
 module.exports = {
   i18n: {
     defaultLocale: 'zh',
-    locales: ['en', 'zh', 'zh-Hans', 'zh-CN'],
-    localeDetection: false
+    locales: ['en', 'zh'],
+    localeDetection: true
   },
   localePath:
-    typeof window === 'undefined' ? require('path').resolve('./public/locales') : '/locales',
+    typeof window === 'undefined' ? require('path').resolve('./public/locales') : '/public/locales',
   reloadOnPrerender: process.env.NODE_ENV === 'development'
 };

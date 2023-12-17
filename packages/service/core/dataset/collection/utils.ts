@@ -4,7 +4,7 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { MongoDatasetTraining } from '../training/schema';
-import { urlsFetch } from '@fastgpt/global/common/file/tools';
+import { urlsFetch } from '../../../common/string/cheerio';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 
 /**
