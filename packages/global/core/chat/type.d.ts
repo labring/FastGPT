@@ -40,7 +40,7 @@ export type ChatItemSchema = {
   value: string;
   userGoodFeedback?: string;
   userBadFeedback?: string;
-  robotBadFeedback?: string;
+  customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
   [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
@@ -60,6 +60,7 @@ export type ChatItemType = {
   value: any;
   userGoodFeedback?: string;
   userBadFeedback?: string;
+  customFeedbacks?: ChatItemSchema['customFeedbacks'];
   adminFeedback?: ChatItemSchema['feedback'];
   [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };

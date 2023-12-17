@@ -21,6 +21,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
   let {
     appId,
     chatId,
+    responseChatItemId,
     variables,
     inputs: {
       system_httpMethod: httpMethod,
@@ -57,6 +58,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
         requestBody: {
           appId,
           chatId,
+          responseChatItemId,
           variables,
           data: body
         },

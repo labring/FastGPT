@@ -71,7 +71,7 @@ const ButtonEdge = (
           <MyIcon
             name="closeSolid"
             w={'100%'}
-            color={selected ? 'myBlue.800' : 'myGray.500'}
+            color={selected ? 'blue.700' : 'myGray.500'}
           ></MyIcon>
         </Flex>
       </EdgeLabelRenderer>

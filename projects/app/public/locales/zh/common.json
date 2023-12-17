@@ -247,6 +247,10 @@
         "Save and out": "保存并退出",
         "UnSave": "不保存"
       },
+      "feedback": {
+        "Custom feedback": "自定义反馈",
+        "close custom feedback": "关闭反馈"
+      },
       "logs": {
         "Source And Time": "来源 & 时间"
       },

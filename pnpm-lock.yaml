@@ -76,6 +76,12 @@ importers:
 
   packages/plugins:
     devDependencies:
+      '@fastgpt/global':
+        specifier: workspace:*
+        version: link:../global
+      '@fastgpt/service':
+        specifier: workspace:*
+        version: link:../service
       '@types/node':
         specifier: ^20.8.5
         version: registry.npmmirror.com/@types/node@20.8.7

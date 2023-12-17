@@ -2,7 +2,10 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type { AdminUpdateFeedbackParams } from '@/global/core/chat/api.d';
+import type {
+  AdminUpdateFeedbackParams,
+  CloseCustomFeedbackParams
+} from '@/global/core/chat/api.d';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
 
@@ -10,10 +13,9 @@ import { autChatCrud } from '@/service/support/permission/auth/chat';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, chatId, chatItemId, datasetId, dataId, q, a } =
-      req.body as AdminUpdateFeedbackParams;
+    const { appId, chatId, chatItemId, index } = req.body as CloseCustomFeedbackParams;
 
-    if (!chatItemId || !datasetId || !dataId || !q) {
+    if (!chatItemId || !appId || !chatId || !chatItemId) {
       throw new Error('missing parameter');
     }
 
@@ -24,19 +26,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatId,
       per: 'r'
     });
+    await authCert({ req, authToken: true });
 
     await MongoChatItem.findOneAndUpdate(
-      {
-        dataId: chatItemId
-      },
-      {
-        adminFeedback: {
-          datasetId,
-          dataId,
-          q,
-          a
-        }
-      }
+      { dataId: chatItemId },
+      { $unset: { [`customFeedbacks.${index}`]: 1 } }
+    );
+    await MongoChatItem.findOneAndUpdate(
+      { dataId: chatItemId },
+      { $pull: { customFeedbacks: null } }
     );
 
     jsonRes(res);

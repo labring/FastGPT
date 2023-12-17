@@ -69,7 +69,7 @@ const MySlider = ({
       <SliderMark
         value={value}
         textAlign="center"
-        bg="myBlue.600"
+        bg="blue.500"
         color="white"
         px={1}
         minW={'18px'}
@@ -95,9 +95,9 @@ const MySlider = ({
           right: '-3px'
         }}
       >
-        <SliderFilledTrack bg={'myBlue.600'} />
+        <SliderFilledTrack bg={'blue.500'} />
       </SliderTrack>
-      <SliderThumb border={'3px solid'} borderColor={'myBlue.600'}></SliderThumb>
+      <SliderThumb border={'3px solid'} borderColor={'blue.500'}></SliderThumb>
     </Slider>
   );
 };

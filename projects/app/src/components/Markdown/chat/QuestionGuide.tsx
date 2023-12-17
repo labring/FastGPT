@@ -77,7 +77,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
                   name={'core/chat/sendLight'}
                   w={'14px'}
                   cursor={'pointer'}
-                  _hover={{ color: 'myBlue.600' }}
+                  _hover={{ color: 'blue.500' }}
                   onClick={() => eventBus.emit(EventNameEnum.sendQuestion, { text })}
                 />
               </MyTooltip>

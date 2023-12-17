@@ -84,7 +84,7 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
               w={'14px'}
               cursor={'pointer'}
               ml={3}
-              _hover={{ color: 'myBlue.600' }}
+              _hover={{ color: 'blue.500' }}
               onClick={() =>
                 setEditField({
                   inputType: item.type,

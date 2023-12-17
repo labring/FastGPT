@@ -5,12 +5,14 @@ export type SelectedDatasetType = { datasetId: string; vectorModel: VectorModelI
 export type HttpBodyType<T = any> = {
   appId: string;
   chatId?: string;
+  responseChatItemId?: string;
   variables: Record<string, any>;
   data: T;
 };
 export type HttpQueryType = {
   appId: string;
   chatId?: string;
+  responseChatItemId?: string;
   variables: Record<string, any>;
   [key: string]: any;
 };

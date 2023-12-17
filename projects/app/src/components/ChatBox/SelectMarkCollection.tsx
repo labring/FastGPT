@@ -35,7 +35,7 @@ const SelectMarkCollection = ({
   const theme = useTheme();
   const [selectedDatasetId, setSelectedDatasetId] = useState<string>();
   const [selectedDatasetCollectionIds, setSelectedDatasetCollectionIds] = useState<string[]>([]);
-  const { paths, parentId, setParentId, datasets, isFetching } = useDatasetSelect();
+  const { paths, setParentId, datasets, isFetching } = useDatasetSelect();
 
   return (
     <>
@@ -70,7 +70,7 @@ const SelectMarkCollection = ({
                       }}
                       {...(selected
                         ? {
-                            bg: 'myBlue.300'
+                            bg: 'blue.200'
                           }
                         : {})}
                       onClick={() => {

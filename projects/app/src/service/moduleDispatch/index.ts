@@ -50,6 +50,7 @@ export async function dispatchModules({
   appId,
   modules,
   chatId,
+  responseChatItemId,
   histories = [],
   startParams = {},
   variables = {},
@@ -63,6 +64,7 @@ export async function dispatchModules({
   appId: string;
   modules: ModuleItemType[];
   chatId?: string;
+  responseChatItemId?: string;
   histories: ChatItemType[];
   startParams?: Record<string, any>;
   variables?: Record<string, any>;
@@ -201,6 +203,7 @@ export async function dispatchModules({
       user,
       appId,
       chatId,
+      responseChatItemId,
       stream,
       detail,
       variables,
@@ -237,9 +240,9 @@ export async function dispatchModules({
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
 
-  runningModules.forEach((item) => {
-    console.log(item);
-  });
+  // runningModules.forEach((item) => {
+  //   console.log(item);
+  // });
 
   initModules.map((module) =>
     moduleInput(module, {

@@ -102,10 +102,10 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         py={4}
         borderRight={['none', theme.borders.base]}
       >
-        <Box border={'2px solid'} borderColor={'myBlue.600'} p={3} mx={4} borderRadius={'md'}>
+        <Box border={'2px solid'} borderColor={'blue.500'} p={3} mx={4} borderRadius={'md'}>
           <Flex alignItems={'center'}>
             <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-              <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'myBlue.700'} />
+              <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'blue.600'} />
               {t('core.dataset.test.Test Text')}
             </Box>
             <Button

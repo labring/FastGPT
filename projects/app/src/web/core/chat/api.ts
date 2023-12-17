@@ -1,6 +1,7 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import type {
+  CloseCustomFeedbackParams,
   InitChatProps,
   InitChatResponse,
   InitOutLinkChatProps,
@@ -50,8 +51,12 @@ export const delChatRecordById = (data: DeleteChatItemProps) =>
  */
 export const putChatHistory = (data: UpdateHistoryProps) => PUT('/core/chat/updateHistory', data);
 
+/* -------------- feedback ------------ */
 export const updateChatUserFeedback = (data: UpdateChatFeedbackProps) =>
   POST('/core/chat/feedback/updateUserFeedback', data);
 
 export const updateChatAdminFeedback = (data: AdminUpdateFeedbackParams) =>
   POST('/core/chat/feedback/adminUpdate', data);
+
+export const closeCustomFeedback = (data: CloseCustomFeedbackParams) =>
+  POST('/core/chat/feedback/closeCustom', data).catch();
