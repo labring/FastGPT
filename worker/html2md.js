@@ -1,6 +1,7 @@
 const { parentPort } = require('worker_threads');
 const TurndownService = require('turndown');
 const domino = require('domino-ext');
+var turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
 const turndownService = new TurndownService({
   headingStyle: 'atx',
@@ -28,7 +29,8 @@ parentPort?.on('message', (html) => {
     }
   });
 
-  // const markdown = nhm.translate(html).trim();
+  turndownService.use(turndownPluginGfm.gfm);
+
   const markdown = turndownService.turndown(document);
 
   parentPort.postMessage(markdown);
