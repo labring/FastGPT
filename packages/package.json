@@ -1,0 +1,12 @@
+{
+  "name": "@fastgpt/packages",
+  "version": "1.0.0",
+  "dependencies": {
+    "dayjs": "^1.11.7",
+    "axios": "^1.5.1",
+    "cheerio": "1.0.0-rc.12"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.5"
+  }
+}

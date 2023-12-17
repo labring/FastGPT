@@ -2,13 +2,10 @@
   "name": "@fastgpt/global",
   "version": "1.0.0",
   "dependencies": {
-    "cheerio": "1.0.0-rc.12",
-    "dayjs": "^1.11.7",
     "encoding": "^0.1.13",
     "js-tiktoken": "^1.0.7",
+    "openai": "^4.20.1",
     "timezones-list": "^3.0.2"
   },
-  "devDependencies": {
-    "@types/node": "^20.8.5"
-  }
+  "devDependencies": {}
 }
