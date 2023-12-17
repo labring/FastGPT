@@ -44,6 +44,7 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
       name: item.name,
       avatar: item.avatar,
       intro: item.intro,
+      showStatus: true,
       source: PluginSourceEnum.personal,
       modules: item.modules,
       templateType: ModuleTemplateTypeEnum.personalPlugin
@@ -67,7 +68,7 @@ export async function getPluginPreviewModule({
     avatar: plugin.avatar,
     name: plugin.name,
     intro: plugin.intro,
-    showStatus: true,
+    showStatus: plugin.showStatus,
     ...plugin2ModuleIO(plugin.id, plugin.modules)
   };
 }

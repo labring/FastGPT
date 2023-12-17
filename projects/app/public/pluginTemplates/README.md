@@ -18,7 +18,8 @@ type pluginType = {
   name: string;
   avatar: string;
   intro: string;
-  modules: 直接从高级编排导出配置复制过来;
+  showStatus?: boolean; // 是否需要展示组件运行状态
+  modules: []; //直接从高级编排导出配置复制过来;
 };
 ```
 

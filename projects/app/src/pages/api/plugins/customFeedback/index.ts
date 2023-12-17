@@ -18,6 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const feedback = customFeedback || defaultFeedback;
 
+    if (!feedback) {
+      return res.json({
+        response: ''
+      });
+    }
+
     // wait the chat finish
     setTimeout(() => {
       addCustomFeedbacks({

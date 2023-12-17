@@ -4,6 +4,7 @@
   "name": "core.module.template.TFSwitch",
   "avatar": "/imgs/module/tfSwitch.svg",
   "intro": "core.module.template.TFSwitch intro",
+  "showStatus": false,
   "modules": [
     {
       "moduleId": "w90mfp",
