@@ -131,7 +131,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}
-      ${isChatting ? (source.trim() === '' ? styles.waitingAnimation : '') : ''}
+      ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
       remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
