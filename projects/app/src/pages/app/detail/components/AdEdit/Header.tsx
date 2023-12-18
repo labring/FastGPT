@@ -62,7 +62,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       });
 
       if (unconnected) {
-        const msg = `【${item.name}】存在未填或未连接参数`;
+        const msg = `【${t(item.name)}】存在未填或未连接参数`;
 
         toast({
           status: 'warning',
@@ -72,7 +72,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       }
     }
     return modules;
-  }, [edges, nodes, toast]);
+  }, [edges, nodes, t, toast]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: async (modules: ModuleItemType[]) => {
