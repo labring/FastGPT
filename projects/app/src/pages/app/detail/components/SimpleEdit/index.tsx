@@ -337,9 +337,8 @@ function ConfigForm({
                   bg={'myWhite.400'}
                   rows={5}
                   placeholder={chatNodeSystemPromptTip}
-                  showSetModalModeIcon
-                  value={getValues('aiSettings.systemPrompt')}
-                  onChange={(e) => {
+                  defaultValue={getValues('aiSettings.systemPrompt')}
+                  onBlur={(e) => {
                     setValue('aiSettings.systemPrompt', e.target.value || '');
                     setRefresh(!refresh);
                   }}

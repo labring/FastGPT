@@ -194,9 +194,8 @@ const AIChatSettingsModal = ({
               placeholder={t('template.Quote Content Tip', {
                 default: Prompt_QuoteTemplateList[0].value
               })}
-              showSetModalModeIcon
-              value={getValues(ModuleInputKeyEnum.aiChatQuoteTemplate)}
-              onChange={(e) => {
+              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuoteTemplate)}
+              onBlur={(e) => {
                 setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e.target.value);
                 setRefresh(!refresh);
               }}
@@ -220,9 +219,8 @@ const AIChatSettingsModal = ({
               placeholder={t('template.Quote Prompt Tip', {
                 default: Prompt_QuotePromptList[0].value
               })}
-              showSetModalModeIcon
-              value={getValues(ModuleInputKeyEnum.aiChatQuotePrompt)}
-              onChange={(e) => {
+              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuotePrompt)}
+              onBlur={(e) => {
                 setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e.target.value);
                 setRefresh(!refresh);
               }}
