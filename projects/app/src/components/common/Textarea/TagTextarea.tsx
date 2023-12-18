@@ -52,7 +52,7 @@ const TagTextarea = ({ defaultValues, onUpdate, ...props }: Props) => {
       bg={'myWhite.600'}
       {...(focus && {
         boxShadow: '0px 0px 4px #A8DBFF',
-        borderColor: 'myBlue.600'
+        borderColor: 'blue.500'
       })}
       {...props}
       onClick={() => {

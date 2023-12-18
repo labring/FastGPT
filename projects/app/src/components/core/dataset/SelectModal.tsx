@@ -3,8 +3,7 @@ import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import ParentPaths from '@/components/common/ParentPaths';
 
 type PathItemType = {
@@ -53,13 +52,12 @@ const DatasetSelectContainer = ({
       }
       isOpen={isOpen}
       onClose={onClose}
+      h={'80vh'}
       w={'100%'}
       maxW={['90vw', '900px']}
       isCentered
     >
-      <Flex flexDirection={'column'} h={'90vh'}>
-        <Box flex={'1 0 0'}>{children}</Box>
-      </Flex>
+      {children}
     </MyModal>
   );
 };

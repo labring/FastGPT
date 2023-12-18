@@ -105,7 +105,7 @@ const QuoteModal = ({
                     className="hover-data"
                     display={'none'}
                     alignItems={'center'}
-                    color={'myBlue.600'}
+                    color={'blue.500'}
                     href={`/dataset/detail?datasetId=${item.datasetId}&currentTab=dataCard&collectionId=${item.collectionId}`}
                   >
                     {t('core.dataset.Go Dataset')}
@@ -164,7 +164,7 @@ const QuoteModal = ({
                           cursor={'pointer'}
                           color={'myGray.600'}
                           _hover={{
-                            color: 'myBlue.700'
+                            color: 'blue.600'
                           }}
                           onClick={() => onclickEdit(item)}
                         />

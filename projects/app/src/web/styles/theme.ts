@@ -1,5 +1,11 @@
 import { extendTheme, defineStyleConfig, ComponentStyleConfig } from '@chakra-ui/react';
-import { modalAnatomy, switchAnatomy, selectAnatomy, numberInputAnatomy } from '@chakra-ui/anatomy';
+import {
+  modalAnatomy,
+  switchAnatomy,
+  selectAnatomy,
+  numberInputAnatomy,
+  checkboxAnatomy
+} from '@chakra-ui/anatomy';
 import { createMultiStyleConfigHelpers } from '@chakra-ui/styled-system';
 
 const { definePartsStyle, defineMultiStyleConfig } = createMultiStyleConfigHelpers(
@@ -11,6 +17,8 @@ const { definePartsStyle: selectPart, defineMultiStyleConfig: selectMultiStyle }
   createMultiStyleConfigHelpers(selectAnatomy.keys);
 const { definePartsStyle: numInputPart, defineMultiStyleConfig: numInputMultiStyle } =
   createMultiStyleConfigHelpers(numberInputAnatomy.keys);
+const { definePartsStyle: checkBoxPart, defineMultiStyleConfig: checkBoxMultiStyle } =
+  createMultiStyleConfigHelpers(checkboxAnatomy.keys);
 
 // 按键
 const Button = defineStyleConfig({
@@ -68,7 +76,7 @@ const Button = defineStyleConfig({
     },
     gray: {
       bg: '#F5F5F8',
-      color: 'myBlue.700',
+      color: 'blue.600',
       border: '1px solid #EFF0F1',
       _hover: {
         background: '#3370FF1A'
@@ -81,12 +89,12 @@ const Button = defineStyleConfig({
       bg: 'transparent',
       transition: 'background 0.3s',
       _hover: {
-        color: 'myBlue.600',
+        color: 'blue.500',
         background: 'myWhite.400',
         boxShadow: '0 0 5px rgba(0,0,0,0.1)'
       },
       _active: {
-        color: 'myBlue.700'
+        color: 'blue.600'
       },
       _disabled: {
         bg: 'myGray.100 !important',
@@ -127,7 +135,7 @@ const Input: ComponentStyleConfig = {
         borderRadius: 'base',
         borderColor: 'myGray.200',
         _focus: {
-          borderColor: 'myBlue.600',
+          borderColor: 'blue.500',
           boxShadow: '0px 0px 4px #A8DBFF',
           bg: 'white'
         },
@@ -153,7 +161,7 @@ const NumberInput = numInputMultiStyle({
         borderRadius: 'base',
         borderColor: 'myGray.200',
         _focus: {
-          borderColor: 'myBlue.600 !important',
+          borderColor: 'blue.500 !important',
           boxShadow: '0px 0px 4px #A8DBFF !important',
           bg: 'transparent'
         },
@@ -167,7 +175,7 @@ const NumberInput = numInputMultiStyle({
         border: 'none',
         color: 'myGray.600',
         _active: {
-          color: 'myBlue.600'
+          color: 'blue.500'
         }
       }
     })
@@ -187,7 +195,7 @@ const Textarea: ComponentStyleConfig = {
         borderColor: ''
       },
       _focus: {
-        borderColor: 'myBlue.600',
+        borderColor: 'blue.500',
         boxShadow: '0px 0px 4px #A8DBFF',
         bg: 'white'
       }
@@ -205,7 +213,7 @@ const Switch = switchMultiStyle({
     track: {
       bg: 'myGray.100',
       _checked: {
-        bg: 'myBlue.700'
+        bg: 'blue.600'
       }
     }
   })
@@ -218,11 +226,19 @@ const Select = selectMultiStyle({
         borderColor: 'myGray.200',
         _focusWithin: {
           boxShadow: '0px 0px 4px #A8DBFF',
-          borderColor: 'myBlue.600'
+          borderColor: 'blue.500'
         }
       }
     })
   }
+});
+
+const Checkbox = checkBoxMultiStyle({
+  baseStyle: checkBoxPart({
+    label: {
+      fontFamily: 'mono' // change the font family of the label
+    }
+  })
 });
 
 // 全局主题
@@ -238,7 +254,7 @@ export const theme = extendTheme({
         // lineHeight: 'unset'
       },
       a: {
-        color: 'myBlue.700'
+        color: 'blue.600'
       }
     }
   },
@@ -267,17 +283,17 @@ export const theme = extendTheme({
       900: '#24282C',
       1000: '#121416'
     },
-    myBlue: {
-      100: '#f0f7ff',
-      200: '#EBF7FD',
-      300: '#d6e8ff',
-      400: '#adceff',
-      500: '#85b1ff',
-      600: '#4e83fd',
-      700: '#3370ff',
-      800: '#2152d9',
-      900: '#1237b3',
-      1000: '#07228c'
+    blue: {
+      50: '#f0f7ff',
+      100: '#EBF7FD',
+      200: '#d6e8ff',
+      300: '#adceff',
+      400: '#85b1ff',
+      500: '#4e83fd',
+      600: '#3370ff',
+      700: '#2152d9',
+      800: '#1237b3',
+      900: '#07228c'
     },
     myRead: {
       600: '#ff4d4f'
@@ -326,6 +342,7 @@ export const theme = extendTheme({
     Textarea,
     Switch,
     Select,
-    NumberInput
+    NumberInput,
+    Checkbox
   }
 });

@@ -27,7 +27,8 @@ import {
   BoxProps,
   FlexProps,
   Image,
-  Textarea
+  Textarea,
+  Checkbox
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -43,7 +44,11 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
-import { updateChatAdminFeedback, updateChatUserFeedback } from '@/web/core/chat/api';
+import {
+  closeCustomFeedback,
+  updateChatAdminFeedback,
+  updateChatUserFeedback
+} from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';
 
 import MyIcon from '@/components/Icon';
@@ -63,6 +68,7 @@ import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import MessageInput from './MessageInput';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import ChatBoxDivider from '../core/chat/Divider';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -492,7 +498,7 @@ const ChatBox = (
     const colorMap = {
       loading: 'myGray.700',
       running: '#67c13b',
-      finish: 'myBlue.600'
+      finish: 'blue.500'
     };
     if (!isChatting) return;
     const chatContent = chatHistory[chatHistory.length - 1];
@@ -660,7 +666,7 @@ const ChatBox = (
                       <Card
                         className="markdown"
                         {...MessageCardStyle}
-                        bg={'myBlue.300'}
+                        bg={'blue.200'}
                         borderRadius={'8px 0 8px 8px'}
                         textAlign={'left'}
                       >
@@ -853,16 +859,56 @@ const ChatBox = (
 
                         <ResponseTags responseData={item.responseData} isShare={!!shareId} />
 
+                        {/* custom feedback */}
+                        {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                          <Box>
+                            <ChatBoxDivider
+                              icon={'core/app/customFeedback'}
+                              text={t('core.app.feedback.Custom feedback')}
+                            />
+                            {item.customFeedbacks.map((text, i) => (
+                              <Box key={`${text}${i}`}>
+                                <MyTooltip label={t('core.app.feedback.close custom feedback')}>
+                                  <Checkbox
+                                    onChange={(e) => {
+                                      if (e.target.checked && appId && chatId && item.dataId) {
+                                        closeCustomFeedback({
+                                          appId,
+                                          chatId,
+                                          chatItemId: item.dataId,
+                                          index: i
+                                        });
+                                        // update dom
+                                        setChatHistory((state) =>
+                                          state.map((chatItem) =>
+                                            chatItem.dataId === item.dataId
+                                              ? {
+                                                  ...chatItem,
+                                                  customFeedbacks: chatItem.customFeedbacks?.filter(
+                                                    (item, index) => index !== i
+                                                  )
+                                                }
+                                              : chatItem
+                                          )
+                                        );
+                                      }
+                                      console.log(e);
+                                    }}
+                                  >
+                                    {text}
+                                  </Checkbox>
+                                </MyTooltip>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (
                           <Box>
-                            <Flex alignItems={'center'} py={2}>
-                              <MyIcon name={'core/app/markLight'} w={'14px'} color={'myGray.900'} />
-                              <Box ml={2} color={'myGray.500'}>
-                                {t('chat.Admin Mark Content')}
-                              </Box>
-                              <Box h={'1px'} bg={'myGray.300'} flex={'1'} />
-                            </Flex>
+                            <ChatBoxDivider
+                              icon="core/app/markLight"
+                              text={t('chat.Admin Mark Content')}
+                            />
                             <Box whiteSpace={'pre'}>{`${item.adminFeedback.q || ''}${
                               item.adminFeedback.a ? `\n${item.adminFeedback.a}` : ''
                             }`}</Box>
@@ -942,7 +988,10 @@ const ChatBox = (
           setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
           onClose={() => setAdminMarkData(undefined)}
           onSuccess={(adminFeedback) => {
+            if (!appId || !chatId || !adminMarkData.chatItemId) return;
             updateChatAdminFeedback({
+              appId,
+              chatId,
               chatItemId: adminMarkData.chatItemId,
               ...adminFeedback
             });
@@ -1089,7 +1138,7 @@ function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
       borderRadius={'lg'}
       border={theme.borders.base}
       boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-      bg={type === 'Human' ? 'white' : 'myBlue.100'}
+      bg={type === 'Human' ? 'white' : 'blue.50'}
     >
       <Avatar src={src} w={'100%'} h={'100%'} />
     </Box>
@@ -1170,7 +1219,7 @@ function ChatController({
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
-          _hover={{ color: 'myBlue.700' }}
+          _hover={{ color: 'blue.600' }}
           onClick={() => copyData(chat.value)}
         />
       </MyTooltip>

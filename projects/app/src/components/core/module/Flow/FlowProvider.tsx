@@ -12,10 +12,7 @@ import type {
   FlowModuleItemType,
   FlowModuleTemplateType
 } from '@fastgpt/global/core/module/type.d';
-import type {
-  FlowNodeOutputTargetItemType,
-  FlowNodeChangeProps
-} from '@fastgpt/global/core/module/node/type';
+import type { FlowNodeChangeProps } from '@fastgpt/global/core/module/node/type';
 import React, {
   type SetStateAction,
   type Dispatch,

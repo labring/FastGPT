@@ -195,7 +195,7 @@ const Provider = ({
 
       setFiles((state) =>
         state.map((file) => {
-          const splitRes = splitText2Chunks({
+          const { chunks, tokens } = splitText2Chunks({
             text: file.rawText,
             chunkLen,
             overlapRatio: chunkOverlapRatio
@@ -203,8 +203,8 @@ const Provider = ({
 
           return {
             ...file,
-            tokens: splitRes.tokens,
-            chunks: splitRes.chunks.map((chunk) => ({
+            tokens,
+            chunks: chunks.map((chunk) => ({
               q: chunk,
               a: ''
             }))
@@ -475,7 +475,7 @@ export const SelectorContainer = ({
               position={'relative'}
               alignItems={'center'}
               _hover={{
-                bg: 'myBlue.100',
+                bg: 'blue.50',
                 '& .delete': {
                   display: 'block'
                 }

@@ -125,7 +125,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         </FormControl>
         {feConfigs?.show_register && (
           <>
-            <Flex align={'center'} justifyContent={'space-between'} mt={3} color={'myBlue.600'}>
+            <Flex align={'center'} justifyContent={'space-between'} mt={3} color={'blue.500'}>
               <Box
                 cursor={'pointer'}
                 _hover={{ textDecoration: 'underline' }}
@@ -149,7 +149,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
                 <Link
                   href={getDocPath('/docs/agreement/disclaimer/')}
                   target={'_blank'}
-                  color={'myBlue.600'}
+                  color={'blue.500'}
                 >
                   免责声明
                 </Link>

@@ -1,9 +1,10 @@
 {
   "author": "FastGPT Team",
-  "templateType": "tools",
-  "name": "core.module.template.textEditor",
-  "avatar": "/imgs/module/textEditor.svg",
-  "intro": "core.module.template.textEditor intro",
+  "templateType": "other",
+  "name": "自定义反馈",
+  "avatar": "/imgs/module/customFeedback.svg",
+  "intro": "该模块被触发时，会给当前的对话记录增加一条反馈。可用于自动记录对话效果等。",
+  "showStatus": false,
   "modules": [
     {
       "moduleId": "w90mfp",
@@ -12,17 +13,17 @@
       "flowType": "pluginInput",
       "showStatus": false,
       "position": {
-        "x": 616.4226348688949,
-        "y": -165.05298493910115
+        "x": 515.1887815471657,
+        "y": -169.04905809653783
       },
       "inputs": [
         {
-          "key": "textarea",
+          "key": "defaultFeedback",
           "valueType": "string",
-          "label": "core.module.input.label.textEditor textarea",
+          "label": "默认反馈内容",
           "type": "textarea",
-          "required": true,
-          "description": "core.module.input.description.textEditor textarea",
+          "required": false,
+          "description": "",
           "edit": true,
           "editField": {
             "key": true,
@@ -35,12 +36,12 @@
           "connected": true
         },
         {
-          "key": "DYNAMIC_INPUT_KEY",
-          "valueType": "any",
-          "label": "字符串变量",
-          "type": "addInputParam",
+          "key": "customFeedback",
+          "valueType": "string",
+          "label": "自定义反馈内容",
+          "type": "target",
           "required": false,
-          "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。",
+          "description": "",
           "edit": true,
           "editField": {
             "key": true,
@@ -48,86 +49,37 @@
             "description": true,
             "required": true,
             "dataType": true,
-            "inputType": false
-          },
-          "defaultEditField": {
-            "label": "",
-            "key": "",
-            "description": "",
-            "inputType": "target",
-            "valueType": "string",
-            "required": true
+            "inputType": true
           },
           "connected": true
         }
       ],
       "outputs": [
         {
-          "key": "textarea",
+          "key": "defaultFeedback",
           "valueType": "string",
-          "label": "core.module.input.label.textEditor textarea",
+          "label": "默认反馈内容",
           "type": "source",
           "edit": true,
           "targets": [
             {
               "moduleId": "49de3g",
-              "key": "text"
+              "key": "defaultFeedback"
             }
           ]
         },
         {
-          "key": "DYNAMIC_INPUT_KEY",
-          "valueType": "any",
-          "label": "字符串变量",
+          "key": "customFeedback",
+          "valueType": "string",
+          "label": "自定义反馈内容",
           "type": "source",
           "edit": true,
           "targets": [
             {
               "moduleId": "49de3g",
-              "key": "DYNAMIC_INPUT_KEY"
+              "key": "customFeedback"
             }
           ]
-        }
-      ]
-    },
-    {
-      "moduleId": "tze1ju",
-      "name": "定义插件输出",
-      "avatar": "/imgs/module/output.png",
-      "flowType": "pluginOutput",
-      "showStatus": false,
-      "position": {
-        "x": 1607.7142331269126,
-        "y": -145.93201540017395
-      },
-      "inputs": [
-        {
-          "key": "text",
-          "valueType": "string",
-          "label": "core.module.output.label.text",
-          "type": "target",
-          "required": true,
-          "description": "",
-          "edit": true,
-          "editField": {
-            "key": true,
-            "name": true,
-            "description": true,
-            "required": false,
-            "dataType": true,
-            "inputType": false
-          },
-          "connected": true
-        }
-      ],
-      "outputs": [
-        {
-          "key": "text",
-          "valueType": "string",
-          "label": "core.module.output.label.text",
-          "type": "source",
-          "edit": true,
-          "targets": []
         }
       ]
     },
@@ -182,7 +134,7 @@
           "required": false,
           "showTargetInApp": false,
           "showTargetInPlugin": false,
-          "value": "/api/plugins/textEditor",
+          "value": "/api/plugins/customFeedback",
           "connected": false
         },
         {
@@ -208,12 +160,29 @@
           "showTargetInApp": false,
           "showTargetInPlugin": true,
           "hideInApp": true,
-          "connected": true
+          "connected": false
         },
         {
-          "key": "text",
           "valueType": "string",
-          "label": "text",
+          "label": "defaultFeedback",
+          "type": "target",
+          "required": true,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true
+          },
+          "connected": true,
+          "key": "defaultFeedback"
+        },
+        {
+          "key": "customFeedback",
+          "valueType": "string",
+          "label": "customFeedback",
           "type": "target",
           "required": true,
           "description": "",
@@ -285,8 +254,7 @@
         {
           "type": "source",
           "valueType": "string",
-          "key": "text",
-          "label": "core.module.output.label.text",
+          "label": "response",
           "description": "",
           "edit": true,
           "editField": {
@@ -297,10 +265,53 @@
           },
           "targets": [
             {
-              "moduleId": "tze1ju",
+              "moduleId": "s15f3v",
               "key": "text"
             }
-          ]
+          ],
+          "key": "response"
+        }
+      ]
+    },
+    {
+      "moduleId": "s15f3v",
+      "name": "指定回复",
+      "avatar": "/imgs/module/reply.png",
+      "flowType": "answerNode",
+      "position": {
+        "x": 1705.6337348182756,
+        "y": -37.53826066726282
+      },
+      "inputs": [
+        {
+          "key": "switch",
+          "type": "target",
+          "label": "core.module.input.label.switch",
+          "valueType": "any",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": false
+        },
+        {
+          "key": "text",
+          "type": "textarea",
+          "valueType": "any",
+          "label": "回复的内容",
+          "description": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
+          "placeholder": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "finish",
+          "label": "core.module.output.label.running done",
+          "description": "core.module.output.description.running done",
+          "valueType": "boolean",
+          "type": "source",
+          "targets": []
         }
       ]
     }

@@ -163,7 +163,7 @@ const DataCard = () => {
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'myBlue.600'} />}
+          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'blue.500'} />}
           bg={'white'}
           boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
           size={'sm'}

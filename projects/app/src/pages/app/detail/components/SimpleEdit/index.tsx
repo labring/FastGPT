@@ -548,7 +548,7 @@ function Settings({ appId }: { appId: string }) {
           mt={2}
           px={5}
           py={4}
-          bg={'myBlue.100'}
+          bg={'blue.50'}
           position={'relative'}
         >
           <Flex alignItems={'center'} py={2}>

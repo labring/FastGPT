@@ -288,7 +288,7 @@ async function initPgData() {
   const limit = 10;
   // add column
   try {
-    await Promise.all([
+    await Promise.allSettled([
       PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN team_id VARCHAR(50);`),
       PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN tmb_id VARCHAR(50);`),
       PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN user_id DROP NOT NULL;`)

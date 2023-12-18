@@ -77,7 +77,7 @@ const Share = ({ appId }: { appId: string }) => {
         </Box>
         <Button
           variant={'base'}
-          colorScheme={'myBlue'}
+          colorScheme={'blue'}
           size={['sm', 'md']}
           {...(shareChatList.length >= 10
             ? {
