@@ -191,4 +191,4 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ### One API 使用
 
-[参考 OneAPI 使用步骤](http://localhost:1313/docs/development/one-api/#one-api%E4%BD%BF%E7%94%A8%E6%AD%A5%E9%AA%A4)
+[参考 OneAPI 使用步骤](/docs/development/one-api/)
