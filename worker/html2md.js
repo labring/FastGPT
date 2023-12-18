@@ -20,22 +20,26 @@ parentPort?.on('message', (html) => {
 });
 
 const html2md = (html) => {
-  const window = domino.createWindow(html);
-  const document = window.document;
+  try {
+    const window = domino.createWindow(html);
+    const document = window.document;
 
-  turndownService.remove(['i', 'script', 'iframe']);
-  turndownService.addRule('codeBlock', {
-    filter: 'pre',
-    replacement(_, node) {
-      const content = node.textContent?.trim() || '';
-      // @ts-ignore
-      const codeName = node?._attrsByQName?.class?.data?.trim() || '';
+    turndownService.remove(['i', 'script', 'iframe']);
+    turndownService.addRule('codeBlock', {
+      filter: 'pre',
+      replacement(_, node) {
+        const content = node.textContent?.trim() || '';
+        // @ts-ignore
+        const codeName = node?._attrsByQName?.class?.data?.trim() || '';
 
-      return `\n\`\`\`${codeName}\n${content}\n\`\`\`\n`;
-    }
-  });
+        return `\n\`\`\`${codeName}\n${content}\n\`\`\`\n`;
+      }
+    });
 
-  turndownService.use(turndownPluginGfm.gfm);
+    turndownService.use(turndownPluginGfm.gfm);
 
-  return turndownService.turndown(document);
+    return turndownService.turndown(document);
+  } catch (error) {
+    return '';
+  }
 };

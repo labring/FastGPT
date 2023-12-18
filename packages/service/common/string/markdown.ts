@@ -13,9 +13,12 @@ export const htmlToMarkdown = (html?: string | null) =>
     const worker = new Worker(getWorkerPath('html2md'));
 
     worker.on('message', (md: string) => {
+      worker.terminate();
+
       resolve(simpleMarkdownText(md));
     });
     worker.on('error', (err) => {
+      worker.terminate();
       reject(err);
     });
 
