@@ -191,4 +191,4 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ### One API 使用
 
-[参考 OneAPI 使用步骤](https://doc.fastgpt.in/docs/development/one-api/)
+[参考 OneAPI 使用步骤](/docs/development/one-api/)
