@@ -23,5 +23,6 @@ export type PluginTemplateType = {
   name: string;
   avatar: string;
   intro: string;
+  showStatus?: boolean;
   modules: ModuleItemType[];
 };

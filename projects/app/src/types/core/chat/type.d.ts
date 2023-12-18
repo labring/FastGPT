@@ -12,6 +12,7 @@ export type ModuleDispatchProps<T> = {
   user: UserType;
   appId: string;
   chatId?: string;
+  responseChatItemId?: string;
   stream: boolean;
   detail: boolean; // response detail
   variables: Record<string, any>;

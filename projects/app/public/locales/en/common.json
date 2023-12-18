@@ -247,6 +247,10 @@
         "Save and out": "Save out",
         "UnSave": "UnSave"
       },
+      "feedback": {
+        "Custom feedback": "Custom feedback",
+        "close custom feedback": "Close Feedback"
+      },
       "logs": {
         "Source And Time": "Source & Time"
       },

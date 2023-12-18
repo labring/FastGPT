@@ -1,0 +1,309 @@
+{
+  "author": "FastGPT Team",
+  "templateType": "tools",
+  "name": "core.module.template.textEditor",
+  "avatar": "/imgs/module/textEditor.svg",
+  "intro": "core.module.template.textEditor intro",
+  "showStatus": false,
+  "modules": [
+    {
+      "moduleId": "w90mfp",
+      "name": "定义插件输入",
+      "avatar": "/imgs/module/input.png",
+      "flowType": "pluginInput",
+      "showStatus": false,
+      "position": {
+        "x": 616.4226348688949,
+        "y": -165.05298493910115
+      },
+      "inputs": [
+        {
+          "key": "textarea",
+          "valueType": "string",
+          "label": "core.module.input.label.textEditor textarea",
+          "type": "textarea",
+          "required": true,
+          "description": "core.module.input.description.textEditor textarea",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true,
+            "inputType": true
+          },
+          "connected": true
+        },
+        {
+          "key": "DYNAMIC_INPUT_KEY",
+          "valueType": "any",
+          "label": "字符串变量",
+          "type": "addInputParam",
+          "required": false,
+          "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true,
+            "inputType": false
+          },
+          "defaultEditField": {
+            "label": "",
+            "key": "",
+            "description": "",
+            "inputType": "target",
+            "valueType": "string",
+            "required": true
+          },
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "textarea",
+          "valueType": "string",
+          "label": "core.module.input.label.textEditor textarea",
+          "type": "source",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "49de3g",
+              "key": "text"
+            }
+          ]
+        },
+        {
+          "key": "DYNAMIC_INPUT_KEY",
+          "valueType": "any",
+          "label": "字符串变量",
+          "type": "source",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "49de3g",
+              "key": "DYNAMIC_INPUT_KEY"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "tze1ju",
+      "name": "定义插件输出",
+      "avatar": "/imgs/module/output.png",
+      "flowType": "pluginOutput",
+      "showStatus": false,
+      "position": {
+        "x": 1607.7142331269126,
+        "y": -145.93201540017395
+      },
+      "inputs": [
+        {
+          "key": "text",
+          "valueType": "string",
+          "label": "core.module.output.label.text",
+          "type": "target",
+          "required": true,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": false,
+            "dataType": true,
+            "inputType": false
+          },
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "text",
+          "valueType": "string",
+          "label": "core.module.output.label.text",
+          "type": "source",
+          "edit": true,
+          "targets": []
+        }
+      ]
+    },
+    {
+      "moduleId": "49de3g",
+      "name": "HTTP模块",
+      "avatar": "/imgs/module/http.png",
+      "flowType": "httpRequest",
+      "showStatus": true,
+      "position": {
+        "x": 1086.8929621216014,
+        "y": -451.7550009773506
+      },
+      "inputs": [
+        {
+          "key": "switch",
+          "type": "target",
+          "label": "core.module.input.label.switch",
+          "valueType": "any",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": false
+        },
+        {
+          "key": "system_httpMethod",
+          "type": "select",
+          "valueType": "string",
+          "label": "core.module.input.label.Http Request Method",
+          "value": "POST",
+          "list": [
+            {
+              "label": "GET",
+              "value": "GET"
+            },
+            {
+              "label": "POST",
+              "value": "POST"
+            }
+          ],
+          "required": true,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "system_httpReqUrl",
+          "type": "input",
+          "valueType": "string",
+          "label": "core.module.input.label.Http Request Url",
+          "description": "core.module.input.description.Http Request Url",
+          "placeholder": "https://api.ai.com/getInventory",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "value": "/api/plugins/textEditor",
+          "connected": false
+        },
+        {
+          "key": "system_httpHeader",
+          "type": "textarea",
+          "valueType": "string",
+          "label": "core.module.input.label.Http Request Header",
+          "description": "core.module.input.description.Http Request Header",
+          "placeholder": "core.module.input.description.Http Request Header",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "value": "",
+          "connected": false
+        },
+        {
+          "key": "DYNAMIC_INPUT_KEY",
+          "type": "target",
+          "valueType": "any",
+          "label": "core.module.inputType.dynamicTargetInput",
+          "description": "core.module.input.description.dynamic input",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": true,
+          "hideInApp": true,
+          "connected": true
+        },
+        {
+          "key": "text",
+          "valueType": "string",
+          "label": "text",
+          "type": "target",
+          "required": true,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true
+          },
+          "connected": true
+        },
+        {
+          "key": "system_addInputParam",
+          "type": "addInputParam",
+          "valueType": "any",
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true
+          },
+          "defaultEditField": {
+            "label": "",
+            "key": "",
+            "description": "",
+            "inputType": "target",
+            "valueType": "string",
+            "required": true
+          },
+          "connected": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "finish",
+          "label": "core.module.output.label.running done",
+          "description": "core.module.output.description.running done",
+          "valueType": "boolean",
+          "type": "source",
+          "targets": []
+        },
+        {
+          "key": "system_addOutputParam",
+          "type": "addOutputParam",
+          "valueType": "any",
+          "label": "",
+          "targets": [],
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "dataType": true
+          },
+          "defaultEditField": {
+            "label": "",
+            "key": "",
+            "description": "",
+            "outputType": "source",
+            "valueType": "string"
+          }
+        },
+        {
+          "type": "source",
+          "valueType": "string",
+          "key": "text",
+          "label": "core.module.output.label.text",
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "dataType": true
+          },
+          "targets": [
+            {
+              "moduleId": "tze1ju",
+              "key": "text"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

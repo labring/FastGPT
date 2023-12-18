@@ -66,7 +66,7 @@ const AIChatSettingsModal = ({
     fontSize: ['sm', 'md']
   };
   const selectTemplateBtn: BoxProps = {
-    color: 'myBlue.600',
+    color: 'blue.500',
     cursor: 'pointer'
   };
 

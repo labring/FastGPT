@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import type { HttpBodyType } from '@fastgpt/global/core/module/api.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { authRequestFromLocal } from '@fastgpt/service/support/permission/auth/common';
 
 type Props = HttpBodyType<{
   input: string;
@@ -12,6 +13,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const {
       data: { input, rule = '' }
     } = req.body as Props;
+
+    await authRequestFromLocal({ req });
 
     const result = (() => {
       if (typeof input === 'string') {

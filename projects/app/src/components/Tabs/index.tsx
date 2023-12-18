@@ -55,10 +55,10 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
           whiteSpace={'nowrap'}
           {...(activeId === item.id
             ? {
-                color: 'myBlue.700',
+                color: 'blue.600',
                 cursor: 'default',
                 fontWeight: 'bold',
-                borderBottomColor: 'myBlue.700'
+                borderBottomColor: 'blue.600'
               }
             : {
                 cursor: 'pointer'

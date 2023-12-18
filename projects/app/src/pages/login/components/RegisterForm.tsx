@@ -172,7 +172,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           float={'right'}
           fontSize="sm"
           mt={2}
-          color={'myBlue.600'}
+          color={'blue.500'}
           cursor={'pointer'}
           _hover={{ textDecoration: 'underline' }}
           onClick={() => setPageType('login')}

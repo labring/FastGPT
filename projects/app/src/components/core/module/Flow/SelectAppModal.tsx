@@ -60,7 +60,7 @@ const SelectAppModal = ({
             cursor={'pointer'}
             {...(selectedApps.includes(app._id)
               ? {
-                  bg: 'myBlue.200',
+                  bg: 'blue.100',
                   onClick: () => {
                     setSelectedApps(selectedApps.filter((e) => e !== app._id));
                   }

@@ -39,49 +39,49 @@ function chatModelInput(formData: AppSimpleEditFormType): FlowNodeInputItemType[
       value: formData.aiSettings.model,
       type: 'custom',
       label: '对话模型',
-      connected: true
+      connected: false
     },
     {
       key: 'temperature',
       value: formData.aiSettings.temperature,
       type: 'slider',
       label: '温度',
-      connected: true
+      connected: false
     },
     {
       key: 'maxToken',
       value: formData.aiSettings.maxToken,
       type: 'custom',
       label: '回复上限',
-      connected: true
+      connected: false
     },
     {
       key: 'systemPrompt',
       value: formData.aiSettings.systemPrompt || '',
       type: 'textarea',
       label: '系统提示词',
-      connected: true
+      connected: false
     },
     {
       key: ModuleInputKeyEnum.aiChatIsResponseText,
       value: true,
       type: 'hidden',
       label: '返回AI内容',
-      connected: true
+      connected: false
     },
     {
       key: 'quoteTemplate',
       value: formData.aiSettings.quoteTemplate || '',
       type: 'hidden',
       label: '引用内容模板',
-      connected: true
+      connected: false
     },
     {
       key: 'quotePrompt',
       value: formData.aiSettings.quotePrompt || '',
       type: 'hidden',
       label: '引用内容提示词',
-      connected: true
+      connected: false
     },
     {
       key: 'switch',
@@ -93,7 +93,7 @@ function chatModelInput(formData: AppSimpleEditFormType): FlowNodeInputItemType[
       key: 'history',
       type: 'target',
       label: 'core.module.input.label.chat history',
-      connected: true,
+      connected: false,
       value: 6
     },
     {
@@ -118,9 +118,9 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
       inputs: [
         {
           key: 'userChatInput',
-          connected: true,
+          connected: false,
           label: '用户问题',
-          type: 'target'
+          type: 'systemInput'
         }
       ],
       outputs: [
@@ -179,8 +179,8 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         {
           key: 'userChatInput',
           label: '用户问题',
-          type: 'target',
-          connected: true
+          type: 'systemInput',
+          connected: false
         }
       ],
       outputs: [
@@ -319,7 +319,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
                 type: FlowNodeInputTypeEnum.textarea,
                 valueType: ModuleIOValueTypeEnum.string,
                 label: '回复的内容',
-                connected: true
+                connected: false
               }
             ],
             outputs: [],

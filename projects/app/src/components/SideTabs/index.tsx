@@ -44,9 +44,9 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
           alignItems={'center'}
           {...(activeId === item.id
             ? {
-                bg: ' myBlue.300 !important',
+                bg: ' blue.200 !important',
                 fontWeight: 'bold',
-                color: 'myBlue.700 ',
+                color: 'blue.600 ',
                 cursor: 'default'
               }
             : {

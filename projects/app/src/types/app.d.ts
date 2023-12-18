@@ -61,6 +61,6 @@ export type AppLogsListItemType = {
   messageCount: number;
   userGoodFeedbackCount: number;
   userBadFeedbackCount: number;
-  robotBadFeedbackCount: number;
+  customFeedbacksCount: number;
   markCount: number;
 };

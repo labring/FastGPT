@@ -116,7 +116,7 @@ const Login = () => {
             {feConfigs?.concatMd && (
               <Box
                 fontWeight={'bold'}
-                color={'myBlue.700'}
+                color={'blue.600'}
                 cursor={'pointer'}
                 position={'absolute'}
                 right={5}
