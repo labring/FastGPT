@@ -40,7 +40,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const extractModel = global.extractModels[0];
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await (async () => {
+  const { arg, tokens, rawResponse } = await (async () => {
     if (extractModel.functionCall) {
       return functionCall({
         ...props,
@@ -176,6 +176,7 @@ ${content}
 
   const tokens = response.usage?.total_tokens || 0;
   return {
+    rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
     tokens,
     arg
   };
@@ -223,6 +224,7 @@ Human: ${content}`
 
   if (start === -1 || end === -1)
     return {
+      rawResponse: answer,
       tokens: totalTokens,
       arg: {}
     };
@@ -234,11 +236,13 @@ Human: ${content}`
 
   try {
     return {
+      rawResponse: answer,
       tokens: totalTokens,
       arg: JSON.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
     return {
+      rawResponse: answer,
       tokens: totalTokens,
       arg: {}
     };

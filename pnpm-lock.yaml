@@ -81,9 +81,18 @@ importers:
       cookie:
         specifier: ^0.5.0
         version: registry.npmmirror.com/cookie@0.5.0
+      dayjs:
+        specifier: ^1.11.7
+        version: registry.npmmirror.com/dayjs@1.11.7
+      domino-ext:
+        specifier: ^2.1.4
+        version: registry.npmmirror.com/domino-ext@2.1.4
       encoding:
         specifier: ^0.1.13
         version: registry.npmmirror.com/encoding@0.1.13
+      joplin-turndown-plugin-gfm:
+        specifier: ^1.0.12
+        version: registry.npmmirror.com/joplin-turndown-plugin-gfm@1.0.12
       jsonwebtoken:
         specifier: ^9.0.2
         version: registry.npmmirror.com/jsonwebtoken@9.0.2
@@ -108,6 +117,9 @@ importers:
       tunnel:
         specifier: ^0.0.6
         version: registry.npmmirror.com/tunnel@0.0.6
+      turndown:
+        specifier: ^7.1.2
+        version: registry.npmmirror.com/turndown@7.1.2
     devDependencies:
       '@types/cookie':
         specifier: ^0.5.2
@@ -322,18 +334,6 @@ importers:
       typescript:
         specifier: 4.9.5
         version: registry.npmmirror.com/typescript@4.9.5
-
-  worker:
-    dependencies:
-      domino-ext:
-        specifier: ^2.1.4
-        version: registry.npmmirror.com/domino-ext@2.1.4
-      joplin-turndown-plugin-gfm:
-        specifier: ^1.0.12
-        version: registry.npmmirror.com/joplin-turndown-plugin-gfm@1.0.12
-      turndown:
-        specifier: ^7.1.2
-        version: registry.npmmirror.com/turndown@7.1.2
 
 packages:
 

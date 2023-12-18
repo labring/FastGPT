@@ -96,8 +96,10 @@ const Container = React.memo(function Container(props: Props) {
           minZoom={0.1}
           maxZoom={1.5}
           defaultEdgeOptions={{
-            animated: true
+            animated: true,
+            zIndex: 0
           }}
+          elevateEdgesOnSelect
           connectionLineStyle={{ strokeWidth: 2, stroke: '#5A646Es' }}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}

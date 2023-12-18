@@ -1,7 +1,7 @@
 const { parentPort } = require('worker_threads');
 const TurndownService = require('turndown');
 const domino = require('domino-ext');
-var turndownPluginGfm = require('joplin-turndown-plugin-gfm');
+const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
 const turndownService = new TurndownService({
   headingStyle: 'atx',
@@ -14,8 +14,14 @@ const turndownService = new TurndownService({
   linkReferenceStyle: 'full'
 });
 parentPort?.on('message', (html) => {
-  var window = domino.createWindow(html);
-  var document = window.document;
+  const md = html2md(html);
+
+  parentPort.postMessage(md);
+});
+
+const html2md = (html) => {
+  const window = domino.createWindow(html);
+  const document = window.document;
 
   turndownService.remove(['i', 'script', 'iframe']);
   turndownService.addRule('codeBlock', {
@@ -31,7 +37,5 @@ parentPort?.on('message', (html) => {
 
   turndownService.use(turndownPluginGfm.gfm);
 
-  const markdown = turndownService.turndown(document);
-
-  parentPort.postMessage(markdown);
-});
+  return turndownService.turndown(document);
+};

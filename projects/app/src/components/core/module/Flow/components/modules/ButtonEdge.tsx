@@ -36,7 +36,7 @@ const ButtonEdge = (
     targetPosition
   });
 
-  const edgeStyle = {
+  const edgeStyle: React.CSSProperties = {
     ...style,
     ...(selected
       ? {
@@ -63,6 +63,7 @@ const ButtonEdge = (
           color={'black'}
           cursor={'pointer'}
           border={'1px solid #fff'}
+          zIndex={selected ? 1000 : 0}
           _hover={{
             boxShadow: '0 0 6px 2px rgba(0, 0, 0, 0.08)'
           }}
