@@ -1,11 +1,5 @@
 import React from 'react';
-import {
-  SmoothStepEdge,
-  EdgeLabelRenderer,
-  EdgeProps,
-  getSmoothStepPath,
-  MarkerType
-} from 'reactflow';
+import { SmoothStepEdge, EdgeLabelRenderer, EdgeProps, getSmoothStepPath } from 'reactflow';
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 

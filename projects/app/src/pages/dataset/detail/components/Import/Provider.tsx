@@ -289,28 +289,30 @@ export const PreviewFileOrChunk = () => {
             overflow={'overlay'}
             px={[4, 8]}
             my={4}
-            contentEditable
-            dangerouslySetInnerHTML={{ __html: previewFile.rawText }}
+            // contentEditable
+            // dangerouslySetInnerHTML={{ __html: previewFile.rawText }}
             fontSize={'sm'}
             whiteSpace={'pre-wrap'}
             wordBreak={'break-all'}
-            onBlur={(e) => {
-              // @ts-ignore
-              const val = e.target.innerText;
-              setReShowRePreview(true);
+            // onBlur={(e) => {
+            //   // @ts-ignore
+            //   const val = e.target.innerText;
+            //   setReShowRePreview(true);
 
-              setFiles((state) =>
-                state.map((file) =>
-                  file.id === previewFile.id
-                    ? {
-                        ...file,
-                        text: val
-                      }
-                    : file
-                )
-              );
-            }}
-          />
+            //   setFiles((state) =>
+            //     state.map((file) =>
+            //       file.id === previewFile.id
+            //         ? {
+            //             ...file,
+            //             text: val
+            //           }
+            //         : file
+            //     )
+            //   );
+            // }}
+          >
+            {previewFile.rawText}
+          </Box>
         </Box>
       ) : (
         <Box pt={[3, 6]}>
@@ -365,49 +367,9 @@ export const PreviewFileOrChunk = () => {
                       }}
                     />
                   </Flex>
-                  <Box
-                    px={4}
-                    fontSize={'sm'}
-                    whiteSpace={'pre-wrap'}
-                    wordBreak={'break-all'}
-                    contentEditable={!chunk.a}
-                    dangerouslySetInnerHTML={{
-                      __html: chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q
-                    }}
-                    onBlur={(e) => {
-                      // @ts-ignore
-                      const val = e.target.innerText;
-
-                      /* delete file */
-                      if (val === '') {
-                        setFiles((state) =>
-                          state.map((stateFile) =>
-                            stateFile.id === file.id
-                              ? {
-                                  ...file,
-                                  chunks: [...file.chunks.slice(0, i), ...file.chunks.slice(i + 1)]
-                                }
-                              : stateFile
-                          )
-                        );
-                      } else {
-                        // update chunk
-                        setFiles((stateFiles) =>
-                          stateFiles.map((stateFile) =>
-                            file.id === stateFile.id
-                              ? {
-                                  ...stateFile,
-                                  chunks: stateFile.chunks.map((chunk, index) => ({
-                                    ...chunk,
-                                    index: i === index ? val : chunk.q
-                                  }))
-                                }
-                              : stateFile
-                          )
-                        );
-                      }
-                    }}
-                  />
+                  <Box px={4} fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
+                    {chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q}
+                  </Box>
                 </Box>
               ))
             )}
