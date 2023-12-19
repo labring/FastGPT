@@ -2,7 +2,7 @@ import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import { countModelPrice } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/pg';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';

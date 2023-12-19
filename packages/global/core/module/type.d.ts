@@ -38,7 +38,7 @@ export type ModuleItemType = {
   outputs: FlowNodeOutputItemType[];
 };
 
-/* function type */
+/* --------------- function type -------------------- */
 // variable
 export type VariableItemType = {
   id: string;
@@ -73,4 +73,47 @@ export type ContextExtractAgentItemType = {
   key: string;
   required: boolean;
   enum?: string;
+};
+
+/* -------------- running module -------------- */
+export type RunningModuleItemType = {
+  name: ModuleItemType['name'];
+  moduleId: ModuleItemType['moduleId'];
+  flowType: ModuleItemType['flowType'];
+  showStatus?: ModuleItemType['showStatus'];
+} & {
+  inputs: {
+    key: string;
+    value?: any;
+  }[];
+  outputs: {
+    key: string;
+    answer?: boolean;
+    response?: boolean;
+    value?: any;
+    targets: {
+      moduleId: string;
+      key: string;
+    }[];
+  }[];
+};
+
+export type ChatDispatchProps = {
+  res: NextApiResponse;
+  mode: 'test' | 'chat';
+  teamId: string;
+  tmbId: string;
+  user: UserType;
+  appId: string;
+  chatId?: string;
+  responseChatItemId?: string;
+  histories: ChatItemType[];
+  variables: Record<string, any>;
+  stream: boolean;
+  detail: boolean; // response detail
+};
+
+export type ModuleDispatchProps<T> = ChatDispatchProps & {
+  outputs: RunningModuleItemType['outputs'];
+  inputs: T;
 };

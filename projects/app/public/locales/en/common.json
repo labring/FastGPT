@@ -315,6 +315,7 @@
         "Read Source": "Read Source"
       },
       "response": {
+        "Plugin Resonse Detail": "Plugin Detail",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",

@@ -5,7 +5,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';

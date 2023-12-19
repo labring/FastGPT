@@ -315,6 +315,7 @@
         "Read Source": "查看来源"
       },
       "response": {
+        "Plugin Resonse Detail": "插件详情",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",

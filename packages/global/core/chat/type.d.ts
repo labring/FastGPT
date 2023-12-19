@@ -119,6 +119,7 @@ export type moduleDispatchResType = {
 
   // plugin output
   pluginOutput?: Record<string, any>;
+  pluginDetail?: ChatHistoryItemResType[];
 
   // text editor
   textOutput?: string;

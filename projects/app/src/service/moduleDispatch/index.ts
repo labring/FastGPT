@@ -1,8 +1,8 @@
 import { NextApiResponse } from 'next';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { RunningModuleItemType } from '@/types/app';
-import { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import type { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
@@ -44,32 +44,17 @@ const callbackMap: Record<string, Function> = {
 /* running */
 export async function dispatchModules({
   res,
-  teamId,
-  tmbId,
-  user,
-  appId,
   modules,
-  chatId,
-  responseChatItemId,
   histories = [],
   startParams = {},
   variables = {},
+  user,
   stream = false,
-  detail = false
-}: {
-  res: NextApiResponse;
-  teamId: string;
-  tmbId: string;
-  user: UserType;
-  appId: string;
+  detail = false,
+  ...props
+}: ChatDispatchProps & {
   modules: ModuleItemType[];
-  chatId?: string;
-  responseChatItemId?: string;
-  histories: ChatItemType[];
   startParams?: Record<string, any>;
-  variables?: Record<string, any>;
-  stream?: boolean;
-  detail?: boolean;
 }) {
   // set sse response headers
   if (stream) {
@@ -196,25 +181,21 @@ export async function dispatchModules({
     module.inputs.forEach((item: any) => {
       params[item.key] = item.value;
     });
-    const props: ModuleDispatchProps<Record<string, any>> = {
+    const dispatchData: ModuleDispatchProps<Record<string, any>> = {
+      ...props,
       res,
-      teamId,
-      tmbId,
-      user,
-      appId,
-      chatId,
-      responseChatItemId,
-      stream,
-      detail,
       variables,
       histories,
+      user,
+      stream,
+      detail,
       outputs: module.outputs,
       inputs: params
     };
 
     const dispatchRes: Record<string, any> = await (async () => {
       if (callbackMap[module.flowType]) {
-        return callbackMap[module.flowType](props);
+        return callbackMap[module.flowType](dispatchData);
       }
       return {};
     })();

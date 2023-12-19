@@ -62,7 +62,9 @@ const Header = ({ plugin, onClose }: Props) => {
       if (
         item.inputs.find((input) => {
           if (!input.required || input.connected) return false;
-          if (!input.value || input.value === '' || input.value?.length === 0) return true;
+          if (input.value === undefined || input.value === '' || input.value?.length === 0) {
+            return true;
+          }
           return false;
         })
       ) {

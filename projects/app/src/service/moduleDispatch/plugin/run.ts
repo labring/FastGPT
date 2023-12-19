@@ -1,4 +1,4 @@
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { dispatchModules } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import {
@@ -21,6 +21,7 @@ type RunPluginResponse = {
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
+    mode,
     teamId,
     tmbId,
     inputs: { pluginId, ...data }
@@ -71,6 +72,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   if (output) {
     output.moduleLogo = plugin.avatar;
   }
+  console.log(responseData.length);
 
   return {
     answerText,
@@ -79,7 +81,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       moduleLogo: plugin.avatar,
       price: responseData.reduce((sum, item) => sum + (item.price || 0), 0),
       runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0),
-      pluginOutput: output?.pluginOutput
+      pluginOutput: output?.pluginOutput,
+      pluginDetail:
+        mode === 'test' && plugin.teamId === teamId
+          ? responseData.filter((item) => {
+              const filterArr = [FlowNodeTypeEnum.pluginOutput];
+              return !filterArr.includes(item.moduleType as any);
+            })
+          : undefined
     },
     ...(output ? output.pluginOutput : {})
   };

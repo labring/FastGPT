@@ -15,14 +15,19 @@ export type PluginItemSchema = {
 };
 
 /* plugin template */
-export type PluginTemplateType = {
+export type PluginTemplateType = PluginRuntimeType & {
   author?: string;
   id: string;
   source: `${PluginSourceEnum}`;
   templateType: FlowModuleTemplateType['templateType'];
+  intro: string;
+  modules: ModuleItemType[];
+};
+
+export type PluginRuntimeType = {
+  teamId?: string;
   name: string;
   avatar: string;
-  intro: string;
   showStatus?: boolean;
   modules: ModuleItemType[];
 };
