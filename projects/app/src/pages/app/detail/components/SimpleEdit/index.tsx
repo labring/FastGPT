@@ -313,7 +313,6 @@ function ConfigForm({
                   defaultValue={getValues('aiSettings.systemPrompt')}
                   onBlur={(e) => {
                     setValue('aiSettings.systemPrompt', e.target.value || '');
-                    setRefresh(!refresh);
                   }}
                 />
               </Flex>
@@ -407,7 +406,6 @@ function ConfigForm({
                   defaultValue={getValues('cfr.background')}
                   onBlur={(e) => {
                     setValue('cfr.background', e.target.value || '');
-                    setRefresh(!refresh);
                   }}
                 />
               </Box>
@@ -438,12 +436,15 @@ function ConfigForm({
                 <QuestionOutlineIcon />
               </MyTooltip>
             </Flex>
-            <Textarea
+            <PromptTextarea
               mt={2}
+              bg={'myWhite.400'}
               rows={5}
               placeholder={welcomeTextTip}
-              borderColor={'myGray.100'}
-              {...register('userGuide.welcomeText')}
+              defaultValue={getValues('userGuide.welcomeText')}
+              onBlur={(e) => {
+                setValue('userGuide.welcomeText', e.target.value || '');
+              }}
             />
           </Box>
         )}

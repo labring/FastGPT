@@ -49,12 +49,6 @@ A: ${systemPrompt}
   const concatFewShot = `${systemFewShot}${historyFewShot}`.trim();
 
   const ai = getAIApi(undefined, 480000);
-  // console.log(
-  //   replaceVariable(defaultPrompt, {
-  //     query: userChatInput,
-  //     histories: concatFewShot
-  //   })
-  // );
 
   const result = await ai.chat.completions.create({
     model: extractModel.model,
@@ -72,7 +66,16 @@ A: ${systemPrompt}
     stream: false
   });
 
-  const answer = result.choices?.[0]?.message?.content || '';
+  let answer = result.choices?.[0]?.message?.content || '';
+  // console.log(
+  //   replaceVariable(defaultPrompt, {
+  //     query: userChatInput,
+  //     histories: concatFewShot
+  //   })
+  // );
+  // console.log(answer);
+
+  answer = answer === 'error' ? userChatInput : answer;
   const tokens = result.usage?.total_tokens || 0;
 
   return {
@@ -87,7 +90,8 @@ A: ${systemPrompt}
   };
 };
 
-const defaultPrompt = `你的任务是结合对话背景和历史记录，完善当前问题，实现代词替换，例如：
+const defaultPrompt = `请不要回答任何问题。
+你的任务是根据历史记录，完善当前问题，实现代词替换，例如：
 历史记录: 
 """
 Q: 对话背景。
@@ -95,6 +99,14 @@ A: 关于 FatGPT 的介绍和使用等问题。
 """
 当前问题: 怎么下载
 输出: FastGPT 怎么下载？
+----------------
+历史记录:
+"""
+Q: 对话背景。
+A: 关于 FatGPT 的介绍和使用等问题。
+"""
+当前问题: nh
+输出: error
 ----------------
 历史记录: 
 """
@@ -113,6 +125,14 @@ A: FastGPT 的作者是 labring。
 """
 当前问题: 介绍下他
 输出: 介绍下 FastGPT 的作者 labring。
+----------------
+历史记录: 
+"""
+Q: 作者是谁？
+A: FastGPT 的作者是 labring。
+"""
+当前问题: 我想购买商业版。
+输出: FastGPT 商业版如何购买？
 ----------------
 历史记录:
 """
@@ -147,5 +167,4 @@ A: Sealos 是一个云操作系统。
 {{histories}}
 """
 当前问题: {{query}}
-输出:
-`;
+输出: `;

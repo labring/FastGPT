@@ -3,10 +3,10 @@ import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import type { ModuleItemType, FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { Edge, Node } from 'reactflow';
 import { customAlphabet } from 'nanoid';
-import { EmptyModule } from '@fastgpt/global/core/module/template/system/empty';
 import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
 import { adaptRole_Message2Chat } from '@fastgpt/global/core/chat/adapt';
 import { EDGE_TYPE } from '@fastgpt/global/core/module/node/constant';
+import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const gptMessage2ChatType = (messages: ChatMessageItemType[]): ChatItemType[] => {
@@ -45,7 +45,7 @@ export const appModule2FlowNode = ({
 }): Node<FlowModuleItemType> => {
   // init some static data
   const template =
-    moduleTemplatesFlat.find((template) => template.flowType === item.flowType) || EmptyModule;
+    moduleTemplatesFlat.find((template) => template.flowType === item.flowType) || UserInputModule;
 
   const concatInputs = template.inputs.concat(
     item.inputs.filter(

@@ -349,7 +349,13 @@ const ChatBox = (
           responseText,
           isNewChat = false
         } = await onStartChat({
-          chatList: newChatList,
+          chatList: newChatList.map((item) => ({
+            dataId: item.dataId,
+            obj: item.obj,
+            value: item.value,
+            status: item.status,
+            moduleName: item.moduleName
+          })),
           messages,
           controller: abortSignal,
           generatingMessage,

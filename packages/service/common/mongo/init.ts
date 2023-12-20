@@ -20,11 +20,12 @@ export async function connectMongo({
   console.log('mongo start connect');
   try {
     mongoose.set('strictQuery', true);
+    const maxConnecting = Math.max(20, Number(process.env.DB_MAX_LINK || 20));
     await mongoose.connect(process.env.MONGODB_URI as string, {
       bufferCommands: true,
-      maxConnecting: Number(process.env.DB_MAX_LINK || 5),
-      maxPoolSize: Number(process.env.DB_MAX_LINK || 5),
-      minPoolSize: Math.min(10, Number(process.env.DB_MAX_LINK || 10)),
+      maxConnecting: maxConnecting,
+      maxPoolSize: maxConnecting,
+      minPoolSize: Math.max(5, Math.round(Number(process.env.DB_MAX_LINK || 5) * 0.1)),
       connectTimeoutMS: 60000,
       waitQueueTimeoutMS: 60000,
       socketTimeoutMS: 60000,
