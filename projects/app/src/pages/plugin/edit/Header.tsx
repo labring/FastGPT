@@ -8,7 +8,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import { flowNode2Modules } from '@/components/core/module/utils';
+import { filterExportModules, flowNode2Modules } from '@/components/core/module/utils';
 import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
@@ -157,7 +157,7 @@ const Header = ({ plugin, onClose }: Props) => {
             onClick={() => {
               const modules = flow2ModulesAndCheck();
               if (modules) {
-                copyData(JSON.stringify(modules, null, 2), t('app.Export Config Successful'));
+                copyData(filterExportModules(modules), t('app.Export Config Successful'));
               }
             }}
           />

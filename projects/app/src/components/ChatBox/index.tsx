@@ -386,7 +386,7 @@ const ChatBox = (
         }, 100);
       } catch (err: any) {
         toast({
-          title: getErrText(err, '聊天出错了~'),
+          title: t(getErrText(err, 'core.chat.error.Chat error')),
           status: 'error',
           duration: 5000,
           isClosable: true
@@ -419,7 +419,8 @@ const ChatBox = (
       generatingMessage,
       createQuestionGuide,
       generatingScroll,
-      isPc
+      isPc,
+      t
     ]
   );
 

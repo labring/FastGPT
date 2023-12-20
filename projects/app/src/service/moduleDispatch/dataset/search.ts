@@ -31,11 +31,11 @@ export async function dispatchDatasetSearch(
   } = props as DatasetSearchProps;
 
   if (datasets.length === 0) {
-    return Promise.reject("You didn't choose the knowledge base");
+    return Promise.reject('core.chat.error.Select dataset empty');
   }
 
   if (!userChatInput) {
-    return Promise.reject('Your input is empty');
+    return Promise.reject('core.chat.error.User question empty');
   }
 
   // get vector

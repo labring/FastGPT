@@ -297,7 +297,10 @@
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "error": {
-        "Messages empty": "Interface content is empty, maybe the text is too long ~"
+        "Messages empty": "Interface content is empty, maybe the text is too long ~",
+        "Select dataset empty": "You didn't choose any dataset.",
+        "user input empty": "User question is empty",
+        "Chat error": "Chat error"
       },
       "feedback": {
         "Close User Good Feedback": "",

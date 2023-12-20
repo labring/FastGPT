@@ -299,7 +299,10 @@
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
       "error": {
-        "Messages empty": "接口内容为空，可能文本超长了~"
+        "Messages empty": "接口内容为空，可能文本超长了~",
+        "Select dataset empty": "你没有选择知识库",
+        "user input empty": "传入的用户问题为空",
+        "Chat error": "对话出现异常"
       },
       "feedback": {
         "Close User Good Feedback": "",
