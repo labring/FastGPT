@@ -14,7 +14,7 @@ type Props = ModuleDispatchProps<{
 }>;
 type Response = {
   [ModuleOutputKeyEnum.text]: string;
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
 };
 
 export const dispatchCFR = async ({
@@ -23,6 +23,12 @@ export const dispatchCFR = async ({
 }: Props): Promise<Response> => {
   if (!userChatInput) {
     return Promise.reject('Question is empty');
+  }
+
+  if (histories.length === 0 && !systemPrompt) {
+    return {
+      [ModuleOutputKeyEnum.text]: userChatInput
+    };
   }
 
   const extractModel = getExtractModel(model);
@@ -99,6 +105,14 @@ A: FastGPT 报错"no connection"可能是因为……
 """
 当前问题: 怎么解决
 输出: FastGPT 报错"no connection"如何解决？
+----------------
+历史记录: 
+"""
+Q: 作者是谁？
+A: FastGPT 的作者是 labring。
+"""
+当前问题: 介绍下他
+输出: 介绍下 FastGPT 的作者 labring。
 ----------------
 历史记录:
 """

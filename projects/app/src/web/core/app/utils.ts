@@ -19,25 +19,25 @@ export async function postForm2Modules(
           {
             key: ModuleInputKeyEnum.welcomeText,
             type: FlowNodeInputTypeEnum.hidden,
-            label: '开场白',
+            label: 'core.app.Welcome Text',
             value: formData.userGuide.welcomeText
           },
           {
             key: ModuleInputKeyEnum.variables,
             type: FlowNodeInputTypeEnum.hidden,
-            label: '对话框变量',
+            label: 'core.app.Chat Variable',
             value: formData.userGuide.variables
           },
           {
             key: ModuleInputKeyEnum.questionGuide,
             type: FlowNodeInputTypeEnum.hidden,
-            label: '问题引导',
+            label: 'core.app.Question Guide',
             value: formData.userGuide.questionGuide
           },
           {
             key: ModuleInputKeyEnum.tts,
             type: FlowNodeInputTypeEnum.hidden,
-            label: '语音播报',
+            label: 'core.app.TTS',
             value: formData.userGuide.tts
           }
         ],

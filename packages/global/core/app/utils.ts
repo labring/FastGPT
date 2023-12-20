@@ -21,6 +21,9 @@ export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEd
       quoteTemplate: '',
       maxToken: defaultChatModel ? defaultChatModel.maxResponse / 2 : 4000
     },
+    cfr: {
+      background: ''
+    },
     dataset: {
       datasets: [],
       similarity: 0.4,
@@ -116,6 +119,11 @@ export const appModules2Form = ({
         questionGuide: questionGuide,
         tts: ttsConfig
       };
+    } else if (module.flowType === FlowNodeTypeEnum.cfr) {
+      const value = module.inputs.find((item) => item.key === ModuleInputKeyEnum.aiSystemPrompt);
+      if (value) {
+        defaultAppForm.cfr.background = value.value;
+      }
     }
   });
 
