@@ -1,5 +1,5 @@
 import { BillSourceEnum, PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
-import { getAudioSpeechModel, getQAModel } from '@/service/core/ai/model';
+import { getAudioSpeechModel, getQAModel, getVectorModel } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -113,8 +113,7 @@ export const pushGenerateVectorBill = ({
   source?: `${BillSourceEnum}`;
 }) => {
   // 计算价格. 至少为1
-  const vectorModel =
-    global.vectorModels.find((item) => item.model === model) || global.vectorModels[0];
+  const vectorModel = getVectorModel(model);
   const unitPrice = vectorModel.price || 0.2;
   let total = unitPrice * tokenLen;
   total = total > 1 ? total : 1;

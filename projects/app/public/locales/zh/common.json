@@ -543,7 +543,8 @@
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
           "anyInput": "可传入任意内容",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
-          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
+          "cfr background": "当前对话的背景知识，便于补全首次问题和补全模糊问题，只需要简单的描述当前对话的范围。"
         },
         "label": {
           "Http Request Header": "请求头",
@@ -554,7 +555,12 @@
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
-          "user question": "用户问题"
+          "user question": "用户问题",
+          "aiModel": "AI 模型",
+          "cfr background": "背景知识"
+        },
+        "placeholder": {
+          "cfr background": "关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。"
         }
       },
       "inputType": {
@@ -578,7 +584,8 @@
           "result false": "False",
           "result true": "True",
           "running done": "模块调用结束",
-          "text": "文本输出"
+          "text": "文本输出",
+          "cfr result": "补全结果"
         }
       },
       "template": {
@@ -586,7 +593,9 @@
         "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。",
         "UnKnow Module": "未知模块",
         "textEditor": "文本加工",
-        "textEditor intro": "可对固定或传入的文本进行加工后输出"
+        "textEditor intro": "可对固定或传入的文本进行加工后输出",
+        "cfr": "问题补全",
+        "cfr intro": "根据历史记录，补全当前问题，使其更利于知识库搜索"
       },
       "textEditor": {
         "Text Edit": "文本加工"

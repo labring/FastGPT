@@ -22,11 +22,12 @@ import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttpRequest } from './tools/http';
 import { dispatchAppRequest } from './tools/runApp';
+import { dispatchCFR } from './tools/cfr';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 
-const callbackMap: Record<string, Function> = {
+const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
   [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
@@ -38,7 +39,12 @@ const callbackMap: Record<string, Function> = {
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
+  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
+  [FlowNodeTypeEnum.cfr]: dispatchCFR,
+
+  // none
+  [FlowNodeTypeEnum.userGuide]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.variable]: () => Promise.resolve()
 };
 
 /* running */

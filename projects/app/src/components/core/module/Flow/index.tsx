@@ -14,7 +14,7 @@ import 'reactflow/dist/style.css';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
-const nodeTypes = {
+const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
   [FlowNodeTypeEnum.userGuide]: dynamic(() => import('./components/nodes/NodeUserGuide')),
   [FlowNodeTypeEnum.variable]: dynamic(() => import('./components/nodes/abandon/NodeVariable')),
   [FlowNodeTypeEnum.questionInput]: dynamic(() => import('./components/nodes/NodeQuestionInput')),
@@ -28,7 +28,8 @@ const nodeTypes = {
   [FlowNodeTypeEnum.runApp]: NodeSimple,
   [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodePluginInput')),
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
-  [FlowNodeTypeEnum.pluginModule]: NodeSimple
+  [FlowNodeTypeEnum.pluginModule]: NodeSimple,
+  [FlowNodeTypeEnum.cfr]: NodeSimple
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge

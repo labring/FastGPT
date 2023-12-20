@@ -10,12 +10,14 @@ import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
+import { getExtractModel } from '@/service/core/ai/model';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
   [ModuleInputKeyEnum.contextExtractInput]: string;
   [ModuleInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [ModuleInputKeyEnum.description]: string;
+  [ModuleInputKeyEnum.aiModel]: string;
 }>;
 type Response = {
   [ModuleOutputKeyEnum.success]?: boolean;
@@ -30,17 +32,17 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
     histories,
-    inputs: { content, history = 6, description, extractKeys }
+    inputs: { content, history = 6, model, description, extractKeys }
   } = props;
 
   if (!content) {
     return Promise.reject('Input is empty');
   }
 
-  const extractModel = global.extractModels[0];
+  const extractModel = getExtractModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens, rawResponse } = await (async () => {
+  const { arg, tokens } = await (async () => {
     if (extractModel.functionCall) {
       return functionCall({
         ...props,

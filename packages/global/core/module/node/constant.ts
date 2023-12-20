@@ -38,7 +38,6 @@ export enum FlowNodeOutputTypeEnum {
 }
 
 export enum FlowNodeTypeEnum {
-  empty = 'empty',
   userGuide = 'userGuide',
   questionInput = 'questionInput',
   historyNode = 'historyNode',
@@ -52,7 +51,7 @@ export enum FlowNodeTypeEnum {
   pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
-  textEditor = 'textEditor',
+  cfr = 'cfr',
 
   // abandon
   variable = 'variable'

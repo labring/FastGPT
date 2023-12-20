@@ -93,6 +93,7 @@ export type moduleDispatchResType = {
   model?: string;
   query?: string;
   contextTotalLen?: number;
+  textOutput?: string;
 
   // chat
   temperature?: number;
@@ -120,9 +121,6 @@ export type moduleDispatchResType = {
   // plugin output
   pluginOutput?: Record<string, any>;
   pluginDetail?: ChatHistoryItemResType[];
-
-  // text editor
-  textOutput?: string;
 
   // tf switch
   tfSwitchResult?: boolean;

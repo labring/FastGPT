@@ -3,7 +3,6 @@ import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
-import dynamic from 'next/dynamic';
 
 import Tabs from '../Tabs';
 import MyModal from '../MyModal';
@@ -245,7 +244,7 @@ const ResponseBox = React.memo(function ResponseBox({
           />
         )}
 
-        {/* text editor */}
+        {/* text output */}
         <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
       </Box>
     </>
