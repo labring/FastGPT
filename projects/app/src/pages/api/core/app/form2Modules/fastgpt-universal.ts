@@ -289,20 +289,10 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           type: 'source',
           valueType: 'string',
           targets: [
-            ...(formData.cfr?.background
-              ? [
-                  {
-                    moduleId: 'vuc92c',
-                    key: 'userChatInput'
-                  }
-                ]
-              : [
-                  {
-                    moduleId: 'datasetSearch',
-                    key: 'userChatInput'
-                  }
-                ]),
-
+            {
+              moduleId: 'vuc92c',
+              key: 'userChatInput'
+            },
             {
               moduleId: 'chatModule',
               key: 'userChatInput'
@@ -651,11 +641,8 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           targets: []
         }
       ]
-    }
-  ];
-
-  if (formData.cfr?.background) {
-    modules.push({
+    },
+    {
       moduleId: 'vuc92c',
       name: 'core.module.template.cfr',
       avatar: '/imgs/module/cfr.svg',
@@ -737,8 +724,9 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           ]
         }
       ]
-    });
-  }
+    }
+  ];
+
   if (formData.dataset?.searchEmptyText) {
     modules.push({
       moduleId: '6dtsvu',

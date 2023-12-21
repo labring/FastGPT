@@ -293,20 +293,10 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           type: 'source',
           valueType: 'string',
           targets: [
-            ...(formData.cfr?.background
-              ? [
-                  {
-                    moduleId: 'vuc92c',
-                    key: 'userChatInput'
-                  }
-                ]
-              : [
-                  {
-                    moduleId: 'datasetSearch',
-                    key: 'userChatInput'
-                  }
-                ]),
-
+            {
+              moduleId: 'vuc92c',
+              key: 'userChatInput'
+            },
             {
               moduleId: 'chatModule',
               key: 'userChatInput'
@@ -641,11 +631,8 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           targets: []
         }
       ]
-    }
-  ];
-
-  if (formData.cfr?.background) {
-    modules.push({
+    },
+    {
       moduleId: 'vuc92c',
       name: 'core.module.template.cfr',
       avatar: '/imgs/module/cfr.svg',
@@ -727,8 +714,8 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           ]
         }
       ]
-    });
-  }
+    }
+  ];
 
   return modules;
 }

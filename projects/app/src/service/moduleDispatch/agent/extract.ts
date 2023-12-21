@@ -62,6 +62,9 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     if (!extractKeys.find((item) => item.key === key)) {
       delete arg[key];
     }
+    if (arg[key] === '') {
+      delete arg[key];
+    }
   }
 
   // auth fields
@@ -103,17 +106,19 @@ async function functionCall({
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: `<任务描述>
+      value: `你的任务：
+"""
 ${description || '根据用户要求获取适当的 JSON 字符串。'}
+"""
 
+要求：
+"""
 - 如果字段为空，你返回空字符串。
-- 不要换行。
-- 结合历史记录和文本进行获取。
-</任务描述>
+- 字符串不要换行。
+- 结合上下文和当前问题进行获取。
+"""
 
-<文本>
-${content}
-</文本>`
+当前问题: "${content}"`
     }
   ];
   const filterMessages = ChatContextFilter({

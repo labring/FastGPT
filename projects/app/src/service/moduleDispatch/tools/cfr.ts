@@ -24,6 +24,7 @@ export const dispatchCFR = async ({
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
+  console.log(histories.length, systemPrompt);
 
   if (histories.length === 0 && !systemPrompt) {
     return {
@@ -75,7 +76,7 @@ A: ${systemPrompt}
   // );
   // console.log(answer);
 
-  answer = answer === 'error' ? userChatInput : answer;
+  answer = answer === 'none' ? userChatInput : answer;
   const tokens = result.usage?.total_tokens || 0;
 
   return {
@@ -91,7 +92,7 @@ A: ${systemPrompt}
 };
 
 const defaultPrompt = `请不要回答任何问题。
-你的任务是根据历史记录，完善当前问题，实现代词替换，例如：
+你的任务是结合上下文，为当前问题，实现代词替换，确保问题描述的对象清晰明确。例如：
 历史记录: 
 """
 Q: 对话背景。
@@ -106,12 +107,10 @@ Q: 对话背景。
 A: 关于 FatGPT 的介绍和使用等问题。
 """
 当前问题: nh
-输出: error
+输出: none
 ----------------
 历史记录: 
 """
-Q: 对话背景。
-A: 关于 FatGPT 的介绍和使用等问题。
 Q: 报错 "no connection"
 A: FastGPT 报错"no connection"可能是因为……
 """

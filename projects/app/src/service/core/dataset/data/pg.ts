@@ -346,7 +346,7 @@ export async function searchDatasetData(
     for (let i = 0; i < list.length; i++) {
       const item = list[i];
       totalTokens += countPromptTokens(item.q + item.a);
-      if (totalTokens > maxTokens + 200) {
+      if (totalTokens > maxTokens + 500) {
         break;
       }
       results.push(item);
@@ -355,7 +355,7 @@ export async function searchDatasetData(
       }
     }
 
-    return results;
+    return results.length === 0 ? list.slice(0, 1) : results;
   };
   const multiQueryRecall = async ({
     embeddingLimit,

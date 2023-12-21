@@ -19,6 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const result = (() => {
       if (typeof input === 'string') {
         const defaultReg: any[] = [
+          '',
           undefined,
           'undefined',
           null,
