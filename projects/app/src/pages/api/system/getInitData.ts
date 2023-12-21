@@ -185,9 +185,7 @@ async function getSimpleModeTemplates() {
 
   try {
     const basePath =
-      process.env.NODE_ENV === 'development'
-        ? 'public/simpleTemplates'
-        : '/app/projects/app/public/simpleTemplates';
+      process.env.NODE_ENV === 'development' ? 'data/simpleTemplates' : '/app/data/simpleTemplates';
     // read data/simpleTemplates directory, get all json file
     const files = readdirSync(basePath);
     // filter json file
@@ -219,9 +217,7 @@ function getSystemPlugin() {
   if (global.communityPlugins && global.communityPlugins.length > 0) return;
 
   const basePath =
-    process.env.NODE_ENV === 'development'
-      ? 'public/pluginTemplates'
-      : '/app/projects/app/public/pluginTemplates';
+    process.env.NODE_ENV === 'development' ? 'data/pluginTemplates' : '/app/data/pluginTemplates';
   // read data/pluginTemplates directory, get all json file
   const files = readdirSync(basePath);
   // filter json file

@@ -78,6 +78,8 @@ COPY --from=builder /app/projects/$name/package.json ./package.json
 COPY --from=workerDeps /app/worker /app/worker
 # copy config
 COPY ./projects/$name/data/config.json /app/data/config.json
+COPY ./projects/$name/data/pluginTemplates /app/data/pluginTemplates
+COPY ./projects/$name/data/simpleTemplates /app/data/simpleTemplates
 
 
 ENV NODE_ENV production
