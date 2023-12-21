@@ -74,7 +74,7 @@ export const defaultCQModels: FunctionModelItemType[] = [
     maxContext: 16000,
     maxResponse: 4000,
     price: 0,
-    functionCall: true,
+    toolChoice: true,
     functionPrompt: ''
   },
   {
@@ -83,7 +83,7 @@ export const defaultCQModels: FunctionModelItemType[] = [
     maxContext: 8000,
     maxResponse: 8000,
     price: 0,
-    functionCall: true,
+    toolChoice: true,
     functionPrompt: ''
   }
 ];
@@ -94,7 +94,7 @@ export const defaultExtractModels: FunctionModelItemType[] = [
     maxContext: 16000,
     maxResponse: 4000,
     price: 0,
-    functionCall: true,
+    toolChoice: true,
     functionPrompt: ''
   }
 ];

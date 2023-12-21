@@ -43,8 +43,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const chatHistories = getHistories(history, histories);
 
   const { arg, tokens } = await (async () => {
-    if (cqModel.functionCall) {
-      return functionCall({
+    if (cqModel.toolChoice) {
+      return toolChoice({
         ...props,
         histories: chatHistories,
         cqModel
@@ -73,7 +73,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   };
 };
 
-async function functionCall({
+async function toolChoice({
   user,
   cqModel,
   histories,

@@ -1,5 +1,11 @@
 import React from 'react';
-import { SmoothStepEdge, EdgeLabelRenderer, EdgeProps, getSmoothStepPath } from 'reactflow';
+import {
+  BezierEdge,
+  getBezierPath,
+  EdgeLabelRenderer,
+  EdgeProps,
+  getSmoothStepPath
+} from 'reactflow';
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 
@@ -21,7 +27,7 @@ const ButtonEdge = (
     style = {}
   } = props;
 
-  const [edgePath, labelX, labelY] = getSmoothStepPath({
+  const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -39,10 +45,11 @@ const ButtonEdge = (
         }
       : { strokeWidth: 2, stroke: '#BDC1C5' })
   };
+  console.log(edgeStyle);
 
   return (
     <>
-      <SmoothStepEdge {...props} style={edgeStyle} />
+      <BezierEdge {...props} style={edgeStyle} />
       <EdgeLabelRenderer>
         <Flex
           alignItems={'center'}

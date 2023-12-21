@@ -43,8 +43,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const chatHistories = getHistories(history, histories);
 
   const { arg, tokens } = await (async () => {
-    if (extractModel.functionCall) {
-      return functionCall({
+    if (extractModel.toolChoice) {
+      return toolChoice({
         ...props,
         histories: chatHistories,
         extractModel
@@ -96,7 +96,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   };
 }
 
-async function functionCall({
+async function toolChoice({
   extractModel,
   user,
   histories,
