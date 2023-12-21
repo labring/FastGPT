@@ -4,7 +4,6 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { addLog } from '@fastgpt/service/common/system/log';
 import type { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
-import { defaultQGModels } from '@fastgpt/global/core/ai/model';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { PostReRankProps } from '@fastgpt/global/core/ai/api';
 
@@ -157,7 +156,7 @@ export const pushQuestionGuideBill = ({
   teamId: string;
   tmbId: string;
 }) => {
-  const qgModel = global.qgModels?.[0] || defaultQGModels[0];
+  const qgModel = global.qgModels[0];
   const total = qgModel.price * tokens;
   createBill({
     teamId,

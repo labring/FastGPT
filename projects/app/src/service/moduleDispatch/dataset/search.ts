@@ -30,6 +30,10 @@ export async function dispatchDatasetSearch(
     inputs: { datasets = [], similarity = 0.4, limit = 5, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
+  if (!Array.isArray(datasets)) {
+    return Promise.reject('Quote type error');
+  }
+
   if (datasets.length === 0) {
     return Promise.reject('core.chat.error.Select dataset empty');
   }

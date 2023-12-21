@@ -24,7 +24,6 @@ export const dispatchCFR = async ({
   if (!userChatInput) {
     return Promise.reject('Question is empty');
   }
-  console.log(histories.length, systemPrompt);
 
   if (histories.length === 0 && !systemPrompt) {
     return {
@@ -92,7 +91,7 @@ A: ${systemPrompt}
 };
 
 const defaultPrompt = `请不要回答任何问题。
-你的任务是结合上下文，为当前问题，实现代词替换，确保问题描述的对象清晰明确。例如：
+你的任务是结合上下文，为当前问题，实现代词替换，确保问题描述的对象清晰明确。无需进行替换的内容，返回"none"，例如：
 历史记录: 
 """
 Q: 对话背景。
@@ -139,7 +138,7 @@ Q: FastGPT 如何收费？
 A: FastGPT 收费可以参考……
 """
 当前问题: 你知道 laf 么？
-输出: 你知道 laf 么？
+输出: none
 ----------------
 历史记录:
 """

@@ -141,7 +141,7 @@ export const AiChatModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleOutputKeyEnum.answerText,
-      label: 'AI回复',
+      label: 'AI回复内容',
       description: '将在 stream 回复完毕后触发',
       valueType: ModuleIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.source,

@@ -45,7 +45,6 @@ const ButtonEdge = (
         }
       : { strokeWidth: 2, stroke: '#BDC1C5' })
   };
-  console.log(edgeStyle);
 
   return (
     <>

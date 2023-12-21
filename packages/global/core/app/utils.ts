@@ -3,23 +3,20 @@ import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum, ModuleInputKeyEnum } from '../module/constants';
 import type { FlowNodeInputItemType } from '../module/node/type.d';
 import { getGuideModule, splitGuideModule } from '../module/utils';
-import { defaultChatModels } from '../ai/model';
 import { ModuleItemType } from '../module/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constant';
 
 export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEditFormType => {
-  const defaultChatModel = defaultChatModels[0];
-
   return {
     templateId,
     aiSettings: {
-      model: defaultChatModel?.model,
+      model: 'gpt-3.5-turbo',
       systemPrompt: '',
       temperature: 0,
       isResponseAnswerText: true,
       quotePrompt: '',
       quoteTemplate: '',
-      maxToken: defaultChatModel ? defaultChatModel.maxResponse / 2 : 4000
+      maxToken: 4000
     },
     cfr: {
       background: ''
