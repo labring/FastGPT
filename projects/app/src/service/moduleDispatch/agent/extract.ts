@@ -5,17 +5,19 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
+import { getExtractModel } from '@/service/core/ai/model';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
   [ModuleInputKeyEnum.contextExtractInput]: string;
   [ModuleInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
   [ModuleInputKeyEnum.description]: string;
+  [ModuleInputKeyEnum.aiModel]: string;
 }>;
 type Response = {
   [ModuleOutputKeyEnum.success]?: boolean;
@@ -30,19 +32,19 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
     histories,
-    inputs: { content, history = 6, description, extractKeys }
+    inputs: { content, history = 6, model, description, extractKeys }
   } = props;
 
   if (!content) {
     return Promise.reject('Input is empty');
   }
 
-  const extractModel = global.extractModels[0];
+  const extractModel = getExtractModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens, rawResponse } = await (async () => {
-    if (extractModel.functionCall) {
-      return functionCall({
+  const { arg, tokens } = await (async () => {
+    if (extractModel.toolChoice) {
+      return toolChoice({
         ...props,
         histories: chatHistories,
         extractModel
@@ -58,6 +60,9 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   // remove invalid key
   for (let key in arg) {
     if (!extractKeys.find((item) => item.key === key)) {
+      delete arg[key];
+    }
+    if (arg[key] === '') {
       delete arg[key];
     }
   }
@@ -91,7 +96,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   };
 }
 
-async function functionCall({
+async function toolChoice({
   extractModel,
   user,
   histories,
@@ -101,17 +106,19 @@ async function functionCall({
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: `<任务描述>
+      value: `你的任务：
+"""
 ${description || '根据用户要求获取适当的 JSON 字符串。'}
+"""
 
+要求：
+"""
 - 如果字段为空，你返回空字符串。
-- 不要换行。
-- 结合历史记录和文本进行获取。
-</任务描述>
+- 字符串不要换行。
+- 结合上下文和当前问题进行获取。
+"""
 
-<文本>
-${content}
-</文本>`
+当前问题: "${content}"`
     }
   ];
   const filterMessages = ChatContextFilter({

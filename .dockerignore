@@ -9,3 +9,4 @@ README.md
 .yalc/
 yalc.lock
 testApi/
+*.local.*

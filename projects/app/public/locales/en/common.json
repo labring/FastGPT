@@ -245,7 +245,9 @@
         "Out Ad Edit": "You are about to exit the Advanced orchestration page, please confirm",
         "Prompt Editor": "Prompt Editor",
         "Save and out": "Save out",
-        "UnSave": "UnSave"
+        "UnSave": "UnSave",
+        "cfr background prompt": "Question completion - Chat background description",
+        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. \nIf is empty, the problem completion function is not used."
       },
       "feedback": {
         "Custom feedback": "Custom feedback",
@@ -295,7 +297,10 @@
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "error": {
-        "Messages empty": "Interface content is empty, maybe the text is too long ~"
+        "Messages empty": "Interface content is empty, maybe the text is too long ~",
+        "Select dataset empty": "You didn't choose any dataset.",
+        "user input empty": "User question is empty",
+        "Chat error": "Chat error"
       },
       "feedback": {
         "Close User Good Feedback": "",
@@ -315,6 +320,7 @@
         "Read Source": "Read Source"
       },
       "response": {
+        "Plugin Resonse Detail": "Plugin Detail",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",
@@ -541,6 +547,7 @@
           "Http Request Url": "",
           "TFSwitch textarea": "",
           "anyInput": "",
+          "cfr background": "The background knowledge of the current conversation makes it easy to complete the first question and the fuzzy question, and only needs to briefly describe the scope of the current conversation.",
           "dynamic input": "",
           "textEditor textarea": "The passed variable can be referenced by {{key}}."
         },
@@ -549,11 +556,16 @@
           "Http Request Method": "",
           "Http Request Url": "",
           "TFSwitch textarea": "",
+          "aiModel": "",
           "anyInput": "",
+          "cfr background": "Background",
           "chat history": "chat history",
           "switch": "Switch",
           "textEditor textarea": "Text Edit",
           "user question": "User question"
+        },
+        "placeholder": {
+          "cfr background": "Questions about the introduction and use of python. \nThe current dialogue is related to the game GTA5."
         }
       },
       "inputType": {
@@ -574,6 +586,7 @@
           "running done": "Triggered when the module call ends"
         },
         "label": {
+          "cfr result": "",
           "result false": "",
           "result true": "",
           "running done": "End of module call ",
@@ -584,6 +597,8 @@
         "TFSwitch": "",
         "TFSwitch intro": "",
         "UnKnow Module": "UnKnow Module",
+        "cfr": "",
+        "cfr intro": "Refine the current issue based on history, making it more conducive to knowledge base search, while improving continuous conversation capabilities.",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"
       },

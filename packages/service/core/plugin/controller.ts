@@ -3,7 +3,7 @@ import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { plugin2ModuleIO } from '@fastgpt/global/core/module/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import type { PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
+import type { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
 import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
 /* 
@@ -41,6 +41,7 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
     if (!item) return Promise.reject('plugin not found');
     return {
       id: String(item._id),
+      teamId: String(item.teamId),
       name: item.name,
       avatar: item.avatar,
       intro: item.intro,
@@ -74,16 +75,14 @@ export async function getPluginPreviewModule({
 }
 
 /* run plugin time */
-export async function getPluginRuntimeById(id: string): Promise<PluginTemplateType> {
+export async function getPluginRuntimeById(id: string): Promise<PluginRuntimeType> {
   const plugin = await getPluginTemplateById(id);
 
   return {
-    id: plugin.id,
-    source: plugin.source,
-    templateType: plugin.templateType,
+    teamId: plugin.teamId,
     name: plugin.name,
     avatar: plugin.avatar,
-    intro: plugin.intro,
+    showStatus: plugin.showStatus,
     modules: plugin.modules
   };
 }

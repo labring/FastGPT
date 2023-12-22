@@ -1,5 +1,5 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import axios from 'axios';
 import { flatDynamicParams } from '../utils';

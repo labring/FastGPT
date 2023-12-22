@@ -13,7 +13,7 @@ import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
 import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import { flowNode2Modules } from '@/components/core/module/utils';
+import { flowNode2Modules, filterExportModules } from '@/components/core/module/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
@@ -136,12 +136,12 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             borderRadius={'lg'}
             variant={'base'}
             aria-label={'save'}
-            onClick={() =>
-              copyData(
-                JSON.stringify(flowNode2Modules({ nodes, edges }), null, 2),
-                t('app.Export Config Successful')
-              )
-            }
+            onClick={() => {
+              const modules = flow2ModulesAndCheck();
+              if (modules) {
+                copyData(filterExportModules(modules), t('app.Export Config Successful'));
+              }
+            }}
           />
         </MyTooltip>
 

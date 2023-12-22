@@ -2,6 +2,7 @@ import mammoth from 'mammoth';
 import Papa from 'papaparse';
 import { compressBase64ImgAndUpload } from './controller';
 import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
+import { htmlStr2Md } from '@fastgpt/web/common/string/markdown';
 
 /**
  * 读取 txt 文件内容
@@ -115,12 +116,13 @@ export const readDocContent = (file: File, metadata: Record<string, any>) =>
       reader.onload = async ({ target }) => {
         if (!target?.result) return reject('读取 doc 文件失败');
         try {
-          // @ts-ignore
-          const res = await mammoth.convertToMarkdown({
-            arrayBuffer: target.result as ArrayBuffer
+          const buffer = target.result as ArrayBuffer;
+          const { value: html } = await mammoth.convertToHtml({
+            arrayBuffer: buffer
           });
+          const md = htmlStr2Md(html);
 
-          const rawText = await formatMarkdown(res?.value, metadata);
+          const rawText = await formatMarkdown(md, metadata);
 
           resolve(rawText);
         } catch (error) {
@@ -198,9 +200,9 @@ export const formatMarkdown = async (rawText: string = '', metadata: Record<stri
   );
 
   // Remove white space on both sides of the picture
-  const trimReg = /\s*(!\[.*\]\(.*\))\s*/g;
+  const trimReg = /(!\[.*\]\(.*\))\s*/g;
   if (trimReg.test(rawText)) {
-    rawText = rawText.replace(/\s*(!\[.*\]\(.*\))\s*/g, '$1');
+    rawText = rawText.replace(trimReg, '$1');
   }
 
   return simpleMarkdownText(rawText);

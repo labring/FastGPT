@@ -19,49 +19,51 @@ type Props = TextareaProps & {
   // variables: string[];
 };
 
-const PromptTextarea = (props: Props) => {
-  const ModalTextareaRef = useRef<HTMLTextAreaElement>(null);
-  const TextareaRef = useRef<HTMLTextAreaElement>(null);
+const PromptTextarea = React.forwardRef<HTMLTextAreaElement, Props>(
+  function PromptTextarea(props, ref) {
+    const ModalTextareaRef = useRef<HTMLTextAreaElement>(null);
+    const TextareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const { t } = useTranslation();
-  const { title = t('core.app.edit.Prompt Editor'), value, ...childProps } = props;
+    const { t } = useTranslation();
+    const { title = t('core.app.edit.Prompt Editor'), ...childProps } = props;
 
-  const { isOpen, onOpen, onClose } = useDisclosure();
+    const { isOpen, onOpen, onClose } = useDisclosure();
 
-  return (
-    <>
-      <Editor textareaRef={TextareaRef} {...childProps} onOpenModal={onOpen} />
-      {isOpen && (
-        <MyModal iconSrc="/imgs/modal/edit.svg" title={title} isOpen onClose={onClose}>
-          <ModalBody>
-            <Editor
-              textareaRef={ModalTextareaRef}
-              {...childProps}
-              minH={'300px'}
-              maxH={'auto'}
-              minW={['100%', '512px']}
-            />
-          </ModalBody>
-          <ModalFooter>
-            <Button
-              onClick={() => {
-                if (ModalTextareaRef.current && TextareaRef.current) {
-                  TextareaRef.current.value = ModalTextareaRef.current.value;
-                }
+    return (
+      <>
+        <Editor textareaRef={TextareaRef} {...childProps} onOpenModal={onOpen} />
+        {isOpen && (
+          <MyModal iconSrc="/imgs/modal/edit.svg" title={title} isOpen onClose={onClose}>
+            <ModalBody>
+              <Editor
+                textareaRef={ModalTextareaRef}
+                {...childProps}
+                minH={'300px'}
+                maxH={'auto'}
+                minW={['100%', '512px']}
+              />
+            </ModalBody>
+            <ModalFooter>
+              <Button
+                onClick={() => {
+                  if (ModalTextareaRef.current && TextareaRef.current) {
+                    TextareaRef.current.value = ModalTextareaRef.current.value;
+                  }
 
-                onClose();
-              }}
-            >
-              {t('common.Confirm')}
-            </Button>
-          </ModalFooter>
-        </MyModal>
-      )}
-    </>
-  );
-};
+                  onClose();
+                }}
+              >
+                {t('common.Confirm')}
+              </Button>
+            </ModalFooter>
+          </MyModal>
+        )}
+      </>
+    );
+  }
+);
 
-export default PromptTextarea;
+export default React.memo(PromptTextarea);
 
 const Editor = React.memo(function Editor({
   onOpenModal,
@@ -75,7 +77,7 @@ const Editor = React.memo(function Editor({
 
   return (
     <Box h={'100%'} w={'100%'} position={'relative'}>
-      <Textarea ref={textareaRef} wordBreak={'break-all'} maxW={'100%'} {...props} />
+      <Textarea ref={textareaRef} textAlign={'justify'} maxW={'100%'} {...props} />
       {onOpenModal && (
         <Box
           zIndex={1}

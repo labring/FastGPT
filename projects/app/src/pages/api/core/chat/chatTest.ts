@@ -58,6 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     /* start process */
     const { responseData } = await dispatchModules({
       res,
+      mode: 'test',
       teamId,
       tmbId,
       user,
@@ -101,6 +102,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export const config = {
   api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    },
     responseLimit: '20mb'
   }
 };

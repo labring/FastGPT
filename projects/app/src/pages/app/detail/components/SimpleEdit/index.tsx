@@ -24,7 +24,6 @@ import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/mo
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useRouter } from 'next/router';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -51,6 +50,7 @@ import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constant
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import PromptTextarea from '@/components/common/Textarea/PromptTextarea/index';
+import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
 
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
@@ -131,6 +131,12 @@ function ConfigForm({
       3000
     );
   }, [getValues, refresh]);
+
+  const datasetSearchMode = useMemo(() => {
+    const mode = getValues('dataset.searchMode');
+    if (!mode) return '';
+    return t(DatasetSearchModeMap[mode]?.title);
+  }, [getValues, t, refresh]);
 
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
@@ -251,39 +257,6 @@ function ConfigForm({
           />
         </Flex>
 
-        {/* welcome */}
-        {selectSimpleTemplate?.systemForm?.userGuide?.welcomeText && (
-          <Box {...BoxStyles} mt={2}>
-            <Flex alignItems={'center'}>
-              <Image alt={''} src={'/imgs/module/userGuide.png'} w={'18px'} />
-              <Box mx={2}>{t('core.app.Welcome Text')}</Box>
-              <MyTooltip label={welcomeTextTip} forceShow>
-                <QuestionOutlineIcon />
-              </MyTooltip>
-            </Flex>
-            <Textarea
-              mt={2}
-              rows={5}
-              placeholder={welcomeTextTip}
-              borderColor={'myGray.100'}
-              {...register('userGuide.welcomeText')}
-            />
-          </Box>
-        )}
-
-        {/* variable */}
-        {selectSimpleTemplate?.systemForm?.userGuide?.variables && (
-          <Box mt={2} {...BoxStyles}>
-            <VariableEdit
-              variables={getValues('userGuide.variables')}
-              onChange={(e) => {
-                setValue('userGuide.variables', e);
-                setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        )}
-
         {/* ai */}
         {selectSimpleTemplate?.systemForm?.aiSettings && (
           <Box mt={5} {...BoxStyles}>
@@ -340,7 +313,6 @@ function ConfigForm({
                   defaultValue={getValues('aiSettings.systemPrompt')}
                   onBlur={(e) => {
                     setValue('aiSettings.systemPrompt', e.target.value || '');
-                    setRefresh(!refresh);
                   }}
                 />
               </Flex>
@@ -372,16 +344,20 @@ function ConfigForm({
                 </Flex>
               )}
             </Flex>
-            <Flex mt={1} color={'myGray.600'} fontSize={['sm', 'md']}>
-              {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')},{' '}
-              {t('core.dataset.search.Max Tokens')}: {getValues('dataset.limit')}
-              {getValues('dataset.searchEmptyText') === ''
-                ? ''
-                : t('core.dataset.Set Empty Result Tip')}
-            </Flex>
+            {getValues('dataset.datasets').length > 0 && (
+              <Flex mt={1} color={'myGray.600'} fontSize={'sm'} mb={2}>
+                {t('core.dataset.search.search mode')}: {datasetSearchMode}
+                {', '}
+                {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')}
+                {', '}
+                {t('core.dataset.search.Max Tokens')}: {getValues('dataset.limit')}
+                {getValues('dataset.searchEmptyText') === ''
+                  ? ''
+                  : t('core.dataset.Set Empty Result Tip')}
+              </Flex>
+            )}
             <Grid
               gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
-              my={2}
               gridGap={[2, 4]}
             >
               {selectDatasets.map((item) => (
@@ -412,6 +388,64 @@ function ConfigForm({
                 </MyTooltip>
               ))}
             </Grid>
+
+            {selectSimpleTemplate?.systemForm?.cfr && getValues('dataset.datasets').length > 0 && (
+              <Box mt={10}>
+                <Box {...LabelStyles} w={'auto'}>
+                  {t('core.app.edit.cfr background prompt')}
+                  <MyTooltip label={t('core.app.edit.cfr background tip')} forceShow>
+                    <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+                  </MyTooltip>
+                </Box>
+                <PromptTextarea
+                  mt={1}
+                  flex={1}
+                  bg={'myWhite.400'}
+                  rows={5}
+                  placeholder={t('core.module.input.placeholder.cfr background')}
+                  defaultValue={getValues('cfr.background')}
+                  onBlur={(e) => {
+                    setValue('cfr.background', e.target.value || '');
+                  }}
+                />
+              </Box>
+            )}
+          </Box>
+        )}
+
+        {/* variable */}
+        {selectSimpleTemplate?.systemForm?.userGuide?.variables && (
+          <Box mt={2} {...BoxStyles}>
+            <VariableEdit
+              variables={getValues('userGuide.variables')}
+              onChange={(e) => {
+                setValue('userGuide.variables', e);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
+        )}
+
+        {/* welcome */}
+        {selectSimpleTemplate?.systemForm?.userGuide?.welcomeText && (
+          <Box {...BoxStyles} mt={2}>
+            <Flex alignItems={'center'}>
+              <Image alt={''} src={'/imgs/module/userGuide.png'} w={'18px'} />
+              <Box mx={2}>{t('core.app.Welcome Text')}</Box>
+              <MyTooltip label={welcomeTextTip} forceShow>
+                <QuestionOutlineIcon />
+              </MyTooltip>
+            </Flex>
+            <PromptTextarea
+              mt={2}
+              bg={'myWhite.400'}
+              rows={5}
+              placeholder={welcomeTextTip}
+              defaultValue={getValues('userGuide.welcomeText')}
+              onBlur={(e) => {
+                setValue('userGuide.welcomeText', e.target.value || '');
+              }}
+            />
           </Box>
         )}
 
