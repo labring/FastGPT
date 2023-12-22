@@ -107,4 +107,4 @@ docker build -t dockername/fastgpt --build-arg name=app .
 
 遇到困难了吗？有任何问题吗? 加入微信群与开发者和用户保持沟通。
 
-<center><image width="400px" src="/wechat-fastgpt.webp" /></center>
+<center><image width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" /></center>
