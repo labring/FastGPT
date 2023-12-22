@@ -311,7 +311,7 @@ const CollectionCard = () => {
                       target="_blank"
                       mr={2}
                       textDecoration={'underline'}
-                      color={'blue.600'}
+                      color={'primary.600'}
                     >
                       {datasetDetail.websiteConfig.url}
                     </Link>
@@ -371,7 +371,7 @@ const CollectionCard = () => {
                 Button={
                   <MenuButton
                     _hover={{
-                      color: 'blue.500'
+                      color: 'primary.500'
                     }}
                     fontSize={['sm', 'md']}
                   >
@@ -381,7 +381,7 @@ const CollectionCard = () => {
                       py={2}
                       borderRadius={'md'}
                       cursor={'pointer'}
-                      bg={'blue.500'}
+                      bg={'primary.500'}
                       overflow={'hidden'}
                       color={'white'}
                       h={['28px', '35px']}
@@ -489,7 +489,7 @@ const CollectionCard = () => {
                 data-drag-id={
                   collection.type === DatasetCollectionTypeEnum.folder ? collection._id : undefined
                 }
-                bg={dragTargetId === collection._id ? 'blue.100' : ''}
+                bg={dragTargetId === collection._id ? 'primary.100' : ''}
                 userSelect={'none'}
                 onDragStart={(e) => {
                   setDragStartId(collection._id);
@@ -579,7 +579,7 @@ const CollectionCard = () => {
                           h={'22px'}
                           borderRadius={'md'}
                           _hover={{
-                            color: 'blue.500',
+                            color: 'primary.500',
                             '& .icon': {
                               bg: 'myGray.100'
                             }

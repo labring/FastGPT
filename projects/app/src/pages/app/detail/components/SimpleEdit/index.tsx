@@ -220,7 +220,7 @@ function ConfigForm({
           isLoading={isSaving}
           fontSize={'sm'}
           size={['sm', 'md']}
-          variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'base'}
+          variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'solidWhite'}
           onClick={() => {
             if (appDetail.type !== AppTypeEnum.simple) {
               openConfirmSave(handleSubmit((data) => onSubmitSave(data)))();
@@ -562,26 +562,26 @@ function Settings({ appId }: { appId: string }) {
       overflow={'overlay'}
     >
       <Box px={4}>
-        <Flex alignItems={'flex-end'}>
+        <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
             <PermissionIconText permission={appDetail.permission} />
           </Box>
-          <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
-            (AppId:{' '}
+          <Box color={'myGray.500'} fontSize={'sm'}>
+            AppId:{' '}
             <Box as={'span'} userSelect={'all'}>
               {appId}
             </Box>
-            )
           </Box>
         </Flex>
         {/* basic info */}
         <Box
-          border={theme.borders.base}
+          borderWidth={'1px'}
+          borderColor={'primary.1'}
           borderRadius={'lg'}
           mt={2}
           px={5}
           py={4}
-          bg={'blue.50'}
+          bg={'primary.50'}
           position={'relative'}
         >
           <Flex alignItems={'center'} py={2}>
@@ -597,13 +597,9 @@ function Settings({ appId }: { appId: string }) {
                 right={4}
                 size={'sm'}
                 icon={<MyIcon name={'delete'} w={'14px'} />}
-                variant={'base'}
+                variant={'ghostDanger'}
                 borderRadius={'md'}
                 aria-label={'delete'}
-                _hover={{
-                  bg: 'myGray.100',
-                  color: 'red.600'
-                }}
                 isLoading={isLoading}
                 onClick={openConfirmDel(handleDelModel)}
               />
@@ -621,7 +617,7 @@ function Settings({ appId }: { appId: string }) {
           <Flex>
             <Button
               size={['sm', 'md']}
-              variant={'base'}
+              variant={'solidWhite'}
               leftIcon={<MyIcon name={'chat'} w={'16px'} />}
               onClick={() => router.push(`/chat?appId=${appId}`)}
             >
@@ -630,7 +626,7 @@ function Settings({ appId }: { appId: string }) {
             <Button
               mx={3}
               size={['sm', 'md']}
-              variant={'base'}
+              variant={'solidWhite'}
               leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
               onClick={() => {
                 router.replace({
@@ -646,7 +642,7 @@ function Settings({ appId }: { appId: string }) {
             {appDetail.isOwner && (
               <Button
                 size={['sm', 'md']}
-                variant={'base'}
+                variant={'solidWhite'}
                 leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
                 onClick={() => setSettingAppInfo(appDetail)}
               >
@@ -732,7 +728,7 @@ function ChatTest({ appId }: { appId: string }) {
             className="chat"
             size={'sm'}
             icon={<MyIcon name={'clear'} w={'14px'} />}
-            variant={'base'}
+            variant={'solidWhite'}
             borderRadius={'md'}
             aria-label={'delete'}
             onClick={(e) => {

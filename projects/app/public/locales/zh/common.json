@@ -856,6 +856,17 @@
     "To Edit Plugin": "去编辑",
     "Update Your Plugin": "更新插件"
   },
+  "support": {
+    "user": {
+      "auth": {
+        "Sending Code": "正在发送"
+      },
+      "login": {
+        "Github": "Github 登录",
+        "Google": "Google 登录"
+      }
+    }
+  },
   "system": {
     "Help Document": "帮助文档"
   },

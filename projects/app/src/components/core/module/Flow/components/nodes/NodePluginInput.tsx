@@ -65,7 +65,7 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
               w={'14px'}
               cursor={'pointer'}
               mr={3}
-              _hover={{ color: 'blue.500' }}
+              _hover={{ color: 'primary.500' }}
               onClick={() =>
                 setEditField({
                   inputType: item.type,
@@ -121,7 +121,7 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
         ))}
         <Box textAlign={'right'} mt={5}>
           <Button
-            variant={'base'}
+            variant={'solidWhite'}
             leftIcon={<SmallAddIcon />}
             onClick={() => {
               setCreateField(defaultCreateField);

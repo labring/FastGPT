@@ -17,7 +17,7 @@ const AddOutputParam = ({ outputs = [], item, moduleId }: RenderOutputProps) => 
   return (
     <Box textAlign={'right'}>
       <Button
-        variant={'base'}
+        variant={'solidWhite'}
         leftIcon={<SmallAddIcon />}
         onClick={() => {
           setEditField(item.defaultEditField || {});

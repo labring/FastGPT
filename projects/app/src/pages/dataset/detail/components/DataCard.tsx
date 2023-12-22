@@ -163,7 +163,7 @@ const DataCard = () => {
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'blue.500'} />}
+          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'primary.500'} />}
           bg={'white'}
           boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
           size={'sm'}
@@ -200,7 +200,7 @@ const DataCard = () => {
           <Box>
             <Button
               mx={2}
-              variant={'base'}
+              variant={'solidWhite'}
               size={['sm', 'md']}
               onClick={() => {
                 if (!collection) return;
@@ -217,7 +217,7 @@ const DataCard = () => {
         {isPc && (
           <MyTooltip label={t('core.dataset.collection.metadata.Read Metadata')}>
             <IconButton
-              variant={'base'}
+              variant={'solidWhite'}
               size={['sm', 'md']}
               icon={<MyIcon name={'menu'} w={'18px'} />}
               aria-label={''}
@@ -338,7 +338,7 @@ const DataCard = () => {
                   <IconButton
                     display={'flex'}
                     icon={<DeleteIcon />}
-                    variant={'base'}
+                    variant={'solidWhite'}
                     colorScheme={'gray'}
                     aria-label={'delete'}
                     size={'xs'}
@@ -385,7 +385,7 @@ const DataCard = () => {
             ))}
             {collection?.sourceId && (
               <Button
-                variant={'base'}
+                variant={'solidWhite'}
                 onClick={() => collection.sourceId && getFileAndOpen(collection.sourceId)}
               >
                 {t('core.dataset.collection.metadata.read source')}
@@ -394,7 +394,7 @@ const DataCard = () => {
           </DrawerBody>
 
           <DrawerFooter>
-            <Button variant={'base'} onClick={onClose}>
+            <Button variant={'solidWhite'} onClick={onClose}>
               {t('common.Close')}
             </Button>
           </DrawerFooter>

@@ -79,7 +79,7 @@ const MyApps = () => {
             {t('app.My Apps')}
           </Box>
         </Flex>
-        <Button leftIcon={<AddIcon />} variant={'base'} onClick={onOpenCreateModal}>
+        <Button leftIcon={<AddIcon />} variant={'solidWhite'} onClick={onOpenCreateModal}>
           {t('common.New Create')}
         </Button>
       </Flex>
@@ -134,7 +134,7 @@ const MyApps = () => {
                     right={4}
                     size={'sm'}
                     icon={<MyIcon name={'delete'} w={'14px'} />}
-                    variant={'base'}
+                    variant={'solidWhite'}
                     borderRadius={'md'}
                     aria-label={'delete'}
                     display={['', 'none']}
@@ -171,7 +171,7 @@ const MyApps = () => {
                         <MyIcon name={'chat'} w={'14px'} />
                       </MyTooltip>
                     }
-                    variant={'base'}
+                    variant={'solidWhite'}
                     borderRadius={'md'}
                     aria-label={'delete'}
                     display={['', 'none']}

@@ -106,7 +106,7 @@ const ChatTest = (
               className="chat"
               size={'sm'}
               icon={<MyIcon name={'clear'} w={'14px'} />}
-              variant={'base'}
+              variant={'solidWhite'}
               borderRadius={'md'}
               aria-label={'delete'}
               onClick={(e) => {

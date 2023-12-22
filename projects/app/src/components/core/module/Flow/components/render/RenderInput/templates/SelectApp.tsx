@@ -31,7 +31,7 @@ const SelectAppRender = ({
     <>
       <Box onClick={onOpenSelectApp}>
         {!value ? (
-          <Button variant={'base'} w={'100%'}>
+          <Button variant={'solidWhite'} w={'100%'}>
             选择应用
           </Button>
         ) : (

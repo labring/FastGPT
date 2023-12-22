@@ -368,7 +368,7 @@ const FileSelect = ({
     ml: 1,
     as: 'span',
     cursor: 'pointer',
-    color: 'blue.600',
+    color: 'primary.600',
     _hover: {
       textDecoration: 'underline'
     }
@@ -433,7 +433,7 @@ const FileSelect = ({
           mt={1}
           cursor={'pointer'}
           textDecoration={'underline'}
-          color={'blue.500'}
+          color={'primary.500'}
           fontSize={'12px'}
           onClick={() =>
             fileDownload({

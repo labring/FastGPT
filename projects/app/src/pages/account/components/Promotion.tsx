@@ -93,7 +93,7 @@ const Promotion = () => {
           </Flex>
           <Button
             mt={4}
-            variant={'base'}
+            variant={'solidWhite'}
             fontSize={'sm'}
             onClick={() => {
               copyData(`${location.origin}/?hiId=${userInfo?._id}`);

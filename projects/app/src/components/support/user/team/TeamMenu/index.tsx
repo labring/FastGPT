@@ -19,7 +19,7 @@ const TeamMenu = () => {
 
   return (
     <Button
-      variant={'base'}
+      variant={'solidWhite'}
       userSelect={'none'}
       w={'100%'}
       display={'block'}

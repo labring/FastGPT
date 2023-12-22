@@ -125,7 +125,7 @@ const Header = ({ plugin, onClose }: Props) => {
             icon={<MyIcon name={'back'} w={'14px'} />}
             borderRadius={'md'}
             borderColor={'myGray.300'}
-            variant={'base'}
+            variant={'solidWhite'}
             aria-label={''}
             onClick={() => {
               onClose();
@@ -142,7 +142,7 @@ const Header = ({ plugin, onClose }: Props) => {
             mr={[3, 6]}
             icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
             borderRadius={'lg'}
-            variant={'base'}
+            variant={'solidWhite'}
             aria-label={'save'}
             onClick={onOpenImport}
           />
@@ -152,7 +152,7 @@ const Header = ({ plugin, onClose }: Props) => {
             mr={[3, 6]}
             icon={<MyIcon name={'export'} w={['14px', '16px']} />}
             borderRadius={'lg'}
-            variant={'base'}
+            variant={'solidWhite'}
             aria-label={'save'}
             onClick={() => {
               const modules = flow2ModulesAndCheck();
@@ -168,7 +168,7 @@ const Header = ({ plugin, onClose }: Props) => {
             icon={<MyIcon name={'core/module/previewLight'} w={['14px', '16px']} />}
             borderRadius={'lg'}
             aria-label={'save'}
-            variant={'base'}
+            variant={'solidWhite'}
             onClick={() => {
               const modules = flow2ModulesAndCheck();
               if (modules) {

@@ -856,6 +856,17 @@
     "To Edit Plugin": "To Edit",
     "Update Your Plugin": "Update Plugin"
   },
+  "support": {
+    "user": {
+      "auth": {
+        "Sending Code": "Sending"
+      },
+      "login": {
+        "Github": "Github",
+        "Google": "Google"
+      }
+    }
+  },
   "system": {
     "Help Document": "Document"
   },

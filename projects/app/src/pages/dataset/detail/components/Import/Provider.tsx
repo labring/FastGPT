@@ -447,7 +447,7 @@ export const SelectorContainer = ({
               position={'relative'}
               alignItems={'center'}
               _hover={{
-                bg: 'blue.50',
+                bg: 'primary.50',
                 '& .delete': {
                   display: 'block'
                 }

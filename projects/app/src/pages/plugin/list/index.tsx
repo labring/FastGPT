@@ -39,7 +39,7 @@ const MyModules = () => {
         </Flex>
         <Button
           leftIcon={<AddIcon />}
-          variant={'base'}
+          variant={'solidWhite'}
           onClick={() => setEditModalData(defaultForm)}
         >
           {t('common.New Create')}
@@ -83,12 +83,12 @@ const MyModules = () => {
                 right={4}
                 size={'sm'}
                 icon={<MyIcon name={'edit'} w={'14px'} />}
-                variant={'base'}
+                variant={'solidWhite'}
                 borderRadius={'md'}
                 aria-label={'delete'}
                 display={['', 'none']}
                 _hover={{
-                  bg: 'blue.100'
+                  bg: 'primary.100'
                 }}
                 onClick={(e) => {
                   e.stopPropagation();

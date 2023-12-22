@@ -28,7 +28,7 @@ const Hero = () => {
             fontSize={['xl', '3xl']}
             h={'auto'}
             py={[2, 3]}
-            variant={'base'}
+            variant={'solidWhite'}
             border={'2px solid'}
             borderColor={'myGray.800'}
             transition={'0.3s'}

@@ -39,7 +39,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
               <Box pt={2}>
                 <Box position={'absolute'} top={0} right={0}>
                   <Button
-                    variant={'base'}
+                    variant={'solidWhite'}
                     leftIcon={<AddIcon fontSize={'10px'} />}
                     onClick={() => setEditExtractField(defaultField)}
                   >

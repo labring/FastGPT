@@ -79,7 +79,7 @@ const WebsiteConfigModal = ({
         </Box>
       </ModalBody>
       <ModalFooter>
-        <Button variant={'base'} onClick={onClose}>
+        <Button variant={'solidWhite'} onClick={onClose}>
           {t('common.Close')}
         </Button>
         <Button

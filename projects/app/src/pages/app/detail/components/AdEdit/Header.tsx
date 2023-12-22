@@ -104,7 +104,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             icon={<MyIcon name={'back'} w={'14px'} />}
             borderRadius={'md'}
             borderColor={'myGray.300'}
-            variant={'base'}
+            variant={'solidWhite'}
             aria-label={''}
             onClick={openConfirmOut(async () => {
               const modules = flow2ModulesAndCheck();
@@ -124,7 +124,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             mr={[3, 6]}
             icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
             borderRadius={'lg'}
-            variant={'base'}
+            variant={'solidWhite'}
             aria-label={'save'}
             onClick={onOpenImport}
           />
@@ -134,7 +134,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             mr={[3, 6]}
             icon={<MyIcon name={'export'} w={['14px', '16px']} />}
             borderRadius={'lg'}
-            variant={'base'}
+            variant={'solidWhite'}
             aria-label={'save'}
             onClick={() => {
               const modules = flow2ModulesAndCheck();
@@ -149,7 +149,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <IconButton
             mr={[3, 6]}
             icon={<SmallCloseIcon fontSize={'25px'} />}
-            variant={'base'}
+            variant={'solidWhite'}
             color={'myGray.600'}
             borderRadius={'lg'}
             aria-label={''}
@@ -162,7 +162,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
               icon={<MyIcon name={'chat'} w={['14px', '16px']} />}
               borderRadius={'lg'}
               aria-label={'save'}
-              variant={'base'}
+              variant={'solidWhite'}
               onClick={() => {
                 const modules = flow2ModulesAndCheck();
                 if (modules) {

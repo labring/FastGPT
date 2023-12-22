@@ -74,7 +74,7 @@ function A({ children, ...props }: any) {
     return (
       <MyTooltip label={t('core.chat.markdown.Quick Question')}>
         <Button
-          variant={'base'}
+          variant={'solidWhite'}
           size={'xs'}
           borderRadius={'md'}
           my={1}
@@ -96,10 +96,10 @@ function A({ children, ...props }: any) {
             name={'core/chat/quoteSign'}
             transform={'translateY(-2px)'}
             w={'18px'}
-            color={'blue.500'}
+            color={'primary.500'}
             cursor={'pointer'}
             _hover={{
-              color: 'blue.700'
+              color: 'primary.700'
             }}
             onClick={() => getFileAndOpen(props.href)}
           />

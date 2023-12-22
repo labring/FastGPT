@@ -125,7 +125,7 @@ export const QuoteList = React.memo(function QuoteList({
                 className="hover-data"
                 display={'none'}
                 alignItems={'center'}
-                color={'blue.500'}
+                color={'primary.500'}
                 href={`/dataset/detail?datasetId=${item.datasetId}&currentTab=dataCard&collectionId=${item.collectionId}`}
               >
                 {t('core.dataset.Go Dataset')}
@@ -184,7 +184,7 @@ export const QuoteList = React.memo(function QuoteList({
                       cursor={'pointer'}
                       color={'myGray.600'}
                       _hover={{
-                        color: 'blue.600'
+                        color: 'primary.600'
                       }}
                       onClick={() => onclickEdit(item)}
                     />

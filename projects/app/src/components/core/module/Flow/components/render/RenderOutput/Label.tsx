@@ -41,7 +41,7 @@ const OutputLabel = ({
             w={'14px'}
             cursor={'pointer'}
             mr={3}
-            _hover={{ color: 'blue.500' }}
+            _hover={{ color: 'primary.500' }}
             onClick={() =>
               setEditField({
                 key: outputKey,

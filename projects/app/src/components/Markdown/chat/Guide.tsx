@@ -23,7 +23,7 @@ function MyLink(e: any) {
     <Box as={'li'} mb={1}>
       <Box
         as={'span'}
-        color={'blue.700'}
+        color={'primary.700'}
         textDecoration={'underline'}
         cursor={'pointer'}
         onClick={() => {

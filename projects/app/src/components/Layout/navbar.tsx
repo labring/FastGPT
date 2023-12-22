@@ -113,13 +113,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         cursor={'pointer'}
         onClick={() => router.push('/account')}
       >
-        <Avatar
-          w={'36px'}
-          h={'36px'}
-          borderRadius={'50%'}
-          src={userInfo?.avatar}
-          fallbackSrc={HUMAN_ICON}
-        />
+        <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={HUMAN_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
@@ -129,7 +123,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             {...itemStyles}
             {...(item.activeLink.includes(router.pathname)
               ? {
-                  color: 'blue.600',
+                  color: 'primary.600',
                   bg: 'white !important',
                   boxShadow: '1px 1px 10px rgba(0,0,0,0.2)'
                 }

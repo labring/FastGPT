@@ -125,7 +125,7 @@ const ChunkImport = () => {
         </Flex>
         <Flex mt={3}>
           {showRePreview && (
-            <Button variant={'base'} mr={4} onClick={onReSplitChunks}>
+            <Button variant={'solidWhite'} mr={4} onClick={onReSplitChunks}>
               {t('core.dataset.import.Re Preview')}
             </Button>
           )}

@@ -63,59 +63,58 @@ const Button = defineStyleConfig({
   },
   variants: {
     primary: {
-      backgroundImage:
-        'linear-gradient(to bottom right, #2152d9 0%,#3370ff 40%, #4e83fd 100%) !important',
+      bg: 'primary.600',
       color: 'white',
       border: 'none',
+      boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
         filter: 'brightness(120%)'
       },
       _disabled: {
-        bg: '#3370ff !important'
+        bg: 'primary.7 !important'
       }
     },
-    gray: {
-      bg: '#F5F5F8',
-      color: 'blue.600',
-      border: '1px solid #EFF0F1',
-      _hover: {
-        background: '#3370FF1A'
-      }
-    },
-    base: {
+    solidGray: {
+      bg: 'myGray.150',
       color: 'myGray.900',
-      border: '1px solid',
-      borderColor: 'myGray.200',
-      bg: 'transparent',
-      transition: 'background 0.3s',
       _hover: {
-        color: 'blue.500',
-        background: 'myWhite.400',
-        boxShadow: '0 0 5px rgba(0,0,0,0.1)'
-      },
-      _active: {
-        color: 'blue.600'
+        color: 'primary.600',
+        bg: 'primary.50'
       },
       _disabled: {
-        bg: 'myGray.100 !important',
-        color: 'myGray.700 !important'
+        bg: 'myGray.50'
       }
     },
-    boxBtn: {
-      px: 3,
-      py: '2px',
-      borderRadius: 'md',
+    solidWhite: {
+      color: 'myGray.600',
+      border: '1px solid',
+      borderColor: 'myGray.250',
+      bg: 'white',
+      transition: 'background 0.1s',
+      boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
-        bg: 'myGray.200'
+        color: 'primary.600',
+        background: 'primary.1',
+        borderColor: 'primary.300'
+      },
+      _active: {
+        color: 'primary.600'
       }
     },
-    blue: {
-      borderRadius: 'md',
-      bg: '#3370FF',
-      color: 'white',
-      fontSize: 'sm',
+    ghostDanger: {
+      color: 'myGray.600',
+      border: '1px solid',
+      borderColor: 'myGray.250',
+      bg: 'white',
+      transition: 'background 0.1s',
+      boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
-        bg: '#145BFF'
+        color: 'red.600',
+        background: 'red.1',
+        borderColor: 'red.300'
+      },
+      _active: {
+        color: 'red.600'
       }
     }
   },
@@ -135,8 +134,8 @@ const Input: ComponentStyleConfig = {
         borderRadius: 'base',
         borderColor: 'myGray.200',
         _focus: {
-          borderColor: 'blue.500',
-          boxShadow: '0px 0px 4px #A8DBFF',
+          borderColor: 'primary.500',
+          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
           bg: 'white'
         },
         _disabled: {
@@ -161,8 +160,8 @@ const NumberInput = numInputMultiStyle({
         borderRadius: 'base',
         borderColor: 'myGray.200',
         _focus: {
-          borderColor: 'blue.500 !important',
-          boxShadow: '0px 0px 4px #A8DBFF !important',
+          borderColor: 'primary.500 !important',
+          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15) !important',
           bg: 'transparent'
         },
         _disabled: {
@@ -175,7 +174,7 @@ const NumberInput = numInputMultiStyle({
         border: 'none',
         color: 'myGray.600',
         _active: {
-          color: 'blue.500'
+          color: 'primary.500'
         }
       }
     })
@@ -195,8 +194,8 @@ const Textarea: ComponentStyleConfig = {
         borderColor: ''
       },
       _focus: {
-        borderColor: 'blue.500',
-        boxShadow: '0px 0px 4px #A8DBFF',
+        borderColor: 'primary.500',
+        boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
         bg: 'white'
       }
     }
@@ -213,7 +212,7 @@ const Switch = switchMultiStyle({
     track: {
       bg: 'myGray.100',
       _checked: {
-        bg: 'blue.600'
+        bg: 'primary.600'
       }
     }
   })
@@ -225,8 +224,8 @@ const Select = selectMultiStyle({
       field: {
         borderColor: 'myGray.200',
         _focusWithin: {
-          boxShadow: '0px 0px 4px #A8DBFF',
-          borderColor: 'blue.500'
+          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+          borderColor: 'primary.500'
         }
       }
     })
@@ -254,7 +253,7 @@ export const theme = extendTheme({
         // lineHeight: 'unset'
       },
       a: {
-        color: 'blue.600'
+        color: 'primary.600'
       }
     }
   },
@@ -272,18 +271,27 @@ export const theme = extendTheme({
       1000: '#313132'
     },
     myGray: {
-      100: '#EFF0F1',
-      200: '#DEE0E2',
-      300: '#BDC1C5',
-      400: '#9CA2A8',
-      500: '#7B838B',
-      600: '#5A646E',
-      700: '#485058',
-      800: '#363C42',
-      900: '#24282C',
-      1000: '#121416'
+      25: '#FBFBFC',
+      50: '#F7F8FA',
+      100: '#F4F4F7',
+      150: '#F0F1F6',
+      200: '#E8EBF0',
+      250: '#DFE2EA',
+      300: '#C4CBD7',
+      400: '#8A95A7',
+      500: '#667085',
+      600: '#485264',
+      700: '#383F50',
+      800: '#1D2532',
+      900: '#111824'
     },
-    blue: {
+    primary: {
+      1: 'rgba(51, 112, 255, 0.1)',
+      3: 'rgba(51, 112, 255, 0.3)',
+      5: 'rgba(51, 112, 255, 0.5)',
+      7: 'rgba(51, 112, 255, 0.7)',
+      9: 'rgba(51, 112, 255, 0.9)',
+
       50: '#F0F4FF',
       100: '#E1EAFF',
       200: '#C5D7FF',
@@ -295,21 +303,57 @@ export const theme = extendTheme({
       800: '#2450B5',
       900: '#1D4091'
     },
-    myRead: {
-      600: '#ff4d4f'
+    red: {
+      1: 'rgba(217,45,32,0.1)',
+      3: 'rgba(217,45,32,0.3)',
+      5: 'rgba(217,45,32,0.5)',
+
+      25: '#FFFBFA',
+      50: '#FEF3F2',
+      100: '#FEE4E2',
+      200: '#FECDCA',
+      300: '#FDA29B',
+      400: '#F97066',
+      500: '#F04438',
+      600: '#D92D20',
+      700: '#B42318',
+      800: '#912018',
+      900: '#7A271A'
+    },
+    green: {
+      25: '#F9FEFB',
+      50: '#EDFBF3',
+      100: '#D1FADF',
+      200: '#B9F4D1',
+      300: '#76E4AA',
+      400: '#32D583',
+      500: '#12B76A',
+      600: '#039855',
+      700: '#027A48',
+      800: '#05603A',
+      900: '#054F31'
     }
   },
   fonts: {
-    body: '-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
+    body: 'PingFang,Noto Sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
   },
   fontSizes: {
-    xs: '10px',
+    xs: '10',
     sm: '12px',
     md: '14px',
     lg: '16px',
-    xl: '16px',
-    '2xl': '18px',
-    '3xl': '20px'
+    xl: '18px',
+    '2xl': '20px',
+    '3xl': '24px',
+    '4xl': '28px',
+    '5xl': '32px',
+    '6xl': '36px'
+  },
+  borderColor: {
+    low: 'myGray.200',
+    common: 'myGray.250',
+    high: 'myGray.300',
+    highest: 'myGray.400'
   },
   borders: {
     sm: '1px solid #EFF0F1',

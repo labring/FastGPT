@@ -198,7 +198,7 @@ const CreateModal = ({
             className="delete"
             size={'sm'}
             icon={<MyIcon name={'delete'} w={'14px'} />}
-            variant={'base'}
+            variant={'solidWhite'}
             borderRadius={'md'}
             aria-label={'delete'}
             _hover={{
@@ -211,7 +211,7 @@ const CreateModal = ({
           />
         )}
         <Box flex={1} />
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'solidWhite'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
         {!!defaultValue.id ? (

@@ -81,7 +81,7 @@ const InputLabel = ({
             w={'14px'}
             cursor={'pointer'}
             ml={3}
-            _hover={{ color: 'blue.500' }}
+            _hover={{ color: 'primary.500' }}
             onClick={() =>
               setEditField({
                 inputType: type,
