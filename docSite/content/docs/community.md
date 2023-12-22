@@ -11,6 +11,6 @@ FastGPT 是一个由用户和贡献者参与推动的开源项目，如果您对
 
 + 📱 扫码加入社区微信交流群👇
 
-   <img width="400px" src="/wechat-fastgpt.webp" />
+   <img width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" />
 
 + 🐞 请将任何 FastGPT 的 Bug、问题和需求提交到 [GitHub Issue](https://github.com/labring/fastgpt/issues/new/choose)。
