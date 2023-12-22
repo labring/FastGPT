@@ -2,11 +2,12 @@
   "name": "@fastgpt/global",
   "version": "1.0.0",
   "dependencies": {
+    "axios": "^1.5.1",
     "dayjs": "^1.11.7",
-    "openai": "4.23.0",
     "encoding": "^0.1.13",
     "js-tiktoken": "^1.0.7",
-    "axios": "^1.5.1",
+    "openai": "4.23.0",
+    "pdfjs-dist": "^4.0.269",
     "timezones-list": "^3.0.2"
   },
   "devDependencies": {
