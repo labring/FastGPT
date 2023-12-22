@@ -222,7 +222,11 @@ const ResponseTags = ({
           <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
         )}
         {isOpenWholeModal && (
-          <WholeResponseModal response={responseData} onClose={onCloseWholeModal} />
+          <WholeResponseModal
+            response={responseData}
+            isShare={isShare}
+            onClose={onCloseWholeModal}
+          />
         )}
       </Flex>
     </>

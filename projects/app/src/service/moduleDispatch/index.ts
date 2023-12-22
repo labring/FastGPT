@@ -1,12 +1,11 @@
 import { NextApiResponse } from 'next';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { RunningModuleItemType } from '@/types/app';
-import { ModuleDispatchProps } from '@/types/core/chat/type';
-import type { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
-import { UserType } from '@fastgpt/global/support/user/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
@@ -22,11 +21,12 @@ import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttpRequest } from './tools/http';
 import { dispatchAppRequest } from './tools/runApp';
+import { dispatchCFR } from './tools/cfr';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 
-const callbackMap: Record<string, Function> = {
+const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
   [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
@@ -38,38 +38,28 @@ const callbackMap: Record<string, Function> = {
   [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
+  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
+  [FlowNodeTypeEnum.cfr]: dispatchCFR,
+
+  // none
+  [FlowNodeTypeEnum.userGuide]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.variable]: () => Promise.resolve()
 };
 
 /* running */
 export async function dispatchModules({
   res,
-  teamId,
-  tmbId,
-  user,
-  appId,
   modules,
-  chatId,
-  responseChatItemId,
   histories = [],
   startParams = {},
   variables = {},
+  user,
   stream = false,
-  detail = false
-}: {
-  res: NextApiResponse;
-  teamId: string;
-  tmbId: string;
-  user: UserType;
-  appId: string;
+  detail = false,
+  ...props
+}: ChatDispatchProps & {
   modules: ModuleItemType[];
-  chatId?: string;
-  responseChatItemId?: string;
-  histories: ChatItemType[];
   startParams?: Record<string, any>;
-  variables?: Record<string, any>;
-  stream?: boolean;
-  detail?: boolean;
 }) {
   // set sse response headers
   if (stream) {
@@ -196,25 +186,21 @@ export async function dispatchModules({
     module.inputs.forEach((item: any) => {
       params[item.key] = item.value;
     });
-    const props: ModuleDispatchProps<Record<string, any>> = {
+    const dispatchData: ModuleDispatchProps<Record<string, any>> = {
+      ...props,
       res,
-      teamId,
-      tmbId,
-      user,
-      appId,
-      chatId,
-      responseChatItemId,
-      stream,
-      detail,
       variables,
       histories,
+      user,
+      stream,
+      detail,
       outputs: module.outputs,
       inputs: params
     };
 
     const dispatchRes: Record<string, any> = await (async () => {
       if (callbackMap[module.flowType]) {
-        return callbackMap[module.flowType](props);
+        return callbackMap[module.flowType](dispatchData);
       }
       return {};
     })();

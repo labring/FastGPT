@@ -1,6 +1,11 @@
 {
   "name": "@fastgpt/web",
   "version": "1.0.0",
-  "dependencies": {},
-  "devDependencies": {}
+  "dependencies": {
+    "joplin-turndown-plugin-gfm": "^1.0.12",
+    "turndown": "^7.1.2"
+  },
+  "devDependencies": {
+    "@types/turndown": "^5.0.4"
+  }
 }

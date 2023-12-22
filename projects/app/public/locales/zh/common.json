@@ -239,13 +239,17 @@
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Welcome Text": "对话开场白",
+      "Chat Variable": "对话框变量",
+      "Question Guide": "问题引导",
       "create app": "创建属于你的 AI 应用",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
         "Out Ad Edit": "您即将退出高级编排页面，请确认",
         "Prompt Editor": "提示词编辑",
         "Save and out": "保存并退出",
-        "UnSave": "不保存"
+        "UnSave": "不保存",
+        "cfr background prompt": "问题补全 - 对话背景描述",
+        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示不使用问题补全功能。"
       },
       "feedback": {
         "Custom feedback": "自定义反馈",
@@ -295,7 +299,10 @@
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
       "error": {
-        "Messages empty": "接口内容为空，可能文本超长了~"
+        "Messages empty": "接口内容为空，可能文本超长了~",
+        "Select dataset empty": "你没有选择知识库",
+        "user input empty": "传入的用户问题为空",
+        "Chat error": "对话出现异常"
       },
       "feedback": {
         "Close User Good Feedback": "",
@@ -315,6 +322,7 @@
         "Read Source": "查看来源"
       },
       "response": {
+        "Plugin Resonse Detail": "插件详情",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",
@@ -479,7 +487,7 @@
           "embeddingReRank": "增强语义检索",
           "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序，相关度通常差异明显。"
         },
-        "search mode": "检索模式"
+        "search mode": "搜索模式"
       },
       "status": {
         "active": "已就绪",
@@ -541,6 +549,7 @@
           "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
           "anyInput": "可传入任意内容",
+          "cfr background": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示【首次对话】不使用问题补全功能。",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
           "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
         },
@@ -549,11 +558,16 @@
           "Http Request Method": "请求方式",
           "Http Request Url": "请求地址",
           "TFSwitch textarea": "自定义 False 匹配规则",
+          "aiModel": "AI 模型",
           "anyInput": "任意内容输入",
+          "cfr background": "背景知识",
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
           "user question": "用户问题"
+        },
+        "placeholder": {
+          "cfr background": "关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。"
         }
       },
       "inputType": {
@@ -574,6 +588,7 @@
           "running done": "模块调用结束时触发"
         },
         "label": {
+          "cfr result": "补全结果",
           "result false": "False",
           "result true": "True",
           "running done": "模块调用结束",
@@ -584,6 +599,8 @@
         "TFSwitch": "判断器",
         "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。",
         "UnKnow Module": "未知模块",
+        "cfr": "问题补全",
+        "cfr intro": "根据历史记录，完善当前问题，使其更利于知识库搜索，同时提高连续对话能力。",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出"
       },

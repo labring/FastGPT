@@ -28,7 +28,7 @@ export const simpleMarkdownText = (rawText: string) => {
   ['####', '###', '##', '#', '```', '~~~'].forEach((item, i) => {
     const reg = new RegExp(`\\n\\s*${item}`, 'g');
     if (reg.test(rawText)) {
-      rawText = rawText.replace(new RegExp(`(\\n)\\s*(${item})`, 'g'), '$1$2');
+      rawText = rawText.replace(new RegExp(`(\\n)( *)(${item})`, 'g'), '$1$3');
     }
   });
 

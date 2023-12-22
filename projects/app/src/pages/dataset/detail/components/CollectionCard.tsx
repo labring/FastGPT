@@ -609,7 +609,6 @@ const CollectionCard = () => {
                                 ),
                                 onClick: () =>
                                   openSyncConfirm(() => {
-                                    console.log(collection._id);
                                     onclickStartSync(collection._id);
                                   })()
                               }

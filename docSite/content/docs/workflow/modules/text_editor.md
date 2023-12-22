@@ -26,3 +26,7 @@ weight: 363
 ## 作用
 
 给任意模块输入自定格式文本，或处理 AI 模块系统提示词。
+
+## 示例
+
+- [接入谷歌搜索](/docs/workflow/examples/google_search/)

@@ -1,14 +1,12 @@
 import type { NextApiResponse } from 'next';
 import { getAIApi } from '../config';
-import { defaultAudioSpeechModels } from '../../../../global/core/ai/model';
-import { UserModelSchema } from '@fastgpt/global/support/user/type';
 
 export async function text2Speech({
   res,
   onSuccess,
   onError,
   input,
-  model = defaultAudioSpeechModels[0].model,
+  model,
   voice,
   speed = 1
 }: {

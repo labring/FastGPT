@@ -1,14 +1,16 @@
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { FlowNodeOutputTargetItemType } from '@fastgpt/global/core/module/node/type';
 import { FlowModuleItemType, ModuleItemType } from '@fastgpt/global/core/module/type';
 import { type Node, type Edge } from 'reactflow';
 
-export function flowNode2Modules({
+export const flowNode2Modules = ({
   nodes,
   edges
 }: {
   nodes: Node<FlowModuleItemType, string | undefined>[];
   edges: Edge<any>[];
-}) {
+}) => {
   const modules: ModuleItemType[] = nodes.map((item) => ({
     moduleId: item.data.moduleId,
     name: item.data.name,
@@ -48,4 +50,19 @@ export function flowNode2Modules({
   });
 
   return modules;
-}
+};
+
+export const filterExportModules = (modules: ModuleItemType[]) => {
+  modules.forEach((module) => {
+    // dataset - remove select dataset value
+    if (module.flowType === FlowNodeTypeEnum.datasetSearchNode) {
+      module.inputs.forEach((item) => {
+        if (item.key === ModuleInputKeyEnum.datasetSelectList) {
+          item.value = [];
+        }
+      });
+    }
+  });
+
+  return JSON.stringify(modules, null, 2);
+};
