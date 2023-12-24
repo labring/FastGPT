@@ -82,7 +82,7 @@ export const DatasetSelectModal = ({
                     p={3}
                     border={theme.borders.base}
                     boxShadow={'sm'}
-                    bg={'myBlue.300'}
+                    bg={'blue.200'}
                   >
                     <Flex alignItems={'center'} h={'38px'}>
                       <Avatar src={item.avatar} w={['24px', '28px']}></Avatar>

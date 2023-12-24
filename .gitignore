@@ -36,3 +36,4 @@ dist/
 docSite/public/
 docSite/resources/_gen/
 docSite/.vercel
+*.local.*

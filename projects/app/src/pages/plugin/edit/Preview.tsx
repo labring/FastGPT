@@ -3,7 +3,7 @@ import ReactFlow, { Background, ReactFlowProvider, useNodesState } from 'reactfl
 import { FlowModuleItemType, ModuleItemType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import dynamic from 'next/dynamic';
-import { formatPluginToPreviewModule } from '@fastgpt/global/core/module/utils';
+import { plugin2ModuleIO } from '@fastgpt/global/core/module/utils';
 import MyModal from '@/components/MyModal';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -37,7 +37,7 @@ const PreviewPlugin = ({
           avatar: plugin.avatar,
           name: plugin.name,
           intro: plugin.intro,
-          ...formatPluginToPreviewModule(plugin._id, modules)
+          ...plugin2ModuleIO(plugin._id, modules)
         }
       })
     ]);

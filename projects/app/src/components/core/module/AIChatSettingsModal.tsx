@@ -26,6 +26,7 @@ import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d'
 import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type.d';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
+import PromptTextarea from '@/components/common/Textarea/PromptTextarea';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -65,7 +66,7 @@ const AIChatSettingsModal = ({
     fontSize: ['sm', 'md']
   };
   const selectTemplateBtn: BoxProps = {
-    color: 'myBlue.600',
+    color: 'blue.500',
     cursor: 'pointer'
   };
 
@@ -187,14 +188,17 @@ const AIChatSettingsModal = ({
               </Box>
             </Flex>
 
-            <Textarea
-              rows={6}
-              placeholder={
-                t('template.Quote Content Tip', { default: Prompt_QuoteTemplateList[0].value }) ||
-                ''
-              }
-              borderColor={'myGray.100'}
-              {...register(ModuleInputKeyEnum.aiChatQuoteTemplate)}
+            <PromptTextarea
+              bg={'myWhite.400'}
+              rows={8}
+              placeholder={t('template.Quote Content Tip', {
+                default: Prompt_QuoteTemplateList[0].value
+              })}
+              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuoteTemplate)}
+              onBlur={(e) => {
+                setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e.target.value);
+                setRefresh(!refresh);
+              }}
             />
           </Box>
         )}
@@ -209,13 +213,17 @@ const AIChatSettingsModal = ({
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Flex>
-            <Textarea
+            <PromptTextarea
+              bg={'myWhite.400'}
               rows={11}
-              placeholder={
-                t('template.Quote Prompt Tip', { default: Prompt_QuotePromptList[0].value }) || ''
-              }
-              borderColor={'myGray.100'}
-              {...register(ModuleInputKeyEnum.aiChatQuotePrompt)}
+              placeholder={t('template.Quote Prompt Tip', {
+                default: Prompt_QuotePromptList[0].value
+              })}
+              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuotePrompt)}
+              onBlur={(e) => {
+                setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e.target.value);
+                setRefresh(!refresh);
+              }}
             />
           </Box>
         )}

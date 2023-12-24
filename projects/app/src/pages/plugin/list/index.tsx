@@ -88,7 +88,7 @@ const MyModules = () => {
                 aria-label={'delete'}
                 display={['', 'none']}
                 _hover={{
-                  bg: 'myBlue.200'
+                  bg: 'blue.100'
                 }}
                 onClick={(e) => {
                   e.stopPropagation();

@@ -12,6 +12,7 @@ export type GetChatSpeechProps = {
 export type InitChatProps = {
   appId?: string;
   chatId?: string;
+  loadCustomFeedbacks?: boolean;
 };
 export type InitOutLinkChatProps = {
   chatId?: string;
@@ -44,6 +45,7 @@ export type getHistoriesProps = {
 };
 
 export type UpdateHistoryProps = {
+  appId: string;
   chatId: string;
   customTitle?: string;
   top?: boolean;
@@ -52,6 +54,7 @@ export type UpdateHistoryProps = {
 };
 
 export type DelHistoryProps = {
+  appId: string;
   chatId: string;
   shareId?: string;
   outLinkUid?: string;
@@ -64,6 +67,7 @@ export type ClearHistoriesProps = {
 
 /* -------- chat item ---------- */
 export type DeleteChatItemProps = {
+  appId: string;
   chatId: string;
   contentId?: string;
   shareId?: string;
@@ -71,5 +75,14 @@ export type DeleteChatItemProps = {
 };
 
 export type AdminUpdateFeedbackParams = AdminFbkType & {
+  appId: string;
+  chatId: string;
   chatItemId: string;
+};
+
+export type CloseCustomFeedbackParams = {
+  appId: string;
+  chatId: string;
+  chatItemId: string;
+  index: number;
 };

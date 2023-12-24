@@ -68,13 +68,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // delete old collection
-    await Promise.all([
-      delCollectionRelevantData({
-        collectionIds: [collection._id],
-        fileIds: collection.fileId ? [collection.fileId] : []
-      }),
-      MongoDatasetCollection.findByIdAndRemove(collection._id)
-    ]);
+    await delCollectionRelevantData({
+      collectionIds: [collection._id],
+      fileIds: collection.fileId ? [collection.fileId] : []
+    });
 
     jsonRes(res);
   } catch (err) {

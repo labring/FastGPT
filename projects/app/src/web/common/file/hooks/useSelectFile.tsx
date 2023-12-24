@@ -12,9 +12,10 @@ export const useSelectFile = (props?: {
   const { fileType = '*', multiple = false, maxCount = 10 } = props || {};
   const { toast } = useToast();
   const SelectFileDom = useRef<HTMLInputElement>(null);
+  const openSign = useRef<any>();
 
   const File = useCallback(
-    ({ onSelect }: { onSelect: (e: File[]) => void }) => (
+    ({ onSelect }: { onSelect: (e: File[], sign?: any) => void }) => (
       <Box position={'absolute'} w={0} h={0} overflow={'hidden'}>
         <input
           ref={SelectFileDom}
@@ -29,7 +30,7 @@ export const useSelectFile = (props?: {
                 title: t('file.Select a maximum of 10 files')
               });
             }
-            onSelect(Array.from(e.target.files));
+            onSelect(Array.from(e.target.files), openSign.current);
           }}
         />
       </Box>
@@ -37,7 +38,8 @@ export const useSelectFile = (props?: {
     [fileType, maxCount, multiple]
   );
 
-  const onOpen = useCallback(() => {
+  const onOpen = useCallback((sign?: any) => {
+    openSign.current = sign;
     SelectFileDom.current && SelectFileDom.current.click();
   }, []);
 

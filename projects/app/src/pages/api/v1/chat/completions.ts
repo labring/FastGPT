@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
@@ -138,6 +138,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
       // openapi key
       if (authType === AuthUserTypeEnum.apikey) {
+        if (!apiKeyAppId) {
+          return Promise.reject(
+            'Key is error. You need to use the app key rather than the account key.'
+          );
+        }
         const app = await MongoApp.findById(apiKeyAppId);
 
         if (!app) {
@@ -180,6 +185,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       req,
       authToken: true,
       authApiKey: true,
+      appId: app._id,
       chatId,
       shareId,
       outLinkUid,
@@ -188,20 +194,23 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // get and concat history
     const { history } = await getChatItems({ chatId, limit: 30, field: `dataId obj value` });
-    const concatHistory = history.concat(chatMessages);
+    const concatHistories = history.concat(chatMessages);
+    const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
     const { responseData, answerText } = await dispatchModules({
       res,
+      mode: 'chat',
+      user,
+      teamId: String(user.team.teamId),
+      tmbId: String(user.team.tmbId),
       appId: String(app._id),
       chatId,
+      responseChatItemId,
       modules: app.modules,
-      user,
-      teamId: user.team.teamId,
-      tmbId: user.team.tmbId,
       variables,
-      params: {
-        history: concatHistory,
+      histories: concatHistories,
+      startParams: {
         userChatInput: question.value
       },
       stream,
@@ -231,7 +240,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         content: [
           question,
           {
-            dataId: messages[messages.length - 1].dataId,
+            dataId: responseChatItemId,
             obj: ChatRoleEnum.AI,
             value: answerText,
             responseData

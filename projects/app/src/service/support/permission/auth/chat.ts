@@ -11,12 +11,14 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
   token: team owner and chat owner have all permissions
 */
 export async function autChatCrud({
+  appId,
   chatId,
   shareId,
   outLinkUid,
   per = 'owner',
   ...props
 }: AuthModeType & {
+  appId: string;
   chatId?: string;
   shareId?: string;
   outLinkUid?: string;
@@ -28,7 +30,7 @@ export async function autChatCrud({
   const isOutLink = Boolean(shareId && outLinkUid);
   if (!chatId) return { isOutLink, uid: outLinkUid };
 
-  const chat = await MongoChat.findOne({ chatId }).lean();
+  const chat = await MongoChat.findOne({ appId, chatId }).lean();
 
   if (!chat) return { isOutLink, uid: outLinkUid };
 
@@ -45,9 +47,16 @@ export async function autChatCrud({
     }
 
     // req auth
-    const { tmbId, role } = await authUserRole(props);
+    const { teamId, tmbId, role } = await authUserRole(props);
+
+    if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
+
     if (role === TeamMemberRoleEnum.owner) return { uid: outLinkUid };
     if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
+
+    // admin
+    if (per === 'r' && role === TeamMemberRoleEnum.admin) return { uid: outLinkUid };
+
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();
 

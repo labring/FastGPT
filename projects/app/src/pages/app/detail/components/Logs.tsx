@@ -18,7 +18,8 @@ import { useTranslation } from 'next-i18next';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api';
 import dayjs from 'dayjs';
-import { ChatSourceMap, HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { AppLogsListItemType } from '@/types/app';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ChatBox, { type ComponentRef } from '@/components/ChatBox';
@@ -28,6 +29,7 @@ import Tag from '@/components/Tag';
 import MyModal from '@/components/MyModal';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
+import MyBox from '@/components/common/MyBox';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
@@ -48,7 +50,8 @@ const Logs = ({ appId }: { appId: string }) => {
     data: logs,
     isLoading,
     Pagination,
-    getData
+    getData,
+    pageNum
   } = usePagination<AppLogsListItemType>({
     api: getAppChatLogs,
     pageSize: 20,
@@ -90,11 +93,11 @@ const Logs = ({ appId }: { appId: string }) => {
         <Table variant={'simple'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>{t('app.Logs Source')}</Th>
-              <Th>{t('app.Logs Time')}</Th>
+              <Th>{t('core.app.logs.Source And Time')}</Th>
               <Th>{t('app.Logs Title')}</Th>
               <Th>{t('app.Logs Message Total')}</Th>
               <Th>{t('app.Feedback Count')}</Th>
+              <Th>{t('core.app.feedback.Custom feedback')}</Th>
               <Th>{t('app.Mark Count')}</Th>
             </Tr>
           </Thead>
@@ -107,37 +110,59 @@ const Logs = ({ appId }: { appId: string }) => {
                 title={'点击查看对话详情'}
                 onClick={() => setDetailLogsId(item.id)}
               >
-                <Td>{t(ChatSourceMap[item.source]?.name || 'UnKnow')}</Td>
-                <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Td>
+                <Td>
+                  <Box>{t(ChatSourceMap[item.source]?.name || 'UnKnow')}</Box>
+                  <Box color={'myGray.500'}>{dayjs(item.time).format('YYYY/MM/DD HH:mm')}</Box>
+                </Td>
                 <Td className="textEllipsis" maxW={'250px'}>
                   {item.title}
                 </Td>
                 <Td>{item.messageCount}</Td>
                 <Td w={'100px'}>
-                  {!!item?.feedbackCount ? (
-                    <Box display={'inline-block'}>
-                      <Flex
-                        bg={'#FFF2EC'}
-                        color={'#C96330'}
-                        px={3}
-                        py={1}
-                        alignItems={'center'}
-                        borderRadius={'lg'}
-                        fontWeight={'bold'}
-                      >
-                        <MyIcon
-                          mr={1}
-                          name={'core/chat/feedback/badLight'}
-                          color={'#C96330'}
-                          w={'14px'}
-                        />
-                        {item.feedbackCount}
-                      </Flex>
-                    </Box>
-                  ) : (
-                    <>-</>
+                  {!!item?.userGoodFeedbackCount && (
+                    <Flex
+                      mb={item?.userGoodFeedbackCount ? 1 : 0}
+                      bg={'green.100'}
+                      color={'green.600'}
+                      px={3}
+                      py={1}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      borderRadius={'lg'}
+                      fontWeight={'bold'}
+                    >
+                      <MyIcon
+                        mr={1}
+                        name={'core/chat/feedback/goodLight'}
+                        color={'green.600'}
+                        w={'14px'}
+                      />
+                      {item.userGoodFeedbackCount}
+                    </Flex>
                   )}
+                  {!!item?.userBadFeedbackCount && (
+                    <Flex
+                      bg={'#FFF2EC'}
+                      color={'#C96330'}
+                      px={3}
+                      py={1}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      borderRadius={'lg'}
+                      fontWeight={'bold'}
+                    >
+                      <MyIcon
+                        mr={1}
+                        name={'core/chat/feedback/badLight'}
+                        color={'#C96330'}
+                        w={'14px'}
+                      />
+                      {item.userBadFeedbackCount}
+                    </Flex>
+                  )}
+                  {!item?.userGoodFeedbackCount && !item?.userBadFeedbackCount && <>-</>}
                 </Td>
+                <Td>{item.customFeedbacksCount || '-'}</Td>
                 <Td>{item.markCount}</Td>
               </Tr>
             ))}
@@ -168,7 +193,10 @@ const Logs = ({ appId }: { appId: string }) => {
         <DetailLogsModal
           appId={appId}
           chatId={detailLogsId}
-          onClose={() => setDetailLogsId(undefined)}
+          onClose={() => {
+            setDetailLogsId(undefined);
+            getData(pageNum);
+          }}
         />
       )}
       <MyModal
@@ -184,7 +212,7 @@ const Logs = ({ appId }: { appId: string }) => {
 
 export default React.memo(Logs);
 
-function DetailLogsModal({
+const DetailLogsModal = ({
   appId,
   chatId,
   onClose
@@ -192,14 +220,14 @@ function DetailLogsModal({
   appId: string;
   chatId: string;
   onClose: () => void;
-}) {
+}) => {
   const ChatBoxRef = useRef<ComponentRef>(null);
   const { isPc } = useSystemStore();
   const theme = useTheme();
 
-  const { data: chat } = useQuery(
+  const { data: chat, isFetching } = useQuery(
     ['getChatDetail', chatId],
-    () => getInitChatInfo({ appId, chatId }),
+    () => getInitChatInfo({ appId, chatId, loadCustomFeedbacks: true }),
     {
       onSuccess(res) {
         const history = res.history.map((item) => ({
@@ -225,9 +253,11 @@ function DetailLogsModal({
 
   return (
     <>
-      <Flex
-        zIndex={3}
+      <MyBox
+        isLoading={isFetching}
+        display={'flex'}
         flexDirection={'column'}
+        zIndex={3}
         position={['fixed', 'absolute']}
         top={[0, '2%']}
         right={0}
@@ -297,10 +327,12 @@ function DetailLogsModal({
             showMarkIcon
             showVoiceIcon={false}
             userGuideModule={chat?.app?.userGuideModule}
+            appId={appId}
+            chatId={chatId}
           />
         </Box>
-      </Flex>
+      </MyBox>
       <Box zIndex={2} position={'fixed'} top={0} left={0} bottom={0} right={0} onClick={onClose} />
     </>
   );
-}
+};

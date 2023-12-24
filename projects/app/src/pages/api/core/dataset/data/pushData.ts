@@ -136,7 +136,7 @@ export async function pushDataToDatasetCollection({
       model,
       q: item.q,
       a: item.a,
-      chunkIndex: i,
+      chunkIndex: item.chunkIndex ?? i,
       indexes: item.indexes
     }))
   );

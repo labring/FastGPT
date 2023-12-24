@@ -1,4 +1,4 @@
-import type { FeConfigsType, SystemEnvType } from '@fastgpt/global/common/system/types/index.d';
+import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { readFileSync, readdirSync } from 'fs';
@@ -6,20 +6,14 @@ import type { ConfigFileType, InitDateResponse } from '@/global/common/api/syste
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
-import {
-  defaultChatModels,
-  defaultQAModels,
-  defaultCQModels,
-  defaultExtractModels,
-  defaultQGModels,
-  defaultVectorModels,
-  defaultAudioSpeechModels,
-  defaultWhisperModel,
-  defaultReRankModels
-} from '@fastgpt/global/core/ai/model';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
-import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { getFastGPTFeConfig } from '@fastgpt/service/common/system/config/controller';
+import { connectToDatabase } from '@/service/mongo';
+import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
+import { readConfigData } from '@/service/common/system';
+import { exit } from 'process';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -45,18 +39,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 }
 
-const defaultSystemEnv: SystemEnvType = {
-  vectorMaxProcess: 15,
-  qaMaxProcess: 15,
-  pgHNSWEfSearch: 100
-};
 const defaultFeConfigs: FeConfigsType = {
   show_emptyChat: true,
   show_git: true,
-  show_register: false,
   docUrl: 'https://doc.fastgpt.in',
   openAPIDocUrl: 'https://doc.fastgpt.in/docs/development/openapi',
   systemTitle: 'FastGPT',
+  concatMd:
+    '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://doc.fastgpt.in/wechat-fastgpt.webp)',
   limit: {
     exportLimitMinutes: 0
   },
@@ -67,66 +57,81 @@ const defaultFeConfigs: FeConfigsType = {
 export async function getInitConfig() {
   try {
     if (global.feConfigs) return;
+    await connectToDatabase();
     initGlobal();
 
-    const filename =
-      process.env.NODE_ENV === 'development' ? 'data/config.local.json' : '/app/data/config.json';
-    const res = JSON.parse(readFileSync(filename, 'utf-8')) as ConfigFileType;
+    // load config
+    const [dbConfig, fileConfig] = await Promise.all([
+      getFastGPTFeConfig(),
+      readConfigData('config.json')
+    ]);
+    const fileRes = JSON.parse(fileConfig) as ConfigFileType;
 
-    setDefaultData(res);
+    // get config from database
+    const config: ConfigFileType = {
+      ...fileRes,
+      FeConfig: {
+        ...defaultFeConfigs,
+        ...fileRes.FeConfig,
+        ...dbConfig
+      }
+    };
+
+    // set config
+    global.feConfigs = {
+      isPlus: !!config.SystemParams.pluginBaseUrl,
+      concatMd: config.FeConfig.show_git ? config.FeConfig.concatMd : '',
+      ...config.FeConfig
+    };
+    global.systemEnv = config.SystemParams;
+
+    global.chatModels = config.ChatModels;
+    global.qaModels = config.QAModels;
+    global.cqModels = config.CQModels;
+    global.extractModels = config.ExtractModels;
+    global.qgModels = config.QGModels;
+    global.vectorModels = config.VectorModels;
+    global.reRankModels = config.ReRankModels;
+    global.audioSpeechModels = config.AudioSpeechModels;
+    global.whisperModel = config.WhisperModel;
+
+    global.priceMd = '';
   } catch (error) {
-    setDefaultData();
-    console.log('get init config error, set default', error);
+    console.error('Load init config error', error);
+    exit(1);
   }
   await getSimpleModeTemplates();
 
   getSystemVersion();
   getModelPrice();
   getSystemPlugin();
+
+  console.log({
+    FeConfig: global.feConfigs,
+    SystemParams: global.systemEnv,
+    ChatModels: global.chatModels,
+    QAModels: global.qaModels,
+    CQModels: global.cqModels,
+    ExtractModels: global.extractModels,
+    QGModels: global.qgModels,
+    VectorModels: global.vectorModels,
+    ReRankModels: global.reRankModels,
+    AudioSpeechModels: global.reRankModels,
+    WhisperModel: global.whisperModel,
+    price: global.priceMd,
+    simpleModeTemplates: global.simpleModeTemplates,
+    communityPlugins: global.communityPlugins
+  });
 }
 
 export function initGlobal() {
-  // init tikToken
-  getTikTokenEnc();
-  initHttpAgent();
   global.communityPlugins = [];
   global.simpleModeTemplates = [];
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
-}
-
-export function setDefaultData(res?: ConfigFileType) {
-  global.systemEnv = res?.SystemParams
-    ? { ...defaultSystemEnv, ...res.SystemParams }
-    : defaultSystemEnv;
-  global.feConfigs = res?.FeConfig
-    ? {
-        concatMd: res?.FeConfig?.show_git
-          ? '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://doc.fastgpt.in/wechat-fastgpt.webp)'
-          : '',
-        ...defaultFeConfigs,
-        ...res.FeConfig,
-        isPlus: !!res.SystemParams?.pluginBaseUrl
-      }
-    : defaultFeConfigs;
-
-  global.chatModels = res?.ChatModels || defaultChatModels;
-  global.qaModels = res?.QAModels || defaultQAModels;
-  global.cqModels = res?.CQModels || defaultCQModels;
-  global.extractModels = res?.ExtractModels || defaultExtractModels;
-  global.qgModels = res?.QGModels || defaultQGModels;
-
-  global.vectorModels = res?.VectorModels || defaultVectorModels;
-
-  global.reRankModels = res?.ReRankModels || defaultReRankModels;
-
-  global.audioSpeechModels = res?.AudioSpeechModels || defaultAudioSpeechModels;
-
-  global.whisperModel = res?.WhisperModel || defaultWhisperModel;
-
-  global.priceMd = '';
-
-  console.log(res);
+  // init tikToken
+  getTikTokenEnc();
+  initHttpAgent();
 }
 
 export function getSystemVersion() {
@@ -173,7 +178,6 @@ ${global.audioSpeechModels
   .join('\n')}
 ${`| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`}
 `;
-  console.log(global.priceMd);
 }
 
 async function getSimpleModeTemplates() {
@@ -181,9 +185,7 @@ async function getSimpleModeTemplates() {
 
   try {
     const basePath =
-      process.env.NODE_ENV === 'development'
-        ? 'public/simpleTemplates'
-        : '/app/projects/app/public/simpleTemplates';
+      process.env.NODE_ENV === 'development' ? 'data/simpleTemplates' : '/app/data/simpleTemplates';
     // read data/simpleTemplates directory, get all json file
     const files = readdirSync(basePath);
     // filter json file
@@ -209,33 +211,27 @@ async function getSimpleModeTemplates() {
   } catch (error) {
     global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal];
   }
-  console.log('simple mode templates: ');
-  console.log(global.simpleModeTemplates);
 }
 
 function getSystemPlugin() {
   if (global.communityPlugins && global.communityPlugins.length > 0) return;
 
   const basePath =
-    process.env.NODE_ENV === 'development'
-      ? 'public/pluginTemplates'
-      : '/app/projects/app/public/pluginTemplates';
+    process.env.NODE_ENV === 'development' ? 'data/pluginTemplates' : '/app/data/pluginTemplates';
   // read data/pluginTemplates directory, get all json file
   const files = readdirSync(basePath);
   // filter json file
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
   // read json file
-  const fileTemplates = filterFiles.map((item) => {
-    const content = readFileSync(`${basePath}/${item}`, 'utf-8');
+  const fileTemplates: PluginTemplateType[] = filterFiles.map((filename) => {
+    const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
-      id: `${PluginTypeEnum.community}-${item.replace('.json', '')}`,
-      type: PluginTypeEnum.community,
-      ...JSON.parse(content)
+      ...JSON.parse(content),
+      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
+      source: PluginSourceEnum.community
     };
   });
 
   global.communityPlugins = fileTemplates;
-  console.log('community plugins: ');
-  console.log(fileTemplates);
 }

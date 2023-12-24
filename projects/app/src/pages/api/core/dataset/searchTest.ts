@@ -6,11 +6,10 @@ import { connectToDatabase } from '@/service/mongo';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
-import { countModelPrice } from '@/service/support/wallet/bill/utils';
 import { searchDatasetData } from '@/service/core/dataset/data/pg';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { ModelTypeEnum } from '@/service/core/ai/model';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { searchQueryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -35,10 +34,17 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // auth balance
     await authTeamBalance(teamId);
 
+    // query extension
+    // const { queries } = await searchQueryExtension({
+    //   query: text,
+    //   model: global.chatModels[0].model
+    // });
+
     const { searchRes, tokenLen } = await searchDatasetData({
-      text,
+      rawQuery: text,
+      queries: [text],
       model: dataset.vectorModel,
-      limit: Math.min(limit, 50),
+      limit: Math.min(limit * 800, 30000),
       datasetIds: [datasetId],
       searchMode
     });

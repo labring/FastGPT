@@ -4,7 +4,7 @@ import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '@fastgpt/service/common/mongo/controller';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
@@ -56,6 +56,7 @@ export async function generateQA(): Promise<any> {
           collectionId: 1,
           q: 1,
           model: 1,
+          chunkIndex: 1,
           billId: 1,
           prompt: 1
         })
@@ -130,7 +131,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const ai = getAIApi(undefined, 600000);
     const chatResponse = await ai.chat.completions.create({
       model,
-      temperature: 0.01,
+      temperature: 0.3,
       messages,
       stream: false
     });
@@ -144,7 +145,10 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
-      data: qaArr,
+      data: qaArr.map((item) => ({
+        ...item,
+        chunkIndex: data.chunkIndex
+      })),
       mode: TrainingModeEnum.chunk,
       billId: data.billId
     });
@@ -239,8 +243,8 @@ function formatSplitText(text: string, rawText: string) {
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const splitRes = splitText2Chunks({ text: rawText, chunkLen: 512 });
-    splitRes.chunks.forEach((chunk) => {
+    const { chunks } = splitText2Chunks({ text: rawText, chunkLen: 512, countTokens: false });
+    chunks.forEach((chunk) => {
       result.push({
         q: chunk,
         a: '',

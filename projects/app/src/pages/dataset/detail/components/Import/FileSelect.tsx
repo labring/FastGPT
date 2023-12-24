@@ -35,7 +35,7 @@ export type FileItemType = {
   id: string; // fileId / raw Link
   filename: string;
   chunks: PushDatasetDataChunkProps[];
-  text: string; // raw text
+  rawText: string; // raw text
   icon: string;
   tokens: number; // total tokens
   type: DatasetCollectionTypeEnum.file | DatasetCollectionTypeEnum.link;
@@ -152,7 +152,7 @@ const FileSelect = ({
               filename: file.name,
               icon,
               tokens: filterData.reduce((sum, item) => sum + countPromptTokens(item.q), 0),
-              text: `${header.join(',')}\n${data
+              rawText: `${header.join(',')}\n${data
                 .map((item) => `"${item[0]}","${item[1]}"`)
                 .join('\n')}`,
               chunks: filterData,
@@ -182,7 +182,7 @@ const FileSelect = ({
 
           if (text) {
             text = simpleText(text);
-            const splitRes = splitText2Chunks({
+            const { chunks, tokens } = splitText2Chunks({
               text,
               chunkLen,
               overlapRatio
@@ -192,11 +192,11 @@ const FileSelect = ({
               id: nanoid(),
               filename: file.name,
               icon,
-              text,
-              tokens: splitRes.tokens,
+              rawText: text,
+              tokens,
               type: DatasetCollectionTypeEnum.file,
               fileId,
-              chunks: splitRes.chunks.map((chunk) => ({
+              chunks: chunks.map((chunk) => ({
                 q: chunk,
                 a: ''
               }))
@@ -219,7 +219,7 @@ const FileSelect = ({
   const onUrlFetch = useCallback(
     (e: UrlFetchResponse) => {
       const result: FileItemType[] = e.map<FileItemType>(({ url, content }) => {
-        const splitRes = splitText2Chunks({
+        const { chunks, tokens } = splitText2Chunks({
           text: content,
           chunkLen,
           overlapRatio
@@ -228,11 +228,11 @@ const FileSelect = ({
           id: nanoid(),
           filename: url,
           icon: '/imgs/files/link.svg',
-          text: content,
-          tokens: splitRes.tokens,
+          rawText: content,
+          tokens,
           type: DatasetCollectionTypeEnum.link,
           rawLink: url,
-          chunks: splitRes.chunks.map((chunk) => ({
+          chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
           }))
@@ -259,7 +259,7 @@ const FileSelect = ({
         metadata: { datasetId: datasetDetail._id }
       });
 
-      const splitRes = splitText2Chunks({
+      const { chunks, tokens } = splitText2Chunks({
         text: content,
         chunkLen,
         overlapRatio
@@ -270,11 +270,11 @@ const FileSelect = ({
           id: nanoid(),
           filename,
           icon: '/imgs/files/txt.svg',
-          text: content,
-          tokens: splitRes.tokens,
+          rawText: content,
+          tokens,
           type: DatasetCollectionTypeEnum.file,
           fileId: fileIds[0],
-          chunks: splitRes.chunks.map((chunk) => ({
+          chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
           }))
@@ -352,7 +352,7 @@ const FileSelect = ({
     ml: 1,
     as: 'span',
     cursor: 'pointer',
-    color: 'myBlue.700',
+    color: 'blue.600',
     _hover: {
       textDecoration: 'underline'
     }
@@ -417,7 +417,7 @@ const FileSelect = ({
           mt={1}
           cursor={'pointer'}
           textDecoration={'underline'}
-          color={'myBlue.600'}
+          color={'blue.500'}
           fontSize={'12px'}
           onClick={() =>
             fileDownload({

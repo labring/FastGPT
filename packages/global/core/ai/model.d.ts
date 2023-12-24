@@ -14,7 +14,7 @@ export type ChatModelItemType = LLMModelItemType & {
 };
 
 export type FunctionModelItemType = LLMModelItemType & {
-  functionCall: boolean;
+  toolChoice: boolean;
   functionPrompt: string;
 };
 

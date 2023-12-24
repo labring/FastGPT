@@ -13,12 +13,13 @@ export const splitText2Chunks = (props: {
   chunkLen: number;
   overlapRatio?: number;
   customReg?: string[];
+  countTokens?: boolean;
 }): {
   chunks: string[];
   tokens: number;
   overlapRatio?: number;
 } => {
-  let { text = '', chunkLen, overlapRatio = 0.2, customReg = [] } = props;
+  let { text = '', chunkLen, overlapRatio = 0.2, customReg = [], countTokens = true } = props;
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkLen * overlapRatio);
@@ -231,9 +232,11 @@ export const splitText2Chunks = (props: {
       step: 0,
       lastText: '',
       mdTitle: ''
-    }).map((chunk) => chunk.replaceAll(codeBlockMarker, '\n')); // restore code block
+    }).map((chunk) => chunk?.replaceAll(codeBlockMarker, '\n') || ''); // restore code block
 
-    const tokens = chunks.reduce((sum, chunk) => sum + countPromptTokens(chunk, 'system'), 0);
+    const tokens = countTokens
+      ? chunks.reduce((sum, chunk) => sum + countPromptTokens(chunk, 'system'), 0)
+      : 0;
 
     return {
       chunks,

@@ -33,11 +33,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       fileIds: collections.map((item) => item?.fileId || '').filter(Boolean)
     });
 
-    // delete collection
-    await MongoDatasetCollection.deleteMany({
-      _id: { $in: delIdList }
-    });
-
     jsonRes(res);
   } catch (err) {
     jsonRes(res, {

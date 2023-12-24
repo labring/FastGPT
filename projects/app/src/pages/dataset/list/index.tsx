@@ -163,7 +163,7 @@ const Kb = () => {
             Button={
               <MenuButton
                 _hover={{
-                  color: 'myBlue.600'
+                  color: 'blue.500'
                 }}
               >
                 <Flex
@@ -221,7 +221,7 @@ const Kb = () => {
             boxShadow={'none'}
             position={'relative'}
             data-drag-id={dataset.type === DatasetTypeEnum.folder ? dataset._id : undefined}
-            borderColor={dragTargetId === dataset._id ? 'myBlue.600' : ''}
+            borderColor={dragTargetId === dataset._id ? 'blue.500' : ''}
             draggable
             onDragStart={(e) => {
               setDragStartId(dataset._id);
@@ -287,7 +287,7 @@ const Kb = () => {
                     h={'22px'}
                     borderRadius={'md'}
                     _hover={{
-                      color: 'myBlue.600',
+                      color: 'blue.500',
                       '& .icon': {
                         bg: 'myGray.100'
                       }

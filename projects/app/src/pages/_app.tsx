@@ -39,6 +39,7 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
+  const { loadGitStar } = useSystemStore();
   const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
 
@@ -46,18 +47,23 @@ function App({ Component, pageProps }: AppProps) {
     // get init data
     (async () => {
       const {
-        feConfigs: { scripts, isPlus, systemTitle }
+        feConfigs: { scripts, isPlus, show_git, systemTitle }
       } = await clientInitData();
 
       setTitle(systemTitle || 'FastGPT');
 
       // log fastgpt
-      !isPlus &&
+      if (!isPlus) {
         console.log(
           '%cWelcome to FastGPT',
           'font-family:Arial; color:#3370ff ; font-size:18px; font-weight:bold;',
           `GitHub：https://github.com/labring/FastGPT`
         );
+      }
+      if (show_git) {
+        loadGitStar();
+      }
+
       setScripts(scripts || []);
     })();
 

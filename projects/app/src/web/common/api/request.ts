@@ -99,10 +99,14 @@ function responseError(err: any) {
   // 有报错响应
   if (err?.code in TOKEN_ERROR_CODE) {
     clearToken();
-    window.location.replace(
-      `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
-    );
-    return Promise.reject({ message: 'token过期，重新登录' });
+
+    if (window.location.pathname !== '/chat/share') {
+      window.location.replace(
+        `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
+      );
+    }
+
+    return Promise.reject({ message: '无权操作' });
   }
   if (err?.response?.data) {
     return Promise.reject(err?.response?.data);

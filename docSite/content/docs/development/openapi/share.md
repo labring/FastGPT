@@ -24,7 +24,9 @@ weight: 860
     "success": true,
     "message": "错误提示",
     "msg": "同message, 错误提示",
-    "uid": "用户唯一凭证"
+    "data": {
+        "uid": "用户唯一凭证"
+    }
 }
 ```
 
@@ -80,7 +82,9 @@ curl --location --request POST '{{host}}/shareAuth/init' \
 ```json
 {
     "success": true,
-    "uid": "username123",
+    "data": {
+        "uid": "用户唯一凭证"
+    }
 }
 ```
 
@@ -129,7 +133,9 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 ```json
 {
     "success": true,
-    "uid": "username123",
+    "data": {
+        "uid": "用户唯一凭证"
+    }
 }
 ```
 

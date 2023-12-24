@@ -13,6 +13,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
@@ -158,7 +159,9 @@ const Provider = ({
           fileId: file.fileId,
           rawLink: file.rawLink,
           chunkSize: chunkLen,
-          trainingType: collectionTrainingType
+          trainingType: collectionTrainingType,
+          qaPrompt: mode === TrainingModeEnum.qa ? prompt : '',
+          hashRawText: hashStr(file.rawText)
         });
 
         // upload data
@@ -192,16 +195,16 @@ const Provider = ({
 
       setFiles((state) =>
         state.map((file) => {
-          const splitRes = splitText2Chunks({
-            text: file.text,
+          const { chunks, tokens } = splitText2Chunks({
+            text: file.rawText,
             chunkLen,
             overlapRatio: chunkOverlapRatio
           });
 
           return {
             ...file,
-            tokens: splitRes.tokens,
-            chunks: splitRes.chunks.map((chunk) => ({
+            tokens,
+            chunks: chunks.map((chunk) => ({
               q: chunk,
               a: ''
             }))
@@ -286,28 +289,30 @@ export const PreviewFileOrChunk = () => {
             overflow={'overlay'}
             px={[4, 8]}
             my={4}
-            contentEditable
-            dangerouslySetInnerHTML={{ __html: previewFile.text }}
+            // contentEditable
+            // dangerouslySetInnerHTML={{ __html: previewFile.rawText }}
             fontSize={'sm'}
             whiteSpace={'pre-wrap'}
             wordBreak={'break-all'}
-            onBlur={(e) => {
-              // @ts-ignore
-              const val = e.target.innerText;
-              setReShowRePreview(true);
+            // onBlur={(e) => {
+            //   // @ts-ignore
+            //   const val = e.target.innerText;
+            //   setReShowRePreview(true);
 
-              setFiles((state) =>
-                state.map((file) =>
-                  file.id === previewFile.id
-                    ? {
-                        ...file,
-                        text: val
-                      }
-                    : file
-                )
-              );
-            }}
-          />
+            //   setFiles((state) =>
+            //     state.map((file) =>
+            //       file.id === previewFile.id
+            //         ? {
+            //             ...file,
+            //             text: val
+            //           }
+            //         : file
+            //     )
+            //   );
+            // }}
+          >
+            {previewFile.rawText}
+          </Box>
         </Box>
       ) : (
         <Box pt={[3, 6]}>
@@ -362,49 +367,9 @@ export const PreviewFileOrChunk = () => {
                       }}
                     />
                   </Flex>
-                  <Box
-                    px={4}
-                    fontSize={'sm'}
-                    whiteSpace={'pre-wrap'}
-                    wordBreak={'break-all'}
-                    contentEditable={!chunk.a}
-                    dangerouslySetInnerHTML={{
-                      __html: chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q
-                    }}
-                    onBlur={(e) => {
-                      // @ts-ignore
-                      const val = e.target.innerText;
-
-                      /* delete file */
-                      if (val === '') {
-                        setFiles((state) =>
-                          state.map((stateFile) =>
-                            stateFile.id === file.id
-                              ? {
-                                  ...file,
-                                  chunks: [...file.chunks.slice(0, i), ...file.chunks.slice(i + 1)]
-                                }
-                              : stateFile
-                          )
-                        );
-                      } else {
-                        // update chunk
-                        setFiles((stateFiles) =>
-                          stateFiles.map((stateFile) =>
-                            file.id === stateFile.id
-                              ? {
-                                  ...stateFile,
-                                  chunks: stateFile.chunks.map((chunk, index) => ({
-                                    ...chunk,
-                                    index: i === index ? val : chunk.q
-                                  }))
-                                }
-                              : stateFile
-                          )
-                        );
-                      }
-                    }}
-                  />
+                  <Box px={4} fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
+                    {chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q}
+                  </Box>
                 </Box>
               ))
             )}
@@ -472,7 +437,7 @@ export const SelectorContainer = ({
               position={'relative'}
               alignItems={'center'}
               _hover={{
-                bg: 'myBlue.100',
+                bg: 'blue.50',
                 '& .delete': {
                   display: 'block'
                 }

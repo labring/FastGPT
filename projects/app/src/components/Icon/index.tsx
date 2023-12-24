@@ -78,6 +78,7 @@ const iconPaths = {
   'support/account/promotionLight': () => import('./icons/support/account/promotionLight.svg'),
   'core/app/logsLight': () => import('./icons/core/app/logsLight.svg'),
   'core/chat/feedback/badLight': () => import('./icons/core/chat/feedback/badLight.svg'),
+  'core/chat/feedback/goodLight': () => import('./icons/core/chat/feedback/goodLight.svg'),
   'core/app/markLight': () => import('./icons/core/app/markLight.svg'),
   'common/retryLight': () => import('./icons/common/retryLight.svg'),
   'common/rightArrowLight': () => import('./icons/common/rightArrowLight.svg'),
@@ -123,7 +124,8 @@ const iconPaths = {
   'common/confirm/deleteTip': () => import('./icons/common/confirm/deleteTip.svg'),
   'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg'),
   'common/routePushLight': () => import('./icons/common/routePushLight.svg'),
-  'common/viewLight': () => import('./icons/common/viewLight.svg')
+  'common/viewLight': () => import('./icons/common/viewLight.svg'),
+  'core/app/customFeedback': () => import('./icons/core/app/customFeedback.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

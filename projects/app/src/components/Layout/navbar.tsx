@@ -3,7 +3,7 @@ import { Box, Flex, Link } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import { HUMAN_ICON } from '@fastgpt/global/core/chat/constants';
+import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import { feConfigs } from '@/web/common/system/staticData';
 import NextLink from 'next/link';
 import Badge from '../Badge';
@@ -129,7 +129,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             {...itemStyles}
             {...(item.activeLink.includes(router.pathname)
               ? {
-                  color: 'myBlue.700',
+                  color: 'blue.600',
                   bg: 'white !important',
                   boxShadow: '1px 1px 10px rgba(0,0,0,0.2)'
                 }
@@ -175,18 +175,17 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </Box>
       )}
-      {feConfigs?.docUrl && (
-        <MyTooltip label={t('home.Docs')} placement={'right-end'}>
-          <Box
+      {(feConfigs?.docUrl || feConfigs?.chatbotUrl) && (
+        <MyTooltip label={t('common.system.Use Helper')} placement={'right-end'}>
+          <Link
             {...itemStyles}
+            href={feConfigs?.chatbotUrl || getDocPath('/docs/intro')}
+            target="_blank"
             mb={0}
             color={'#9096a5'}
-            onClick={() => {
-              window.open(getDocPath('/docs/intro'));
-            }}
           >
             <MyIcon name={'common/courseLight'} width={'26px'} height={'26px'} />
-          </Box>
+          </Link>
         </MyTooltip>
       )}
       {feConfigs?.show_git && (

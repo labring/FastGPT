@@ -1,16 +1,15 @@
 ---
 title: '接入微软、ChatGLM、本地模型等'
-description: '通过接入 One API 来实现对各种大模型的支持'
+description: '部署和接入 OneAPI，实现对各种大模型的支持'
 icon: 'Api'
 draft: false
 toc: true
 weight: 708
 ---
 
-* 默认情况下，FastGPT 只配置了 GPT 的 3 个模型，如果你需要接入其他模型，需要进行一些额外配置。
+* 默认情况下，FastGPT 只配置了 GPT 的模型，如果你需要接入其他模型，需要进行一些额外配置。
 * [One API](https://github.com/songquanpeng/one-api) 是一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
-
-FastGPT 可以通过接入 One API 来实现对各种大模型的支持。部署方法也很简单。
+* FastGPT 可以通过接入 OneAPI 来实现对不同大模型的支持。OneAPI 的部署方法也很简单。
 
 ## MySQL 版本
 
@@ -51,7 +50,7 @@ BATCH_UPDATE_ENABLED=true
 BATCH_UPDATE_INTERVAL=60
 ```
 
-## 使用步骤
+## One API使用步骤
 
 ### 1. 登录 One API
 
