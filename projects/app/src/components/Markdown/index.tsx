@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import ReactMarkdown from 'react-markdown';
-import RemarkGfm from 'remark-gfm';
-import RemarkMath from 'remark-math';
-import RehypeKatex from 'rehype-katex';
-import RemarkBreaks from 'remark-breaks';
-
 import 'katex/dist/katex.min.css';
+import RemarkMath from 'remark-math';
+import RemarkBreaks from 'remark-breaks';
+import RehypeKatex from 'rehype-katex';
+import RemarkGfm from 'remark-gfm';
+
 import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
@@ -112,17 +112,6 @@ function A({ children, ...props }: any) {
 }
 
 const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
-  const components = useMemo(
-    () => ({
-      img: Image,
-      pre: 'div',
-      p: 'div',
-      code: Code,
-      a: A
-    }),
-    []
-  );
-
   const formatSource = source
     .replace(/\\n/g, '\n&nbsp;')
     .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
@@ -133,10 +122,15 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
       className={`markdown ${styles.markdown}
       ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
-      remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
+      remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
-      // @ts-ignore
-      components={components}
+      components={{
+        img: Image,
+        pre: 'div',
+        p: (pProps) => <p {...pProps} dir="auto" />,
+        code: Code,
+        a: A
+      }}
       linkTarget={'_blank'}
     >
       {formatSource}
