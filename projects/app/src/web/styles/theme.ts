@@ -30,35 +30,71 @@ const Button = defineStyleConfig({
   sizes: {
     xs: {
       fontSize: 'xs',
-      px: 3,
-      py: 0,
+      px: '8px',
+      py: '0',
+      h: '24px',
       fontWeight: 'normal',
-      height: '22px',
-      borderRadius: '2px'
+      borderRadius: '8px'
     },
-    sm: {
-      fontSize: 'sm',
-      px: 4,
-      py: 0,
-      fontWeight: 'normal',
-      height: '26px',
-      borderRadius: '2px'
-    },
-    md: {
-      fontSize: 'md',
-      px: 6,
-      py: 0,
-      height: '32px',
+    xsSquare: {
+      fontSize: 'xs',
+      px: '0',
+      py: '0',
+      h: '24px',
+      w: '24px',
       fontWeight: 'normal',
       borderRadius: '4px'
     },
-    lg: {
-      fontSize: 'lg',
-      px: 8,
+    sm: {
+      fontSize: 'sm',
+      px: '14px',
       py: 0,
-      height: '42px',
+      fontWeight: 'normal',
+      h: '30px',
+      borderRadius: '8px'
+    },
+    smSquare: {
+      fontSize: 'sm',
+      px: '0',
+      py: 0,
+      fontWeight: 'normal',
+      h: '30px',
+      w: '30px',
+      borderRadius: '8px'
+    },
+    md: {
+      fontSize: 'md',
+      px: '20px',
+      py: 0,
+      h: '36px',
       fontWeight: 'normal',
       borderRadius: '8px'
+    },
+    mdSquare: {
+      fontSize: 'md',
+      px: '0',
+      py: 0,
+      h: '36px',
+      w: '36px',
+      fontWeight: 'normal',
+      borderRadius: '6px'
+    },
+    lg: {
+      fontSize: 'md',
+      px: '20px',
+      py: 0,
+      h: '40px',
+      fontWeight: 'normal',
+      borderRadius: '8px'
+    },
+    lgSquare: {
+      fontSize: 'md',
+      px: '0',
+      py: 0,
+      h: '40px',
+      w: '40px',
+      fontWeight: 'normal',
+      borderRadius: '6px'
     }
   },
   variants: {
@@ -74,6 +110,21 @@ const Button = defineStyleConfig({
         bg: 'primary.7 !important'
       }
     },
+    whiteBase: {
+      color: 'myGray.600',
+      border: '1px solid',
+      borderColor: 'myGray.250',
+      bg: 'white',
+      transition: 'background 0.1s',
+      boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
+      _hover: {
+        boxShadow: 'md',
+        color: 'primary.600'
+      },
+      _active: {
+        color: 'primary.600'
+      }
+    },
     solidGray: {
       bg: 'myGray.150',
       color: 'myGray.900',
@@ -85,7 +136,7 @@ const Button = defineStyleConfig({
         bg: 'myGray.50'
       }
     },
-    solidWhite: {
+    whitePrimary: {
       color: 'myGray.600',
       border: '1px solid',
       borderColor: 'myGray.250',
@@ -101,7 +152,7 @@ const Button = defineStyleConfig({
         color: 'primary.600'
       }
     },
-    ghostDanger: {
+    whiteDanger: {
       color: 'myGray.600',
       border: '1px solid',
       borderColor: 'myGray.250',

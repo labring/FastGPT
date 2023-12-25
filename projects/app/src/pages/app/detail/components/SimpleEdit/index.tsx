@@ -218,9 +218,8 @@ function ConfigForm({
         </Box>
         <Button
           isLoading={isSaving}
-          fontSize={'sm'}
           size={['sm', 'md']}
-          variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'solidWhite'}
+          variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'whitePrimary'}
           onClick={() => {
             if (appDetail.type !== AppTypeEnum.simple) {
               openConfirmSave(handleSubmit((data) => onSubmitSave(data)))();
@@ -595,9 +594,9 @@ function Settings({ appId }: { appId: string }) {
                 position={'absolute'}
                 top={4}
                 right={4}
-                size={'sm'}
+                size={'smSquare'}
                 icon={<MyIcon name={'delete'} w={'14px'} />}
-                variant={'ghostDanger'}
+                variant={'whiteDanger'}
                 borderRadius={'md'}
                 aria-label={'delete'}
                 isLoading={isLoading}
@@ -617,7 +616,7 @@ function Settings({ appId }: { appId: string }) {
           <Flex>
             <Button
               size={['sm', 'md']}
-              variant={'solidWhite'}
+              variant={'whitePrimary'}
               leftIcon={<MyIcon name={'chat'} w={'16px'} />}
               onClick={() => router.push(`/chat?appId=${appId}`)}
             >
@@ -626,7 +625,7 @@ function Settings({ appId }: { appId: string }) {
             <Button
               mx={3}
               size={['sm', 'md']}
-              variant={'solidWhite'}
+              variant={'whitePrimary'}
               leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
               onClick={() => {
                 router.replace({
@@ -642,7 +641,7 @@ function Settings({ appId }: { appId: string }) {
             {appDetail.isOwner && (
               <Button
                 size={['sm', 'md']}
-                variant={'solidWhite'}
+                variant={'whitePrimary'}
                 leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
                 onClick={() => setSettingAppInfo(appDetail)}
               >
@@ -726,9 +725,9 @@ function ChatTest({ appId }: { appId: string }) {
         <MyTooltip label={t('core.chat.Restart')}>
           <IconButton
             className="chat"
-            size={'sm'}
+            size={'smSquare'}
             icon={<MyIcon name={'clear'} w={'14px'} />}
-            variant={'solidWhite'}
+            variant={'whiteDanger'}
             borderRadius={'md'}
             aria-label={'delete'}
             onClick={(e) => {

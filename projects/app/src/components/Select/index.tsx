@@ -54,7 +54,7 @@ const MySelect = (
         width={width}
         px={3}
         rightIcon={<ChevronDownIcon />}
-        variant={'solidWhite'}
+        variant={'whitePrimary'}
         textAlign={'left'}
         _active={{
           transform: 'none'

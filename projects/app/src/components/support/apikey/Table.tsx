@@ -119,7 +119,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Button
             ml={3}
             leftIcon={<AddIcon fontSize={'md'} />}
-            variant={'solidWhite'}
+            variant={'whitePrimary'}
             onClick={() =>
               setEditData({
                 ...defaultEditData,
@@ -254,7 +254,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           </Flex>
         </ModalBody>
         <ModalFooter>
-          <Button variant="base" onClick={() => setApiKey('')}>
+          <Button variant="whiteBase" onClick={() => setApiKey('')}>
             好的
           </Button>
         </ModalFooter>
@@ -358,7 +358,7 @@ function EditKeyModal({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'solidWhite'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('Cancel')}
         </Button>
 

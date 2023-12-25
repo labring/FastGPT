@@ -100,11 +100,10 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       >
         <MyTooltip label={t('common.Back')} offset={[10, 10]}>
           <IconButton
-            size={'sm'}
+            size={'smSquare'}
             icon={<MyIcon name={'back'} w={'14px'} />}
-            borderRadius={'md'}
             borderColor={'myGray.300'}
-            variant={'solidWhite'}
+            variant={'whiteBase'}
             aria-label={''}
             onClick={openConfirmOut(async () => {
               const modules = await flow2ModulesAndCheck();
@@ -122,9 +121,9 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         <MyTooltip label={t('app.Import Configs')}>
           <IconButton
             mr={[3, 6]}
+            size={'smSquare'}
             icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
-            variant={'solidWhite'}
+            variant={'whitePrimary'}
             aria-label={'save'}
             onClick={onOpenImport}
           />
@@ -133,8 +132,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <IconButton
             mr={[3, 6]}
             icon={<MyIcon name={'export'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
-            variant={'solidWhite'}
+            size={'smSquare'}
+            variant={'whitePrimary'}
             aria-label={'save'}
             onClick={async () => {
               const modules = await flow2ModulesAndCheck();
@@ -149,9 +148,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <IconButton
             mr={[3, 6]}
             icon={<SmallCloseIcon fontSize={'25px'} />}
-            variant={'solidWhite'}
-            color={'myGray.600'}
-            borderRadius={'lg'}
+            variant={'whitePrimary'}
+            size={'smSquare'}
             aria-label={''}
             onClick={() => setTestModules(undefined)}
           />
@@ -160,9 +158,9 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             <IconButton
               mr={[3, 6]}
               icon={<MyIcon name={'chat'} w={['14px', '16px']} />}
-              borderRadius={'lg'}
+              size={'smSquare'}
               aria-label={'save'}
-              variant={'solidWhite'}
+              variant={'whitePrimary'}
               onClick={async () => {
                 const modules = await flow2ModulesAndCheck();
                 if (modules) {
@@ -176,7 +174,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         <MyTooltip label={'保存配置'}>
           <IconButton
             icon={<MyIcon name={'save'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
+            size={'smSquare'}
             isLoading={isLoading}
             aria-label={'save'}
             onClick={async () => {

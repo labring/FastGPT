@@ -122,11 +122,9 @@ const Header = ({ plugin, onClose }: Props) => {
       >
         <MyTooltip label={t('common.Back')} offset={[10, 10]}>
           <IconButton
-            size={'sm'}
+            size={'smSquare'}
             icon={<MyIcon name={'back'} w={'14px'} />}
-            borderRadius={'md'}
-            borderColor={'myGray.300'}
-            variant={'solidWhite'}
+            variant={'whiteBase'}
             aria-label={''}
             onClick={() => {
               onClose();
@@ -141,8 +139,8 @@ const Header = ({ plugin, onClose }: Props) => {
           <IconButton
             mr={[3, 6]}
             icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
-            variant={'solidWhite'}
+            variant={'whitePrimary'}
+            size={'smSquare'}
             aria-label={'save'}
             onClick={onOpenImport}
           />
@@ -151,8 +149,8 @@ const Header = ({ plugin, onClose }: Props) => {
           <IconButton
             mr={[3, 6]}
             icon={<MyIcon name={'export'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
-            variant={'solidWhite'}
+            size={'smSquare'}
+            variant={'whitePrimary'}
             aria-label={'save'}
             onClick={async () => {
               const modules = await flow2ModulesAndCheck();
@@ -166,9 +164,9 @@ const Header = ({ plugin, onClose }: Props) => {
           <IconButton
             mr={[3, 6]}
             icon={<MyIcon name={'core/module/previewLight'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
+            size={'smSquare'}
             aria-label={'save'}
-            variant={'solidWhite'}
+            variant={'whitePrimary'}
             onClick={async () => {
               const modules = await flow2ModulesAndCheck();
               if (modules) {
@@ -180,7 +178,7 @@ const Header = ({ plugin, onClose }: Props) => {
         <MyTooltip label={t('module.Save Config')}>
           <IconButton
             icon={<MyIcon name={'save'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
+            size={'smSquare'}
             isLoading={isLoading}
             aria-label={'save'}
             onClick={async () => {

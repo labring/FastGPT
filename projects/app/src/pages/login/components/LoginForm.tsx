@@ -211,7 +211,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
               {oAuthList.map((item) => (
                 <Box key={item.provider} _notFirst={{ mt: 4 }}>
                   <Button
-                    variant={'solidWhite'}
+                    variant={'whitePrimary'}
                     w={'100%'}
                     h={'42px'}
                     leftIcon={

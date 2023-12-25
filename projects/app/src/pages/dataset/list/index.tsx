@@ -7,7 +7,8 @@ import {
   useDisclosure,
   Card,
   MenuButton,
-  Image
+  Image,
+  Button
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -161,23 +162,14 @@ const Kb = () => {
             offset={[-30, 10]}
             width={120}
             Button={
-              <MenuButton
-                _hover={{
-                  color: 'primary.500'
-                }}
-              >
-                <Flex
-                  alignItems={'center'}
-                  border={theme.borders.base}
-                  px={5}
-                  py={2}
-                  borderRadius={'md'}
-                  cursor={'pointer'}
-                >
-                  <AddIcon mr={2} />
-                  <Box>{t('Create New')}</Box>
-                </Flex>
-              </MenuButton>
+              <Button variant={'whitePrimary'} px={0}>
+                <MenuButton h={'100%'}>
+                  <Flex alignItems={'center'} px={'20px'}>
+                    <AddIcon mr={2} />
+                    <Box>{t('Create New')}</Box>
+                  </Flex>
+                </MenuButton>
+              </Button>
             }
             menuList={[
               {

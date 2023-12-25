@@ -33,7 +33,7 @@ const ImportSettings = ({ onClose }: Props) => {
       </ModalBody>
       <ModalFooter>
         <Button
-          variant="base"
+          variant="whiteBase"
           onClick={() => {
             if (!value) {
               return onClose();

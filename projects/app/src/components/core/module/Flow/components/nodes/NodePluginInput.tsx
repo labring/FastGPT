@@ -125,7 +125,7 @@ const NodePluginInput = React.memo(function NodePluginInput({
         ))}
         <Box textAlign={'right'} mt={5}>
           <Button
-            variant={'solidWhite'}
+            variant={'whitePrimary'}
             leftIcon={<SmallAddIcon />}
             onClick={() => {
               setCreateField(defaultCreateField);

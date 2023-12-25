@@ -229,7 +229,7 @@ const AIChatSettingsModal = ({
         )}
       </ModalBody>
       <ModalFooter>
-        <Button variant={'solidWhite'} onClick={onClose}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           {t('Cancel')}
         </Button>
         <Button ml={4} onClick={handleSubmit(onSuccess)}>

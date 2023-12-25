@@ -74,7 +74,7 @@ function A({ children, ...props }: any) {
     return (
       <MyTooltip label={t('core.chat.markdown.Quick Question')}>
         <Button
-          variant={'solidWhite'}
+          variant={'whitePrimary'}
           size={'xs'}
           borderRadius={'md'}
           my={1}

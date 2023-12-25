@@ -109,7 +109,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
               {t('core.dataset.test.Test Text')}
             </Box>
             <Button
-              variant={'solidWhite'}
+              variant={'whitePrimary'}
               leftIcon={<MyIcon name={searchModeData.icon as any} w={'14px'} />}
               size={'sm'}
               onClick={onOpenSelectMode}

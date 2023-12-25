@@ -102,8 +102,7 @@ const Flow = ({
               position={'absolute'}
               top={5}
               left={5}
-              w={'38px'}
-              h={'38px'}
+              size={'mdSquare'}
               borderRadius={'50%'}
               icon={<SmallCloseIcon fontSize={'26px'} />}
               transform={isOpenTemplate ? '' : 'rotate(135deg)'}

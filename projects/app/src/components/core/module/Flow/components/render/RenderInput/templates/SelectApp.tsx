@@ -29,7 +29,7 @@ const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
     <>
       <Box onClick={onOpenSelectApp}>
         {!value ? (
-          <Button variant={'solidWhite'} w={'100%'}>
+          <Button variant={'whitePrimary'} w={'100%'}>
             选择应用
           </Button>
         ) : (

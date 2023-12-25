@@ -151,7 +151,7 @@ const ChatHistorySlider = ({
           />
         )}
         <Button
-          variant={'solidWhite'}
+          variant={'whitePrimary'}
           flex={1}
           h={'100%'}
           color={'primary.600'}
@@ -167,7 +167,8 @@ const ChatHistorySlider = ({
           <IconButton
             ml={3}
             h={'100%'}
-            variant={'solidWhite'}
+            variant={'whiteDanger'}
+            size={'mdSquare'}
             aria-label={''}
             borderRadius={'xl'}
             onClick={openConfirm(onClearHistory)}
@@ -328,8 +329,7 @@ const ChatHistorySlider = ({
             icon={<MyIcon name={'backFill'} w={'18px'} color={'primary.500'} />}
             bg={'white'}
             boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-            h={'28px'}
-            size={'sm'}
+            size={'smSquare'}
             borderRadius={'50%'}
             aria-label={''}
           />

@@ -39,7 +39,7 @@ const MyModules = () => {
         </Flex>
         <Button
           leftIcon={<AddIcon />}
-          variant={'solidWhite'}
+          variant={'whitePrimary'}
           onClick={() => setEditModalData(defaultForm)}
         >
           {t('common.New Create')}
@@ -64,11 +64,8 @@ const MyModules = () => {
             _hover={{
               boxShadow: '1px 1px 10px rgba(0,0,0,0.2)',
               borderColor: 'transparent',
-              '& .delete': {
-                display: 'block'
-              },
-              '& .chat': {
-                display: 'block'
+              '& .edit': {
+                display: 'flex'
               }
             }}
             onClick={() => router.push(`/plugin/edit?pluginId=${plugin._id}`)}
@@ -77,15 +74,14 @@ const MyModules = () => {
               <Avatar src={plugin.avatar} borderRadius={'md'} w={'28px'} />
               <Box ml={3}>{plugin.name}</Box>
               <IconButton
-                className="delete"
+                className="edit"
                 position={'absolute'}
                 top={4}
                 right={4}
-                size={'sm'}
+                size={'smSquare'}
                 icon={<MyIcon name={'edit'} w={'14px'} />}
-                variant={'solidWhite'}
-                borderRadius={'md'}
-                aria-label={'delete'}
+                variant={'whitePrimary'}
+                aria-label={'edit'}
                 display={['', 'none']}
                 _hover={{
                   bg: 'primary.100'

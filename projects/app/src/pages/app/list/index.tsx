@@ -79,7 +79,7 @@ const MyApps = () => {
             {t('app.My Apps')}
           </Box>
         </Flex>
-        <Button leftIcon={<AddIcon />} variant={'solidWhite'} onClick={onOpenCreateModal}>
+        <Button leftIcon={<AddIcon />} variant={'whitePrimary'} onClick={onOpenCreateModal}>
           {t('common.New Create')}
         </Button>
       </Flex>
@@ -109,10 +109,10 @@ const MyApps = () => {
                 boxShadow: '1px 1px 10px rgba(0,0,0,0.2)',
                 borderColor: 'transparent',
                 '& .delete': {
-                  display: 'block'
+                  display: 'flex'
                 },
                 '& .chat': {
-                  display: 'block'
+                  display: 'flex'
                 }
               }}
               onClick={() => {
@@ -132,15 +132,11 @@ const MyApps = () => {
                     position={'absolute'}
                     top={4}
                     right={4}
-                    size={'sm'}
+                    size={'xsSquare'}
+                    variant={'whiteDanger'}
                     icon={<MyIcon name={'delete'} w={'14px'} />}
-                    variant={'solidWhite'}
-                    borderRadius={'md'}
                     aria-label={'delete'}
                     display={['', 'none']}
-                    _hover={{
-                      bg: 'red.100'
-                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       openConfirm(() => onclickDelApp(app._id))();
@@ -165,19 +161,15 @@ const MyApps = () => {
                 {userInfo?.team.canWrite && (
                   <IconButton
                     className="chat"
-                    size={'sm'}
+                    size={'xsSquare'}
+                    variant={'whitePrimary'}
                     icon={
                       <MyTooltip label={'去聊天'}>
                         <MyIcon name={'chat'} w={'14px'} />
                       </MyTooltip>
                     }
-                    variant={'solidWhite'}
-                    borderRadius={'md'}
-                    aria-label={'delete'}
+                    aria-label={'chat'}
                     display={['', 'none']}
-                    _hover={{
-                      bg: 'myGray.100'
-                    }}
                     onClick={(e) => {
                       e.stopPropagation();
                       router.push(`/chat?appId=${app._id}`);

@@ -104,9 +104,9 @@ const ChatTest = (
           <MyTooltip label={'重置'}>
             <IconButton
               className="chat"
-              size={'sm'}
+              size={'smSquare'}
               icon={<MyIcon name={'clear'} w={'14px'} />}
-              variant={'solidWhite'}
+              variant={'whiteDanger'}
               borderRadius={'md'}
               aria-label={'delete'}
               onClick={(e) => {

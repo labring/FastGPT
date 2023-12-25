@@ -61,7 +61,7 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
   return (
     <>
       <Button
-        variant={'solidWhite'}
+        variant={'whitePrimary'}
         leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
         onClick={onOpen}
       >

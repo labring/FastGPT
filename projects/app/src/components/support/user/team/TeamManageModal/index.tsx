@@ -202,7 +202,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   ) : (
                     <Button
                       size={'xs'}
-                      variant={'solidWhite'}
+                      variant={'whitePrimary'}
                       onClick={() => onSwitchTeam(team.teamId)}
                     >
                       {t('user.team.Check Team')}
@@ -260,7 +260,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               </Box>
               {userInfo.team.role === TeamMemberRoleEnum.owner && (
                 <Button
-                  variant={'solidWhite'}
+                  variant={'whitePrimary'}
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
@@ -282,7 +282,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               <Box flex={1} />
               {userInfo.team.role !== TeamMemberRoleEnum.owner && (
                 <Button
-                  variant={'solidWhite'}
+                  variant={'whitePrimary'}
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
