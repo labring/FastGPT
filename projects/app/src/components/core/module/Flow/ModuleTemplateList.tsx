@@ -34,6 +34,7 @@ type RenderListProps = {
 
 const ModuleTemplateList = ({ templates, isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
+  const { setNodes, reactFlowWrapper } = useFlowProviderStore();
 
   return (
     <>
