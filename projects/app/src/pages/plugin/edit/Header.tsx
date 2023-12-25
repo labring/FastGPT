@@ -7,7 +7,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
 import { filterExportModules, flowNode2Modules } from '@/components/core/module/utils';
 import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -25,10 +25,11 @@ const Header = ({ plugin, onClose }: Props) => {
   const { toast } = useToast();
   const { copyData } = useCopyData();
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { nodes, edges, onFixView } = useFlowProviderStore();
   const [previewModules, setPreviewModules] = React.useState<ModuleItemType[]>();
 
-  const flow2ModulesAndCheck = useCallback(() => {
+  const flow2ModulesAndCheck = useCallback(async () => {
+    const { nodes, edges } = await getFlowStore();
+
     const modules = flowNode2Modules({ nodes, edges });
 
     // check required connect
@@ -97,7 +98,7 @@ const Header = ({ plugin, onClose }: Props) => {
     }
 
     return modules;
-  }, [edges, nodes, t, toast]);
+  }, [t, toast]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: (modules: ModuleItemType[]) => {
@@ -129,7 +130,6 @@ const Header = ({ plugin, onClose }: Props) => {
             aria-label={''}
             onClick={() => {
               onClose();
-              onFixView();
             }}
           />
         </MyTooltip>
@@ -154,8 +154,8 @@ const Header = ({ plugin, onClose }: Props) => {
             borderRadius={'lg'}
             variant={'solidWhite'}
             aria-label={'save'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 copyData(filterExportModules(modules), t('app.Export Config Successful'));
               }
@@ -169,8 +169,8 @@ const Header = ({ plugin, onClose }: Props) => {
             borderRadius={'lg'}
             aria-label={'save'}
             variant={'solidWhite'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 setPreviewModules(modules);
               }
@@ -183,8 +183,8 @@ const Header = ({ plugin, onClose }: Props) => {
             borderRadius={'lg'}
             isLoading={isLoading}
             aria-label={'save'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 onclickSave(modules);
               }

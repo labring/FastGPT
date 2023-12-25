@@ -1,19 +1,10 @@
 import React from 'react';
-import {
-  BezierEdge,
-  getBezierPath,
-  EdgeLabelRenderer,
-  EdgeProps,
-  getSmoothStepPath
-} from 'reactflow';
+import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
+import { onDelConnect } from '../../FlowProvider';
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 
-const ButtonEdge = (
-  props: EdgeProps<{
-    onDelete: (id: string) => void;
-  }>
-) => {
+const ButtonEdge = (props: EdgeProps) => {
   const {
     id,
     sourceX,
@@ -22,7 +13,6 @@ const ButtonEdge = (
     targetY,
     sourcePosition,
     targetPosition,
-    data,
     selected,
     style = {}
   } = props;
@@ -67,7 +57,7 @@ const ButtonEdge = (
           _hover={{
             boxShadow: '0 0 6px 2px rgba(0, 0, 0, 0.08)'
           }}
-          onClick={() => data?.onDelete(id)}
+          onClick={() => onDelConnect(id)}
         >
           <MyIcon
             name="closeSolid"

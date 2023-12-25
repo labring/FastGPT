@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { onChangeNode, useFlowProviderStore } from '../../../../FlowProvider';
+import { getFlowStore, onChangeNode, useFlowProviderStoreType } from '../../../../FlowProvider';
 import { Box, Button, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
@@ -8,7 +8,7 @@ import SelectAppModal from '../../../../SelectAppModal';
 
 const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
   const theme = useTheme();
-  const { filterAppIds } = useFlowProviderStore();
+  const [filterAppIds, setFilterAppIds] = useState<useFlowProviderStoreType['filterAppIds']>([]);
 
   const {
     isOpen: isOpenSelectApp,
@@ -17,6 +17,13 @@ const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
   } = useDisclosure();
 
   const value = item.value as SelectAppItemType | undefined;
+
+  useEffect(() => {
+    async () => {
+      const { filterAppIds } = await getFlowStore();
+      setFilterAppIds(filterAppIds);
+    };
+  }, []);
 
   return (
     <>

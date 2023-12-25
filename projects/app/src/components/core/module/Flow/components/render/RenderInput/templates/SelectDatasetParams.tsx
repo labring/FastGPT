@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { onChangeNode, useFlowProviderStore } from '../../../../FlowProvider';
+import { getFlowStore, onChangeNode, useFlowProviderStoreType } from '../../../../FlowProvider';
 import { Button, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
@@ -11,7 +11,7 @@ import MyIcon from '@/components/Icon';
 import DatasetParamsModal from '@/components/core/module/DatasetParamsModal';
 
 const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
-  const { nodes } = useFlowProviderStore();
+  const [nodes, setNodes] = useState<useFlowProviderStoreType['nodes']>([]);
 
   const { t } = useTranslation();
   const [data, setData] = useState({
@@ -50,6 +50,13 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
       }
     });
   }, [inputs]);
+
+  useEffect(() => {
+    async () => {
+      const { nodes } = await getFlowStore();
+      setNodes(nodes);
+    };
+  }, []);
 
   return (
     <>

@@ -12,7 +12,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
-import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
 import { flowNode2Modules, filterExportModules } from '@/components/core/module/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -43,9 +43,9 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { updateAppDetail } = useAppStore();
 
-  const { nodes, edges } = useFlowProviderStore();
+  const flow2ModulesAndCheck = useCallback(async () => {
+    const { nodes, edges } = await getFlowStore();
 
-  const flow2ModulesAndCheck = useCallback(() => {
     const modules = flowNode2Modules({ nodes, edges });
     // check required connect
     for (let i = 0; i < modules.length; i++) {
@@ -72,7 +72,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       }
     }
     return modules;
-  }, [edges, nodes, t, toast]);
+  }, [t, toast]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: async (modules: ModuleItemType[]) => {
@@ -107,7 +107,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             variant={'solidWhite'}
             aria-label={''}
             onClick={openConfirmOut(async () => {
-              const modules = flow2ModulesAndCheck();
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 await onclickSave(modules);
               }
@@ -136,8 +136,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             borderRadius={'lg'}
             variant={'solidWhite'}
             aria-label={'save'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 copyData(filterExportModules(modules), t('app.Export Config Successful'));
               }
@@ -163,8 +163,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
               borderRadius={'lg'}
               aria-label={'save'}
               variant={'solidWhite'}
-              onClick={() => {
-                const modules = flow2ModulesAndCheck();
+              onClick={async () => {
+                const modules = await flow2ModulesAndCheck();
                 if (modules) {
                   setTestModules(modules);
                 }
@@ -179,8 +179,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             borderRadius={'lg'}
             isLoading={isLoading}
             aria-label={'save'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 onclickSave(modules);
               }

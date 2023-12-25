@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 
 import InputLabel from './Label';
 import type { RenderInputProps } from './type.d';
-import { useFlowProviderStore } from '../../../FlowProvider';
+import { getFlowStore, type useFlowProviderStoreType } from '../../../FlowProvider';
 
 const RenderList: {
   types: `${FlowNodeInputTypeEnum}`[];
@@ -72,7 +72,7 @@ type Props = {
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
 };
 const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) => {
-  const { mode } = useFlowProviderStore();
+  const [mode, setMode] = useState<useFlowProviderStoreType['mode']>('app');
 
   const sortInputs = useMemo(
     () =>
@@ -103,6 +103,13 @@ const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) =
     [mode, sortInputs]
   );
 
+  useEffect(() => {
+    async () => {
+      const { mode } = await getFlowStore();
+      setMode(mode);
+    };
+  }, []);
+
   return (
     <>
       {filterInputs.map((input) => {
@@ -119,7 +126,9 @@ const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) =
         return (
           input.type !== FlowNodeInputTypeEnum.hidden && (
             <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
-              {!!input.label && <InputLabel moduleId={moduleId} inputKey={input.key} {...input} />}
+              {!!input.label && (
+                <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
+              )}
               {!!RenderComponent && (
                 <Box mt={2} className={'nodrag'}>
                   {RenderComponent}

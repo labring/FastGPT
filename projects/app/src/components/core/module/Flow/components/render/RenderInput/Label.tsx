@@ -1,11 +1,7 @@
 import { EditNodeFieldType, FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import {
-  onChangeNode,
-  useFlowProviderStore,
-  useFlowProviderStoreType
-} from '../../../FlowProvider';
+import { onChangeNode, useFlowProviderStoreType } from '../../../FlowProvider';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
@@ -20,9 +16,10 @@ const FieldEditModal = dynamic(() => import('../FieldEditModal'));
 type Props = FlowNodeInputItemType & {
   moduleId: string;
   inputKey: string;
+  mode: useFlowProviderStoreType['mode'];
 };
 
-const InputLabel = ({ moduleId, inputKey, ...item }: Props) => {
+const InputLabel = ({ moduleId, inputKey, mode, ...item }: Props) => {
   const { t } = useTranslation();
   const {
     required = false,
@@ -34,7 +31,6 @@ const InputLabel = ({ moduleId, inputKey, ...item }: Props) => {
     showTargetInApp,
     showTargetInPlugin
   } = item;
-  const { mode } = useFlowProviderStore();
 
   const [editField, setEditField] = useState<EditNodeFieldType>();
 

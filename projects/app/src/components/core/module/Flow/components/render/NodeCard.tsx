@@ -8,11 +8,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
-import {
-  useFlowProviderStore,
-  onChangeNode,
-  type useFlowProviderStoreType
-} from '../../FlowProvider';
+import { onChangeNode, onCopyNode, onResetNode, onDelNode } from '../../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -40,7 +36,6 @@ const NodeCard = (props: Props) => {
     inputs,
     isPreview
   } = props;
-  const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
 
   const theme = useTheme();
   const { toast } = useToast();
@@ -70,7 +65,10 @@ const NodeCard = (props: Props) => {
                   try {
                     setLoading(true);
                     const pluginModule = await getPreviewPluginModule(pluginId);
-                    onResetNode(moduleId, pluginModule);
+                    onResetNode({
+                      id: moduleId,
+                      module: pluginModule
+                    });
                   } catch (e) {
                     return toast({
                       status: 'error',
@@ -123,20 +121,7 @@ const NodeCard = (props: Props) => {
         onClick: () => {}
       }
     ],
-    [
-      flowType,
-      inputs,
-      moduleId,
-      name,
-      onCopyNode,
-      onDelNode,
-      onOpenModal,
-      onResetNode,
-      openConfirm,
-      setLoading,
-      t,
-      toast
-    ]
+    [flowType, inputs, moduleId, name, onOpenModal, openConfirm, setLoading, t, toast]
   );
 
   return (

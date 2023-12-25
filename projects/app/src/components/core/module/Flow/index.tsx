@@ -35,17 +35,9 @@ const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
 };
 
-type ContainerProps = {
-  modules: ModuleItemType[];
-};
-
-const Container = React.memo(function Container({ modules = [] }: ContainerProps) {
-  const { reactFlowWrapper, nodes, onNodesChange, edges, onEdgesChange, onConnect, initData } =
+const Container = React.memo(function Container() {
+  const { reactFlowWrapper, nodes, onNodesChange, edges, onEdgesChange, onConnect } =
     useFlowProviderStore();
-
-  useEffect(() => {
-    initData(JSON.parse(JSON.stringify(modules)));
-  }, [modules.length]);
 
   return (
     <ReactFlow
@@ -83,7 +75,7 @@ const Flow = ({
   Header,
   templates,
   ...data
-}: ContainerProps & ModuleTemplateProps & { Header: React.ReactNode }) => {
+}: ModuleTemplateProps & { Header: React.ReactNode }) => {
   const {
     isOpen: isOpenTemplate,
     onOpen: onOpenTemplate,

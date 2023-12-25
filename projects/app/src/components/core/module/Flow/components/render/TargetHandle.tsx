@@ -9,10 +9,9 @@ import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 interface Props extends BoxProps {
   handleKey: string;
   valueType?: `${ModuleIOValueTypeEnum}`;
-  onConnect?: OnConnect;
 }
 
-const TargetHandle = ({ handleKey, valueType, onConnect, ...props }: Props) => {
+const TargetHandle = ({ handleKey, valueType, ...props }: Props) => {
   const { t } = useTranslation();
 
   const valType = valueType ?? ModuleIOValueTypeEnum.any;
