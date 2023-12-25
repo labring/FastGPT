@@ -19,7 +19,6 @@ import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@/web/core/modules/template/system';
-import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
 export type ModuleTemplateProps = {
   templates: FlowModuleTemplateType[];
@@ -36,17 +35,9 @@ type RenderListProps = {
   reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
 };
 
-const ModuleTemplateList = ({
-  templates,
-  isOpen,
-  onClose,
-  setNodes,
-  reactFlowWrapper
-}: ModuleTemplateListProps & {
-  setNodes: useFlowProviderStoreType['setNodes'];
-  reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
-}) => {
+const ModuleTemplateList = ({ templates, isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
+  const { setNodes, reactFlowWrapper } = useFlowProviderStore();
 
   return (
     <>
@@ -88,11 +79,7 @@ const ModuleTemplateList = ({
   );
 };
 
-export default React.memo(function (props: ModuleTemplateListProps) {
-  const { setNodes, reactFlowWrapper } = useFlowProviderStore();
-
-  return <ModuleTemplateList {...props} setNodes={setNodes} reactFlowWrapper={reactFlowWrapper} />;
-});
+export default React.memo(ModuleTemplateList);
 
 const RenderList = React.memo(function RenderList({
   templates,

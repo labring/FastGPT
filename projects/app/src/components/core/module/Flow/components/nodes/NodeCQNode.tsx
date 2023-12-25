@@ -17,7 +17,7 @@ import SourceHandle from '../render/SourceHandle';
 import MyTooltip from '@/components/MyTooltip';
 import { onChangeNode } from '../../FlowProvider';
 
-const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeCQNode = React.memo(function NodeCQNode({ data }: { data: FlowModuleItemType }) {
   const { t } = useTranslation();
   const { moduleId, inputs } = data;
 
@@ -136,5 +136,7 @@ const NodeCQNode = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
     </NodeCard>
   );
-};
-export default React.memo(NodeCQNode);
+});
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodeCQNode data={data} />;
+}

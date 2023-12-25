@@ -27,13 +27,7 @@ type Props = FlowModuleItemType & {
   isPreview?: boolean;
 };
 
-const NodeCard = (
-  props: Props & {
-    onCopyNode: useFlowProviderStoreType['onCopyNode'];
-    onResetNode: useFlowProviderStoreType['onResetNode'];
-    onDelNode: useFlowProviderStoreType['onDelNode'];
-  }
-) => {
+const NodeCard = (props: Props) => {
   const { t } = useTranslation();
   const {
     children,
@@ -44,11 +38,10 @@ const NodeCard = (
     moduleId,
     flowType,
     inputs,
-    isPreview,
-    onCopyNode,
-    onResetNode,
-    onDelNode
+    isPreview
   } = props;
+  const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
+
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
@@ -198,10 +191,4 @@ const NodeCard = (
   );
 };
 
-export default React.memo(function (props: Props) {
-  const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
-
-  return (
-    <NodeCard {...props} onCopyNode={onCopyNode} onResetNode={onResetNode} onDelNode={onDelNode} />
-  );
-});
+export default React.memo(NodeCard);

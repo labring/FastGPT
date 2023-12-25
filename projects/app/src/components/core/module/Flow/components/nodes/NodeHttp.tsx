@@ -17,7 +17,7 @@ import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeHttp = React.memo(function NodeHttp({ data }: { data: FlowModuleItemType }) {
   const { moduleId, inputs, outputs } = data;
 
   return (
@@ -31,5 +31,7 @@ const NodeHttp = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
     </NodeCard>
   );
-};
-export default React.memo(NodeHttp);
+});
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodeHttp data={data} />;
+}

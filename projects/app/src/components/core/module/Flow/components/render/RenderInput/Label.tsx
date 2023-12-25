@@ -22,14 +22,7 @@ type Props = FlowNodeInputItemType & {
   inputKey: string;
 };
 
-const InputLabel = ({
-  moduleId,
-  inputKey,
-  mode,
-  ...item
-}: Props & {
-  mode: useFlowProviderStoreType['mode'];
-}) => {
+const InputLabel = ({ moduleId, inputKey, ...item }: Props) => {
   const { t } = useTranslation();
   const {
     required = false,
@@ -41,6 +34,8 @@ const InputLabel = ({
     showTargetInApp,
     showTargetInPlugin
   } = item;
+  const { mode } = useFlowProviderStore();
+
   const [editField, setEditField] = useState<EditNodeFieldType>();
 
   const targetHandle = useMemo(() => {
@@ -153,8 +148,4 @@ const InputLabel = ({
   );
 };
 
-export default React.memo(function (props: Props) {
-  const { mode } = useFlowProviderStore();
-
-  return <InputLabel {...props} mode={mode} />;
-});
+export default React.memo(InputLabel);

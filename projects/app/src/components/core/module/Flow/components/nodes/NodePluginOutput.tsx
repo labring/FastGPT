@@ -42,7 +42,11 @@ const createEditField = {
   inputType: false
 };
 
-const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodePluginOutput = React.memo(function NodePluginOutput({
+  data
+}: {
+  data: FlowModuleItemType;
+}) {
   const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
   const [createField, setCreateField] = useState<EditNodeFieldType>();
@@ -233,5 +237,8 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
       )}
     </NodeCard>
   );
-};
-export default React.memo(NodePluginOutput);
+});
+
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodePluginOutput data={data} />;
+}

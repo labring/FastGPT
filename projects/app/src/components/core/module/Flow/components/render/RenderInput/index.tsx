@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 
 import InputLabel from './Label';
 import type { RenderInputProps } from './type.d';
-import { useFlowProviderStore, type useFlowProviderStoreType } from '../../../FlowProvider';
+import { useFlowProviderStore } from '../../../FlowProvider';
 
 const RenderList: {
   types: `${FlowNodeInputTypeEnum}`[];
@@ -71,14 +71,9 @@ type Props = {
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
 };
-const RenderInput = ({
-  flowInputList,
-  moduleId,
-  CustomComponent = {},
-  mode
-}: Props & {
-  mode: useFlowProviderStoreType['mode'];
-}) => {
+const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) => {
+  const { mode } = useFlowProviderStore();
+
   const sortInputs = useMemo(
     () =>
       flowInputList.sort((a, b) => {
@@ -138,7 +133,4 @@ const RenderInput = ({
   );
 };
 
-export default React.memo(function (props: Props) {
-  const { mode } = useFlowProviderStore();
-  return <RenderInput {...props} mode={mode} />;
-});
+export default React.memo(RenderInput);

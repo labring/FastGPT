@@ -34,20 +34,12 @@ const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
 };
-type Props = {
+
+type ContainerProps = {
   modules: ModuleItemType[];
-  Header: React.ReactNode;
-} & ModuleTemplateProps;
+};
 
-const Container = React.memo(function Container(props: Props) {
-  const { modules = [], Header, templates } = props;
-
-  const {
-    isOpen: isOpenTemplate,
-    onOpen: onOpenTemplate,
-    onClose: onCloseTemplate
-  } = useDisclosure();
-
+const Container = React.memo(function Container({ modules = [] }: ContainerProps) {
   const { reactFlowWrapper, nodes, onNodesChange, edges, onEdgesChange, onConnect, initData } =
     useFlowProviderStore();
 
@@ -56,84 +48,91 @@ const Container = React.memo(function Container(props: Props) {
   }, [modules.length]);
 
   return (
-    <>
-      {/* header */}
-      {Header}
-      <Box
-        minH={'400px'}
-        flex={'1 0 0'}
-        w={'100%'}
-        h={0}
-        position={'relative'}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          return false;
-        }}
-      >
-        {/* open module template */}
-        <IconButton
-          position={'absolute'}
-          top={5}
-          left={5}
-          w={'38px'}
-          h={'38px'}
-          borderRadius={'50%'}
-          icon={<SmallCloseIcon fontSize={'26px'} />}
-          transform={isOpenTemplate ? '' : 'rotate(135deg)'}
-          transition={'0.2s ease'}
-          aria-label={''}
-          zIndex={1}
-          boxShadow={'2px 2px 6px #85b1ff'}
-          onClick={() => {
-            isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
-          }}
-        />
-
-        <ReactFlow
-          ref={reactFlowWrapper}
-          fitView
-          nodes={nodes}
-          edges={edges}
-          minZoom={0.1}
-          maxZoom={1.5}
-          defaultEdgeOptions={{
-            animated: true,
-            zIndex: 0
-          }}
-          elevateEdgesOnSelect
-          connectionLineStyle={{ strokeWidth: 2, stroke: '#5A646Es' }}
-          nodeTypes={nodeTypes}
-          edgeTypes={edgeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={(connect) => {
-            connect.sourceHandle &&
-              connect.targetHandle &&
-              onConnect({
-                connect
-              });
-          }}
-        >
-          <Background />
-          <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
-        </ReactFlow>
-
-        <ModuleTemplateList
-          templates={templates}
-          isOpen={isOpenTemplate}
-          onClose={onCloseTemplate}
-        />
-      </Box>
-    </>
+    <ReactFlow
+      ref={reactFlowWrapper}
+      fitView
+      nodes={nodes}
+      edges={edges}
+      minZoom={0.1}
+      maxZoom={1.5}
+      defaultEdgeOptions={{
+        animated: true,
+        zIndex: 0
+      }}
+      elevateEdgesOnSelect
+      connectionLineStyle={{ strokeWidth: 2, stroke: '#5A646Es' }}
+      nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onConnect={(connect) => {
+        connect.sourceHandle &&
+          connect.targetHandle &&
+          onConnect({
+            connect
+          });
+      }}
+    >
+      <Background />
+      <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
+    </ReactFlow>
   );
 });
 
-const Flow = (data: Props) => {
+const Flow = ({
+  Header,
+  templates,
+  ...data
+}: ContainerProps & ModuleTemplateProps & { Header: React.ReactNode }) => {
+  const {
+    isOpen: isOpenTemplate,
+    onOpen: onOpenTemplate,
+    onClose: onCloseTemplate
+  } = useDisclosure();
+
   return (
     <Box h={'100%'} position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
       <ReactFlowProvider>
         <Flex h={'100%'} flexDirection={'column'} bg={'#fff'}>
-          <Container {...data} />
+          {Header}
+          <Box
+            minH={'400px'}
+            flex={'1 0 0'}
+            w={'100%'}
+            h={0}
+            position={'relative'}
+            onContextMenu={(e) => {
+              e.preventDefault();
+              return false;
+            }}
+          >
+            {/* open module template */}
+            <IconButton
+              position={'absolute'}
+              top={5}
+              left={5}
+              w={'38px'}
+              h={'38px'}
+              borderRadius={'50%'}
+              icon={<SmallCloseIcon fontSize={'26px'} />}
+              transform={isOpenTemplate ? '' : 'rotate(135deg)'}
+              transition={'0.2s ease'}
+              aria-label={''}
+              zIndex={1}
+              boxShadow={'2px 2px 6px #85b1ff'}
+              onClick={() => {
+                isOpenTemplate ? onCloseTemplate() : onOpenTemplate();
+              }}
+            />
+
+            <Container {...data} />
+
+            <ModuleTemplateList
+              templates={templates}
+              isOpen={isOpenTemplate}
+              onClose={onCloseTemplate}
+            />
+          </Box>
         </Flex>
       </ReactFlowProvider>
     </Box>
