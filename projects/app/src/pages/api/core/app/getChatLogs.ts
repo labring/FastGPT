@@ -78,12 +78,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
                 }
               }
             },
-            robotBadFeedbackCount: {
+            customFeedbacksCount: {
               $size: {
                 $filter: {
                   input: '$chatitems',
                   as: 'item',
-                  cond: { $ifNull: ['$$item.robotBadFeedback', false] }
+                  cond: { $gt: [{ $size: { $ifNull: ['$$item.customFeedbacks', []] } }, 0] }
                 }
               }
             },
@@ -102,7 +102,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           $sort: {
             userBadFeedbackCount: -1,
             userGoodFeedbackCount: -1,
-            robotBadFeedbackCount: -1,
+            customFeedbacksCount: -1,
             updateTime: -1
           }
         },
@@ -118,7 +118,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             messageCount: { $size: '$chatitems' },
             userGoodFeedbackCount: 1,
             userBadFeedbackCount: 1,
-            robotBadFeedbackCount: 1,
+            customFeedbacksCount: 1,
             markCount: 1
           }
         }

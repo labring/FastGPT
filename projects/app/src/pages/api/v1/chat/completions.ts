@@ -138,6 +138,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
       // openapi key
       if (authType === AuthUserTypeEnum.apikey) {
+        if (!apiKeyAppId) {
+          return Promise.reject(
+            'Key is error. You need to use the app key rather than the account key.'
+          );
+        }
         const app = await MongoApp.findById(apiKeyAppId);
 
         if (!app) {
@@ -190,16 +195,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // get and concat history
     const { history } = await getChatItems({ chatId, limit: 30, field: `dataId obj value` });
     const concatHistories = history.concat(chatMessages);
+    const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
     const { responseData, answerText } = await dispatchModules({
       res,
+      mode: 'chat',
+      user,
+      teamId: String(user.team.teamId),
+      tmbId: String(user.team.tmbId),
       appId: String(app._id),
       chatId,
+      responseChatItemId,
       modules: app.modules,
-      user,
-      teamId: user.team.teamId,
-      tmbId: user.team.tmbId,
       variables,
       histories: concatHistories,
       startParams: {
@@ -232,7 +240,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         content: [
           question,
           {
-            dataId: messages[messages.length - 1].dataId,
+            dataId: responseChatItemId,
             obj: ChatRoleEnum.AI,
             value: answerText,
             responseData

@@ -303,7 +303,7 @@ export const appTemplates: (AppItemType & {
         avatar: '/imgs/module/userGuide.png',
         flowType: 'userGuide',
         position: {
-          x: 454.98510354678695,
+          x: 447.98520778293346,
           y: 721.4016845336229
         },
         inputs: [
@@ -314,7 +314,7 @@ export const appTemplates: (AppItemType & {
             label: '开场白',
             showTargetInApp: false,
             showTargetInPlugin: false,
-            value: '你好，我是知识库助手，请不要忘记选择知识库噢~',
+            value: '你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]',
             connected: false
           },
           {
@@ -334,6 +334,7 @@ export const appTemplates: (AppItemType & {
             label: '问题引导',
             showTargetInApp: false,
             showTargetInPlugin: false,
+            value: false,
             connected: false
           },
           {
@@ -343,6 +344,9 @@ export const appTemplates: (AppItemType & {
             label: '语音播报',
             showTargetInApp: false,
             showTargetInPlugin: false,
+            value: {
+              type: 'web'
+            },
             connected: false
           }
         ],
@@ -354,8 +358,8 @@ export const appTemplates: (AppItemType & {
         avatar: '/imgs/module/userChatInput.png',
         flowType: 'questionInput',
         position: {
-          x: 464.32198615344566,
-          y: 1602.2698463081606
+          x: 324.81436595478294,
+          y: 1527.0012457753612
         },
         inputs: [
           {
@@ -376,11 +380,11 @@ export const appTemplates: (AppItemType & {
             valueType: 'string',
             targets: [
               {
-                moduleId: 'chatModule',
+                moduleId: 'datasetSearch',
                 key: 'userChatInput'
               },
               {
-                moduleId: 'datasetSearch',
+                moduleId: 'chatModule',
                 key: 'userChatInput'
               }
             ]
@@ -394,8 +398,8 @@ export const appTemplates: (AppItemType & {
         flowType: 'datasetSearchNode',
         showStatus: true,
         position: {
-          x: 956.0838440206068,
-          y: 887.462827870246
+          x: 1351.5043753345153,
+          y: 947.0780385418003
         },
         inputs: [
           {
@@ -489,24 +493,14 @@ export const appTemplates: (AppItemType & {
             label: '搜索结果为空',
             type: 'source',
             valueType: 'boolean',
-            targets: [
-              {
-                moduleId: '2752oj',
-                key: 'switch'
-              }
-            ]
+            targets: []
           },
           {
             key: 'unEmpty',
             label: '搜索结果不为空',
             type: 'source',
             valueType: 'boolean',
-            targets: [
-              {
-                moduleId: 'chatModule',
-                key: 'switch'
-              }
-            ]
+            targets: []
           },
           {
             key: 'quoteQA',
@@ -539,8 +533,8 @@ export const appTemplates: (AppItemType & {
         flowType: 'chatNode',
         showStatus: true,
         position: {
-          x: 1546.0823206390796,
-          y: 1008.9827344021824
+          x: 2022.7264786978908,
+          y: 1006.3102431257475
         },
         inputs: [
           {
@@ -550,7 +544,7 @@ export const appTemplates: (AppItemType & {
             valueType: 'any',
             showTargetInApp: true,
             showTargetInPlugin: true,
-            connected: true
+            connected: false
           },
           {
             key: 'model',
@@ -626,6 +620,7 @@ export const appTemplates: (AppItemType & {
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
+            value: '',
             connected: false
           },
           {
@@ -635,6 +630,7 @@ export const appTemplates: (AppItemType & {
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
+            value: '',
             connected: false
           },
           {
@@ -658,6 +654,7 @@ export const appTemplates: (AppItemType & {
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             showTargetInApp: true,
             showTargetInPlugin: true,
+            value: '',
             connected: false
           },
           {
@@ -716,49 +713,6 @@ export const appTemplates: (AppItemType & {
             label: '新的上下文',
             description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
             valueType: 'chatHistory',
-            type: 'source',
-            targets: []
-          }
-        ]
-      },
-      {
-        moduleId: '2752oj',
-        name: '指定回复',
-        avatar: '/imgs/module/reply.png',
-        flowType: 'answerNode',
-        position: {
-          x: 1542.9271243684725,
-          y: 702.7819618017722
-        },
-        inputs: [
-          {
-            key: 'switch',
-            type: 'target',
-            label: 'core.module.input.label.switch',
-            valueType: 'any',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: true
-          },
-          {
-            key: 'text',
-            type: 'textarea',
-            valueType: 'any',
-            label: '回复的内容',
-            description:
-              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n\n如传入非字符串类型数据将会自动转成字符串',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            value: '搜索结果为空',
-            connected: false
-          }
-        ],
-        outputs: [
-          {
-            key: 'finish',
-            label: 'core.module.output.label.running done',
-            description: 'core.module.output.description.running done',
-            valueType: 'boolean',
             type: 'source',
             targets: []
           }
@@ -1095,8 +1049,8 @@ export const appTemplates: (AppItemType & {
         avatar: '/imgs/module/userChatInput.png',
         flowType: 'questionInput',
         position: {
-          x: 198.56612928723575,
-          y: 1622.7034463081607
+          x: -269.50851681351924,
+          y: 1657.6123698022448
         },
         inputs: [
           {
@@ -1117,11 +1071,7 @@ export const appTemplates: (AppItemType & {
             valueType: 'string',
             targets: [
               {
-                moduleId: 'remuj3',
-                key: 'userChatInput'
-              },
-              {
-                moduleId: 'fljhzy',
+                moduleId: '79iwqi',
                 key: 'userChatInput'
               }
             ]
@@ -1135,8 +1085,8 @@ export const appTemplates: (AppItemType & {
         flowType: 'classifyQuestion',
         showStatus: true,
         position: {
-          x: 672.9092284362648,
-          y: 1077.557793775116
+          x: 730.6899384278805,
+          y: 1079.2201234653105
         },
         inputs: [
           {
@@ -1203,16 +1153,12 @@ export const appTemplates: (AppItemType & {
             label: '',
             value: [
               {
-                value: '打招呼、问候等问题',
+                value: '关于电影《星际穿越》的问题',
                 key: 'wqre'
               },
               {
-                value: '关于 xxx 的问题',
+                value: '打招呼、问候等问题',
                 key: 'sdfa'
-              },
-              {
-                value: '商务问题',
-                key: 'agex'
               },
               {
                 value: '其他问题',
@@ -1231,7 +1177,7 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             targets: [
               {
-                moduleId: 'a99p6z',
+                moduleId: 'fljhzy',
                 key: 'switch'
               }
             ]
@@ -1242,18 +1188,7 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             targets: [
               {
-                moduleId: 'fljhzy',
-                key: 'switch'
-              }
-            ]
-          },
-          {
-            key: 'agex',
-            label: '',
-            type: 'hidden',
-            targets: [
-              {
-                moduleId: '5v78ap',
+                moduleId: 'a99p6z',
                 key: 'switch'
               }
             ]
@@ -1268,6 +1203,12 @@ export const appTemplates: (AppItemType & {
                 key: 'switch'
               }
             ]
+          },
+          {
+            key: 'agex',
+            label: '',
+            type: 'hidden',
+            targets: []
           }
         ]
       },
@@ -1277,8 +1218,8 @@ export const appTemplates: (AppItemType & {
         avatar: '/imgs/module/reply.png',
         flowType: 'answerNode',
         position: {
-          x: 1304.2886011902247,
-          y: 776.1589509539264
+          x: 1294.314623049058,
+          y: 1623.9470929531146
         },
         inputs: [
           {
@@ -1296,7 +1237,9 @@ export const appTemplates: (AppItemType & {
             valueType: 'any',
             label: '回复的内容',
             description:
-              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n\n如传入非字符串类型数据将会自动转成字符串',
+              '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
+            placeholder:
+              '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
             showTargetInApp: true,
             showTargetInPlugin: true,
             value: '你好，有什么可以帮助你的？',
@@ -1320,8 +1263,8 @@ export const appTemplates: (AppItemType & {
         avatar: '/imgs/module/reply.png',
         flowType: 'answerNode',
         position: {
-          x: 1294.2531189034548,
-          y: 2127.1297123368286
+          x: 1290.9284595230658,
+          y: 1992.4810074310749
         },
         inputs: [
           {
@@ -1339,10 +1282,12 @@ export const appTemplates: (AppItemType & {
             valueType: 'any',
             label: '回复的内容',
             description:
-              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n\n如传入非字符串类型数据将会自动转成字符串',
+              '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
+            placeholder:
+              '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
             showTargetInApp: true,
             showTargetInPlugin: true,
-            value: '你好，我仅能回答 laf 相关问题，请问你有什么问题么？',
+            value: '你好，我仅能回答电影《星际穿越》相关问题，请问你有什么问题么？',
             connected: false
           }
         ],
@@ -1483,7 +1428,7 @@ export const appTemplates: (AppItemType & {
               '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
             showTargetInApp: true,
             showTargetInPlugin: true,
-            value: '知识库是关于 laf 的内容。',
+            value: '',
             connected: false
           },
           {
@@ -1554,8 +1499,8 @@ export const appTemplates: (AppItemType & {
         flowType: 'datasetSearchNode',
         showStatus: true,
         position: {
-          x: 1305.5374262228029,
-          y: 1120.0404921820218
+          x: 1307.1997559129973,
+          y: 908.9246215273222
         },
         inputs: [
           {
@@ -1698,8 +1643,8 @@ export const appTemplates: (AppItemType & {
         avatar: '/imgs/module/userGuide.png',
         flowType: 'userGuide',
         position: {
-          x: 191.4857498376603,
-          y: 856.6847387508401
+          x: -272.66416216517086,
+          y: 842.9928682053646
         },
         inputs: [
           {
@@ -1710,7 +1655,7 @@ export const appTemplates: (AppItemType & {
             showTargetInApp: false,
             showTargetInPlugin: false,
             value:
-              '你好，我是 laf 助手，有什么可以帮助你的？\n[laf 是什么？有什么用？]\n[laf 在线体验地址]\n[官网地址是多少]',
+              '你好，我是电影《星际穿越》 AI 助手，有什么可以帮助你的？\n[导演是谁]\n[剧情介绍]\n[票房分析]',
             connected: false
           },
           {
@@ -1769,53 +1714,12 @@ export const appTemplates: (AppItemType & {
             valueType: 'any',
             label: '回复的内容',
             description:
-              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n\n如传入非字符串类型数据将会自动转成字符串',
+              '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
+            placeholder:
+              '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
             showTargetInApp: true,
             showTargetInPlugin: true,
             value: '对不起，我找不到你的问题，请更加详细的描述你的问题。',
-            connected: false
-          }
-        ],
-        outputs: [
-          {
-            key: 'finish',
-            label: 'core.module.output.label.running done',
-            description: 'core.module.output.description.running done',
-            valueType: 'boolean',
-            type: 'source',
-            targets: []
-          }
-        ]
-      },
-      {
-        moduleId: '5v78ap',
-        name: '指定回复',
-        avatar: '/imgs/module/reply.png',
-        flowType: 'answerNode',
-        position: {
-          x: 1294.814522053934,
-          y: 1822.7626988141562
-        },
-        inputs: [
-          {
-            key: 'switch',
-            type: 'target',
-            label: 'core.module.input.label.switch',
-            valueType: 'any',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: true
-          },
-          {
-            key: 'text',
-            type: 'textarea',
-            valueType: 'any',
-            label: '回复的内容',
-            description:
-              '可以使用 \\n 来实现连续换行。\n\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n\n如传入非字符串类型数据将会自动转成字符串',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            value: '这是一个商务问题',
             connected: false
           }
         ],
@@ -1836,8 +1740,8 @@ export const appTemplates: (AppItemType & {
         avatar: '/imgs/module/userChatInput.png',
         flowType: 'questionInput',
         position: {
-          x: 1827.2213090948171,
-          y: 2132.138812501788
+          x: 1902.0261451535691,
+          y: 1826.2701495060023
         },
         inputs: [
           {
@@ -1859,6 +1763,93 @@ export const appTemplates: (AppItemType & {
             targets: [
               {
                 moduleId: 'nlfwkc',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: '79iwqi',
+        name: 'core.module.template.cfr',
+        avatar: '/imgs/module/cfr.svg',
+        flowType: 'cfr',
+        showStatus: true,
+        position: {
+          x: 149.7113934317785,
+          y: 1312.2668782737812
+        },
+        inputs: [
+          {
+            key: 'switch',
+            type: 'target',
+            label: 'core.module.input.label.switch',
+            valueType: 'any',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'model',
+            type: 'selectExtractModel',
+            label: 'core.module.input.label.aiModel',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: 'gpt-3.5-turbo',
+            connected: false
+          },
+          {
+            key: 'systemPrompt',
+            type: 'textarea',
+            label: 'core.module.input.label.cfr background',
+            max: 300,
+            valueType: 'string',
+            description: 'core.module.input.description.cfr background',
+            placeholder: 'core.module.input.placeholder.cfr background',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            value: '关于电影《星际穿越》的讨论。',
+            connected: false
+          },
+          {
+            key: 'history',
+            type: 'numberInput',
+            label: 'core.module.input.label.chat history',
+            required: true,
+            min: 0,
+            max: 30,
+            valueType: 'chatHistory',
+            value: 6,
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'userChatInput',
+            type: 'target',
+            label: 'core.module.input.label.user question',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'system_text',
+            label: 'core.module.output.label.cfr result',
+            valueType: 'string',
+            type: 'source',
+            targets: [
+              {
+                moduleId: 'remuj3',
+                key: 'userChatInput'
+              },
+              {
+                moduleId: 'fljhzy',
                 key: 'userChatInput'
               }
             ]

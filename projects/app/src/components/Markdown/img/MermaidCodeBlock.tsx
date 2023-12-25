@@ -123,7 +123,7 @@ const MermaidBlock = ({ code }: { code: string }) => {
         position={'absolute'}
         color={'myGray.600'}
         _hover={{
-          color: 'myBlue.700'
+          color: 'blue.600'
         }}
         right={0}
         top={0}

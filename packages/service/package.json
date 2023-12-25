@@ -3,22 +3,24 @@
   "version": "1.0.0",
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "axios": "^1.5.1",
     "cookie": "^0.5.0",
     "encoding": "^0.1.13",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.0.2",
     "nanoid": "^4.0.1",
+    "dayjs": "^1.11.7",
     "next": "13.5.2",
+    "multer": "1.4.5-lts.1",
+    "axios": "^1.5.1",
+    "cheerio": "1.0.0-rc.12",
     "nextjs-cors": "^2.1.2",
     "pg": "^8.10.0",
-    "tunnel": "^0.0.6",
-    "dayjs": "^1.11.7"
+    "tunnel": "^0.0.6"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.2",
     "@types/jsonwebtoken": "^9.0.3",
-    "@types/node": "^20.8.5",
+    "@types/multer": "^1.4.10",
     "@types/pg": "^8.6.6",
     "@types/tunnel": "^0.0.4"
   }

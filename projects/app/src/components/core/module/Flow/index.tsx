@@ -2,8 +2,7 @@ import React, { useEffect } from 'react';
 import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
-import { edgeOptions, connectionLineStyle } from '@/web/core/modules/constants/flowUi';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 import dynamic from 'next/dynamic';
 
@@ -15,7 +14,7 @@ import 'reactflow/dist/style.css';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
-const nodeTypes = {
+const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
   [FlowNodeTypeEnum.userGuide]: dynamic(() => import('./components/nodes/NodeUserGuide')),
   [FlowNodeTypeEnum.variable]: dynamic(() => import('./components/nodes/abandon/NodeVariable')),
   [FlowNodeTypeEnum.questionInput]: dynamic(() => import('./components/nodes/NodeQuestionInput')),
@@ -25,14 +24,15 @@ const nodeTypes = {
   [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./components/nodes/NodeAnswer')),
   [FlowNodeTypeEnum.classifyQuestion]: dynamic(() => import('./components/nodes/NodeCQNode')),
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./components/nodes/NodeExtract')),
-  [FlowNodeTypeEnum.httpRequest]: dynamic(() => import('./components/nodes/NodeHttp')),
+  [FlowNodeTypeEnum.httpRequest]: NodeSimple,
   [FlowNodeTypeEnum.runApp]: NodeSimple,
   [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodePluginInput')),
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
-  [FlowNodeTypeEnum.pluginModule]: NodeSimple
+  [FlowNodeTypeEnum.pluginModule]: NodeSimple,
+  [FlowNodeTypeEnum.cfr]: NodeSimple
 };
 const edgeTypes = {
-  buttonedge: ButtonEdge
+  [EDGE_TYPE]: ButtonEdge
 };
 type Props = {
   modules: ModuleItemType[];
@@ -40,7 +40,7 @@ type Props = {
 } & ModuleTemplateProps;
 
 const Container = React.memo(function Container(props: Props) {
-  const { modules = [], Header, systemTemplates, pluginTemplates } = props;
+  const { modules = [], Header, templates } = props;
 
   const {
     isOpen: isOpenTemplate,
@@ -96,8 +96,12 @@ const Container = React.memo(function Container(props: Props) {
           edges={edges}
           minZoom={0.1}
           maxZoom={1.5}
-          defaultEdgeOptions={edgeOptions}
-          connectionLineStyle={connectionLineStyle}
+          defaultEdgeOptions={{
+            animated: true,
+            zIndex: 0
+          }}
+          elevateEdgesOnSelect
+          connectionLineStyle={{ strokeWidth: 2, stroke: '#5A646Es' }}
           nodeTypes={nodeTypes}
           edgeTypes={edgeTypes}
           onNodesChange={onNodesChange}
@@ -115,8 +119,7 @@ const Container = React.memo(function Container(props: Props) {
         </ReactFlow>
 
         <ModuleTemplateList
-          systemTemplates={systemTemplates}
-          pluginTemplates={pluginTemplates}
+          templates={templates}
           isOpen={isOpenTemplate}
           onClose={onCloseTemplate}
         />

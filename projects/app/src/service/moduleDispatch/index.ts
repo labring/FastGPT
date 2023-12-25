@@ -1,12 +1,11 @@
 import { NextApiResponse } from 'next';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { RunningModuleItemType } from '@/types/app';
-import { ModuleDispatchProps } from '@/types/core/chat/type';
-import type { ChatHistoryItemResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
-import { UserType } from '@fastgpt/global/support/user/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
@@ -22,37 +21,45 @@ import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttpRequest } from './tools/http';
 import { dispatchAppRequest } from './tools/runApp';
+import { dispatchCFR } from './tools/cfr';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 
+const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
+  [FlowNodeTypeEnum.historyNode]: dispatchHistory,
+  [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
+  [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+  [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+  [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+  [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+  [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
+  [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
+  [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+  [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
+  [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
+  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
+  [FlowNodeTypeEnum.cfr]: dispatchCFR,
+
+  // none
+  [FlowNodeTypeEnum.userGuide]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.variable]: () => Promise.resolve()
+};
+
 /* running */
 export async function dispatchModules({
   res,
-  teamId,
-  tmbId,
-  user,
-  appId,
   modules,
-  chatId,
   histories = [],
   startParams = {},
   variables = {},
+  user,
   stream = false,
-  detail = false
-}: {
-  res: NextApiResponse;
-  teamId: string;
-  tmbId: string;
-  user: UserType;
-  appId: string;
+  detail = false,
+  ...props
+}: ChatDispatchProps & {
   modules: ModuleItemType[];
-  chatId?: string;
-  histories: ChatItemType[];
   startParams?: Record<string, any>;
-  variables?: Record<string, any>;
-  stream?: boolean;
-  detail?: boolean;
 }) {
   // set sse response headers
   if (stream) {
@@ -111,6 +118,7 @@ export async function dispatchModules({
     Object.entries(data).map(([key, val]: any) => {
       updateInputValue(key, val);
     });
+
     return;
   }
   function moduleOutput(
@@ -119,6 +127,7 @@ export async function dispatchModules({
   ): Promise<any> {
     pushStore(module, result);
 
+    //
     const nextRunModules: RunningModuleItemType[] = [];
 
     // Assign the output value to the next module
@@ -141,18 +150,19 @@ export async function dispatchModules({
       });
     });
 
-    return checkModulesCanRun(nextRunModules);
-  }
-  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
+    // Ensure the uniqueness of running modules
     const set = new Set<string>();
-    const filterModules = modules.filter((module) => {
+    const filterModules = nextRunModules.filter((module) => {
       if (set.has(module.moduleId)) return false;
       set.add(module.moduleId);
       return true;
     });
 
+    return checkModulesCanRun(filterModules);
+  }
+  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
     return Promise.all(
-      filterModules.map((module) => {
+      modules.map((module) => {
         if (!module.inputs.find((item: any) => item.value === undefined)) {
           moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
           return moduleRun(module);
@@ -176,38 +186,21 @@ export async function dispatchModules({
     module.inputs.forEach((item: any) => {
       params[item.key] = item.value;
     });
-    const props: ModuleDispatchProps<Record<string, any>> = {
+    const dispatchData: ModuleDispatchProps<Record<string, any>> = {
+      ...props,
       res,
-      teamId,
-      tmbId,
-      user,
-      appId,
-      chatId,
-      stream,
-      detail,
       variables,
       histories,
+      user,
+      stream,
+      detail,
       outputs: module.outputs,
       inputs: params
     };
 
     const dispatchRes: Record<string, any> = await (async () => {
-      const callbackMap: Record<string, Function> = {
-        [FlowNodeTypeEnum.historyNode]: dispatchHistory,
-        [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
-        [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
-        [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
-        [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-        [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-        [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
-        [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
-        [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
-      };
       if (callbackMap[module.flowType]) {
-        return callbackMap[module.flowType](props);
+        return callbackMap[module.flowType](dispatchData);
       }
       return {};
     })();
@@ -232,6 +225,11 @@ export async function dispatchModules({
 
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
+
+  // runningModules.forEach((item) => {
+  //   console.log(item);
+  // });
+
   initModules.map((module) =>
     moduleInput(module, {
       ...startParams,

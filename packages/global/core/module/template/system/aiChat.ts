@@ -5,14 +5,14 @@ import {
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
 import {
-  ModuleDataTypeEnum,
+  ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
   ModuleTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_History,
-  Input_Template_TFSwitch,
+  Input_Template_Switch,
   Input_Template_UserChatInput
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
@@ -27,13 +27,13 @@ export const AiChatModule: FlowModuleTemplateType = {
   intro: 'AI 大模型对话',
   showStatus: true,
   inputs: [
-    Input_Template_TFSwitch,
+    Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.aiModel,
       type: FlowNodeInputTypeEnum.selectChatModel,
       label: '对话模型',
       required: true,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -43,7 +43,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.hidden, // Set in the pop-up window
       label: '温度',
       value: 0,
-      valueType: ModuleDataTypeEnum.number,
+      valueType: ModuleIOValueTypeEnum.number,
       min: 0,
       max: 10,
       step: 1,
@@ -59,7 +59,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.hidden, // Set in the pop-up window
       label: '回复上限',
       value: 2000,
-      valueType: ModuleDataTypeEnum.number,
+      valueType: ModuleIOValueTypeEnum.number,
       min: 100,
       max: 4000,
       step: 50,
@@ -78,7 +78,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.hidden,
       label: '返回AI内容',
       value: true,
-      valueType: ModuleDataTypeEnum.boolean,
+      valueType: ModuleIOValueTypeEnum.boolean,
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -86,7 +86,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.aiChatQuoteTemplate,
       type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容模板',
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -94,7 +94,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.aiChatQuotePrompt,
       type: FlowNodeInputTypeEnum.hidden,
       label: '引用内容提示词',
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -102,7 +102,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.aiChatSettingModal,
       type: FlowNodeInputTypeEnum.aiSettings,
       label: '',
-      valueType: ModuleDataTypeEnum.any,
+      valueType: ModuleIOValueTypeEnum.any,
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -112,7 +112,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.textarea,
       label: '系统提示词',
       max: 300,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       description: chatNodeSystemPromptTip,
       placeholder: chatNodeSystemPromptTip,
       showTargetInApp: true,
@@ -124,7 +124,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       type: FlowNodeInputTypeEnum.target,
       label: '引用内容',
       description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-      valueType: ModuleDataTypeEnum.datasetQuote,
+      valueType: ModuleIOValueTypeEnum.datasetQuote,
       showTargetInApp: true,
       showTargetInPlugin: true
     },
@@ -135,15 +135,15 @@ export const AiChatModule: FlowModuleTemplateType = {
       key: ModuleOutputKeyEnum.history,
       label: '新的上下文',
       description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
-      valueType: ModuleDataTypeEnum.chatHistory,
+      valueType: ModuleIOValueTypeEnum.chatHistory,
       type: FlowNodeOutputTypeEnum.source,
       targets: []
     },
     {
       key: ModuleOutputKeyEnum.answerText,
-      label: 'AI回复',
+      label: 'AI回复内容',
       description: '将在 stream 回复完毕后触发',
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.source,
       targets: []
     },

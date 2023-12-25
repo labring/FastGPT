@@ -67,6 +67,9 @@ export type AppSimpleEditFormType = {
     searchMode: `${DatasetSearchModeEnum}`;
     searchEmptyText: string;
   };
+  cfr: {
+    background: string;
+  };
   userGuide: {
     welcomeText: string;
     variables: {
@@ -110,6 +113,9 @@ export type AppSimpleEditConfigTemplateType = {
       limit?: boolean;
       searchMode: `${DatasetSearchModeEnum}`;
       searchEmptyText?: boolean;
+    };
+    cfr?: {
+      background?: boolean;
     };
     userGuide?: {
       welcomeText?: boolean;

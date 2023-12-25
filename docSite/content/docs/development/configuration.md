@@ -92,7 +92,7 @@ weight: 708
       "maxContext": 16000,
       "maxResponse": 4000,
       "price": 0,
-      "functionCall": true, // 是否支持function call， 不支持的模型需要设置为 false，会走提示词生成
+      "toolChoice": true, // 是否支持openai的 toolChoice， 不支持的模型需要设置为 false，会走提示词生成
       "functionPrompt": ""
     },
     {
@@ -101,7 +101,7 @@ weight: 708
       "maxContext": 8000,
       "maxResponse": 8000,
       "price": 0,
-      "functionCall": true,
+      "toolChoice": true,
       "functionPrompt": ""
     }
   ],
@@ -112,7 +112,7 @@ weight: 708
       "maxContext": 16000,
       "maxResponse": 4000,
       "price": 0,
-      "functionCall": true,
+      "toolChoice": true,
       "functionPrompt": ""
     }
   ],

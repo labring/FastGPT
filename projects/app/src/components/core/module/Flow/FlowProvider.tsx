@@ -12,10 +12,7 @@ import type {
   FlowModuleItemType,
   FlowModuleTemplateType
 } from '@fastgpt/global/core/module/type.d';
-import type {
-  FlowNodeOutputTargetItemType,
-  FlowNodeChangeProps
-} from '@fastgpt/global/core/module/node/type';
+import type { FlowNodeChangeProps } from '@fastgpt/global/core/module/node/type';
 import React, {
   type SetStateAction,
   type Dispatch,
@@ -28,8 +25,8 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -174,7 +171,7 @@ export const FlowProvider = ({
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
-          return ModuleDataTypeEnum.boolean;
+          return ModuleIOValueTypeEnum.string;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -193,8 +190,8 @@ export const FlowProvider = ({
         });
       }
       if (
-        sourceType !== ModuleDataTypeEnum.any &&
-        targetType !== ModuleDataTypeEnum.any &&
+        sourceType !== ModuleIOValueTypeEnum.any &&
+        targetType !== ModuleIOValueTypeEnum.any &&
         sourceType !== targetType
       ) {
         return toast({
@@ -207,8 +204,7 @@ export const FlowProvider = ({
         addEdge(
           {
             ...connect,
-            type: 'buttonedge',
-            animated: true,
+            type: EDGE_TYPE,
             data: {
               onDelete: onDelConnect
             }
@@ -228,6 +224,7 @@ export const FlowProvider = ({
     [setEdges, setNodes]
   );
 
+  /* change */
   const onChangeNode = useCallback(
     ({ moduleId, type, key, value, index }: FlowNodeChangeProps) => {
       setNodes((nodes) =>
@@ -434,51 +431,3 @@ export default React.memo(FlowProvider);
 export const onChangeNode = (e: FlowNodeChangeProps) => {
   eventBus.emit(EventNameEnum.updaterNode, e);
 };
-
-export function flowNode2Modules({
-  nodes,
-  edges
-}: {
-  nodes: Node<FlowModuleItemType, string | undefined>[];
-  edges: Edge<any>[];
-}) {
-  const modules: ModuleItemType[] = nodes.map((item) => ({
-    moduleId: item.data.moduleId,
-    name: item.data.name,
-    avatar: item.data.avatar,
-    flowType: item.data.flowType,
-    showStatus: item.data.showStatus,
-    position: item.position,
-    inputs: item.data.inputs.map((input) => ({
-      ...input,
-      connected: false
-    })),
-    outputs: item.data.outputs.map((item) => ({
-      ...item,
-      targets: [] as FlowNodeOutputTargetItemType[]
-    }))
-  }));
-
-  // update inputs and outputs
-  modules.forEach((module) => {
-    module.inputs.forEach((input) => {
-      input.connected = !!edges.find(
-        (edge) => edge.target === module.moduleId && edge.targetHandle === input.key
-      );
-    });
-
-    module.outputs.forEach((output) => {
-      output.targets = edges
-        .filter(
-          (edge) =>
-            edge.source === module.moduleId && edge.sourceHandle === output.key && edge.targetHandle
-        )
-        .map((edge) => ({
-          moduleId: edge.target,
-          key: edge.targetHandle || ''
-        }));
-    });
-  });
-
-  return modules;
-}

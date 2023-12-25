@@ -1,5 +1,4 @@
 import { simpleText } from './tools';
-import { NodeHtmlMarkdown } from 'node-html-markdown';
 
 /* Delete redundant text in markdown */
 export const simpleMarkdownText = (rawText: string) => {
@@ -27,75 +26,11 @@ export const simpleMarkdownText = (rawText: string) => {
 
   // Remove headings and code blocks front spaces
   ['####', '###', '##', '#', '```', '~~~'].forEach((item, i) => {
-    const isMarkdown = i <= 3;
     const reg = new RegExp(`\\n\\s*${item}`, 'g');
     if (reg.test(rawText)) {
-      rawText = rawText.replace(
-        new RegExp(`(\\n)\\s*(${item})`, 'g'),
-        isMarkdown ? '\n$1$2' : '$1$2'
-      );
+      rawText = rawText.replace(new RegExp(`(\\n)( *)(${item})`, 'g'), '$1$3');
     }
   });
 
   return rawText.trim();
-};
-
-/* html string to markdown */
-export const htmlToMarkdown = (html?: string | null) => {
-  if (!html) return '';
-
-  const surround = (source: string, surroundStr: string) => `${surroundStr}${source}${surroundStr}`;
-
-  const nhm = new NodeHtmlMarkdown(
-    {
-      codeFence: '```',
-      codeBlockStyle: 'fenced',
-      ignore: ['i', 'script']
-    },
-    {
-      code: ({ node, parent, options: { codeFence, codeBlockStyle }, visitor }) => {
-        const isCodeBlock = ['PRE', 'WRAPPED-PRE'].includes(parent?.tagName!);
-
-        if (!isCodeBlock) {
-          return {
-            spaceIfRepeatingChar: true,
-            noEscape: true,
-            postprocess: ({ content }) => {
-              // Find longest occurring sequence of running backticks and add one more (so content is escaped)
-              const delimiter =
-                '`' + (content.match(/`+/g)?.sort((a, b) => b.length - a.length)?.[0] || '');
-              const padding = delimiter.length > 1 ? ' ' : '';
-
-              return surround(surround(content, padding), delimiter);
-            }
-          };
-        }
-
-        /* Handle code block */
-        if (codeBlockStyle === 'fenced') {
-          const language =
-            node.getAttribute('class')?.match(/language-(\S+)/)?.[1] ||
-            parent?.getAttribute('class')?.match(/language-(\S+)/)?.[1] ||
-            '';
-
-          return {
-            noEscape: true,
-            prefix: `${codeFence}${language}\n`,
-            postfix: `\n${codeFence}\n`,
-            childTranslators: visitor.instance.codeBlockTranslators
-          };
-        }
-
-        return {
-          noEscape: true,
-          postprocess: ({ content }) => content.replace(/^/gm, '    '),
-          childTranslators: visitor.instance.codeBlockTranslators
-        };
-      }
-    }
-  );
-
-  const markdown = nhm.translate(html).trim();
-
-  return simpleMarkdownText(markdown);
 };

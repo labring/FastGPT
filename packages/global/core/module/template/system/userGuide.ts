@@ -1,7 +1,7 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
 import { userGuideTip } from '../tip';
-import { ModuleDataTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
 
 export const UserGuideModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.userGuide,
@@ -14,7 +14,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.welcomeText,
       type: FlowNodeInputTypeEnum.hidden,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       label: '开场白',
       showTargetInApp: false,
       showTargetInPlugin: false
@@ -22,7 +22,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.variables,
       type: FlowNodeInputTypeEnum.hidden,
-      valueType: ModuleDataTypeEnum.any,
+      valueType: ModuleIOValueTypeEnum.any,
       label: '对话框变量',
       value: [],
       showTargetInApp: false,
@@ -30,7 +30,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleInputKeyEnum.questionGuide,
-      valueType: ModuleDataTypeEnum.boolean,
+      valueType: ModuleIOValueTypeEnum.boolean,
       type: FlowNodeInputTypeEnum.switch,
       label: '问题引导',
       showTargetInApp: false,
@@ -39,7 +39,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.tts,
       type: FlowNodeInputTypeEnum.hidden,
-      valueType: ModuleDataTypeEnum.any,
+      valueType: ModuleIOValueTypeEnum.any,
       label: '语音播报',
       showTargetInApp: false,
       showTargetInPlugin: false

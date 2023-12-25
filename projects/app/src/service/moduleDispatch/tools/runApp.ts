@@ -1,5 +1,5 @@
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import { dispatchModules } from '../index';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -7,11 +7,12 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
-  userChatInput: string;
-  history?: ChatItemType[];
+  [ModuleInputKeyEnum.userChatInput]: string;
+  [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   app: SelectAppItemType;
 }>;
 type Response = {
@@ -26,7 +27,8 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     user,
     stream,
     detail,
-    inputs: { userChatInput, history = [], app }
+    histories,
+    inputs: { userChatInput, history, app }
   } = props;
 
   if (!userChatInput) {
@@ -52,17 +54,19 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     });
   }
 
+  const chatHistories = getHistories(history, histories);
+
   const { responseData, answerText } = await dispatchModules({
     ...props,
     appId: app.id,
     modules: appData.modules,
-    histories: history,
+    histories: chatHistories,
     startParams: {
       userChatInput
     }
   });
 
-  const completeMessages = history.concat([
+  const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
       value: userChatInput

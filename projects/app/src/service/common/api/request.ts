@@ -78,12 +78,12 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
 
   return instance
     .request({
-      baseURL: `http://localhost:${process.env.PORT || 3000}`,
+      baseURL: `http://${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`,
       url,
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,
       params: !['POST', 'PUT'].includes(method) ? data : null,
-      ...config // 用户自定义配置，可以覆盖前面的配置
+      ...config // custom config
     })
     .then((res) => checkRes(res.data))
     .catch((err) => responseError(err));

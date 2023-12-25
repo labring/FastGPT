@@ -170,9 +170,11 @@ export async function generateVector(): Promise<any> {
       err.response?.data?.error?.type === 'invalid_request_error' ||
       err?.code === 500
     ) {
-      addLog.info('invalid message format', {
-        dataItem
-      });
+      addLog.info('Lock training data');
+      console.log(err?.code);
+      console.log(err.response?.data?.error?.type);
+      console.log(err?.message);
+
       try {
         await MongoDatasetTraining.findByIdAndUpdate(data._id, {
           lockTime: new Date('2998/5/5')

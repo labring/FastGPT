@@ -1,25 +1,51 @@
 import React, { useState } from 'react';
 import { NodeProps } from 'reactflow';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { onChangeNode } from '../../FlowProvider';
 import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import Container from '../modules/Container';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import SourceHandle from '../render/SourceHandle';
-import { defaultInputField, type EditFieldType } from '../modules/FieldEditModal';
-import { useToast } from '@/web/common/hooks/useToast';
+import type {
+  EditNodeFieldType,
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType
+} from '@fastgpt/global/core/module/node/type.d';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
+import { useTranslation } from 'next-i18next';
 
-const FieldEditModal = dynamic(() => import('../modules/FieldEditModal'));
+const FieldEditModal = dynamic(() => import('../render/FieldEditModal'));
+
+const defaultCreateField: EditNodeFieldType = {
+  label: '',
+  key: '',
+  description: '',
+  inputType: FlowNodeInputTypeEnum.target,
+  valueType: ModuleIOValueTypeEnum.string,
+  required: true
+};
+const createEditField = {
+  key: true,
+  name: true,
+  description: true,
+  required: true,
+  dataType: true,
+  inputType: true
+};
 
 const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
+  const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
-  const { toast } = useToast();
-  const [editField, setEditField] = useState<EditFieldType>();
+  const [createField, setCreateField] = useState<EditNodeFieldType>();
+  const [editField, setEditField] = useState<EditNodeFieldType>();
 
   return (
     <NodeCard minW={'300px'} {...data}>
@@ -39,13 +65,13 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
               w={'14px'}
               cursor={'pointer'}
               mr={3}
-              _hover={{ color: 'myBlue.600' }}
+              _hover={{ color: 'blue.500' }}
               onClick={() =>
                 setEditField({
-                  type: item.type,
+                  inputType: item.type,
+                  valueType: item.valueType,
                   key: item.key,
                   label: item.label,
-                  valueType: item.valueType,
                   description: item.description,
                   required: item.required
                 })
@@ -71,14 +97,13 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
                 });
               }}
             />
-
             {item.description && (
-              <MyTooltip label={item.description} forceShow>
+              <MyTooltip label={t(item.description)} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
               </MyTooltip>
             )}
             <Box position={'relative'}>
-              {item.label}
+              {t(item.label)}
               {item.required && (
                 <Box
                   position={'absolute'}
@@ -99,95 +124,126 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
             variant={'base'}
             leftIcon={<SmallAddIcon />}
             onClick={() => {
-              setEditField(defaultInputField);
+              setCreateField(defaultCreateField);
             }}
           >
-            添加入参
+            {t('core.module.input.Add Input')}
           </Button>
         </Box>
       </Container>
-      {!!editField && (
+      {!!createField && (
         <FieldEditModal
-          mode={'pluginInput'}
-          defaultField={editField}
-          onClose={() => setEditField(undefined)}
-          onSubmit={(e) => {
-            // create field
-            if (e.createSign) {
-              // check key repeat
-              const memInput = inputs.find((item) => item.key === e.key);
-              if (memInput) {
-                return toast({
-                  status: 'warning',
-                  title: '字段key已存在'
-                });
+          editField={createEditField}
+          defaultField={createField}
+          keys={inputs.map((input) => input.key)}
+          onClose={() => setCreateField(undefined)}
+          onSubmit={({ data }) => {
+            onChangeNode({
+              moduleId,
+              type: 'addInput',
+              value: {
+                key: data.key,
+                valueType: data.valueType,
+                label: data.label,
+                type: data.inputType,
+                required: data.required,
+                description: data.description,
+                edit: true,
+                editField: createEditField
               }
+            });
+            onChangeNode({
+              moduleId,
+              type: 'addOutput',
+              value: {
+                key: data.key,
+                valueType: data.valueType,
+                label: data.label,
+                type: FlowNodeOutputTypeEnum.source,
+                edit: true,
+                targets: []
+              }
+            });
+            setCreateField(undefined);
+          }}
+        />
+      )}
+      {!!editField?.key && (
+        <FieldEditModal
+          editField={createEditField}
+          defaultField={editField}
+          keys={[editField.key]}
+          onClose={() => setEditField(undefined)}
+          onSubmit={({ data, changeKey }) => {
+            if (!data.inputType || !data.key || !data.label) return;
 
-              onChangeNode({
-                moduleId,
-                type: 'addInput',
-                value: {
-                  key: e.key,
-                  valueType: e.valueType,
-                  type: e.type,
-                  label: e.label,
-                  required: e.required,
-                  edit: true
-                }
-              });
-              onChangeNode({
-                moduleId,
-                type: 'addOutput',
-                value: {
-                  key: e.key,
-                  valueType: e.valueType,
-                  label: e.label,
-                  type: FlowNodeOutputTypeEnum.source,
-                  edit: true,
-                  targets: []
-                }
-              });
-              return setEditField(undefined);
-            }
             // check key valid
             const memInput = inputs.find((item) => item.key === editField.key);
             const memOutput = outputs.find((item) => item.key === editField.key);
 
             if (!memInput || !memOutput) return setEditField(undefined);
-            const input = {
+
+            const newInput: FlowNodeInputItemType = {
               ...memInput,
-              ...e
+              type: data.inputType,
+              valueType: data.valueType,
+              key: data.key,
+              required: data.required,
+              label: data.label,
+              description: data.description,
+              ...(data.inputType === FlowNodeInputTypeEnum.addInputParam
+                ? {
+                    editField: {
+                      key: true,
+                      name: true,
+                      description: true,
+                      required: true,
+                      dataType: true,
+                      inputType: false
+                    },
+                    defaultEditField: {
+                      label: '',
+                      key: '',
+                      description: '',
+                      inputType: FlowNodeInputTypeEnum.target,
+                      valueType: ModuleIOValueTypeEnum.string,
+                      required: true
+                    }
+                  }
+                : {})
             };
-            const output = {
+            const newOutput: FlowNodeOutputItemType = {
               ...memOutput,
-              ...e
+              valueType: data.valueType,
+              key: data.key,
+              label: data.label
             };
-            // not update key
-            if (editField.key === e.key) {
-              onChangeNode({
-                moduleId,
-                type: 'updateInput',
-                key: editField.key,
-                value: input
-              });
-              onChangeNode({
-                moduleId,
-                type: 'updateOutput',
-                key: editField.key,
-                value: output
-              });
-            } else {
+
+            if (changeKey) {
               onChangeNode({
                 moduleId,
                 type: 'replaceInput',
                 key: editField.key,
-                value: input
+                value: newInput
               });
               onChangeNode({
                 moduleId,
                 type: 'replaceOutput',
                 key: editField.key,
-                value: output
+                value: newOutput
+              });
+            } else {
+              onChangeNode({
+                moduleId,
+                type: 'updateInput',
+                key: newInput.key,
+                value: newInput
+              });
+              onChangeNode({
+                moduleId,
+                type: 'updateOutput',
+                key: newOutput.key,
+                value: newOutput
               });
             }
 

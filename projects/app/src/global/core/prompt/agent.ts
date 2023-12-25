@@ -25,7 +25,7 @@ export const Prompt_ExtractJson = `你可以从 <对话记录></对话记录> �
 
 <字段说明>
 1. 下面的 JSON 字符串均按照 JSON Schema 的规则描述。
-2. key 代表字段名，description 代表字段的描述，required 代表字段是否必须。
+2. key 代表字段名；description 代表字段的描述；required 代表字段是否必须；enum 是可选值，代表可选的 value。
 3. 如果字段内容为空，你可以返回空字符串。
 
 {{json}}

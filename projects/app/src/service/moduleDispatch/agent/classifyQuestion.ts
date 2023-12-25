@@ -5,7 +5,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -40,17 +40,19 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const cqModel = getCQModel(model);
 
+  const chatHistories = getHistories(history, histories);
+
   const { arg, tokens } = await (async () => {
-    if (cqModel.functionCall) {
-      return functionCall({
+    if (cqModel.toolChoice) {
+      return toolChoice({
         ...props,
-        histories: getHistories(history, histories),
+        histories: chatHistories,
         cqModel
       });
     }
     return completions({
       ...props,
-      histories: getHistories(history, histories),
+      histories: chatHistories,
       cqModel
     });
   })();
@@ -65,12 +67,13 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       query: userChatInput,
       tokens,
       cqList: agents,
-      cqResult: result.value
+      cqResult: result.value,
+      contextTotalLen: chatHistories.length + 2
     }
   };
 };
 
-async function functionCall({
+async function toolChoice({
   user,
   cqModel,
   histories,
@@ -115,7 +118,7 @@ ${systemPrompt}
       required: ['type']
     }
   };
-  const ai = getAIApi(user.openaiAccount, 48000);
+  const ai = getAIApi(user.openaiAccount, 480000);
 
   const response = await ai.chat.completions.create({
     model: cqModel.model,

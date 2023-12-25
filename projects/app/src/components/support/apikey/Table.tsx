@@ -88,7 +88,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
                 target={'_blank'}
                 ml={1}
-                color={'myBlue.600'}
+                color={'blue.500'}
               >
                 查看文档
               </Link>

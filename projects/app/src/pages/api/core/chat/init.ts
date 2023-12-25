@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
 
-    let { appId, chatId } = req.query as InitChatProps;
+    let { appId, chatId, loadCustomFeedbacks } = req.query as InitChatProps;
 
     if (!appId) {
       return jsonRes(res, {
@@ -43,7 +43,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { history } = await getChatItems({
       chatId,
       limit: 30,
-      field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback robotBadFeedback ${ModuleOutputKeyEnum.responseData}`
+      field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
+        ModuleOutputKeyEnum.responseData
+      } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`
     });
 
     jsonRes<InitChatResponse>(res, {

@@ -68,7 +68,7 @@ defaultContentLanguage = 'zh-cn'
         # twitter = ""       # YOUR_TWITTER_ID
         # instagram = "colinwilson"     # YOUR_INSTAGRAM_ID
         # rss = true                    # show rss icon with link
-        wechat = "/wechat-fastgpt.webp"
+        wechat = "https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg"
 
     [params.docs] # Parameters for the /docs 'template'
         title           = ""           # default html title for documentation pages/sections

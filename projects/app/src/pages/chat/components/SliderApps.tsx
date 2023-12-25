@@ -28,7 +28,7 @@ const SliderApps = ({ appId }: { appId: string }) => {
         >
           <IconButton
             mr={3}
-            icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+            icon={<MyIcon name={'backFill'} w={'18px'} color={'blue.500'} />}
             bg={'white'}
             boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
             h={'28px'}
