@@ -11,7 +11,6 @@ import ModuleTemplateList, { type ModuleTemplateProps } from './ModuleTemplateLi
 import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
-import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
