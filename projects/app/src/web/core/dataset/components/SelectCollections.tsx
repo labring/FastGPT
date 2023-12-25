@@ -5,7 +5,17 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, Image } from '@chakra-ui/react';
+import {
+  Box,
+  Flex,
+  ModalFooter,
+  Button,
+  useTheme,
+  Grid,
+  Card,
+  Image,
+  ModalBody
+} from '@chakra-ui/react';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { useQuery } from '@tanstack/react-query';
@@ -115,9 +125,11 @@ const SelectCollections = ({
             FirstPathDom={
               <>
                 <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
-                  {title || type === 'folder'
-                    ? t('common.Select One Folder')
-                    : t('dataset.collections.Select Collection')}
+                  {title
+                    ? title
+                    : type === 'folder'
+                      ? t('common.Select One Folder')
+                      : t('dataset.collections.Select Collection')}
                 </Box>
                 {!!tip && (
                   <Box fontSize={'sm'} color={'myGray.500'}>
@@ -133,85 +145,83 @@ const SelectCollections = ({
         </Box>
       }
     >
-      <Flex flexDirection={'column'} flex={'1 0 0'}>
-        <Box flex={'1 0 0'} px={4} py={2} position={'relative'}>
-          <Grid
-            gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)', 'repeat(3,1fr)']}
-            gridGap={3}
-            userSelect={'none'}
-            overflowY={'auto'}
-            mt={2}
-          >
-            {collections.map((item) =>
-              (() => {
-                const selected = selectedDatasetCollectionIds.includes(item._id);
-                return (
-                  <Card
-                    key={item._id}
-                    p={3}
-                    border={theme.borders.base}
-                    boxShadow={'sm'}
-                    cursor={'pointer'}
-                    _hover={{
-                      boxShadow: 'md'
-                    }}
-                    {...(selected
-                      ? {
-                          bg: 'myBlue.300'
-                        }
-                      : {})}
-                    onClick={() => {
-                      if (item.type === DatasetCollectionTypeEnum.folder) {
-                        setParentId(item._id);
-                      } else {
-                        let result: string[] = [];
-                        if (max === 1) {
-                          result = [item._id];
-                        } else if (selected) {
-                          result = selectedDatasetCollectionIds.filter((id) => id !== item._id);
-                        } else if (selectedDatasetCollectionIds.length < max) {
-                          result = [...selectedDatasetCollectionIds, item._id];
-                        }
-                        setSelectedDatasetCollectionIds(result);
-                        onChange && onChange({ parentId, collectionIds: result });
+      <ModalBody flex={'1 0 0'} overflow={'auto'}>
+        <Grid
+          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
+          gridGap={3}
+          userSelect={'none'}
+          overflowY={'auto'}
+          mt={2}
+        >
+          {collections.map((item) =>
+            (() => {
+              const selected = selectedDatasetCollectionIds.includes(item._id);
+              return (
+                <Card
+                  key={item._id}
+                  p={3}
+                  border={theme.borders.base}
+                  boxShadow={'sm'}
+                  cursor={'pointer'}
+                  _hover={{
+                    boxShadow: 'md'
+                  }}
+                  {...(selected
+                    ? {
+                        bg: 'blue.200'
                       }
-                    }}
-                  >
-                    <Flex alignItems={'center'} h={'38px'}>
-                      <Image src={item.icon} w={'18px'} alt={''} />
-                      <Box ml={3} fontSize={'sm'}>
-                        {item.name}
-                      </Box>
-                    </Flex>
-                  </Card>
-                );
-              })()
-            )}
-          </Grid>
-          {collections.length === 0 && (
-            <Flex mt={'20vh'} flexDirection={'column'} alignItems={'center'}>
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                {t('common.folder.No Folder')}
-              </Box>
-            </Flex>
+                    : {})}
+                  onClick={() => {
+                    if (item.type === DatasetCollectionTypeEnum.folder) {
+                      setParentId(item._id);
+                    } else {
+                      let result: string[] = [];
+                      if (max === 1) {
+                        result = [item._id];
+                      } else if (selected) {
+                        result = selectedDatasetCollectionIds.filter((id) => id !== item._id);
+                      } else if (selectedDatasetCollectionIds.length < max) {
+                        result = [...selectedDatasetCollectionIds, item._id];
+                      }
+                      setSelectedDatasetCollectionIds(result);
+                      onChange && onChange({ parentId, collectionIds: result });
+                    }
+                  }}
+                >
+                  <Flex alignItems={'center'} h={'38px'}>
+                    <Image src={item.icon} w={'18px'} alt={''} />
+                    <Box ml={3} fontSize={'sm'} className="textEllipsis">
+                      {item.name}
+                    </Box>
+                  </Flex>
+                </Card>
+              );
+            })()
           )}
-          <Loading loading={isLoading} fixed={false} />
-        </Box>
-        {CustomFooter ? (
-          <>{CustomFooter}</>
-        ) : (
-          <ModalFooter>
-            <Button
-              isLoading={isResponding}
-              isDisabled={type === 'collection' && selectedDatasetCollectionIds.length === 0}
-              onClick={mutate}
-            >
-              {type === 'folder' ? t('common.Confirm Move') : t('Confirm')}
-            </Button>
-          </ModalFooter>
+        </Grid>
+        {collections.length === 0 && (
+          <Flex mt={'20vh'} flexDirection={'column'} alignItems={'center'}>
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              {t('common.folder.No Folder')}
+            </Box>
+          </Flex>
         )}
-      </Flex>
+        <Loading loading={isLoading} fixed={false} />
+      </ModalBody>
+      {CustomFooter ? (
+        <>{CustomFooter}</>
+      ) : (
+        <ModalFooter>
+          <Button
+            isLoading={isResponding}
+            isDisabled={type === 'collection' && selectedDatasetCollectionIds.length === 0}
+            onClick={mutate}
+          >
+            {type === 'folder' ? t('common.Confirm Move') : t('Confirm')}
+          </Button>
+        </ModalFooter>
+      )}
     </MyModal>
   );
 };

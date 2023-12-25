@@ -16,7 +16,7 @@ import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -202,7 +202,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       query: userChatInput,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
-      historyPreview: getHistoryPreview(completeMessages)
+      historyPreview: getHistoryPreview(completeMessages),
+      contextTotalLen: completeMessages.length
     },
     history: completeMessages
   };

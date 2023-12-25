@@ -62,7 +62,7 @@ const MySelect = (
         {...(isOpen
           ? {
               boxShadow: '0px 0px 4px #A8DBFF',
-              borderColor: 'myBlue.600'
+              borderColor: 'blue.500'
             }
           : {})}
         {...props}
@@ -93,7 +93,7 @@ const MySelect = (
             {...menuItemStyles}
             {...(value === item.value
               ? {
-                  color: 'myBlue.600',
+                  color: 'blue.500',
                   bg: 'myWhite.300'
                 }
               : {})}

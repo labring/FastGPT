@@ -1,6 +1,6 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 
 const NodeAnswer = ({ data }: NodeProps<FlowModuleItemType>) => {

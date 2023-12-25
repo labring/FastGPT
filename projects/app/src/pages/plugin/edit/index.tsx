@@ -24,10 +24,12 @@ const Render = ({ pluginId }: Props) => {
   const { nodes = [] } = useFlowProviderStore();
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
-  const filterTemplates = useMemo(() => {
-    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(
-      JSON.stringify(pluginSystemModuleTemplates)
-    );
+  const moduleTemplates = useMemo(() => {
+    const pluginTemplates = pluginModuleTemplates.filter((item) => item.id !== pluginId);
+    const concatTemplates = [...pluginSystemModuleTemplates, ...pluginTemplates];
+
+    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
+
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1,
       [FlowNodeTypeEnum.pluginInput]: 1,
@@ -45,8 +47,13 @@ const Render = ({ pluginId }: Props) => {
       }
     });
 
+    // filter hideInPlugin inputs
+    copyTemplates.forEach((template) => {
+      template.inputs = template.inputs.filter((input) => !input.hideInPlugin);
+    });
+
     return copyTemplates;
-  }, [nodes]);
+  }, [nodes, pluginId, pluginModuleTemplates]);
 
   const { data: pluginDetail } = useQuery(
     ['getOnePlugin', pluginId],
@@ -61,17 +68,12 @@ const Render = ({ pluginId }: Props) => {
       }
     }
   );
-  console.log(pluginDetail);
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
-  const filterPlugins = useMemo(() => {
-    return pluginModuleTemplates.filter((item) => item.id !== pluginId);
-  }, [pluginId, pluginModuleTemplates]);
 
   return pluginDetail ? (
     <Flow
-      systemTemplates={filterTemplates}
-      pluginTemplates={filterPlugins}
+      templates={moduleTemplates}
       modules={pluginDetail?.modules || []}
       Header={<Header plugin={pluginDetail} onClose={() => router.back()} />}
     />

@@ -1,20 +1,23 @@
-.waitingAnimation::after {
+.waitingAnimation > :last-child::after {
   display: inline-block;
   content: '';
-  width: 4px;
+  width: 3px;
   height: 14px;
   transform: translate(4px, 2px) scaleY(1.3);
-  background-color: var(--chakra-colors-chakra-body-text);
+  background-color: var(--chakra-colors-blue-700);
   animation: blink 0.6s infinite;
 }
+
 .animation {
-  > :last-child::after {
+  height: 20px;
+
+  &::after {
     display: inline-block;
     content: '';
-    width: 4px;
+    width: 3px;
     height: 14px;
     transform: translate(4px, 2px) scaleY(1.3);
-    background-color: var(--chakra-colors-chakra-body-text);
+    background-color: var(--chakra-colors-blue-700);
     animation: blink 0.6s infinite;
   }
 }
@@ -343,7 +346,7 @@
   width: 100%;
 
   * {
-    word-break: break-all;
+    word-break: break-word;
   }
 
   pre {

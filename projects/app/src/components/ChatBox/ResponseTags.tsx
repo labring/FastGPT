@@ -147,7 +147,7 @@ const ResponseTags = ({
                         name="common/routePushLight"
                         w={'14px'}
                         cursor={'pointer'}
-                        _hover={{ color: 'myBlue.600' }}
+                        _hover={{ color: 'blue.500' }}
                         onClick={async (e) => {
                           e.stopPropagation();
 
@@ -222,7 +222,11 @@ const ResponseTags = ({
           <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
         )}
         {isOpenWholeModal && (
-          <WholeResponseModal response={responseData} onClose={onCloseWholeModal} />
+          <WholeResponseModal
+            response={responseData}
+            isShare={isShare}
+            onClose={onCloseWholeModal}
+          />
         )}
       </Flex>
     </>

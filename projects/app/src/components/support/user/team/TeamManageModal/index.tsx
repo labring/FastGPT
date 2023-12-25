@@ -156,7 +156,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                     <MyIcon
                       name={'common/addCircleLight'}
                       w={['16px', '18px']}
-                      color={'myBlue.600'}
+                      color={'blue.500'}
                       cursor={'pointer'}
                     />
                   }
@@ -177,7 +177,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   gap={3}
                   {...(userInfo?.team?.teamId === team.teamId
                     ? {
-                        bg: 'myBlue.300'
+                        bg: 'blue.200'
                       }
                     : {
                         _hover: {
@@ -198,7 +198,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                     {team.teamName}
                   </Box>
                   {userInfo?.team?.teamId === team.teamId ? (
-                    <MyIcon name={'common/tickFill'} w={'16px'} color={'myBlue.600'} />
+                    <MyIcon name={'common/tickFill'} w={'16px'} color={'blue.500'} />
                   ) : (
                     <Button size={'xs'} variant={'base'} onClick={() => onSwitchTeam(team.teamId)}>
                       {t('user.team.Check Team')}
@@ -235,7 +235,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   ml={2}
                   cursor={'pointer'}
                   _hover={{
-                    color: 'myBlue.600'
+                    color: 'blue.500'
                   }}
                   onClick={() => {
                     if (!userInfo?.team) return;
@@ -260,7 +260,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
-                  leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'myBlue.600'} />}
+                  leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'blue.500'} />}
                   onClick={() => {
                     if (userInfo.team.maxSize <= members.length) {
                       toast({
@@ -283,11 +283,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   borderRadius={'md'}
                   ml={3}
                   leftIcon={
-                    <MyIcon
-                      name={'support/account/loginoutLight'}
-                      w={'14px'}
-                      color={'myBlue.600'}
-                    />
+                    <MyIcon name={'support/account/loginoutLight'} w={'14px'} color={'blue.500'} />
                   }
                   onClick={() => {
                     openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
@@ -339,7 +335,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                       name={'edit'}
                                       cursor={'pointer'}
                                       w="14px"
-                                      _hover={{ color: 'myBlue.600' }}
+                                      _hover={{ color: 'blue.500' }}
                                     />
                                   </MenuButton>
                                 }

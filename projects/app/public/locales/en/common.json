@@ -22,7 +22,6 @@
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
     "Chat logs": "Chat Logs",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
-    "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
     "Copy Module Config": "Copy config",
@@ -52,7 +51,7 @@
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
-      "type": "{{type}}\n{{example}}"
+      "type": "{{type}}\n{{description}}"
     },
     "modules": {
       "Title is required": "Title is required"
@@ -88,32 +87,6 @@
       "online": "Online Chat",
       "share": "Share",
       "test": "Test Chat "
-    },
-    "response": {
-      "module cq": "Question classification list",
-      "module cq result": "Classification Result",
-      "module extract description": "Extract Description",
-      "module extract result": "Extract Result",
-      "module historyPreview": "Messages",
-      "module http body": "Body",
-      "module http result": "Response",
-      "module http url": "Request Url",
-      "module limit": "Count Limit",
-      "module maxToken": "MaxTokens",
-      "module model": "Model",
-      "module name": "Name",
-      "module price": "Price",
-      "module query": "Question/Query",
-      "module question": "Question",
-      "module quoteList": "Quotes",
-      "module runningTime": "Time",
-      "module search query": "Query",
-      "module search response": "Search Result",
-      "module similarity": "Similarity",
-      "module temperature": "Temperature",
-      "module time": "Running Time",
-      "module tokens": "Tokens",
-      "plugin output": "Plugin Output"
     },
     "retry": "Retry"
   },
@@ -239,6 +212,11 @@
     "system": {
       "Help Chatbot": "Chatbot Helper",
       "Use Helper": "UsingHelp"
+    },
+    "ui": {
+      "textarea": {
+        "Magnifying": "Magnifying"
+      }
     }
   },
   "core": {
@@ -262,6 +240,19 @@
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
+      "edit": {
+        "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
+        "Out Ad Edit": "You are about to exit the Advanced orchestration page, please confirm",
+        "Prompt Editor": "Prompt Editor",
+        "Save and out": "Save out",
+        "UnSave": "UnSave",
+        "cfr background prompt": "Question completion - Chat background description",
+        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. \nIf is empty, the problem completion function is not used."
+      },
+      "feedback": {
+        "Custom feedback": "Custom feedback",
+        "close custom feedback": "Close Feedback"
+      },
       "logs": {
         "Source And Time": "Source & Time"
       },
@@ -306,7 +297,10 @@
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "error": {
-        "Messages empty": "Interface content is empty, maybe the text is too long ~"
+        "Messages empty": "Interface content is empty, maybe the text is too long ~",
+        "Select dataset empty": "You didn't choose any dataset.",
+        "user input empty": "User question is empty",
+        "Chat error": "Chat error"
       },
       "feedback": {
         "Close User Good Feedback": "",
@@ -324,6 +318,35 @@
         "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
         "Read Quote": "Read Quote",
         "Read Source": "Read Source"
+      },
+      "response": {
+        "Plugin Resonse Detail": "Plugin Detail",
+        "context total length": "Context Length",
+        "module cq": "Question classification list",
+        "module cq result": "Classification Result",
+        "module extract description": "Extract Description",
+        "module extract result": "Extract Result",
+        "module historyPreview": "Messages",
+        "module http body": "Body",
+        "module http result": "Response",
+        "module http url": "Request Url",
+        "module limit": "Count Limit",
+        "module maxToken": "MaxTokens",
+        "module model": "Model",
+        "module name": "Name",
+        "module price": "Price",
+        "module query": "Question/Query",
+        "module question": "Question",
+        "module quoteList": "Quotes",
+        "module runningTime": "Time",
+        "module search query": "Query",
+        "module search response": "Search Result",
+        "module similarity": "Similarity",
+        "module temperature": "Temperature",
+        "module time": "Running Time",
+        "module tokens": "Tokens",
+        "plugin output": "Plugin Output",
+        "text output": "Text Output"
       },
       "tts": {
         "Stop Speech": "Stop"
@@ -506,14 +529,48 @@
       "Plugin output must connect": "Custom outputs must all be connected",
       "Variable": "Variable",
       "Variable Setting": "Variable Setting",
+      "edit": {
+        "Field Already Exist": "Key already exist",
+        "Field Edit": "Field Edit"
+      },
+      "extract": {
+        "Enum Description": "Lists the possible values for the field, one per row",
+        "Enum Value": "Enum",
+        "Field Description Placeholder": "Name/age /sql statement......",
+        "Field Setting Title": "Extract field configuration"
+      },
       "input": {
+        "Add Input": "Add Input",
+        "Input Number": "Input: {{length}}",
+        "description": {
+          "Http Request Header": "",
+          "Http Request Url": "",
+          "TFSwitch textarea": "",
+          "anyInput": "",
+          "cfr background": "The background knowledge of the current conversation makes it easy to complete the first question and the fuzzy question, and only needs to briefly describe the scope of the current conversation.",
+          "dynamic input": "",
+          "textEditor textarea": "The passed variable can be referenced by {{key}}."
+        },
         "label": {
-          "chat history": "",
-          "switch": "",
-          "user question": ""
+          "Http Request Header": "",
+          "Http Request Method": "",
+          "Http Request Url": "",
+          "TFSwitch textarea": "",
+          "aiModel": "",
+          "anyInput": "",
+          "cfr background": "Background",
+          "chat history": "chat history",
+          "switch": "Switch",
+          "textEditor textarea": "Text Edit",
+          "user question": "User question"
+        },
+        "placeholder": {
+          "cfr background": "Questions about the introduction and use of python. \nThe current dialogue is related to the game GTA5."
         }
       },
       "inputType": {
+        "chat history": "History",
+        "dynamicTargetInput": "dynamic Target Input",
         "input": "Input",
         "selectApp": "App Selector",
         "selectChatModel": "Select Chat Model",
@@ -523,18 +580,37 @@
         "textarea": "Textarea"
       },
       "output": {
+        "Add Output": "Add Output",
+        "Output Number": "Output: {{length}}",
         "description": {
-          "running done": "running done"
+          "running done": "Triggered when the module call ends"
         },
         "label": {
-          "running done": "running done"
+          "cfr result": "",
+          "result false": "",
+          "result true": "",
+          "running done": "End of module call ",
+          "text": "Text output"
         }
+      },
+      "template": {
+        "TFSwitch": "",
+        "TFSwitch intro": "",
+        "UnKnow Module": "UnKnow Module",
+        "cfr": "",
+        "cfr intro": "Refine the current issue based on history, making it more conducive to knowledge base search, while improving continuous conversation capabilities.",
+        "textEditor": "Text Editor",
+        "textEditor intro": "Output of fixed or incoming text after edit"
+      },
+      "textEditor": {
+        "Text Edit": "Text Edit"
       },
       "valueType": {
         "any": "Any",
         "boolean": "Boolean",
         "chatHistory": "History",
         "datasetQuote": "Dataset Quote",
+        "dynamicTargetInput": "Dynamic Input",
         "number": "Number",
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",

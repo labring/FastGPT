@@ -6,15 +6,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleDataTypeEnum } from '@fastgpt/global/core/module/constants';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type.d';
 import { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api';
+import { getExtractModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { formData, chatModelList } = req.body as FormatForm2ModulesProps;
+    const { formData } = req.body as FormatForm2ModulesProps;
 
     const modules =
       formData.dataset.datasets.length > 0
@@ -32,100 +29,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 }
 
-function chatModelInput(formData: AppSimpleEditFormType): FlowNodeInputItemType[] {
-  return [
-    {
-      key: 'model',
-      value: formData.aiSettings.model,
-      type: 'custom',
-      label: '对话模型',
-      connected: true
-    },
-    {
-      key: 'temperature',
-      value: formData.aiSettings.temperature,
-      type: 'slider',
-      label: '温度',
-      connected: true
-    },
-    {
-      key: 'maxToken',
-      value: formData.aiSettings.maxToken,
-      type: 'custom',
-      label: '回复上限',
-      connected: true
-    },
-    {
-      key: 'systemPrompt',
-      value: formData.aiSettings.systemPrompt || '',
-      type: 'textarea',
-      label: '系统提示词',
-      connected: true
-    },
-    {
-      key: ModuleInputKeyEnum.aiChatIsResponseText,
-      value: true,
-      type: 'hidden',
-      label: '返回AI内容',
-      connected: true
-    },
-    {
-      key: 'quoteTemplate',
-      value: formData.aiSettings.quoteTemplate || '',
-      type: 'hidden',
-      label: '引用内容模板',
-      connected: true
-    },
-    {
-      key: 'quotePrompt',
-      value: formData.aiSettings.quotePrompt || '',
-      type: 'hidden',
-      label: '引用内容提示词',
-      connected: true
-    },
-    {
-      key: 'switch',
-      type: 'target',
-      label: '触发器',
-      connected: formData.dataset.datasets.length > 0 && !!formData.dataset.searchEmptyText
-    },
-    {
-      key: 'history',
-      type: 'target',
-      label: 'core.module.input.label.chat history',
-      connected: true,
-      value: 6
-    },
-    {
-      key: 'quoteQA',
-      type: 'target',
-      label: '引用内容',
-      connected: formData.dataset.datasets.length > 0
-    },
-    {
-      key: 'userChatInput',
-      type: 'target',
-      label: '用户问题',
-      connected: true
-    }
-  ];
-}
 function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
   return [
     {
+      moduleId: 'userChatInput',
       name: '用户问题(对话入口)',
-      flowType: FlowNodeTypeEnum.questionInput,
+      avatar: '/imgs/module/userChatInput.png',
+      flowType: 'questionInput',
+      position: {
+        x: 464.32198615344566,
+        y: 1602.2698463081606
+      },
       inputs: [
         {
           key: 'userChatInput',
-          connected: true,
+          type: 'systemInput',
+          valueType: 'string',
           label: '用户问题',
-          type: 'target'
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
         }
       ],
       outputs: [
         {
           key: 'userChatInput',
+          label: '用户问题',
+          type: 'source',
+          valueType: 'string',
           targets: [
             {
               moduleId: 'chatModule',
@@ -133,114 +64,308 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
             }
           ]
         }
-      ],
-      position: {
-        x: 464.32198615344566,
-        y: 1602.2698463081606
-      },
-      moduleId: 'userChatInput'
+      ]
     },
     {
+      moduleId: 'chatModule',
       name: 'AI 对话',
-      flowType: FlowNodeTypeEnum.chatNode,
-      inputs: chatModelInput(formData),
+      avatar: '/imgs/module/AI.png',
+      flowType: 'chatNode',
       showStatus: true,
-      outputs: [
-        {
-          key: 'answerText',
-          label: 'AI回复',
-          description: '直接响应，无需配置',
-          type: 'hidden',
-          targets: []
-        },
-        {
-          key: 'finish',
-          label: '回复结束',
-          description: 'AI 回复完成后触发',
-          valueType: 'boolean',
-          type: 'source',
-          targets: []
-        }
-      ],
       position: {
         x: 981.9682828103937,
         y: 890.014595014464
       },
-      moduleId: 'chatModule'
-    }
-  ];
-}
-function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
-  return [
-    {
-      name: '用户问题(对话入口)',
-      flowType: FlowNodeTypeEnum.questionInput,
       inputs: [
         {
-          key: 'userChatInput',
-          label: '用户问题',
+          key: 'switch',
           type: 'target',
+          label: 'core.module.input.label.switch',
+          valueType: 'any',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
+          key: 'model',
+          type: 'selectChatModel',
+          label: '对话模型',
+          required: true,
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.aiSettings.model,
+          connected: false
+        },
+        {
+          key: 'temperature',
+          type: 'hidden',
+          label: '温度',
+          value: formData.aiSettings.temperature,
+          valueType: 'number',
+          min: 0,
+          max: 10,
+          step: 1,
+          markList: [
+            {
+              label: '严谨',
+              value: 0
+            },
+            {
+              label: '发散',
+              value: 10
+            }
+          ],
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'maxToken',
+          type: 'hidden',
+          label: '回复上限',
+          value: formData.aiSettings.maxToken,
+          valueType: 'number',
+          min: 100,
+          max: 4000,
+          step: 50,
+          markList: [
+            {
+              label: '100',
+              value: 100
+            },
+            {
+              label: '4000',
+              value: 4000
+            }
+          ],
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'isResponseAnswerText',
+          type: 'hidden',
+          label: '返回AI内容',
+          value: true,
+          valueType: 'boolean',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'quoteTemplate',
+          type: 'hidden',
+          label: '引用内容模板',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.aiSettings.quoteTemplate,
+          connected: false
+        },
+        {
+          key: 'quotePrompt',
+          type: 'hidden',
+          label: '引用内容提示词',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.aiSettings.quotePrompt,
+          connected: false
+        },
+        {
+          key: 'aiSettings',
+          type: 'aiSettings',
+          label: '',
+          valueType: 'any',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'systemPrompt',
+          type: 'textarea',
+          label: '系统提示词',
+          max: 300,
+          valueType: 'string',
+          description:
+            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
+          placeholder:
+            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          value: formData.aiSettings.systemPrompt,
+          connected: false
+        },
+        {
+          key: 'history',
+          type: 'numberInput',
+          label: 'core.module.input.label.chat history',
+          required: true,
+          min: 0,
+          max: 30,
+          valueType: 'chatHistory',
+          value: 6,
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
+          key: 'quoteQA',
+          type: 'target',
+          label: '引用内容',
+          description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
+          valueType: 'datasetQuote',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
+          key: 'userChatInput',
+          type: 'target',
+          label: 'core.module.input.label.user question',
+          required: true,
+          valueType: 'string',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
           connected: true
         }
       ],
       outputs: [
         {
+          key: 'answerText',
+          label: 'AI回复',
+          description: '将在 stream 回复完毕后触发',
+          valueType: 'string',
+          type: 'source',
+          targets: []
+        },
+        {
+          key: 'finish',
+          label: 'core.module.output.label.running done',
+          description: 'core.module.output.description.running done',
+          valueType: 'boolean',
+          type: 'source',
+          targets: []
+        },
+        {
+          key: 'history',
+          label: '新的上下文',
+          description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
+          valueType: 'chatHistory',
+          type: 'source',
+          targets: []
+        }
+      ]
+    }
+  ];
+}
+function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
+  const modules: ModuleItemType[] = [
+    {
+      moduleId: 'userChatInput',
+      name: '用户问题(对话入口)',
+      avatar: '/imgs/module/userChatInput.png',
+      flowType: 'questionInput',
+      position: {
+        x: 324.81436595478294,
+        y: 1527.0012457753612
+      },
+      inputs: [
+        {
           key: 'userChatInput',
+          type: 'systemInput',
+          valueType: 'string',
+          label: '用户问题',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        }
+      ],
+      outputs: [
+        {
+          key: 'userChatInput',
+          label: '用户问题',
+          type: 'source',
+          valueType: 'string',
           targets: [
             {
-              moduleId: 'chatModule',
+              moduleId: 'vuc92c',
               key: 'userChatInput'
             },
             {
-              moduleId: 'datasetSearch',
+              moduleId: 'chatModule',
               key: 'userChatInput'
             }
           ]
         }
-      ],
-      position: {
-        x: 464.32198615344566,
-        y: 1602.2698463081606
-      },
-      moduleId: 'userChatInput'
+      ]
     },
     {
+      moduleId: 'datasetSearch',
       name: '知识库搜索',
-      flowType: FlowNodeTypeEnum.datasetSearchNode,
+      avatar: '/imgs/module/db.png',
+      flowType: 'datasetSearchNode',
       showStatus: true,
+      position: {
+        x: 1351.5043753345153,
+        y: 947.0780385418003
+      },
       inputs: [
         {
+          key: 'switch',
+          type: 'target',
+          label: 'core.module.input.label.switch',
+          valueType: 'any',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
           key: 'datasets',
-          value: formData.dataset.datasets,
-          type: FlowNodeInputTypeEnum.custom,
+          type: 'selectDataset',
           label: '关联的知识库',
+          value: formData.dataset.datasets,
+          valueType: 'selectDataset',
+          list: [],
+          required: true,
+          showTargetInApp: false,
+          showTargetInPlugin: true,
           connected: false
         },
         {
           key: 'similarity',
+          type: 'hidden',
+          label: '最低相关性',
           value: formData.dataset.similarity,
-          type: FlowNodeInputTypeEnum.slider,
-          label: '相关度',
+          valueType: 'number',
+          min: 0,
+          max: 1,
+          step: 0.01,
+          markList: [
+            {
+              label: '0',
+              value: 0
+            },
+            {
+              label: '1',
+              value: 1
+            }
+          ],
+          showTargetInApp: false,
+          showTargetInPlugin: false,
           connected: false
         },
         {
           key: 'limit',
+          type: 'hidden',
+          label: '引用上限',
+          description: '单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens',
           value: formData.dataset.limit,
-          type: FlowNodeInputTypeEnum.slider,
-          label: '单次搜索上限',
+          valueType: 'number',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
           connected: false
-        },
-        {
-          key: 'switch',
-          type: FlowNodeInputTypeEnum.target,
-          label: '触发器',
-          connected: false
-        },
-        {
-          key: 'userChatInput',
-          type: FlowNodeInputTypeEnum.target,
-          label: '用户问题',
-          connected: true
         },
         {
           key: 'searchMode',
@@ -256,19 +381,32 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           key: 'datasetParamsModal',
           type: 'selectDatasetParamsModal',
           label: '',
-          connected: false,
           valueType: 'any',
           showTargetInApp: false,
-          showTargetInPlugin: false
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'userChatInput',
+          type: 'target',
+          label: 'core.module.input.label.user question',
+          required: true,
+          valueType: 'string',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: true
         }
       ],
       outputs: [
         {
           key: 'isEmpty',
+          label: '搜索结果为空',
+          type: 'source',
+          valueType: 'boolean',
           targets: formData.dataset.searchEmptyText
             ? [
                 {
-                  moduleId: 'emptyText',
+                  moduleId: '6dtsvu',
                   key: 'switch'
                 }
               ]
@@ -276,6 +414,9 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         },
         {
           key: 'unEmpty',
+          label: '搜索结果不为空',
+          type: 'source',
+          valueType: 'boolean',
           targets: formData.dataset.searchEmptyText
             ? [
                 {
@@ -287,77 +428,352 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         },
         {
           key: 'quoteQA',
+          label: '引用内容',
+          description:
+            '始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器',
+          type: 'source',
+          valueType: 'datasetQuote',
           targets: [
             {
               moduleId: 'chatModule',
               key: 'quoteQA'
             }
           ]
-        }
-      ],
-      position: {
-        x: 956.0838440206068,
-        y: 887.462827870246
-      },
-      moduleId: 'datasetSearch'
-    },
-    ...(formData.dataset.searchEmptyText
-      ? [
-          {
-            name: '指定回复',
-            flowType: FlowNodeTypeEnum.answerNode,
-            inputs: [
-              {
-                key: ModuleInputKeyEnum.switch,
-                type: FlowNodeInputTypeEnum.target,
-                label: '触发器',
-                connected: true
-              },
-              {
-                key: ModuleInputKeyEnum.answerText,
-                value: formData.dataset.searchEmptyText,
-                type: FlowNodeInputTypeEnum.textarea,
-                valueType: ModuleDataTypeEnum.string,
-                label: '回复的内容',
-                connected: true
-              }
-            ],
-            outputs: [],
-            position: {
-              x: 1553.5815811529146,
-              y: 637.8753731306779
-            },
-            moduleId: 'emptyText'
-          }
-        ]
-      : []),
-    {
-      name: 'AI 对话',
-      flowType: FlowNodeTypeEnum.chatNode,
-      inputs: chatModelInput(formData),
-      showStatus: true,
-      outputs: [
-        {
-          key: 'answerText',
-          label: 'AI回复',
-          description: '直接响应，无需配置',
-          type: 'hidden',
-          targets: []
         },
         {
           key: 'finish',
-          label: '回复结束',
-          description: 'AI 回复完成后触发',
+          label: 'core.module.output.label.running done',
+          description: 'core.module.output.description.running done',
           valueType: 'boolean',
           type: 'source',
           targets: []
         }
-      ],
+      ]
+    },
+    {
+      moduleId: 'chatModule',
+      name: 'AI 对话',
+      avatar: '/imgs/module/AI.png',
+      flowType: 'chatNode',
+      showStatus: true,
       position: {
-        x: 1551.71405495818,
-        y: 977.4911578918461
+        x: 2022.7264786978908,
+        y: 1006.3102431257475
       },
-      moduleId: 'chatModule'
+      inputs: [
+        {
+          key: 'switch',
+          type: 'target',
+          label: 'core.module.input.label.switch',
+          valueType: 'any',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: !!formData.dataset?.searchEmptyText
+        },
+        {
+          key: 'model',
+          type: 'selectChatModel',
+          label: '对话模型',
+          required: true,
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.aiSettings.model,
+          connected: false
+        },
+        {
+          key: 'temperature',
+          type: 'hidden',
+          label: '温度',
+          value: formData.aiSettings.temperature,
+          valueType: 'number',
+          min: 0,
+          max: 10,
+          step: 1,
+          markList: [
+            {
+              label: '严谨',
+              value: 0
+            },
+            {
+              label: '发散',
+              value: 10
+            }
+          ],
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'maxToken',
+          type: 'hidden',
+          label: '回复上限',
+          value: formData.aiSettings.maxToken,
+          valueType: 'number',
+          min: 100,
+          max: 4000,
+          step: 50,
+          markList: [
+            {
+              label: '100',
+              value: 100
+            },
+            {
+              label: '4000',
+              value: 4000
+            }
+          ],
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'isResponseAnswerText',
+          type: 'hidden',
+          label: '返回AI内容',
+          value: true,
+          valueType: 'boolean',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'quoteTemplate',
+          type: 'hidden',
+          label: '引用内容模板',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.aiSettings.quoteTemplate,
+          connected: false
+        },
+        {
+          key: 'quotePrompt',
+          type: 'hidden',
+          label: '引用内容提示词',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.aiSettings.quotePrompt,
+          connected: false
+        },
+        {
+          key: 'aiSettings',
+          type: 'aiSettings',
+          label: '',
+          valueType: 'any',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'systemPrompt',
+          type: 'textarea',
+          label: '系统提示词',
+          max: 300,
+          valueType: 'string',
+          description:
+            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
+          placeholder:
+            '模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          value: formData.aiSettings.systemPrompt,
+          connected: false
+        },
+        {
+          key: 'history',
+          type: 'numberInput',
+          label: 'core.module.input.label.chat history',
+          required: true,
+          min: 0,
+          max: 30,
+          valueType: 'chatHistory',
+          value: 6,
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
+          key: 'quoteQA',
+          type: 'target',
+          label: '引用内容',
+          description: "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
+          valueType: 'datasetQuote',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: true
+        },
+        {
+          key: 'userChatInput',
+          type: 'target',
+          label: 'core.module.input.label.user question',
+          required: true,
+          valueType: 'string',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: true
+        }
+      ],
+      outputs: [
+        {
+          key: 'answerText',
+          label: 'AI回复',
+          description: '将在 stream 回复完毕后触发',
+          valueType: 'string',
+          type: 'source',
+          targets: []
+        },
+        {
+          key: 'finish',
+          label: 'core.module.output.label.running done',
+          description: 'core.module.output.description.running done',
+          valueType: 'boolean',
+          type: 'source',
+          targets: []
+        },
+        {
+          key: 'history',
+          label: '新的上下文',
+          description: '将本次回复内容拼接上历史记录，作为新的上下文返回',
+          valueType: 'chatHistory',
+          type: 'source',
+          targets: []
+        }
+      ]
+    },
+    {
+      moduleId: 'vuc92c',
+      name: 'core.module.template.cfr',
+      avatar: '/imgs/module/cfr.svg',
+      flowType: 'cfr',
+      showStatus: true,
+      position: {
+        x: 758.2985382279098,
+        y: 1124.6527309337314
+      },
+      inputs: [
+        {
+          key: 'switch',
+          type: 'target',
+          label: 'core.module.input.label.switch',
+          valueType: 'any',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
+          key: 'model',
+          type: 'selectExtractModel',
+          label: 'core.module.input.label.aiModel',
+          required: true,
+          valueType: 'string',
+          value: getExtractModel().model,
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          connected: false
+        },
+        {
+          key: 'systemPrompt',
+          type: 'textarea',
+          label: 'core.module.input.label.cfr background',
+          max: 300,
+          value: formData.cfr.background,
+          valueType: 'string',
+          description: 'core.module.input.description.cfr background',
+          placeholder: 'core.module.input.placeholder.cfr background',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
+          key: 'history',
+          type: 'numberInput',
+          label: 'core.module.input.label.chat history',
+          required: true,
+          min: 0,
+          max: 30,
+          valueType: 'chatHistory',
+          value: 6,
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        },
+        {
+          key: 'userChatInput',
+          type: 'target',
+          label: 'core.module.input.label.user question',
+          required: true,
+          valueType: 'string',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: true
+        }
+      ],
+      outputs: [
+        {
+          key: 'system_text',
+          label: 'core.module.output.label.cfr result',
+          valueType: 'string',
+          type: 'source',
+          targets: [
+            {
+              moduleId: 'datasetSearch',
+              key: 'userChatInput'
+            }
+          ]
+        }
+      ]
     }
   ];
+
+  if (formData.dataset?.searchEmptyText) {
+    modules.push({
+      moduleId: '6dtsvu',
+      name: '指定回复',
+      avatar: '/imgs/module/reply.png',
+      flowType: 'answerNode',
+      position: {
+        x: 2018.2744321961648,
+        y: 616.1220817209096
+      },
+      inputs: [
+        {
+          key: 'switch',
+          type: 'target',
+          label: 'core.module.input.label.switch',
+          valueType: 'any',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: true
+        },
+        {
+          key: 'text',
+          type: 'textarea',
+          value: formData.dataset.searchEmptyText,
+          valueType: 'any',
+          label: '回复的内容',
+          description:
+            '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
+          placeholder:
+            '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
+          showTargetInApp: true,
+          showTargetInPlugin: true,
+          connected: false
+        }
+      ],
+      outputs: [
+        {
+          key: 'finish',
+          label: 'core.module.output.label.running done',
+          description: 'core.module.output.description.running done',
+          valueType: 'boolean',
+          type: 'source',
+          targets: []
+        }
+      ]
+    });
+  }
+
+  return modules;
 }

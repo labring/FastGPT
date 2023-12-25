@@ -182,7 +182,7 @@ const FileSelect = ({
 
           if (text) {
             text = simpleText(text);
-            const splitRes = splitText2Chunks({
+            const { chunks, tokens } = splitText2Chunks({
               text,
               chunkLen,
               overlapRatio
@@ -193,10 +193,10 @@ const FileSelect = ({
               filename: file.name,
               icon,
               rawText: text,
-              tokens: splitRes.tokens,
+              tokens,
               type: DatasetCollectionTypeEnum.file,
               fileId,
-              chunks: splitRes.chunks.map((chunk) => ({
+              chunks: chunks.map((chunk) => ({
                 q: chunk,
                 a: ''
               }))
@@ -219,7 +219,7 @@ const FileSelect = ({
   const onUrlFetch = useCallback(
     (e: UrlFetchResponse) => {
       const result: FileItemType[] = e.map<FileItemType>(({ url, content }) => {
-        const splitRes = splitText2Chunks({
+        const { chunks, tokens } = splitText2Chunks({
           text: content,
           chunkLen,
           overlapRatio
@@ -229,10 +229,10 @@ const FileSelect = ({
           filename: url,
           icon: '/imgs/files/link.svg',
           rawText: content,
-          tokens: splitRes.tokens,
+          tokens,
           type: DatasetCollectionTypeEnum.link,
           rawLink: url,
-          chunks: splitRes.chunks.map((chunk) => ({
+          chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
           }))
@@ -259,7 +259,7 @@ const FileSelect = ({
         metadata: { datasetId: datasetDetail._id }
       });
 
-      const splitRes = splitText2Chunks({
+      const { chunks, tokens } = splitText2Chunks({
         text: content,
         chunkLen,
         overlapRatio
@@ -271,10 +271,10 @@ const FileSelect = ({
           filename,
           icon: '/imgs/files/txt.svg',
           rawText: content,
-          tokens: splitRes.tokens,
+          tokens,
           type: DatasetCollectionTypeEnum.file,
           fileId: fileIds[0],
-          chunks: splitRes.chunks.map((chunk) => ({
+          chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
           }))
@@ -352,7 +352,7 @@ const FileSelect = ({
     ml: 1,
     as: 'span',
     cursor: 'pointer',
-    color: 'myBlue.700',
+    color: 'blue.600',
     _hover: {
       textDecoration: 'underline'
     }
@@ -417,7 +417,7 @@ const FileSelect = ({
           mt={1}
           cursor={'pointer'}
           textDecoration={'underline'}
-          color={'myBlue.600'}
+          color={'blue.500'}
           fontSize={'12px'}
           onClick={() =>
             fileDownload({

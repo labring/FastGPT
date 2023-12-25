@@ -22,7 +22,6 @@
     "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
     "Chat logs": "对话日志",
     "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
-    "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
     "Connection is invalid": "连接无效",
     "Connection type is different": "连接的类型不一致",
     "Copy Module Config": "复制配置",
@@ -52,7 +51,7 @@
       "My Modules": "",
       "No Modules": "还没有模块~",
       "System Module": "系统模块",
-      "type": "\"{{type}}\"类型\n{{example}}"
+      "type": "\"{{type}}\"类型\n{{description}}"
     },
     "modules": {
       "Title is required": "模块名不能为空"
@@ -88,32 +87,6 @@
       "online": "在线使用",
       "share": "外部链接调用",
       "test": "测试"
-    },
-    "response": {
-      "module cq": "问题分类列表",
-      "module cq result": "分类结果",
-      "module extract description": "提取要求描述",
-      "module extract result": "提取结果",
-      "module historyPreview": "完整记录",
-      "module http body": "请求体",
-      "module http result": "响应体",
-      "module http url": "请求地址",
-      "module limit": "单次搜索上限",
-      "module maxToken": "最大 Tokens",
-      "module model": "模型",
-      "module name": "模型名",
-      "module price": "计费",
-      "module query": "问题/检索词",
-      "module question": "问题",
-      "module quoteList": "引用内容",
-      "module runningTime": "运行时长",
-      "module search query": "检索词",
-      "module search response": "搜索结果",
-      "module similarity": "相似度",
-      "module temperature": "温度",
-      "module time": "运行时长",
-      "module tokens": "Tokens",
-      "plugin output": "插件输出值"
     },
     "retry": "重新生成"
   },
@@ -239,6 +212,11 @@
     "system": {
       "Help Chatbot": "机器人助手",
       "Use Helper": "使用帮助"
+    },
+    "ui": {
+      "textarea": {
+        "Magnifying": "放大"
+      }
     }
   },
   "core": {
@@ -261,7 +239,22 @@
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Welcome Text": "对话开场白",
+      "Chat Variable": "对话框变量",
+      "Question Guide": "问题引导",
       "create app": "创建属于你的 AI 应用",
+      "edit": {
+        "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
+        "Out Ad Edit": "您即将退出高级编排页面，请确认",
+        "Prompt Editor": "提示词编辑",
+        "Save and out": "保存并退出",
+        "UnSave": "不保存",
+        "cfr background prompt": "问题补全 - 对话背景描述",
+        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示不使用问题补全功能。"
+      },
+      "feedback": {
+        "Custom feedback": "自定义反馈",
+        "close custom feedback": "关闭反馈"
+      },
       "logs": {
         "Source And Time": "来源 & 时间"
       },
@@ -306,7 +299,10 @@
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
       "error": {
-        "Messages empty": "接口内容为空，可能文本超长了~"
+        "Messages empty": "接口内容为空，可能文本超长了~",
+        "Select dataset empty": "你没有选择知识库",
+        "user input empty": "传入的用户问题为空",
+        "Chat error": "对话出现异常"
       },
       "feedback": {
         "Close User Good Feedback": "",
@@ -324,6 +320,35 @@
         "Quote Tip": "此处仅显示实际引用内容，若数据有更新，此处不会实时更新",
         "Read Quote": "查看引用",
         "Read Source": "查看来源"
+      },
+      "response": {
+        "Plugin Resonse Detail": "插件详情",
+        "context total length": "上下文总长度",
+        "module cq": "问题分类列表",
+        "module cq result": "分类结果",
+        "module extract description": "提取要求描述",
+        "module extract result": "提取结果",
+        "module historyPreview": "完整记录",
+        "module http body": "请求体",
+        "module http result": "响应体",
+        "module http url": "请求地址",
+        "module limit": "单次搜索上限",
+        "module maxToken": "最大 Tokens",
+        "module model": "模型",
+        "module name": "模型名",
+        "module price": "计费",
+        "module query": "问题/检索词",
+        "module question": "问题",
+        "module quoteList": "引用内容",
+        "module runningTime": "运行时长",
+        "module search query": "检索词",
+        "module search response": "搜索结果",
+        "module similarity": "相似度",
+        "module temperature": "温度",
+        "module time": "运行时长",
+        "module tokens": "Tokens",
+        "plugin output": "插件输出值",
+        "text output": "文本输出"
       },
       "tts": {
         "Stop Speech": "停止"
@@ -462,7 +487,7 @@
           "embeddingReRank": "增强语义检索",
           "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序，相关度通常差异明显。"
         },
-        "search mode": "检索模式"
+        "search mode": "搜索模式"
       },
       "status": {
         "active": "已就绪",
@@ -506,14 +531,48 @@
       "Plugin output must connect": "自定义输出必须全部连接",
       "Variable": "参数变量",
       "Variable Setting": "变量设置",
+      "edit": {
+        "Field Already Exist": "key 重复",
+        "Field Edit": "字段编辑"
+      },
+      "extract": {
+        "Enum Description": "列举出该字段可能的值，每行一个",
+        "Enum Value": "枚举值",
+        "Field Description Placeholder": "姓名/年龄/sql语句……",
+        "Field Setting Title": "提取字段配置"
+      },
       "input": {
+        "Add Input": "添加入参",
+        "Input Number": "入参: {{length}}",
+        "description": {
+          "Http Request Header": "自定义请求头，请严格填入JSON字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如: {\"Authorization\":\"Bearer xxx\"}",
+          "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
+          "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
+          "anyInput": "可传入任意内容",
+          "cfr background": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示【首次对话】不使用问题补全功能。",
+          "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
+          "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
+        },
         "label": {
+          "Http Request Header": "请求头",
+          "Http Request Method": "请求方式",
+          "Http Request Url": "请求地址",
+          "TFSwitch textarea": "自定义 False 匹配规则",
+          "aiModel": "AI 模型",
+          "anyInput": "任意内容输入",
+          "cfr background": "背景知识",
           "chat history": "聊天记录",
           "switch": "触发器",
+          "textEditor textarea": "文本编辑",
           "user question": "用户问题"
+        },
+        "placeholder": {
+          "cfr background": "关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。"
         }
       },
       "inputType": {
+        "chat history": "历史记录",
+        "dynamicTargetInput": "动态外部数据",
         "input": "输入框",
         "selectApp": "应用选择",
         "selectChatModel": "对话模型选择",
@@ -523,18 +582,37 @@
         "textarea": "段落输入"
       },
       "output": {
+        "Add Output": "添加出参",
+        "Output Number": "出参: {{length}}",
         "description": {
           "running done": "模块调用结束时触发"
         },
         "label": {
-          "running done": "模块调用结束"
+          "cfr result": "补全结果",
+          "result false": "False",
+          "result true": "True",
+          "running done": "模块调用结束",
+          "text": "文本输出"
         }
+      },
+      "template": {
+        "TFSwitch": "判断器",
+        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。",
+        "UnKnow Module": "未知模块",
+        "cfr": "问题补全",
+        "cfr intro": "根据历史记录，完善当前问题，使其更利于知识库搜索，同时提高连续对话能力。",
+        "textEditor": "文本加工",
+        "textEditor intro": "可对固定或传入的文本进行加工后输出"
+      },
+      "textEditor": {
+        "Text Edit": "文本加工"
       },
       "valueType": {
         "any": "任意",
         "boolean": "布尔",
         "chatHistory": "聊天记录",
         "datasetQuote": "引用内容",
+        "dynamicTargetInput": "动态字段输入",
         "number": "数字",
         "selectApp": "应用选择",
         "selectDataset": "知识库选择",

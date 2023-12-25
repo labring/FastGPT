@@ -96,10 +96,10 @@ function A({ children, ...props }: any) {
             name={'core/chat/quoteSign'}
             transform={'translateY(-2px)'}
             w={'18px'}
-            color={'myBlue.600'}
+            color={'blue.500'}
             cursor={'pointer'}
             _hover={{
-              color: 'myBlue.800'
+              color: 'blue.700'
             }}
             onClick={() => getFileAndOpen(props.href)}
           />
@@ -131,7 +131,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}
-      ${isChatting ? (source === '' ? styles.waitingAnimation : styles.animation) : ''}
+      ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
       remarkPlugins={[RemarkGfm, RemarkMath, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}

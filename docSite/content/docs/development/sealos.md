@@ -54,7 +54,7 @@ FastGPT 商业版共包含了3个应用（fastgpt, fastgpt-plus, fastgpt-admin�
 点击右侧的详情，可以查看对应应用的详细信息。
 
 ### 如何更新/升级 FastGPT
-[升级脚本文档](https://doc.fastgpt.in/docs/installation/upgrading/)先看下文档，看下需要升级哪个版本。注意，不要跨版本升级！！！！！
+[升级脚本文档](https://doc.fastgpt.in/docs/development/upgrading/)先看下文档，看下需要升级哪个版本。注意，不要跨版本升级！！！！！
 
 例如，目前是4.5 版本，要升级到4.5.1，就先把镜像版本改成v4.5.1，执行一下升级脚本，等待完成后再继续升级。如果目标版本不需要执行初始化，则可以跳过。
 
@@ -191,23 +191,4 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ### One API 使用
 
-One API 管理默认账号密码为: root 123456
-
-首先在sealos中找到 one-api 开头的应用。
-![](/imgs/onsealos10.png)
-
-点击详情，进入应用详情页。
-
-![](/imgs/onsealos11.png)
-
-#### 概念介绍
-
-OneAPI 会将不同的模型（GPT，向量模型，文心一言，GLM 等）集中起来管理，并通过暴露一个 key 给 FastGPT 进行访问。FastGPT 中只需要填 OneAPI 的地址及令牌即可。
-
-![](/imgs/onsealos12.png)
-
-#### 注意
-
-OpenAI 渠道务必添加 Embedding 模型，否则无法使用知识库。一般用 openai 的话，直接点填入基础模型即可。
-
-![](/imgs/onsealos13.png)
+[参考 OneAPI 使用步骤](/docs/development/one-api/)

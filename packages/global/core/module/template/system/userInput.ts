@@ -5,7 +5,7 @@ import {
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
 import {
-  ModuleDataTypeEnum,
+  ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
   ModuleTemplateTypeEnum
@@ -22,7 +22,7 @@ export const UserInputModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.userChatInput,
       type: FlowNodeInputTypeEnum.systemInput,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       label: '用户问题',
       showTargetInApp: false,
       showTargetInPlugin: false
@@ -33,7 +33,7 @@ export const UserInputModule: FlowModuleTemplateType = {
       key: ModuleOutputKeyEnum.userChatInput,
       label: '用户问题',
       type: FlowNodeOutputTypeEnum.source,
-      valueType: ModuleDataTypeEnum.string,
+      valueType: ModuleIOValueTypeEnum.string,
       targets: []
     }
   ]

@@ -23,8 +23,8 @@ declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
 
-  var vectorModels: VectorModelItemType[];
   var chatModels: ChatModelItemType[];
+  var vectorModels: VectorModelItemType[];
   var qaModels: LLMModelItemType[];
   var cqModels: FunctionModelItemType[];
   var extractModels: FunctionModelItemType[];

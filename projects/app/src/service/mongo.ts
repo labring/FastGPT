@@ -4,7 +4,6 @@ import { initPg } from '@fastgpt/service/common/pg';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { getInitConfig } from '@/pages/api/system/getInitData';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 
@@ -13,9 +12,7 @@ import { exit } from 'process';
  */
 export function connectToDatabase(): Promise<void> {
   return connectMongo({
-    beforeHook: () => {
-      getInitConfig();
-    },
+    beforeHook: () => {},
     afterHook: () => {
       initPg();
       // start queue

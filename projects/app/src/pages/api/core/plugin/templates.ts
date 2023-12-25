@@ -33,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       })),
       ...(global.communityPlugins?.map((plugin) => ({
         id: plugin.id,
-        templateType: ModuleTemplateTypeEnum.communityPlugin,
+        templateType: plugin.templateType ?? ModuleTemplateTypeEnum.other,
         flowType: FlowNodeTypeEnum.pluginModule,
         avatar: plugin.avatar,
         name: plugin.name,

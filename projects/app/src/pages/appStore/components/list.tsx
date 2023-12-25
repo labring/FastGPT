@@ -61,7 +61,7 @@ const ShareModelList = ({
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
-              color={model.isCollection ? 'myBlue.700' : 'blackAlpha.700'}
+              color={model.isCollection ? 'blue.600' : 'blackAlpha.700'}
               onClick={() => onclickCollection(model._id)}
             >
               <MyIcon
