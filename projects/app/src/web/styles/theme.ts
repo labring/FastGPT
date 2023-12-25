@@ -110,6 +110,23 @@ const Button = defineStyleConfig({
         bg: 'primary.7 !important'
       }
     },
+    primaryOutline: {
+      color: 'primary.600',
+      border: '1px solid',
+      borderColor: 'primary.300',
+      bg: 'white',
+      transition: 'background 0.1s',
+      boxShadow: '1',
+      _hover: {
+        bg: 'primary.1'
+      },
+      _active: {
+        color: 'primary.600'
+      },
+      _disabled: {
+        bg: 'white !important'
+      }
+    },
     whiteBase: {
       color: 'myGray.600',
       border: '1px solid',
@@ -118,22 +135,10 @@ const Button = defineStyleConfig({
       transition: 'background 0.1s',
       boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
       _hover: {
-        boxShadow: 'md',
         color: 'primary.600'
       },
       _active: {
         color: 'primary.600'
-      }
-    },
-    solidGray: {
-      bg: 'myGray.150',
-      color: 'myGray.900',
-      _hover: {
-        color: 'primary.600',
-        bg: 'primary.50'
-      },
-      _disabled: {
-        bg: 'myGray.50'
       }
     },
     whitePrimary: {
@@ -167,6 +172,17 @@ const Button = defineStyleConfig({
       _active: {
         color: 'red.600'
       }
+    },
+    grayBase: {
+      bg: 'myGray.150',
+      color: 'myGray.900',
+      _hover: {
+        color: 'primary.600',
+        bg: 'primary.50'
+      },
+      _disabled: {
+        bg: 'myGray.50'
+      }
     }
   },
   defaultProps: {
@@ -176,14 +192,17 @@ const Button = defineStyleConfig({
 });
 
 const Input: ComponentStyleConfig = {
-  baseStyle: {},
+  baseStyle: {
+    fontsize: '14px'
+  },
   variants: {
     outline: {
       field: {
+        h: '40px',
         backgroundColor: 'transparent',
         border: '1px solid',
-        borderRadius: 'base',
-        borderColor: 'myGray.200',
+        borderRadius: 'md',
+        borderColor: 'borderColor.low',
         _focus: {
           borderColor: 'primary.500',
           boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
@@ -383,6 +402,12 @@ export const theme = extendTheme({
       700: '#027A48',
       800: '#05603A',
       900: '#054F31'
+    },
+    borderColor: {
+      low: '#E8EBF0',
+      base: '#DFE2EA',
+      high: '#C4CBD7',
+      highest: '#8A95A7'
     }
   },
   fonts: {
@@ -407,16 +432,28 @@ export const theme = extendTheme({
     highest: 'myGray.400'
   },
   borders: {
-    sm: '1px solid #EFF0F1',
-    base: '1px solid #DEE0E2',
+    sm: '1px solid #E8EBF0',
+    base: '1px solid #DFE2EA',
     md: '1px solid #DAE0E2',
     lg: '1px solid #D0E0E2'
   },
+  borderRadius: {
+    xs: '4px',
+    sm: '6px',
+    md: '8px',
+    lg: '12px',
+    xl: '16px'
+  },
   shadows: {
-    sm: '0 0 5px rgba(0,0,0,0.1)',
-    md: '0 0 8px rgba(0,0,0,0.1)',
-    base: '0 0 10px rgba(0,0,0,0.15)',
-    lg: '0 0 10px rgba(0,0,0,0.2)'
+    1: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
+    1.5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 1px 2px 0px rgba(19, 51, 107, 0.10)',
+    2: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)',
+    3: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 10px 0px rgba(19, 51, 107, 0.08)',
+    3.5: '0px 0px 1px 0px rgba(19, 51, 107, 0.10), 0px 4px 10px 0px rgba(19, 51, 107, 0.10)',
+    4: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)',
+    5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 20px 24px -8px rgba(19, 51, 107, 0.15)',
+    6: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 24px 48px -12px rgba(19, 51, 107, 0.20)',
+    7: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)'
   },
   breakpoints: {
     sm: '900px',

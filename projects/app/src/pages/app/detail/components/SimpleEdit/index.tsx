@@ -199,7 +199,7 @@ function ConfigForm({
         ref={divRef}
         position={'sticky'}
         top={-4}
-        bg={'white'}
+        bg={'myGray.25'}
         py={4}
         justifyContent={'space-between'}
         alignItems={'center'}
@@ -717,7 +717,14 @@ function ChatTest({ appId }: { appId: string }) {
   }, [appDetail, resetChatBox]);
 
   return (
-    <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4} overflowX={'auto'}>
+    <Flex
+      position={'relative'}
+      flexDirection={'column'}
+      h={'100%'}
+      py={4}
+      overflowX={'auto'}
+      bg={'white'}
+    >
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'} flex={1}>
           {t('app.Chat Debug')}

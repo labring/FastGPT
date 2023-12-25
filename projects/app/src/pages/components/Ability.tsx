@@ -16,14 +16,14 @@ const Ability = () => {
   };
   const TitleStyles: BoxProps = {
     px: 4,
-    fontSize: ['xl', '30px'],
+    fontSize: ['xl', '28px'],
     fontWeight: 'bold'
   };
   const DescStyles: BoxProps = {
     px: 4,
     mt: 2,
     mb: 5,
-    fontSize: ['sm', 'lg'],
+    fontSize: ['sm', 'md'],
     whiteSpace: 'pre-wrap'
   };
 

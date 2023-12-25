@@ -128,7 +128,6 @@ const UserInfo = () => {
       py={[2, 10]}
       justifyContent={'center'}
       alignItems={'flex-start'}
-      fontSize={['lg', 'xl']}
     >
       <Flex
         flexDirection={'column'}

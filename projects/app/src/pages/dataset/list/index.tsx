@@ -132,8 +132,8 @@ const Kb = () => {
   );
 
   return (
-    <PageContainer isLoading={isFetching}>
-      <Flex pt={3} px={5} alignItems={'center'}>
+    <PageContainer isLoading={isFetching} insertProps={{ px: [5, '48px'] }}>
+      <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         {/* url path */}
         <ParentPaths
           paths={paths.map((path, i) => ({
@@ -162,7 +162,7 @@ const Kb = () => {
             offset={[-30, 10]}
             width={120}
             Button={
-              <Button variant={'whitePrimary'} px={0}>
+              <Button variant={'primaryOutline'} px={0}>
                 <MenuButton h={'100%'}>
                   <Flex alignItems={'center'} px={'20px'}>
                     <AddIcon mr={2} />
@@ -195,25 +195,26 @@ const Kb = () => {
         )}
       </Flex>
       <Grid
-        p={5}
-        gridTemplateColumns={['1fr', 'repeat(3,1fr)', 'repeat(4,1fr)', 'repeat(5,1fr)']}
+        py={5}
+        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
         gridGap={5}
         userSelect={'none'}
       >
         {formatDatasets.map((dataset) => (
-          <Card
+          <Box
             display={'flex'}
             flexDirection={'column'}
             key={dataset._id}
             py={3}
             px={5}
             cursor={'pointer'}
+            borderWidth={1.5}
+            borderColor={dragTargetId === dataset._id ? 'primary.600' : 'borderColor.low'}
+            bg={'white'}
+            borderRadius={'lg'}
             minH={'130px'}
-            border={theme.borders.md}
-            boxShadow={'none'}
             position={'relative'}
             data-drag-id={dataset.type === DatasetTypeEnum.folder ? dataset._id : undefined}
-            borderColor={dragTargetId === dataset._id ? 'primary.500' : ''}
             draggable
             onDragStart={(e) => {
               setDragStartId(dataset._id);
@@ -242,8 +243,8 @@ const Kb = () => {
               setDragTargetId(undefined);
             }}
             _hover={{
-              boxShadow: '1px 1px 10px rgba(0,0,0,0.2)',
-              borderColor: 'transparent',
+              borderColor: 'primary.300',
+              boxShadow: '1.5',
               '& .delete': {
                 display: 'block'
               }
@@ -411,7 +412,7 @@ const Kb = () => {
               <MyIcon mr={1} name={dataset.icon as any} w={'12px'} />
               <Box color={'myGray.500'}>{t(dataset.label)}</Box>
             </Flex>
-          </Card>
+          </Box>
         ))}
       </Grid>
       {myDatasets.length === 0 && (

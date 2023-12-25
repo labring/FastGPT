@@ -133,7 +133,7 @@ const TTSSelect = ({
                   <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
                   <Button
                     ml={2}
-                    variant={'solidGray'}
+                    variant={'grayBase'}
                     color={'primary.600'}
                     isLoading={audioLoading}
                     leftIcon={<MyIcon name={'core/chat/stopSpeech'} w={'16px'} />}

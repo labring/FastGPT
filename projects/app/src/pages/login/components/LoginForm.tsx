@@ -129,7 +129,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             bg={'myGray.50'}
             placeholder={isCommunityVersion ? '使用root用户登录' : '邮箱/手机号/用户名'}
-            size={['md', 'lg']}
             {...register('username', {
               required: '邮箱/手机号/用户名不能为空'
             })}
@@ -139,7 +138,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             bg={'myGray.50'}
             type={'password'}
-            size={['md', 'lg']}
             placeholder={isCommunityVersion ? 'root密码为你设置的环境变量' : '密码'}
             {...register('password', {
               required: '密码不能为空',

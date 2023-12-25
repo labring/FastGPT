@@ -81,7 +81,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             bg={'myGray.50'}
             placeholder="邮箱/手机号"
-            size={['md', 'lg']}
             {...register('username', {
               required: '邮箱/手机号不能为空',
               pattern: {
@@ -102,7 +101,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           <Input
             bg={'myGray.50'}
             flex={1}
-            size={['md', 'lg']}
             maxLength={8}
             placeholder="验证码"
             {...register('code', {
@@ -132,7 +130,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             bg={'myGray.50'}
             type={'password'}
             placeholder="新密码(4~20位)"
-            size={['md', 'lg']}
             {...register('password', {
               required: '密码不能为空',
               minLength: {
@@ -151,7 +148,6 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
             bg={'myGray.50'}
             type={'password'}
             placeholder="确认密码"
-            size={['md', 'lg']}
             {...register('password2', {
               validate: (val) => (getValues('password') === val ? true : '两次密码不一致')
             })}
