@@ -199,7 +199,6 @@ const Input: ComponentStyleConfig = {
     outline: {
       field: {
         h: '40px',
-        backgroundColor: 'transparent',
         border: '1px solid',
         borderRadius: 'md',
         borderColor: 'borderColor.low',

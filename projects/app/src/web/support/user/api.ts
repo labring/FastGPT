@@ -17,7 +17,7 @@ export const sendAuthCode = (data: {
 }) => POST(`/plusApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () =>
-  GET<UserType>('/user/account/tokenLogin', {}, { maxQuantity: 1 });
+  GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginProps) =>
   POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
 export const postFastLogin = (params: FastLoginProps) =>
@@ -57,17 +57,17 @@ export const postFindPassword = ({
   });
 
 export const updatePasswordByOld = ({ oldPsw, newPsw }: { oldPsw: string; newPsw: string }) =>
-  POST('/user/account/updatePasswordByOld', {
+  POST('/support/user/account/updatePasswordByOld', {
     oldPsw: hashStr(oldPsw),
     newPsw: hashStr(newPsw)
   });
 
 export const postLogin = ({ password, ...props }: PostLoginProps) =>
-  POST<ResLogin>('/user/account/loginByPassword', {
+  POST<ResLogin>('/support/user/account/loginByPassword', {
     ...props,
     password: hashStr(password)
   });
 
-export const loginOut = () => GET('/user/account/loginout');
+export const loginOut = () => GET('/support/user/account/loginout');
 
-export const putUserInfo = (data: UserUpdateParams) => PUT('/user/account/update', data);
+export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
