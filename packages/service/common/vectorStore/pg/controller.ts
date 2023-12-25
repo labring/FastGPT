@@ -22,7 +22,7 @@ export async function initPg() {
           data_id VARCHAR(50) NOT NULL,
           createTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
-      CREATE INDEX IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);
+      CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);
     `);
 
     console.log('init pg successful');
