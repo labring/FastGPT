@@ -210,7 +210,7 @@ const CreateModal = ({
           />
         )}
         <Box flex={1} />
-        <Button variant={'whitePrimary'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
         {!!defaultValue.id ? (

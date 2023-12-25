@@ -75,7 +75,14 @@ const QAImport = () => {
               {t('core.dataset.import.Re Preview')}
             </Button>
           )}
-          <Button isDisabled={uploading} onClick={openConfirm(() => onclickUpload({ prompt }))}>
+          <Button
+            isDisabled={uploading}
+            onClick={() => {
+              onReSplitChunks();
+
+              openConfirm(() => onclickUpload({ prompt }))();
+            }}
+          >
             {uploading ? (
               <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box>
             ) : (

@@ -89,6 +89,7 @@ export type DatasetTrainingSchemaType = {
   q: string;
   a: string;
   chunkIndex: number;
+  weight: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 

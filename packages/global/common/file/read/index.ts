@@ -2,7 +2,7 @@
 import * as pdfjsLib from 'pdfjs-dist';
 
 export const readPdfFile = async ({ pdf }: { pdf: string | URL | ArrayBuffer }) => {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'http://localhost:3000/js/pdf.worker.js';
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.js';
 
   type TokenType = {
     str: string;

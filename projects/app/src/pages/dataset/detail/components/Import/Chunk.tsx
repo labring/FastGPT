@@ -129,7 +129,14 @@ const ChunkImport = () => {
               {t('core.dataset.import.Re Preview')}
             </Button>
           )}
-          <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
+          <Button
+            isDisabled={uploading}
+            onClick={() => {
+              onReSplitChunks();
+
+              openConfirm(onclickUpload)();
+            }}
+          >
             {uploading ? (
               <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box>
             ) : (

@@ -60,7 +60,10 @@ export async function getVectorsByText({
 }
 
 function unityDimensional(vector: number[]) {
-  if (vector.length > 1536) return Promise.reject('向量维度不能超过 1536');
+  if (vector.length > 1536) {
+    console.log(`当前向量维度为: ${vector.length}, 向量维度不能超过 1536, 已自动截取前 1536 维度`);
+    return vector.slice(0, 1536);
+  }
   let resultVector = vector;
   const vectorLen = vector.length;
 

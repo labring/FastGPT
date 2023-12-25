@@ -43,7 +43,7 @@ type useImportStoreType = {
   setSuccessChunks: Dispatch<SetStateAction<number>>;
   isUnselectedFile: boolean;
   totalChunks: number;
-  onclickUpload: (e: { prompt?: string }) => void;
+  onclickUpload: (e?: { prompt?: string }) => void;
   onReSplitChunks: () => void;
   price: number;
   uploading: boolean;
@@ -56,7 +56,7 @@ type useImportStoreType = {
   setReShowRePreview: Dispatch<SetStateAction<boolean>>;
 };
 const StateContext = createContext<useImportStoreType>({
-  onclickUpload: function (e: { prompt?: string }): void {
+  onclickUpload: function (e?: { prompt?: string }): void {
     throw new Error('Function not implemented.');
   },
   uploading: false,
