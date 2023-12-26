@@ -104,21 +104,21 @@ export async function initSystemConfig() {
 
   // get config from database
   const config: FastGPTConfigFileType = {
-    ...fileRes,
-    chatModels: dbConfig.chatModels,
-    qaModels: dbConfig.qaModels,
-    cqModels: dbConfig.cqModels,
-    extractModels: dbConfig.extractModels,
-    qgModels: dbConfig.qgModels,
-    vectorModels: dbConfig.vectorModels,
-    reRankModels: dbConfig.reRankModels,
-    audioSpeechModels: dbConfig.audioSpeechModels,
-    whisperModel: dbConfig.whisperModel,
     feConfigs: {
       ...defaultFeConfigs,
       ...fileRes.feConfigs,
       ...dbConfig.feConfigs
-    }
+    },
+    systemEnv: fileRes.systemEnv,
+    chatModels: dbConfig.chatModels || fileRes.chatModels || [],
+    qaModels: dbConfig.qaModels || fileRes.qaModels || [],
+    cqModels: dbConfig.cqModels || fileRes.cqModels || [],
+    extractModels: dbConfig.extractModels || fileRes.extractModels || [],
+    qgModels: dbConfig.qgModels || fileRes.qgModels || [],
+    vectorModels: dbConfig.vectorModels || fileRes.vectorModels || [],
+    reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
+    audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
+    whisperModel: dbConfig.whisperModel || fileRes.whisperModel
   };
 
   // set config
@@ -192,7 +192,11 @@ ${global.qgModels
 ${global.audioSpeechModels
   ?.map((item) => `| 语音播放-${item.name} | ${formatPrice(item.price, 1000)} |`)
   .join('\n')}
-${`| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`}
+${
+  global.whisperModel
+    ? `| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`
+    : ''
+}
 `;
 }
 
