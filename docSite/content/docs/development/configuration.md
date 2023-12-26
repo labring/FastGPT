@@ -134,6 +134,7 @@ weight: 708
       "maxToken": 3000
     }
   ],
+  "ReRankModels": [], // 重排模型,暂时填空数组
   "AudioSpeechModels": [
     {
       "model": "tts-1",
