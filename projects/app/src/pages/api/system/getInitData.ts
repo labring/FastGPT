@@ -85,14 +85,14 @@ export async function getInitConfig() {
     };
     global.systemEnv = config.SystemParams;
 
-    global.chatModels = config.ChatModels;
-    global.qaModels = config.QAModels;
-    global.cqModels = config.CQModels;
-    global.extractModels = config.ExtractModels;
-    global.qgModels = config.QGModels;
-    global.vectorModels = config.VectorModels;
-    global.reRankModels = config.ReRankModels;
-    global.audioSpeechModels = config.AudioSpeechModels;
+    global.chatModels = config.ChatModels || [];
+    global.qaModels = config.QAModels || [];
+    global.cqModels = config.CQModels || [];
+    global.extractModels = config.ExtractModels || [];
+    global.qgModels = config.QGModels || [];
+    global.vectorModels = config.VectorModels || [];
+    global.reRankModels = config.ReRankModels || [];
+    global.audioSpeechModels = config.AudioSpeechModels || [];
     global.whisperModel = config.WhisperModel;
 
     global.priceMd = '';
