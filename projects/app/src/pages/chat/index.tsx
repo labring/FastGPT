@@ -255,7 +255,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         </Box>
       )}
 
-      <PageContainer flex={'1 0 0'} w={0} p={'16px'} position={'relative'}>
+      <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
         <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
           {/* pc always show history. */}
           {((children: React.ReactNode) => {

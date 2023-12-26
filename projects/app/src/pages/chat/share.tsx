@@ -261,7 +261,7 @@ const OutLink = ({
     <PageContainer
       {...(isEmbed
         ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
-        : { p: 5 })}
+        : { p: [0, 5] })}
     >
       <Head>
         <title>{chatData.app.name}</title>

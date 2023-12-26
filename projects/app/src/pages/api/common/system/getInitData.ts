@@ -26,11 +26,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       cqModels: global.cqModels,
       extractModels: global.extractModels,
       vectorModels: global.vectorModels,
-      reRankModels: global.reRankModels.map((item) => ({
-        ...item,
-        requestUrl: undefined,
-        requestAuth: undefined
-      })),
+      reRankModels:
+        global.reRankModels?.map((item) => ({
+          ...item,
+          requestUrl: undefined,
+          requestAuth: undefined
+        })) || [],
       audioSpeechModels: global.audioSpeechModels,
       priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0',
