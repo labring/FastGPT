@@ -258,9 +258,9 @@ export function pushReRankBill({
   if (!model) return { total: 0 };
 
   const textLength = inputs.reduce((sum, item) => sum + item.text.length, 0);
-  const ratio = Math.ceil(textLength / 1000);
+  const ratio = textLength / 1000;
 
-  const total = model.price * PRICE_SCALE * ratio;
+  const total = Math.ceil(model.price * PRICE_SCALE * ratio);
   const name = 'wallet.bill.ReRank';
 
   createBill({
@@ -274,7 +274,7 @@ export function pushReRankBill({
         moduleName: name,
         amount: total,
         model: model.name,
-        tokenLen: 1
+        tokenLen: textLength
       }
     ]
   });
