@@ -106,8 +106,8 @@ export async function initSystemConfig() {
   const config: FastGPTConfigFileType = {
     feConfigs: {
       ...defaultFeConfigs,
-      ...fileRes.feConfigs,
-      ...dbConfig.feConfigs
+      ...(fileRes.feConfigs || {}),
+      ...(dbConfig.feConfigs || {})
     },
     systemEnv: fileRes.systemEnv,
     chatModels: dbConfig.chatModels || fileRes.chatModels || [],
