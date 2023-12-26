@@ -128,14 +128,14 @@ export async function initSystemConfig() {
   };
   global.systemEnv = config.systemEnv;
 
-  global.chatModels = config.chatModels || [];
-  global.qaModels = config.qaModels || [];
-  global.cqModels = config.cqModels || [];
-  global.extractModels = config.extractModels || [];
-  global.qgModels = config.qgModels || [];
-  global.vectorModels = config.vectorModels || [];
-  global.reRankModels = config.reRankModels || [];
-  global.audioSpeechModels = config.audioSpeechModels || [];
+  global.chatModels = config.chatModels;
+  global.qaModels = config.qaModels;
+  global.cqModels = config.cqModels;
+  global.extractModels = config.extractModels;
+  global.qgModels = config.qgModels;
+  global.vectorModels = config.vectorModels;
+  global.reRankModels = config.reRankModels;
+  global.audioSpeechModels = config.audioSpeechModels;
   global.whisperModel = config.whisperModel;
 
   global.priceMd = '';
