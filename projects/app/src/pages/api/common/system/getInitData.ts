@@ -168,26 +168,46 @@ export function getSystemVersion() {
 }
 
 export function countModelPrice() {
-  global.priceMd = `| 计费项 | 价格: 元|
-| --- | --- |
-${global.vectorModels?.map((item) => `| 索引-${item.name} | ${item.price}/1k tokens |`).join('\n')}
-${global.chatModels?.map((item) => `| 对话-${item.name} | ${item.price}/1k tokens |`).join('\n')}
-${global.qaModels
-  ?.map((item) => `| 文件QA拆分-${item.name} | ${item.price}/1k tokens |`)
+  global.priceMd = `| 计费项 | 输入价格(￥) | 输出价格(￥) |
+| --- | --- | --- |
+${global.vectorModels
+  ?.map((item) => `| 索引-${item.name} | ${item.inputPrice}/1k tokens | - |`)
   .join('\n')}
-${global.cqModels?.map((item) => `| 问题分类-${item.name} | ${item.price}/1k tokens |`).join('\n')}
+${global.chatModels
+  ?.map(
+    (item) => `| 对话-${item.name} | ${item.inputPrice}/1k tokens | ${item.outputPrice}/1k tokens |`
+  )
+  .join('\n')}
+${global.qaModels
+  ?.map(
+    (item) =>
+      `| 文件QA拆分-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
+  )
+  .join('\n')}
+${global.cqModels
+  ?.map(
+    (item) =>
+      `| 问题分类-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
+  )
+  .join('\n')}
 ${global.extractModels
-  ?.map((item) => `| 内容提取-${item.name} | ${item.price}/1k tokens |`)
+  ?.map(
+    (item) =>
+      `| 内容提取-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
+  )
   .join('\n')}
 ${global.qgModels
-  ?.map((item) => `| 下一步指引-${item.name} | ${item.price}/1k tokens |`)
+  ?.map(
+    (item) =>
+      `| 下一步指引-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
+  )
   .join('\n')}
 ${global.audioSpeechModels
-  ?.map((item) => `| 语音播放-${item.name} | ${item.price}/1k 字符 |`)
+  ?.map((item) => `| 语音播放-${item.name} | ${item.inputPrice}/1k 字符 | - |`)
   .join('\n')}
 ${
   global.whisperModel
-    ? `| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`
+    ? `| 语音输入-${global.whisperModel.name} | ${global.whisperModel.inputPrice}/分钟 | - |`
     : ''
 }
 `;

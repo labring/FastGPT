@@ -25,19 +25,45 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
     [bill.list]
   );
 
-  const hasModel = useMemo(() => !!bill.list.find((item) => item.model), [bill.list]);
-  const hasTokenLen = useMemo(
-    () => !!bill.list.find((item) => item.tokenLen !== undefined),
-    [bill.list]
-  );
-  const hasTextLen = useMemo(
-    () => !!bill.list.find((item) => item.textLen !== undefined),
-    [bill.list]
-  );
-  const hasDuration = useMemo(
-    () => !!bill.list.find((item) => item.duration !== undefined),
-    [bill.list]
-  );
+  const { hasModel, hasTokens, hasInputTokens, hasOutputTokens, hasTextLen, hasDuration } =
+    useMemo(() => {
+      let hasModel = false;
+      let hasTokens = false;
+      let hasInputTokens = false;
+      let hasOutputTokens = false;
+      let hasTextLen = false;
+      let hasDuration = false;
+
+      bill.list.forEach((item) => {
+        if (item.model !== undefined) {
+          hasModel = true;
+        }
+        if (item.tokenLen !== undefined) {
+          hasTokens = true;
+        }
+        if (item.inputTokens !== undefined) {
+          hasInputTokens = true;
+        }
+        if (item.outputTokens !== undefined) {
+          hasOutputTokens = true;
+        }
+        if (item.textLen !== undefined) {
+          hasTextLen = true;
+        }
+        if (item.duration !== undefined) {
+          hasDuration = true;
+        }
+      });
+
+      return {
+        hasModel,
+        hasTokens,
+        hasInputTokens,
+        hasOutputTokens,
+        hasTextLen,
+        hasDuration
+      };
+    }, [bill.list]);
 
   return (
     <MyModal
@@ -45,6 +71,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       onClose={onClose}
       iconSrc="/imgs/modal/bill.svg"
       title={t('user.Bill Detail')}
+      maxW={['90vw', '700px']}
     >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
@@ -81,7 +108,9 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                 <Tr>
                   <Th>{t('wallet.bill.Module name')}</Th>
                   {hasModel && <Th>{t('wallet.bill.Ai model')}</Th>}
-                  {hasTokenLen && <Th>{t('wallet.bill.Token Length')}</Th>}
+                  {hasTokens && <Th>{t('wallet.bill.Token Length')}</Th>}
+                  {hasInputTokens && <Th>{t('wallet.bill.Input Token Length')}</Th>}
+                  {hasOutputTokens && <Th>{t('wallet.bill.Output Token Length')}</Th>}
                   {hasTextLen && <Th>{t('wallet.bill.Text Length')}</Th>}
                   {hasDuration && <Th>{t('wallet.bill.Duration')}</Th>}
                   <Th>费用(￥)</Th>
@@ -91,10 +120,12 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                 {filterBillList.map((item, i) => (
                   <Tr key={i}>
                     <Td>{t(item.moduleName)}</Td>
-                    {hasModel && <Td>{item.model || '-'}</Td>}
-                    {hasTokenLen && <Td>{item.tokenLen || '-'}</Td>}
-                    {hasTextLen && <Td>{item.textLen || '-'}</Td>}
-                    {hasDuration && <Td>{item.duration || '-'}</Td>}
+                    {hasModel && <Td>{item.model ?? '-'}</Td>}
+                    {hasTokens && <Td>{item.tokenLen ?? '-'}</Td>}
+                    {hasInputTokens && <Td>{item.inputTokens ?? '-'}</Td>}
+                    {hasOutputTokens && <Td>{item.outputTokens ?? '-'}</Td>}
+                    {hasTextLen && <Td>{item.textLen ?? '-'}</Td>}
+                    {hasDuration && <Td>{item.duration ?? '-'}</Td>}
 
                     <Td>{formatStorePrice2Read(item.amount)}</Td>
                   </Tr>

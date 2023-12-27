@@ -108,7 +108,7 @@ function ConfigForm({
   const chatModelSelectList = useMemo(() => {
     return chatModelList.map((item) => ({
       value: item.model,
-      label: `${item.name} (${item.price} 元/1k tokens)`
+      label: item.name
     }));
   }, [refresh]);
 

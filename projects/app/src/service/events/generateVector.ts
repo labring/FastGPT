@@ -145,7 +145,7 @@ export async function generateVector(): Promise<any> {
     pushGenerateVectorBill({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      tokenLen: tokenLen,
+      tokenLen,
       model: data.model,
       billId: data.billId
     });

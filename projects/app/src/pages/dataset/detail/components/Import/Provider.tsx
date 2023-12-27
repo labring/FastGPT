@@ -43,6 +43,7 @@ type useImportStoreType = {
   setSuccessChunks: Dispatch<SetStateAction<number>>;
   isUnselectedFile: boolean;
   totalChunks: number;
+  totalTokens: number;
   onclickUpload: (e?: { prompt?: string }) => void;
   onReSplitChunks: () => void;
   price: number;
@@ -68,6 +69,7 @@ const StateContext = createContext<useImportStoreType>({
 
   isUnselectedFile: false,
   totalChunks: 0,
+  totalTokens: 0,
   onReSplitChunks: function (): void {
     throw new Error('Function not implemented.');
   },
@@ -100,7 +102,8 @@ export const useImportStore = () => useContext(StateContext);
 const Provider = ({
   datasetId,
   parentId,
-  unitPrice,
+  inputPrice,
+  outputPrice,
   mode,
   collectionTrainingType,
   vectorModel,
@@ -113,7 +116,8 @@ const Provider = ({
 }: {
   datasetId: string;
   parentId: string;
-  unitPrice: number;
+  inputPrice: number;
+  outputPrice: number;
   mode: `${TrainingModeEnum}`;
   collectionTrainingType: `${DatasetCollectionTrainingModeEnum}`;
   vectorModel: string;
@@ -140,9 +144,17 @@ const Provider = ({
     [files]
   );
 
+  const totalTokens = useMemo(() => files.reduce((sum, file) => sum + file.tokens, 0), [files]);
+
   const price = useMemo(() => {
-    return formatModelPrice2Read(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice);
-  }, [files, unitPrice]);
+    if (mode === TrainingModeEnum.qa) {
+      const inputTotal = totalTokens * inputPrice;
+      const outputTotal = totalTokens * 0.5 * outputPrice;
+
+      return formatModelPrice2Read(inputTotal + outputTotal);
+    }
+    return formatModelPrice2Read(totalTokens * inputPrice);
+  }, [inputPrice, mode, outputPrice, totalTokens]);
 
   /* start upload data */
   const { mutate: onclickUpload, isLoading: uploading } = useRequest({
@@ -249,6 +261,7 @@ const Provider = ({
     setSuccessChunks,
     isUnselectedFile,
     totalChunks,
+    totalTokens,
     price,
     onReSplitChunks,
     onclickUpload,

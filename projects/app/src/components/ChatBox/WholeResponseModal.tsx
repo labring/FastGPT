@@ -70,7 +70,7 @@ const WholeResponseModal = ({
       iconSrc="/imgs/modal/wholeRecord.svg"
       title={
         <Flex alignItems={'center'}>
-          {t('chat.Complete Response')}
+          {t('core.chat.response.Complete Response')}
           <MyTooltip label={'从左往右，为各个模块的响应顺序'}>
             <QuestionOutlineIcon ml={2} />
           </MyTooltip>
@@ -140,8 +140,9 @@ const ResponseBox = React.memo(function ResponseBox({
           label={t('core.chat.response.module time')}
           value={`${activeModule?.runningTime || 0}s`}
         />
-        <Row label={t('core.chat.response.module tokens')} value={`${activeModule?.tokens}`} />
         <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
+        <Row label={t('wallet.bill.Input Token Length')} value={`${activeModule?.inputTokens}`} />
+        <Row label={t('wallet.bill.Output Token Length')} value={`${activeModule?.outputTokens}`} />
         <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
         <Row
           label={t('core.chat.response.context total length')}

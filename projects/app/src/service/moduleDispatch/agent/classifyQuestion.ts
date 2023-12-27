@@ -43,7 +43,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await (async () => {
+  const { arg, inputTokens, outputTokens } = await (async () => {
     if (cqModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -62,7 +62,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const { total, modelName } = formatModelPrice2Store({
     model: cqModel.model,
-    dataLen: tokens,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
     type: ModelTypeEnum.cq
   });
 
@@ -72,7 +73,8 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       price: user.openaiAccount?.key ? 0 : total,
       model: modelName,
       query: userChatInput,
-      tokens,
+      inputTokens,
+      outputTokens,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
@@ -147,7 +149,8 @@ ${systemPrompt}
 
     return {
       arg,
-      tokens: response.usage?.total_tokens || 0
+      inputTokens: response.usage?.prompt_tokens || 0,
+      outputTokens: response.usage?.completion_tokens || 0
     };
   } catch (error) {
     console.log(agentFunction.parameters);
@@ -157,7 +160,8 @@ ${systemPrompt}
 
     return {
       arg: {},
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 }
@@ -189,12 +193,12 @@ Human:${userChatInput}`
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
-  const totalTokens = data.usage?.total_tokens || 0;
 
   const id = agents.find((item) => answer.includes(item.key))?.key || '';
 
   return {
-    tokens: totalTokens,
+    inputTokens: data.usage?.prompt_tokens || 0,
+    outputTokens: data.usage?.completion_tokens || 0,
     arg: { type: id }
   };
 }

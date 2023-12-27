@@ -15,8 +15,7 @@ const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) 
   })().map((item) => ({
     model: item.model,
     name: item.name,
-    maxResponse: item.maxResponse,
-    price: item.price
+    maxResponse: item.maxResponse
   }));
 
   const onChangeModel = useCallback(
@@ -54,11 +53,9 @@ const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) 
   );
 
   const list = modelList.map((item) => {
-    const priceStr = `(${item.price}元/1k Tokens)`;
-
     return {
       value: item.model,
-      label: `${item.name}${priceStr}`
+      label: item.name
     };
   });
 

@@ -19,25 +19,36 @@ export function authType2BillSource({
 
 export const formatModelPrice2Store = ({
   model,
-  dataLen,
+  inputLen = 0,
+  outputLen = 0,
   type,
   multiple = 1000
 }: {
   model: string;
-  dataLen: number;
+  inputLen: number;
+  outputLen?: number;
   type: `${ModelTypeEnum}`;
   multiple?: number;
 }) => {
   const modelData = getModelMap?.[type]?.(model);
   if (!modelData)
     return {
+      inputTotal: 0,
+      outputTotal: 0,
       total: 0,
       modelName: ''
     };
-  const total = Math.ceil(modelData.price * (dataLen / multiple) * PRICE_SCALE);
+  const inputTotal = modelData.inputPrice
+    ? Math.round(modelData.inputPrice * (inputLen / multiple) * PRICE_SCALE)
+    : 0;
+  const outputTotal = modelData.outputPrice
+    ? Math.round(modelData.outputPrice * (outputLen / multiple) * PRICE_SCALE)
+    : 0;
 
   return {
     modelName: modelData.name,
-    total: total > 1 ? total : 1
+    inputTotal: inputTotal,
+    outputTotal: outputTotal,
+    total: inputTotal + outputTotal
   };
 };

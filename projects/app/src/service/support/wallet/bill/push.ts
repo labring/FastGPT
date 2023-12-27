@@ -35,7 +35,8 @@ export const pushChatBill = ({
       moduleName: item.moduleName,
       amount: item.price || 0,
       model: item.model,
-      tokenLen: item.tokens
+      inputTokens: item.inputTokens,
+      outputTokens: item.outputTokens
     }))
   });
   addLog.info(`finish completions`, {
@@ -51,19 +52,22 @@ export const pushQABill = async ({
   teamId,
   tmbId,
   model,
-  tokenLen,
+  inputTokens,
+  outputTokens,
   billId
 }: {
   teamId: string;
   tmbId: string;
   model: string;
-  tokenLen: number;
+  inputTokens: number;
+  outputTokens: number;
   billId: string;
 }) => {
   // 计算价格
   const { total } = formatModelPrice2Store({
     model,
-    dataLen: tokenLen,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
     type: ModelTypeEnum.qa
   });
 
@@ -72,7 +76,8 @@ export const pushQABill = async ({
     teamId,
     tmbId,
     total,
-    tokenLen,
+    inputTokens,
+    outputTokens,
     listIndex: 1
   });
 
@@ -97,7 +102,7 @@ export const pushGenerateVectorBill = ({
   // 计算价格. 至少为1
   const { total, modelName } = formatModelPrice2Store({
     model,
-    dataLen: tokenLen,
+    inputLen: tokenLen,
     type: ModelTypeEnum.vector
   });
 
@@ -108,7 +113,7 @@ export const pushGenerateVectorBill = ({
       tmbId,
       total,
       billId,
-      tokenLen,
+      inputTokens: tokenLen,
       listIndex: 0
     });
   } else {
@@ -123,7 +128,7 @@ export const pushGenerateVectorBill = ({
           moduleName: 'wallet.moduleName.index',
           amount: total,
           model: modelName,
-          tokenLen
+          inputTokens: tokenLen
         }
       ]
     });
@@ -132,17 +137,20 @@ export const pushGenerateVectorBill = ({
 };
 
 export const pushQuestionGuideBill = ({
-  tokenLen,
+  inputTokens,
+  outputTokens,
   teamId,
   tmbId
 }: {
-  tokenLen: number;
+  inputTokens: number;
+  outputTokens: number;
   teamId: string;
   tmbId: string;
 }) => {
   const qgModel = global.qgModels[0];
   const { total, modelName } = formatModelPrice2Store({
-    dataLen: tokenLen,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
     model: qgModel.model,
     type: ModelTypeEnum.qg
   });
@@ -158,7 +166,8 @@ export const pushQuestionGuideBill = ({
         moduleName: 'wallet.bill.Next Step Guide',
         amount: total,
         model: modelName,
-        tokenLen
+        inputTokens,
+        outputTokens
       }
     ]
   });
@@ -181,7 +190,7 @@ export function pushAudioSpeechBill({
 }) {
   const { total, modelName } = formatModelPrice2Store({
     model,
-    dataLen: textLen,
+    inputLen: textLen,
     type: ModelTypeEnum.audioSpeech
   });
 
@@ -217,7 +226,7 @@ export function pushWhisperBill({
 
   const { total, modelName } = formatModelPrice2Store({
     model: whisperModel.model,
-    dataLen: duration,
+    inputLen: duration,
     type: ModelTypeEnum.whisper,
     multiple: 60
   });
@@ -259,7 +268,7 @@ export function pushReRankBill({
 
   const { total, modelName } = formatModelPrice2Store({
     model: reRankModel.model,
-    dataLen: textLen,
+    inputLen: textLen,
     type: ModelTypeEnum.rerank
   });
   const name = 'wallet.bill.ReRank';

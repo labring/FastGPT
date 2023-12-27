@@ -1,8 +1,11 @@
 import React from 'react';
-import { Box, Flex, Button } from '@chakra-ui/react';
+import { Box, Flex, Button, Grid } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 import { useTranslation } from 'next-i18next';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import MyTooltip from '@/components/MyTooltip';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
 const fileExtension = '.csv';
 const csvTemplate = `index,content
@@ -12,8 +15,19 @@ const csvTemplate = `index,content
 
 const CsvImport = () => {
   const { t } = useTranslation();
-  const { successChunks, totalChunks, isUnselectedFile, onclickUpload, uploading } =
-    useImportStore();
+  const {
+    successChunks,
+    totalChunks,
+    isUnselectedFile,
+    onclickUpload,
+    uploading,
+    totalTokens,
+    price
+  } = useImportStore();
+  const { datasetDetail } = useDatasetStore();
+
+  const vectorModel = datasetDetail.vectorModel;
+  const unitPrice = vectorModel?.inputPrice || 0.002;
 
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('core.dataset.import.Import Tip')
@@ -31,6 +45,27 @@ const CsvImport = () => {
         }}
         tip={t('dataset.import csv tip')}
       >
+        <Grid mt={4} gridTemplateColumns={'1fr 1fr'} gridGap={2}>
+          <Flex alignItems={'center'}>
+            <Box>{t('core.dataset.import.Total tokens')}：</Box>
+            <Box>{totalTokens}</Box>
+          </Flex>
+          {/* price */}
+          <Flex alignItems={'center'}>
+            <Box>
+              {t('core.dataset.import.Estimated Price')}
+              <MyTooltip
+                label={t('core.dataset.import.Embedding Estimated Price Tips', {
+                  price: unitPrice
+                })}
+                forceShow
+              >
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
+            </Box>
+            <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
+          </Flex>
+        </Grid>
         <Flex mt={3}>
           <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
             {uploading ? (

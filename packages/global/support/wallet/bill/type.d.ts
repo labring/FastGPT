@@ -1,13 +1,19 @@
 import { CreateBillProps } from './api';
 import { BillSourceEnum } from './constants';
 
-export type BillListItemType = {
+export type BillListItemCountType = {
+  inputTokens?: number;
+  outputTokens?: number;
+  textLen?: number;
+  duration?: number;
+
+  // abandon
+  tokenLen?: number;
+};
+export type BillListItemType = BillListItemCountType & {
   moduleName: string;
   amount: number;
   model?: string;
-  textLen?: number;
-  tokenLen?: number;
-  duration?: number;
 };
 
 export type BillSchema = CreateBillProps & {

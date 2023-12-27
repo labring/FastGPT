@@ -63,7 +63,7 @@ export async function dispatchDatasetSearch(
 
   const { total, modelName } = formatModelPrice2Store({
     model: vectorModel.model,
-    dataLen: tokenLen,
+    inputLen: tokenLen,
     type: ModelTypeEnum.vector
   });
 
@@ -75,7 +75,7 @@ export async function dispatchDatasetSearch(
       price: total,
       query: concatQueries.join('\n'),
       model: modelName,
-      tokens: tokenLen,
+      inputTokens: tokenLen,
       similarity,
       limit,
       searchMode

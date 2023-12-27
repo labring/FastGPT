@@ -151,7 +151,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   );
 
-  const { answerText, totalTokens, completeMessages } = await (async () => {
+  const { answerText, inputTokens, outputTokens, completeMessages } = await (async () => {
     if (stream) {
       // sse response
       const { answer } = await streamResponse({
@@ -165,21 +165,26 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         value: answer
       });
 
-      const totalTokens = countMessagesTokens({
-        messages: completeMessages
-      });
-
       targetResponse({ res, detail, outputs });
 
       return {
         answerText: answer,
-        totalTokens,
+        inputTokens: countMessagesTokens({
+          messages: filterMessages
+        }),
+        outputTokens: countMessagesTokens({
+          messages: [
+            {
+              obj: ChatRoleEnum.AI,
+              value: answer
+            }
+          ]
+        }),
         completeMessages
       };
     } else {
       const unStreamResponse = response as ChatCompletion;
       const answer = unStreamResponse.choices?.[0]?.message?.content || '';
-      const totalTokens = unStreamResponse.usage?.total_tokens || 0;
 
       const completeMessages = filterMessages.concat({
         obj: ChatRoleEnum.AI,
@@ -188,7 +193,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       return {
         answerText: answer,
-        totalTokens,
+        inputTokens: unStreamResponse.usage?.prompt_tokens || 0,
+        outputTokens: unStreamResponse.usage?.completion_tokens || 0,
         completeMessages
       };
     }
@@ -196,7 +202,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const { total, modelName } = formatModelPrice2Store({
     model,
-    dataLen: totalTokens,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
     type: ModelTypeEnum.chat
   });
 
@@ -205,7 +212,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     responseData: {
       price: user.openaiAccount?.key ? 0 : total,
       model: modelName,
-      tokens: totalTokens,
+      inputTokens,
+      outputTokens,
       query: userChatInput,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,

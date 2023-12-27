@@ -76,11 +76,13 @@ A: ${systemPrompt}
   // );
   // console.log(answer);
 
-  const tokens = result.usage?.total_tokens || 0;
+  const inputTokens = result.usage?.prompt_tokens || 0;
+  const outputTokens = result.usage?.completion_tokens || 0;
 
   const { total, modelName } = formatModelPrice2Store({
     model: extractModel.model,
-    dataLen: tokens,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
     type: ModelTypeEnum.extract
   });
 
@@ -88,7 +90,8 @@ A: ${systemPrompt}
     [ModuleOutputKeyEnum.responseData]: {
       price: total,
       model: modelName,
-      tokens,
+      inputTokens,
+      outputTokens,
       query: userChatInput,
       textOutput: answer
     },
