@@ -70,7 +70,7 @@ const SelectMarkCollection = ({
                       }}
                       {...(selected
                         ? {
-                            bg: 'blue.200'
+                            bg: 'primary.200'
                           }
                         : {})}
                       onClick={() => {
@@ -132,7 +132,7 @@ const SelectMarkCollection = ({
           CustomFooter={
             <ModalFooter>
               <Button
-                variant={'base'}
+                variant={'whiteBase'}
                 mr={2}
                 onClick={() => {
                   setAdminMarkData({

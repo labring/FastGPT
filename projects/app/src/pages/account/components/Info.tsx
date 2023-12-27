@@ -128,7 +128,6 @@ const UserInfo = () => {
       py={[2, 10]}
       justifyContent={'center'}
       alignItems={'flex-start'}
-      fontSize={['lg', 'xl']}
     >
       <Flex
         flexDirection={'column'}
@@ -230,7 +229,7 @@ const UserInfo = () => {
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Password')}:&nbsp;</Box>
           <Box flex={1}>*****</Box>
-          <Button size={['sm', 'md']} variant={'base'} ml={5} onClick={onOpenUpdatePsw}>
+          <Button size={['sm', 'md']} variant={'whitePrimary'} ml={5} onClick={onOpenUpdatePsw}>
             {t('user.Change')}
           </Button>
         </Flex>

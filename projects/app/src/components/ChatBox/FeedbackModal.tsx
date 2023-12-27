@@ -49,7 +49,7 @@ const FeedbackModal = ({
         <Textarea ref={ref} rows={10} placeholder={t('chat.Feedback Modal Tip')} />
       </ModalBody>
       <ModalFooter>
-        <Button variant={'base'} mr={2} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={2} onClick={onClose}>
           {t('Cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={mutate}>

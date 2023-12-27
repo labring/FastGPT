@@ -56,7 +56,7 @@ export async function parseHeaderCert({
   async function authCookieToken(cookie?: string, token?: string) {
     // 获取 cookie
     const cookies = Cookie.parse(cookie || '');
-    const cookieToken = cookies.token || token;
+    const cookieToken = token || cookies.token;
 
     if (!cookieToken) {
       return Promise.reject(ERROR_ENUM.unAuthorization);
@@ -127,7 +127,7 @@ export async function parseHeaderCert({
         authType: AuthUserTypeEnum.apikey
       };
     }
-    if (authToken && (cookie || token)) {
+    if (authToken && (token || cookie)) {
       // user token(from fastgpt web)
       const res = await authCookieToken(cookie, token);
       return {
@@ -182,7 +182,7 @@ export async function parseHeaderCert({
 export const setCookie = (res: NextApiResponse, token: string) => {
   res.setHeader(
     'Set-Cookie',
-    `token=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=None; Secure;`
+    `token=${token}; Path=/; HttpOnly; Max-Age=604800; Samesite=Strict; Secure;`
   );
 };
 /* clear cookie */

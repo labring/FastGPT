@@ -1,15 +1,16 @@
-import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { readFileSync, readdirSync } from 'fs';
-import type { ConfigFileType, InitDateResponse } from '@/global/common/api/systemRes';
+import type { InitDateResponse } from '@/global/common/api/systemRes';
+import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
-import { getFastGPTFeConfig } from '@fastgpt/service/common/system/config/controller';
+import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { connectToDatabase } from '@/service/mongo';
 import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
 import { readConfigData } from '@/service/common/system';
@@ -26,11 +27,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       cqModels: global.cqModels,
       extractModels: global.extractModels,
       vectorModels: global.vectorModels,
-      reRankModels: global.reRankModels.map((item) => ({
-        ...item,
-        requestUrl: undefined,
-        requestAuth: undefined
-      })),
+      reRankModels:
+        global.reRankModels?.map((item) => ({
+          ...item,
+          requestUrl: undefined,
+          requestAuth: undefined
+        })) || [],
       audioSpeechModels: global.audioSpeechModels,
       priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0',
@@ -39,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 }
 
-const defaultFeConfigs: FeConfigsType = {
+const defaultFeConfigs: FastGPTFeConfigsType = {
   show_emptyChat: true,
   show_git: true,
   docUrl: 'https://doc.fastgpt.in',
@@ -58,70 +60,85 @@ export async function getInitConfig() {
   try {
     if (global.feConfigs) return;
     await connectToDatabase();
+
     initGlobal();
-
-    // load config
-    const [dbConfig, fileConfig] = await Promise.all([
-      getFastGPTFeConfig(),
-      readConfigData('config.json')
-    ]);
-    const fileRes = JSON.parse(fileConfig) as ConfigFileType;
-
-    // get config from database
-    const config: ConfigFileType = {
-      ...fileRes,
-      FeConfig: {
-        ...defaultFeConfigs,
-        ...fileRes.FeConfig,
-        ...dbConfig
-      }
-    };
-
-    // set config
-    global.feConfigs = {
-      isPlus: !!config.SystemParams.pluginBaseUrl,
-      concatMd: config.FeConfig.show_git ? config.FeConfig.concatMd : '',
-      ...config.FeConfig
-    };
-    global.systemEnv = config.SystemParams;
-
-    global.chatModels = config.ChatModels || [];
-    global.qaModels = config.QAModels || [];
-    global.cqModels = config.CQModels || [];
-    global.extractModels = config.ExtractModels || [];
-    global.qgModels = config.QGModels || [];
-    global.vectorModels = config.VectorModels || [];
-    global.reRankModels = config.ReRankModels || [];
-    global.audioSpeechModels = config.AudioSpeechModels || [];
-    global.whisperModel = config.WhisperModel;
-
-    global.priceMd = '';
+    await initSystemConfig();
   } catch (error) {
     console.error('Load init config error', error);
-    exit(1);
+
+    if (!global.feConfigs) {
+      exit(1);
+    }
   }
   await getSimpleModeTemplates();
 
   getSystemVersion();
-  getModelPrice();
+  countModelPrice();
   getSystemPlugin();
 
   console.log({
-    FeConfig: global.feConfigs,
-    SystemParams: global.systemEnv,
-    ChatModels: global.chatModels,
-    QAModels: global.qaModels,
-    CQModels: global.cqModels,
-    ExtractModels: global.extractModels,
-    QGModels: global.qgModels,
-    VectorModels: global.vectorModels,
-    ReRankModels: global.reRankModels,
-    AudioSpeechModels: global.reRankModels,
-    WhisperModel: global.whisperModel,
+    feConfigs: global.feConfigs,
+    systemEnv: global.systemEnv,
+    chatModels: global.chatModels,
+    qaModels: global.qaModels,
+    cqModels: global.cqModels,
+    extractModels: global.extractModels,
+    qgModels: global.qgModels,
+    vectorModels: global.vectorModels,
+    reRankModels: global.reRankModels,
+    audioSpeechModels: global.audioSpeechModels,
+    whisperModel: global.whisperModel,
     price: global.priceMd,
     simpleModeTemplates: global.simpleModeTemplates,
     communityPlugins: global.communityPlugins
   });
+}
+
+export async function initSystemConfig() {
+  // load config
+  const [dbConfig, fileConfig] = await Promise.all([
+    getFastGPTConfigFromDB(),
+    readConfigData('config.json')
+  ]);
+  const fileRes = JSON.parse(fileConfig) as FastGPTConfigFileType;
+
+  // get config from database
+  const config: FastGPTConfigFileType = {
+    feConfigs: {
+      ...defaultFeConfigs,
+      ...(fileRes.feConfigs || {}),
+      ...(dbConfig.feConfigs || {})
+    },
+    systemEnv: fileRes.systemEnv,
+    chatModels: dbConfig.chatModels || fileRes.chatModels || [],
+    qaModels: dbConfig.qaModels || fileRes.qaModels || [],
+    cqModels: dbConfig.cqModels || fileRes.cqModels || [],
+    extractModels: dbConfig.extractModels || fileRes.extractModels || [],
+    qgModels: dbConfig.qgModels || fileRes.qgModels || [],
+    vectorModels: dbConfig.vectorModels || fileRes.vectorModels || [],
+    reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
+    audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
+    whisperModel: dbConfig.whisperModel || fileRes.whisperModel
+  };
+
+  // set config
+  global.feConfigs = {
+    isPlus: !!config.systemEnv.pluginBaseUrl,
+    ...config.feConfigs
+  };
+  global.systemEnv = config.systemEnv;
+
+  global.chatModels = config.chatModels || [];
+  global.qaModels = config.qaModels || [];
+  global.cqModels = config.cqModels || [];
+  global.extractModels = config.extractModels || [];
+  global.qgModels = config.qgModels || [];
+  global.vectorModels = config.vectorModels || [];
+  global.reRankModels = config.reRankModels || [];
+  global.audioSpeechModels = config.audioSpeechModels || [];
+  global.whisperModel = config.whisperModel;
+
+  global.priceMd = '';
 }
 
 export function initGlobal() {
@@ -151,8 +168,7 @@ export function getSystemVersion() {
   }
 }
 
-function getModelPrice() {
-  if (global.priceMd) return;
+export function countModelPrice() {
   global.priceMd = `| 计费项 | 价格: 元/ 1K tokens(包含上下文)|
 | --- | --- |
 ${global.vectorModels
@@ -176,7 +192,11 @@ ${global.qgModels
 ${global.audioSpeechModels
   ?.map((item) => `| 语音播放-${item.name} | ${formatPrice(item.price, 1000)} |`)
   .join('\n')}
-${`| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`}
+${
+  global.whisperModel
+    ? `| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`
+    : ''
+}
 `;
 }
 

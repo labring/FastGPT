@@ -151,10 +151,10 @@ const ChatHistorySlider = ({
           />
         )}
         <Button
-          variant={'base'}
+          variant={'whitePrimary'}
           flex={1}
           h={'100%'}
-          color={'blue.600'}
+          color={'primary.600'}
           borderRadius={'xl'}
           leftIcon={<MyIcon name={'chat'} w={'16px'} />}
           overflow={'hidden'}
@@ -167,7 +167,8 @@ const ChatHistorySlider = ({
           <IconButton
             ml={3}
             h={'100%'}
-            variant={'base'}
+            variant={'whiteDanger'}
+            size={'mdSquare'}
             aria-label={''}
             borderRadius={'xl'}
             onClick={openConfirm(onClearHistory)}
@@ -201,8 +202,8 @@ const ChatHistorySlider = ({
                 bg={item.top ? '#E6F6F6 !important' : ''}
                 {...(item.id === activeChatId
                   ? {
-                      backgroundColor: 'blue.50 !important',
-                      color: 'blue.600'
+                      backgroundColor: 'primary.50 !important',
+                      color: 'primary.600'
                     }
                   : {
                       onClick: () => {
@@ -290,8 +291,8 @@ const ChatHistorySlider = ({
                 alignItems={'center'}
                 {...(item._id === appId
                   ? {
-                      backgroundColor: 'blue.50 !important',
-                      color: 'blue.600'
+                      backgroundColor: 'primary.50 !important',
+                      color: 'primary.600'
                     }
                   : {
                       onClick: () => {
@@ -325,11 +326,10 @@ const ChatHistorySlider = ({
         >
           <IconButton
             mr={3}
-            icon={<MyIcon name={'backFill'} w={'18px'} color={'blue.500'} />}
+            icon={<MyIcon name={'backFill'} w={'18px'} color={'primary.500'} />}
             bg={'white'}
             boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-            h={'28px'}
-            size={'sm'}
+            size={'smSquare'}
             borderRadius={'50%'}
             aria-label={''}
           />

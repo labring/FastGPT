@@ -73,7 +73,7 @@ const ExtractFieldModal = ({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
         <Button onClick={handleSubmit(onSubmit)}>{t('common.Confirm')}</Button>

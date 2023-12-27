@@ -42,7 +42,11 @@ const createEditField = {
   inputType: false
 };
 
-const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodePluginOutput = React.memo(function NodePluginOutput({
+  data
+}: {
+  data: FlowModuleItemType;
+}) {
   const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
   const [createField, setCreateField] = useState<EditNodeFieldType>();
@@ -84,7 +88,7 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
               w={'14px'}
               cursor={'pointer'}
               ml={3}
-              _hover={{ color: 'blue.500' }}
+              _hover={{ color: 'primary.500' }}
               onClick={() =>
                 setEditField({
                   inputType: item.type,
@@ -121,7 +125,7 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
         ))}
         <Box textAlign={'left'} mt={5}>
           <Button
-            variant={'base'}
+            variant={'whitePrimary'}
             leftIcon={<SmallAddIcon />}
             onClick={() => {
               setCreateField(defaultCreateField);
@@ -233,5 +237,8 @@ const NodePluginOutput = ({ data }: NodeProps<FlowModuleItemType>) => {
       )}
     </NodeCard>
   );
-};
-export default React.memo(NodePluginOutput);
+});
+
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodePluginOutput data={data} />;
+}

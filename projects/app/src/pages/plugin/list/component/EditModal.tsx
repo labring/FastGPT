@@ -192,14 +192,13 @@ const CreateModal = ({
         </Box>
       </ModalBody>
 
-      <Flex px={5} py={4}>
+      <Flex px={5} py={4} alignItems={'center'}>
         {!!defaultValue.id && (
           <IconButton
             className="delete"
-            size={'sm'}
+            size={'xsSquare'}
             icon={<MyIcon name={'delete'} w={'14px'} />}
-            variant={'base'}
-            borderRadius={'md'}
+            variant={'whiteDanger'}
             aria-label={'delete'}
             _hover={{
               bg: 'red.100'
@@ -211,7 +210,7 @@ const CreateModal = ({
           />
         )}
         <Box flex={1} />
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
         {!!defaultValue.id ? (

@@ -189,7 +189,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
               w={'16px'}
               color={'myGray.600'}
               cursor={'pointer'}
-              _hover={{ color: 'blue.500' }}
+              _hover={{ color: 'primary.500' }}
               onClick={() => {
                 copyData(wayMap[getValues('usingWay')].code);
               }}

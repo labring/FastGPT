@@ -88,13 +88,7 @@ export const appModule2FlowNode = ({
     position: item.position || { x: 0, y: 0 }
   };
 };
-export const appModule2FlowEdge = ({
-  modules,
-  onDelete
-}: {
-  modules: ModuleItemType[];
-  onDelete: (id: string) => void;
-}) => {
+export const appModule2FlowEdge = ({ modules }: { modules: ModuleItemType[] }) => {
   const edges: Edge[] = [];
   modules.forEach((module) =>
     module.outputs.forEach((output) =>
@@ -105,8 +99,7 @@ export const appModule2FlowEdge = ({
           sourceHandle: output.key,
           targetHandle: target.key,
           id: nanoid(),
-          type: EDGE_TYPE,
-          data: { onDelete }
+          type: EDGE_TYPE
         });
       })
     )

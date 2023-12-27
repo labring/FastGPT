@@ -71,7 +71,7 @@ const Navbar = () => {
     borderRadius: 'xl',
     fontSize: 'lg',
     _hover: {
-      bg: 'myGray.100'
+      bg: 'myGray.200'
     }
   };
 

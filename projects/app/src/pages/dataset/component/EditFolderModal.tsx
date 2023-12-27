@@ -53,7 +53,7 @@ const EditFolderModal = ({
         />
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'base'} onClick={onClose}>
+        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           {t('Cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={onSave}>

@@ -1,20 +1,29 @@
 import React from 'react';
-import { Box, useTheme, type BoxProps } from '@chakra-ui/react';
+import { useTheme, type BoxProps } from '@chakra-ui/react';
 import MyBox from '../common/MyBox';
 
-const PageContainer = ({ children, ...props }: BoxProps & { isLoading?: boolean }) => {
+const PageContainer = ({
+  children,
+  isLoading,
+  insertProps = {},
+  ...props
+}: BoxProps & { isLoading?: boolean; insertProps?: BoxProps }) => {
   const theme = useTheme();
   return (
-    <MyBox bg={'myGray.100'} h={'100%'} p={[0, 5]} px={[0, 6]} {...props}>
-      <Box
+    <MyBox h={'100%'} py={[0, '16px']} pr={[0, '16px']} {...props}>
+      <MyBox
+        isLoading={isLoading}
         h={'100%'}
-        bg={'white'}
-        borderRadius={props?.borderRadius || [0, '2xl']}
-        border={['none', theme.borders.lg]}
+        borderColor={'borderColor.base'}
+        borderWidth={[0, 1]}
+        boxShadow={'1.5'}
         overflow={'overlay'}
+        bg={'myGray.25'}
+        borderRadius={[0, '16px']}
+        {...insertProps}
       >
         {children}
-      </Box>
+      </MyBox>
     </MyBox>
   );
 };

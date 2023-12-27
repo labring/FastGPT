@@ -72,7 +72,7 @@ const BillTable = () => {
                 <Td>{t(item.appName) || '-'}</Td>
                 <Td>{item.total}元</Td>
                 <Td>
-                  <Button size={'sm'} variant={'base'} onClick={() => setBillDetail(item)}>
+                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setBillDetail(item)}>
                     详情
                   </Button>
                 </Td>

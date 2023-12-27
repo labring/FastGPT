@@ -79,7 +79,7 @@ const MoveModal = ({
                       : {
                           cursor: 'pointer',
                           _hover: {
-                            color: 'blue.500'
+                            color: 'primary.500'
                           },
                           onClick: () => {
                             setParentId(item.parentId);

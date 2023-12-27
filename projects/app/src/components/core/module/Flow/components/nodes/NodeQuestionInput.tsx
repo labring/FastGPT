@@ -6,7 +6,11 @@ import Container from '../modules/Container';
 
 import RenderOutput from '../render/RenderOutput';
 
-const QuestionInputNode = ({ data }: NodeProps<FlowModuleItemType>) => {
+const QuestionInputNode = React.memo(function QuestionInputNode({
+  data
+}: {
+  data: FlowModuleItemType;
+}) {
   const { moduleId, outputs } = data;
 
   return (
@@ -16,5 +20,8 @@ const QuestionInputNode = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
     </NodeCard>
   );
-};
-export default React.memo(QuestionInputNode);
+});
+
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <QuestionInputNode data={data} />;
+}

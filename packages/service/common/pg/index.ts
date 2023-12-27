@@ -9,7 +9,8 @@ export const connectPg = async (): Promise<Pool> => {
 
   global.pgClient = new Pool({
     connectionString: process.env.PG_URL,
-    max: Number(process.env.DB_MAX_LINK || 5),
+    max: Number(process.env.DB_MAX_LINK || 20),
+    min: 10,
     keepAlive: true,
     idleTimeoutMillis: 60000,
     connectionTimeoutMillis: 20000

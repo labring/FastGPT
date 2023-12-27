@@ -7,11 +7,10 @@ import type {
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
-import { useFlowProviderStore, type useFlowProviderStoreType } from './FlowProvider';
+import { getFlowStore, onSetNodes } from './FlowProvider';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowNode } from '@/utils/adapt';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import EmptyTip from '@/components/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -19,7 +18,6 @@ import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@/web/core/modules/template/system';
-import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
 export type ModuleTemplateProps = {
   templates: FlowModuleTemplateType[];
@@ -32,20 +30,9 @@ type ModuleTemplateListProps = ModuleTemplateProps & {
 type RenderListProps = {
   templates: FlowModuleTemplateType[];
   onClose: () => void;
-  setNodes: useFlowProviderStoreType['setNodes'];
-  reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
 };
 
-const ModuleTemplateList = ({
-  templates,
-  isOpen,
-  onClose,
-  setNodes,
-  reactFlowWrapper
-}: ModuleTemplateListProps & {
-  setNodes: useFlowProviderStoreType['setNodes'];
-  reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
-}) => {
+const ModuleTemplateList = ({ templates, isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
 
   return (
@@ -77,31 +64,16 @@ const ModuleTemplateList = ({
         transition={'.2s ease'}
         userSelect={'none'}
       >
-        <RenderList
-          templates={templates}
-          onClose={onClose}
-          setNodes={setNodes}
-          reactFlowWrapper={reactFlowWrapper}
-        />
+        <RenderList templates={templates} onClose={onClose} />
       </Flex>
     </>
   );
 };
 
-export default React.memo(function (props: ModuleTemplateListProps) {
-  const { setNodes, reactFlowWrapper } = useFlowProviderStore();
+export default React.memo(ModuleTemplateList);
 
-  return <ModuleTemplateList {...props} setNodes={setNodes} reactFlowWrapper={reactFlowWrapper} />;
-});
-
-const RenderList = React.memo(function RenderList({
-  templates,
-  onClose,
-  setNodes,
-  reactFlowWrapper
-}: RenderListProps) {
+const RenderList = React.memo(function RenderList({ templates, onClose }: RenderListProps) {
   const { t } = useTranslation();
-  const router = useRouter();
   const { isPc } = useSystemStore();
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
@@ -119,6 +91,7 @@ const RenderList = React.memo(function RenderList({
 
   const onAddNode = useCallback(
     async ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
+      const { reactFlowWrapper, nodes } = await getFlowStore();
       if (!reactFlowWrapper?.current) return;
 
       const templateModule = await (async () => {
@@ -145,8 +118,8 @@ const RenderList = React.memo(function RenderList({
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
       const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
 
-      setNodes((state) =>
-        state.concat(
+      onSetNodes(
+        nodes.concat(
           appModule2FlowNode({
             item: {
               ...templateModule,
@@ -157,7 +130,7 @@ const RenderList = React.memo(function RenderList({
         )
       );
     },
-    [reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
+    [setLoading, t, toast, x, y, zoom]
   );
 
   return templates.length === 0 ? (

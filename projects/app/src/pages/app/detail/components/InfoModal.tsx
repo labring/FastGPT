@@ -174,7 +174,7 @@ const InfoModal = ({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           取消
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>

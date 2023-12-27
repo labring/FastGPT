@@ -199,7 +199,7 @@ function ConfigForm({
         ref={divRef}
         position={'sticky'}
         top={-4}
-        bg={'white'}
+        bg={'myGray.25'}
         py={4}
         justifyContent={'space-between'}
         alignItems={'center'}
@@ -218,9 +218,8 @@ function ConfigForm({
         </Box>
         <Button
           isLoading={isSaving}
-          fontSize={'sm'}
           size={['sm', 'md']}
-          variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'base'}
+          variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'whitePrimary'}
           onClick={() => {
             if (appDetail.type !== AppTypeEnum.simple) {
               openConfirmSave(handleSubmit((data) => onSubmitSave(data)))();
@@ -562,26 +561,26 @@ function Settings({ appId }: { appId: string }) {
       overflow={'overlay'}
     >
       <Box px={4}>
-        <Flex alignItems={'flex-end'}>
+        <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
             <PermissionIconText permission={appDetail.permission} />
           </Box>
-          <Box ml={1} color={'myGray.500'} fontSize={'sm'}>
-            (AppId:{' '}
+          <Box color={'myGray.500'} fontSize={'sm'}>
+            AppId:{' '}
             <Box as={'span'} userSelect={'all'}>
               {appId}
             </Box>
-            )
           </Box>
         </Flex>
         {/* basic info */}
         <Box
-          border={theme.borders.base}
+          borderWidth={'1px'}
+          borderColor={'primary.1'}
           borderRadius={'lg'}
           mt={2}
           px={5}
           py={4}
-          bg={'blue.50'}
+          bg={'primary.50'}
           position={'relative'}
         >
           <Flex alignItems={'center'} py={2}>
@@ -595,15 +594,11 @@ function Settings({ appId }: { appId: string }) {
                 position={'absolute'}
                 top={4}
                 right={4}
-                size={'sm'}
+                size={'smSquare'}
                 icon={<MyIcon name={'delete'} w={'14px'} />}
-                variant={'base'}
+                variant={'whiteDanger'}
                 borderRadius={'md'}
                 aria-label={'delete'}
-                _hover={{
-                  bg: 'myGray.100',
-                  color: 'red.600'
-                }}
                 isLoading={isLoading}
                 onClick={openConfirmDel(handleDelModel)}
               />
@@ -621,7 +616,7 @@ function Settings({ appId }: { appId: string }) {
           <Flex>
             <Button
               size={['sm', 'md']}
-              variant={'base'}
+              variant={'whitePrimary'}
               leftIcon={<MyIcon name={'chat'} w={'16px'} />}
               onClick={() => router.push(`/chat?appId=${appId}`)}
             >
@@ -630,7 +625,7 @@ function Settings({ appId }: { appId: string }) {
             <Button
               mx={3}
               size={['sm', 'md']}
-              variant={'base'}
+              variant={'whitePrimary'}
               leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
               onClick={() => {
                 router.replace({
@@ -646,7 +641,7 @@ function Settings({ appId }: { appId: string }) {
             {appDetail.isOwner && (
               <Button
                 size={['sm', 'md']}
-                variant={'base'}
+                variant={'whitePrimary'}
                 leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
                 onClick={() => setSettingAppInfo(appDetail)}
               >
@@ -722,7 +717,14 @@ function ChatTest({ appId }: { appId: string }) {
   }, [appDetail, resetChatBox]);
 
   return (
-    <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4} overflowX={'auto'}>
+    <Flex
+      position={'relative'}
+      flexDirection={'column'}
+      h={'100%'}
+      py={4}
+      overflowX={'auto'}
+      bg={'white'}
+    >
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'} flex={1}>
           {t('app.Chat Debug')}
@@ -730,9 +732,9 @@ function ChatTest({ appId }: { appId: string }) {
         <MyTooltip label={t('core.chat.Restart')}>
           <IconButton
             className="chat"
-            size={'sm'}
+            size={'smSquare'}
             icon={<MyIcon name={'clear'} w={'14px'} />}
-            variant={'base'}
+            variant={'whiteDanger'}
             borderRadius={'md'}
             aria-label={'delete'}
             onClick={(e) => {

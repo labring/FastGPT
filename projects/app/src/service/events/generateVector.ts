@@ -43,6 +43,9 @@ export async function generateVector(): Promise<any> {
           lockTime: new Date()
         }
       )
+        .sort({
+          weight: -1
+        })
         .select({
           _id: 1,
           userId: 1,
@@ -137,6 +140,7 @@ export async function generateVector(): Promise<any> {
       indexes: dataItem.indexes,
       model: data.model
     });
+
     // push bill
     pushGenerateVectorBill({
       teamId: data.teamId,

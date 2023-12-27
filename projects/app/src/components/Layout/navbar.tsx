@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, Link } from '@chakra-ui/react';
+import { Box, BoxProps, Flex, Link, LinkProps } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/storeChat';
@@ -77,19 +77,16 @@ const Navbar = ({ unread }: { unread: number }) => {
     [lastChatAppId, lastChatId, t]
   );
 
-  const itemStyles: any = {
+  const itemStyles: BoxProps & LinkProps = {
     my: 3,
     display: 'flex',
     flexDirection: 'column',
     alignItems: 'center',
     justifyContent: 'center',
     cursor: 'pointer',
-    w: '54px',
-    h: '54px',
-    borderRadius: 'md',
-    _hover: {
-      bg: 'myWhite.600'
-    }
+    w: '48px',
+    h: '58px',
+    borderRadius: 'md'
   };
 
   return (
@@ -97,10 +94,8 @@ const Navbar = ({ unread }: { unread: number }) => {
       flexDirection={'column'}
       alignItems={'center'}
       pt={6}
-      bg={'white'}
       h={'100%'}
       w={'100%'}
-      boxShadow={'2px 0px 8px 0px rgba(0,0,0,0.1)'}
       userSelect={'none'}
     >
       {/* logo */}
@@ -113,13 +108,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         cursor={'pointer'}
         onClick={() => router.push('/account')}
       >
-        <Avatar
-          w={'36px'}
-          h={'36px'}
-          borderRadius={'50%'}
-          src={userInfo?.avatar}
-          fallbackSrc={HUMAN_ICON}
-        />
+        <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={HUMAN_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
@@ -129,13 +118,17 @@ const Navbar = ({ unread }: { unread: number }) => {
             {...itemStyles}
             {...(item.activeLink.includes(router.pathname)
               ? {
-                  color: 'blue.600',
-                  bg: 'white !important',
-                  boxShadow: '1px 1px 10px rgba(0,0,0,0.2)'
+                  color: 'primary.600',
+                  bg: 'white',
+                  boxShadow:
+                    '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)'
                 }
               : {
                   color: 'myGray.500',
-                  backgroundColor: 'transparent'
+                  bg: 'transparent',
+                  _hover: {
+                    bg: 'rgba(255,255,255,0.9)'
+                  }
                 })}
             {...(item.link !== router.asPath
               ? {

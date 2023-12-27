@@ -1,11 +1,11 @@
 {
-  "SystemParams": {
+  "systemEnv": {
     "pluginBaseUrl": "",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgHNSWEfSearch": 100
   },
-  "ChatModels": [
+  "chatModels": [
     {
       "model": "gpt-3.5-turbo",
       "name": "GPT35",
@@ -55,7 +55,7 @@
       "defaultSystemChatPrompt": ""
     }
   ],
-  "QAModels": [
+  "qaModels": [
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
@@ -64,7 +64,7 @@
       "price": 0
     }
   ],
-  "CQModels": [
+  "cqModels": [
     {
       "model": "gpt-3.5-turbo",
       "name": "GPT35",
@@ -84,7 +84,7 @@
       "functionPrompt": ""
     }
   ],
-  "ExtractModels": [
+  "extractModels": [
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -95,7 +95,7 @@
       "functionPrompt": ""
     }
   ],
-  "QGModels": [
+  "qgModels": [
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -104,17 +104,18 @@
       "price": 0
     }
   ],
-  "VectorModels": [
+  "vectorModels": [
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
       "price": 0.2,
       "defaultToken": 700,
-      "maxToken": 3000
+      "maxToken": 3000,
+      "weight": 100
     }
   ],
-  "ReRankModels": [],
-  "AudioSpeechModels": [
+  "reRankModels": [],
+  "audioSpeechModels": [
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
@@ -129,7 +130,7 @@
       ]
     }
   ],
-  "WhisperModel": {
+  "whisperModel": {
     "model": "whisper-1",
     "name": "Whisper1",
     "price": 0

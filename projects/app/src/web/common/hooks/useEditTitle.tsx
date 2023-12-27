@@ -96,7 +96,7 @@ export const useEditTitle = ({
           />
         </ModalBody>
         <ModalFooter>
-          <Button mr={3} variant={'base'} onClick={onClose}>
+          <Button mr={3} variant={'whiteBase'} onClick={onClose}>
             取消
           </Button>
           <Button onClick={onclickConfirm}>确认</Button>
