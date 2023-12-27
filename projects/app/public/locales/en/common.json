@@ -980,8 +980,20 @@
   },
   "wallet": {
     "bill": {
+      "Ai model": "Ai Model",
+      "App name": "App name",
       "Audio Speech": "Audio Speech",
+      "Bill Module": "Bill Detail",
+      "Duration": "Duration(s)",
+      "Module name": "Module name",
+      "Next Step Guide": "",
+      "Number": "Bill ID",
       "ReRank": "ReRank",
+      "Source": "Source",
+      "Text Length": "Text length",
+      "Time": "Time",
+      "Token Length": "Tokens",
+      "Total": "Total",
       "Whisper": "Whisper",
       "bill username": "User"
     },

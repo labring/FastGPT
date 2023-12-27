@@ -44,21 +44,21 @@ const ImportData = ({
       [ImportTypeEnum.chunk]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
         chunkOverlapRatio: 0.2,
-        unitPrice: vectorModel?.price || 0.2,
+        unitPrice: vectorModel?.price || 0.002,
         mode: TrainingModeEnum.chunk,
         collectionTrainingType: DatasetCollectionTrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
         defaultChunkLen: agentModel?.maxContext * 0.55 || 8000,
         chunkOverlapRatio: 0,
-        unitPrice: agentModel?.price || 3,
+        unitPrice: agentModel?.price || 0.03,
         mode: TrainingModeEnum.qa,
         collectionTrainingType: DatasetCollectionTrainingModeEnum.qa
       },
       [ImportTypeEnum.csv]: {
         defaultChunkLen: 0,
         chunkOverlapRatio: 0,
-        unitPrice: vectorModel?.price || 0.2,
+        unitPrice: vectorModel?.price || 0.002,
         mode: TrainingModeEnum.chunk,
         collectionTrainingType: DatasetCollectionTrainingModeEnum.manual
       }

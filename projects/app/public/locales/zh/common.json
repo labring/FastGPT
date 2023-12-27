@@ -980,8 +980,20 @@
   },
   "wallet": {
     "bill": {
+      "Ai model": "AI模型",
+      "App name": "应用名",
       "Audio Speech": "语音播报",
+      "Bill Module": "扣费模块",
+      "Duration": "时长（秒）",
+      "Module name": "模块名",
+      "Next Step Guide": "下一步指引",
+      "Number": "订单号",
       "ReRank": "结果重排",
+      "Source": "来源",
+      "Text Length": "文本长度",
+      "Time": "生成时间",
+      "Token Length": "Token长度",
+      "Total": "总金额",
       "Whisper": "语音输入",
       "bill username": "用户"
     },

@@ -8,7 +8,7 @@ import Tabs from '../Tabs';
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import Markdown from '../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
@@ -133,7 +133,7 @@ const ResponseBox = React.memo(function ResponseBox({
         {activeModule?.price !== undefined && (
           <Row
             label={t('core.chat.response.module price')}
-            value={`￥${formatPrice(activeModule?.price)}`}
+            value={`￥${formatStorePrice2Read(activeModule?.price)}`}
           />
         )}
         <Row

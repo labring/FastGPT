@@ -1,5 +1,5 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { countModelPrice } from '@/service/support/wallet/bill/utils';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
@@ -7,7 +7,6 @@ import { ModelTypeEnum } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/pg';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { searchQueryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -62,18 +61,20 @@ export async function dispatchDatasetSearch(
     searchMode
   });
 
+  const { total, modelName } = formatModelPrice2Store({
+    model: vectorModel.model,
+    dataLen: tokenLen,
+    type: ModelTypeEnum.vector
+  });
+
   return {
     isEmpty: searchRes.length === 0 ? true : undefined,
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      price: countModelPrice({
-        model: vectorModel.model,
-        tokens: tokenLen,
-        type: ModelTypeEnum.vector
-      }),
+      price: total,
       query: concatQueries.join('\n'),
-      model: vectorModel.name,
+      model: modelName,
       tokens: tokenLen,
       similarity,
       limit,

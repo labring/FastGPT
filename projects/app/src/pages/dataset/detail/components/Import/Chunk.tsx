@@ -11,7 +11,7 @@ import {
   Input
 } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -25,7 +25,7 @@ const ChunkImport = () => {
   const { t } = useTranslation();
   const { datasetDetail } = useDatasetStore();
   const vectorModel = datasetDetail.vectorModel;
-  const unitPrice = vectorModel?.price || 0.2;
+  const unitPrice = vectorModel?.price || 0.002;
 
   const {
     chunkLen,
@@ -114,7 +114,7 @@ const ChunkImport = () => {
             {t('core.dataset.import.Estimated Price')}
             <MyTooltip
               label={t('core.dataset.import.Estimated Price Tips', {
-                price: formatPrice(unitPrice, 1000)
+                price: unitPrice
               })}
               forceShow
             >

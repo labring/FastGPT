@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     pushQuestionGuideBill({
-      tokens: tokens,
+      tokenLen: tokens,
       teamId,
       tmbId
     });

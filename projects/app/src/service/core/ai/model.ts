@@ -24,13 +24,24 @@ export function getAudioSpeechModel(model?: string) {
   );
 }
 
+export function getWhisperModel(model?: string) {
+  return global.whisperModel;
+}
+
+export function getReRankModel(model?: string) {
+  return global.reRankModels.find((item) => item.model === model);
+}
+
 export enum ModelTypeEnum {
   chat = 'chat',
   qa = 'qa',
   cq = 'cq',
   extract = 'extract',
   qg = 'qg',
-  vector = 'vector'
+  vector = 'vector',
+  audioSpeech = 'audioSpeech',
+  whisper = 'whisper',
+  rerank = 'rerank'
 }
 export const getModelMap = {
   [ModelTypeEnum.chat]: getChatModel,
@@ -38,5 +49,8 @@ export const getModelMap = {
   [ModelTypeEnum.cq]: getCQModel,
   [ModelTypeEnum.extract]: getExtractModel,
   [ModelTypeEnum.qg]: getQGModel,
-  [ModelTypeEnum.vector]: getVectorModel
+  [ModelTypeEnum.vector]: getVectorModel,
+  [ModelTypeEnum.audioSpeech]: getAudioSpeechModel,
+  [ModelTypeEnum.whisper]: getWhisperModel,
+  [ModelTypeEnum.rerank]: getReRankModel
 };

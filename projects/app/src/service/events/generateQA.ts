@@ -167,7 +167,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQABill({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        totalTokens,
+        tokenLen: totalTokens,
         billId: data.billId,
         model
       });

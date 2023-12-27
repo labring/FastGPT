@@ -16,17 +16,15 @@ weight: 708
 
 ## 旧版本配置文件
 
-以下配置适用于V4.6.6-alpha版本以后
-
 ```json
 {
-  "systemEnv": {
+  "SystemParams": {
     "pluginBaseUrl": "", // 商业版接口地址
     "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
     "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
     "pgHNSWEfSearch": 100  // pg vector 索引参数，越大精度高但速度慢
   },
-  "chatModels": [ // 对话模型
+  "ChatModels": [ // 对话模型
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -76,7 +74,7 @@ weight: 708
       "defaultSystemChatPrompt": ""
     }
   ],
-  "qaModels": [ // QA 生成模型
+  "QAModels": [ // QA 生成模型
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
@@ -85,7 +83,7 @@ weight: 708
       "price": 0
     }
   ],
-  "cqModels": [ // 问题分类模型
+  "CQModels": [ // 问题分类模型
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -105,7 +103,7 @@ weight: 708
       "functionPrompt": ""
     }
   ],
-  "extractModels": [ // 内容提取模型
+  "ExtractModels": [ // 内容提取模型
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -116,7 +114,7 @@ weight: 708
       "functionPrompt": ""
     }
   ],
-  "qgModels": [ // 生成下一步指引
+  "QGModels": [ // 生成下一步指引
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
@@ -125,7 +123,7 @@ weight: 708
       "price": 0
     }
   ],
-  "vectorModels": [ // 向量模型
+  "VectorModels": [ // 向量模型
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
@@ -134,8 +132,8 @@ weight: 708
       "maxToken": 3000
     }
   ],
-  "reRankModels": [], // 重排模型,暂时填空数组
-  "audioSpeechModels": [
+  "ReRankModels": [], // 重排模型,暂时填空数组
+  "AudioSpeechModels": [
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
@@ -152,7 +150,7 @@ weight: 708
       ]
     }
   ],
-  "whisperModel": {
+  "WhisperModel": {
     "model": "whisper-1",
     "name": "Whisper1",
     "price": 0

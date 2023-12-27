@@ -9,8 +9,9 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { getCQModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getCQModel } from '@/service/core/ai/model';
 import { getHistories } from '../utils';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -59,11 +60,17 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
+  const { total, modelName } = formatModelPrice2Store({
+    model: cqModel.model,
+    dataLen: tokens,
+    type: ModelTypeEnum.cq
+  });
+
   return {
     [result.key]: result.value,
     [ModuleOutputKeyEnum.responseData]: {
-      price: user.openaiAccount?.key ? 0 : cqModel.price * tokens,
-      model: cqModel.name || '',
+      price: user.openaiAccount?.key ? 0 : total,
+      model: modelName,
       query: userChatInput,
       tokens,
       cqList: agents,

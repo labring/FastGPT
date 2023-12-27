@@ -6,7 +6,7 @@ import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant'
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
-import { countModelPrice } from '@/service/support/wallet/bill/utils';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 import type { ChatModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
@@ -194,13 +194,17 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   })();
 
+  const { total, modelName } = formatModelPrice2Store({
+    model,
+    dataLen: totalTokens,
+    type: ModelTypeEnum.chat
+  });
+
   return {
     answerText,
     responseData: {
-      price: user.openaiAccount?.key
-        ? 0
-        : countModelPrice({ model, tokens: totalTokens, type: ModelTypeEnum.chat }),
-      model: modelConstantsData.name,
+      price: user.openaiAccount?.key ? 0 : total,
+      model: modelName,
       tokens: totalTokens,
       query: userChatInput,
       maxToken: max_tokens,

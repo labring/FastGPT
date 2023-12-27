@@ -5,7 +5,9 @@ export type BillListItemType = {
   moduleName: string;
   amount: number;
   model?: string;
+  textLen?: number;
   tokenLen?: number;
+  duration?: number;
 };
 
 export type BillSchema = CreateBillProps & {

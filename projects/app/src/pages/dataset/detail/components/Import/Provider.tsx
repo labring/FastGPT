@@ -11,7 +11,7 @@ import React, {
 import FileSelect, { FileItemType, Props as FileSelectProps } from './FileSelect';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -141,7 +141,7 @@ const Provider = ({
   );
 
   const price = useMemo(() => {
-    return formatPrice(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice);
+    return formatModelPrice2Read(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice);
   }, [files, unitPrice]);
 
   /* start upload data */

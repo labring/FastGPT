@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Box, Flex, Button, Textarea } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
@@ -15,7 +15,7 @@ const QAImport = () => {
   const { t } = useTranslation();
   const { datasetDetail } = useDatasetStore();
   const agentModel = datasetDetail.agentModel;
-  const unitPrice = agentModel?.price || 3;
+  const unitPrice = agentModel?.price || 0.03;
 
   const {
     successChunks,
@@ -60,7 +60,7 @@ const QAImport = () => {
             {t('core.dataset.import.Estimated Price')}
             <MyTooltip
               label={t('core.dataset.import.Estimated Price Tips', {
-                price: formatPrice(unitPrice, 1000)
+                price: unitPrice
               })}
               forceShow
             >

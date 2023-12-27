@@ -19,7 +19,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { chatModelList, simpleModeTemplates } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -109,7 +108,7 @@ function ConfigForm({
   const chatModelSelectList = useMemo(() => {
     return chatModelList.map((item) => ({
       value: item.model,
-      label: `${item.name} (${formatPrice(item.price, 1000)} 元/1k tokens)`
+      label: `${item.name} (${item.price} 元/1k tokens)`
     }));
   }, [refresh]);
 

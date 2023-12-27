@@ -4,7 +4,6 @@ import { onChangeNode } from '../../../../FlowProvider';
 import MySelect from '@/components/Select';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { chatModelList, cqModelList, extractModelList } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 
 const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) => {
   const modelList = (() => {
@@ -55,7 +54,7 @@ const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) 
   );
 
   const list = modelList.map((item) => {
-    const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
+    const priceStr = `(${item.price}元/1k Tokens)`;
 
     return {
       value: item.model,

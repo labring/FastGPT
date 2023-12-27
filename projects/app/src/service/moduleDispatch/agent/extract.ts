@@ -10,7 +10,8 @@ import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
-import { getExtractModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -79,14 +80,20 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     }
   }
 
+  const { total, modelName } = formatModelPrice2Store({
+    model: extractModel.model,
+    dataLen: tokens,
+    type: ModelTypeEnum.extract
+  });
+
   return {
     [ModuleOutputKeyEnum.success]: success ? true : undefined,
     [ModuleOutputKeyEnum.failed]: success ? undefined : true,
     [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
     [ModuleOutputKeyEnum.responseData]: {
-      price: user.openaiAccount?.key ? 0 : extractModel.price * tokens,
-      model: extractModel.name || '',
+      price: user.openaiAccount?.key ? 0 : total,
+      model: modelName,
       query: content,
       tokens,
       extractDescription: description,

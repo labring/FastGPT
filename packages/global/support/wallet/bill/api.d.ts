@@ -13,7 +13,7 @@ export type ConcatBillProps = {
   billId?: string;
   total: number;
   listIndex?: number;
-  tokens?: number;
+  tokenLen?: number;
 };
 
 export type CreateBillProps = {

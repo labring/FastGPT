@@ -4,7 +4,8 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import { getHistories } from '../utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getExtractModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -77,10 +78,16 @@ A: ${systemPrompt}
 
   const tokens = result.usage?.total_tokens || 0;
 
+  const { total, modelName } = formatModelPrice2Store({
+    model: extractModel.model,
+    dataLen: tokens,
+    type: ModelTypeEnum.extract
+  });
+
   return {
     [ModuleOutputKeyEnum.responseData]: {
-      price: extractModel.price * tokens,
-      model: extractModel.name || '',
+      price: total,
+      model: modelName,
       tokens,
       query: userChatInput,
       textOutput: answer
