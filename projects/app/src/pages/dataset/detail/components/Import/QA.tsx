@@ -9,7 +9,7 @@ import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provide
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useTranslation } from 'next-i18next';
 
-const fileExtension = '.txt, .docx, .pdf, .md';
+const fileExtension = '.txt, .docx, .pdf, .md .html';
 
 const QAImport = () => {
   const { t } = useTranslation();
@@ -71,11 +71,18 @@ const QAImport = () => {
         </Flex>
         <Flex mt={3}>
           {showRePreview && (
-            <Button variant={'base'} mr={4} onClick={onReSplitChunks}>
+            <Button variant={'whitePrimary'} mr={4} onClick={onReSplitChunks}>
               {t('core.dataset.import.Re Preview')}
             </Button>
           )}
-          <Button isDisabled={uploading} onClick={openConfirm(() => onclickUpload({ prompt }))}>
+          <Button
+            isDisabled={uploading}
+            onClick={() => {
+              onReSplitChunks();
+
+              openConfirm(() => onclickUpload({ prompt }))();
+            }}
+          >
             {uploading ? (
               <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box>
             ) : (

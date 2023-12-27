@@ -163,10 +163,9 @@ const DataCard = () => {
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'blue.500'} />}
-          bg={'white'}
-          boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-          size={'sm'}
+          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'primary.500'} />}
+          variant={'whitePrimary'}
+          size={'smSquare'}
           borderRadius={'50%'}
           aria-label={''}
           onClick={() =>
@@ -200,7 +199,7 @@ const DataCard = () => {
           <Box>
             <Button
               mx={2}
-              variant={'base'}
+              variant={'whitePrimary'}
               size={['sm', 'md']}
               onClick={() => {
                 if (!collection) return;
@@ -217,7 +216,7 @@ const DataCard = () => {
         {isPc && (
           <MyTooltip label={t('core.dataset.collection.metadata.Read Metadata')}>
             <IconButton
-              variant={'base'}
+              variant={'whiteBase'}
               size={['sm', 'md']}
               icon={<MyIcon name={'menu'} w={'18px'} />}
               aria-label={''}
@@ -338,12 +337,9 @@ const DataCard = () => {
                   <IconButton
                     display={'flex'}
                     icon={<DeleteIcon />}
-                    variant={'base'}
-                    colorScheme={'gray'}
+                    variant={'whiteDanger'}
+                    size={'xsSquare'}
                     aria-label={'delete'}
-                    size={'xs'}
-                    borderRadius={'md'}
-                    _hover={{ color: 'red.600' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       openConfirm(async () => {
@@ -385,7 +381,7 @@ const DataCard = () => {
             ))}
             {collection?.sourceId && (
               <Button
-                variant={'base'}
+                variant={'whitePrimary'}
                 onClick={() => collection.sourceId && getFileAndOpen(collection.sourceId)}
               >
                 {t('core.dataset.collection.metadata.read source')}
@@ -394,7 +390,7 @@ const DataCard = () => {
           </DrawerBody>
 
           <DrawerFooter>
-            <Button variant={'base'} onClick={onClose}>
+            <Button variant={'whitePrimary'} onClick={onClose}>
               {t('common.Close')}
             </Button>
           </DrawerFooter>

@@ -60,9 +60,7 @@ export function usePagination<T = any>({
           isDisabled={pageNum === 1}
           icon={<ArrowBackIcon />}
           aria-label={'left'}
-          size={'sm'}
-          w={'28px'}
-          h={'28px'}
+          size={'smSquare'}
           isLoading={isLoading}
           onClick={() => mutate(pageNum - 1)}
         />

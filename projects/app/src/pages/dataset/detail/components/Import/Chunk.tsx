@@ -7,7 +7,8 @@ import {
   NumberInputField,
   NumberInputStepper,
   NumberIncrementStepper,
-  NumberDecrementStepper
+  NumberDecrementStepper,
+  Input
 } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
@@ -18,7 +19,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 import { useTranslation } from 'next-i18next';
 
-const fileExtension = '.txt, .docx, .pdf, .md';
+const fileExtension = '.txt, .docx, .pdf, .md, .html';
 
 const ChunkImport = () => {
   const { t } = useTranslation();
@@ -29,6 +30,7 @@ const ChunkImport = () => {
   const {
     chunkLen,
     setChunkLen,
+    setCustomSplitChar,
     successChunks,
     totalChunks,
     isUnselectedFile,
@@ -48,15 +50,15 @@ const ChunkImport = () => {
     <Box display={['block', 'flex']} h={['auto', '100%']}>
       <SelectorContainer fileExtension={fileExtension}>
         {/* chunk size */}
-        <Flex py={4} alignItems={'center'}>
+        <Box mt={4} alignItems={'center'}>
           <Box>
             {t('core.dataset.import.Ideal chunk length')}
             <MyTooltip label={t('core.dataset.import.Ideal chunk length Tips')} forceShow>
-              <QuestionOutlineIcon ml={1} />
+              <QuestionOutlineIcon />
             </MyTooltip>
           </Box>
           <Box
-            flex={1}
+            mt={1}
             css={{
               '& > span': {
                 display: 'block'
@@ -69,7 +71,6 @@ const ChunkImport = () => {
               })}
             >
               <NumberInput
-                ml={4}
                 defaultValue={chunkLen}
                 min={100}
                 max={datasetDetail.vectorModel.maxToken}
@@ -87,9 +88,28 @@ const ChunkImport = () => {
               </NumberInput>
             </MyTooltip>
           </Box>
-        </Flex>
+        </Box>
+        {/* custom split char */}
+        <Box mt={4} alignItems={'center'}>
+          <Box>
+            {t('core.dataset.import.Custom split char')}
+            <MyTooltip label={t('core.dataset.import.Custom split char Tips')} forceShow>
+              <QuestionOutlineIcon />
+            </MyTooltip>
+          </Box>
+          <Box mt={1}>
+            <Input
+              defaultValue={''}
+              placeholder="\n;======;==SPLIT=="
+              onChange={(e) => {
+                setCustomSplitChar(e.target.value);
+                setReShowRePreview(true);
+              }}
+            />
+          </Box>
+        </Box>
         {/* price */}
-        <Flex py={4} alignItems={'center'}>
+        <Flex mt={4} alignItems={'center'}>
           <Box>
             {t('core.dataset.import.Estimated Price')}
             <MyTooltip
@@ -105,12 +125,23 @@ const ChunkImport = () => {
         </Flex>
         <Flex mt={3}>
           {showRePreview && (
-            <Button variant={'base'} mr={4} onClick={onReSplitChunks}>
+            <Button variant={'whitePrimary'} mr={4} onClick={onReSplitChunks}>
               {t('core.dataset.import.Re Preview')}
             </Button>
           )}
-          <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
-            {uploading ? <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box> : '确认导入'}
+          <Button
+            isDisabled={uploading}
+            onClick={() => {
+              onReSplitChunks();
+
+              openConfirm(onclickUpload)();
+            }}
+          >
+            {uploading ? (
+              <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box>
+            ) : (
+              t('common.Confirm Import')
+            )}
           </Button>
         </Flex>
       </SelectorContainer>

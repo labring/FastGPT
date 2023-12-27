@@ -1,23 +1,14 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import {
-  onChangeNode,
-  useFlowProviderStore,
-  type useFlowProviderStoreType
-} from '../../../../FlowProvider';
+import { getFlowStore, onChangeNode, useFlowProviderStoreType } from '../../../../FlowProvider';
 import { Box, Button, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
 
-const SelectAppRender = ({
-  item,
-  moduleId,
-  filterAppIds
-}: RenderInputProps & {
-  filterAppIds: useFlowProviderStoreType['filterAppIds'];
-}) => {
+const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
   const theme = useTheme();
+  const [filterAppIds, setFilterAppIds] = useState<useFlowProviderStoreType['filterAppIds']>([]);
 
   const {
     isOpen: isOpenSelectApp,
@@ -27,11 +18,18 @@ const SelectAppRender = ({
 
   const value = item.value as SelectAppItemType | undefined;
 
+  useEffect(() => {
+    async () => {
+      const { filterAppIds } = await getFlowStore();
+      setFilterAppIds(filterAppIds);
+    };
+  }, []);
+
   return (
     <>
       <Box onClick={onOpenSelectApp}>
         {!value ? (
-          <Button variant={'base'} w={'100%'}>
+          <Button variant={'whitePrimary'} w={'100%'}>
             选择应用
           </Button>
         ) : (
@@ -66,7 +64,4 @@ const SelectAppRender = ({
   );
 };
 
-export default React.memo(function (props: RenderInputProps) {
-  const { filterAppIds } = useFlowProviderStore();
-  return <SelectAppRender {...props} filterAppIds={filterAppIds} />;
-});
+export default React.memo(SelectAppRender);

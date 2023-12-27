@@ -313,7 +313,7 @@ const InputDataModal = ({
                         borderColor={'transparent'}
                         px={0}
                         _focus={{
-                          borderColor: 'blue.400',
+                          borderColor: 'primary.400',
                           px: 3
                         }}
                         placeholder={t('dataset.data.Index Placeholder')}
@@ -332,7 +332,7 @@ const InputDataModal = ({
                   border={theme.borders.base}
                   cursor={'pointer'}
                   _hover={{
-                    bg: 'blue.50'
+                    bg: 'primary.50'
                   }}
                   minH={'100px'}
                   onClick={() =>
@@ -351,7 +351,7 @@ const InputDataModal = ({
             )}
           </Box>
           <Flex justifyContent={'flex-end'} px={5} mt={4}>
-            <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
+            <Button variant={'whitePrimary'} mr={3} isLoading={loading} onClick={onClose}>
               {t('common.Close')}
             </Button>
             <MyTooltip label={collection.canWrite ? '' : t('dataset.data.Can not edit')}>

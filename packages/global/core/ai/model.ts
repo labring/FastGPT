@@ -16,6 +16,7 @@ export const defaultVectorModels: VectorModelItemType[] = [
     name: 'Embedding-2',
     price: 0,
     defaultToken: 500,
-    maxToken: 3000
+    maxToken: 3000,
+    weight: 100
   }
 ];

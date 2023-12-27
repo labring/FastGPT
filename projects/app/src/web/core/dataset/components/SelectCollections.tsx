@@ -168,7 +168,7 @@ const SelectCollections = ({
                   }}
                   {...(selected
                     ? {
-                        bg: 'blue.200'
+                        bg: 'primary.200'
                       }
                     : {})}
                   onClick={() => {

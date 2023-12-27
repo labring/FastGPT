@@ -8,11 +8,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@/web/common/hooks/useToast';
-import {
-  useFlowProviderStore,
-  onChangeNode,
-  type useFlowProviderStoreType
-} from '../../FlowProvider';
+import { onChangeNode, onCopyNode, onResetNode, onDelNode } from '../../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -27,13 +23,7 @@ type Props = FlowModuleItemType & {
   isPreview?: boolean;
 };
 
-const NodeCard = (
-  props: Props & {
-    onCopyNode: useFlowProviderStoreType['onCopyNode'];
-    onResetNode: useFlowProviderStoreType['onResetNode'];
-    onDelNode: useFlowProviderStoreType['onDelNode'];
-  }
-) => {
+const NodeCard = (props: Props) => {
   const { t } = useTranslation();
   const {
     children,
@@ -44,11 +34,9 @@ const NodeCard = (
     moduleId,
     flowType,
     inputs,
-    isPreview,
-    onCopyNode,
-    onResetNode,
-    onDelNode
+    isPreview
   } = props;
+
   const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
@@ -77,7 +65,10 @@ const NodeCard = (
                   try {
                     setLoading(true);
                     const pluginModule = await getPreviewPluginModule(pluginId);
-                    onResetNode(moduleId, pluginModule);
+                    onResetNode({
+                      id: moduleId,
+                      module: pluginModule
+                    });
                   } catch (e) {
                     return toast({
                       status: 'error',
@@ -130,20 +121,7 @@ const NodeCard = (
         onClick: () => {}
       }
     ],
-    [
-      flowType,
-      inputs,
-      moduleId,
-      name,
-      onCopyNode,
-      onDelNode,
-      onOpenModal,
-      onResetNode,
-      openConfirm,
-      setLoading,
-      t,
-      toast
-    ]
+    [flowType, inputs, moduleId, name, onOpenModal, openConfirm, setLoading, t, toast]
   );
 
   return (
@@ -198,10 +176,4 @@ const NodeCard = (
   );
 };
 
-export default React.memo(function (props: Props) {
-  const { onCopyNode, onResetNode, onDelNode } = useFlowProviderStore();
-
-  return (
-    <NodeCard {...props} onCopyNode={onCopyNode} onResetNode={onResetNode} onDelNode={onDelNode} />
-  );
-});
+export default React.memo(NodeCard);

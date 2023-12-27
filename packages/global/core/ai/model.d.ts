@@ -24,6 +24,7 @@ export type VectorModelItemType = {
   defaultToken: number;
   price: number;
   maxToken: number;
+  weight: number;
 };
 
 export type ReRankModelItemType = {

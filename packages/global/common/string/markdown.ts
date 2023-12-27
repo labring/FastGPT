@@ -34,3 +34,41 @@ export const simpleMarkdownText = (rawText: string) => {
 
   return rawText.trim();
 };
+
+/**
+ * format markdown
+ * 1. upload base64
+ * 2. replace \
+ */
+export const uploadMarkdownBase64 = async ({
+  rawText,
+  uploadImgController
+}: {
+  rawText: string;
+  uploadImgController: (base64: string) => Promise<string>;
+}) => {
+  // match base64, upload and replace it
+  const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
+  const base64Arr = rawText.match(base64Regex) || [];
+  // upload base64 and replace it
+  await Promise.all(
+    base64Arr.map(async (base64Img) => {
+      try {
+        const str = await uploadImgController(base64Img);
+
+        rawText = rawText.replace(base64Img, str);
+      } catch (error) {
+        rawText = rawText.replace(base64Img, '');
+        rawText = rawText.replace(/!\[.*\]\(\)/g, '');
+      }
+    })
+  );
+
+  // Remove white space on both sides of the picture
+  const trimReg = /(!\[.*\]\(.*\))\s*/g;
+  if (trimReg.test(rawText)) {
+    rawText = rawText.replace(trimReg, '$1');
+  }
+
+  return simpleMarkdownText(rawText);
+};

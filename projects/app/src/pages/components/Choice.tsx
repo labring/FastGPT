@@ -90,10 +90,10 @@ const Choice = () => {
                 <Image src={item.icon} w={'28px'} alt={''} loading={'lazy'} />
               </Flex>
               <Box ml={5}>
-                <Box fontSize={['lg', '2xl']} fontWeight={'bold'} color={'myGray.900'}>
+                <Box fontSize={['lg', 'xl']} fontWeight={'bold'} color={'myGray.900'}>
                   {item.title}
                 </Box>
-                <Box mt={1} fontSize={['md', 'lg']}>
+                <Box mt={1} fontSize={'md'}>
                   {item.desc}
                 </Box>
               </Box>

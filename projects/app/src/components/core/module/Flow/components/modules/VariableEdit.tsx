@@ -289,7 +289,7 @@ const VariableEdit = ({
         </ModalBody>
 
         <ModalFooter>
-          <Button variant={'base'} mr={3} onClick={onCloseEdit}>
+          <Button variant={'whiteBase'} mr={3} onClick={onCloseEdit}>
             {t('common.Close')}
           </Button>
           <Button

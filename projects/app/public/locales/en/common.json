@@ -231,7 +231,9 @@
     },
     "app": {
       "App params config": "App Config",
+      "Chat Variable": "",
       "Next Step Guide": "Next step guide",
+      "Question Guide": "",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
       "Save and preview": "Save",
       "Select TTS": "Select TTS",
@@ -297,10 +299,10 @@
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "error": {
+        "Chat error": "Chat error",
         "Messages empty": "Interface content is empty, maybe the text is too long ~",
         "Select dataset empty": "You didn't choose any dataset.",
-        "user input empty": "User question is empty",
-        "Chat error": "Chat error"
+        "user input empty": "User question is empty"
       },
       "feedback": {
         "Close User Good Feedback": "",
@@ -448,6 +450,8 @@
         "Chunk Split": "Chunk Split",
         "Chunk Split Tip": "Select the files and split the by sentences",
         "Csv format error": "The csv file format is incorrect, please ensure that the index and content columns are two",
+        "Custom split char": "Custom split char",
+        "Custom split char Tips": "Allows you to block according to custom delimiters. It is usually used for processed data, using specific delimiters to precisely block it.",
         "Estimated Price": "Estimated Price",
         "Estimated Price Tips": "Index generation is billed as: {{price}}/1k tokens",
         "Fetch Error": "Get link failed",
@@ -851,6 +855,17 @@
     "Synchronous version": "Sync Version",
     "To Edit Plugin": "To Edit",
     "Update Your Plugin": "Update Plugin"
+  },
+  "support": {
+    "user": {
+      "auth": {
+        "Sending Code": "Sending"
+      },
+      "login": {
+        "Github": "Github",
+        "Google": "Google"
+      }
+    }
   },
   "system": {
     "Help Document": "Document"
