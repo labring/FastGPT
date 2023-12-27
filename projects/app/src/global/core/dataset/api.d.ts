@@ -48,6 +48,7 @@ export type SearchTestProps = {
   datasetId: string;
   text: string;
   limit?: number;
+  size?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
 };
 export type SearchTestResponse = {

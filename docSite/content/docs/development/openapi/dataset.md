@@ -169,7 +169,8 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
     "datasetId": "知识库的ID",
     "text": "导演是谁",
     "rarank": true,
-    "limit": 20
+    "limit": 20,
+    "size": 800
 }'
 ```
 
@@ -179,7 +180,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
 {{< tab tabName="响应示例" >}}
 {{< markdownify >}}
 
-返回 top k 结果， limit 为预估条数，会按每条数据 800 tokens 的长度进行预估，20条也就是返回 16000 tokens 长度的数据，最多测试 30000 tokens 的数据。
+返回 top k 结果， limit 为预估条数，会按每条数据 800 tokens 的长度进行预估，20条也就是返回 16000(limit * size) tokens 长度的数据，最多测试 30000 tokens 的数据。
 
 ```bash
 {
