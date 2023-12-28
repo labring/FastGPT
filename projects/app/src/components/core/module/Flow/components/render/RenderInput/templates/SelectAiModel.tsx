@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect } from 'react';
 import type { RenderInputProps } from '../type';
 import { onChangeNode } from '../../../../FlowProvider';
-import MySelect from '@/components/Select';
+import SelectAiModel from '@/components/Select/SelectAiModel';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { chatModelList, cqModelList, extractModelList } from '@/web/common/system/staticData';
 
@@ -66,7 +66,7 @@ const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) 
   }, [item.value, list, onChangeModel]);
 
   return (
-    <MySelect
+    <SelectAiModel
       minW={'350px'}
       width={'100%'}
       value={item.value}

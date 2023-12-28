@@ -134,7 +134,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         });
       }
     },
-    [openConfirm, router, setUserInfo]
+    [onOpenPriceBox, openConfirm, router, setUserInfo]
   );
 
   return (

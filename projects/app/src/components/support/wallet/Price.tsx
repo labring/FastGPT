@@ -11,6 +11,7 @@ import {
   reRankModelList,
   whisperModel
 } from '@/web/common/system/staticData';
+import ReactDOM from 'react-dom';
 
 import Markdown from '@/components/Markdown';
 
@@ -124,8 +125,8 @@ ${audioSpeechModelList
       : [])
   ];
 
-  return (
-    <Box position={'fixed'} top={0} right={0} bottom={0} left={0} zIndex={100} bg={'white'}>
+  return ReactDOM.createPortal(
+    <Box position={'fixed'} top={0} right={0} bottom={0} left={0} zIndex={99999} bg={'white'}>
       <CloseButton
         position={'absolute'}
         top={'10px'}
@@ -158,7 +159,9 @@ ${audioSpeechModelList
           </Box>
         ))}
       </Box>
-    </Box>
+    </Box>,
+    // @ts-ignore
+    document.querySelector('body')
   );
 };
 

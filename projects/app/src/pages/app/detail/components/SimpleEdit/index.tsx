@@ -50,6 +50,7 @@ import VariableEdit from '@/components/core/module/Flow/components/modules/Varia
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import PromptTextarea from '@/components/common/Textarea/PromptTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
+import SelectAiModel from '@/components/Select/SelectAiModel';
 
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
@@ -277,7 +278,7 @@ function ConfigForm({
               <Flex alignItems={'center'} mt={5}>
                 <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
                 <Box flex={'1 0 0'}>
-                  <MySelect
+                  <SelectAiModel
                     width={'100%'}
                     value={getValues(`aiSettings.model`)}
                     list={chatModelSelectList}
