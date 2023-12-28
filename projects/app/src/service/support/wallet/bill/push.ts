@@ -99,12 +99,13 @@ export const pushGenerateVectorBill = ({
   model: string;
   source?: `${BillSourceEnum}`;
 }) => {
-  // 计算价格. 至少为1
-  const { total, modelName } = formatModelPrice2Store({
+  let { total, modelName } = formatModelPrice2Store({
     model,
     inputLen: tokens,
     type: ModelTypeEnum.vector
   });
+
+  total = total < 1 ? 1 : total;
 
   // 插入 Bill 记录
   if (billId) {

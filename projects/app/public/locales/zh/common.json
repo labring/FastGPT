@@ -990,6 +990,8 @@
       "App name": "应用名",
       "Audio Speech": "语音播报",
       "Bill Module": "扣费模块",
+      "Data Length": "数据长度",
+      "Dataset store": "知识库存储",
       "Duration": "时长（秒）",
       "Input Token Length": "输入 Tokens",
       "Module name": "模块名",

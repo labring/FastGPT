@@ -25,45 +25,57 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
     [bill.list]
   );
 
-  const { hasModel, hasTokens, hasInputTokens, hasOutputTokens, hasTextLen, hasDuration } =
-    useMemo(() => {
-      let hasModel = false;
-      let hasTokens = false;
-      let hasInputTokens = false;
-      let hasOutputTokens = false;
-      let hasTextLen = false;
-      let hasDuration = false;
+  const {
+    hasModel,
+    hasTokens,
+    hasInputTokens,
+    hasOutputTokens,
+    hasTextLen,
+    hasDuration,
+    hasDataLen
+  } = useMemo(() => {
+    let hasModel = false;
+    let hasTokens = false;
+    let hasInputTokens = false;
+    let hasOutputTokens = false;
+    let hasTextLen = false;
+    let hasDuration = false;
+    let hasDataLen = false;
 
-      bill.list.forEach((item) => {
-        if (item.model !== undefined) {
-          hasModel = true;
-        }
-        if (item.tokenLen !== undefined) {
-          hasTokens = true;
-        }
-        if (item.inputTokens !== undefined) {
-          hasInputTokens = true;
-        }
-        if (item.outputTokens !== undefined) {
-          hasOutputTokens = true;
-        }
-        if (item.textLen !== undefined) {
-          hasTextLen = true;
-        }
-        if (item.duration !== undefined) {
-          hasDuration = true;
-        }
-      });
+    bill.list.forEach((item) => {
+      if (item.model !== undefined) {
+        hasModel = true;
+      }
+      if (item.tokenLen !== undefined) {
+        hasTokens = true;
+      }
+      if (item.inputTokens !== undefined) {
+        hasInputTokens = true;
+      }
+      if (item.outputTokens !== undefined) {
+        hasOutputTokens = true;
+      }
+      if (item.textLen !== undefined) {
+        hasTextLen = true;
+      }
+      if (item.duration !== undefined) {
+        hasDuration = true;
+      }
+      if (item.dataLen !== undefined) {
+        hasDataLen = true;
+      }
+    });
 
-      return {
-        hasModel,
-        hasTokens,
-        hasInputTokens,
-        hasOutputTokens,
-        hasTextLen,
-        hasDuration
-      };
-    }, [bill.list]);
+    return {
+      hasModel,
+      hasTokens,
+      hasInputTokens,
+      hasOutputTokens,
+      hasTextLen,
+      hasDuration,
+      hasDataLen
+    };
+  }, [bill.list]);
 
   return (
     <MyModal
@@ -113,6 +125,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                   {hasOutputTokens && <Th>{t('wallet.bill.Output Token Length')}</Th>}
                   {hasTextLen && <Th>{t('wallet.bill.Text Length')}</Th>}
                   {hasDuration && <Th>{t('wallet.bill.Duration')}</Th>}
+                  {hasDataLen && <Th>{t('wallet.bill.Data Length')}</Th>}
                   <Th>费用(￥)</Th>
                 </Tr>
               </Thead>
@@ -126,6 +139,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                     {hasOutputTokens && <Td>{item.outputTokens ?? '-'}</Td>}
                     {hasTextLen && <Td>{item.textLen ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
+                    {hasDataLen && <Td>{item.dataLen ?? '-'}</Td>}
 
                     <Td>{formatStorePrice2Read(item.amount)}</Td>
                   </Tr>

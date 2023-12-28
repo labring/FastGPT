@@ -3,7 +3,8 @@ import {
   insertDatasetDataVector,
   updateDatasetDataVector,
   deleteDatasetDataVector,
-  embeddingRecall
+  embeddingRecall,
+  getVectorDataByTime
 } from './controller';
 
 export class PgVector {
@@ -13,4 +14,5 @@ export class PgVector {
   update = updateDatasetDataVector;
   delete = deleteDatasetDataVector;
   recall = embeddingRecall;
+  getVectorDataByTime = getVectorDataByTime;
 }

@@ -8,8 +8,9 @@ const getVectorObj = () => {
 };
 
 export const initVectorStore = getVectorObj().init;
-
 export const deleteDatasetDataVector = getVectorObj().delete;
+export const recallFromVectorStore = getVectorObj().recall;
+export const getVectorDataByTime = getVectorObj().getVectorDataByTime;
 
 export const insertDatasetDataVector = async ({
   model,
@@ -58,5 +59,3 @@ export const updateDatasetDataVector = async ({
     tokens
   };
 };
-
-export const recallFromVectorStore = getVectorObj().recall;

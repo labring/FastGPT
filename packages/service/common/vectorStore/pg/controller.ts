@@ -5,6 +5,7 @@ import { PgClient, connectPg } from './index';
 import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
 import { EmbeddingRecallItemType } from '../type';
 import { DeleteDatasetVectorProps, EmbeddingRecallProps } from '../controller.d';
+import dayjs from 'dayjs';
 
 export async function initPg() {
   try {
@@ -173,4 +174,19 @@ export const embeddingRecall = async (
     }
     return embeddingRecall(props);
   }
+};
+
+// bill
+export const getVectorDataByTime = async (start: Date, end: Date) => {
+  const { rows } = await PgClient.query<{ id: string; data_id: string }>(`SELECT id, data_id
+  FROM ${PgDatasetTableName}
+  WHERE createTime BETWEEN '${dayjs(start).format('YYYY-MM-DD')}' AND '${dayjs(end).format(
+    'YYYY-MM-DD 23:59:59'
+  )}';
+  `);
+
+  return rows.map((item) => ({
+    id: item.id,
+    dataId: item.data_id
+  }));
 };
