@@ -864,6 +864,7 @@
   },
   "support": {
     "user": {
+      "Price": "Price",
       "auth": {
         "Sending Code": "Sending"
       },

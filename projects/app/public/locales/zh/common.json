@@ -864,6 +864,7 @@
   },
   "support": {
     "user": {
+      "Price": "计费标准",
       "auth": {
         "Sending Code": "正在发送"
       },

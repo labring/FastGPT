@@ -340,6 +340,10 @@ export const theme = extendTheme({
       1000: '#313132'
     },
     myGray: {
+      '05': 'rgba(17, 24, 36, 0.05)',
+      1: 'rgba(17, 24, 36, 0.1)',
+      15: 'rgba(17, 24, 36, 0.15)',
+
       25: '#FBFBFC',
       50: '#F7F8FA',
       100: '#F4F4F7',

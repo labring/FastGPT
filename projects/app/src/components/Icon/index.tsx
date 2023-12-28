@@ -125,7 +125,8 @@ const iconPaths = {
   'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg'),
   'common/routePushLight': () => import('./icons/common/routePushLight.svg'),
   'common/viewLight': () => import('./icons/common/viewLight.svg'),
-  'core/app/customFeedback': () => import('./icons/core/app/customFeedback.svg')
+  'core/app/customFeedback': () => import('./icons/core/app/customFeedback.svg'),
+  'support/pay/priceLight': () => import('./icons/support/pay/priceLight.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

@@ -32,8 +32,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           requestUrl: undefined,
           requestAuth: undefined
         })) || [],
+      qgModes: global.qgModels,
+      whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
-      priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0',
       simpleModeTemplates: global.simpleModeTemplates
     }
@@ -72,7 +73,6 @@ export async function getInitConfig() {
   await getSimpleModeTemplates();
 
   getSystemVersion();
-  countModelPrice();
   getSystemPlugin();
 
   console.log({
@@ -87,7 +87,6 @@ export async function getInitConfig() {
     reRankModels: global.reRankModels,
     audioSpeechModels: global.audioSpeechModels,
     whisperModel: global.whisperModel,
-    price: global.priceMd,
     simpleModeTemplates: global.simpleModeTemplates,
     communityPlugins: global.communityPlugins
   });
@@ -136,8 +135,6 @@ export async function initSystemConfig() {
   global.reRankModels = config.reRankModels;
   global.audioSpeechModels = config.audioSpeechModels;
   global.whisperModel = config.whisperModel;
-
-  global.priceMd = '';
 }
 
 export function initGlobal() {
@@ -165,52 +162,6 @@ export function getSystemVersion() {
 
     global.systemVersion = '0.0.0';
   }
-}
-
-export function countModelPrice() {
-  global.priceMd = `| 计费项 | 输入价格(￥) | 输出价格(￥) |
-| --- | --- | --- |
-${global.vectorModels
-  ?.map((item) => `| 索引-${item.name} | ${item.inputPrice}/1k tokens | - |`)
-  .join('\n')}
-${global.chatModels
-  ?.map(
-    (item) => `| 对话-${item.name} | ${item.inputPrice}/1k tokens | ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}
-${global.qaModels
-  ?.map(
-    (item) =>
-      `| 文件QA拆分-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}
-${global.cqModels
-  ?.map(
-    (item) =>
-      `| 问题分类-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}
-${global.extractModels
-  ?.map(
-    (item) =>
-      `| 内容提取-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}
-${global.qgModels
-  ?.map(
-    (item) =>
-      `| 下一步指引-${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}
-${global.audioSpeechModels
-  ?.map((item) => `| 语音播放-${item.name} | ${item.inputPrice}/1k 字符 | - |`)
-  .join('\n')}
-${
-  global.whisperModel
-    ? `| 语音输入-${global.whisperModel.name} | ${global.whisperModel.inputPrice}/分钟 | - |`
-    : ''
-}
-`;
 }
 
 async function getSimpleModeTemplates() {
