@@ -1,6 +1,5 @@
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -157,30 +156,6 @@ class PgClass {
   async query<T extends QueryResultRow = any>(sql: string) {
     const pg = await connectPg();
     return pg.query<T>(sql);
-  }
-}
-
-export async function initPg() {
-  try {
-    await connectPg();
-    await PgClient.query(`
-      CREATE EXTENSION IF NOT EXISTS vector;
-      CREATE TABLE IF NOT EXISTS ${PgDatasetTableName} (
-          id BIGSERIAL PRIMARY KEY,
-          vector VECTOR(1536) NOT NULL,
-          team_id VARCHAR(50) NOT NULL,
-          tmb_id VARCHAR(50) NOT NULL,
-          dataset_id VARCHAR(50) NOT NULL,
-          collection_id VARCHAR(50) NOT NULL,
-          data_id VARCHAR(50) NOT NULL,
-          createTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-      CREATE INDEX IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);
-    `);
-
-    console.log('init pg successful');
-  } catch (error) {
-    console.log('init pg error', error);
   }
 }
 

@@ -88,21 +88,21 @@ export const pushGenerateVectorBill = ({
   billId,
   teamId,
   tmbId,
-  tokenLen,
+  tokens,
   model,
   source = BillSourceEnum.fastgpt
 }: {
   billId?: string;
   teamId: string;
   tmbId: string;
-  tokenLen: number;
+  tokens: number;
   model: string;
   source?: `${BillSourceEnum}`;
 }) => {
   // 计算价格. 至少为1
   const { total, modelName } = formatModelPrice2Store({
     model,
-    inputLen: tokenLen,
+    inputLen: tokens,
     type: ModelTypeEnum.vector
   });
 
@@ -113,7 +113,7 @@ export const pushGenerateVectorBill = ({
       tmbId,
       total,
       billId,
-      inputTokens: tokenLen,
+      inputTokens: tokens,
       listIndex: 0
     });
   } else {
@@ -128,7 +128,7 @@ export const pushGenerateVectorBill = ({
           moduleName: 'wallet.moduleName.index',
           amount: total,
           model: modelName,
-          inputTokens: tokenLen
+          inputTokens: tokens
         }
       ]
     });

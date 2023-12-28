@@ -1,4 +1,4 @@
-import { getAIApi } from '@fastgpt/service/core/ai/config';
+import { getAIApi } from '../config';
 
 export type GetVectorProps = {
   model: string;
@@ -10,23 +10,23 @@ export async function getVectorsByText({
   model = 'text-embedding-ada-002',
   input
 }: GetVectorProps) {
-  try {
-    if (typeof input === 'string' && !input) {
-      return Promise.reject({
-        code: 500,
-        message: 'input is empty'
-      });
-    } else if (Array.isArray(input)) {
-      for (let i = 0; i < input.length; i++) {
-        if (!input[i]) {
-          return Promise.reject({
-            code: 500,
-            message: 'input array is empty'
-          });
-        }
+  if (typeof input === 'string' && !input) {
+    return Promise.reject({
+      code: 500,
+      message: 'input is empty'
+    });
+  } else if (Array.isArray(input)) {
+    for (let i = 0; i < input.length; i++) {
+      if (!input[i]) {
+        return Promise.reject({
+          code: 500,
+          message: 'input array is empty'
+        });
       }
     }
+  }
 
+  try {
     // 获取 chatAPI
     const ai = getAIApi();
 
@@ -46,7 +46,7 @@ export async function getVectorsByText({
           return Promise.reject(res.data?.err?.message || 'Embedding API Error');
         }
         return {
-          tokenLen: res.usage.total_tokens || 0,
+          tokens: res.usage.total_tokens || 0,
           vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
         };
       });

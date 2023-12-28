@@ -4,7 +4,7 @@ import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-import { searchDatasetData } from '@/service/core/dataset/data/pg';
+import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 
@@ -51,7 +51,7 @@ export async function dispatchDatasetSearch(
   const concatQueries = [userChatInput];
 
   // start search
-  const { searchRes, tokenLen } = await searchDatasetData({
+  const { searchRes, tokens } = await searchDatasetData({
     rawQuery: userChatInput,
     queries: concatQueries,
     model: vectorModel.model,
@@ -63,7 +63,7 @@ export async function dispatchDatasetSearch(
 
   const { total, modelName } = formatModelPrice2Store({
     model: vectorModel.model,
-    inputLen: tokenLen,
+    inputLen: tokens,
     type: ModelTypeEnum.vector
   });
 
@@ -75,7 +75,7 @@ export async function dispatchDatasetSearch(
       price: total,
       query: concatQueries.join('\n'),
       model: modelName,
-      inputTokens: tokenLen,
+      inputTokens: tokens,
       similarity,
       limit,
       searchMode
