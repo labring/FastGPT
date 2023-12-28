@@ -39,10 +39,10 @@ export const formatModelPrice2Store = ({
       modelName: ''
     };
   const inputTotal = modelData.inputPrice
-    ? Math.round(modelData.inputPrice * (inputLen / multiple) * PRICE_SCALE)
+    ? Math.ceil(modelData.inputPrice * (inputLen / multiple) * PRICE_SCALE)
     : 0;
   const outputTotal = modelData.outputPrice
-    ? Math.round(modelData.outputPrice * (outputLen / multiple) * PRICE_SCALE)
+    ? Math.ceil(modelData.outputPrice * (outputLen / multiple) * PRICE_SCALE)
     : 0;
 
   return {

@@ -177,6 +177,13 @@ export const embeddingRecall = async (
 };
 
 // bill
+export const getVectorCountByTeamId = async (teamId: string) => {
+  const total = await PgClient.count(PgDatasetTableName, {
+    where: [['team_id', String(teamId)]]
+  });
+
+  return total;
+};
 export const getVectorDataByTime = async (start: Date, end: Date) => {
   const { rows } = await PgClient.query<{ id: string; data_id: string }>(`SELECT id, data_id
   FROM ${PgDatasetTableName}

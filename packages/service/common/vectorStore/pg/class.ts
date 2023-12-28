@@ -4,7 +4,8 @@ import {
   updateDatasetDataVector,
   deleteDatasetDataVector,
   embeddingRecall,
-  getVectorDataByTime
+  getVectorDataByTime,
+  getVectorCountByTeamId
 } from './controller';
 
 export class PgVector {
@@ -14,5 +15,6 @@ export class PgVector {
   update = updateDatasetDataVector;
   delete = deleteDatasetDataVector;
   recall = embeddingRecall;
+  getVectorCountByTeamId = getVectorCountByTeamId;
   getVectorDataByTime = getVectorDataByTime;
 }
