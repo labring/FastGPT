@@ -513,6 +513,11 @@
         "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
       },
       "training": {
+        "Full": "Expect more than 5 minutes",
+        "Leisure": "Leisure",
+        "Agent queue": "QA wait list",
+        "Vector queue": "Vector wait list",
+        "Waiting": "Waiting",
         "Website Sync": "Website Sync",
         "type chunk": "Chunk",
         "type qa": "QA"

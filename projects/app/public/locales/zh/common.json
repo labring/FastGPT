@@ -513,6 +513,11 @@
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
       },
       "training": {
+        "Agent queue": "QA训练排队",
+        "Full": "预计5分钟以上",
+        "Leisure": "空闲",
+        "Vector queue": "索引排队",
+        "Waiting": "预计5分钟",
         "Website Sync": "Web 站点同步",
         "type chunk": "直接分段",
         "type qa": "问答拆分"
