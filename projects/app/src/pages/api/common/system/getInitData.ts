@@ -121,7 +121,7 @@ export async function initSystemConfig() {
 
   // set config
   global.feConfigs = {
-    isPlus: !!config.systemEnv.pluginBaseUrl,
+    isPlus: !!config.systemEnv?.pluginBaseUrl,
     ...config.feConfigs
   };
   global.systemEnv = config.systemEnv;
