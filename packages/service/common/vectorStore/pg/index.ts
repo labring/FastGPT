@@ -116,6 +116,7 @@ class PgClass {
       FROM ${table}
       ${this.getWhereStr(props.where)}
     `;
+
     const pg = await connectPg();
     return pg.query(sql).then((res) => Number(res.rows[0]?.count || 0));
   }
