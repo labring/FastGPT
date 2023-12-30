@@ -239,8 +239,7 @@ function filterQuote({
       a: item.a,
       source: item.sourceName,
       sourceId: String(item.sourceId || 'UnKnow'),
-      index: index + 1,
-      score: item.score?.toFixed(4)
+      index: index + 1
     });
   }
 

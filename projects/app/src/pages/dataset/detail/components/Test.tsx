@@ -1,22 +1,12 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Box,
-  Textarea,
-  Button,
-  Flex,
-  useTheme,
-  Grid,
-  Progress,
-  Switch,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Box, Textarea, Button, Flex, useTheme, Grid, useDisclosure } from '@chakra-ui/react';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
 import { getDatasetDataItemById, postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
-import InputDataModal, { type InputDataType } from './InputDataModal';
+import InputDataModal, { RawSourceText, type InputDataType } from './InputDataModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -45,6 +35,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const [searchMode, setSearchMode] = useState<`${DatasetSearchModeEnum}`>(
     DatasetSearchModeEnum.embedding
   );
+  const [usingReRank, setUsingReRank] = useState(false);
   const searchModeData = DatasetSearchModeMap[searchMode];
 
   const {
@@ -59,7 +50,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   );
 
   const { mutate, isLoading } = useRequest({
-    mutationFn: () => postSearchText({ datasetId, text: inputText.trim(), searchMode, limit: 30 }),
+    mutationFn: () =>
+      postSearchText({ datasetId, text: inputText.trim(), searchMode, usingReRank, limit: 20 }),
     onSuccess(res: SearchTestResponse) {
       if (!res || res.list.length === 0) {
         return toast({
@@ -73,7 +65,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         text: inputText.trim(),
         time: new Date(),
         results: res.list,
-        duration: res.duration
+        duration: res.duration,
+        searchMode
       };
       pushDatasetTestItem(testItem);
       setDatasetTestItem(testItem);
@@ -123,8 +116,8 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             variant={'unstyled'}
             maxLength={datasetDetail.vectorModel.maxToken}
             placeholder={t('core.dataset.test.Test Text Placeholder')}
-            value={inputText}
-            onChange={(e) => setInputText(e.target.value)}
+            defaultValue={inputText}
+            onBlur={(e) => setInputText(e.target.value)}
           />
           <Flex alignItems={'center'} justifyContent={'flex-end'}>
             <Box mx={3} color={'myGray.500'}>
@@ -142,8 +135,9 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           </Flex>
           <Box mt={2}>
             <Flex py={2} fontWeight={'bold'} borderBottom={theme.borders.sm}>
+              <Box w={'80px'}>{t('core.dataset.search.search mode')}</Box>
               <Box flex={1}>{t('core.dataset.test.Test Text')}</Box>
-              <Box w={'80px'}>{t('common.Time')}</Box>
+              <Box w={'70px'}>{t('common.Time')}</Box>
               <Box w={'14px'}></Box>
             </Flex>
             {testHistories.map((item) => (
@@ -159,12 +153,27 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   }
                 }}
                 cursor={'pointer'}
+                fontSize={'sm'}
                 onClick={() => setDatasetTestItem(item)}
               >
+                <Box w={'80px'}>
+                  {DatasetSearchModeMap[item.searchMode] ? (
+                    <Flex alignItems={'center'}>
+                      <MyIcon
+                        name={DatasetSearchModeMap[item.searchMode].icon as any}
+                        w={'12px'}
+                        mr={'1px'}
+                      />
+                      {t(DatasetSearchModeMap[item.searchMode].title)}
+                    </Flex>
+                  ) : (
+                    '-'
+                  )}
+                </Box>
                 <Box flex={1} mr={2}>
                   {item.text}
                 </Box>
-                <Box w={'80px'}>{formatTimeToChatTime(item.time)}</Box>
+                <Box w={'70px'}>{formatTimeToChatTime(item.time)}</Box>
                 <MyTooltip label={t('core.dataset.test.delete test history')}>
                   <Box w={'14px'} h={'14px'}>
                     <MyIcon
@@ -232,7 +241,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 <Box
                   key={item.id}
                   pb={2}
-                  borderRadius={'sm'}
+                  borderRadius={'lg'}
                   border={theme.borders.base}
                   _notLast={{ mb: 2 }}
                   cursor={'pointer'}
@@ -267,12 +276,19 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                       border={theme.borders.base}
                       px={2}
                       fontSize={'sm'}
-                      mr={1}
+                      mr={3}
                       borderRadius={'md'}
                     >
                       # {index + 1}
                     </Box>
-                    <MyIcon name={'kbTest'} w={'14px'} />
+                    <RawSourceText
+                      fontWeight={'bold'}
+                      color={'black'}
+                      sourceName={item.sourceName}
+                      sourceId={item.sourceId}
+                      canView
+                    />
+                    {/* <MyIcon name={'kbTest'} w={'14px'} />
                     <Progress
                       mx={2}
                       flex={'1 0 0'}
@@ -281,7 +297,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                       borderRadius={'20px'}
                       colorScheme="gray"
                     />
-                    <Box>{item.score.toFixed(4)}</Box>
+                    <Box>{item.score.toFixed(4)}</Box> */}
                   </Flex>
                   <Box px={2} fontSize={'xs'} color={'myGray.600'} wordBreak={'break-word'}>
                     <Box>{item.q}</Box>
@@ -335,9 +351,11 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       {isOpenSelectMode && (
         <DatasetParamsModal
           searchMode={searchMode}
+          usingReRank={usingReRank}
           onClose={onCloseSelectMode}
           onSuccess={(e) => {
             setSearchMode(e.searchMode);
+            e.usingReRank !== undefined && setUsingReRank(e.usingReRank);
           }}
         />
       )}

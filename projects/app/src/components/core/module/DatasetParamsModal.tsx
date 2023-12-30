@@ -1,5 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Button, ModalBody, ModalFooter, Textarea } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Checkbox,
+  Divider,
+  Flex,
+  ModalBody,
+  ModalFooter,
+  Textarea,
+  useTheme
+} from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySlider from '@/components/Slider';
@@ -12,11 +22,13 @@ import { reRankModelList } from '@/web/common/system/staticData';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
 import MyRadio from '@/components/common/MyRadio';
+import MyIcon from '@/components/Icon';
 
 type DatasetParamsProps = {
   similarity?: number;
   limit?: number;
   searchMode: `${DatasetSearchModeEnum}`;
+  usingReRank?: boolean;
   searchEmptyText?: string;
   maxTokens?: number;
 };
@@ -26,27 +38,27 @@ const DatasetParamsModal = ({
   limit,
   similarity,
   searchMode = DatasetSearchModeEnum.embedding,
+  usingReRank,
   maxTokens = 3000,
   onClose,
   onSuccess
 }: DatasetParamsProps & { onClose: () => void; onSuccess: (e: DatasetParamsProps) => void }) => {
   const { t } = useTranslation();
+  const theme = useTheme();
   const [refresh, setRefresh] = useState(false);
   const { register, setValue, getValues, handleSubmit } = useForm<DatasetParamsProps>({
     defaultValues: {
       searchEmptyText,
       limit,
       similarity,
-      searchMode
+      searchMode,
+      usingReRank
     }
   });
 
   const searchModeList = useMemo(() => {
     const list = Object.values(DatasetSearchModeMap);
-    if (reRankModelList.length > 0) {
-      return list;
-    }
-    return list.slice(0, 1);
+    return list;
   }, []);
 
   return (
@@ -71,6 +83,41 @@ const DatasetParamsModal = ({
             setRefresh(!refresh);
           }}
         />
+        {usingReRank !== undefined && reRankModelList.length > 0 && (
+          <>
+            <Divider my={4} />
+            <Flex
+              alignItems={'center'}
+              cursor={'pointer'}
+              userSelect={'none'}
+              py={3}
+              pl={'14px'}
+              pr={'16px'}
+              border={theme.borders.sm}
+              borderWidth={'1.5px'}
+              borderRadius={'md'}
+              position={'relative'}
+              {...(getValues('usingReRank')
+                ? {
+                    borderColor: 'primary.400'
+                  }
+                : {})}
+              onClick={() => {
+                setValue('usingReRank', !getValues('usingReRank'));
+                setRefresh((state) => !state);
+              }}
+            >
+              <MyIcon name="core/dataset/rerank" w={'18px'} mr={'14px'} />
+              <Box pr={2} color={'myGray.800'} flex={'1 0 0'}>
+                <Box>{t('core.dataset.search.ReRank')}</Box>
+                <Box fontSize={['xs', 'sm']} color={'myGray.500'}>
+                  {t('core.dataset.search.ReRank desc')}
+                </Box>
+              </Box>
+              <Checkbox colorScheme="primary" isChecked={getValues('usingReRank')} size="lg" />
+            </Flex>
+          </>
+        )}
 
         {similarity !== undefined && (
           <Box display={['block', 'flex']} py={8} mt={3}>

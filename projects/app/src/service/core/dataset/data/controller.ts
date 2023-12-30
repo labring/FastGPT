@@ -12,7 +12,8 @@ import {
 import { Types } from 'mongoose';
 import {
   DatasetDataIndexTypeEnum,
-  DatasetSearchModeEnum
+  DatasetSearchModeEnum,
+  SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constant';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@/service/common/string/jieba';
@@ -242,6 +243,7 @@ export async function searchDatasetData(props: {
   limit: number; // max Token limit
   datasetIds: string[];
   searchMode?: `${DatasetSearchModeEnum}`;
+  usingReRank?: boolean;
   rawQuery: string;
   queries: string[];
 }) {
@@ -252,6 +254,7 @@ export async function searchDatasetData(props: {
     similarity = 0,
     limit: maxTokens,
     searchMode = DatasetSearchModeEnum.embedding,
+    usingReRank = false,
     datasetIds = []
   } = props;
 
@@ -261,10 +264,6 @@ export async function searchDatasetData(props: {
   if (maxTokens < 50) {
     maxTokens = 1500;
   }
-  const rerank =
-    global.reRankModels?.[0] &&
-    (searchMode === DatasetSearchModeEnum.embeddingReRank ||
-      searchMode === DatasetSearchModeEnum.embFullTextReRank);
   let set = new Set<string>();
 
   /* function */
@@ -280,17 +279,18 @@ export async function searchDatasetData(props: {
       };
     }
     // 50 < 2*limit < value < 100
-    if (searchMode === DatasetSearchModeEnum.embeddingReRank) {
+    if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
       return {
-        embeddingLimit: Math.min(100, Math.max(50, estimatedLen * 2)),
-        fullTextLimit: 0
+        embeddingLimit: 0,
+        fullTextLimit: Math.min(estimatedLen, 50)
       };
     }
+    // mixed
     // 50 < 2*limit < embedding < 80
     // 20 < limit < fullTextLimit < 40
     return {
-      embeddingLimit: Math.min(80, Math.max(50, estimatedLen * 2)),
-      fullTextLimit: Math.min(40, Math.max(20, estimatedLen))
+      embeddingLimit: Math.min(estimatedLen, 80),
+      fullTextLimit: Math.min(estimatedLen, 40)
     };
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
@@ -322,7 +322,7 @@ export async function searchDatasetData(props: {
     ]);
 
     const formatResult = results
-      .map((item) => {
+      .map((item, index) => {
         const collection = collections.find(
           (collection) => String(collection._id) === item.collectionId
         );
@@ -331,7 +331,7 @@ export async function searchDatasetData(props: {
         // if collection or data UnExist, the relational mongo data already deleted
         if (!collection || !data) return null;
 
-        return {
+        const result: SearchDataResponseItemType = {
           id: String(data._id),
           q: data.q,
           a: data.a,
@@ -341,8 +341,10 @@ export async function searchDatasetData(props: {
           collectionId: String(data.collectionId),
           sourceName: collection.name || '',
           sourceId: collection?.fileId || collection?.rawLink,
-          score: item.score
+          score: [{ type: SearchScoreTypeEnum.embedding, value: item.score, index }]
         };
+
+        return result;
       })
       .filter((item) => item !== null) as SearchDataResponseItemType[];
 
@@ -406,7 +408,7 @@ export async function searchDatasetData(props: {
     );
 
     return {
-      fullTextRecallResults: searchResults.map((item) => {
+      fullTextRecallResults: searchResults.map((item, index) => {
         const collection = collections.find((col) => String(col._id) === String(item.collectionId));
         return {
           id: String(item._id),
@@ -418,8 +420,7 @@ export async function searchDatasetData(props: {
           a: item.a,
           chunkIndex: item.chunkIndex,
           indexes: item.indexes,
-          // @ts-ignore
-          score: item.score
+          score: [{ type: SearchScoreTypeEnum.fullText, value: item.score, index }]
         };
       }),
       tokenLen: 0
@@ -441,23 +442,25 @@ export async function searchDatasetData(props: {
         }))
       });
 
-      if (!Array.isArray(results)) return data;
+      if (!Array.isArray(results)) return [];
 
       // add new score to data
       const mergeResult = results
-        .map((item) => {
+        .map((item, index) => {
           const target = data.find((dataItem) => dataItem.id === item.id);
           if (!target) return null;
+          const score = item.score || 0;
+
           return {
             ...target,
-            score: item.score || target.score
+            score: [{ type: SearchScoreTypeEnum.reRank, value: score, index }]
           };
         })
         .filter(Boolean) as SearchDataResponseItemType[];
 
       return mergeResult;
     } catch (error) {
-      return data;
+      return [];
     }
   };
   const filterResultsByMaxTokens = (list: SearchDataResponseItemType[], maxTokens: number) => {
@@ -539,9 +542,64 @@ export async function searchDatasetData(props: {
 
     return {
       tokens: embTokens,
-      embeddingRecallResults: getIntersection(embeddingRecallResList, 2),
-      fullTextRecallResults: getIntersection(fullTextRecallResList, 2)
+      embeddingRecallResults: embeddingRecallResList[0],
+      fullTextRecallResults: fullTextRecallResList[0]
     };
+  };
+  const rrfConcat = (
+    arr: { k: number; list: SearchDataResponseItemType[] }[]
+  ): SearchDataResponseItemType[] => {
+    const map = new Map<string, SearchDataResponseItemType & { rrfScore: number }>();
+
+    // rrf
+    arr.forEach((item) => {
+      const k = item.k;
+
+      item.list.forEach((data, index) => {
+        const rank = index + 1;
+        const score = 1 / (k + rank);
+
+        const record = map.get(data.id);
+        if (record) {
+          // 合并两个score,有相同type的score,取最大值
+          const concatScore = [...record.score];
+          for (const dataItem of data.score) {
+            const sameScore = concatScore.find((item) => item.type === dataItem.type);
+            if (sameScore) {
+              sameScore.value = Math.max(sameScore.value, dataItem.value);
+            } else {
+              concatScore.push(dataItem);
+            }
+          }
+
+          map.set(data.id, {
+            ...record,
+            score: concatScore,
+            rrfScore: record.rrfScore + score
+          });
+        } else {
+          map.set(data.id, {
+            ...data,
+            rrfScore: score
+          });
+        }
+      });
+    });
+
+    // sort
+    const mapArray = Array.from(map.values());
+    const results = mapArray.sort((a, b) => b.rrfScore - a.rrfScore);
+
+    return results.map((item, index) => {
+      item.score.push({
+        type: SearchScoreTypeEnum.rrf,
+        value: item.rrfScore,
+        index
+      });
+      // @ts-ignore
+      delete item.rrfScore;
+      return item;
+    });
   };
 
   /* main step */
@@ -554,15 +612,40 @@ export async function searchDatasetData(props: {
     fullTextLimit
   });
 
-  // concat recall results
-  set = new Set<string>(embeddingRecallResults.map((item) => item.id));
-  const concatRecallResults = embeddingRecallResults.concat(
-    fullTextRecallResults.filter((item) => !set.has(item.id))
-  );
+  // ReRank results
+  const reRankResults = await (async () => {
+    if (!usingReRank) return [];
+
+    set = new Set<string>(embeddingRecallResults.map((item) => item.id));
+    const concatRecallResults = embeddingRecallResults.concat(
+      fullTextRecallResults.filter((item) => !set.has(item.id))
+    );
+
+    // remove same q and a data
+    set = new Set<string>();
+    const filterSameDataResults = concatRecallResults.filter((item) => {
+      // 删除所有的标点符号与空格等，只对文本进行比较
+      const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
+      if (set.has(str)) return false;
+      set.add(str);
+      return true;
+    });
+    return reRankSearchResult({
+      query: rawQuery,
+      data: filterSameDataResults
+    });
+  })();
+
+  // embedding recall and fullText recall rrf concat
+  const rrfConcatResults = rrfConcat([
+    { k: 60, list: embeddingRecallResults },
+    { k: 60, list: fullTextRecallResults },
+    { k: 60, list: reRankResults }
+  ]);
 
   // remove same q and a data
   set = new Set<string>();
-  const filterSameDataResults = concatRecallResults.filter((item) => {
+  const filterSameDataResults = rrfConcatResults.filter((item) => {
     // 删除所有的标点符号与空格等，只对文本进行比较
     const str = hashStr(`${item.q}${item.a}`.replace(/[^\p{L}\p{N}]/gu, ''));
     if (set.has(str)) return false;
@@ -570,29 +653,30 @@ export async function searchDatasetData(props: {
     return true;
   });
 
-  if (!rerank) {
-    return {
-      searchRes: filterResultsByMaxTokens(
-        filterSameDataResults.filter((item) => item.score >= similarity),
-        maxTokens
-      ),
-      tokens
-    };
-  }
-
-  // ReRank results
-  const reRankResults = (
-    await reRankSearchResult({
-      query: rawQuery,
-      data: filterSameDataResults
-    })
-  ).filter((item) => item.score > similarity);
+  // score filter
+  const scoreFilter = (() => {
+    if (usingReRank) {
+      return filterSameDataResults.filter((item) => {
+        const reRankScore = item.score.find((item) => item.type === SearchScoreTypeEnum.reRank);
+        if (reRankScore && reRankScore.value < similarity) return false;
+        return true;
+      });
+    }
+    if (searchMode === DatasetSearchModeEnum.embedding) {
+      return filterSameDataResults.filter((item) => {
+        const embeddingScore = item.score.find(
+          (item) => item.type === SearchScoreTypeEnum.embedding
+        );
+        if (embeddingScore && embeddingScore.value < similarity) return false;
+        return true;
+      });
+    }
+    return filterSameDataResults;
+  })();
+  console.log(filterSameDataResults.length, fullTextRecallResults.length);
 
   return {
-    searchRes: filterResultsByMaxTokens(
-      reRankResults.filter((item) => item.score >= similarity),
-      maxTokens
-    ),
+    searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
     tokens
   };
 }

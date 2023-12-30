@@ -486,14 +486,16 @@
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
         "Params Setting": "Params Setting",
+        "ReRank": "ReRank",
+        "ReRank desc": "The rearrangement model is used for secondary ranking to enhance the overall ranking.",
         "Top K": "Top K",
         "mode": {
-          "embFullTextReRank": "Hybrid search ",
-          "embFullTextReRank desc": "Reordering with a mixture of vector search and full-text search results by Rerank usually works best",
           "embedding": "Vector search",
-          "embedding desc": "Direct vector topk correlation query ",
-          "embeddingReRank": "Enhanced semantic retrieval ",
-          "embeddingReRank desc": "Sort using Rerank after overperforming vector topk queries "
+          "embedding desc": "Use vectors for text correlation queries",
+          "fullTextRecall": "Full text search ",
+          "fullTextRecall desc": "Using traditional full-text search, suitable for finding data with specific keywords and main predicates",
+          "mixedRecall": "Mixedrecall",
+          "mixedRecall desc": "Returns the combined results of vector and full-text searches, sorted using the RRF algorithm."
         },
         "search mode": "Search Mode"
       },
@@ -513,9 +515,9 @@
         "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
       },
       "training": {
+        "Agent queue": "QA wait list",
         "Full": "Expect more than 5 minutes",
         "Leisure": "Leisure",
-        "Agent queue": "QA wait list",
         "Vector queue": "Vector wait list",
         "Waiting": "Waiting",
         "Website Sync": "Website Sync",

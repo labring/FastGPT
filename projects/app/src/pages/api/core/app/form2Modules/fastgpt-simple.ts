@@ -378,7 +378,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           valueType: 'string',
           showTargetInApp: false,
           showTargetInPlugin: false,
-          value: DatasetSearchModeEnum.embFullTextReRank,
+          value: DatasetSearchModeEnum.mixedRecall,
           connected: false
         },
         {

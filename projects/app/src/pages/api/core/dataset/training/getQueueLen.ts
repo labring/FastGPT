@@ -10,12 +10,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     await authCert({ req, authToken: true });
     const { vectorModel, agentModel } = req.query as GetTrainingQueueProps;
-    console.dir(
-      JSON.stringify({
-        lockTime: { $lt: new Date('2040/1/1') },
-        model: { $or: [{ $exists: false }, { $eq: vectorModel }, { $eq: agentModel }] }
-      })
-    );
 
     // get queue data
     // 分别统计 model = vectorModel和agentModel的数量

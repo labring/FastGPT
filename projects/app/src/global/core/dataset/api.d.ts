@@ -58,6 +58,7 @@ export type SearchTestProps = {
   text: string;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
+  usingReRank: boolean;
 };
 export type SearchTestResponse = {
   list: SearchDataResponseItemType[];
