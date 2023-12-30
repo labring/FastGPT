@@ -14,6 +14,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetLimit]: number;
   [ModuleInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [ModuleInputKeyEnum.userChatInput]: string;
+  [ModuleInputKeyEnum.datasetSearchUsingReRank]: boolean;
 }>;
 export type DatasetSearchResponse = {
   [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
@@ -26,7 +27,7 @@ export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
   const {
-    inputs: { datasets = [], similarity = 0.4, limit = 5, searchMode, userChatInput }
+    inputs: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
   if (!Array.isArray(datasets)) {
@@ -51,14 +52,15 @@ export async function dispatchDatasetSearch(
   const concatQueries = [userChatInput];
 
   // start search
-  const { searchRes, tokens } = await searchDatasetData({
+  const { searchRes, tokens, usingSimilarityFilter } = await searchDatasetData({
     rawQuery: userChatInput,
     queries: concatQueries,
     model: vectorModel.model,
     similarity,
     limit,
     datasetIds: datasets.map((item) => item.datasetId),
-    searchMode
+    searchMode,
+    usingReRank
   });
 
   const { total, modelName } = formatModelPrice2Store({
@@ -76,9 +78,10 @@ export async function dispatchDatasetSearch(
       query: concatQueries.join('\n'),
       model: modelName,
       inputTokens: tokens,
-      similarity,
+      similarity: usingSimilarityFilter ? similarity : undefined,
       limit,
-      searchMode
+      searchMode,
+      searchUsingReRank: usingReRank
     }
   };
 }

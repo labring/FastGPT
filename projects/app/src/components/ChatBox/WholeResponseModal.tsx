@@ -19,7 +19,7 @@ function Row({
   rawDom
 }: {
   label: string;
-  value?: string | number;
+  value?: string | number | boolean;
   rawDom?: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -194,6 +194,10 @@ const ResponseBox = React.memo(function ResponseBox({
         )}
         <Row label={t('core.chat.response.module similarity')} value={activeModule?.similarity} />
         <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
+        <Row
+          label={t('core.chat.response.search using reRank')}
+          value={activeModule?.searchUsingReRank}
+        />
 
         {/* classify question */}
         <Row

@@ -351,6 +351,7 @@
         "module time": "运行时长",
         "module tokens": "Tokens",
         "plugin output": "插件输出值",
+        "search using reRank": "结果重排",
         "text output": "文本输出"
       },
       "tts": {

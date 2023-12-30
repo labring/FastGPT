@@ -106,6 +106,7 @@ export type moduleDispatchResType = {
   similarity?: number;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
+  searchUsingReRank?: boolean;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];

@@ -98,7 +98,7 @@ export const appModules2Form = ({
         DatasetSearchModeEnum.embedding;
       defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
         module.inputs,
-        ModuleInputKeyEnum.usingReRank
+        ModuleInputKeyEnum.datasetSearchUsingReRank
       );
 
       // empty text

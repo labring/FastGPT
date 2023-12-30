@@ -351,6 +351,7 @@
         "module time": "Running Time",
         "module tokens": "Tokens",
         "plugin output": "Plugin Output",
+        "search using reRank": "ReRank",
         "text output": "Text Output"
       },
       "tts": {

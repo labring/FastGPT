@@ -335,7 +335,7 @@
         "module http body": "请求体",
         "module http result": "响应体",
         "module http url": "请求地址",
-        "module limit": "单次搜索上限",
+        "module limit": "搜索 Tokens 上限",
         "module maxToken": "最大 Tokens",
         "module model": "模型",
         "module name": "模型名",

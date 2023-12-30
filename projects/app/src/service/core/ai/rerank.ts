@@ -26,6 +26,8 @@ export function reRankRecall({ query, inputs }: PostReRankProps) {
       return data;
     })
     .catch((err) => {
+      console.log(err);
+
       return [];
     });
 }

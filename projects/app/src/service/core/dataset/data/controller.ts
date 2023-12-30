@@ -268,6 +268,7 @@ export async function searchDatasetData(props: {
     maxTokens = 1500;
   }
   let set = new Set<string>();
+  let usingSimilarityFilter = false;
 
   /* function */
   const countRecallLimit = () => {
@@ -659,6 +660,8 @@ export async function searchDatasetData(props: {
   // score filter
   const scoreFilter = (() => {
     if (usingReRank) {
+      usingSimilarityFilter = true;
+
       return filterSameDataResults.filter((item) => {
         const reRankScore = item.score.find((item) => item.type === SearchScoreTypeEnum.reRank);
         if (reRankScore && reRankScore.value < similarity) return false;
@@ -667,6 +670,8 @@ export async function searchDatasetData(props: {
     }
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return filterSameDataResults.filter((item) => {
+        usingSimilarityFilter = true;
+
         const embeddingScore = item.score.find(
           (item) => item.type === SearchScoreTypeEnum.embedding
         );
@@ -679,6 +684,7 @@ export async function searchDatasetData(props: {
 
   return {
     searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
-    tokens
+    tokens,
+    usingSimilarityFilter
   };
 }
