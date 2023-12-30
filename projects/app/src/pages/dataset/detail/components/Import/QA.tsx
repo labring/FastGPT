@@ -9,7 +9,7 @@ import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provide
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useTranslation } from 'next-i18next';
 
-const fileExtension = '.txt, .docx, .pdf, .md .html';
+const fileExtension = '.txt, .docx, .pdf, .md, .html';
 
 const QAImport = () => {
   const { t } = useTranslation();
