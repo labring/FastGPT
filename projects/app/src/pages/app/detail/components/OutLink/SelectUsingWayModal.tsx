@@ -9,6 +9,7 @@ import MyIcon from '@/components/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileToBase64 } from '@/web/common/file/utils';
+import { feConfigs } from '@/web/common/system/staticData';
 
 enum UsingWayEnum {
   link = 'link',
@@ -70,7 +71,8 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
     setRefresh(!refresh);
   });
 
-  const linkUrl = `${location?.origin}/chat/share?shareId=${share?.shareId}${
+  const baseUrl = feConfigs?.customSharePageDomain || location?.origin;
+  const linkUrl = `${baseUrl}/chat/share?shareId=${share?.shareId}${
     getValues('showHistory') ? '' : '&showHistory=0'
   }`;
 
@@ -91,7 +93,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
     [UsingWayEnum.script]: {
       blockTitle: t('core.app.outLink.Script block title'),
       code: `<script
-  src="${location?.origin}/js/iframe.js"
+  src="${baseUrl}/js/iframe.js"
   id="chatbot-iframe" 
   data-bot-src="${linkUrl}" 
   data-default-open="${getValues('scriptDefaultOpen') ? 'true' : 'false'}"
