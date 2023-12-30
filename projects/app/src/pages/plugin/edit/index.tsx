@@ -85,7 +85,7 @@ const Render = ({ pluginId }: Props) => {
   );
 };
 
-export default function AdEdit(props: any) {
+export default function FlowEdit(props: any) {
   return (
     <FlowProvider mode={'plugin'} filterAppIds={[]}>
       <Render {...props} />

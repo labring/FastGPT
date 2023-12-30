@@ -61,6 +61,19 @@ const DatasetParamsModal = ({
     return list;
   }, []);
 
+  const showSimilarity = useMemo(() => {
+    if (similarity === undefined) return false;
+    if (
+      getValues('searchMode') === DatasetSearchModeEnum.fullTextRecall &&
+      !getValues('usingReRank')
+    )
+      return false;
+    if (getValues('searchMode') === DatasetSearchModeEnum.mixedRecall && !getValues('usingReRank'))
+      return false;
+
+    return true;
+  }, [getValues, similarity, refresh]);
+
   return (
     <MyModal
       isOpen={true}
@@ -101,7 +114,7 @@ const DatasetParamsModal = ({
                     borderColor: 'primary.400'
                   }
                 : {})}
-              onClick={() => {
+              onClick={(e) => {
                 setValue('usingReRank', !getValues('usingReRank'));
                 setRefresh((state) => !state);
               }}
@@ -113,13 +126,42 @@ const DatasetParamsModal = ({
                   {t('core.dataset.search.ReRank desc')}
                 </Box>
               </Box>
-              <Checkbox colorScheme="primary" isChecked={getValues('usingReRank')} size="lg" />
+              <Box position={'relative'} w={'18px'} h={'18px'}>
+                <Checkbox colorScheme="primary" isChecked={getValues('usingReRank')} size="lg" />
+                <Box position={'absolute'} top={0} right={0} bottom={0} left={0} zIndex={1}></Box>
+              </Box>
             </Flex>
           </>
         )}
 
-        {similarity !== undefined && (
+        {limit !== undefined && (
           <Box display={['block', 'flex']} py={8} mt={3}>
+            <Box flex={'0 0 100px'} mb={[8, 0]}>
+              {t('core.dataset.search.Max Tokens')}
+              <MyTooltip label={t('core.dataset.search.Max Tokens Tips')} forceShow>
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
+            </Box>
+            <Box flex={1} mx={4}>
+              <MySlider
+                markList={[
+                  { label: '100', value: 100 },
+                  { label: maxTokens, value: maxTokens }
+                ]}
+                min={100}
+                max={maxTokens}
+                step={50}
+                value={getValues(ModuleInputKeyEnum.datasetLimit) ?? 1000}
+                onChange={(val) => {
+                  setValue(ModuleInputKeyEnum.datasetLimit, val);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Box>
+        )}
+        {showSimilarity && (
+          <Box display={['block', 'flex']} py={8}>
             <Box flex={'0 0 100px'} mb={[8, 0]}>
               {t('core.dataset.search.Min Similarity')}
               <MyTooltip label={t('core.dataset.search.Min Similarity Tips')} forceShow>
@@ -144,32 +186,7 @@ const DatasetParamsModal = ({
             </Box>
           </Box>
         )}
-        {limit !== undefined && (
-          <Box display={['block', 'flex']} py={8}>
-            <Box flex={'0 0 100px'} mb={[8, 0]}>
-              {t('core.dataset.search.Max Tokens')}
-              <MyTooltip label={t('core.dataset.search.Max Tokens Tips')} forceShow>
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
-            </Box>
-            <Box flex={1} mx={4}>
-              <MySlider
-                markList={[
-                  { label: '300', value: 300 },
-                  { label: maxTokens, value: maxTokens }
-                ]}
-                min={300}
-                max={maxTokens}
-                step={10}
-                value={getValues(ModuleInputKeyEnum.datasetLimit) ?? 1000}
-                onChange={(val) => {
-                  setValue(ModuleInputKeyEnum.datasetLimit, val);
-                  setRefresh(!refresh);
-                }}
-              />
-            </Box>
-          </Box>
-        )}
+
         {searchEmptyText !== undefined && (
           <Box display={['block', 'flex']} pt={3}>
             <Box flex={'0 0 100px'} mb={[2, 0]}>

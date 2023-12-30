@@ -17,7 +17,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import Head from 'next/head';
 
-const AdEdit = dynamic(() => import('./components/AdEdit'), {
+const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
 });
 const OutLink = dynamic(() => import('./components/OutLink'), {});
@@ -173,7 +173,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
             {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
             {currentTab === TabEnum.adEdit && appDetail && (
-              <AdEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
+              <FlowEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
             )}
             {currentTab === TabEnum.logs && <Logs appId={appId} />}
             {currentTab === TabEnum.outLink && <OutLink appId={appId} />}

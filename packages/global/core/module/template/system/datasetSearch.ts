@@ -71,7 +71,7 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       value: DatasetSearchModeEnum.embedding
     },
     {
-      key: ModuleInputKeyEnum.datasetSearchMode,
+      key: ModuleInputKeyEnum.usingReRank,
       type: FlowNodeInputTypeEnum.hidden,
       label: '',
       valueType: ModuleIOValueTypeEnum.boolean,

@@ -47,7 +47,7 @@ const Render = ({ app, onClose }: Props) => {
   return <Flow templates={moduleTemplates} Header={<Header app={app} onClose={onClose} />} />;
 };
 
-export default React.memo(function AdEdit(props: Props) {
+export default React.memo(function FlowEdit(props: Props) {
   return (
     <FlowProvider mode={'app'} filterAppIds={[props.app._id]}>
       <Render {...props} />
