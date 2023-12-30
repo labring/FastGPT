@@ -204,7 +204,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           </>
         )}
         {/* oauth */}
-        {feConfigs?.show_register && (
+        {feConfigs?.show_register && oAuthList.length > 0 && (
           <>
             <Box mt={'80px'} position={'relative'}>
               <Divider />
