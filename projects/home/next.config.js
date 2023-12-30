@@ -17,17 +17,6 @@ const nextConfig = {
         }
       };
     }
-    Object.assign(config.resolve.alias, {
-      '@mongodb-js/zstd': false,
-      '@aws-sdk/credential-providers': false,
-      snappy: false,
-      aws4: false,
-      'mongodb-client-encryption': false,
-      kerberos: false,
-      'supports-color': false,
-      'bson-ext': false,
-      'pg-native': false
-    });
     config.module = {
       ...config.module,
       rules: config.module.rules.concat([
@@ -43,9 +32,7 @@ const nextConfig = {
 
     return config;
   },
-  transpilePackages: ['@fastgpt/*'],
   experimental: {
-    serverComponentsExternalPackages: ['mongoose', 'pg'],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };

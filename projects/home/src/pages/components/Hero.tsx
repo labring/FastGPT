@@ -71,7 +71,7 @@ const Hero = () => {
           loading={'lazy'}
         />
         <MyIcon
-          name={'common/playFill'}
+          name={'playFill'}
           position={'absolute'}
           w={['30px', '40px']}
           cursor={'pointer'}

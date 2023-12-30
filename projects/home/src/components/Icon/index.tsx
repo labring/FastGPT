@@ -5,7 +5,8 @@ import { Icon } from '@chakra-ui/react';
 const iconPaths = {
   closeLight: () => import('./closeLight.svg'),
   menu: () => import('./menu.svg'),
-  git: () => import('./git.svg')
+  git: () => import('./git.svg'),
+  playFill: () => import('./playFill.svg')
 };
 
 export type IconName = keyof typeof iconPaths;
