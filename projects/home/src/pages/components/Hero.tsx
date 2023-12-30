@@ -55,7 +55,7 @@ const Hero = () => {
           borderRadius={'xl'}
           py={[2, 3]}
           w={'150px'}
-          onClick={() => location.replace(feConfigs?.startUrl)}
+          onClick={() => window.open(feConfigs?.startUrl, '_self')}
         >
           {t('home.Start Now')}
         </Button>

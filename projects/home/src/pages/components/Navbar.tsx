@@ -106,14 +106,14 @@ const Navbar = () => {
             <Box px={4} color={'myGray.500'}>
               |
             </Box>
-            <Box {...menuStyles} onClick={() => location.replace(feConfigs?.loginUrl)}>
+            <Box {...menuStyles} onClick={() => window.open(feConfigs?.loginUrl, '_self')}>
               {t('home.Login')}
             </Box>
             <Button
               ml={4}
               h={'36px'}
               borderRadius={'3xl'}
-              onClick={() => location.replace(feConfigs?.startUrl)}
+              onClick={() => window.open(feConfigs?.startUrl, '_self')}
             >
               {t('home.Start Now')}
             </Button>
@@ -134,13 +134,13 @@ const Navbar = () => {
             </Box>
           ))}
           <Box bg={'myGray.500'} h={'1.5px'} w={'20px'} mb={8} />
-          <Box mb={10} onClick={() => location.replace(feConfigs?.loginUrl)}>
+          <Box mb={10} onClick={() => window.open(feConfigs?.loginUrl, '_self')}>
             {t('home.Login')}
           </Box>
           <Button
             h={'36px'}
             borderRadius={'3xl'}
-            onClick={() => location.replace(feConfigs?.startUrl)}
+            onClick={() => window.open(feConfigs?.startUrl, '_self')}
           >
             {t('home.Start Now')}
           </Button>
