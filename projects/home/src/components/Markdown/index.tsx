@@ -1,6 +1,5 @@
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
-import 'katex/dist/katex.min.css';
 import RemarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 
