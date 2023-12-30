@@ -76,7 +76,7 @@ const Share = ({ appId }: { appId: string }) => {
           </MyTooltip>
         </Box>
         <Button
-          variant={'base'}
+          variant={'whitePrimary'}
           colorScheme={'blue'}
           size={['sm', 'md']}
           {...(shareChatList.length >= 10
@@ -383,7 +383,7 @@ function EditLinkModal({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           取消
         </Button>
 

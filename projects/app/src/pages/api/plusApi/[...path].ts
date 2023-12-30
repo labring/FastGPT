@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { request } from '@fastgpt/service/common/api/plusRequest';
 import type { Method } from 'axios';
 import { setCookie } from '@fastgpt/service/support/permission/controller';
-import { getInitConfig } from '../system/getInitData';
+import { getInitConfig } from '../common/system/getInitData';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

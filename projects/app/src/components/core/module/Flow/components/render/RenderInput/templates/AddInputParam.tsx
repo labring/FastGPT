@@ -16,7 +16,7 @@ const AddInputParam = ({ inputs = [], item, moduleId }: RenderInputProps) => {
   return (
     <>
       <Button
-        variant={'base'}
+        variant={'whitePrimary'}
         leftIcon={<SmallAddIcon />}
         onClick={() => {
           setEditField(item.defaultEditField || {});

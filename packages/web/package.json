@@ -2,6 +2,7 @@
   "name": "@fastgpt/web",
   "version": "1.0.0",
   "dependencies": {
+    "@fastgpt/global": "workspace:*",
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "turndown": "^7.1.2"
   },

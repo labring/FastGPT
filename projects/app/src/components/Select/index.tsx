@@ -54,7 +54,7 @@ const MySelect = (
         width={width}
         px={3}
         rightIcon={<ChevronDownIcon />}
-        variant={'base'}
+        variant={'whitePrimary'}
         textAlign={'left'}
         _active={{
           transform: 'none'
@@ -62,7 +62,7 @@ const MySelect = (
         {...(isOpen
           ? {
               boxShadow: '0px 0px 4px #A8DBFF',
-              borderColor: 'blue.500'
+              borderColor: 'primary.500'
             }
           : {})}
         {...props}
@@ -93,7 +93,7 @@ const MySelect = (
             {...menuItemStyles}
             {...(value === item.value
               ? {
-                  color: 'blue.500',
+                  color: 'primary.500',
                   bg: 'myWhite.300'
                 }
               : {})}

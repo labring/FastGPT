@@ -231,7 +231,9 @@
     },
     "app": {
       "App params config": "应用配置",
+      "Chat Variable": "对话框变量",
       "Next Step Guide": "下一步指引",
+      "Question Guide": "问题引导",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
       "Save and preview": "保存并预览",
       "Select TTS": "选择语音播放模式",
@@ -239,8 +241,6 @@
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Welcome Text": "对话开场白",
-      "Chat Variable": "对话框变量",
-      "Question Guide": "问题引导",
       "create app": "创建属于你的 AI 应用",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
@@ -299,10 +299,10 @@
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
       "error": {
+        "Chat error": "对话出现异常",
         "Messages empty": "接口内容为空，可能文本超长了~",
         "Select dataset empty": "你没有选择知识库",
-        "user input empty": "传入的用户问题为空",
-        "Chat error": "对话出现异常"
+        "user input empty": "传入的用户问题为空"
       },
       "feedback": {
         "Close User Good Feedback": "",
@@ -450,6 +450,8 @@
         "Chunk Split": "直接分段",
         "Chunk Split Tip": "选择文本文件，直接将其按分段进行处理",
         "Csv format error": "csv 文件格式有误,请确保 index 和 content 两列",
+        "Custom split char": "自定义分隔符",
+        "Custom split char Tips": "允许你根据自定义的分隔符进行分块。通常用于已处理好的数据，使用特定的分隔符来精确分块。",
         "Estimated Price": "预估价格",
         "Estimated Price Tips": "索引生成计费为: {{price}}/1k tokens",
         "Fetch Error": "获取链接失败",
@@ -853,6 +855,17 @@
     "Synchronous version": "同步版本",
     "To Edit Plugin": "去编辑",
     "Update Your Plugin": "更新插件"
+  },
+  "support": {
+    "user": {
+      "auth": {
+        "Sending Code": "正在发送"
+      },
+      "login": {
+        "Github": "Github 登录",
+        "Google": "Google 登录"
+      }
+    }
   },
   "system": {
     "Help Document": "帮助文档"

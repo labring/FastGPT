@@ -43,18 +43,20 @@ type useImportStoreType = {
   setSuccessChunks: Dispatch<SetStateAction<number>>;
   isUnselectedFile: boolean;
   totalChunks: number;
-  onclickUpload: (e: { prompt?: string }) => void;
+  onclickUpload: (e?: { prompt?: string }) => void;
   onReSplitChunks: () => void;
   price: number;
   uploading: boolean;
   chunkLen: number;
   chunkOverlapRatio: number;
   setChunkLen: Dispatch<number>;
+  customSplitChar?: string;
+  setCustomSplitChar: Dispatch<string>;
   showRePreview: boolean;
   setReShowRePreview: Dispatch<SetStateAction<boolean>>;
 };
 const StateContext = createContext<useImportStoreType>({
-  onclickUpload: function (e: { prompt?: string }): void {
+  onclickUpload: function (e?: { prompt?: string }): void {
     throw new Error('Function not implemented.');
   },
   uploading: false,
@@ -72,6 +74,10 @@ const StateContext = createContext<useImportStoreType>({
   price: 0,
   chunkLen: 0,
   chunkOverlapRatio: 0,
+  customSplitChar: undefined,
+  setCustomSplitChar: function (value: string): void {
+    throw new Error('Function not implemented.');
+  },
   setChunkLen: function (value: number): void {
     throw new Error('Function not implemented.');
   },
@@ -123,6 +129,7 @@ const Provider = ({
   const [files, setFiles] = useState<FileItemType[]>([]);
   const [successChunks, setSuccessChunks] = useState(0);
   const [chunkLen, setChunkLen] = useState(defaultChunkLen);
+  const [customSplitChar, setCustomSplitChar] = useState<string>();
   const [previewFile, setPreviewFile] = useState<FileItemType>();
   const [showRePreview, setReShowRePreview] = useState(false);
 
@@ -198,7 +205,8 @@ const Provider = ({
           const { chunks, tokens } = splitText2Chunks({
             text: file.rawText,
             chunkLen,
-            overlapRatio: chunkOverlapRatio
+            overlapRatio: chunkOverlapRatio,
+            customReg: customSplitChar ? [customSplitChar] : []
           });
 
           return {
@@ -218,7 +226,7 @@ const Provider = ({
         title: getErrText(error, t('core.dataset.import.Set Chunk Error'))
       });
     }
-  }, [chunkLen, chunkOverlapRatio, t, toast]);
+  }, [chunkLen, chunkOverlapRatio, customSplitChar, t, toast]);
 
   const reset = useCallback(() => {
     setFiles([]);
@@ -246,6 +254,8 @@ const Provider = ({
     onclickUpload,
     uploading,
     chunkLen,
+    customSplitChar,
+    setCustomSplitChar,
     chunkOverlapRatio,
     setChunkLen,
     showRePreview,
@@ -405,7 +415,7 @@ export const SelectorContainer = ({
       {...(isUnselectedFile
         ? {}
         : {
-            maxW: ['auto', '500px']
+            maxW: ['auto', '450px']
           })}
       p={[4, 8]}
     >
@@ -437,7 +447,7 @@ export const SelectorContainer = ({
               position={'relative'}
               alignItems={'center'}
               _hover={{
-                bg: 'blue.50',
+                bg: 'primary.50',
                 '& .delete': {
                   display: 'block'
                 }

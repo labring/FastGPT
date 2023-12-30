@@ -3,94 +3,23 @@ import Papa from 'papaparse';
 import { compressBase64ImgAndUpload } from './controller';
 import { simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
 import { htmlStr2Md } from '@fastgpt/web/common/string/markdown';
-
-/**
- * 读取 txt 文件内容
- */
-export const readTxtContent = (file: File) => {
-  return new Promise((resolve: (_: string) => void, reject) => {
-    try {
-      const reader = new FileReader();
-      reader.onload = () => {
-        resolve(reader.result as string);
-      };
-      reader.onerror = (err) => {
-        console.log('error txt read:', err);
-        reject('读取 txt 文件失败');
-      };
-      reader.readAsText(file);
-    } catch (error) {
-      reject('浏览器不支持文件内容读取');
-    }
-  });
-};
+import { readPdfFile } from '@fastgpt/global/common/file/read/index';
+import { readFileRawText } from '@fastgpt/web/common/file/read';
 
 /**
  * read pdf to raw text
  */
 export const readPdfContent = (file: File) =>
   new Promise<string>((resolve, reject) => {
-    type TokenType = {
-      str: string;
-      dir: string;
-      width: number;
-      height: number;
-      transform: number[];
-      fontName: string;
-      hasEOL: boolean;
-    };
-
     try {
-      const pdfjsLib = window['pdfjs-dist/build/pdf'];
-      pdfjsLib.workerSrc = '/js/pdf.worker.js';
-
-      const readPDFPage = async (doc: any, pageNo: number) => {
-        const page = await doc.getPage(pageNo);
-        const tokenizedText = await page.getTextContent();
-
-        const viewport = page.getViewport({ scale: 1 });
-        const pageHeight = viewport.height;
-        const headerThreshold = pageHeight * 0.07; // 假设页头在页面顶部5%的区域内
-        const footerThreshold = pageHeight * 0.93; // 假设页脚在页面底部5%的区域内
-
-        const pageTexts: TokenType[] = tokenizedText.items.filter((token: TokenType) => {
-          return (
-            !token.transform ||
-            (token.transform[5] > headerThreshold && token.transform[5] < footerThreshold)
-          );
-        });
-
-        // concat empty string 'hasEOL'
-        for (let i = 0; i < pageTexts.length; i++) {
-          const item = pageTexts[i];
-          if (item.str === '' && pageTexts[i - 1]) {
-            pageTexts[i - 1].hasEOL = item.hasEOL;
-            pageTexts.splice(i, 1);
-            i--;
-          }
-        }
-
-        return pageTexts
-          .map((token) => {
-            const paragraphEnd = token.hasEOL && /([。？！.?!\n\r]|(\r\n))$/.test(token.str);
-
-            return paragraphEnd ? `${token.str}\n` : token.str;
-          })
-          .join('');
-      };
-
       let reader = new FileReader();
       reader.readAsArrayBuffer(file);
       reader.onload = async (event) => {
         if (!event?.target?.result) return reject('解析 PDF 失败');
         try {
-          const doc = await pdfjsLib.getDocument(event.target.result).promise;
-          const pageTextPromises = [];
-          for (let pageNo = 1; pageNo <= doc.numPages; pageNo++) {
-            pageTextPromises.push(readPDFPage(doc, pageNo));
-          }
-          const pageTexts = await Promise.all(pageTextPromises);
-          resolve(pageTexts.join(''));
+          const content = await readPdfFile({ pdf: event.target.result });
+
+          resolve(content);
         } catch (err) {
           console.log(err, 'pdf load error');
           reject('解析 PDF 失败');
@@ -122,7 +51,7 @@ export const readDocContent = (file: File, metadata: Record<string, any>) =>
           });
           const md = htmlStr2Md(html);
 
-          const rawText = await formatMarkdown(md, metadata);
+          const rawText = await uploadMarkdownBase64(md, metadata);
 
           resolve(rawText);
         } catch (error) {
@@ -156,7 +85,7 @@ export const readDocContent = (file: File, metadata: Record<string, any>) =>
  */
 export const readCsvContent = async (file: File) => {
   try {
-    const textArr = await readTxtContent(file);
+    const textArr = await readFileRawText(file);
     const csvArr = Papa.parse(textArr).data as string[][];
     if (csvArr.length === 0) {
       throw new Error('csv 解析失败');
@@ -175,7 +104,7 @@ export const readCsvContent = async (file: File) => {
  * 1. upload base64
  * 2. replace \
  */
-export const formatMarkdown = async (rawText: string = '', metadata: Record<string, any>) => {
+export const uploadMarkdownBase64 = async (rawText: string = '', metadata: Record<string, any>) => {
   // match base64, upload and replace it
   const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
   const base64Arr = rawText.match(base64Regex) || [];

@@ -138,6 +138,9 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature,
       max_tokens,
       stream,
+      presence_penalty: 0,
+      frequency_penalty: 0,
+      top_p: 1,
       // seed: temperature < 0.3 ? 1 : undefined,
       messages: concatMessages
     },

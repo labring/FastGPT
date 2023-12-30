@@ -102,14 +102,14 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         py={4}
         borderRight={['none', theme.borders.base]}
       >
-        <Box border={'2px solid'} borderColor={'blue.500'} p={3} mx={4} borderRadius={'md'}>
+        <Box border={'2px solid'} borderColor={'primary.500'} p={3} mx={4} borderRadius={'md'}>
           <Flex alignItems={'center'}>
             <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
-              <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'blue.600'} />
+              <MyIcon mr={2} name={'text'} w={'18px'} h={'18px'} color={'primary.600'} />
               {t('core.dataset.test.Test Text')}
             </Box>
             <Button
-              variant={'base'}
+              variant={'whitePrimary'}
               leftIcon={<MyIcon name={searchModeData.icon as any} w={'14px'} />}
               size={'sm'}
               onClick={onOpenSelectMode}

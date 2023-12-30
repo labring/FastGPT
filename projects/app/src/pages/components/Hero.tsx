@@ -14,10 +14,10 @@ const Hero = () => {
 
   return (
     <Flex flexDirection={'column'} pt={['24px', '50px']} alignItems={'center'} userSelect={'none'}>
-      <Box fontSize={['38px', '60px']} fontWeight={'bold'}>
+      <Box fontSize={['38px', '54px']} fontWeight={'bold'}>
         {t('home.slogan')}
       </Box>
-      <Box fontSize={['xl', '3xl']} py={5} color={'myGray.600'} textAlign={'center'} maxW={'400px'}>
+      <Box fontSize={['xl', '2xl']} py={5} color={'myGray.600'} textAlign={'center'} maxW={'400px'}>
         {t('home.desc')}
       </Box>
       <Flex zIndex={1} flexDirection={['column', 'row']} mt={[5, 8]}>
@@ -25,10 +25,10 @@ const Hero = () => {
           <Button
             mr={[0, 5]}
             mb={[5, 0]}
-            fontSize={['xl', '3xl']}
+            fontSize={['xl', '2xl']}
             h={'auto'}
             py={[2, 3]}
-            variant={'base'}
+            variant={'whitePrimary'}
             border={'2px solid'}
             borderColor={'myGray.800'}
             transition={'0.3s'}
@@ -44,7 +44,7 @@ const Hero = () => {
           </Button>
         )}
         <Button
-          fontSize={['xl', '3xl']}
+          fontSize={['xl', '2xl']}
           h={['38px', 'auto']}
           borderRadius={'xl'}
           py={[2, 3]}

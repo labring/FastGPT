@@ -12,7 +12,7 @@ import { clientInitData, feConfigs } from '@/web/common/system/staticData';
 import { appWithTranslation, useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
 
 import 'nprogress/nprogress.css';
@@ -40,7 +40,7 @@ function App({ Component, pageProps }: AppProps) {
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
   const { loadGitStar } = useSystemStore();
-  const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
+  const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
 
   useEffect(() => {

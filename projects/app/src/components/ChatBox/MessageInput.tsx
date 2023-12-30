@@ -216,7 +216,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
           pl={5}
           alignItems={'center'}
           bg={'white'}
-          color={'blue.500'}
+          color={'primary.500'}
           visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
         >
           <Spinner size={'sm'} mr={4} />
@@ -244,7 +244,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                   alignItems={'center'}
                   justifyContent={'center'}
                   rounded={'md'}
-                  color={'blue.500'}
+                  color={'primary.500'}
                   top={0}
                   left={0}
                   bottom={0}
@@ -260,7 +260,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                 h={'16px'}
                 color={'myGray.700'}
                 cursor={'pointer'}
-                _hover={{ color: 'blue.500' }}
+                _hover={{ color: 'primary.500' }}
                 position={'absolute'}
                 bg={'white'}
                 right={'-8px'}
@@ -396,7 +396,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                       name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
                       width={['20px', '22px']}
                       height={['20px', '22px']}
-                      color={'blue.500'}
+                      color={'primary.500'}
                     />
                   </MyTooltip>
                 </Flex>
@@ -415,7 +415,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                 h={['28px', '32px']}
                 w={['28px', '32px']}
                 borderRadius={'md'}
-                bg={isSpeaking || isChatting ? '' : !havInput ? '#E5E5E5' : 'blue.500'}
+                bg={isSpeaking || isChatting ? '' : !havInput ? '#E5E5E5' : 'primary.500'}
                 cursor={havInput ? 'pointer' : 'not-allowed'}
                 lineHeight={1}
                 onClick={() => {

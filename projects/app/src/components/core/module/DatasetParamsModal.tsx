@@ -141,7 +141,7 @@ const DatasetParamsModal = ({
         )}
       </ModalBody>
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
         <Button

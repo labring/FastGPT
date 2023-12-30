@@ -74,14 +74,14 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
   return (
     <>
-      <Box h={'100%'} bg={'myWhite.600'}>
+      <Box h={'100%'} bg={'myGray.100'}>
         {isPc === true && (
           <>
             {pcUnShowLayoutRoute[router.pathname] ? (
               <Auth>{children}</Auth>
             ) : (
               <>
-                <Box h={'100%'} position={'fixed'} left={0} top={0} w={'70px'}>
+                <Box h={'100%'} position={'fixed'} left={0} top={0} w={'64px'}>
                   <Navbar unread={unread} />
                 </Box>
                 <Box h={'100%'} ml={'70px'} overflow={'overlay'}>

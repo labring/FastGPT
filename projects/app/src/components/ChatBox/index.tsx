@@ -505,7 +505,7 @@ const ChatBox = (
     const colorMap = {
       loading: 'myGray.700',
       running: '#67c13b',
-      finish: 'blue.500'
+      finish: 'primary.500'
     };
     if (!isChatting) return;
     const chatContent = chatHistory[chatHistory.length - 1];
@@ -673,7 +673,7 @@ const ChatBox = (
                       <Card
                         className="markdown"
                         {...MessageCardStyle}
-                        bg={'blue.200'}
+                        bg={'primary.200'}
                         borderRadius={'8px 0 8px 8px'}
                         textAlign={'left'}
                       >
@@ -1145,7 +1145,7 @@ function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
       borderRadius={'lg'}
       border={theme.borders.base}
       boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-      bg={type === 'Human' ? 'white' : 'blue.50'}
+      bg={type === 'Human' ? 'white' : 'primary.50'}
     >
       <Avatar src={src} w={'100%'} h={'100%'} />
     </Box>
@@ -1226,7 +1226,7 @@ function ChatController({
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
-          _hover={{ color: 'blue.600' }}
+          _hover={{ color: 'primary.600' }}
           onClick={() => copyData(chat.value)}
         />
       </MyTooltip>

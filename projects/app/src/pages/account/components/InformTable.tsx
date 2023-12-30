@@ -59,7 +59,7 @@ const BillTable = () => {
                 w={'5px'}
                 h={'5px'}
                 borderRadius={'10px'}
-                bg={'myRead.600'}
+                bg={'red.600'}
                 position={'absolute'}
                 bottom={'8px'}
                 right={'8px'}

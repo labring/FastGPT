@@ -52,7 +52,7 @@ const TagTextarea = ({ defaultValues, onUpdate, ...props }: Props) => {
       bg={'myWhite.600'}
       {...(focus && {
         boxShadow: '0px 0px 4px #A8DBFF',
-        borderColor: 'blue.500'
+        borderColor: 'primary.500'
       })}
       {...props}
       onClick={() => {
@@ -64,7 +64,7 @@ const TagTextarea = ({ defaultValues, onUpdate, ...props }: Props) => {
     >
       <Flex alignItems={'center'} gap={2} flexWrap={'wrap'}>
         {tags.map((tag, i) => (
-          <Tag key={tag} colorScheme="blue" onClick={(e) => e.stopPropagation()}>
+          <Tag key={tag} colorScheme="primary" onClick={(e) => e.stopPropagation()}>
             <TagLabel>{tag}</TagLabel>
             <TagCloseButton
               onClick={() => {

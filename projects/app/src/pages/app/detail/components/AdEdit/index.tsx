@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
@@ -12,7 +12,7 @@ import { useQuery } from '@tanstack/react-query';
 type Props = { app: AppSchema; onClose: () => void };
 
 const Render = ({ app, onClose }: Props) => {
-  const { nodes } = useFlowProviderStore();
+  const { nodes, initData } = useFlowProviderStore();
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
   const moduleTemplates = useMemo(() => {
@@ -40,13 +40,11 @@ const Render = ({ app, onClose }: Props) => {
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
 
-  return (
-    <Flow
-      templates={moduleTemplates}
-      modules={app.modules}
-      Header={<Header app={app} onClose={onClose} />}
-    />
-  );
+  useEffect(() => {
+    initData(JSON.parse(JSON.stringify(app.modules)));
+  }, [app.modules]);
+
+  return <Flow templates={moduleTemplates} Header={<Header app={app} onClose={onClose} />} />;
 };
 
 export default React.memo(function AdEdit(props: Props) {

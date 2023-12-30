@@ -7,7 +7,7 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeSimple = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeSimple = React.memo(function NodeSimple({ data }: { data: FlowModuleItemType }) {
   const { moduleId, inputs, outputs } = data;
 
   return (
@@ -30,5 +30,7 @@ const NodeSimple = ({ data }: NodeProps<FlowModuleItemType>) => {
       )}
     </NodeCard>
   );
-};
-export default React.memo(NodeSimple);
+});
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodeSimple data={data} />;
+}

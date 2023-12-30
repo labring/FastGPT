@@ -68,7 +68,7 @@ export async function pushDataToDatasetCollection({
   teamId: string;
   tmbId: string;
 } & PushDatasetDataProps): Promise<PushDataResponse> {
-  const { datasetId, model, maxToken } = await checkModelValid({
+  const { datasetId, model, maxToken, weight } = await checkModelValid({
     mode,
     collectionId
   });
@@ -137,6 +137,7 @@ export async function pushDataToDatasetCollection({
       q: item.q,
       a: item.a,
       chunkIndex: item.chunkIndex ?? i,
+      weight: weight ?? 0,
       indexes: item.indexes
     }))
   );
@@ -167,10 +168,12 @@ export async function checkModelValid({
     if (!vectorModelData) {
       return Promise.reject(`Model ${vectorModel} is inValid`);
     }
+
     return {
       datasetId,
       maxToken: vectorModelData.maxToken * 1.5,
-      model: vectorModelData.model
+      model: vectorModelData.model,
+      weight: vectorModelData.weight
     };
   }
 
@@ -182,7 +185,8 @@ export async function checkModelValid({
     return {
       datasetId,
       maxToken: qaModelData.maxContext * 0.8,
-      model: qaModelData.model
+      model: qaModelData.model,
+      weight: 0
     };
   }
   return Promise.reject(`Mode ${mode} is inValid`);
