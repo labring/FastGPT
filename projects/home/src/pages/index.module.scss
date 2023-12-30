@@ -1,0 +1,17 @@
+.home {
+  * {
+    position: relative;
+  }
+
+  .textlg {
+    background: linear-gradient(
+      to bottom right,
+      #1237b3 0%,
+      #3370ff 40%,
+      #4e83fd 80%,
+      #85b1ff 100%
+    );
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+}
