@@ -22,6 +22,7 @@ export const SimpleModeTemplate_FastGPT_Universal: AppSimpleEditConfigTemplateTy
       similarity: true,
       limit: true,
       searchMode: DatasetSearchModeEnum.embedding,
+      usingReRank: true,
       searchEmptyText: true
     },
     userGuide: {

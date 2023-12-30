@@ -15,7 +15,6 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import MyTooltip from '../MyTooltip';
 import NextLink from 'next/link';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import QuoteItemBox from '@/components/core/dataset/QuoteItemBox';
 
 const QuoteModal = ({
   rawSearch = [],

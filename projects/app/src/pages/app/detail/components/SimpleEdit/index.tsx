@@ -502,7 +502,28 @@ function ConfigForm({
       )}
       {isOpenDatasetParams && (
         <DatasetParamsModal
-          {...getValues('dataset')}
+          // {...getValues('dataset')}
+          searchMode={getValues('dataset.searchMode')}
+          searchEmptyText={
+            selectSimpleTemplate?.systemForm?.dataset?.searchEmptyText
+              ? getValues('dataset.searchEmptyText')
+              : undefined
+          }
+          limit={
+            selectSimpleTemplate?.systemForm?.dataset?.limit
+              ? getValues('dataset.limit')
+              : undefined
+          }
+          similarity={
+            selectSimpleTemplate?.systemForm?.dataset?.similarity
+              ? getValues('dataset.similarity')
+              : undefined
+          }
+          usingReRank={
+            selectSimpleTemplate?.systemForm?.dataset?.usingReRank
+              ? getValues('dataset.usingReRank')
+              : undefined
+          }
           maxTokens={tokenLimit}
           onClose={onCloseKbParams}
           onSuccess={(e) => {

@@ -25,19 +25,19 @@ import MyRadio from '@/components/common/MyRadio';
 import MyIcon from '@/components/Icon';
 
 type DatasetParamsProps = {
+  searchMode: `${DatasetSearchModeEnum}`;
   similarity?: number;
   limit?: number;
-  searchMode: `${DatasetSearchModeEnum}`;
   usingReRank?: boolean;
   searchEmptyText?: string;
   maxTokens?: number;
 };
 
 const DatasetParamsModal = ({
+  searchMode = DatasetSearchModeEnum.embedding,
   searchEmptyText,
   limit,
   similarity,
-  searchMode = DatasetSearchModeEnum.embedding,
   usingReRank,
   maxTokens = 3000,
   onClose,
