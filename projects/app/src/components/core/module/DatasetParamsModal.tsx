@@ -69,7 +69,6 @@ const DatasetParamsModal = ({
       title={t('core.dataset.search.Dataset Search Params')}
       w={['90vw', '550px']}
       h={['90vh', 'auto']}
-      overflow={'unset'}
       isCentered={searchEmptyText !== undefined}
     >
       <ModalBody flex={['1 0 0', 'auto']} overflow={'auto'}>

@@ -13,6 +13,7 @@ import { Types } from 'mongoose';
 import {
   DatasetDataIndexTypeEnum,
   DatasetSearchModeEnum,
+  DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constant';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
@@ -259,7 +260,9 @@ export async function searchDatasetData(props: {
   } = props;
 
   /* init params */
-  searchMode = global.systemEnv?.pluginBaseUrl ? searchMode : DatasetSearchModeEnum.embedding;
+  searchMode = DatasetSearchModeMap[searchMode] ? searchMode : DatasetSearchModeEnum.embedding;
+  usingReRank = usingReRank && global.reRankModels.length > 0;
+
   // Compatible with topk limit
   if (maxTokens < 50) {
     maxTokens = 1500;
@@ -673,7 +676,6 @@ export async function searchDatasetData(props: {
     }
     return filterSameDataResults;
   })();
-  console.log(filterSameDataResults.length, fullTextRecallResults.length);
 
   return {
     searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),

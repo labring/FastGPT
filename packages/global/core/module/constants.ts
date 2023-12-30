@@ -63,6 +63,7 @@ export enum ModuleInputKeyEnum {
   datasetSimilarity = 'similarity',
   datasetLimit = 'limit',
   datasetSearchMode = 'searchMode',
+  usingReRank = 'usingReRank',
   datasetParamsModal = 'datasetParamsModal',
 
   // context extract
