@@ -26,10 +26,10 @@ import MyIcon from '@/components/Icon';
 
 type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
-  similarity?: number;
-  limit?: number;
-  usingReRank?: boolean;
   searchEmptyText?: string;
+  limit?: number;
+  similarity?: number;
+  usingReRank?: boolean;
   maxTokens?: number;
 };
 
