@@ -72,7 +72,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   } = useQuery(['getOpenApiKeys', appId], () => getOpenApiKeys({ appId }));
 
   useEffect(() => {
-    setBaseUrl(`${location.origin}/api`);
+    setBaseUrl(feConfigs?.customApiDomain || `${location.origin}/api`);
   }, []);
 
   return (
@@ -255,7 +255,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         </ModalBody>
         <ModalFooter>
           <Button variant="whiteBase" onClick={() => setApiKey('')}>
-            好的
+            {t('common.OK')}
           </Button>
         </ModalFooter>
       </MyModal>

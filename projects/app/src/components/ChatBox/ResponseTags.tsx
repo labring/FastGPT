@@ -205,9 +205,9 @@ const ResponseTags = ({
             </Tag>
           </MyTooltip>
         )}
-        <MyTooltip label={'点击查看完整响应'}>
+        <MyTooltip label={t('core.chat.response.Read complete response tips')}>
           <Tag colorSchema="gray" cursor={'pointer'} {...TagStyles} onClick={onOpenWholeModal}>
-            {t('chat.Complete Response')}
+            {t('core.chat.response.Read complete response')}
           </Tag>
         </MyTooltip>
 

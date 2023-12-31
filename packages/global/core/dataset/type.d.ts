@@ -6,6 +6,7 @@ import {
   DatasetDataIndexTypeEnum,
   DatasetStatusEnum,
   DatasetTypeEnum,
+  SearchScoreTypeEnum,
   TrainingModeEnum
 } from './constant';
 
@@ -161,5 +162,6 @@ export type DatasetFileSchema = {
 
 /* ============= search =============== */
 export type SearchDataResponseItemType = Omit<DatasetDataItemType, 'isOwner' | 'canWrite'> & {
-  score: number;
+  score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
+  // score: number;
 };

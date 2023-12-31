@@ -59,7 +59,6 @@
   },
   "chat": {
     "Admin Mark Content": "Corrected response",
-    "Complete Response": "Complete Response",
     "Confirm to clear history": "Confirm to clear history?",
     "Confirm to clear share chat history": " Are you sure to delete all chats?",
     "Converting to text": "Converting to text...",
@@ -134,6 +133,7 @@
     "Name is empty": "Name is empty",
     "New Create": "Create",
     "Next Step": "Next",
+    "OK": "OK",
     "Output": "Output",
     "Params": "Params",
     "Password inconsistency": "Password inconsistency",
@@ -322,7 +322,10 @@
         "Read Source": "Read Source"
       },
       "response": {
+        "Complete Response": "Complete Response",
         "Plugin Resonse Detail": "Plugin Detail",
+        "Read complete response": "Read Detail",
+        "Read complete response tips": "Click to see the detailed process",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",
@@ -348,6 +351,7 @@
         "module time": "Running Time",
         "module tokens": "Tokens",
         "plugin output": "Plugin Output",
+        "search using reRank": "ReRank",
         "text output": "Text Output"
       },
       "tts": {
@@ -449,11 +453,13 @@
         "Chunk Range": "Range: 100~{{max}}",
         "Chunk Split": "Chunk Split",
         "Chunk Split Tip": "Select the files and split the by sentences",
+        "Chunk length": "Chunk length",
         "Csv format error": "The csv file format is incorrect, please ensure that the index and content columns are two",
         "Custom split char": "Custom split char",
         "Custom split char Tips": "Allows you to block according to custom delimiters. It is usually used for processed data, using specific delimiters to precisely block it.",
+        "Embedding Estimated Price Tips": "Index billing: {{price}}/1k tokens",
         "Estimated Price": "Estimated Price",
-        "Estimated Price Tips": "Index generation is billed as: {{price}}/1k tokens",
+        "Estimated Price Tips": "QA charges\nInput: {{inputPrice}}/1k tokens\nOutput: {{outputPrice}}/1k tokens",
         "Fetch Error": "Get link failed",
         "Fetch Url": "Url",
         "Fetch url placeholder": "Up to 10 links, one per line.",
@@ -464,11 +470,13 @@
         "Import Success Tip": "The {{num}} group data is imported successfully. Please wait for training.",
         "Import Tip": "This task cannot be terminated and takes some time to generate indexes. Please confirm the import. If the balance is insufficient, the unfinished task will be suspended and can continue after topping up.",
         "Only Show First 50 Chunk": "Show only part",
+        "QA Estimated Price Tips": "QA charges\nInput: {{inputPrice}}/1k tokens\nOutput: {{outputPrice}}/1k tokens",
         "QA Import": "QA Split",
         "QA Import Tip": "Select the files and let the LLM automatically generate QA",
         "Re Preview": "RePreview",
         "Set Chunk Error": "Split chunks error",
-        "Total Chunk Preview": "Chunk Preview: {{totalChunks}} "
+        "Total Chunk Preview": "Chunk Preview: {{totalChunks}} ",
+        "Total tokens": "Tokens"
       },
       "link": "Link",
       "search": {
@@ -480,14 +488,16 @@
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
         "Params Setting": "Params Setting",
+        "ReRank": "ReRank",
+        "ReRank desc": "The rearrangement model is used for secondary ranking to enhance the overall ranking.",
         "Top K": "Top K",
         "mode": {
-          "embFullTextReRank": "Hybrid search ",
-          "embFullTextReRank desc": "Reordering with a mixture of vector search and full-text search results by Rerank usually works best",
           "embedding": "Vector search",
-          "embedding desc": "Direct vector topk correlation query ",
-          "embeddingReRank": "Enhanced semantic retrieval ",
-          "embeddingReRank desc": "Sort using Rerank after overperforming vector topk queries "
+          "embedding desc": "Use vectors for text correlation queries",
+          "fullTextRecall": "Full text search ",
+          "fullTextRecall desc": "Using traditional full-text search, suitable for finding data with specific keywords and main predicates",
+          "mixedRecall": "Mixedrecall",
+          "mixedRecall desc": "Returns the combined results of vector and full-text searches, sorted using the RRF algorithm."
         },
         "search mode": "Search Mode"
       },
@@ -507,6 +517,11 @@
         "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
       },
       "training": {
+        "Agent queue": "QA wait list",
+        "Full": "Expect more than 5 minutes",
+        "Leisure": "Leisure",
+        "Vector queue": "Vector wait list",
+        "Waiting": "Waiting",
         "Website Sync": "Website Sync",
         "type chunk": "Chunk",
         "type qa": "QA"
@@ -858,6 +873,7 @@
   },
   "support": {
     "user": {
+      "Price": "Price",
       "auth": {
         "Sending Code": "Sending"
       },
@@ -980,8 +996,24 @@
   },
   "wallet": {
     "bill": {
+      "Ai model": "Ai Model",
+      "App name": "App name",
       "Audio Speech": "Audio Speech",
+      "Bill Module": "Bill Detail",
+      "Data Length": "Data length",
+      "Dataset store": "",
+      "Duration": "Duration(s)",
+      "Input Token Length": "Input tokens",
+      "Module name": "Module name",
+      "Next Step Guide": "",
+      "Number": "Bill ID",
+      "Output Token Length": "Output tokens",
       "ReRank": "ReRank",
+      "Source": "Source",
+      "Text Length": "Text length",
+      "Time": "Time",
+      "Token Length": "Tokens",
+      "Total": "Total",
       "Whisper": "Whisper",
       "bill username": "User"
     },

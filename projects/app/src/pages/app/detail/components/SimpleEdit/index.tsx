@@ -19,7 +19,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { chatModelList, simpleModeTemplates } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -51,6 +50,7 @@ import VariableEdit from '@/components/core/module/Flow/components/modules/Varia
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import PromptTextarea from '@/components/common/Textarea/PromptTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
+import SelectAiModel from '@/components/Select/SelectAiModel';
 
 const InfoModal = dynamic(() => import('../InfoModal'));
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
@@ -109,7 +109,7 @@ function ConfigForm({
   const chatModelSelectList = useMemo(() => {
     return chatModelList.map((item) => ({
       value: item.model,
-      label: `${item.name} (${formatPrice(item.price, 1000)} 元/1k tokens)`
+      label: item.name
     }));
   }, [refresh]);
 
@@ -278,7 +278,7 @@ function ConfigForm({
               <Flex alignItems={'center'} mt={5}>
                 <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
                 <Box flex={'1 0 0'}>
-                  <MySelect
+                  <SelectAiModel
                     width={'100%'}
                     value={getValues(`aiSettings.model`)}
                     list={chatModelSelectList}
@@ -502,7 +502,28 @@ function ConfigForm({
       )}
       {isOpenDatasetParams && (
         <DatasetParamsModal
-          {...getValues('dataset')}
+          // {...getValues('dataset')}
+          searchMode={getValues('dataset.searchMode')}
+          searchEmptyText={
+            selectSimpleTemplate?.systemForm?.dataset?.searchEmptyText
+              ? getValues('dataset.searchEmptyText')
+              : undefined
+          }
+          limit={
+            selectSimpleTemplate?.systemForm?.dataset?.limit
+              ? getValues('dataset.limit')
+              : undefined
+          }
+          similarity={
+            selectSimpleTemplate?.systemForm?.dataset?.similarity
+              ? getValues('dataset.similarity')
+              : undefined
+          }
+          usingReRank={
+            selectSimpleTemplate?.systemForm?.dataset?.usingReRank
+              ? getValues('dataset.usingReRank')
+              : undefined
+          }
           maxTokens={tokenLimit}
           onClose={onCloseKbParams}
           onSuccess={(e) => {

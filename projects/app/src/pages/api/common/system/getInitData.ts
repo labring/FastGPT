@@ -4,7 +4,6 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { readFileSync, readdirSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
@@ -33,8 +32,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           requestUrl: undefined,
           requestAuth: undefined
         })) || [],
+      qgModes: global.qgModels,
+      whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
-      priceMd: global.priceMd,
       systemVersion: global.systemVersion || '0.0.0',
       simpleModeTemplates: global.simpleModeTemplates
     }
@@ -73,7 +73,6 @@ export async function getInitConfig() {
   await getSimpleModeTemplates();
 
   getSystemVersion();
-  countModelPrice();
   getSystemPlugin();
 
   console.log({
@@ -88,7 +87,6 @@ export async function getInitConfig() {
     reRankModels: global.reRankModels,
     audioSpeechModels: global.audioSpeechModels,
     whisperModel: global.whisperModel,
-    price: global.priceMd,
     simpleModeTemplates: global.simpleModeTemplates,
     communityPlugins: global.communityPlugins
   });
@@ -123,22 +121,20 @@ export async function initSystemConfig() {
 
   // set config
   global.feConfigs = {
-    isPlus: !!config.systemEnv.pluginBaseUrl,
+    isPlus: !!config.systemEnv?.pluginBaseUrl,
     ...config.feConfigs
   };
   global.systemEnv = config.systemEnv;
 
-  global.chatModels = config.chatModels || [];
-  global.qaModels = config.qaModels || [];
-  global.cqModels = config.cqModels || [];
-  global.extractModels = config.extractModels || [];
-  global.qgModels = config.qgModels || [];
-  global.vectorModels = config.vectorModels || [];
-  global.reRankModels = config.reRankModels || [];
-  global.audioSpeechModels = config.audioSpeechModels || [];
+  global.chatModels = config.chatModels;
+  global.qaModels = config.qaModels;
+  global.cqModels = config.cqModels;
+  global.extractModels = config.extractModels;
+  global.qgModels = config.qgModels;
+  global.vectorModels = config.vectorModels;
+  global.reRankModels = config.reRankModels;
+  global.audioSpeechModels = config.audioSpeechModels;
   global.whisperModel = config.whisperModel;
-
-  global.priceMd = '';
 }
 
 export function initGlobal() {
@@ -166,38 +162,6 @@ export function getSystemVersion() {
 
     global.systemVersion = '0.0.0';
   }
-}
-
-export function countModelPrice() {
-  global.priceMd = `| 计费项 | 价格: 元/ 1K tokens(包含上下文)|
-| --- | --- |
-${global.vectorModels
-  ?.map((item) => `| 索引-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${global.chatModels
-  ?.map((item) => `| 对话-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${global.qaModels
-  ?.map((item) => `| 文件QA拆分-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${global.cqModels
-  ?.map((item) => `| 问题分类-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${global.extractModels
-  ?.map((item) => `| 内容提取-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${global.qgModels
-  ?.map((item) => `| 下一步指引-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${global.audioSpeechModels
-  ?.map((item) => `| 语音播放-${item.name} | ${formatPrice(item.price, 1000)} |`)
-  .join('\n')}
-${
-  global.whisperModel
-    ? `| 语音输入-${global.whisperModel.name} | ${global.whisperModel.price}/分钟 |`
-    : ''
-}
-`;
 }
 
 async function getSimpleModeTemplates() {

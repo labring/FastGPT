@@ -59,7 +59,6 @@
   },
   "chat": {
     "Admin Mark Content": "纠正后的回复",
-    "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
     "Confirm to clear share chat history": "确认删除所有聊天记录？",
     "Converting to text": "正在转换为文本...",
@@ -134,6 +133,7 @@
     "Name is empty": "名称不能为空",
     "New Create": "新建",
     "Next Step": "下一步",
+    "OK": "好的",
     "Output": "输出",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
@@ -322,7 +322,10 @@
         "Read Source": "查看来源"
       },
       "response": {
+        "Complete Response": "完整响应",
         "Plugin Resonse Detail": "插件详情",
+        "Read complete response": "查看详情",
+        "Read complete response tips": "点击查看详细流程",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",
@@ -348,6 +351,7 @@
         "module time": "运行时长",
         "module tokens": "Tokens",
         "plugin output": "插件输出值",
+        "search using reRank": "结果重排",
         "text output": "文本输出"
       },
       "tts": {
@@ -449,11 +453,13 @@
         "Chunk Range": "范围: 100~{{max}}",
         "Chunk Split": "直接分段",
         "Chunk Split Tip": "选择文本文件，直接将其按分段进行处理",
+        "Chunk length": "分块总量",
         "Csv format error": "csv 文件格式有误,请确保 index 和 content 两列",
         "Custom split char": "自定义分隔符",
         "Custom split char Tips": "允许你根据自定义的分隔符进行分块。通常用于已处理好的数据，使用特定的分隔符来精确分块。",
+        "Embedding Estimated Price Tips": "索引计费: {{price}}/1k tokens",
         "Estimated Price": "预估价格",
-        "Estimated Price Tips": "索引生成计费为: {{price}}/1k tokens",
+        "Estimated Price Tips": "QA计费为\n输入: {{inputPrice}}/1k tokens\n输出: {{outputPrice}}/1k tokens",
         "Fetch Error": "获取链接失败",
         "Fetch Url": "网络链接",
         "Fetch url placeholder": "最多10个链接，每行一个。",
@@ -464,11 +470,13 @@
         "Import Success Tip": "共成功导入 {{num}} 组数据，请耐心等待训练.",
         "Import Tip": "该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。",
         "Only Show First 50 Chunk": "仅展示部分",
+        "QA Estimated Price Tips": "QA计费为\n输入: {{inputPrice}}/1k tokens\n输出: {{outputPrice}}/1k tokens",
         "QA Import": "QA拆分",
         "QA Import Tip": "选择文本文件，让大模型自动生成问答对",
         "Re Preview": "重新生成预览",
         "Set Chunk Error": "文本分段异常",
-        "Total Chunk Preview": "分段预览({{totalChunks}}组)"
+        "Total Chunk Preview": "分段预览({{totalChunks}}组)",
+        "Total tokens": "总Tokens"
       },
       "link": "链接",
       "search": {
@@ -480,14 +488,16 @@
         "Min Similarity": "最低相关度",
         "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
         "Params Setting": "搜索参数设置",
+        "ReRank": "结果重排",
+        "ReRank desc": "使用重排模型来进行二次排序，可增强综合排名。",
         "Top K": "单次搜索上限",
         "mode": {
-          "embFullTextReRank": "混合检索",
-          "embFullTextReRank desc": "使用向量检索与全文检索混合结果进行 Rerank 进行重排，相关度通常差异明显，推荐。",
           "embedding": "语义检索",
-          "embedding desc": "直接进行向量 topk 相关性查询",
-          "embeddingReRank": "增强语义检索",
-          "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序，相关度通常差异明显。"
+          "embedding desc": "使用向量进行文本相关性查询",
+          "fullTextRecall": "全文检索",
+          "fullTextRecall desc": "使用传统的全文检索，适合查找一些关键词和主谓语特殊的数据",
+          "mixedRecall": "混合检索",
+          "mixedRecall desc": "使用向量检索与全文检索的综合结果返回，使用RRF算法进行排序。"
         },
         "search mode": "搜索模式"
       },
@@ -507,6 +517,11 @@
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
       },
       "training": {
+        "Agent queue": "QA训练排队",
+        "Full": "预计5分钟以上",
+        "Leisure": "空闲",
+        "Vector queue": "索引排队",
+        "Waiting": "预计5分钟",
         "Website Sync": "Web 站点同步",
         "type chunk": "直接分段",
         "type qa": "问答拆分"
@@ -858,6 +873,7 @@
   },
   "support": {
     "user": {
+      "Price": "计费标准",
       "auth": {
         "Sending Code": "正在发送"
       },
@@ -980,8 +996,24 @@
   },
   "wallet": {
     "bill": {
+      "Ai model": "AI模型",
+      "App name": "应用名",
       "Audio Speech": "语音播报",
+      "Bill Module": "扣费模块",
+      "Data Length": "数据长度",
+      "Dataset store": "知识库存储",
+      "Duration": "时长（秒）",
+      "Input Token Length": "输入 Tokens",
+      "Module name": "模块名",
+      "Next Step Guide": "下一步指引",
+      "Number": "订单号",
+      "Output Token Length": "输出 Tokens",
       "ReRank": "结果重排",
+      "Source": "来源",
+      "Text Length": "文本长度",
+      "Time": "生成时间",
+      "Token Length": "Token长度",
+      "Total": "总金额",
       "Whisper": "语音输入",
       "bill username": "用户"
     },

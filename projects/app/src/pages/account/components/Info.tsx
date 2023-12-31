@@ -29,7 +29,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { langMap, setLngStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 
@@ -239,7 +239,7 @@ const UserInfo = () => {
               {t('user.team.Balance')}:&nbsp;
             </Box>
             <Box flex={1}>
-              <strong>{formatPrice(userInfo?.team?.balance).toFixed(3)}</strong> 元
+              <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
             </Box>
             {feConfigs?.show_pay && userInfo?.team?.canWrite && (
               <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>

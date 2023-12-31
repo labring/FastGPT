@@ -43,6 +43,7 @@ const TeamMemberSchema = new Schema({
 });
 
 try {
+  TeamMemberSchema.index({ teamId: 1 });
 } catch (error) {
   console.log(error);
 }

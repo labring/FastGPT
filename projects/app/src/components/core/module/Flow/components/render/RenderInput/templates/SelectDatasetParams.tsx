@@ -17,7 +17,8 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,
-    similarity: 0.5
+    similarity: 0.5,
+    usingReRank: false
   });
 
   const tokenLimit = useMemo(() => {

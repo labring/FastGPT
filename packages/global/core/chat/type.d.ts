@@ -89,7 +89,8 @@ export type moduleDispatchResType = {
   moduleLogo?: string;
   price?: number;
   runningTime?: number;
-  tokens?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   model?: string;
   query?: string;
   contextTotalLen?: number;
@@ -105,6 +106,7 @@ export type moduleDispatchResType = {
   similarity?: number;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
+  searchUsingReRank?: boolean;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];
@@ -124,6 +126,9 @@ export type moduleDispatchResType = {
 
   // tf switch
   tfSwitchResult?: boolean;
+
+  // abandon
+  tokens?: number;
 };
 
 export type ChatHistoryItemResType = moduleDispatchResType & {

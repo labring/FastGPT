@@ -48,6 +48,8 @@ export type FastGPTFeConfigsType = {
   };
   scripts?: { [key: string]: string }[];
   favicon?: string;
+  customApiDomain?: string;
+  customSharePageDomain?: string;
 };
 
 export type SystemEnvType = {

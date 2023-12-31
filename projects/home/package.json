@@ -1,0 +1,49 @@
+{
+  "name": "home",
+  "version": "4.6.6",
+  "private": false,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@chakra-ui/anatomy": "^2.2.1",
+    "@chakra-ui/icons": "^2.1.1",
+    "@chakra-ui/next-js": "^2.1.5",
+    "@chakra-ui/react": "^2.8.1",
+    "@chakra-ui/styled-system": "^2.9.1",
+    "@chakra-ui/system": "^2.6.1",
+    "@emotion/react": "^11.11.1",
+    "@emotion/styled": "^11.11.0",
+    "axios": "^1.5.1",
+    "framer-motion": "^9.0.6",
+    "hyperdown": "^2.4.29",
+    "i18next": "^22.5.1",
+    "next": "13.5.2",
+    "next-i18next": "^13.3.0",
+    "nprogress": "^0.2.0",
+    "react": "18.2.0",
+    "react-dom": "18.2.0",
+    "react-i18next": "^12.3.1",
+    "remark-gfm": "^3.0.1",
+    "react-markdown": "^8.0.7",
+    "remark-breaks": "^3.0.3",
+    "request-ip": "^3.3.0",
+    "sass": "^1.58.3"
+  },
+  "devDependencies": {
+    "@svgr/webpack": "^6.5.1",
+    "@types/lodash": "^4.14.191",
+    "@types/nprogress": "^0.2.0",
+    "@types/node": "^20.8.5",
+    "@types/react": "18.2.0",
+    "@types/react-dom": "18.2.0",
+    "@types/react-syntax-highlighter": "^15.5.6",
+    "@types/request-ip": "^0.0.37",
+    "eslint": "8.34.0",
+    "eslint-config-next": "13.1.6",
+    "typescript": "4.9.5"
+  }
+}

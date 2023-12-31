@@ -11,7 +11,12 @@ import type {
   DatasetUpdateBody,
   PostWebsiteSyncParams
 } from '@fastgpt/global/core/dataset/api.d';
-import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
+import type {
+  GetTrainingQueueProps,
+  GetTrainingQueueResponse,
+  SearchTestProps,
+  SearchTestResponse
+} from '@/global/core/dataset/api.d';
 import type {
   PushDatasetDataProps,
   UpdateDatasetDataProps,
@@ -107,7 +112,8 @@ export const delOneDatasetDataById = (dataId: string) =>
 
 /* ================ training ==================== */
 /* get length of system training queue */
-export const getTrainingQueueLen = () => GET<number>(`/core/dataset/training/getQueueLen`);
+export const getTrainingQueueLen = (data: GetTrainingQueueProps) =>
+  GET<GetTrainingQueueResponse>(`/core/dataset/training/getQueueLen`, data);
 
 /* ================== file ======================== */
 export const getFileViewUrl = (fileId: string) =>

@@ -1,5 +1,5 @@
 import { BillSourceEnum } from './constants';
-import { BillListItemType } from './type';
+import { BillListItemCountType, BillListItemType } from './type';
 
 export type CreateTrainingBillProps = {
   name: string;
@@ -7,13 +7,12 @@ export type CreateTrainingBillProps = {
   agentModel?: string;
 };
 
-export type ConcatBillProps = {
+export type ConcatBillProps = BillListItemCountType & {
   teamId: string;
   tmbId: string;
   billId?: string;
   total: number;
   listIndex?: number;
-  tokens?: number;
 };
 
 export type CreateBillProps = {
