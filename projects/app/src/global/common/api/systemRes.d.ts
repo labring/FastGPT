@@ -19,8 +19,9 @@ export type InitDateResponse = {
   vectorModels: VectorModelItemType[];
   audioSpeechModels: AudioSpeechModels[];
   reRankModels: ReRankModelItemType[];
+  qgModes: LLMModelItemType[];
+  whisperModel: WhisperModelType;
   feConfigs: FastGPTFeConfigsType;
-  priceMd: string;
   systemVersion: string;
   simpleModeTemplates: AppSimpleEditConfigTemplateType[];
 };

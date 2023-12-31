@@ -6,7 +6,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
-import { searchDatasetData } from '@/service/core/dataset/data/pg';
+import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { searchQueryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
@@ -14,7 +14,7 @@ import { searchQueryExtension } from '@fastgpt/service/core/ai/functions/queryEx
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { datasetId, text, limit = 20, searchMode } = req.body as SearchTestProps;
+    const { datasetId, text, limit = 20, searchMode, usingReRank } = req.body as SearchTestProps;
 
     if (!datasetId || !text) {
       throw new Error('缺少参数');
@@ -40,20 +40,21 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     //   model: global.chatModels[0].model
     // });
 
-    const { searchRes, tokenLen } = await searchDatasetData({
+    const { searchRes, tokens } = await searchDatasetData({
       rawQuery: text,
       queries: [text],
       model: dataset.vectorModel,
       limit: Math.min(limit * 800, 30000),
       datasetIds: [datasetId],
-      searchMode
+      searchMode,
+      usingReRank
     });
 
     // push bill
     const { total } = pushGenerateVectorBill({
       teamId,
       tmbId,
-      tokenLen: tokenLen,
+      tokens,
       model: dataset.vectorModel,
       source: apikey ? BillSourceEnum.api : BillSourceEnum.fastgpt
     });

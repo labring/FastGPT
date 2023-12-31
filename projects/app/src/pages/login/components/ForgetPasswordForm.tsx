@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra-ui/react';
+import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '@/constants/user';
 import { postFindPassword } from '@/web/support/user/api';
@@ -76,7 +76,14 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
         找回 {feConfigs?.systemTitle} 账号
       </Box>
-      <Box mt={'42px'}>
+      <Box
+        mt={'42px'}
+        onKeyDown={(e) => {
+          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+            handleSubmit(onclickFindPassword)();
+          }
+        }}
+      >
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}

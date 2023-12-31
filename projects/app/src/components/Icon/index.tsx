@@ -113,8 +113,8 @@ const iconPaths = {
   'core/chat/speaking': () => import('./icons/core/chat/speaking.svg'),
   'core/chat/fileSelect': () => import('./icons/core/chat/fileSelect.svg'),
   'core/dataset/modeEmbedding': () => import('./icons/core/dataset/modeEmbedding.svg'),
-  'core/dataset/modeEmbeddingRerank': () => import('./icons/core/dataset/modeEmbeddingRerank.svg'),
-  'core/dataset/modeEmbFTRerank': () => import('./icons/core/dataset/modeEmbFTRerank.svg'),
+  'core/dataset/fullTextRecall': () => import('./icons/core/dataset/fullTextRecall.svg'),
+  'core/dataset/mixedRecall': () => import('./icons/core/dataset/mixedRecall.svg'),
   'core/app/variable/input': () => import('./icons/core/app/variable/input.svg'),
   'core/app/variable/textarea': () => import('./icons/core/app/variable/textarea.svg'),
   'core/app/variable/select': () => import('./icons/core/app/variable/select.svg'),
@@ -125,7 +125,9 @@ const iconPaths = {
   'common/confirm/commonTip': () => import('./icons/common/confirm/commonTip.svg'),
   'common/routePushLight': () => import('./icons/common/routePushLight.svg'),
   'common/viewLight': () => import('./icons/common/viewLight.svg'),
-  'core/app/customFeedback': () => import('./icons/core/app/customFeedback.svg')
+  'core/app/customFeedback': () => import('./icons/core/app/customFeedback.svg'),
+  'support/pay/priceLight': () => import('./icons/support/pay/priceLight.svg'),
+  'core/dataset/rerank': () => import('./icons/core/dataset/rerank.svg')
 };
 
 export type IconName = keyof typeof iconPaths;

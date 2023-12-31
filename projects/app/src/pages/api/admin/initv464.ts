@@ -2,8 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { PgClient } from '@fastgpt/service/common/pg';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
+import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
+import { PgDatasetTableName } from '@fastgpt/global/common/vectorStore/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { connectToDatabase } from '@/service/mongo';
 

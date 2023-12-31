@@ -90,7 +90,14 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
         注册 {feConfigs?.systemTitle} 账号
       </Box>
-      <Box mt={'42px'}>
+      <Box
+        mt={'42px'}
+        onKeyDown={(e) => {
+          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+            handleSubmit(onclickRegister)();
+          }
+        }}
+      >
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}

@@ -26,7 +26,8 @@ export async function createQuestionGuide({
   });
 
   const answer = data.choices?.[0]?.message?.content || '';
-  const totalTokens = data.usage?.total_tokens || 0;
+  const inputTokens = data.usage?.prompt_tokens || 0;
+  const outputTokens = data.usage?.completion_tokens || 0;
 
   const start = answer.indexOf('[');
   const end = answer.lastIndexOf(']');
@@ -34,7 +35,8 @@ export async function createQuestionGuide({
   if (start === -1 || end === -1) {
     return {
       result: [],
-      tokens: totalTokens
+      inputTokens,
+      outputTokens
     };
   }
 
@@ -46,12 +48,14 @@ export async function createQuestionGuide({
   try {
     return {
       result: JSON.parse(jsonStr),
-      tokens: totalTokens
+      inputTokens,
+      outputTokens
     };
   } catch (error) {
     return {
       result: [],
-      tokens: totalTokens
+      inputTokens,
+      outputTokens
     };
   }
 }

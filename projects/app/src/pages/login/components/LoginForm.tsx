@@ -124,7 +124,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {feConfigs?.systemTitle}
         </Box>
       </Flex>
-      <Box mt={'42px'}>
+      <Box
+        mt={'42px'}
+        onKeyDown={(e) => {
+          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+            handleSubmit(onclickLogin)();
+          }
+        }}
+      >
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
@@ -197,7 +204,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           </>
         )}
         {/* oauth */}
-        {feConfigs?.show_register && (
+        {feConfigs?.show_register && oAuthList.length > 0 && (
           <>
             <Box mt={'80px'} position={'relative'}>
               <Divider />

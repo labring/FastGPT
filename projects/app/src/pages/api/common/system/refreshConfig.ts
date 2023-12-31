@@ -2,14 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { countModelPrice, initSystemConfig } from './getInitData';
+import { initSystemConfig } from './getInitData';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     await authCert({ req, authRoot: true });
     await initSystemConfig();
-    countModelPrice();
 
     console.log(`refresh config`);
     console.log({
@@ -23,8 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       vectorModels: global.vectorModels,
       reRankModels: global.reRankModels,
       audioSpeechModels: global.audioSpeechModels,
-      whisperModel: global.whisperModel,
-      price: global.priceMd
+      whisperModel: global.whisperModel
     });
   } catch (error) {
     console.log(error);

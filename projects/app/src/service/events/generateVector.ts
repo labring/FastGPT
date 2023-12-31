@@ -129,7 +129,7 @@ export async function generateVector(): Promise<any> {
     }
 
     // insert data to pg
-    const { tokenLen } = await insertData2Dataset({
+    const { tokens } = await insertData2Dataset({
       teamId: data.teamId,
       tmbId: data.tmbId,
       datasetId: data.datasetId,
@@ -145,7 +145,7 @@ export async function generateVector(): Promise<any> {
     pushGenerateVectorBill({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      tokenLen: tokenLen,
+      tokens,
       model: data.model,
       billId: data.billId
     });

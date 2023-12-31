@@ -42,11 +42,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       data: result
     });
   } catch (err) {
-    console.log(err);
-    jsonRes<PostReRankResponse>(res, {
-      data: inputs.map((input) => ({
-        id: input.id
-      }))
+    jsonRes(res, {
+      code: 500,
+      error: err
     });
   }
 });

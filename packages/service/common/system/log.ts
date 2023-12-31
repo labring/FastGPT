@@ -4,10 +4,12 @@ import dayjs from 'dayjs';
 export const addLog = {
   log(level: 'info' | 'warn' | 'error', msg: string, obj: Record<string, any> = {}) {
     console.log(
-      `[${level.toLocaleUpperCase()}] ${dayjs().format(
-        'YYYY-MM-DD HH:mm:ss'
-      )} ${msg}: ${JSON.stringify(obj)}`
+      `[${level.toLocaleUpperCase()}] ${dayjs().format('YYYY-MM-DD HH:mm:ss')} ${msg} ${
+        level !== 'error' ? JSON.stringify(obj) : ''
+      }`
     );
+
+    level === 'error' && console.error(obj);
 
     const lokiUrl = process.env.LOKI_LOG_URL as string;
     if (!lokiUrl) return;

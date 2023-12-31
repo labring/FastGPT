@@ -151,7 +151,7 @@ export const QuoteList = React.memo(function QuoteList({
                   {item.q.length + (item.a?.length || 0)}
                 </Flex>
               </MyTooltip>
-              {!isShare && item.score && (
+              {/* {!isShare && item.score && (
                 <MyTooltip label={t('core.dataset.Similarity')}>
                   <Flex alignItems={'center'}>
                     <MyIcon name={'kbTest'} w={'12px'} />
@@ -167,7 +167,7 @@ export const QuoteList = React.memo(function QuoteList({
                     <Box>{item.score.toFixed(4)}</Box>
                   </Flex>
                 </MyTooltip>
-              )}
+              )} */}
               <Box flex={1} />
               {item.id && (
                 <MyTooltip label={t('core.dataset.data.Edit')}>

@@ -18,6 +18,7 @@
       "similarity": false,
       "limit": false,
       "searchMode": false,
+      "usingReRank": false,
       "searchEmptyText": false
     },
     "userGuide": {

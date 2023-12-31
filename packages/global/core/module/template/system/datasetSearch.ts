@@ -64,11 +64,20 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.datasetSearchMode,
       type: FlowNodeInputTypeEnum.hidden,
-      label: 'core.dataset.search.Mode',
+      label: '',
       valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: false,
       showTargetInPlugin: false,
       value: DatasetSearchModeEnum.embedding
+    },
+    {
+      key: ModuleInputKeyEnum.datasetSearchUsingReRank,
+      type: FlowNodeInputTypeEnum.hidden,
+      label: '',
+      valueType: ModuleIOValueTypeEnum.boolean,
+      showTargetInApp: false,
+      showTargetInPlugin: false,
+      value: false
     },
     {
       key: ModuleInputKeyEnum.datasetParamsModal,
