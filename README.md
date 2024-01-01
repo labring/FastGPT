@@ -2,6 +2,16 @@
 
 <a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
+# 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
+pnpm i
+# 切换到应用目录
+cd projects/app
+# 开发模式运行
+pnpm dev
+
+# 根目录下执行
+docker build -t fastgpt --build-arg name=app .
+
 # FastGPT
 
 <p align="center">
