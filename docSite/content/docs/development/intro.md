@@ -7,12 +7,12 @@ toc: true
 weight: 705
 ---
 
-本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.run)。
+本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.in)。
 
 
 ## 前置依赖项
 
-您需要在计算机上安装和配置以下依赖项才能构建 [FastGPT](https://fastgpt.run)：
+您需要在计算机上安装和配置以下依赖项才能构建 [FastGPT](https://fastgpt.in)：
 
 - [Git](http://git-scm.com/)
 - [Docker](https://www.docker.com/)（构建镜像）

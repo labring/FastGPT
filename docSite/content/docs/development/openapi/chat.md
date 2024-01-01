@@ -25,7 +25,7 @@ weight: 852
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/v1/chat/completions' \
+curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' \
 --header 'Authorization: Bearer fastgpt-xxxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{

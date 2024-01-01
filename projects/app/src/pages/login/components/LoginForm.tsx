@@ -106,7 +106,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const isCommunityVersion = feConfigs?.show_register === false && feConfigs?.show_git;
 
   return (
-    <>
+    <Flex flexDirection={'column'} h={'100%'}>
       <Flex alignItems={'center'}>
         <Flex
           w={['48px', '56px']}
@@ -203,48 +203,49 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             </Flex>
           </>
         )}
-        {/* oauth */}
-        {feConfigs?.show_register && oAuthList.length > 0 && (
-          <>
-            <Box mt={'80px'} position={'relative'}>
-              <Divider />
-              <AbsoluteCenter bg="white" px="4" color={'myGray.500'}>
-                or
-              </AbsoluteCenter>
-            </Box>
-            <Box mt={8}>
-              {oAuthList.map((item) => (
-                <Box key={item.provider} _notFirst={{ mt: 4 }}>
-                  <Button
-                    variant={'whitePrimary'}
-                    w={'100%'}
-                    h={'42px'}
-                    leftIcon={
-                      <MyIcon
-                        name={item.icon as any}
-                        w={'20px'}
-                        cursor={'pointer'}
-                        color={'myGray.800'}
-                      />
-                    }
-                    onClick={() => {
-                      setLoginStore({
-                        provider: item.provider,
-                        lastRoute,
-                        state: state.current
-                      });
-                      router.replace(item.redirectUrl, '_self');
-                    }}
-                  >
-                    {item.label}
-                  </Button>
-                </Box>
-              ))}
-            </Box>
-          </>
-        )}
       </Box>
-    </>
+      <Box flex={1} />
+      {/* oauth */}
+      {feConfigs?.show_register && oAuthList.length > 0 && (
+        <>
+          <Box position={'relative'}>
+            <Divider />
+            <AbsoluteCenter bg="white" px="4" color={'myGray.500'}>
+              or
+            </AbsoluteCenter>
+          </Box>
+          <Box mt={8}>
+            {oAuthList.map((item) => (
+              <Box key={item.provider} _notFirst={{ mt: 4 }}>
+                <Button
+                  variant={'whitePrimary'}
+                  w={'100%'}
+                  h={'42px'}
+                  leftIcon={
+                    <MyIcon
+                      name={item.icon as any}
+                      w={'20px'}
+                      cursor={'pointer'}
+                      color={'myGray.800'}
+                    />
+                  }
+                  onClick={() => {
+                    setLoginStore({
+                      provider: item.provider,
+                      lastRoute,
+                      state: state.current
+                    });
+                    router.replace(item.redirectUrl, '_self');
+                  }}
+                >
+                  {item.label}
+                </Button>
+              </Box>
+            ))}
+          </Box>
+        </>
+      )}
+    </Flex>
   );
 };
 
