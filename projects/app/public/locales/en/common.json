@@ -879,7 +879,8 @@
       },
       "login": {
         "Github": "Github",
-        "Google": "Google"
+        "Google": "Google",
+        "Provider error": "Login exception, please try again"
       }
     }
   },
