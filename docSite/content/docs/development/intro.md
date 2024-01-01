@@ -16,7 +16,7 @@ weight: 705
 
 - [Git](http://git-scm.com/)
 - [Docker](https://www.docker.com/)（构建镜像）
-- [Node.js v18.x (LTS)](http://nodejs.org)
+- [Node.js v18.x (不推荐最新的，可能有兼容问题)](http://nodejs.org)
 - [pnpm](https://pnpm.io/) 版本 8.x.x 
 
 ## 开始本地开发
@@ -24,7 +24,7 @@ weight: 705
 **Tips**
 
 1. 用户默认的时区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
-2. 建议先服务器装好数据库在进行本地开发。
+2. 建议先服务器装好**数据库**，再进行本地开发。
 
 ### 1. Fork 存储库
 
@@ -79,11 +79,13 @@ cd projects/app
 pnpm dev
 ```
 
-### 6. 发布 - 镜像打包
+### 6. 部署打包
 
 ```bash
 # 根目录下执行
-docker build -t dockername/fastgpt --build-arg name=app .
+docker build -t dockername/fastgpt:tag --build-arg name=app .
+# 使用代理
+docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=taobao .
 ```
 
 ## 提交代码至开源仓库

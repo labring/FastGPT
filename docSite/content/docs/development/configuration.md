@@ -16,6 +16,8 @@ weight: 708
 
 ## 旧版本配置文件
 
+以下配置适合 4.6.6-alpha 之前
+
 ```json
 {
   "SystemParams": {
