@@ -20,7 +20,14 @@ export function reRankRecall({ query, inputs }: PostReRankProps) {
         Authorization: `Bearer ${model.requestAuth}`
       }
     }
-  ).finally(() => {
-    console.log('rerank time:', Date.now() - start);
-  });
+  )
+    .then((data) => {
+      console.log('rerank time:', Date.now() - start);
+      return data;
+    })
+    .catch((err) => {
+      console.log(err);
+
+      return [];
+    });
 }

@@ -3,11 +3,12 @@
   "version": "1.0.0",
   "dependencies": {
     "axios": "^1.5.1",
-    "timezones-list": "^3.0.2",
     "dayjs": "^1.11.7",
     "encoding": "^0.1.13",
-    "openai": "^4.16.1",
-    "js-tiktoken": "^1.0.7"
+    "js-tiktoken": "^1.0.7",
+    "openai": "4.23.0",
+    "pdfjs-dist": "^4.0.269",
+    "timezones-list": "^3.0.2"
   },
   "devDependencies": {
     "@types/node": "^20.8.5"

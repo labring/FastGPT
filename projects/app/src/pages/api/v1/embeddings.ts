@@ -5,7 +5,9 @@ import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { connectToDatabase } from '@/service/mongo';
 import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { getVectorsByText, GetVectorProps } from '@/service/core/ai/vector';
+import { getVectorsByText, GetVectorProps } from '@fastgpt/service/core/ai/embedding';
+import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
+import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
 
 type Props = GetVectorProps & {
   billId?: string;
@@ -15,23 +17,20 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   try {
     let { input, model, billId } = req.body as Props;
     await connectToDatabase();
-    const { teamId, tmbId } = await authCert({ req, authToken: true, authApiKey: true });
 
-    if (!Array.isArray(input) || typeof input !== 'string') {
+    if (!Array.isArray(input) && typeof input !== 'string') {
       throw new Error('input is nor array or string');
     }
 
+    const { teamId, tmbId, apikey, authType } = await authCert({
+      req,
+      authToken: true,
+      authApiKey: true
+    });
+
     await authTeamBalance(teamId);
 
-    const { tokenLen, vectors } = await getVectorsByText({ input, model });
-
-    pushGenerateVectorBill({
-      teamId,
-      tmbId,
-      tokenLen: tokenLen,
-      model,
-      billId
-    });
+    const { tokens, vectors } = await getVectorsByText({ input, model });
 
     jsonRes(res, {
       data: {
@@ -43,11 +42,27 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         })),
         model,
         usage: {
-          prompt_tokens: tokenLen,
-          total_tokens: tokenLen
+          prompt_tokens: tokens,
+          total_tokens: tokens
         }
       }
     });
+
+    const { total } = pushGenerateVectorBill({
+      teamId,
+      tmbId,
+      tokens,
+      model,
+      billId,
+      source: getBillSourceByAuthType({ authType })
+    });
+
+    if (apikey) {
+      updateApiKeyUsage({
+        apikey,
+        usage: total
+      });
+    }
   } catch (err) {
     console.log(err);
     jsonRes(res, {

@@ -14,11 +14,15 @@ export const SimpleModeTemplate_FastGPT_Universal: AppSimpleEditConfigTemplateTy
       quoteTemplate: true,
       quotePrompt: true
     },
+    cfr: {
+      background: true
+    },
     dataset: {
       datasets: true,
       similarity: true,
       limit: true,
       searchMode: DatasetSearchModeEnum.embedding,
+      usingReRank: true,
       searchEmptyText: true
     },
     userGuide: {

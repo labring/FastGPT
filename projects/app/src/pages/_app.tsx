@@ -12,7 +12,7 @@ import { clientInitData, feConfigs } from '@/web/common/system/staticData';
 import { appWithTranslation, useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
 
 import 'nprogress/nprogress.css';
@@ -39,25 +39,31 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
-  const [scripts, setScripts] = useState<FeConfigsType['scripts']>([]);
+  const { loadGitStar } = useSystemStore();
+  const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
 
   useEffect(() => {
     // get init data
     (async () => {
       const {
-        feConfigs: { scripts, isPlus, systemTitle }
+        feConfigs: { scripts, isPlus, show_git, systemTitle }
       } = await clientInitData();
 
       setTitle(systemTitle || 'FastGPT');
 
       // log fastgpt
-      !isPlus &&
+      if (!isPlus) {
         console.log(
           '%cWelcome to FastGPT',
           'font-family:Arial; color:#3370ff ; font-size:18px; font-weight:bold;',
           `GitHub：https://github.com/labring/FastGPT`
         );
+      }
+      if (show_git) {
+        loadGitStar();
+      }
+
       setScripts(scripts || []);
     })();
 

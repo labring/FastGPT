@@ -55,7 +55,10 @@ const DataCard = () => {
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { isPc } = useSystemStore();
-  const { collectionId = '' } = router.query as { collectionId: string };
+  const { collectionId = '', datasetId } = router.query as {
+    collectionId: string;
+    datasetId: string;
+  };
   const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -99,8 +102,18 @@ const DataCard = () => {
   );
 
   // get file info
-  const { data: collection } = useQuery(['getDatasetCollectionById', collectionId], () =>
-    getDatasetCollectionById(collectionId)
+  const { data: collection } = useQuery(
+    ['getDatasetCollectionById', collectionId],
+    () => getDatasetCollectionById(collectionId),
+    {
+      onError: () => {
+        router.replace({
+          query: {
+            datasetId
+          }
+        });
+      }
+    }
   );
 
   const canWrite = useMemo(
@@ -150,10 +163,9 @@ const DataCard = () => {
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'myBlue.600'} />}
-          bg={'white'}
-          boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-          size={'sm'}
+          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'primary.500'} />}
+          variant={'whitePrimary'}
+          size={'smSquare'}
           borderRadius={'50%'}
           aria-label={''}
           onClick={() =>
@@ -176,7 +188,7 @@ const DataCard = () => {
               textDecoration={'none'}
             />
             <Box fontSize={'sm'} color={'myGray.500'}>
-              文件ID:{' '}
+              {t('core.dataset.collection.id')}:{' '}
               <Box as={'span'} userSelect={'all'}>
                 {collection?._id}
               </Box>
@@ -187,7 +199,7 @@ const DataCard = () => {
           <Box>
             <Button
               mx={2}
-              variant={'base'}
+              variant={'whitePrimary'}
               size={['sm', 'md']}
               onClick={() => {
                 if (!collection) return;
@@ -204,7 +216,7 @@ const DataCard = () => {
         {isPc && (
           <MyTooltip label={t('core.dataset.collection.metadata.Read Metadata')}>
             <IconButton
-              variant={'base'}
+              variant={'whiteBase'}
               size={['sm', 'md']}
               icon={<MyIcon name={'menu'} w={'18px'} />}
               aria-label={''}
@@ -216,7 +228,7 @@ const DataCard = () => {
       <Flex my={3} alignItems={'center'}>
         <Box>
           <Box as={'span'} fontSize={['md', 'lg']}>
-            {total}组
+            {t('core.dataset.data.Total Amount', { total })}
           </Box>
         </Box>
         <Box flex={1} mr={1} />
@@ -230,7 +242,7 @@ const DataCard = () => {
             />
           }
           w={['200px', '300px']}
-          placeholder="根据匹配知识，预期答案和来源进行搜索"
+          placeholder={t('core.dataset.data.Search data placeholder')}
           value={searchText}
           onChange={(e) => {
             setSearchText(e.target.value);
@@ -290,6 +302,7 @@ const DataCard = () => {
             </Flex>
             <Box
               maxH={'135px'}
+              minH={'90px'}
               overflow={'hidden'}
               wordBreak={'break-all'}
               pt={1}
@@ -324,12 +337,9 @@ const DataCard = () => {
                   <IconButton
                     display={'flex'}
                     icon={<DeleteIcon />}
-                    variant={'base'}
-                    colorScheme={'gray'}
+                    variant={'whiteDanger'}
+                    size={'xsSquare'}
                     aria-label={'delete'}
-                    size={'xs'}
-                    borderRadius={'md'}
-                    _hover={{ color: 'red.600' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       openConfirm(async () => {
@@ -371,7 +381,7 @@ const DataCard = () => {
             ))}
             {collection?.sourceId && (
               <Button
-                variant={'base'}
+                variant={'whitePrimary'}
                 onClick={() => collection.sourceId && getFileAndOpen(collection.sourceId)}
               >
                 {t('core.dataset.collection.metadata.read source')}
@@ -380,7 +390,7 @@ const DataCard = () => {
           </DrawerBody>
 
           <DrawerFooter>
-            <Button variant={'base'} onClick={onClose}>
+            <Button variant={'whitePrimary'} onClick={onClose}>
               {t('common.Close')}
             </Button>
           </DrawerFooter>
@@ -396,7 +406,7 @@ const DataCard = () => {
         <Flex flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            内容空空的，快创建一个吧！
+            {t('core.dataset.data.Empty Tip')}
           </Box>
         </Flex>
       )}

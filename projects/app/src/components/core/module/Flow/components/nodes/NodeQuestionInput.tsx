@@ -1,13 +1,17 @@
 import React from 'react';
 import { NodeProps } from 'reactflow';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Container from '../modules/Container';
 
 import RenderOutput from '../render/RenderOutput';
 
-const QuestionInputNode = ({ data }: NodeProps<FlowModuleItemType>) => {
-  const { moduleId, inputs, outputs } = data;
+const QuestionInputNode = React.memo(function QuestionInputNode({
+  data
+}: {
+  data: FlowModuleItemType;
+}) {
+  const { moduleId, outputs } = data;
 
   return (
     <NodeCard minW={'240px'} {...data}>
@@ -16,5 +20,8 @@ const QuestionInputNode = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
     </NodeCard>
   );
-};
-export default React.memo(QuestionInputNode);
+});
+
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <QuestionInputNode data={data} />;
+}

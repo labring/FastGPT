@@ -1,4 +1,3 @@
-import { ModuleTemplateTypeEnum } from '../module/constants';
 import { ModuleItemType } from '../module/type';
 
 export const defaultModules: ModuleItemType[] = [
@@ -28,13 +27,8 @@ export const defaultModules: ModuleItemType[] = [
   }
 ];
 
-export enum PluginTypeEnum {
+export enum PluginSourceEnum {
   personal = 'personal',
   community = 'community',
   commercial = 'commercial'
 }
-export const PluginType2TemplateTypeMap = {
-  [PluginTypeEnum.personal]: ModuleTemplateTypeEnum.personalPlugin,
-  [PluginTypeEnum.community]: ModuleTemplateTypeEnum.communityPlugin,
-  [PluginTypeEnum.commercial]: ModuleTemplateTypeEnum.commercialPlugin
-};

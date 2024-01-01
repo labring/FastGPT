@@ -71,7 +71,6 @@ const DatasetDataSchema = new Schema({
     ],
     default: []
   },
-  // metadata
   updateTime: {
     type: Date,
     default: () => new Date()
@@ -79,16 +78,19 @@ const DatasetDataSchema = new Schema({
   chunkIndex: {
     type: Number,
     default: 0
+  },
+  inited: {
+    type: Boolean
   }
 });
 
 try {
-  DatasetDataSchema.index({ teamId: 1 });
   DatasetDataSchema.index({ datasetId: 1 });
   DatasetDataSchema.index({ collectionId: 1 });
+  DatasetDataSchema.index({ updateTime: -1 });
   // full text index
   DatasetDataSchema.index({ datasetId: 1, fullTextToken: 'text' });
-  DatasetDataSchema.index({ fullTextToken: 1 });
+  DatasetDataSchema.index({ inited: 1 });
 } catch (error) {
   console.log(error);
 }

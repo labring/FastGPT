@@ -2,21 +2,24 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
+import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { id, parentId, name, avatar, tags, permission, agentModel } =
-      req.body as DatasetUpdateParams;
+    const { id, parentId, name, avatar, intro, permission, agentModel, websiteConfig, status } =
+      req.body as DatasetUpdateBody;
 
     if (!id) {
       throw new Error('缺少参数');
     }
 
-    // 凭证校验
-    await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
+    if (permission) {
+      await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
+    } else {
+      await authDataset({ req, authToken: true, datasetId: id, per: 'w' });
+    }
 
     await MongoDataset.findOneAndUpdate(
       {
@@ -26,9 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         ...(parentId !== undefined && { parentId: parentId || null }),
         ...(name && { name }),
         ...(avatar && { avatar }),
-        ...(tags && { tags }),
         ...(permission && { permission }),
-        ...(agentModel && { agentModel: agentModel.model })
+        ...(agentModel && { agentModel: agentModel.model }),
+        ...(websiteConfig && { websiteConfig }),
+        ...(status && { status }),
+        ...(intro && { intro })
       }
     );
 

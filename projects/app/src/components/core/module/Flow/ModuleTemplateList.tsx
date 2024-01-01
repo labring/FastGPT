@@ -7,62 +7,33 @@ import type {
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
-import { useFlowProviderStore } from './FlowProvider';
+import { getFlowStore, onSetNodes } from './FlowProvider';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowNode } from '@/utils/adapt';
 import { useTranslation } from 'next-i18next';
-import { useRouter } from 'next/router';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import MyIcon from '@/components/Icon';
 import EmptyTip from '@/components/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@/web/core/modules/template/system';
-import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
-
-enum TemplateTypeEnum {
-  system = 'system',
-  plugin = 'plugin'
-}
 
 export type ModuleTemplateProps = {
-  systemTemplates: FlowModuleTemplateType[];
-  pluginTemplates: FlowModuleTemplateType[];
+  templates: FlowModuleTemplateType[];
 };
 
-const ModuleTemplateList = ({
-  systemTemplates,
-  pluginTemplates,
-  isOpen,
-  onClose
-}: ModuleTemplateProps & {
+type ModuleTemplateListProps = ModuleTemplateProps & {
   isOpen: boolean;
   onClose: () => void;
-}) => {
-  const { t } = useTranslation();
-  const [templateType, setTemplateType] = React.useState(TemplateTypeEnum.system);
+};
+type RenderListProps = {
+  templates: FlowModuleTemplateType[];
+  onClose: () => void;
+};
 
-  const typeList = useMemo(
-    () => [
-      {
-        type: TemplateTypeEnum.system,
-        label: t('app.module.System Module'),
-        child: <RenderList templates={systemTemplates} onClose={onClose} />
-      },
-      {
-        type: TemplateTypeEnum.plugin,
-        label: t('plugin.Plugin Module'),
-        child: <RenderList templates={pluginTemplates} onClose={onClose} isPlugin />
-      }
-    ],
-    [pluginTemplates, onClose, systemTemplates, t]
-  );
-  const TemplateItem = useMemo(
-    () => typeList.find((item) => item.type === templateType)?.child,
-    [templateType, typeList]
-  );
+const ModuleTemplateList = ({ templates, isOpen, onClose }: ModuleTemplateListProps) => {
+  const { t } = useTranslation();
 
   return (
     <>
@@ -82,6 +53,7 @@ const ModuleTemplateList = ({
         position={'absolute'}
         top={'65px'}
         left={0}
+        pt={2}
         pb={4}
         h={isOpen ? 'calc(100% - 100px)' : '0'}
         w={isOpen ? ['100%', '360px'] : '0'}
@@ -92,27 +64,7 @@ const ModuleTemplateList = ({
         transition={'.2s ease'}
         userSelect={'none'}
       >
-        <Flex pt={4} pb={1} px={5} gap={4} alignItems={'center'} fontSize={['md', 'xl']}>
-          {typeList.map((item) => (
-            <Box
-              key={item.label}
-              borderBottom={'2px solid transparent'}
-              {...(item.type === templateType
-                ? {
-                    color: 'myBlue.700',
-                    borderBottomColor: 'myBlue.700',
-                    fontWeight: 'bold'
-                  }
-                : {
-                    cursor: 'pointer',
-                    onClick: () => setTemplateType(item.type)
-                  })}
-            >
-              {item.label}
-            </Box>
-          ))}
-        </Flex>
-        {TemplateItem}
+        <RenderList templates={templates} onClose={onClose} />
       </Flex>
     </>
   );
@@ -120,19 +72,9 @@ const ModuleTemplateList = ({
 
 export default React.memo(ModuleTemplateList);
 
-const RenderList = React.memo(function RenderList({
-  templates,
-  isPlugin = false,
-  onClose
-}: {
-  templates: FlowModuleTemplateType[];
-  isPlugin?: boolean;
-  onClose: () => void;
-}) {
+const RenderList = React.memo(function RenderList({ templates, onClose }: RenderListProps) {
   const { t } = useTranslation();
-  const router = useRouter();
   const { isPc } = useSystemStore();
-  const { setNodes, reactFlowWrapper } = useFlowProviderStore();
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
   const { toast } = useToast();
@@ -149,6 +91,7 @@ const RenderList = React.memo(function RenderList({
 
   const onAddNode = useCallback(
     async ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
+      const { reactFlowWrapper, nodes } = await getFlowStore();
       if (!reactFlowWrapper?.current) return;
 
       const templateModule = await (async () => {
@@ -175,8 +118,8 @@ const RenderList = React.memo(function RenderList({
       const mouseX = (position.x - reactFlowBounds.left - x) / zoom - 100;
       const mouseY = (position.y - reactFlowBounds.top - y) / zoom;
 
-      setNodes((state) =>
-        state.concat(
+      onSetNodes(
+        nodes.concat(
           appModule2FlowNode({
             item: {
               ...templateModule,
@@ -187,7 +130,7 @@ const RenderList = React.memo(function RenderList({
         )
       );
     },
-    [reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
+    [setLoading, t, toast, x, y, zoom]
   );
 
   return templates.length === 0 ? (
@@ -199,9 +142,9 @@ const RenderList = React.memo(function RenderList({
           <Box key={item.type}>
             <Flex>
               <Box fontWeight={'bold'} flex={1}>
-                {item.label}
+                {t(item.label)}
               </Box>
-              {isPlugin && item.type === ModuleTemplateTypeEnum.personalPlugin && (
+              {/* {isPlugin && item.type === ModuleTemplateTypeEnum.personalPlugin && (
                 <Flex
                   alignItems={'center'}
                   _hover={{ textDecoration: 'underline' }}
@@ -213,7 +156,7 @@ const RenderList = React.memo(function RenderList({
                   </Box>
                   <MyIcon name={'common/rightArrowLight'} w={'12px'} />
                 </Flex>
-              )}
+              )} */}
             </Flex>
             <>
               {item.list.map((template) => (
@@ -248,9 +191,9 @@ const RenderList = React.memo(function RenderList({
                     borderRadius={'0'}
                   />
                   <Box ml={5} flex={'1 0 0'}>
-                    <Box color={'black'}>{template.name}</Box>
+                    <Box color={'black'}>{t(template.name)}</Box>
                     <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
-                      {template.intro}
+                      {t(template.intro)}
                     </Box>
                   </Box>
                 </Flex>

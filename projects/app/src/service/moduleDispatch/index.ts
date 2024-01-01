@@ -1,12 +1,11 @@
 import { NextApiResponse } from 'next';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { RunningModuleItemType } from '@/types/app';
-import { ModuleDispatchProps } from '@/types/core/chat/type';
-import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/api';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
-import { UserType } from '@fastgpt/global/support/user/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
@@ -22,35 +21,45 @@ import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttpRequest } from './tools/http';
 import { dispatchAppRequest } from './tools/runApp';
+import { dispatchCFR } from './tools/cfr';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 
+const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
+  [FlowNodeTypeEnum.historyNode]: dispatchHistory,
+  [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
+  [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
+  [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
+  [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+  [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
+  [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
+  [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
+  [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
+  [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
+  [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
+  [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
+  [FlowNodeTypeEnum.cfr]: dispatchCFR,
+
+  // none
+  [FlowNodeTypeEnum.userGuide]: () => Promise.resolve(),
+  [FlowNodeTypeEnum.variable]: () => Promise.resolve()
+};
+
 /* running */
 export async function dispatchModules({
   res,
-  appId,
-  chatId,
   modules,
-  user,
-  teamId,
-  tmbId,
-  params = {},
+  histories = [],
+  startParams = {},
   variables = {},
+  user,
   stream = false,
-  detail = false
-}: {
-  res: NextApiResponse;
-  appId: string;
-  chatId?: string;
+  detail = false,
+  ...props
+}: ChatDispatchProps & {
   modules: ModuleItemType[];
-  user: UserType;
-  teamId: string;
-  tmbId: string;
-  params?: Record<string, any>;
-  variables?: Record<string, any>;
-  stream?: boolean;
-  detail?: boolean;
+  startParams?: Record<string, any>;
 }) {
   // set sse response headers
   if (stream) {
@@ -109,6 +118,7 @@ export async function dispatchModules({
     Object.entries(data).map(([key, val]: any) => {
       updateInputValue(key, val);
     });
+
     return;
   }
   function moduleOutput(
@@ -117,6 +127,7 @@ export async function dispatchModules({
   ): Promise<any> {
     pushStore(module, result);
 
+    //
     const nextRunModules: RunningModuleItemType[] = [];
 
     // Assign the output value to the next module
@@ -139,18 +150,19 @@ export async function dispatchModules({
       });
     });
 
-    return checkModulesCanRun(nextRunModules);
-  }
-  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
+    // Ensure the uniqueness of running modules
     const set = new Set<string>();
-    const filterModules = modules.filter((module) => {
+    const filterModules = nextRunModules.filter((module) => {
       if (set.has(module.moduleId)) return false;
       set.add(module.moduleId);
       return true;
     });
 
+    return checkModulesCanRun(filterModules);
+  }
+  function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
     return Promise.all(
-      filterModules.map((module) => {
+      modules.map((module) => {
         if (!module.inputs.find((item: any) => item.value === undefined)) {
           moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
           return moduleRun(module);
@@ -174,37 +186,21 @@ export async function dispatchModules({
     module.inputs.forEach((item: any) => {
       params[item.key] = item.value;
     });
-    const props: ModuleDispatchProps<Record<string, any>> = {
+    const dispatchData: ModuleDispatchProps<Record<string, any>> = {
+      ...props,
       res,
-      appId,
-      chatId,
+      variables,
+      histories,
+      user,
       stream,
       detail,
-      variables,
       outputs: module.outputs,
-      user,
-      teamId,
-      tmbId,
       inputs: params
     };
 
     const dispatchRes: Record<string, any> = await (async () => {
-      const callbackMap: Record<string, Function> = {
-        [FlowNodeTypeEnum.historyNode]: dispatchHistory,
-        [FlowNodeTypeEnum.questionInput]: dispatchChatInput,
-        [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
-        [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
-        [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
-        [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
-        [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
-        [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
-        [FlowNodeTypeEnum.runApp]: dispatchAppRequest,
-        [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
-        [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
-        [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput
-      };
       if (callbackMap[module.flowType]) {
-        return callbackMap[module.flowType](props);
+        return callbackMap[module.flowType](dispatchData);
       }
       return {};
     })();
@@ -229,7 +225,17 @@ export async function dispatchModules({
 
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
-  initModules.map((module) => moduleInput(module, params));
+
+  // runningModules.forEach((item) => {
+  //   console.log(item);
+  // });
+
+  initModules.map((module) =>
+    moduleInput(module, {
+      ...startParams,
+      history: [] // abandon history field. History module will get histories from other fields.
+    })
+  );
   await checkModulesCanRun(initModules);
 
   // focus try to run pluginOutput
@@ -251,45 +257,54 @@ function loadModules(
   modules: ModuleItemType[],
   variables: Record<string, any>
 ): RunningModuleItemType[] {
-  return modules.map((module) => {
-    return {
-      moduleId: module.moduleId,
-      name: module.name,
-      flowType: module.flowType,
-      showStatus: module.showStatus,
-      inputs: module.inputs
-        .filter((item) => item.connected || item.value !== undefined) // filter unconnected target input
-        .map((item) => {
-          if (typeof item.value !== 'string') {
+  return modules
+    .filter((item) => {
+      return ![FlowNodeTypeEnum.userGuide].includes(item.moduleId as any);
+    })
+    .map((module) => {
+      return {
+        moduleId: module.moduleId,
+        name: module.name,
+        flowType: module.flowType,
+        showStatus: module.showStatus,
+        inputs: module.inputs
+          .filter(
+            (item) =>
+              item.type === FlowNodeInputTypeEnum.systemInput ||
+              item.connected ||
+              item.value !== undefined
+          ) // filter unconnected target input
+          .map((item) => {
+            if (typeof item.value !== 'string') {
+              return {
+                key: item.key,
+                value: item.value
+              };
+            }
+
+            // variables replace
+            const replacedVal = replaceVariable(item.value, variables);
+
             return {
               key: item.key,
-              value: item.value
+              value: replacedVal
             };
-          }
-
-          // variables replace
-          const replacedVal = replaceVariable(item.value, variables);
-
-          return {
+          }),
+        outputs: module.outputs
+          .map((item) => ({
             key: item.key,
-            value: replacedVal
-          };
-        }),
-      outputs: module.outputs
-        .map((item) => ({
-          key: item.key,
-          answer: item.key === ModuleOutputKeyEnum.answerText,
-          value: undefined,
-          targets: item.targets
-        }))
-        .sort((a, b) => {
-          // finish output always at last
-          if (a.key === ModuleOutputKeyEnum.finish) return 1;
-          if (b.key === ModuleOutputKeyEnum.finish) return -1;
-          return 0;
-        })
-    };
-  });
+            answer: item.key === ModuleOutputKeyEnum.answerText,
+            value: undefined,
+            targets: item.targets
+          }))
+          .sort((a, b) => {
+            // finish output always at last
+            if (a.key === ModuleOutputKeyEnum.finish) return 1;
+            if (b.key === ModuleOutputKeyEnum.finish) return -1;
+            return 0;
+          })
+      };
+    });
 }
 
 /* sse response modules staus */

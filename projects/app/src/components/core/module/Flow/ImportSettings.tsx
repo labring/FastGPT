@@ -5,11 +5,15 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useFlowProviderStore } from './FlowProvider';
 
-const ImportSettings = ({ onClose }: { onClose: () => void }) => {
+type Props = {
+  onClose: () => void;
+};
+
+const ImportSettings = ({ onClose }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [value, setValue] = useState('');
   const { setNodes, setEdges, initData } = useFlowProviderStore();
+  const [value, setValue] = useState('');
 
   return (
     <MyModal
@@ -29,7 +33,7 @@ const ImportSettings = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button
-          variant="base"
+          variant="whiteBase"
           onClick={() => {
             if (!value) {
               return onClose();

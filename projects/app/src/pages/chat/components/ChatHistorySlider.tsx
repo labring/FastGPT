@@ -55,7 +55,7 @@ const ChatHistorySlider = ({
   history: HistoryItemType[];
   activeChatId: string;
   onChangeChat: (chatId?: string) => void;
-  onDelHistory: (chatId: string) => void;
+  onDelHistory: (e: { chatId: string }) => void;
   onClearHistory: () => void;
   onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
   onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
@@ -151,10 +151,10 @@ const ChatHistorySlider = ({
           />
         )}
         <Button
-          variant={'base'}
+          variant={'whitePrimary'}
           flex={1}
           h={'100%'}
-          color={'myBlue.700'}
+          color={'primary.600'}
           borderRadius={'xl'}
           leftIcon={<MyIcon name={'chat'} w={'16px'} />}
           overflow={'hidden'}
@@ -167,7 +167,8 @@ const ChatHistorySlider = ({
           <IconButton
             ml={3}
             h={'100%'}
-            variant={'base'}
+            variant={'whiteDanger'}
+            size={'mdSquare'}
             aria-label={''}
             borderRadius={'xl'}
             onClick={openConfirm(onClearHistory)}
@@ -201,8 +202,8 @@ const ChatHistorySlider = ({
                 bg={item.top ? '#E6F6F6 !important' : ''}
                 {...(item.id === activeChatId
                   ? {
-                      backgroundColor: 'myBlue.100 !important',
-                      color: 'myBlue.700'
+                      backgroundColor: 'primary.50 !important',
+                      color: 'primary.600'
                     }
                   : {
                       onClick: () => {
@@ -261,7 +262,7 @@ const ChatHistorySlider = ({
                           _hover={{ color: 'red.500' }}
                           onClick={(e) => {
                             e.stopPropagation();
-                            onDelHistory(item.id);
+                            onDelHistory({ chatId: item.id });
                             if (item.id === activeChatId) {
                               onChangeChat();
                             }
@@ -290,8 +291,8 @@ const ChatHistorySlider = ({
                 alignItems={'center'}
                 {...(item._id === appId
                   ? {
-                      backgroundColor: 'myBlue.100 !important',
-                      color: 'myBlue.700'
+                      backgroundColor: 'primary.50 !important',
+                      color: 'primary.600'
                     }
                   : {
                       onClick: () => {
@@ -325,11 +326,10 @@ const ChatHistorySlider = ({
         >
           <IconButton
             mr={3}
-            icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+            icon={<MyIcon name={'backFill'} w={'18px'} color={'primary.500'} />}
             bg={'white'}
             boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-            h={'28px'}
-            size={'sm'}
+            size={'smSquare'}
             borderRadius={'50%'}
             aria-label={''}
           />

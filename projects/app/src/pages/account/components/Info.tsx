@@ -7,7 +7,8 @@ import {
   useTheme,
   Divider,
   Select,
-  Input
+  Input,
+  Link
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
@@ -28,8 +29,9 @@ import MyTooltip from '@/components/MyTooltip';
 import { langMap, setLngStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
+import { getDocPath } from '@/web/common/system/doc';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'), {
@@ -96,8 +98,8 @@ const UserInfo = () => {
       try {
         const src = await compressImgFileAndUpload({
           file,
-          maxW: 100,
-          maxH: 100
+          maxW: 300,
+          maxH: 300
         });
 
         onclickSave({
@@ -126,7 +128,6 @@ const UserInfo = () => {
       py={[2, 10]}
       justifyContent={'center'}
       alignItems={'flex-start'}
-      fontSize={['lg', 'xl']}
     >
       <Flex
         flexDirection={'column'}
@@ -228,7 +229,7 @@ const UserInfo = () => {
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Password')}:&nbsp;</Box>
           <Box flex={1}>*****</Box>
-          <Button size={['sm', 'md']} variant={'base'} ml={5} onClick={onOpenUpdatePsw}>
+          <Button size={['sm', 'md']} variant={'whitePrimary'} ml={5} onClick={onOpenUpdatePsw}>
             {t('user.Change')}
           </Button>
         </Flex>
@@ -238,7 +239,7 @@ const UserInfo = () => {
               {t('user.team.Balance')}:&nbsp;
             </Box>
             <Box flex={1}>
-              <strong>{formatPrice(userInfo?.team?.balance).toFixed(3)}</strong> 元
+              <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
             </Box>
             {feConfigs?.show_pay && userInfo?.team?.canWrite && (
               <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
@@ -248,32 +249,52 @@ const UserInfo = () => {
           </Flex>
         </Box>
         {feConfigs?.docUrl && (
-          <>
-            <Flex
-              mt={4}
-              w={['85%', '300px']}
-              py={3}
-              px={6}
-              border={theme.borders.sm}
-              borderWidth={'1.5px'}
-              borderRadius={'md'}
-              alignItems={'center'}
-              cursor={'pointer'}
-              userSelect={'none'}
-              onClick={() => {
-                window.open(`${feConfigs.docUrl}/docs/intro`);
-              }}
-            >
-              <MyIcon name={'common/courseLight'} w={'18px'} />
-              <Box ml={2} flex={1}>
-                {t('system.Help Document')}
-              </Box>
-              <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
-              <Box fontSize={'md'} ml={2}>
-                V{systemVersion}
-              </Box>
-            </Flex>
-          </>
+          <Link
+            href={getDocPath('/docs/intro')}
+            target="_blank"
+            display={'flex'}
+            mt={4}
+            w={['85%', '300px']}
+            py={3}
+            px={6}
+            border={theme.borders.sm}
+            borderWidth={'1.5px'}
+            borderRadius={'md'}
+            alignItems={'center'}
+            userSelect={'none'}
+            textDecoration={'none !important'}
+          >
+            <MyIcon name={'common/courseLight'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              {t('system.Help Document')}
+            </Box>
+            <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
+            <Box fontSize={'md'} ml={2}>
+              V{systemVersion}
+            </Box>
+          </Link>
+        )}
+        {feConfigs?.chatbotUrl && (
+          <Link
+            href={feConfigs.chatbotUrl}
+            target="_blank"
+            display={'flex'}
+            mt={4}
+            w={['85%', '300px']}
+            py={3}
+            px={6}
+            border={theme.borders.sm}
+            borderWidth={'1.5px'}
+            borderRadius={'md'}
+            alignItems={'center'}
+            userSelect={'none'}
+            textDecoration={'none !important'}
+          >
+            <MyIcon name={'core/app/aiLight'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              {t('common.system.Help Chatbot')}
+            </Box>
+          </Link>
         )}
         {feConfigs?.show_openai_account && (
           <>
@@ -282,7 +303,7 @@ const UserInfo = () => {
             <MyTooltip label={'点击配置账号'}>
               <Flex
                 w={['85%', '300px']}
-                py={3}
+                py={4}
                 px={6}
                 border={theme.borders.sm}
                 borderWidth={'1.5px'}

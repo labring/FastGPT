@@ -8,7 +8,7 @@ import {
   Card,
   MenuButton,
   Image,
-  Link
+  Button
 } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -28,8 +28,11 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@/components/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
-import { FolderAvatarSrc, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import Tag from '@/components/Tag';
+import {
+  FolderAvatarSrc,
+  DatasetTypeEnum,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constant';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -55,12 +58,12 @@ const Kb = () => {
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('dataset.deleteFolderTips'),
-    [DatasetTypeEnum.dataset]: t('dataset.deleteDatasetTips')
+    [DatasetTypeEnum.dataset]: t('core.dataset.Delete Confirm'),
+    [DatasetTypeEnum.websiteDataset]: t('core.dataset.Delete Confirm')
   });
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    title: t('common.Delete Warning'),
-    content: ''
+    type: 'delete'
   });
   const { myDatasets, loadDatasets, setDatasets, updateDataset } = useDatasetStore();
   const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -110,15 +113,27 @@ const Kb = () => {
     errorToast: t('dataset.Export Dataset Limit Error')
   });
 
-  const { data, refetch } = useQuery(['loadDataset', parentId], () => {
+  const { data, refetch, isFetching } = useQuery(['loadDataset', parentId], () => {
     return Promise.all([loadDatasets(parentId), getDatasetPaths(parentId)]);
   });
 
   const paths = data?.[1] || [];
 
+  const formatDatasets = useMemo(
+    () =>
+      myDatasets.map((item) => {
+        return {
+          ...item,
+          label: DatasetTypeMap[item.type]?.label,
+          icon: DatasetTypeMap[item.type]?.icon
+        };
+      }),
+    [myDatasets]
+  );
+
   return (
-    <PageContainer>
-      <Flex pt={3} px={5} alignItems={'center'}>
+    <PageContainer isLoading={isFetching} insertProps={{ px: [5, '48px'] }}>
+      <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         {/* url path */}
         <ParentPaths
           paths={paths.map((path, i) => ({
@@ -129,7 +144,7 @@ const Kb = () => {
             <Flex flex={1} alignItems={'center'}>
               <Image src={'/imgs/module/db.png'} alt={''} mr={2} h={'24px'} />
               <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
-                {t('dataset.My Dataset')}
+                {t('core.dataset.My Dataset')}
               </Box>
             </Flex>
           }
@@ -147,23 +162,14 @@ const Kb = () => {
             offset={[-30, 10]}
             width={120}
             Button={
-              <MenuButton
-                _hover={{
-                  color: 'myBlue.600'
-                }}
-              >
-                <Flex
-                  alignItems={'center'}
-                  border={theme.borders.base}
-                  px={5}
-                  py={2}
-                  borderRadius={'md'}
-                  cursor={'pointer'}
-                >
-                  <AddIcon mr={2} />
-                  <Box>{t('Create New')}</Box>
-                </Flex>
-              </MenuButton>
+              <Button variant={'primaryOutline'} px={0}>
+                <MenuButton h={'100%'}>
+                  <Flex alignItems={'center'} px={'20px'}>
+                    <AddIcon mr={2} />
+                    <Box>{t('Create New')}</Box>
+                  </Flex>
+                </MenuButton>
+              </Button>
             }
             menuList={[
               {
@@ -179,7 +185,7 @@ const Kb = () => {
                 child: (
                   <Flex>
                     <Image src={'/imgs/module/db.png'} alt={''} w={'20px'} mr={1} />
-                    {t('Dataset')}
+                    {t('core.dataset.Dataset')}
                   </Flex>
                 ),
                 onClick: onOpenCreateModal
@@ -189,25 +195,26 @@ const Kb = () => {
         )}
       </Flex>
       <Grid
-        p={5}
-        gridTemplateColumns={['1fr', 'repeat(3,1fr)', 'repeat(4,1fr)', 'repeat(5,1fr)']}
+        py={5}
+        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
         gridGap={5}
         userSelect={'none'}
       >
-        {myDatasets.map((dataset) => (
-          <Card
+        {formatDatasets.map((dataset) => (
+          <Box
             display={'flex'}
             flexDirection={'column'}
             key={dataset._id}
-            py={4}
+            py={3}
             px={5}
             cursor={'pointer'}
-            h={'130px'}
-            border={theme.borders.md}
-            boxShadow={'none'}
+            borderWidth={1.5}
+            borderColor={dragTargetId === dataset._id ? 'primary.600' : 'borderColor.low'}
+            bg={'white'}
+            borderRadius={'lg'}
+            minH={'130px'}
             position={'relative'}
             data-drag-id={dataset.type === DatasetTypeEnum.folder ? dataset._id : undefined}
-            borderColor={dragTargetId === dataset._id ? 'myBlue.600' : ''}
             draggable
             onDragStart={(e) => {
               setDragStartId(dataset._id);
@@ -236,8 +243,8 @@ const Kb = () => {
               setDragTargetId(undefined);
             }}
             _hover={{
-              boxShadow: '1px 1px 10px rgba(0,0,0,0.2)',
-              borderColor: 'transparent',
+              borderColor: 'primary.300',
+              boxShadow: '1.5',
               '& .delete': {
                 display: 'block'
               }
@@ -250,7 +257,7 @@ const Kb = () => {
                     parentId: dataset._id
                   }
                 });
-              } else if (dataset.type === DatasetTypeEnum.dataset) {
+              } else {
                 router.push({
                   pathname: '/dataset/detail',
                   query: {
@@ -273,7 +280,7 @@ const Kb = () => {
                     h={'22px'}
                     borderRadius={'md'}
                     _hover={{
-                      color: 'myBlue.600',
+                      color: 'primary.500',
                       '& .icon': {
                         bg: 'myGray.100'
                       }
@@ -388,36 +395,31 @@ const Kb = () => {
                 {dataset.name}
               </Box>
             </Flex>
-            <Box flex={'1 0 0'} overflow={'hidden'} pt={2}>
-              <Flex>
-                {dataset.tags.filter(Boolean).map((tag, i) => (
-                  <Tag key={i} mr={2} mb={2}>
-                    {tag}
-                  </Tag>
-                ))}
-              </Flex>
+            <Box
+              flex={1}
+              className={'textEllipsis3'}
+              py={1}
+              wordBreak={'break-all'}
+              fontSize={'sm'}
+              color={'myGray.500'}
+            >
+              {dataset.intro || t('core.dataset.Intro Placeholder')}
             </Box>
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={1}>
                 <PermissionIconText permission={dataset.permission} color={'myGray.600'} />
               </Box>
-              {dataset.type === DatasetTypeEnum.folder ? (
-                <Box color={'myGray.500'}>{t('Folder')}</Box>
-              ) : (
-                <>
-                  <MyIcon mr={1} name="kbTest" w={'12px'} />
-                  <Box color={'myGray.500'}>{dataset.vectorModel.name}</Box>
-                </>
-              )}
+              <MyIcon mr={1} name={dataset.icon as any} w={'12px'} />
+              <Box color={'myGray.500'}>{t(dataset.label)}</Box>
             </Flex>
-          </Card>
+          </Box>
         ))}
       </Grid>
       {myDatasets.length === 0 && (
         <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            还没有知识库，快去创建一个吧！
+            {t('core.dataset.Empty Dataset Tips')}
           </Box>
         </Flex>
       )}
@@ -429,27 +431,19 @@ const Kb = () => {
           onClose={() => setEditFolderData(undefined)}
           editCallback={async (name) => {
             try {
-              if (editFolderData.id) {
-                await putDatasetById({
-                  id: editFolderData.id,
-                  name
-                });
-              } else {
-                await postCreateDataset({
-                  parentId,
-                  name,
-                  type: DatasetTypeEnum.folder,
-                  avatar: FolderAvatarSrc,
-                  tags: ''
-                });
-              }
+              await postCreateDataset({
+                parentId,
+                name,
+                type: DatasetTypeEnum.folder,
+                avatar: FolderAvatarSrc,
+                intro: ''
+              });
               refetch();
             } catch (error) {
               return Promise.reject(error);
             }
           }}
-          isEdit={!!editFolderData.id}
-          name={editFolderData.name}
+          isEdit={false}
         />
       )}
       {!!moveDataId && (

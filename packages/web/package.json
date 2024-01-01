@@ -2,7 +2,11 @@
   "name": "@fastgpt/web",
   "version": "1.0.0",
   "dependencies": {
-    "axios": "^1.5.1"
+    "@fastgpt/global": "workspace:*",
+    "joplin-turndown-plugin-gfm": "^1.0.12",
+    "turndown": "^7.1.2"
   },
-  "devDependencies": {}
+  "devDependencies": {
+    "@types/turndown": "^5.0.4"
+  }
 }

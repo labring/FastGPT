@@ -4,7 +4,7 @@ description: "FastGPT 全局变量模块介绍"
 icon: "variables"
 draft: false
 toc: true
-weight: 122
+weight: 361
 ---
 
 ## 特点

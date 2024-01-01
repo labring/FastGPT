@@ -29,7 +29,6 @@ const MdImage = ({ src }: { src?: string }) => {
         borderRadius={'md'}
         src={src}
         alt={''}
-        maxH={'150px'}
         fallbackSrc={'/imgs/errImg.png'}
         fallbackStrategy={'onError'}
         cursor={succeed ? 'pointer' : 'default'}
@@ -47,7 +46,7 @@ const MdImage = ({ src }: { src?: string }) => {
       />
       <Modal isOpen={isOpen} onClose={onClose} isCentered>
         <ModalOverlay />
-        <ModalContent maxW={'auto'} w="auto" bg={'transparent'}>
+        <ModalContent boxShadow={'none'} maxW={'auto'} w="auto" bg={'transparent'}>
           <Image
             borderRadius={'md'}
             src={src}

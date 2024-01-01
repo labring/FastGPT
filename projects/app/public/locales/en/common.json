@@ -3,7 +3,6 @@
   "Cancel": "No",
   "Confirm": "Yes",
   "Create New": "Create",
-  "Dataset": "Dataset",
   "Export": "Export",
   "Folder": "Folder",
   "Move": "Move",
@@ -23,7 +22,6 @@
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
     "Chat logs": "Chat Logs",
     "Confirm Del App Tip": "Confirm to delete the app and all its chats",
-    "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
     "Connection is invalid": "Connecting is invalid",
     "Connection type is different": "Connection type is different",
     "Copy Module Config": "Copy config",
@@ -53,7 +51,7 @@
       "My Modules": "My Custom Modules",
       "No Modules": "No module",
       "System Module": "System Module",
-      "type": "{{type}}\n{{example}}"
+      "type": "{{type}}\n{{description}}"
     },
     "modules": {
       "Title is required": "Title is required"
@@ -61,12 +59,10 @@
   },
   "chat": {
     "Admin Mark Content": "Corrected response",
-    "Complete Response": "Complete Response",
     "Confirm to clear history": "Confirm to clear history?",
     "Confirm to clear share chat history": " Are you sure to delete all chats?",
     "Converting to text": "Converting to text...",
     "Exit Chat": "Exit",
-    "Feedback Close": "Close Feedback",
     "Feedback Failed": "Feedback Failed",
     "Feedback Mark": "Mark",
     "Feedback Modal": "Feedback",
@@ -82,7 +78,6 @@
     "Question Guide Tips": "I guess what you're asking is",
     "Quote": "Quote",
     "Read Mark Description": "Read mark description",
-    "Read User Feedback": "Read user feedback",
     "Select Mark Kb": "Select Dataset",
     "Select Mark Kb Desc": "Select a dataset to store the expected answers",
     "You need to a chat app": "You need to a chat app",
@@ -91,32 +86,6 @@
       "online": "Online Chat",
       "share": "Share",
       "test": "Test Chat "
-    },
-    "response": {
-      "module cq": "Question classification list",
-      "module cq result": "Classification Result",
-      "module extract description": "Extract Description",
-      "module extract result": "Extract Result",
-      "module historyPreview": "Messages",
-      "module http body": "Body",
-      "module http result": "Response",
-      "module http url": "Request Url",
-      "module limit": "Count Limit",
-      "module maxToken": "MaxTokens",
-      "module model": "Model",
-      "module name": "Name",
-      "module price": "Price",
-      "module query": "Question/Query",
-      "module question": "Question",
-      "module quoteList": "Quotes",
-      "module runningTime": "Time",
-      "module search query": "Query",
-      "module search response": "Search Result",
-      "module similarity": "Similarity",
-      "module temperature": "Temperature",
-      "module time": "Running Time",
-      "module tokens": "Tokens",
-      "plugin output": "Plugin Output"
     },
     "retry": "Retry"
   },
@@ -129,8 +98,10 @@
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
+    "Config": "Config",
     "Confirm": "Confirm",
     "Confirm Create": "Create",
+    "Confirm Import": "Import",
     "Confirm Move": "Move here",
     "Confirm Update": "Update",
     "Copy": "Copy",
@@ -138,7 +109,6 @@
     "Course": "",
     "Create Failed": "Create Failed",
     "Create Success": "Create Success",
-    "Create Virtual File Failed": "Create Virtual File Failed",
     "Custom Title": "Custom Title",
     "Delete": "Delete",
     "Delete Failed": "Delete Failed",
@@ -152,7 +122,9 @@
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Input": "Input",
+    "Intro": "Intro",
     "Last Step": "Last",
+    "Load Failed": "Load Failed",
     "Loading": "Loading",
     "Max credit": "Credit",
     "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
@@ -161,6 +133,7 @@
     "Name is empty": "Name is empty",
     "New Create": "Create",
     "Next Step": "Next",
+    "OK": "OK",
     "Output": "Output",
     "Params": "Params",
     "Password inconsistency": "Password inconsistency",
@@ -190,11 +163,31 @@
     "Update Time": "Update Time",
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
+    "Website": "Website",
+    "avatar": {
+      "Select Avatar": "Select Avatar",
+      "Select Failed": "Select Failed"
+    },
+    "choosable": "choosable",
+    "confirm": {
+      "Common Tip": "Operational Confirm"
+    },
+    "course": {
+      "Read Course": "Read Course"
+    },
+    "empty": {
+      "Common Tip": "No data"
+    },
     "error": {
       "unKnow": "There was an accident"
     },
     "export": "",
     "file": {
+      "File Content": "File Content",
+      "File Name": "File Name",
+      "File content can not be empty": "File content can not be empty",
+      "Filename Can not Be Empty": "Filename Can not Be Empty",
+      "Read File Error": "Read file error",
       "Select file amount limit 100": "You can select a maximum of 100 files at a time"
     },
     "folder": {
@@ -207,18 +200,40 @@
     "input": {
       "Repeat Value": "Repeat Value"
     },
+    "link": {
+      "UnValid": "UnValid Link"
+    },
+    "price": {
+      "Amount": "{{amount}}{{unit}}"
+    },
     "speech": {
       "error tip": "Speech Failed"
+    },
+    "system": {
+      "Help Chatbot": "Chatbot Helper",
+      "Use Helper": "UsingHelp"
+    },
+    "ui": {
+      "textarea": {
+        "Magnifying": "Magnifying"
+      }
     }
   },
   "core": {
+    "Max Token": "MaxTokens",
     "ai": {
       "Model": "Model",
-      "Prompt": "Prompt"
+      "Prompt": "Prompt",
+      "model": {
+        "Dataset Agent Model": "Agent Model",
+        "Vector Model": "Vector Model"
+      }
     },
     "app": {
       "App params config": "App Config",
+      "Chat Variable": "",
       "Next Step Guide": "Next step guide",
+      "Question Guide": "",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
       "Save and preview": "Save",
       "Select TTS": "Select TTS",
@@ -227,6 +242,36 @@
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
+      "edit": {
+        "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
+        "Out Ad Edit": "You are about to exit the Advanced orchestration page, please confirm",
+        "Prompt Editor": "Prompt Editor",
+        "Save and out": "Save out",
+        "UnSave": "UnSave",
+        "cfr background prompt": "Question completion - Chat background description",
+        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. \nIf is empty, the problem completion function is not used."
+      },
+      "feedback": {
+        "Custom feedback": "Custom feedback",
+        "close custom feedback": "Close Feedback"
+      },
+      "logs": {
+        "Source And Time": "Source & Time"
+      },
+      "outLink": {
+        "Can Drag": "Icon Drag",
+        "Default open": "Default Open",
+        "Iframe block title": "Copy the Iframe below and add it to your web page",
+        "Link block title": "Copy the link below to your browser to open",
+        "Script Close Icon": "Close Icon",
+        "Script Icon": "Icon",
+        "Script Open Icon": "Open Script",
+        "Script block title": "Add the following code to your website",
+        "Select Mode": "Select Mode",
+        "Select Using Way": "Select use mode",
+        "Show History": "Show History",
+        "Web Link": "Web Link"
+      },
       "setting": "App Setting",
       "simple": {
         "mode template select": "Template"
@@ -238,12 +283,13 @@
         "Speech model": "Speech model",
         "Speech speed": "Speed",
         "Test Listen": "Test",
-        "Test Listen Text": "Hello, this is FastGPT, how can I help you?",
+        "Test Listen Text": "Hello, this is a voice test, if you can hear this sentence, it means that the voice playback function is normal",
         "Web": "Browser (free)"
       }
     },
     "chat": {
       "Audio Speech Error": "Audio Speech Error",
+      "Quote Amount": "Dataset Quote:{{amount}}",
       "Record": "Speech",
       "Restart": "Restart",
       "Select File": "Select file",
@@ -252,23 +298,106 @@
       "Speaking": "I'm listening...",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "error": {
+        "Chat error": "Chat error",
+        "Messages empty": "Interface content is empty, maybe the text is too long ~",
+        "Select dataset empty": "You didn't choose any dataset.",
+        "user input empty": "User question is empty"
+      },
+      "feedback": {
+        "Close User Good Feedback": "",
+        "Close User Like": "The user like\nClick to close the tag",
+        "Feedback Close": "Close Feedback",
+        "No Content": "The user did not fill in the specific feedback content",
+        "Read User dislike": "User dislike\nClick to view content"
+      },
+      "markdown": {
+        "Edit Question": "Edit Question",
+        "Quick Question": "Ask the question immediately",
+        "Send Question": "Send Question"
+      },
+      "quote": {
+        "Quote Tip": "Only the actual reference content is displayed here. If the data is updated, it will not be updated in real time",
+        "Read Quote": "Read Quote",
+        "Read Source": "Read Source"
+      },
+      "response": {
+        "Complete Response": "Complete Response",
+        "Plugin Resonse Detail": "Plugin Detail",
+        "Read complete response": "Read Detail",
+        "Read complete response tips": "Click to see the detailed process",
+        "context total length": "Context Length",
+        "module cq": "Question classification list",
+        "module cq result": "Classification Result",
+        "module extract description": "Extract Description",
+        "module extract result": "Extract Result",
+        "module historyPreview": "Messages",
+        "module http body": "Body",
+        "module http result": "Response",
+        "module http url": "Request Url",
+        "module limit": "Count Limit",
+        "module maxToken": "MaxTokens",
+        "module model": "Model",
+        "module name": "Name",
+        "module price": "Price",
+        "module query": "Question/Query",
+        "module question": "Question",
+        "module quoteList": "Quotes",
+        "module runningTime": "Time",
+        "module search query": "Query",
+        "module search response": "Search Result",
+        "module similarity": "Similarity",
+        "module temperature": "Temperature",
+        "module time": "Running Time",
+        "module tokens": "Tokens",
+        "plugin output": "Plugin Output",
+        "search using reRank": "ReRank",
+        "text output": "Text Output"
+      },
       "tts": {
         "Stop Speech": "Stop"
       }
     },
     "dataset": {
+      "All Dataset": "All Dataset",
+      "Avatar": "Avatar",
       "Choose Dataset": "Choose Dataset",
+      "Common Dataset": "Common Dataset",
+      "Common Dataset Desc": "Knowledge bases can be built by importing files, web links, or manual entry",
       "Create dataset": "Create Dataset",
       "Dataset": "Dataset",
+      "Dataset ID": "Dataset ID",
+      "Dataset Type": "Dataset Type",
+      "Delete Confirm": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
+      "Delete Website Tips": "Confirm to delete the website",
+      "Empty Dataset": "",
+      "Empty Dataset Tips": "There is no knowledge base yet, go create one!",
+      "Folder Dataset": "Folder",
       "Go Dataset": "To Dataset",
+      "Intro Placeholder": "This dataset has not yet been introduced~",
+      "My Dataset": "My Dataset",
+      "Name": "Name",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
-      "Search Top K": "Top K",
       "Set Empty Result Tip": ",Response empty text",
+      "Set Website Config": "Configuring Website",
       "Similarity": "Similarity",
       "Sync Time": "Update Time",
       "Virtual File": "Virtual File",
+      "Website Dataset": "Website Sync",
+      "Website Dataset Desc": "Web site synchronization allows you to build a knowledge base directly from a web link",
       "collection": {
+        "Click top config website": "Config",
+        "Empty Tip": "The collection is empty",
+        "QA Prompt": "QA Prompt",
+        "Start Sync Tip": "Are you sure to start synchronizing data? The old data will be deleted and then re-acquired, please confirm!",
+        "Sync": "Data Sync",
+        "Sync Collection": "Data Sync",
+        "Website Create Success": "Created successfully, data is being synchronized",
+        "Website Empty Tip": "No associated website yet",
+        "Website Link": "Website Link",
+        "Website Sync": "Website",
+        "id": "Id",
         "metadata": {
           "Chunk Size": "Chunk Size",
           "Createtime": "Create Time",
@@ -281,6 +410,10 @@
           "source name": "Source Name",
           "source size": "Source Size"
         },
+        "status": {
+          "active": "Ready",
+          "syncing": "Syncing"
+        },
         "training": {
           "type chunk": "Chunk",
           "type manual": "Manual",
@@ -288,35 +421,92 @@
         }
       },
       "data": {
+        "Auxiliary Data": "Auxiliary Data",
+        "Auxiliary Data Placeholder": "This section is optional, usually in conjunction with the previous [data content], to build a structured prompt word, for special scenarios, up to {{maxToken}} words.",
+        "Auxiliary Data Tip": "This section is divided into optional fields \n This content is usually designed to work with the previous data content to build structured prompt words for special scenarios",
+        "Data Content": "Data Content",
+        "Data Content Placeholder": "The input field is required, and the content is usually a description of the knowledge point, or it can be a user question, at most {{maxToken}} words.",
+        "Data Content Tip": "The input box is a required field \n The content is usually a description of the knowledge point, but also can be a user question.",
+        "Default Index Tip": "Cannot be edited, the default index will use the text of [related data content] and [auxiliary data] to generate an index directly, if the default index is not needed, you can delete it. Each piece of data must have more than one index. After all indexes are deleted, a default index is automatically generated.",
         "Edit": "Edit Data",
+        "Empty Tip": "This collection has no data yet",
+        "Search data placeholder": "Search relevant data",
+        "Too Long": "Content is too long",
+        "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
         "id": "Data ID"
+      },
+      "error": {
+        "Start Sync Failed": "Start Sync Failed",
+        "unAuthDataset": "No access to this knowledge base ",
+        "unAuthDatasetCollection": "Not authorized to manipulate this data set ",
+        "unAuthDatasetData": "Not authorized to manipulate this data ",
+        "unAuthDatasetFile": "No permission to manipulate this file ",
+        "unCreateCollection": "No permission to manipulate this data ",
+        "unLinkCollection": "not a network link collection "
       },
       "file": "File",
       "folder": "Folder",
       "import": {
+        "CSV Import": "CSV QA Import",
+        "CSV Import Tip": "Import q and a from csv, data is required to be sorted out in advance",
+        "Chunk Range": "Range: 100~{{max}}",
+        "Chunk Split": "Chunk Split",
+        "Chunk Split Tip": "Select the files and split the by sentences",
+        "Chunk length": "Chunk length",
+        "Csv format error": "The csv file format is incorrect, please ensure that the index and content columns are two",
+        "Custom split char": "Custom split char",
+        "Custom split char Tips": "Allows you to block according to custom delimiters. It is usually used for processed data, using specific delimiters to precisely block it.",
+        "Embedding Estimated Price Tips": "Index billing: {{price}}/1k tokens",
+        "Estimated Price": "Estimated Price",
+        "Estimated Price Tips": "QA charges\nInput: {{inputPrice}}/1k tokens\nOutput: {{outputPrice}}/1k tokens",
+        "Fetch Error": "Get link failed",
+        "Fetch Url": "Url",
+        "Fetch url placeholder": "Up to 10 links, one per line.",
+        "Fetch url tip": "Only static links can be read, please check the results",
         "Ideal chunk length": "Ideal chunk length",
-        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200"
+        "Ideal chunk length Tips": "Segment by end symbol. We recommend that your document should be properly punctuated to ensure that each complete sentence length does not exceed this value \n Chinese document recommended 400~1000\n English document recommended 600~1200",
+        "Import Failed": "Import Failed",
+        "Import Success Tip": "The {{num}} group data is imported successfully. Please wait for training.",
+        "Import Tip": "This task cannot be terminated and takes some time to generate indexes. Please confirm the import. If the balance is insufficient, the unfinished task will be suspended and can continue after topping up.",
+        "Only Show First 50 Chunk": "Show only part",
+        "QA Estimated Price Tips": "QA charges\nInput: {{inputPrice}}/1k tokens\nOutput: {{outputPrice}}/1k tokens",
+        "QA Import": "QA Split",
+        "QA Import Tip": "Select the files and let the LLM automatically generate QA",
+        "Re Preview": "RePreview",
+        "Set Chunk Error": "Split chunks error",
+        "Total Chunk Preview": "Chunk Preview: {{totalChunks}} ",
+        "Total tokens": "Tokens"
       },
       "link": "Link",
       "search": {
+        "Dataset Search Params": "Dataset Search Params",
         "Empty result response": "Empty Response",
         "Empty result response Tips": "If you fill in the content, if no suitable content is found, you will directly reply to the content.",
+        "Max Tokens": "Max Tokens",
+        "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
         "Params Setting": "Params Setting",
+        "ReRank": "ReRank",
+        "ReRank desc": "The rearrangement model is used for secondary ranking to enhance the overall ranking.",
         "Top K": "Top K",
         "mode": {
-          "embFullTextReRank": "Hybrid search ",
-          "embFullTextReRank desc": "Reordering with a mixture of vector search and full-text search results by Rerank usually works best",
           "embedding": "Vector search",
-          "embedding desc": "Direct vector topk correlation query ",
-          "embeddingReRank": "Enhanced semantic retrieval ",
-          "embeddingReRank desc": "Sort using Rerank after overperforming vector topk queries "
+          "embedding desc": "Use vectors for text correlation queries",
+          "fullTextRecall": "Full text search ",
+          "fullTextRecall desc": "Using traditional full-text search, suitable for finding data with specific keywords and main predicates",
+          "mixedRecall": "Mixedrecall",
+          "mixedRecall desc": "Returns the combined results of vector and full-text searches, sorted using the RRF algorithm."
         },
         "search mode": "Search Mode"
       },
+      "status": {
+        "active": "Ready",
+        "syncing": "Syncing"
+      },
       "test": {
+        "Search Test": "Search Test",
         "Test": "Start",
         "Test Result": "Results",
         "Test Text": "Text",
@@ -327,8 +517,25 @@
         "test result tip": "The contents of the knowledge base are sorted according to their similarity to the test text, and you can adjust the corresponding text according to the test results. Note: The data in the test record may have been modified, clicking on a test data will show the latest data."
       },
       "training": {
+        "Agent queue": "QA wait list",
+        "Full": "Expect more than 5 minutes",
+        "Leisure": "Leisure",
+        "Vector queue": "Vector wait list",
+        "Waiting": "Waiting",
+        "Website Sync": "Website Sync",
         "type chunk": "Chunk",
         "type qa": "QA"
+      },
+      "website": {
+        "Base Url": "BaseUrl",
+        "Config": "Website Configuring",
+        "Config Description": "The Web site synchronization function allows you to fill in the root address of a website, and the system will automatically crawl the relevant pages deeply for knowledge base training. Only crawls static websites, mainly project documents and blogs.",
+        "Confirm Create Tips": "Confirm to synchronize the site, the synchronization task will start later, please confirm!",
+        "Confirm Update Tips": "Are you sure to update the site configuration? The synchronization starts immediately with the new configuration. Please confirm",
+        "Selector": "Selector",
+        "Selector Course": "Selector using tutorial",
+        "Start Sync": "Start Sync",
+        "UnValid Website Tip": "Your site may not be static and cannot be synchronized"
       }
     },
     "module": {
@@ -341,14 +548,48 @@
       "Plugin output must connect": "Custom outputs must all be connected",
       "Variable": "Variable",
       "Variable Setting": "Variable Setting",
+      "edit": {
+        "Field Already Exist": "Key already exist",
+        "Field Edit": "Field Edit"
+      },
+      "extract": {
+        "Enum Description": "Lists the possible values for the field, one per row",
+        "Enum Value": "Enum",
+        "Field Description Placeholder": "Name/age /sql statement......",
+        "Field Setting Title": "Extract field configuration"
+      },
       "input": {
+        "Add Input": "Add Input",
+        "Input Number": "Input: {{length}}",
+        "description": {
+          "Http Request Header": "",
+          "Http Request Url": "",
+          "TFSwitch textarea": "",
+          "anyInput": "",
+          "cfr background": "The background knowledge of the current conversation makes it easy to complete the first question and the fuzzy question, and only needs to briefly describe the scope of the current conversation.",
+          "dynamic input": "",
+          "textEditor textarea": "The passed variable can be referenced by {{key}}."
+        },
         "label": {
-          "chat history": "",
-          "switch": "",
-          "user question": ""
+          "Http Request Header": "",
+          "Http Request Method": "",
+          "Http Request Url": "",
+          "TFSwitch textarea": "",
+          "aiModel": "",
+          "anyInput": "",
+          "cfr background": "Background",
+          "chat history": "chat history",
+          "switch": "Switch",
+          "textEditor textarea": "Text Edit",
+          "user question": "User question"
+        },
+        "placeholder": {
+          "cfr background": "Questions about the introduction and use of python. \nThe current dialogue is related to the game GTA5."
         }
       },
       "inputType": {
+        "chat history": "History",
+        "dynamicTargetInput": "dynamic Target Input",
         "input": "Input",
         "selectApp": "App Selector",
         "selectChatModel": "Select Chat Model",
@@ -358,18 +599,37 @@
         "textarea": "Textarea"
       },
       "output": {
+        "Add Output": "Add Output",
+        "Output Number": "Output: {{length}}",
         "description": {
-          "running done": "running done"
+          "running done": "Triggered when the module call ends"
         },
         "label": {
-          "running done": "running done"
+          "cfr result": "",
+          "result false": "",
+          "result true": "",
+          "running done": "End of module call ",
+          "text": "Text output"
         }
+      },
+      "template": {
+        "TFSwitch": "",
+        "TFSwitch intro": "",
+        "UnKnow Module": "UnKnow Module",
+        "cfr": "",
+        "cfr intro": "Refine the current issue based on history, making it more conducive to knowledge base search, while improving continuous conversation capabilities.",
+        "textEditor": "Text Editor",
+        "textEditor intro": "Output of fixed or incoming text after edit"
+      },
+      "textEditor": {
+        "Text Edit": "Text Edit"
       },
       "valueType": {
         "any": "Any",
         "boolean": "Boolean",
         "chatHistory": "History",
         "datasetQuote": "Dataset Quote",
+        "dynamicTargetInput": "Dynamic Input",
         "number": "Number",
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",
@@ -391,11 +651,13 @@
         "variable options": "Options"
       },
       "variable add option": "Add Option"
+    },
+    "shareChat": {
+      "Init Error": "Init Chat Error",
+      "Init History Error": "Init History Error"
     }
   },
   "dataset": {
-    "Agent Model": "Learning Model",
-    "Chunk Length": "Chunk Length",
     "Confirm move the folder": "Confirm Move",
     "Confirm to delete the data": "Confirm to delete the data?",
     "Confirm to delete the file": "Are you sure to delete the file and all its data?",
@@ -416,7 +678,6 @@
     "Manual Mark": "Manual Mark",
     "Mark Data": "Mark Data",
     "Move Failed": "Move Failed",
-    "My Dataset": "My Dataset",
     "Queue Desc": "This data refers to the current amount of training for the entire system. FastGPT uses queued training, and if you have too much data to train, you may need to wait for a while",
     "Select Dataset": "Select Dataset",
     "Select Dataset Tips": "Select only knowledge bases with the same index model",
@@ -434,7 +695,6 @@
       "Create Training Data": "Training-{{filename}}",
       "Create Virtual File Success": "Create Virtual File Success",
       "Data Amount": "Data Amount",
-      "Ready": "Ready",
       "Select Collection": "Select Collection",
       "Select One Collection To Store": "Select the collection to store"
     },
@@ -461,7 +721,6 @@
       },
       "input is empty": "The data content cannot be empty"
     },
-    "deleteDatasetTips": "Are you sure to delete the knowledge base? Data cannot be recovered after deletion, please confirm!",
     "deleteFolderTips": "Are you sure to delete this folder and all the knowledge bases it contains? Data cannot be recovered after deletion, please confirm!",
     "import csv tip": "Ensure that the CSV is in UTF-8 format; otherwise, garbled characters will be displayed",
     "test": {
@@ -469,6 +728,7 @@
     }
   },
   "error": {
+    "fileNotFound": "File not found ~",
     "team": {
       "overSize": "Team member exceeds limit"
     }
@@ -482,7 +742,6 @@
     "Fetch Url": "Fetch Url",
     "If the imported file is garbled, please convert CSV to UTF-8 encoding format": "If the imported file is garbled, please convert CSV to UTF-8 encoding format",
     "Parse": "{{name}} Parsing...",
-    "Ready": "Ready",
     "Release the mouse to upload the file": "Release the mouse to upload the file",
     "Select a maximum of 10 files": "Select a maximum of 10 files",
     "Uploading": "Uploading: {{name}}, Progress: {{percent}}%",
@@ -535,6 +794,10 @@
     "Visual AI orchestration": "Visual AI orchestration",
     "Why FastGPT": "Why {{title}}",
     "desc": "AI knowledge base question and answer platform based on LLM large model",
+    "navbar": {
+      "Use guidance": "Use Guidance",
+      "chatbot": "Chatbot"
+    },
     "slogan": "Let the AI know more about you"
   },
   "module": {
@@ -607,6 +870,19 @@
     "Synchronous version": "Sync Version",
     "To Edit Plugin": "To Edit",
     "Update Your Plugin": "Update Plugin"
+  },
+  "support": {
+    "user": {
+      "Price": "Price",
+      "auth": {
+        "Sending Code": "Sending"
+      },
+      "login": {
+        "Github": "Github",
+        "Google": "Google",
+        "Provider error": "Login exception, please try again"
+      }
+    }
   },
   "system": {
     "Help Document": "Document"
@@ -721,10 +997,30 @@
   },
   "wallet": {
     "bill": {
+      "Ai model": "Ai Model",
+      "App name": "App name",
       "Audio Speech": "Audio Speech",
+      "Bill Module": "Bill Detail",
+      "Data Length": "Data length",
+      "Dataset store": "",
+      "Duration": "Duration(s)",
+      "Input Token Length": "Input tokens",
+      "Module name": "Module name",
+      "Next Step Guide": "",
+      "Number": "Bill ID",
+      "Output Token Length": "Output tokens",
       "ReRank": "ReRank",
+      "Source": "Source",
+      "Text Length": "Text length",
+      "Time": "Time",
+      "Token Length": "Tokens",
+      "Total": "Total",
       "Whisper": "Whisper",
       "bill username": "User"
+    },
+    "moduleName": {
+      "index": "Index Generation",
+      "qa": "QA Generation"
     }
   }
 }

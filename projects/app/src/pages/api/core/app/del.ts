@@ -5,6 +5,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -20,6 +21,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await authApp({ req, authToken: true, appId, per: 'owner' });
 
     // 删除对应的聊天
+    await MongoChatItem.deleteMany({
+      appId
+    });
     await MongoChat.deleteMany({
       appId
     });

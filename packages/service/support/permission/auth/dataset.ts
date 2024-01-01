@@ -14,6 +14,7 @@ import {
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getTeamInfoByTmbId } from '../../user/team/controller';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 export async function authDatasetByTmbId({
   teamId,
@@ -166,6 +167,10 @@ export async function authDatasetFile({
   const { role } = await getTeamInfoByTmbId({ tmbId });
 
   const file = await getFileById({ bucketName: BucketNameEnum.dataset, fileId });
+
+  if (!file) {
+    return Promise.reject(CommonErrEnum.fileNotFound);
+  }
 
   if (file.metadata.teamId !== teamId) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);

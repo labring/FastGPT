@@ -44,16 +44,16 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
           alignItems={'center'}
           {...(activeId === item.id
             ? {
-                bg: ' myBlue.300 !important',
+                bg: ' primary.100 !important',
                 fontWeight: 'bold',
-                color: 'myBlue.700 ',
+                color: 'primary.600 ',
                 cursor: 'default'
               }
             : {
                 cursor: 'pointer'
               })}
           _hover={{
-            bg: 'myWhite.600'
+            bg: 'myGray.05'
           }}
           onClick={() => {
             if (activeId === item.id) return;

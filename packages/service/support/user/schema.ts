@@ -3,10 +3,16 @@ const { Schema, model, models } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
 
 export const userCollectionName = 'users';
 
 const UserSchema = new Schema({
+  status: {
+    type: String,
+    enum: Object.keys(userStatusMap),
+    default: UserStatusEnum.active
+  },
   username: {
     // 可以是手机/邮箱，新的验证都只用手机
     type: String,

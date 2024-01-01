@@ -24,13 +24,13 @@ import VariableEdit from '../modules/VariableEdit';
 import MyIcon from '@/components/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
-import NodeCard from '../modules/NodeCard';
+import NodeCard from '../render/NodeCard';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
 import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 
-const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeUserGuide = React.memo(function NodeUserGuide({ data }: { data: FlowModuleItemType }) {
   const theme = useTheme();
   return (
     <>
@@ -50,9 +50,11 @@ const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
       </NodeCard>
     </>
   );
-};
-export default React.memo(NodeUserGuide);
+});
 
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodeUserGuide data={data} />;
+}
 export function WelcomeText({ data }: { data: FlowModuleItemType }) {
   const { inputs, moduleId } = data;
 

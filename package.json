@@ -5,10 +5,12 @@
   "scripts": {
     "prepare": "husky install",
     "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
-    "format-doc": "zhlint --dir ./docSite *.md --fix"
+    "format-doc": "zhlint --dir ./docSite *.md --fix",
+    "gen:theme-typings": "chakra-cli tokens projects/app/src/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
+    "postinstall": "sh ./scripts/postinstall.sh"
   },
   "devDependencies": {
-    "@types/multer": "^1.4.10",
+    "@chakra-ui/cli": "^2.4.1",
     "husky": "^8.0.3",
     "i18next": "^22.5.1",
     "lint-staged": "^13.2.1",
@@ -22,10 +24,7 @@
     "./**/**/*.md": "npm run format-doc"
   },
   "engines": {
-    "node": ">=18.0.0"
-  },
-  "dependencies": {
-    "multer": "1.4.5-lts.1",
-    "openai": "4.16.1"
+    "node": ">=18.0.0",
+    "pnpm": ">=8.6.0"
   }
 }

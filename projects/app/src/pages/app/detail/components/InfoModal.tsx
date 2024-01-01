@@ -103,8 +103,8 @@ const InfoModal = ({
       try {
         const src = await compressImgFileAndUpload({
           file,
-          maxW: 100,
-          maxH: 100
+          maxW: 300,
+          maxH: 300
         });
         setValue('avatar', src);
         setRefresh((state) => !state);
@@ -174,7 +174,7 @@ const InfoModal = ({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           取消
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>

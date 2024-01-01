@@ -3,7 +3,8 @@ export type LLMModelItemType = {
   name: string;
   maxContext: number;
   maxResponse: number;
-  price: number;
+  inputPrice: number;
+  outputPrice: number;
 };
 export type ChatModelItemType = LLMModelItemType & {
   quoteMaxToken: number;
@@ -14,7 +15,7 @@ export type ChatModelItemType = LLMModelItemType & {
 };
 
 export type FunctionModelItemType = LLMModelItemType & {
-  functionCall: boolean;
+  toolChoice: boolean;
   functionPrompt: string;
 };
 
@@ -22,14 +23,17 @@ export type VectorModelItemType = {
   model: string;
   name: string;
   defaultToken: number;
-  price: number;
+  inputPrice: number;
+  outputPrice: number;
   maxToken: number;
+  weight: number;
 };
 
 export type ReRankModelItemType = {
   model: string;
   name: string;
-  price: number;
+  inputPrice: number;
+  outputPrice?: number;
   requestUrl?: string;
   requestAuth?: string;
 };
@@ -37,12 +41,14 @@ export type ReRankModelItemType = {
 export type AudioSpeechModelType = {
   model: string;
   name: string;
-  price: number;
+  inputPrice: number;
+  outputPrice?: number;
   voices: { label: string; value: string; bufferId: string }[];
 };
 
 export type WhisperModelType = {
   model: string;
   name: string;
-  price: number;
+  inputPrice: number;
+  outputPrice?: number;
 };

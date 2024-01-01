@@ -11,8 +11,9 @@ import React, {
 import FileSelect, { FileItemType, Props as FileSelectProps } from './FileSelect';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postDatasetCollection } from '@/web/core/dataset/api';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import {
@@ -42,18 +43,21 @@ type useImportStoreType = {
   setSuccessChunks: Dispatch<SetStateAction<number>>;
   isUnselectedFile: boolean;
   totalChunks: number;
-  onclickUpload: (e: { prompt?: string }) => void;
+  totalTokens: number;
+  onclickUpload: (e?: { prompt?: string }) => void;
   onReSplitChunks: () => void;
   price: number;
   uploading: boolean;
   chunkLen: number;
   chunkOverlapRatio: number;
   setChunkLen: Dispatch<number>;
+  customSplitChar?: string;
+  setCustomSplitChar: Dispatch<string>;
   showRePreview: boolean;
   setReShowRePreview: Dispatch<SetStateAction<boolean>>;
 };
 const StateContext = createContext<useImportStoreType>({
-  onclickUpload: function (e: { prompt?: string }): void {
+  onclickUpload: function (e?: { prompt?: string }): void {
     throw new Error('Function not implemented.');
   },
   uploading: false,
@@ -65,12 +69,17 @@ const StateContext = createContext<useImportStoreType>({
 
   isUnselectedFile: false,
   totalChunks: 0,
+  totalTokens: 0,
   onReSplitChunks: function (): void {
     throw new Error('Function not implemented.');
   },
   price: 0,
   chunkLen: 0,
   chunkOverlapRatio: 0,
+  customSplitChar: undefined,
+  setCustomSplitChar: function (value: string): void {
+    throw new Error('Function not implemented.');
+  },
   setChunkLen: function (value: number): void {
     throw new Error('Function not implemented.');
   },
@@ -93,7 +102,8 @@ export const useImportStore = () => useContext(StateContext);
 const Provider = ({
   datasetId,
   parentId,
-  unitPrice,
+  inputPrice,
+  outputPrice,
   mode,
   collectionTrainingType,
   vectorModel,
@@ -106,7 +116,8 @@ const Provider = ({
 }: {
   datasetId: string;
   parentId: string;
-  unitPrice: number;
+  inputPrice: number;
+  outputPrice: number;
   mode: `${TrainingModeEnum}`;
   collectionTrainingType: `${DatasetCollectionTrainingModeEnum}`;
   vectorModel: string;
@@ -122,6 +133,7 @@ const Provider = ({
   const [files, setFiles] = useState<FileItemType[]>([]);
   const [successChunks, setSuccessChunks] = useState(0);
   const [chunkLen, setChunkLen] = useState(defaultChunkLen);
+  const [customSplitChar, setCustomSplitChar] = useState<string>();
   const [previewFile, setPreviewFile] = useState<FileItemType>();
   const [showRePreview, setReShowRePreview] = useState(false);
 
@@ -132,9 +144,17 @@ const Provider = ({
     [files]
   );
 
+  const totalTokens = useMemo(() => files.reduce((sum, file) => sum + file.tokens, 0), [files]);
+
   const price = useMemo(() => {
-    return formatPrice(files.reduce((sum, file) => sum + file.tokens, 0) * unitPrice);
-  }, [files, unitPrice]);
+    if (mode === TrainingModeEnum.qa) {
+      const inputTotal = totalTokens * inputPrice;
+      const outputTotal = totalTokens * 0.5 * outputPrice;
+
+      return formatModelPrice2Read(inputTotal + outputTotal);
+    }
+    return formatModelPrice2Read(totalTokens * inputPrice);
+  }, [inputPrice, mode, outputPrice, totalTokens]);
 
   /* start upload data */
   const { mutate: onclickUpload, isLoading: uploading } = useRequest({
@@ -158,7 +178,9 @@ const Provider = ({
           fileId: file.fileId,
           rawLink: file.rawLink,
           chunkSize: chunkLen,
-          trainingType: collectionTrainingType
+          trainingType: collectionTrainingType,
+          qaPrompt: mode === TrainingModeEnum.qa ? prompt : '',
+          hashRawText: hashStr(file.rawText)
         });
 
         // upload data
@@ -178,28 +200,31 @@ const Provider = ({
     },
     onSuccess(num) {
       toast({
-        title: `共成功导入 ${num} 组数据，请耐心等待训练.`,
+        title: t('core.dataset.import.Import Success Tip', { num }),
         status: 'success'
       });
       onUploadSuccess();
     },
-    errorToast: '导入文件失败'
+    errorToast: t('core.dataset.import.Import Failed')
   });
 
   const onReSplitChunks = useCallback(async () => {
     try {
+      setPreviewFile(undefined);
+
       setFiles((state) =>
         state.map((file) => {
-          const splitRes = splitText2Chunks({
-            text: file.text,
+          const { chunks, tokens } = splitText2Chunks({
+            text: file.rawText,
             chunkLen,
-            overlapRatio: chunkOverlapRatio
+            overlapRatio: chunkOverlapRatio,
+            customReg: customSplitChar ? [customSplitChar] : []
           });
 
           return {
             ...file,
-            tokens: splitRes.tokens,
-            chunks: splitRes.chunks.map((chunk) => ({
+            tokens,
+            chunks: chunks.map((chunk) => ({
               q: chunk,
               a: ''
             }))
@@ -210,10 +235,10 @@ const Provider = ({
     } catch (error) {
       toast({
         status: 'warning',
-        title: getErrText(error, '文本分段异常')
+        title: getErrText(error, t('core.dataset.import.Set Chunk Error'))
       });
     }
-  }, [chunkLen, toast]);
+  }, [chunkLen, chunkOverlapRatio, customSplitChar, t, toast]);
 
   const reset = useCallback(() => {
     setFiles([]);
@@ -236,11 +261,14 @@ const Provider = ({
     setSuccessChunks,
     isUnselectedFile,
     totalChunks,
+    totalTokens,
     price,
     onReSplitChunks,
     onclickUpload,
     uploading,
     chunkLen,
+    customSplitChar,
+    setCustomSplitChar,
     chunkOverlapRatio,
     setChunkLen,
     showRePreview,
@@ -253,6 +281,7 @@ export default React.memo(Provider);
 
 export const PreviewFileOrChunk = () => {
   const theme = useTheme();
+  const { t } = useTranslation();
   const { setFiles, previewFile, setPreviewFile, setReShowRePreview, totalChunks, files } =
     useImportStore();
 
@@ -283,38 +312,40 @@ export const PreviewFileOrChunk = () => {
             overflow={'overlay'}
             px={[4, 8]}
             my={4}
-            contentEditable
-            dangerouslySetInnerHTML={{ __html: previewFile.text }}
+            // contentEditable
+            // dangerouslySetInnerHTML={{ __html: previewFile.rawText }}
             fontSize={'sm'}
             whiteSpace={'pre-wrap'}
             wordBreak={'break-all'}
-            onBlur={(e) => {
-              // @ts-ignore
-              const val = e.target.innerText;
-              setReShowRePreview(true);
+            // onBlur={(e) => {
+            //   // @ts-ignore
+            //   const val = e.target.innerText;
+            //   setReShowRePreview(true);
 
-              setFiles((state) =>
-                state.map((file) =>
-                  file.id === previewFile.id
-                    ? {
-                        ...file,
-                        text: val
-                      }
-                    : file
-                )
-              );
-            }}
-          />
+            //   setFiles((state) =>
+            //     state.map((file) =>
+            //       file.id === previewFile.id
+            //         ? {
+            //             ...file,
+            //             text: val
+            //           }
+            //         : file
+            //     )
+            //   );
+            // }}
+          >
+            {previewFile.rawText}
+          </Box>
         </Box>
       ) : (
         <Box pt={[3, 6]}>
           <Flex px={[4, 8]} alignItems={'center'}>
             <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
-              分段预览({totalChunks}组)
+              {t('core.dataset.import.Total Chunk Preview', { totalChunks })}
             </Box>
             {totalChunks > 50 && (
               <Box ml={2} fontSize={'sm'} color={'myhGray.500'}>
-                仅展示部分
+                {t('core.dataset.import.Only Show First 50 Chunk')}
               </Box>
             )}
           </Flex>
@@ -359,49 +390,9 @@ export const PreviewFileOrChunk = () => {
                       }}
                     />
                   </Flex>
-                  <Box
-                    px={4}
-                    fontSize={'sm'}
-                    whiteSpace={'pre-wrap'}
-                    wordBreak={'break-all'}
-                    contentEditable={!chunk.a}
-                    dangerouslySetInnerHTML={{
-                      __html: chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q
-                    }}
-                    onBlur={(e) => {
-                      // @ts-ignore
-                      const val = e.target.innerText;
-
-                      /* delete file */
-                      if (val === '') {
-                        setFiles((state) =>
-                          state.map((stateFile) =>
-                            stateFile.id === file.id
-                              ? {
-                                  ...file,
-                                  chunks: [...file.chunks.slice(0, i), ...file.chunks.slice(i + 1)]
-                                }
-                              : stateFile
-                          )
-                        );
-                      } else {
-                        // update chunk
-                        setFiles((stateFiles) =>
-                          stateFiles.map((stateFile) =>
-                            file.id === stateFile.id
-                              ? {
-                                  ...stateFile,
-                                  chunks: stateFile.chunks.map((chunk, index) => ({
-                                    ...chunk,
-                                    index: i === index ? val : chunk.q
-                                  }))
-                                }
-                              : stateFile
-                          )
-                        );
-                      }
-                    }}
-                  />
+                  <Box px={4} fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
+                    {chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q}
+                  </Box>
                 </Box>
               ))
             )}
@@ -437,7 +428,7 @@ export const SelectorContainer = ({
       {...(isUnselectedFile
         ? {}
         : {
-            maxW: ['auto', '500px']
+            maxW: ['auto', '450px']
           })}
       p={[4, 8]}
     >
@@ -469,7 +460,7 @@ export const SelectorContainer = ({
               position={'relative'}
               alignItems={'center'}
               _hover={{
-                bg: 'myBlue.100',
+                bg: 'primary.50',
                 '& .delete': {
                   display: 'block'
                 }
@@ -490,6 +481,7 @@ export const SelectorContainer = ({
                 display={['block', 'none']}
                 onClick={(e) => {
                   e.stopPropagation();
+                  setPreviewFile(undefined);
                   setFiles((state) => state.filter((file) => file.id !== item.id));
                 }}
               />

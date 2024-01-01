@@ -8,13 +8,13 @@ import {
 } from '@fastgpt/service/support/user/team/controller';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
-import { delay } from '@/utils/tools';
+import { delay } from '@fastgpt/global/common/system/utils';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { PgClient } from '@fastgpt/service/common/pg';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
+import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
+import { PgDatasetTableName } from '@fastgpt/global/common/vectorStore/constants';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -288,7 +288,7 @@ async function initPgData() {
   const limit = 10;
   // add column
   try {
-    await Promise.all([
+    await Promise.allSettled([
       PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN team_id VARCHAR(50);`),
       PgClient.query(`ALTER TABLE ${PgDatasetTableName} ADD COLUMN tmb_id VARCHAR(50);`),
       PgClient.query(`ALTER TABLE ${PgDatasetTableName} ALTER COLUMN user_id DROP NOT NULL;`)

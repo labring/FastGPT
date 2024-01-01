@@ -1,22 +1,22 @@
 import React from 'react';
-import { BaseEdge, EdgeLabelRenderer, EdgeProps, getBezierPath } from 'reactflow';
+import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
+import { onDelConnect } from '../../FlowProvider';
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@/components/Icon';
 
-const ButtonEdge = ({
-  id,
-  sourceX,
-  sourceY,
-  targetX,
-  targetY,
-  sourcePosition,
-  targetPosition,
-  style = {},
-  markerEnd,
-  data
-}: EdgeProps<{
-  onDelete: (id: string) => void;
-}>) => {
+const ButtonEdge = (props: EdgeProps) => {
+  const {
+    id,
+    sourceX,
+    sourceY,
+    targetX,
+    targetY,
+    sourcePosition,
+    targetPosition,
+    selected,
+    style = {}
+  } = props;
+
   const [edgePath, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
@@ -26,9 +26,19 @@ const ButtonEdge = ({
     targetPosition
   });
 
+  const edgeStyle: React.CSSProperties = {
+    ...style,
+    ...(selected
+      ? {
+          strokeWidth: 4,
+          stroke: '#3370ff'
+        }
+      : { strokeWidth: 2, stroke: '#BDC1C5' })
+  };
+
   return (
     <>
-      <BaseEdge path={edgePath} markerEnd={markerEnd} style={style} />
+      <BezierEdge {...props} style={edgeStyle} />
       <EdgeLabelRenderer>
         <Flex
           alignItems={'center'}
@@ -43,12 +53,17 @@ const ButtonEdge = ({
           color={'black'}
           cursor={'pointer'}
           border={'1px solid #fff'}
+          zIndex={selected ? 1000 : 0}
           _hover={{
             boxShadow: '0 0 6px 2px rgba(0, 0, 0, 0.08)'
           }}
-          onClick={() => data?.onDelete(id)}
+          onClick={() => onDelConnect(id)}
         >
-          <MyIcon name="closeSolid" w={'100%'} color={'myGray.600'}></MyIcon>
+          <MyIcon
+            name="closeSolid"
+            w={'100%'}
+            color={selected ? 'primary.700' : 'myGray.500'}
+          ></MyIcon>
         </Flex>
       </EdgeLabelRenderer>
     </>

@@ -10,7 +10,6 @@ const CsvImport = dynamic(() => import('./Csv'), {});
 import MyModal from '@/components/MyModal';
 import Provider from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { qaModelList } from '@/web/common/system/staticData';
 import {
   DatasetCollectionTrainingModeEnum,
   TrainingModeEnum
@@ -45,32 +44,36 @@ const ImportData = ({
       [ImportTypeEnum.chunk]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
         chunkOverlapRatio: 0.2,
-        unitPrice: vectorModel?.price || 0.2,
+        inputPrice: vectorModel?.inputPrice || 0,
+        outputPrice: 0,
         mode: TrainingModeEnum.chunk,
         collectionTrainingType: DatasetCollectionTrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
-        defaultChunkLen: agentModel?.maxContext * 0.6 || 8000,
+        defaultChunkLen: agentModel?.maxContext * 0.55 || 8000,
         chunkOverlapRatio: 0,
-        unitPrice: agentModel?.price || 3,
+        inputPrice: agentModel?.inputPrice || 0,
+        outputPrice: agentModel?.outputPrice || 0,
         mode: TrainingModeEnum.qa,
         collectionTrainingType: DatasetCollectionTrainingModeEnum.qa
       },
       [ImportTypeEnum.csv]: {
         defaultChunkLen: 0,
         chunkOverlapRatio: 0,
-        unitPrice: vectorModel?.price || 0.2,
+        inputPrice: vectorModel?.inputPrice || 0,
+        outputPrice: 0,
         mode: TrainingModeEnum.chunk,
         collectionTrainingType: DatasetCollectionTrainingModeEnum.manual
       }
     };
     return map[importType];
   }, [
+    agentModel?.inputPrice,
     agentModel?.maxContext,
-    agentModel?.price,
+    agentModel?.outputPrice,
     importType,
     vectorModel?.defaultToken,
-    vectorModel?.price
+    vectorModel?.inputPrice
   ]);
 
   const TitleStyle: BoxProps = {
@@ -84,8 +87,8 @@ const ImportData = ({
       title={<Box {...TitleStyle}>{t('dataset.data.File import')}</Box>}
       isOpen
       isCentered
-      maxW={['90vw', '85vw']}
-      w={['90vw', '85vw']}
+      maxW={['90vw', 'min(1440px,85vw)']}
+      w={['90vw', 'min(1440px,85vw)']}
       h={'90vh'}
     >
       <ModalCloseButton onClick={onClose} />
@@ -96,20 +99,20 @@ const ImportData = ({
             list={[
               {
                 icon: 'indexImport',
-                title: '直接分段',
-                desc: '选择文本文件，直接将其按分段进行处理',
+                title: t('core.dataset.import.Chunk Split'),
+                desc: t('core.dataset.import.Chunk Split Tip'),
                 value: ImportTypeEnum.chunk
               },
               {
                 icon: 'qaImport',
-                title: 'QA拆分',
-                desc: '选择文本文件，让大模型自动生成问答对',
+                title: t('core.dataset.import.QA Import'),
+                desc: t('core.dataset.import.QA Import Tip'),
                 value: ImportTypeEnum.qa
               },
               {
                 icon: 'csvImport',
-                title: 'CSV 导入',
-                desc: '批量导入问答对，是最精准的数据',
+                title: t('core.dataset.import.CSV Import'),
+                desc: t('core.dataset.import.CSV Import Tip'),
                 value: ImportTypeEnum.csv
               }
             ]}

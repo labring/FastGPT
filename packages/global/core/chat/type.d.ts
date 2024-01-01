@@ -1,6 +1,6 @@
 import { ClassifyQuestionAgentItemType } from '../module/type';
 import { SearchDataResponseItemType } from '../dataset/type';
-import { ChatRoleEnum, ChatSourceEnum } from './constants';
+import { ChatRoleEnum, ChatSourceEnum, ChatStatusEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum } from '../module/constants';
 import { AppSchema } from '../app/type';
@@ -20,7 +20,7 @@ export type ChatSchema = {
   variables: Record<string, any>;
   source: `${ChatSourceEnum}`;
   shareId?: string;
-  isInit: boolean;
+  outLinkUid?: string;
   content: ChatItemType[];
 };
 
@@ -38,7 +38,9 @@ export type ChatItemSchema = {
   time: Date;
   obj: `${ChatRoleEnum}`;
   value: string;
-  userFeedback?: string;
+  userGoodFeedback?: string;
+  userBadFeedback?: string;
+  customFeedbacks?: string[];
   adminFeedback?: AdminFbkType;
   [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
@@ -51,21 +53,25 @@ export type AdminFbkType = {
   a?: string;
 };
 
+/* --------- chat item ---------- */
 export type ChatItemType = {
   dataId?: string;
   obj: ChatItemSchema['obj'];
   value: any;
-  userFeedback?: string;
+  userGoodFeedback?: string;
+  userBadFeedback?: string;
+  customFeedbacks?: ChatItemSchema['customFeedbacks'];
   adminFeedback?: ChatItemSchema['feedback'];
   [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType[];
 };
 
 export type ChatSiteItemType = ChatItemType & {
-  status: 'loading' | 'running' | 'finish';
+  status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
 };
 
+/* ---------- history ------------- */
 export type HistoryItemType = {
   chatId: string;
   updateTime: Date;
@@ -77,14 +83,18 @@ export type ChatHistoryItemType = HistoryItemType & {
   top: boolean;
 };
 
-// response data
+/* ------- response data ------------ */
 export type moduleDispatchResType = {
+  // common
   moduleLogo?: string;
-  price: number;
+  price?: number;
   runningTime?: number;
-  tokens?: number;
+  inputTokens?: number;
+  outputTokens?: number;
   model?: string;
   query?: string;
+  contextTotalLen?: number;
+  textOutput?: string;
 
   // chat
   temperature?: number;
@@ -96,6 +106,7 @@ export type moduleDispatchResType = {
   similarity?: number;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
+  searchUsingReRank?: boolean;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];
@@ -111,4 +122,16 @@ export type moduleDispatchResType = {
 
   // plugin output
   pluginOutput?: Record<string, any>;
+  pluginDetail?: ChatHistoryItemResType[];
+
+  // tf switch
+  tfSwitchResult?: boolean;
+
+  // abandon
+  tokens?: number;
+};
+
+export type ChatHistoryItemResType = moduleDispatchResType & {
+  moduleType: `${FlowNodeTypeEnum}`;
+  moduleName: string;
 };

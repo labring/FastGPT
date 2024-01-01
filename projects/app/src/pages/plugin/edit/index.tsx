@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
@@ -21,13 +21,15 @@ const Render = ({ pluginId }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
-  const { nodes = [] } = useFlowProviderStore();
+  const { nodes, initData } = useFlowProviderStore();
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
-  const filterTemplates = useMemo(() => {
-    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(
-      JSON.stringify(pluginSystemModuleTemplates)
-    );
+  const moduleTemplates = useMemo(() => {
+    const pluginTemplates = pluginModuleTemplates.filter((item) => item.id !== pluginId);
+    const concatTemplates = [...pluginSystemModuleTemplates, ...pluginTemplates];
+
+    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
+
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1,
       [FlowNodeTypeEnum.pluginInput]: 1,
@@ -45,8 +47,13 @@ const Render = ({ pluginId }: Props) => {
       }
     });
 
+    // filter hideInPlugin inputs
+    copyTemplates.forEach((template) => {
+      template.inputs = template.inputs.filter((input) => !input.hideInPlugin);
+    });
+
     return copyTemplates;
-  }, [nodes]);
+  }, [nodes, pluginId, pluginModuleTemplates]);
 
   const { data: pluginDetail } = useQuery(
     ['getOnePlugin', pluginId],
@@ -61,18 +68,16 @@ const Render = ({ pluginId }: Props) => {
       }
     }
   );
-  console.log(pluginDetail);
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
-  const filterPlugins = useMemo(() => {
-    return pluginModuleTemplates.filter((item) => item.id !== pluginId);
-  }, [pluginId, pluginModuleTemplates]);
+
+  useEffect(() => {
+    initData(JSON.parse(JSON.stringify(pluginDetail?.modules || [])));
+  }, [pluginDetail?.modules]);
 
   return pluginDetail ? (
     <Flow
-      systemTemplates={filterTemplates}
-      pluginTemplates={filterPlugins}
-      modules={pluginDetail?.modules || []}
+      templates={moduleTemplates}
       Header={<Header plugin={pluginDetail} onClose={() => router.back()} />}
     />
   ) : (
@@ -80,7 +85,7 @@ const Render = ({ pluginId }: Props) => {
   );
 };
 
-export default function AdEdit(props: any) {
+export default function FlowEdit(props: any) {
   return (
     <FlowProvider mode={'plugin'} filterAppIds={[]}>
       <Render {...props} />

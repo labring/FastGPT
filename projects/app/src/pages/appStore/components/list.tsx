@@ -61,7 +61,7 @@ const ShareModelList = ({
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
-              color={model.isCollection ? 'myBlue.700' : 'blackAlpha.700'}
+              color={model.isCollection ? 'primary.600' : 'blackAlpha.700'}
               onClick={() => onclickCollection(model._id)}
             >
               <MyIcon
@@ -74,7 +74,7 @@ const ShareModelList = ({
             <Box>
               <Button
                 size={'sm'}
-                variant={'base'}
+                variant={'whitePrimary'}
                 w={['60px', '70px']}
                 onClick={() => router.push(`/chat?appId=${model._id}`)}
               >

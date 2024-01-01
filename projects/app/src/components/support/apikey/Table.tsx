@@ -39,6 +39,7 @@ import MyModal from '@/components/MyModal';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
+import { getDocPath } from '@/web/common/system/doc';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -71,7 +72,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   } = useQuery(['getOpenApiKeys', appId], () => getOpenApiKeys({ appId }));
 
   useEffect(() => {
-    setBaseUrl(`${location.origin}/api`);
+    setBaseUrl(feConfigs?.customApiDomain || `${location.origin}/api`);
   }, []);
 
   return (
@@ -82,12 +83,12 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
               API 秘钥管理
             </Box>
-            {feConfigs.docUrl && (
+            {feConfigs?.docUrl && (
               <Link
-                href={feConfigs.openAPIDocUrl || `${feConfigs.docUrl}/docs/development/openapi`}
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
                 target={'_blank'}
                 ml={1}
-                color={'myBlue.600'}
+                color={'primary.500'}
               >
                 查看文档
               </Link>
@@ -118,7 +119,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Button
             ml={3}
             leftIcon={<AddIcon fontSize={'md'} />}
-            variant={'base'}
+            variant={'whitePrimary'}
             onClick={() =>
               setEditData({
                 ...defaultEditData,
@@ -253,8 +254,8 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           </Flex>
         </ModalBody>
         <ModalFooter>
-          <Button variant="base" onClick={() => setApiKey('')}>
-            好的
+          <Button variant="whiteBase" onClick={() => setApiKey('')}>
+            {t('common.OK')}
           </Button>
         </ModalFooter>
       </MyModal>
@@ -357,7 +358,7 @@ function EditKeyModal({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('Cancel')}
         </Button>
 

@@ -7,24 +7,24 @@ import { simpleText } from '@fastgpt/global/common/string/tools';
 import {
   fileDownload,
   readCsvContent,
-  readTxtContent,
   readPdfContent,
   readDocContent
 } from '@/web/common/file/utils';
-import { uploadFiles } from '@/web/common/file/controller';
+import { readFileRawText, readMdFile, readHtmlFile } from '@fastgpt/web/common/file/read';
+import { getUploadMdImgController, uploadFiles } from '@/web/common/file/controller';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import React, { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
-import type { FetchResultItem } from '@fastgpt/global/common/plugin/types/pluginRes.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
+import { UrlFetchResponse } from '@fastgpt/global/common/file/api.d';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -35,7 +35,7 @@ export type FileItemType = {
   id: string; // fileId / raw Link
   filename: string;
   chunks: PushDatasetDataChunkProps[];
-  text: string; // raw text
+  rawText: string; // raw text
   icon: string;
   tokens: number; // total tokens
   type: DatasetCollectionTypeEnum.file | DatasetCollectionTypeEnum.link;
@@ -48,6 +48,7 @@ export interface Props extends BoxProps {
   onPushFiles: (files: FileItemType[]) => void;
   tipText?: string;
   chunkLen?: number;
+  customSplitChar?: string;
   overlapRatio?: number;
   fileTemplate?: {
     type: string;
@@ -64,6 +65,7 @@ const FileSelect = ({
   onPushFiles,
   tipText,
   chunkLen = 500,
+  customSplitChar,
   overlapRatio,
   fileTemplate,
   showUrlFetch = true,
@@ -133,11 +135,11 @@ const FileSelect = ({
           });
           const fileId = filesId[0];
 
-          /* csv file */
+          /* QA csv file */
           if (extension === 'csv') {
             const { header, data } = await readCsvContent(file);
             if (header[0] !== 'index' || header[1] !== 'content') {
-              throw new Error('csv 文件格式有误,请确保 index 和 content 两列');
+              throw new Error(t('core.dataset.import.Csv format error'));
             }
 
             const filterData = data
@@ -152,7 +154,7 @@ const FileSelect = ({
               filename: file.name,
               icon,
               tokens: filterData.reduce((sum, item) => sum + countPromptTokens(item.q), 0),
-              text: `${header.join(',')}\n${data
+              rawText: `${header.join(',')}\n${data
                 .map((item) => `"${item[0]}","${item[1]}"`)
                 .join('\n')}`,
               chunks: filterData,
@@ -168,33 +170,47 @@ const FileSelect = ({
           let text = await (async () => {
             switch (extension) {
               case 'txt':
+                return readFileRawText(file);
               case 'md':
-                return readTxtContent(file);
+                return readMdFile({
+                  file,
+                  uploadImgController: (base64Img) =>
+                    getUploadMdImgController({ base64Img, metadata: { fileId } })
+                });
+              case 'html':
+                return readHtmlFile({
+                  file,
+                  uploadImgController: (base64Img) =>
+                    getUploadMdImgController({ base64Img, metadata: { fileId } })
+                });
               case 'pdf':
                 return readPdfContent(file);
               case 'docx':
-                return readDocContent(file);
+                return readDocContent(file, {
+                  fileId
+                });
             }
             return '';
           })();
 
           if (text) {
             text = simpleText(text);
-            const splitRes = splitText2Chunks({
+            const { chunks, tokens } = splitText2Chunks({
               text,
               chunkLen,
-              overlapRatio
+              overlapRatio,
+              customReg: customSplitChar ? [customSplitChar] : []
             });
 
             const fileItem: FileItemType = {
               id: nanoid(),
               filename: file.name,
               icon,
-              text,
-              tokens: splitRes.tokens,
+              rawText: text,
+              tokens,
               type: DatasetCollectionTypeEnum.file,
               fileId,
-              chunks: splitRes.chunks.map((chunk) => ({
+              chunks: chunks.map((chunk) => ({
                 q: chunk,
                 a: ''
               }))
@@ -205,32 +221,33 @@ const FileSelect = ({
       } catch (error: any) {
         console.log(error);
         toast({
-          title: getErrText(error, '解析文件失败'),
+          title: getErrText(error, t('common.file.Read File Error')),
           status: 'error'
         });
       }
       setSelectingText(undefined);
     },
-    [chunkLen, datasetDetail._id, onPushFiles, overlapRatio, t, toast]
+    [chunkLen, customSplitChar, datasetDetail._id, onPushFiles, overlapRatio, t, toast]
   );
   // link fetch
   const onUrlFetch = useCallback(
-    (e: FetchResultItem[]) => {
+    (e: UrlFetchResponse) => {
       const result: FileItemType[] = e.map<FileItemType>(({ url, content }) => {
-        const splitRes = splitText2Chunks({
+        const { chunks, tokens } = splitText2Chunks({
           text: content,
           chunkLen,
-          overlapRatio
+          overlapRatio,
+          customReg: customSplitChar ? [customSplitChar] : []
         });
         return {
           id: nanoid(),
           filename: url,
           icon: '/imgs/files/link.svg',
-          text: content,
-          tokens: splitRes.tokens,
+          rawText: content,
+          tokens,
           type: DatasetCollectionTypeEnum.link,
           rawLink: url,
-          chunks: splitRes.chunks.map((chunk) => ({
+          chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
           }))
@@ -238,7 +255,7 @@ const FileSelect = ({
       });
       onPushFiles(result);
     },
-    [chunkLen, onPushFiles, overlapRatio]
+    [chunkLen, customSplitChar, onPushFiles, overlapRatio]
   );
   // manual create file and copy data
   const onCreateFile = useCallback(
@@ -257,10 +274,11 @@ const FileSelect = ({
         metadata: { datasetId: datasetDetail._id }
       });
 
-      const splitRes = splitText2Chunks({
+      const { chunks, tokens } = splitText2Chunks({
         text: content,
         chunkLen,
-        overlapRatio
+        overlapRatio,
+        customReg: customSplitChar ? [customSplitChar] : []
       });
 
       onPushFiles([
@@ -268,18 +286,18 @@ const FileSelect = ({
           id: nanoid(),
           filename,
           icon: '/imgs/files/txt.svg',
-          text: content,
-          tokens: splitRes.tokens,
+          rawText: content,
+          tokens,
           type: DatasetCollectionTypeEnum.file,
           fileId: fileIds[0],
-          chunks: splitRes.chunks.map((chunk) => ({
+          chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
           }))
         }
       ]);
     },
-    [chunkLen, datasetDetail._id, onPushFiles, overlapRatio]
+    [chunkLen, customSplitChar, datasetDetail._id, onPushFiles, overlapRatio]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -350,7 +368,7 @@ const FileSelect = ({
     ml: 1,
     as: 'span',
     cursor: 'pointer',
-    color: 'myBlue.700',
+    color: 'primary.600',
     _hover: {
       textDecoration: 'underline'
     }
@@ -415,7 +433,7 @@ const FileSelect = ({
           mt={1}
           cursor={'pointer'}
           textDecoration={'underline'}
-          color={'myBlue.600'}
+          color={'primary.500'}
           fontSize={'12px'}
           onClick={() =>
             fileDownload({

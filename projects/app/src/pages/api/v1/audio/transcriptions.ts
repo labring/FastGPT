@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authCert, authCertAndShareId } from '@fastgpt/service/support/permission/auth/common';
+import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { getUploadModel } from '@fastgpt/service/common/file/upload/multer';
 import fs from 'fs';

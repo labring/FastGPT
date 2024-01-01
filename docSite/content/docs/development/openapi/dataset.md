@@ -4,7 +4,7 @@ description: 'FastGPT OpenAPI 知识库接口'
 icon: 'dataset'
 draft: false
 toc: true
-weight: 563
+weight: 853
 ---
 
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |
@@ -179,7 +179,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
 {{< tab tabName="响应示例" >}}
 {{< markdownify >}}
 
-返回 top limit 结果
+返回 top k 结果， limit 为预估条数，会按每条数据 800 tokens 的长度进行预估，20条也就是返回 16000 tokens 长度的数据，最多测试 30000 tokens 的数据。
 
 ```bash
 {

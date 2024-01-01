@@ -1,4 +1,5 @@
 # 非 host 版本, 不使用本机代理
+# (不懂 Docker 的，只需要关心 OPENAI_BASE_URL 和 CHAT_API_KEY 即可！)
 version: '3.3'
 services:
   pg:
@@ -47,7 +48,7 @@ services:
     environment:
       # root 密码，用户名为: root
       - DEFAULT_ROOT_PSW=1234
-      # 中转地址，如果是用官方号，不需要管
+      # 中转地址，如果是用官方号，不需要管。务必加 /v1
       - OPENAI_BASE_URL=https://api.openai.com/v1
       - CHAT_API_KEY=sk-xxxx
       - DB_MAX_LINK=5 # database max link

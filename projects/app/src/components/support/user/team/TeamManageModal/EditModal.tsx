@@ -51,8 +51,8 @@ function EditModal({
       try {
         const src = await compressImgFileAndUpload({
           file,
-          maxW: 100,
-          maxH: 100
+          maxW: 300,
+          maxH: 300
         });
         setValue('avatar', src);
         setRefresh((state) => !state);
@@ -135,7 +135,7 @@ function EditModal({
         {!!defaultData.id ? (
           <>
             <Box flex={1} />
-            <Button variant={'base'} mr={3} onClick={onClose}>
+            <Button variant={'whiteBase'} mr={3} onClick={onClose}>
               {t('common.Close')}
             </Button>
             <Button isLoading={updating} onClick={handleSubmit((data) => onclickUpdate(data))}>

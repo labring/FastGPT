@@ -9,10 +9,11 @@ import { oauthLogin } from '@/web/support/user/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import Loading from '@/components/Loading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useTranslation } from 'next-i18next';
 
-const provider = ({ code, state }: { code: string; state: string }) => {
+const provider = ({ code, state, error }: { code: string; state: string; error?: string }) => {
+  const { t } = useTranslation();
   const { loginStore } = useSystemStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { setUserInfo } = useUserStore();
@@ -76,6 +77,14 @@ const provider = ({ code, state }: { code: string; state: string }) => {
   useEffect(() => {
     clearToken();
     router.prefetch('/app/list');
+    if (error) {
+      toast({
+        status: 'warning',
+        title: t('support.user.login.Provider error')
+      });
+      router.replace('/login');
+      return;
+    }
     if (!code) return;
 
     if (state !== loginStore?.state) {
@@ -99,6 +108,7 @@ export async function getServerSideProps(content: any) {
     props: {
       code: content?.query?.code,
       state: content?.query?.state,
+      error: content?.query?.error,
       ...(await serviceSideProps(content))
     }
   };

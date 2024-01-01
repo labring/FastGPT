@@ -3,30 +3,31 @@ import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum, ModuleInputKeyEnum } from '../module/constants';
 import type { FlowNodeInputItemType } from '../module/node/type.d';
 import { getGuideModule, splitGuideModule } from '../module/utils';
-import { defaultChatModels } from '../ai/model';
 import { ModuleItemType } from '../module/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constant';
 
 export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEditFormType => {
-  const defaultChatModel = defaultChatModels[0];
-
   return {
     templateId,
     aiSettings: {
-      model: defaultChatModel?.model,
+      model: 'gpt-3.5-turbo',
       systemPrompt: '',
       temperature: 0,
       isResponseAnswerText: true,
       quotePrompt: '',
       quoteTemplate: '',
-      maxToken: defaultChatModel ? defaultChatModel.maxResponse / 2 : 4000
+      maxToken: 4000
+    },
+    cfr: {
+      background: ''
     },
     dataset: {
       datasets: [],
       similarity: 0.4,
-      limit: 5,
+      limit: 1500,
       searchEmptyText: '',
-      searchMode: DatasetSearchModeEnum.embedding
+      searchMode: DatasetSearchModeEnum.embedding,
+      usingReRank: false
     },
     userGuide: {
       welcomeText: '',
@@ -95,6 +96,10 @@ export const appModules2Form = ({
       defaultAppForm.dataset.searchMode =
         findInputValueByKey(module.inputs, ModuleInputKeyEnum.datasetSearchMode) ||
         DatasetSearchModeEnum.embedding;
+      defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
+        module.inputs,
+        ModuleInputKeyEnum.datasetSearchUsingReRank
+      );
 
       // empty text
       const emptyOutputs =
@@ -116,6 +121,11 @@ export const appModules2Form = ({
         questionGuide: questionGuide,
         tts: ttsConfig
       };
+    } else if (module.flowType === FlowNodeTypeEnum.cfr) {
+      const value = module.inputs.find((item) => item.key === ModuleInputKeyEnum.aiSystemPrompt);
+      if (value) {
+        defaultAppForm.cfr.background = value.value;
+      }
     }
   });
 

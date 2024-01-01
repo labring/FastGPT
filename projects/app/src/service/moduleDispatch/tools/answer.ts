@@ -1,7 +1,7 @@
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 export type AnswerProps = ModuleDispatchProps<{
   text: string;

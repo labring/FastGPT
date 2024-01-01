@@ -41,7 +41,7 @@ const MoveModal = ({
     () => [
       {
         parentId: '',
-        parentName: t('dataset.My Dataset')
+        parentName: t('core.dataset.My Dataset')
       },
       ...(data?.[1] || [])
     ],
@@ -79,7 +79,7 @@ const MoveModal = ({
                       : {
                           cursor: 'pointer',
                           _hover: {
-                            color: 'myBlue.600'
+                            color: 'primary.500'
                           },
                           onClick: () => {
                             setParentId(item.parentId);
@@ -95,7 +95,7 @@ const MoveModal = ({
               ))}
             </Flex>
           ) : (
-            <Box>我的知识库</Box>
+            <Box>{t('core.dataset.My Dataset')}</Box>
           )}
         </>
       }

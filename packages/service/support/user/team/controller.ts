@@ -1,35 +1,15 @@
-import { TeamItemType } from '@fastgpt/global/support/user/team/type';
-import { connectionMongo, Types } from '../../../common/mongo';
+import { TeamItemType, TeamMemberWithTeamSchema } from '@fastgpt/global/support/user/team/type';
+import { Types } from '../../../common/mongo';
 import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum,
-  TeamCollectionName,
-  TeamMemberCollectionName,
-  leaveStatus
+  notLeaveStatus
 } from '@fastgpt/global/support/user/team/constant';
+import { MongoTeamMember } from './teamMemberSchema';
+import { MongoTeam } from './teamSchema';
 
 async function getTeam(match: Record<string, any>): Promise<TeamItemType> {
-  const db = connectionMongo?.connection?.db;
-
-  const TeamMember = db.collection(TeamMemberCollectionName);
-
-  const results = await TeamMember.aggregate([
-    {
-      $match: match
-    },
-    {
-      $lookup: {
-        from: TeamCollectionName,
-        localField: 'teamId',
-        foreignField: '_id',
-        as: 'team'
-      }
-    },
-    {
-      $unwind: '$team'
-    }
-  ]).toArray();
-  const tmb = results[0];
+  const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
 
   if (!tmb) {
     return Promise.reject('member not exist');
@@ -37,17 +17,17 @@ async function getTeam(match: Record<string, any>): Promise<TeamItemType> {
 
   return {
     userId: String(tmb.userId),
-    teamId: String(tmb.teamId),
-    teamName: tmb.team.name,
+    teamId: String(tmb.teamId._id),
+    teamName: tmb.teamId.name,
     memberName: tmb.name,
-    avatar: tmb.team.avatar,
-    balance: tmb.team.balance,
+    avatar: tmb.teamId.avatar,
+    balance: tmb.teamId.balance,
     tmbId: String(tmb._id),
     role: tmb.role,
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
     canWrite: tmb.role !== TeamMemberRoleEnum.visitor,
-    maxSize: tmb.team.maxSize
+    maxSize: tmb.teamId.maxSize
   };
 }
 
@@ -57,7 +37,7 @@ export async function getTeamInfoByTmbId({ tmbId }: { tmbId: string }) {
   }
   return getTeam({
     _id: new Types.ObjectId(tmbId),
-    status: leaveStatus
+    status: notLeaveStatus
   });
 }
 
@@ -83,12 +63,8 @@ export async function createDefaultTeam({
   balance?: number;
   maxSize?: number;
 }) {
-  const db = connectionMongo.connection.db;
-  const Team = db.collection(TeamCollectionName);
-  const TeamMember = db.collection(TeamMemberCollectionName);
-
   // auth default team
-  const tmb = await TeamMember.findOne({
+  const tmb = await MongoTeamMember.findOne({
     userId: new Types.ObjectId(userId),
     defaultTeam: true
   });
@@ -97,7 +73,7 @@ export async function createDefaultTeam({
     console.log('create default team', userId);
 
     // create
-    const { insertedId } = await Team.insertOne({
+    const { _id: insertedId } = await MongoTeam.create({
       ownerId: userId,
       name: teamName,
       avatar,
@@ -105,7 +81,7 @@ export async function createDefaultTeam({
       maxSize,
       createTime: new Date()
     });
-    await TeamMember.insertOne({
+    await MongoTeamMember.create({
       teamId: insertedId,
       userId,
       name: 'Owner',
@@ -116,16 +92,11 @@ export async function createDefaultTeam({
     });
   } else {
     console.log('default team exist', userId);
-    await Team.updateOne(
-      {
-        _id: new Types.ObjectId(tmb.teamId)
-      },
-      {
-        $set: {
-          ...(balance !== undefined && { balance }),
-          maxSize
-        }
+    await MongoTeam.findByIdAndUpdate(tmb.teamId, {
+      $set: {
+        ...(balance !== undefined && { balance }),
+        maxSize
       }
-    );
+    });
   }
 }

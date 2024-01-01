@@ -1,29 +1,44 @@
-import { useCallback, useRef, useState } from 'react';
-import {
-  AlertDialog,
-  AlertDialogBody,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogContent,
-  AlertDialogOverlay,
-  useDisclosure,
-  Button
-} from '@chakra-ui/react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDisclosure, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import MyModal from '@/components/MyModal';
 
 export const useConfirm = (props?: {
-  title?: string | null;
-  content?: string | null;
-  bg?: string;
+  title?: string;
+  iconSrc?: string | '';
+  content?: string;
   showCancel?: boolean;
+  type?: 'common' | 'delete';
 }) => {
   const { t } = useTranslation();
-  const { title = t('Warning'), content, bg, showCancel = true } = props || {};
+
+  const map = useMemo(() => {
+    const map = {
+      common: {
+        title: t('common.confirm.Common Tip'),
+        bg: undefined,
+        iconSrc: 'common/confirm/commonTip'
+      },
+      delete: {
+        title: t('common.Delete Warning'),
+        bg: 'red.600',
+        iconSrc: 'common/confirm/deleteTip'
+      }
+    };
+    if (props?.type && map[props.type]) return map[props.type];
+    return map.common;
+  }, [props?.type, t]);
+
+  const {
+    title = map?.title || t('Warning'),
+    iconSrc = map?.iconSrc,
+    content,
+    showCancel = true
+  } = props || {};
   const [customContent, setCustomContent] = useState(content);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const cancelRef = useRef(null);
   const confirmCb = useRef<any>();
   const cancelCb = useRef<any>();
 
@@ -40,52 +55,72 @@ export const useConfirm = (props?: {
       [onOpen]
     ),
     ConfirmModal: useCallback(
-      () => (
-        <AlertDialog
-          isOpen={isOpen}
-          leastDestructiveRef={cancelRef}
-          autoFocus={false}
-          onClose={onClose}
-        >
-          <AlertDialogOverlay>
-            <AlertDialogContent maxW={'min(90vw,400px)'}>
-              <AlertDialogHeader fontSize="lg" fontWeight="bold">
-                {title}
-              </AlertDialogHeader>
+      ({
+        closeText = t('Cancel'),
+        confirmText = t('Confirm'),
+        isLoading,
+        bg,
+        countDown = 0
+      }: {
+        closeText?: string;
+        confirmText?: string;
+        isLoading?: boolean;
+        bg?: string;
+        countDown?: number;
+      }) => {
+        const timer = useRef<any>();
+        const [countDownAmount, setCountDownAmount] = useState(countDown);
 
-              <AlertDialogBody whiteSpace={'pre-wrap'} py={0}>
-                {customContent}
-              </AlertDialogBody>
+        useEffect(() => {
+          timer.current = setInterval(() => {
+            setCountDownAmount((val) => {
+              if (val <= 0) {
+                clearInterval(timer.current);
+              }
+              return val - 1;
+            });
+          }, 1000);
+        }, []);
 
-              <AlertDialogFooter>
-                {showCancel && (
-                  <Button
-                    variant={'base'}
-                    onClick={() => {
-                      onClose();
-                      typeof cancelCb.current === 'function' && cancelCb.current();
-                    }}
-                  >
-                    {t('Cancel')}
-                  </Button>
-                )}
-
+        return (
+          <MyModal
+            isOpen={isOpen}
+            onClose={onClose}
+            iconSrc={iconSrc}
+            title={title}
+            maxW={['90vw', '500px']}
+          >
+            <ModalBody pt={5}>{customContent}</ModalBody>
+            <ModalFooter>
+              {showCancel && (
                 <Button
-                  {...(bg && { bg: `${bg} !important` })}
-                  ml={4}
+                  variant={'whiteBase'}
                   onClick={() => {
                     onClose();
-                    typeof confirmCb.current === 'function' && confirmCb.current();
+                    typeof cancelCb.current === 'function' && cancelCb.current();
                   }}
                 >
-                  {t('Confirm')}
+                  {closeText}
                 </Button>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialogOverlay>
-        </AlertDialog>
-      ),
-      [bg, customContent, isOpen, onClose, t, title]
+              )}
+
+              <Button
+                {...(bg && { bg: `${bg} !important` })}
+                isDisabled={countDownAmount > 0}
+                ml={4}
+                isLoading={isLoading}
+                onClick={() => {
+                  onClose();
+                  typeof confirmCb.current === 'function' && confirmCb.current();
+                }}
+              >
+                {countDownAmount > 0 ? `${countDownAmount}s` : confirmText}
+              </Button>
+            </ModalFooter>
+          </MyModal>
+        );
+      },
+      [customContent, iconSrc, isOpen, onClose, showCancel, t, title]
     )
   };
 };
