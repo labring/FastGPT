@@ -18,7 +18,7 @@ weight: 853
 **请求示例**
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/support/wallet/bill/createTrainingBill' \
+curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/bill/createTrainingBill' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -46,7 +46,7 @@ data 为 billId，可用于添加知识库数据时进行账单聚合。
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushData' \
+curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pushData' \
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -162,7 +162,7 @@ A2:
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest' \
+curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTest' \
 --header 'Authorization: Bearer fastgpt-xxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{

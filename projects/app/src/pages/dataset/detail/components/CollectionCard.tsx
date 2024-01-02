@@ -581,7 +581,7 @@ const CollectionCard = () => {
                           _hover={{
                             color: 'primary.500',
                             '& .icon': {
-                              bg: 'myGray.100'
+                              bg: 'myGray.200'
                             }
                           }}
                         >

@@ -76,21 +76,20 @@ const Login = () => {
         <Flex
           flexDirection={'column'}
           w={['100%', 'auto']}
-          h={['100%', '80%']}
-          maxH={'700px'}
+          h={['100%', '700px']}
+          maxH={'90vh'}
           bg={'white'}
           px={['5vw', '88px']}
-          py={'64px'}
+          py={'5vh'}
           borderRadius={[0, '24px']}
           boxShadow={[
             '',
             '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)'
           ]}
         >
-          <Box w={['100%', '380px']}>
+          <Box w={['100%', '380px']} flex={'1 0 0'}>
             <DynamicComponent type={pageType} />
           </Box>
-
           {feConfigs?.concatMd && (
             <Box
               mt={8}

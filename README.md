@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.in/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -15,7 +15,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 </div>
 
 <p align="center">
-  <a href="https://fastgpt.run/">
+  <a href="https://fastgpt.in/">
     <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.in/docs/intro">
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 在线使用
 
-- 🌐 国内版：[ai.fastgpt.in](https://ai.fastgpt.in/)
+- 🌐 国内临时可访问：[fastgpt.in](https://fastgpt.in/)
 - 🌍 海外版：[fastgpt.run](https://fastgpt.run/)
 
 |                                    |                                    |
@@ -52,25 +52,24 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 `1` 强大的可视化编排，轻松构建 AI 应用
    - [x] 提供简易模式，无需操作编排
-   - [x] 用户对话前引导，全局字符串变量
-   - [x] 知识库搜索
-   - [x] 多 LLM 模型对话
-   - [x] 文本内容提取成结构化数据
-   - [x] HTTP 扩展
-   - [ ] 嵌入 [Laf](https://github.com/labring/laf)，实现在线编写 HTTP 模块
    - [x] 对话下一步指引
-   - [ ] 对话多路线选择
+   - [x] 工作流编排
+   - [x] 对话下一步指引
    - [x] 源文件引用追踪
    - [x] 模块封装，实现多级复用
+   - [ ] 嵌入 [Laf](https://github.com/labring/laf)，实现在线编写 HTTP 模块
+   - [ ] 混合检索 & 重排
 
 `2` 丰富的知识库预处理
    - [x] 多库复用，混用
    - [x] chunk 记录修改和删除
-   - [x] 支持手动输入，直接分段，QA 拆分导入
-   - [x] 支持 url 读取、CSV 批量导入
    - [x] 支持知识库单独设置向量模型
    - [x] 源文件存储
-   - [ ] 文件学习 Agent
+   - [x] 支持手动输入，直接分段，QA 拆分导入
+   - [x] 支持 pdf、word、txt、md 等常用文件，支持 url 读取、CSV 批量导入
+   - [ ] 支持 HTML、csv、PPT、Excel 导入
+   - [ ] 支持差异性文件同步
+   - [ ] 更多的数据预处理方案
   
 `3` 多种效果测试渠道
    - [x] 知识库单点搜索测试

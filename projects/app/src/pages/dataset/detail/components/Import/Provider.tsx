@@ -180,6 +180,7 @@ const Provider = ({
           chunkSize: chunkLen,
           trainingType: collectionTrainingType,
           qaPrompt: mode === TrainingModeEnum.qa ? prompt : '',
+          rawTextLength: file.rawText.length,
           hashRawText: hashStr(file.rawText)
         });
 

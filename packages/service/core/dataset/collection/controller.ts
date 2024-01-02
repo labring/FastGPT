@@ -18,6 +18,7 @@ export async function createOneCollection({
   rawLink,
   qaPrompt,
   hashRawText,
+  rawTextLength,
   metadata = {}
 }: CreateDatasetCollectionParams & { teamId: string; tmbId: string }) {
   const { _id } = await MongoDatasetCollection.create({
@@ -32,6 +33,7 @@ export async function createOneCollection({
     fileId,
     rawLink,
     qaPrompt,
+    rawTextLength,
     hashRawText,
     metadata
   });

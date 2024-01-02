@@ -75,6 +75,9 @@ const DatasetCollectionSchema = new Schema({
   qaPrompt: {
     type: String
   },
+  rawTextLength: {
+    type: Number
+  },
   hashRawText: {
     type: String
   },

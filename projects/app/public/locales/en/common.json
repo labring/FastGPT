@@ -401,6 +401,7 @@
         "metadata": {
           "Chunk Size": "Chunk Size",
           "Createtime": "Create Time",
+          "Raw text length": "Raw text length",
           "Read Metadata": "Read Metadata",
           "Training Type": "Training Type",
           "Updatetime": "Update Time",
