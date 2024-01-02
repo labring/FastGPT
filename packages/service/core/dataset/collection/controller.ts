@@ -86,6 +86,8 @@ export const getSameRawTextCollection = async ({
   datasetId: string;
   hashRawText?: string;
 }) => {
+  if (!hashRawText) return undefined;
+
   const collection = await MongoDatasetCollection.findOne({
     datasetId,
     hashRawText

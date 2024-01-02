@@ -683,6 +683,10 @@ export async function searchDatasetData(props: {
   return {
     searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
     tokens,
+    searchMode,
+    limit: maxTokens,
+    similarity,
+    usingReRank,
     usingSimilarityFilter
   };
 }

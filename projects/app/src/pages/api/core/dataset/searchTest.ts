@@ -47,7 +47,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     //   model: global.chatModels[0].model
     // });
 
-    const { searchRes, tokens } = await searchDatasetData({
+    const { searchRes, tokens, ...result } = await searchDatasetData({
       rawQuery: text,
       queries: [text],
       model: dataset.vectorModel,
@@ -76,7 +76,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     jsonRes<SearchTestResponse>(res, {
       data: {
         list: searchRes,
-        duration: `${((Date.now() - start) / 1000).toFixed(3)}s`
+        duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
+        ...result
       }
     });
   } catch (err) {

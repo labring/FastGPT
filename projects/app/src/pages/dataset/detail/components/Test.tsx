@@ -115,10 +115,10 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         time: new Date(),
         results: res.list,
         duration: res.duration,
-        searchMode: getValues('searchParams.searchMode'),
-        usingReRank: getValues('searchParams.usingReRank'),
-        limit: getValues('searchParams.limit'),
-        similarity: getValues('searchParams.similarity')
+        searchMode: res.searchMode,
+        usingReRank: res.usingReRank,
+        limit: res.limit,
+        similarity: res.similarity
       };
       pushDatasetTestItem(testItem);
       setDatasetTestItem(testItem);

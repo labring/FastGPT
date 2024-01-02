@@ -952,6 +952,8 @@ const ChatBox = (
           appId={appId}
           chatId={chatId}
           chatItemId={feedbackId}
+          shareId={shareId}
+          outLinkUid={outLinkUid}
           onClose={() => setFeedbackId(undefined)}
           onSuccess={(content: string) => {
             setChatHistory((state) =>
