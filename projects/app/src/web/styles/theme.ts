@@ -417,8 +417,8 @@ export const theme = extendTheme({
     body: 'PingFang,Noto Sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
   },
   fontSizes: {
-    xs: '10',
-    sm: '12px',
+    xs: '12px',
+    sm: '13px',
     md: '14px',
     lg: '16px',
     xl: '18px',

@@ -340,7 +340,6 @@ export async function searchDatasetData(props: {
           q: data.q,
           a: data.a,
           chunkIndex: data.chunkIndex,
-          indexes: data.indexes,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
           sourceName: collection.name || '',
@@ -389,7 +388,6 @@ export async function searchDatasetData(props: {
               collectionId: 1,
               q: 1,
               a: 1,
-              indexes: 1,
               chunkIndex: 1
             }
           )

@@ -117,7 +117,9 @@ const Test = ({ datasetId }: { datasetId: string }) => {
             maxLength={datasetDetail.vectorModel.maxToken}
             placeholder={t('core.dataset.test.Test Text Placeholder')}
             defaultValue={inputText}
-            onBlur={(e) => setInputText(e.target.value)}
+            onChange={(e) => {
+              setInputText(e.target.value);
+            }}
           />
           <Flex alignItems={'center'} justifyContent={'flex-end'}>
             <Box mx={3} color={'myGray.500'}>
@@ -135,10 +137,10 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           </Flex>
           <Box mt={2}>
             <Flex py={2} fontWeight={'bold'} borderBottom={theme.borders.sm}>
-              <Box w={'80px'}>{t('core.dataset.search.search mode')}</Box>
+              <Box flex={'0 0 80px'}>{t('core.dataset.search.search mode')}</Box>
               <Box flex={1}>{t('core.dataset.test.Test Text')}</Box>
-              <Box w={'70px'}>{t('common.Time')}</Box>
-              <Box w={'14px'}></Box>
+              <Box flex={'0 0 70px'}>{t('common.Time')}</Box>
+              <Box flex={'0 0 14px'}></Box>
             </Flex>
             {testHistories.map((item) => (
               <Flex
@@ -156,7 +158,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 fontSize={'sm'}
                 onClick={() => setDatasetTestItem(item)}
               >
-                <Box w={'80px'}>
+                <Box flex={'0 0 80px'}>
                   {DatasetSearchModeMap[item.searchMode] ? (
                     <Flex alignItems={'center'}>
                       <MyIcon
@@ -170,12 +172,12 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                     '-'
                   )}
                 </Box>
-                <Box flex={1} mr={2}>
+                <Box flex={1} mr={2} wordBreak={'break-all'}>
                   {item.text}
                 </Box>
-                <Box w={'70px'}>{formatTimeToChatTime(item.time)}</Box>
+                <Box flex={'0 0 70px'}>{formatTimeToChatTime(item.time)}</Box>
                 <MyTooltip label={t('core.dataset.test.delete test history')}>
-                  <Box w={'14px'} h={'14px'}>
+                  <Box flex={'0 0 14px'} h={'14px'}>
                     <MyIcon
                       className="delete"
                       name={'delete'}
@@ -299,7 +301,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                     />
                     <Box>{item.score.toFixed(4)}</Box> */}
                   </Flex>
-                  <Box px={2} fontSize={'xs'} color={'myGray.600'} wordBreak={'break-word'}>
+                  <Box px={2} fontSize={'sm'} color={'myGray.600'} wordBreak={'break-word'}>
                     <Box>{item.q}</Box>
                     <Box>{item.a}</Box>
                   </Box>
