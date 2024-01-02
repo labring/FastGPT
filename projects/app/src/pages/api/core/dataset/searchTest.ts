@@ -14,7 +14,14 @@ import { searchQueryExtension } from '@fastgpt/service/core/ai/functions/queryEx
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { datasetId, text, limit = 20, searchMode, usingReRank } = req.body as SearchTestProps;
+    const {
+      datasetId,
+      text,
+      limit = 1500,
+      similarity,
+      searchMode,
+      usingReRank
+    } = req.body as SearchTestProps;
 
     if (!datasetId || !text) {
       throw new Error('缺少参数');
@@ -44,7 +51,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       rawQuery: text,
       queries: [text],
       model: dataset.vectorModel,
-      limit: Math.min(limit * 800, 30000),
+      limit: Math.min(limit, 30000),
+      similarity,
       datasetIds: [datasetId],
       searchMode,
       usingReRank

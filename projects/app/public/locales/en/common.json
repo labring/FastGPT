@@ -507,11 +507,15 @@
         "syncing": "Syncing"
       },
       "test": {
+        "Batch test": "Batch test",
+        "Batch test Placeholder": "Select one csv file",
         "Search Test": "Search Test",
         "Test": "Start",
+        "Test File": "",
         "Test Result": "Results",
         "Test Text": "Text",
         "Test Text Placeholder": "Enter the text you want to test",
+        "Test params": "Search Params",
         "delete test history": "Delete the test result",
         "test history": "Test History",
         "test result placeholder": "The test results will be presented here",

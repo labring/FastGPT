@@ -507,11 +507,15 @@
         "syncing": "同步中"
       },
       "test": {
+        "Batch test": "批量测试",
+        "Batch test Placeholder": "选择一个 Csv 文件",
         "Search Test": "搜索测试",
         "Test": "测试",
+        "Test File": "批量测试",
         "Test Result": "测试结果",
-        "Test Text": "测试文本",
+        "Test Text": "单个文本测试",
         "Test Text Placeholder": "输入需要测试的文本",
+        "Test params": "测试参数",
         "delete test history": "删除该测试结果",
         "test history": "测试历史",
         "test result placeholder": "测试结果将在这里展示",
