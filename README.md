@@ -36,7 +36,8 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 在线使用
 
-🌐 体验地址：[fastgpt.in](https://fastgpt.in/)
+- 🌐 国内临时可访问：[fastgpt.in](https://fastgpt.in/)
+- 🌍 海外版：[fastgpt.run](https://fastgpt.run/)
 
 |                                    |                                    |
 | ---------------------------------- | ---------------------------------- |
