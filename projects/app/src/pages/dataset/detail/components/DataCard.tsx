@@ -146,6 +146,10 @@ const DataCard = () => {
               value: formatTime2YMDHM(collection.updateTime)
             },
             {
+              label: t('core.dataset.collection.metadata.Raw text length'),
+              value: collection.rawTextLength ?? '-'
+            },
+            {
               label: t('core.dataset.collection.metadata.Training Type'),
               value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
             },

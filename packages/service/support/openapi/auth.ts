@@ -11,7 +11,7 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
     return Promise.reject(ERROR_ENUM.unAuthApiKey);
   }
   try {
-    const openApi = await MongoOpenApi.findOne({ apiKey: apikey });
+    const openApi = await MongoOpenApi.findOne({ apiKey: apikey.trim() });
     if (!openApi) {
       return Promise.reject(ERROR_ENUM.unAuthApiKey);
     }

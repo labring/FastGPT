@@ -116,8 +116,7 @@ export async function authDatasetCollection({
       return Promise.reject(DatasetErrEnum.unAuthDatasetCollection);
     }
 
-    const isOwner =
-      String(collection.datasetId.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
+    const isOwner = String(collection.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
     const canWrite =
       isOwner ||
       (role !== TeamMemberRoleEnum.visitor &&

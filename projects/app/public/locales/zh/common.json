@@ -401,6 +401,7 @@
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
+          "Raw text length": "原文长度",
           "Read Metadata": "查看元数据",
           "Training Type": "训练模式",
           "Updatetime": "更新时间",
