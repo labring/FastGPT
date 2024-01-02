@@ -101,7 +101,7 @@ const FileSelect = ({
   // select file
   const onSelectFile = useCallback(
     async (files: File[]) => {
-      if (files.length >= 100) {
+      if (files.length >= 10000) {
         return toast({
           status: 'warning',
           title: t('common.file.Select file amount limit 100')
