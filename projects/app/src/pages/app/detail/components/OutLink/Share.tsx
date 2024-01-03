@@ -21,7 +21,7 @@ import {
   Link
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -282,7 +282,7 @@ function EditLinkModal({
   return (
     <MyModal
       isOpen={true}
-      iconSrc="/imgs/modal/shareLight.svg"
+      iconSrc="/imgs/modal/shareFill.svg"
       title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}
     >
       <ModalBody>

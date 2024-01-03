@@ -1,6 +1,6 @@
 import React from 'react';
 import { Flex, type FlexProps } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from './index';
 
 const CloseIcon = (props: FlexProps) => {
   return (
@@ -14,7 +14,7 @@ const CloseIcon = (props: FlexProps) => {
       _hover={{ bg: 'myGray.200' }}
       {...props}
     >
-      <MyIcon name={'closeLight'} w={'12px'} color={'myGray.500'} />
+      <MyIcon name={'common/closeLight'} w={'12px'} color={'myGray.500'} />
     </Flex>
   );
 };

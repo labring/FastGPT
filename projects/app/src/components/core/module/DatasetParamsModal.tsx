@@ -22,7 +22,7 @@ import { reRankModelList } from '@/web/common/system/staticData';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
 import MyRadio from '@/components/common/MyRadio';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;

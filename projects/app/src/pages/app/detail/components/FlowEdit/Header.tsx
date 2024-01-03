@@ -9,7 +9,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
 import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
@@ -101,7 +101,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         <MyTooltip label={t('common.Back')} offset={[10, 10]}>
           <IconButton
             size={'smSquare'}
-            icon={<MyIcon name={'back'} w={'14px'} />}
+            icon={<MyIcon name={'common/backLight'} w={'14px'} />}
             borderColor={'myGray.300'}
             variant={'whiteBase'}
             aria-label={''}
@@ -122,7 +122,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <IconButton
             mr={[3, 6]}
             size={'smSquare'}
-            icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
+            icon={<MyIcon name={'common/importLight'} w={['14px', '16px']} />}
             variant={'whitePrimary'}
             aria-label={'save'}
             onClick={onOpenImport}
@@ -157,7 +157,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <MyTooltip label={'测试对话'}>
             <IconButton
               mr={[3, 6]}
-              icon={<MyIcon name={'chat'} w={['14px', '16px']} />}
+              icon={<MyIcon name={'core/chat/chatLight'} w={['14px', '16px']} />}
               size={'smSquare'}
               aria-label={'save'}
               variant={'whitePrimary'}

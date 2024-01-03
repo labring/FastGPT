@@ -35,12 +35,16 @@ OneAPI 中没有配置该模型渠道。
 
 ### 如何更新？
 
-执行下面命令会自动拉取最新镜像，一般情况下不需要执行额外操作。
+1. 查看[更新文档](/docs/development/upgrading/intro/)，确认要升级的版本，避免跨版本升级。
+2. 修改镜像 tag 到指定版本
+3. 执行下面命令会自动拉取镜像：
 
-```bash
-docker-compose pull
-docker-compose up -d
-```
+    ```bash
+    docker-compose pull
+    docker-compose up -d
+    ```
+
+4. 执行初始化脚本（如果有）
 
 ### 如何自定义配置文件？
 

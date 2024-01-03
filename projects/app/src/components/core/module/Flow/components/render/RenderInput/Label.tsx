@@ -7,7 +7,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import TargetHandle from '../TargetHandle';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import dynamic from 'next/dynamic';
 
@@ -68,7 +68,7 @@ const InputLabel = ({ moduleId, inputKey, mode, ...item }: Props) => {
       {edit && (
         <>
           <MyIcon
-            name={'settingLight'}
+            name={'common/settingLight'}
             w={'14px'}
             cursor={'pointer'}
             ml={3}

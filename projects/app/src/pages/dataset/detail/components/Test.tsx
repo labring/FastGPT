@@ -18,7 +18,7 @@ import {
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
 import { postSearchText } from '@/web/core/dataset/api';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -190,7 +190,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 // {
                 //   label: (
                 //     <Flex alignItems={'center'}>
-                //       <MyIcon mr={2} name={'csvImport'} w={'14px'} color={'primary.600'} />
+                //       <MyIcon mr={2} name={'file/csv'} w={'14px'} color={'primary.600'} />
                 //       <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
                 //         {t('core.dataset.test.Batch test')}
                 //       </Box>
@@ -244,7 +244,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   }}
                   onClick={onOpen}
                 >
-                  <MyIcon mr={2} name={'csvImport'} w={'24px'} />
+                  <MyIcon mr={2} name={'file/csv'} w={'24px'} />
                   <Box>
                     {selectFile ? selectFile.name : t('core.dataset.test.Batch test Placeholder')}
                   </Box>

@@ -133,7 +133,9 @@
     "Name is empty": "名称不能为空",
     "New Create": "新建",
     "Next Step": "下一步",
+    "Not open": "未开启",
     "OK": "好的",
+    "Opened": "已开启",
     "Output": "输出",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
@@ -244,12 +246,13 @@
       "create app": "创建属于你的 AI 应用",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
+        "Open cfr": "开启自动补全",
         "Out Ad Edit": "您即将退出高级编排页面，请确认",
         "Prompt Editor": "提示词编辑",
         "Save and out": "保存并退出",
         "UnSave": "不保存",
-        "cfr background prompt": "问题补全 - 对话背景描述",
-        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示不使用问题补全功能。"
+        "cfr background prompt": "对话背景描述",
+        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n值为空时，表示【首个问题】不使用问题补全功能。\n值为 none 时，表示不使用问题补全功能。"
       },
       "feedback": {
         "Custom feedback": "自定义反馈",

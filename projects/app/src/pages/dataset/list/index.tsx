@@ -25,7 +25,7 @@ import {
 } from '@/web/core/dataset/api';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
 import {

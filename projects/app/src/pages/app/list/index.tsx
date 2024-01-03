@@ -19,7 +19,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
@@ -164,7 +164,7 @@ const MyApps = () => {
                     variant={'whitePrimary'}
                     icon={
                       <MyTooltip label={'去聊天'}>
-                        <MyIcon name={'chat'} w={'14px'} />
+                        <MyIcon name={'core/chat/chatLight'} w={'14px'} />
                       </MyTooltip>
                     }
                     aria-label={'chat'}

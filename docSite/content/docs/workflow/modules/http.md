@@ -15,7 +15,7 @@ weight: 355
 - 触发执行
 - 核中核模块
 
-![](/imgs/http1.png)
+![](/imgs/http1.jpg)
 
 ## 介绍
 

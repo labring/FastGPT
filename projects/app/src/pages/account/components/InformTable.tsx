@@ -6,7 +6,7 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const BillTable = () => {
   const theme = useTheme();

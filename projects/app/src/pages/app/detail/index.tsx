@@ -9,7 +9,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
 import SimpleEdit from './components/SimpleEdit';
@@ -52,13 +52,13 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '简易配置', id: TabEnum.simpleEdit, icon: 'overviewLight' },
+      { label: '简易配置', id: TabEnum.simpleEdit, icon: 'common/overviewLight' },
       ...(feConfigs?.hide_app_flow
         ? []
-        : [{ label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' }]),
-      { label: '外部使用', id: TabEnum.outLink, icon: 'shareLight' },
+        : [{ label: '高级编排', id: TabEnum.adEdit, icon: 'common/settingLight' }]),
+      { label: '外部使用', id: TabEnum.outLink, icon: 'support/outlink/shareLight' },
       { label: '对话日志', id: TabEnum.logs, icon: 'core/app/logsLight' },
-      { label: '立即对话', id: TabEnum.startChat, icon: 'chat' }
+      { label: '立即对话', id: TabEnum.startChat, icon: 'core/chat/chatLight' }
     ],
     []
   );
@@ -139,7 +139,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             >
               <IconButton
                 mr={3}
-                icon={<MyIcon name={'backFill'} w={'18px'} color={'primary.500'} />}
+                icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
                 bg={'white'}
                 boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
                 size={'smSquare'}

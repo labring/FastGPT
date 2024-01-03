@@ -133,7 +133,9 @@
     "Name is empty": "Name is empty",
     "New Create": "Create",
     "Next Step": "Next",
+    "Not open": "Close",
     "OK": "OK",
+    "Opened": "Opened",
     "Output": "Output",
     "Params": "Params",
     "Password inconsistency": "Password inconsistency",
@@ -244,12 +246,13 @@
       "create app": "Create App",
       "edit": {
         "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
+        "Open cfr": "Open Cfr",
         "Out Ad Edit": "You are about to exit the Advanced orchestration page, please confirm",
         "Prompt Editor": "Prompt Editor",
         "Save and out": "Save out",
         "UnSave": "UnSave",
-        "cfr background prompt": "Question completion - Chat background description",
-        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. \nIf is empty, the problem completion function is not used."
+        "cfr background prompt": "Chat background description",
+        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.\nIf the value is empty, the problem completion function is not used for the \"first problem\".\nIf the value is none, the problem completion function is not used."
       },
       "feedback": {
         "Custom feedback": "Custom feedback",
@@ -637,7 +640,7 @@
         "TFSwitch": "",
         "TFSwitch intro": "",
         "UnKnow Module": "UnKnow Module",
-        "cfr": "",
+        "cfr": "Coreference resolution",
         "cfr intro": "Refine the current issue based on history, making it more conducive to knowledge base search, while improving continuous conversation capabilities.",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"

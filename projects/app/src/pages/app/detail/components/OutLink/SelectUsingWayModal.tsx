@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Flex, FlexProps, Grid, Image, ModalBody, Switch, useTheme } from '@chakra-ui/react';
 import MyRadio from '@/components/common/MyRadio';
 import { useForm } from 'react-hook-form';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileToBase64 } from '@/web/common/file/utils';

@@ -5,7 +5,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
 import { filterExportModules, flowNode2Modules } from '@/components/core/module/utils';
@@ -123,7 +123,7 @@ const Header = ({ plugin, onClose }: Props) => {
         <MyTooltip label={t('common.Back')} offset={[10, 10]}>
           <IconButton
             size={'smSquare'}
-            icon={<MyIcon name={'back'} w={'14px'} />}
+            icon={<MyIcon name={'common/backLight'} w={'14px'} />}
             variant={'whiteBase'}
             aria-label={''}
             onClick={() => {
@@ -138,7 +138,7 @@ const Header = ({ plugin, onClose }: Props) => {
         <MyTooltip label={t('app.Import Configs')}>
           <IconButton
             mr={[3, 6]}
-            icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
+            icon={<MyIcon name={'common/importLight'} w={['14px', '16px']} />}
             variant={'whitePrimary'}
             size={'smSquare'}
             aria-label={'save'}
@@ -163,7 +163,7 @@ const Header = ({ plugin, onClose }: Props) => {
         <MyTooltip label={t('module.Preview Plugin')}>
           <IconButton
             mr={[3, 6]}
-            icon={<MyIcon name={'core/module/previewLight'} w={['14px', '16px']} />}
+            icon={<MyIcon name={'core/modules/previewLight'} w={['14px', '16px']} />}
             size={'smSquare'}
             aria-label={'save'}
             variant={'whitePrimary'}

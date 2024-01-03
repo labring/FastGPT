@@ -1,4 +1,4 @@
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import ParentPaths from '@/components/common/ParentPaths';
 import { useLoading } from '@/web/common/hooks/useLoading';

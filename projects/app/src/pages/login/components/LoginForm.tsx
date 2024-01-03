@@ -19,7 +19,7 @@ import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/system/staticData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
 import { getDocPath } from '@/web/common/system/doc';
 import Avatar from '@/components/Avatar';
@@ -86,7 +86,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {
             label: t('support.user.login.Github'),
             provider: OAuthEnum.github,
-            icon: 'gitFill',
+            icon: 'common/gitFill',
             redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state.current}&scope=user:email%20read:user`
           }
         ]
@@ -96,7 +96,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {
             label: t('support.user.login.Google'),
             provider: OAuthEnum.google,
-            icon: 'googleFill',
+            icon: 'common/googleFill',
             redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
           }
         ]
