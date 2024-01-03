@@ -85,7 +85,10 @@ ${t('core.dataset.search.Score')}: ${item.value.toFixed(4)}`
 
     return {
       value: searchScore,
-      tip: t('core.dataset.Search score tip', { scoreText: text ? `${text}\n` : text, detailScore })
+      tip: t('core.dataset.Search score tip', {
+        scoreText: text ? `${text}。\n` : text,
+        detailScore
+      })
     };
   }, [quoteItem.score, t]);
 
@@ -96,6 +99,7 @@ ${t('core.dataset.search.Score')}: ${item.value.toFixed(4)}`
         position={'relative'}
         overflow={'hidden'}
         fontSize={'sm'}
+        whiteSpace={'pre-wrap'}
         _hover={{ '& .hover-data': { display: 'flex' } }}
       >
         <Flex alignItems={'flex-end'} mb={3}>

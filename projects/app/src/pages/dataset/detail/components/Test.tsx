@@ -477,11 +477,11 @@ const TestResults = React.memo(function TestResults({
           <Grid
             mt={1}
             gridTemplateColumns={[
-              'repeat(1,1fr)',
-              'repeat(1,1fr)',
-              'repeat(1,1fr)',
-              'repeat(1,1fr)',
-              'repeat(2,1fr)'
+              'repeat(1,minmax(0, 1fr))',
+              'repeat(1,minmax(0, 1fr))',
+              'repeat(1,minmax(0, 1fr))',
+              'repeat(1,minmax(0, 1fr))',
+              'repeat(2,minmax(0, 1fr))'
             ]}
             gridGap={4}
           >
