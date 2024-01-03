@@ -29,7 +29,7 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 
 **2. 打开 AppLaunchpad(应用管理) 工具**
 
-![step1](/imgs/oneapi-step1.png)
+![step1](/imgs/oneapi-step1.jpg)
 
 **3. 点击创建新应用**
 

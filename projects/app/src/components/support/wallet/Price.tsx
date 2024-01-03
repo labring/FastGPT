@@ -137,27 +137,29 @@ ${audioSpeechModelList
         borderRadius={'50%'}
         onClick={onClose}
       />
-      <Box py={[0, 10]} px={[5, '50px']} overflow={'overlay'} h={'100%'}>
-        {list.map((item) => (
-          <Box
-            display={['block', 'flex']}
-            key={item.title}
-            w={'100%'}
-            mb={4}
-            pb={6}
-            _notLast={{
-              borderBottom: '1px',
-              borderBottomColor: 'borderColor.high'
-            }}
-          >
-            <Box fontSize={'xl'} fontWeight={'bold'} mb={1} flex={'1 0 0'}>
-              {item.title}
+      <Box overflow={'overlay'} h={'100%'}>
+        <Box py={[0, 10]} px={5} mx={'auto'} maxW={'1200px'}>
+          {list.map((item) => (
+            <Box
+              display={['block', 'flex']}
+              key={item.title}
+              w={'100%'}
+              mb={4}
+              pb={6}
+              _notLast={{
+                borderBottom: '1px',
+                borderBottomColor: 'borderColor.high'
+              }}
+            >
+              <Box fontSize={'xl'} fontWeight={'bold'} mb={1} flex={'1 0 0'}>
+                {item.title}
+              </Box>
+              <Box w={['100%', '410px']}>
+                <Markdown source={item.md}></Markdown>
+              </Box>
             </Box>
-            <Box w={['100%', '410px']}>
-              <Markdown source={item.md}></Markdown>
-            </Box>
-          </Box>
-        ))}
+          ))}
+        </Box>
       </Box>
     </Box>,
     // @ts-ignore

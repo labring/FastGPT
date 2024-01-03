@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.in/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -15,13 +15,13 @@ FastGPT is a knowledge-based Q&A system built on the LLM, offers out-of-the-box 
 </div>
 
 <p align="center">
-  <a href="https://fastgpt.run/">
+  <a href="https://fastgpt.in/">
     <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.run/docs/intro">
+  <a href="https://doc.fastgpt.in/docs/intro">
     <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.run/docs/development">
+  <a href="https://doc.fastgpt.in/docs/development">
     <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
@@ -36,7 +36,8 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 Use Cloud Services
 
-[fastgpt.run](https://fastgpt.run/)
+Cloud: [fastgpt.in](https://fastgpt.in/)
+
 | | |
 | ---------------------------------- | ---------------------------------- |
 | ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
@@ -105,11 +106,11 @@ Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 
   Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a tad slow since we're using the basic settings.
 
-- [Getting Started with Local Development](https://doc.fastgpt.run/docs/development)
-- [Deploying FastGPT](https://doc.fastgpt.run/docs/installation)
-- [Guide on System Configs](https://doc.fastgpt.run/docs/installation/reference)
-- [Configuring Multiple Models](https://doc.fastgpt.run/docs/installation/reference/models)
-- [Version Updates & Upgrades](https://doc.fastgpt.run/docs/installation/upgrading)
+- [Getting Started with Local Development](https://doc.fastgpt.in/docs/development)
+- [Deploying FastGPT](https://doc.fastgpt.in/docs/installation)
+- [Guide on System Configs](https://doc.fastgpt.in/docs/installation/reference)
+- [Configuring Multiple Models](https://doc.fastgpt.in/docs/installation/reference/models)
+- [Version Updates & Upgrades](https://doc.fastgpt.in/docs/installation/upgrading)
 
 <!-- ## :point_right: RoadMap
 - [FastGPT RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->

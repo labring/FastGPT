@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { getUploadModel } from '@fastgpt/service/common/file/upload/multer';
+import { getUploadModel, removeFilesByPaths } from '@fastgpt/service/common/file/upload/multer';
 import fs from 'fs';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { pushWhisperBill } from '@/service/support/wallet/bill/push';
@@ -12,11 +12,15 @@ const upload = getUploadModel({
 });
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  let filePaths: string[] = [];
+
   try {
     const {
       files,
       metadata: { duration, shareId }
     } = await upload.doUpload<{ duration: number; shareId?: string }>(req, res);
+
+    filePaths = files.map((file) => file.path);
 
     const { teamId, tmbId } = await authCert({ req, authToken: true });
 
@@ -53,6 +57,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       error: err
     });
   }
+
+  removeFilesByPaths(filePaths);
 });
 
 export const config = {

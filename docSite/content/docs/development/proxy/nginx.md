@@ -15,7 +15,7 @@ weight: 951
 
 打开 「应用管理」，点击「新建应用」：
 
-![](/imgs/sealos3.png)  
+![](/imgs/sealos3.jpg)  
 ![](/imgs/sealos4.png)
 
 ### 填写基本配置
