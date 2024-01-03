@@ -632,14 +632,13 @@ const ChatBox = (
                       leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
                       size={'sm'}
                       maxW={'100px'}
-                      borderRadius={'lg'}
                       onClick={handleSubmit((data) => {
                         onUpdateVariable?.(data);
                         setVariables(data);
                         setVariableInputFinish(true);
                       })}
                     >
-                      {'开始对话'}
+                      {t('core.chat.Start Chat')}
                     </Button>
                   )}
                 </Card>
@@ -1144,7 +1143,7 @@ function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
       w={['28px', '34px']}
       h={['28px', '34px']}
       p={'2px'}
-      borderRadius={'lg'}
+      borderRadius={'sm'}
       border={theme.borders.base}
       boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
       bg={type === 'Human' ? 'white' : 'primary.50'}
@@ -1210,7 +1209,7 @@ function ChatController({
     cursor: 'pointer',
     p: 1,
     bg: 'white',
-    borderRadius: 'lg',
+    borderRadius: 'md',
     boxShadow: '0 0 5px rgba(0,0,0,0.1)',
     border: theme.borders.base,
     mr: 3

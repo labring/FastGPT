@@ -133,7 +133,7 @@ const InfoModal = ({
             w={['26px', '34px']}
             h={['26px', '34px']}
             cursor={'pointer'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             mr={4}
             title={'点击切换头像'}
             onClick={() => onOpenSelectFile()}

@@ -148,5 +148,19 @@ export enum SearchScoreTypeEnum {
   reRank = 'reRank',
   rrf = 'rrf'
 }
+export const SearchScoreTypeMap = {
+  [SearchScoreTypeEnum.embedding]: {
+    label: 'core.dataset.search.score.embedding'
+  },
+  [SearchScoreTypeEnum.fullText]: {
+    label: 'core.dataset.search.score.fullText'
+  },
+  [SearchScoreTypeEnum.reRank]: {
+    label: 'core.dataset.search.score.reRank'
+  },
+  [SearchScoreTypeEnum.rrf]: {
+    label: 'core.dataset.search.score.rrf'
+  }
+};
 
 export const FolderAvatarSrc = '/imgs/files/folder.svg';

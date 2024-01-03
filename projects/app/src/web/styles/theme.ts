@@ -440,7 +440,7 @@ export const theme = extendTheme({
     md: '1px solid #DAE0E2',
     lg: '1px solid #D0E0E2'
   },
-  borderRadius: {
+  radii: {
     xs: '4px',
     sm: '6px',
     md: '8px',

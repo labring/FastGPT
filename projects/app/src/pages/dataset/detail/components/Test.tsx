@@ -10,22 +10,17 @@ import {
   Table,
   Thead,
   Tbody,
-  Tfoot,
   Tr,
   Th,
   Td,
-  TableCaption,
-  TableContainer,
-  MenuButton
+  TableContainer
 } from '@chakra-ui/react';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
-import { getDatasetDataItemById, postSearchText } from '@/web/core/dataset/api';
+import { postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@/components/Icon';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
-import InputDataModal, { RawSourceText, type InputDataType } from './InputDataModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
@@ -40,6 +35,7 @@ import MySelect from '@/components/Select';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileDownload, readCsvContent } from '@/web/common/file/utils';
 import { delay } from '@fastgpt/global/common/system/utils';
+import QuoteItem from '@/components/core/dataset/QuoteItem';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
@@ -59,13 +55,10 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
-  const { setLoading } = useSystemStore();
   const { datasetDetail } = useDatasetStore();
-  const { datasetTestList, pushDatasetTestItem, delDatasetTestItemById, updateDatasetItemById } =
-    useSearchTestStore();
+  const { pushDatasetTestItem } = useSearchTestStore();
   const [inputType, setInputType] = useState<'text' | 'file'>('text');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
-  const [editInputData, setEditInputData] = useState<InputDataType & { collectionId: string }>();
   const [refresh, setRefresh] = useState(false);
   const { File, onOpen } = useSelectFile({
     fileType: '.csv',
@@ -92,11 +85,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
     onOpen: onOpenSelectMode,
     onClose: onCloseSelectMode
   } = useDisclosure();
-
-  const testHistories = useMemo(
-    () => datasetTestList.filter((item) => item.datasetId === datasetId),
-    [datasetId, datasetTestList]
-  );
 
   const { mutate: onTextTest, isLoading: textTestIsLoading } = useRequest({
     mutationFn: ({ inputText, searchParams }: FormType) =>
@@ -300,257 +288,18 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           </Flex>
         </Box>
         <Box mt={5} flex={'1 0 0'} px={4} overflow={'overlay'} display={['none', 'block']}>
-          <Flex alignItems={'center'} color={'myGray.600'}>
-            <MyIcon mr={2} name={'history'} w={'16px'} h={'16px'} />
-            <Box fontSize={'2xl'}>{t('core.dataset.test.test history')}</Box>
-          </Flex>
-          <Box mt={2}>
-            <Flex py={2} fontWeight={'bold'} borderBottom={theme.borders.sm}>
-              <Box flex={'0 0 80px'}>{t('core.dataset.search.search mode')}</Box>
-              <Box flex={1}>{t('core.dataset.test.Test Text')}</Box>
-              <Box flex={'0 0 70px'}>{t('common.Time')}</Box>
-              <Box w={'14px'}></Box>
-            </Flex>
-            {testHistories.map((item) => (
-              <Flex
-                key={item.id}
-                p={1}
-                alignItems={'center'}
-                borderBottom={theme.borders.base}
-                _hover={{
-                  bg: '#f4f4f4',
-                  '& .delete': {
-                    display: 'block'
-                  }
-                }}
-                cursor={'pointer'}
-                fontSize={'sm'}
-                onClick={() => setDatasetTestItem(item)}
-              >
-                <Box flex={'0 0 80px'}>
-                  {DatasetSearchModeMap[item.searchMode] ? (
-                    <Flex alignItems={'center'}>
-                      <MyIcon
-                        name={DatasetSearchModeMap[item.searchMode].icon as any}
-                        w={'12px'}
-                        mr={'1px'}
-                      />
-                      {t(DatasetSearchModeMap[item.searchMode].title)}
-                    </Flex>
-                  ) : (
-                    '-'
-                  )}
-                </Box>
-                <Box flex={1} mr={2} wordBreak={'break-all'}>
-                  {item.text}
-                </Box>
-                <Box flex={'0 0 70px'}>{formatTimeToChatTime(item.time)}</Box>
-                <MyTooltip label={t('core.dataset.test.delete test history')}>
-                  <Box w={'14px'} h={'14px'}>
-                    <MyIcon
-                      className="delete"
-                      name={'delete'}
-                      w={'14px'}
-                      display={'none'}
-                      _hover={{ color: 'red.600' }}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        delDatasetTestItemById(item.id);
-                        datasetTestItem?.id === item.id && setDatasetTestItem(undefined);
-                      }}
-                    />
-                  </Box>
-                </MyTooltip>
-              </Flex>
-            ))}
-          </Box>
+          <TestHistories
+            datasetId={datasetId}
+            datasetTestItem={datasetTestItem}
+            setDatasetTestItem={setDatasetTestItem}
+          />
         </Box>
       </Box>
       {/* result show */}
       <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'}>
-        {!datasetTestItem?.results || datasetTestItem.results.length === 0 ? (
-          <Flex
-            mt={[10, 0]}
-            h={'100%'}
-            flexDirection={'column'}
-            alignItems={'center'}
-            justifyContent={'center'}
-          >
-            <MyIcon name={'empty'} color={'transparent'} w={'54px'} />
-            <Box mt={3} color={'myGray.600'}>
-              {t('core.dataset.test.test result placeholder')}
-            </Box>
-          </Flex>
-        ) : (
-          <>
-            <Box fontSize={'xl'} color={'myGray.600'}>
-              {t('core.dataset.test.Test params')}
-            </Box>
-            <TableContainer mb={3} bg={'myGray.150'} borderRadius={'md'}>
-              <Table>
-                <Thead>
-                  <Tr>
-                    <Th>{t('core.dataset.search.search mode')}</Th>
-                    <Th>{t('core.dataset.search.ReRank')}</Th>
-                    <Th>{t('core.dataset.search.Max Tokens')}</Th>
-                    <Th>{t('core.dataset.search.Min Similarity')}</Th>
-                  </Tr>
-                </Thead>
-                <Tbody>
-                  <Tr>
-                    <Td>
-                      <Flex alignItems={'center'}>
-                        <MyIcon
-                          name={DatasetSearchModeMap[datasetTestItem.searchMode]?.icon as any}
-                          w={'12px'}
-                          mr={'1px'}
-                        />
-                        {t(DatasetSearchModeMap[datasetTestItem.searchMode]?.title)}
-                      </Flex>
-                    </Td>
-                    <Td>{datasetTestItem.usingReRank ? '✅' : '❌'}</Td>
-                    <Td>{datasetTestItem.limit}</Td>
-                    <Td>{datasetTestItem.similarity}</Td>
-                  </Tr>
-                </Tbody>
-              </Table>
-            </TableContainer>
-            <Flex alignItems={'center'}>
-              <Box fontSize={'xl'} color={'myGray.600'}>
-                {t('core.dataset.test.Test Result')}
-              </Box>
-              <MyTooltip label={t('core.dataset.test.test result tip')} forceShow>
-                <QuestionOutlineIcon
-                  mx={2}
-                  color={'myGray.600'}
-                  cursor={'pointer'}
-                  fontSize={'lg'}
-                />
-              </MyTooltip>
-              <Box>({datasetTestItem.duration})</Box>
-            </Flex>
-            <Grid
-              mt={1}
-              gridTemplateColumns={[
-                'repeat(1,1fr)',
-                'repeat(1,1fr)',
-                'repeat(1,1fr)',
-                'repeat(1,1fr)',
-                'repeat(2,1fr)'
-              ]}
-              gridGap={4}
-            >
-              {datasetTestItem?.results.map((item, index) => (
-                <Box
-                  key={item.id}
-                  pb={2}
-                  borderRadius={'lg'}
-                  border={theme.borders.base}
-                  _notLast={{ mb: 2 }}
-                  cursor={'pointer'}
-                  title={t('common.Edit')}
-                  onClick={async () => {
-                    try {
-                      setLoading(true);
-                      const data = await getDatasetDataItemById(item.id);
-
-                      if (!data) {
-                        throw new Error(t('core.dataset.data.data is deleted'));
-                      }
-
-                      setEditInputData({
-                        id: data.id,
-                        collectionId: data.collectionId,
-                        q: data.q,
-                        a: data.a,
-                        indexes: data.indexes
-                      });
-                    } catch (err) {
-                      toast({
-                        status: 'warning',
-                        title: getErrText(err)
-                      });
-                    }
-                    setLoading(false);
-                  }}
-                >
-                  <Flex p={3} alignItems={'center'} color={'myGray.500'}>
-                    <Box
-                      border={theme.borders.base}
-                      px={2}
-                      fontSize={'sm'}
-                      mr={3}
-                      borderRadius={'md'}
-                    >
-                      # {index + 1}
-                    </Box>
-                    <RawSourceText
-                      fontWeight={'bold'}
-                      color={'black'}
-                      sourceName={item.sourceName}
-                      sourceId={item.sourceId}
-                      canView
-                    />
-                    {/* <MyIcon name={'kbTest'} w={'14px'} />
-                    <Progress
-                      mx={2}
-                      flex={'1 0 0'}
-                      value={item.score * 100}
-                      size="sm"
-                      borderRadius={'20px'}
-                      colorScheme="gray"
-                    />
-                    <Box>{item.score.toFixed(4)}</Box> */}
-                  </Flex>
-                  <Box px={2} fontSize={'sm'} color={'myGray.600'} wordBreak={'break-word'}>
-                    <Box>{item.q}</Box>
-                    <Box>{item.a}</Box>
-                  </Box>
-                </Box>
-              ))}
-            </Grid>
-          </>
-        )}
+        <TestResults datasetTestItem={datasetTestItem} />
       </Box>
 
-      {!!editInputData && (
-        <InputDataModal
-          collectionId={editInputData.collectionId}
-          defaultValue={editInputData}
-          onClose={() => setEditInputData(undefined)}
-          onSuccess={(data) => {
-            if (datasetTestItem && editInputData.id) {
-              const newTestItem: SearchTestStoreItemType = {
-                ...datasetTestItem,
-                results: datasetTestItem.results.map((item) =>
-                  item.id === editInputData.id
-                    ? {
-                        ...item,
-                        q: data.q || '',
-                        a: data.a || ''
-                      }
-                    : item
-                )
-              };
-              updateDatasetItemById(newTestItem);
-              setDatasetTestItem(newTestItem);
-            }
-
-            setEditInputData(undefined);
-          }}
-          onDelete={() => {
-            if (datasetTestItem && editInputData.id) {
-              const newTestItem = {
-                ...datasetTestItem,
-                results: datasetTestItem.results.filter((item) => item.id !== editInputData.id)
-              };
-              updateDatasetItemById(newTestItem);
-              setDatasetTestItem(newTestItem);
-            }
-            setEditInputData(undefined);
-          }}
-        />
-      )}
       {isOpenSelectMode && (
         <DatasetParamsModal
           {...getValues('searchParams')}
@@ -570,4 +319,186 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   );
 };
 
-export default Test;
+export default React.memo(Test);
+
+const TestHistories = React.memo(function TestHistories({
+  datasetId,
+  datasetTestItem,
+  setDatasetTestItem
+}: {
+  datasetId: string;
+  datasetTestItem?: SearchTestStoreItemType;
+  setDatasetTestItem: React.Dispatch<React.SetStateAction<SearchTestStoreItemType | undefined>>;
+}) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+  const { datasetTestList, delDatasetTestItemById } = useSearchTestStore();
+
+  const testHistories = useMemo(
+    () => datasetTestList.filter((item) => item.datasetId === datasetId),
+    [datasetId, datasetTestList]
+  );
+  return (
+    <>
+      <Flex alignItems={'center'} color={'myGray.600'}>
+        <MyIcon mr={2} name={'history'} w={'16px'} h={'16px'} />
+        <Box fontSize={'2xl'}>{t('core.dataset.test.test history')}</Box>
+      </Flex>
+      <Box mt={2}>
+        <Flex py={2} fontWeight={'bold'} borderBottom={theme.borders.sm}>
+          <Box flex={'0 0 80px'}>{t('core.dataset.search.search mode')}</Box>
+          <Box flex={1}>{t('core.dataset.test.Test Text')}</Box>
+          <Box flex={'0 0 70px'}>{t('common.Time')}</Box>
+          <Box w={'14px'}></Box>
+        </Flex>
+        {testHistories.map((item) => (
+          <Flex
+            key={item.id}
+            p={1}
+            alignItems={'center'}
+            borderBottom={theme.borders.base}
+            _hover={{
+              bg: '#f4f4f4',
+              '& .delete': {
+                display: 'block'
+              }
+            }}
+            cursor={'pointer'}
+            fontSize={'sm'}
+            onClick={() => setDatasetTestItem(item)}
+          >
+            <Box flex={'0 0 80px'}>
+              {DatasetSearchModeMap[item.searchMode] ? (
+                <Flex alignItems={'center'}>
+                  <MyIcon
+                    name={DatasetSearchModeMap[item.searchMode].icon as any}
+                    w={'12px'}
+                    mr={'1px'}
+                  />
+                  {t(DatasetSearchModeMap[item.searchMode].title)}
+                </Flex>
+              ) : (
+                '-'
+              )}
+            </Box>
+            <Box flex={1} mr={2} wordBreak={'break-all'}>
+              {item.text}
+            </Box>
+            <Box flex={'0 0 70px'}>{formatTimeToChatTime(item.time)}</Box>
+            <MyTooltip label={t('core.dataset.test.delete test history')}>
+              <Box w={'14px'} h={'14px'}>
+                <MyIcon
+                  className="delete"
+                  name={'delete'}
+                  w={'14px'}
+                  display={'none'}
+                  _hover={{ color: 'red.600' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    delDatasetTestItemById(item.id);
+                    datasetTestItem?.id === item.id && setDatasetTestItem(undefined);
+                  }}
+                />
+              </Box>
+            </MyTooltip>
+          </Flex>
+        ))}
+      </Box>
+    </>
+  );
+});
+
+const TestResults = React.memo(function TestResults({
+  datasetTestItem
+}: {
+  datasetTestItem?: SearchTestStoreItemType;
+}) {
+  const { t } = useTranslation();
+  const theme = useTheme();
+
+  return (
+    <>
+      {!datasetTestItem?.results || datasetTestItem.results.length === 0 ? (
+        <Flex
+          mt={[10, 0]}
+          h={'100%'}
+          flexDirection={'column'}
+          alignItems={'center'}
+          justifyContent={'center'}
+        >
+          <MyIcon name={'empty'} color={'transparent'} w={'54px'} />
+          <Box mt={3} color={'myGray.600'}>
+            {t('core.dataset.test.test result placeholder')}
+          </Box>
+        </Flex>
+      ) : (
+        <>
+          <Box fontSize={'xl'} color={'myGray.600'}>
+            {t('core.dataset.test.Test params')}
+          </Box>
+          <TableContainer mb={3} bg={'myGray.150'} borderRadius={'md'}>
+            <Table>
+              <Thead>
+                <Tr>
+                  <Th>{t('core.dataset.search.search mode')}</Th>
+                  <Th>{t('core.dataset.search.ReRank')}</Th>
+                  <Th>{t('core.dataset.search.Max Tokens')}</Th>
+                  <Th>{t('core.dataset.search.Min Similarity')}</Th>
+                </Tr>
+              </Thead>
+              <Tbody>
+                <Tr>
+                  <Td>
+                    <Flex alignItems={'center'}>
+                      <MyIcon
+                        name={DatasetSearchModeMap[datasetTestItem.searchMode]?.icon as any}
+                        w={'12px'}
+                        mr={'1px'}
+                      />
+                      {t(DatasetSearchModeMap[datasetTestItem.searchMode]?.title)}
+                    </Flex>
+                  </Td>
+                  <Td>{datasetTestItem.usingReRank ? '✅' : '❌'}</Td>
+                  <Td>{datasetTestItem.limit}</Td>
+                  <Td>{datasetTestItem.similarity}</Td>
+                </Tr>
+              </Tbody>
+            </Table>
+          </TableContainer>
+          <Flex alignItems={'center'}>
+            <Box fontSize={'xl'} color={'myGray.600'}>
+              {t('core.dataset.test.Test Result')}
+            </Box>
+            <MyTooltip label={t('core.dataset.test.test result tip')} forceShow>
+              <QuestionOutlineIcon mx={2} color={'myGray.600'} cursor={'pointer'} fontSize={'lg'} />
+            </MyTooltip>
+            <Box>({datasetTestItem.duration})</Box>
+          </Flex>
+          <Grid
+            mt={1}
+            gridTemplateColumns={[
+              'repeat(1,1fr)',
+              'repeat(1,1fr)',
+              'repeat(1,1fr)',
+              'repeat(1,1fr)',
+              'repeat(2,1fr)'
+            ]}
+            gridGap={4}
+          >
+            {datasetTestItem?.results.map((item, index) => (
+              <Box
+                key={item.id}
+                p={2}
+                borderRadius={'sm'}
+                border={theme.borders.base}
+                _notLast={{ mb: 2 }}
+              >
+                <QuoteItem quoteItem={item} canViewSource />
+              </Box>
+            ))}
+          </Grid>
+        </>
+      )}
+    </>
+  );
+});
