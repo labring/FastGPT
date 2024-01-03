@@ -24,7 +24,7 @@ const OutLink = ({ appId }: { appId: string }) => {
           iconSize={'20px'}
           list={[
             {
-              icon: 'support/outlink/shareLight',
+              icon: '/imgs/modal/shareFill.svg',
               title: '免登录窗口',
               desc: '分享链接给其他用户，无需登录即可直接进行使用',
               value: OutLinkTypeEnum.share

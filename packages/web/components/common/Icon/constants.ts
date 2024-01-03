@@ -30,6 +30,7 @@ export const iconPaths = {
   'common/overviewLight': () => import('./icons/common/overviewLight.svg'),
   'common/playFill': () => import('./icons/common/playFill.svg'),
   'common/playLight': () => import('./icons/common/playLight.svg'),
+  'common/questionLight': () => import('./icons/common/questionLight.svg'),
   'common/refreshLight': () => import('./icons/common/refreshLight.svg'),
   'common/retryLight': () => import('./icons/common/retryLight.svg'),
   'common/rightArrowLight': () => import('./icons/common/rightArrowLight.svg'),

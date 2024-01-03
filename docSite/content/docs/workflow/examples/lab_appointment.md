@@ -9,8 +9,8 @@ weight: 403
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/demo-appointment1.png) | ![](/imgs/demo-appointment2.png) |
-| ![](/imgs/demo-appointment3.png) | ![](/imgs/demo-appointment4.png) |
+| ![](/imgs/demo-appointment1.jpg) | ![](/imgs/demo-appointment2.jpg) |
+| ![](/imgs/demo-appointment3.jpg) | ![](/imgs/demo-appointment4.jpg) |
 
 
 

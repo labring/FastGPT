@@ -93,10 +93,10 @@ const VariableEdit = ({
   const BoxBtnStyles: BoxProps = {
     cursor: 'pointer',
     px: 3,
-    py: '2px',
+    py: 1,
     borderRadius: 'md',
     _hover: {
-      bg: 'myGray.200'
+      bg: 'myGray.150'
     }
   };
 
@@ -119,12 +119,14 @@ const VariableEdit = ({
         </Box>
         <Flex
           {...BoxBtnStyles}
+          alignItems={'center'}
           onClick={() => {
             resetEdit({ variable: addVariable() });
             onOpenEdit();
           }}
         >
-          +&ensp;{t('common.Add New')}
+          <SmallAddIcon />
+          {t('common.Add New')}
         </Flex>
       </Flex>
       {formatVariables.length > 0 && (
