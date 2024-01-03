@@ -51,7 +51,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       rawQuery: text,
       queries: [text],
       model: dataset.vectorModel,
-      limit: Math.min(limit, 30000),
+      limit: Math.min(limit, 20000),
       similarity,
       datasetIds: [datasetId],
       searchMode,
