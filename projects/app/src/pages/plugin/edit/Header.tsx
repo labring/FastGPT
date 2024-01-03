@@ -5,7 +5,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
 import { filterExportModules, flowNode2Modules } from '@/components/core/module/utils';

@@ -8,7 +8,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '../Avatar';
-import MyIcon from '../Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '../MyTooltip';

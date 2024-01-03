@@ -2,7 +2,7 @@ import React from 'react';
 import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
 import { onDelConnect } from '../../FlowProvider';
 import { Flex } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const ButtonEdge = (props: EdgeProps) => {
   const {

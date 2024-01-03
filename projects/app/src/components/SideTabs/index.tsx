@@ -1,7 +1,8 @@
 import React, { useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type { GridProps } from '@chakra-ui/react';
-import MyIcon, { type IconName } from '../Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import type { IconNameType } from '@fastgpt/web/components/common/Icon/type.d';
 
 // @ts-ignore
 export interface Props extends GridProps {
@@ -60,7 +61,7 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
             onChange(item.id);
           }}
         >
-          <MyIcon mr={2} name={item.icon as IconName} w={'16px'} />
+          <MyIcon mr={2} name={item.icon as IconNameType} w={'16px'} />
           {item.label}
         </Flex>
       ))}

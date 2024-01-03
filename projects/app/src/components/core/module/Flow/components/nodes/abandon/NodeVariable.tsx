@@ -8,7 +8,7 @@ import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import Container from '../../modules/Container';
 import { VariableInputEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import VariableEditModal, { addVariable } from '../../modules/VariableEdit';

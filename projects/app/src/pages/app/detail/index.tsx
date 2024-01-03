@@ -9,7 +9,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
 import SimpleEdit from './components/SimpleEdit';

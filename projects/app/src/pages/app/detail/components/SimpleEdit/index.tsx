@@ -43,7 +43,7 @@ import dynamic from 'next/dynamic';
 import MySelect from '@/components/Select';
 import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';

@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { useChatBox } from '@/components/ChatBox';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { Menu, MenuButton, MenuList, MenuItem, Box } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 
 const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
@@ -33,7 +33,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         label: 'Markdown导出',
         onClick: () => onExportChat({ type: 'md', history })
       },
-      { icon: 'pdf', label: 'PDF导出', onClick: () => onExportChat({ type: 'pdf', history }) }
+      { icon: 'file/pdf', label: 'PDF导出', onClick: () => onExportChat({ type: 'pdf', history }) }
     ],
     [history, onExportChat, router]
   );

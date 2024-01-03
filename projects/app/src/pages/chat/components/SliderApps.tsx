@@ -3,7 +3,7 @@ import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 

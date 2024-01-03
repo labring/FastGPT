@@ -7,7 +7,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';

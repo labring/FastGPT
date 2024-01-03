@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, Flex, useTheme, Grid, type GridProps, theme, Image } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 
 // @ts-ignore

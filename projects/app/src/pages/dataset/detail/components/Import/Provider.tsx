@@ -22,8 +22,8 @@ import {
 } from '@fastgpt/global/core/dataset/constant';
 import { Box, Flex, Image, useTheme } from '@chakra-ui/react';
 import { CloseIcon } from '@chakra-ui/icons';
-import DeleteIcon, { hoverDeleteStyles } from '@/components/Icon/delete';
-import MyIcon from '@/components/Icon';
+import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { chunksUpload } from '@/web/core/dataset/utils';
 import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
 import { useTranslation } from 'next-i18next';

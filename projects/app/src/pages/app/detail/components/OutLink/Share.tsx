@@ -21,7 +21,7 @@ import {
   Link
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import {

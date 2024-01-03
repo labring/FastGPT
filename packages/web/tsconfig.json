@@ -14,8 +14,11 @@
     "isolatedModules": true,
     "jsx": "preserve",
     "incremental": true,
-    "baseUrl": "."
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["./*"]
+    }
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", "../**/*.d.ts"],
-  "exclude": ["node_modules"]
+  "exclude": ["node_modules","./components/common/Icon/constants.ts"]
 }

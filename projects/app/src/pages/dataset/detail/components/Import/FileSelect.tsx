@@ -1,4 +1,4 @@
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';

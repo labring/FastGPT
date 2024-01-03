@@ -9,7 +9,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
 import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';

@@ -13,7 +13,7 @@ import { Link, Button } from '@chakra-ui/react';
 import MyTooltip from '../MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
-import MyIcon from '../Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
 import { MARKDOWN_QUOTE_SIGN } from '@fastgpt/global/core/chat/constants';
 

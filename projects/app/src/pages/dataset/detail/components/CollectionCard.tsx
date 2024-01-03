@@ -28,7 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';
 import { useRequest } from '@/web/common/hooks/useRequest';

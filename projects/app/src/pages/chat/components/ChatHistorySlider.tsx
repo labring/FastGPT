@@ -15,7 +15,7 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
@@ -212,7 +212,7 @@ const ChatHistorySlider = ({
                     })}
               >
                 <MyIcon
-                  name={item.id === activeChatId ? 'core/dataset/chatFill' : 'core/chat/chatLight'}
+                  name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
                   w={'16px'}
                 />
                 <Box flex={'1 0 0'} ml={3} className="textEllipsis">

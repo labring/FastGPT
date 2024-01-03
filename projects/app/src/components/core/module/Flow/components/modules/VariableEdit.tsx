@@ -27,7 +27,7 @@ import {
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';

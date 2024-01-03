@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 
 type Props = TextareaProps & {

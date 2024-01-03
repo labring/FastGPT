@@ -110,7 +110,7 @@ const ImportData = ({
                 value: ImportTypeEnum.qa
               },
               {
-                icon: 'file/csvImport',
+                icon: 'file/csv',
                 title: t('core.dataset.import.CSV Import'),
                 desc: t('core.dataset.import.CSV Import Tip'),
                 value: ImportTypeEnum.csv

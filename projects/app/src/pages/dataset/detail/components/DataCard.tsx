@@ -29,7 +29,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import InputDataModal, { RawSourceText, type InputDataType } from '../components/InputDataModal';

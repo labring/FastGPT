@@ -11,7 +11,7 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
 import Container from '../modules/Container';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from '../render/TargetHandle';
 import { useToast } from '@/web/common/hooks/useToast';

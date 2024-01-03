@@ -51,7 +51,7 @@ import {
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import MySelect from '@/components/Select';
@@ -629,7 +629,7 @@ const ChatBox = (
                   ))}
                   {!variableIsFinish && (
                     <Button
-                      leftIcon={<MyIcon name={'core/dataset/chatFill'} w={'16px'} />}
+                      leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                       size={'sm'}
                       maxW={'100px'}
                       onClick={handleSubmit((data) => {

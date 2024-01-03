@@ -13,7 +13,7 @@ import {
   useDisclosure,
   ModalBody
 } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api';

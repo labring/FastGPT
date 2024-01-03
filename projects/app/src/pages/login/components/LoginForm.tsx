@@ -19,7 +19,7 @@ import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/system/staticData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
 import { getDocPath } from '@/web/common/system/doc';
 import Avatar from '@/components/Avatar';

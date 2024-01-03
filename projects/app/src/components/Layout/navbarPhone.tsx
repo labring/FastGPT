@@ -4,7 +4,7 @@ import { Flex, Box } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
-import MyIcon from '../Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();

@@ -18,7 +18,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const PayRecordTable = () => {
   const { Loading, setIsLoading } = useLoading();

@@ -21,7 +21,7 @@ import { welcomeTextTip, variableTip } from '@fastgpt/global/core/module/templat
 import { onChangeNode } from '../../FlowProvider';
 
 import VariableEdit from '../modules/VariableEdit';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
 import NodeCard from '../render/NodeCard';
