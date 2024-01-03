@@ -176,10 +176,12 @@ async function completions({
     {
       obj: ChatRoleEnum.Human,
       value: replaceVariable(cqModel.functionPrompt || Prompt_CQJson, {
-        systemPrompt,
-        typeList: agents.map((item) => `{"${item.value}": ${item.key}}`).join('\n'),
-        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
-Human:${userChatInput}`
+        systemPrompt: systemPrompt || 'null',
+        typeList: agents
+          .map((item) => `{"questionType": "${item.value}", "typeId": "${item.key}"}`)
+          .join('\n'),
+        history: histories.map((item) => `${item.obj}:${item.value}`).join('\n'),
+        question: userChatInput
       })
     }
   ];
@@ -194,7 +196,8 @@ Human:${userChatInput}`
   });
   const answer = data.choices?.[0].message?.content || '';
 
-  const id = agents.find((item) => answer.includes(item.key))?.key || '';
+  const id =
+    agents.find((item) => answer.includes(item.key) || answer.includes(item.value))?.key || '';
 
   return {
     inputTokens: data.usage?.prompt_tokens || 0,
