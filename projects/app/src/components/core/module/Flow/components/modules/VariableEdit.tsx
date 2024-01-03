@@ -152,7 +152,7 @@ const VariableEdit = ({
                     <Td>
                       <MyIcon
                         mr={3}
-                        name={'settingLight'}
+                        name={'common/settingLight'}
                         w={'16px'}
                         cursor={'pointer'}
                         onClick={() => {

@@ -27,7 +27,7 @@ const AiSettingRender = ({ inputs = [], moduleId }: RenderInputProps) => {
     <>
       <Button
         variant={'whitePrimary'}
-        leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+        leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
         onClick={onOpenAIChatSetting}
       >
         {t('app.AI Settings')}

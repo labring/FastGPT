@@ -13,19 +13,10 @@ const Tools = () => {
   const router = useRouter();
   const list = [
     {
-      icon: 'dbLight',
+      icon: 'core/dataset/datasetLight',
       label: '我的知识库',
       link: '/dataset/list'
     },
-    ...(feConfigs?.show_appStore
-      ? [
-          {
-            icon: 'appStoreLight',
-            label: 'AI应用市场',
-            link: '/appStore'
-          }
-        ]
-      : []),
     {
       icon: 'common/navbar/pluginLight',
       label: '自定义模块',
@@ -34,7 +25,7 @@ const Tools = () => {
     ...(feConfigs?.show_git
       ? [
           {
-            icon: 'git',
+            icon: 'common/gitLight',
             label: 'GitHub 地址',
             link: 'https://github.com/labring/FastGPT'
           }

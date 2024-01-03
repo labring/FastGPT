@@ -51,7 +51,7 @@ const SideBar = (e?: Props) => {
         onClick={() => setFoldSideBar(!foldSideBar)}
       >
         <MyIcon
-          name={'back'}
+          name={'common/backLight'}
           transform={foldSideBar ? 'rotate(180deg)' : ''}
           w={'14px'}
           color={'white'}

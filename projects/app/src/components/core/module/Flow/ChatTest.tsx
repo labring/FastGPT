@@ -105,7 +105,7 @@ const ChatTest = (
             <IconButton
               className="chat"
               size={'smSquare'}
-              icon={<MyIcon name={'clear'} w={'14px'} />}
+              icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
               variant={'whiteDanger'}
               borderRadius={'md'}
               aria-label={'delete'}

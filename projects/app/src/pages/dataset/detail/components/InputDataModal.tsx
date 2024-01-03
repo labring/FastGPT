@@ -83,7 +83,7 @@ const InputDataModal = ({
   });
 
   const tabList = [
-    { label: t('dataset.data.edit.Content'), id: TabEnum.content, icon: 'overviewLight' },
+    { label: t('dataset.data.edit.Content'), id: TabEnum.content, icon: 'common/overviewLight' },
     {
       label: t('dataset.data.edit.Index', { amount: indexes.length }),
       id: TabEnum.index,

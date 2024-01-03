@@ -629,7 +629,7 @@ const ChatBox = (
                   ))}
                   {!variableIsFinish && (
                     <Button
-                      leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                      leftIcon={<MyIcon name={'core/dataset/chatFill'} w={'16px'} />}
                       size={'sm'}
                       maxW={'100px'}
                       onClick={handleSubmit((data) => {
@@ -1276,7 +1276,7 @@ function ChatController({
           <MyTooltip label={t('core.app.TTS')}>
             <MyIcon
               {...controlIconStyle}
-              name={'voice'}
+              name={'common/voiceLight'}
               _hover={{ color: '#E74694' }}
               onClick={async () => {
                 const response = await playAudio({

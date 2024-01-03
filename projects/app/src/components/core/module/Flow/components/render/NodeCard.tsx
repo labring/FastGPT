@@ -116,7 +116,7 @@ const NodeCard = (props: Props) => {
       },
 
       {
-        icon: 'back',
+        icon: 'common/backLight',
         label: t('common.Back'),
         onClick: () => {}
       }

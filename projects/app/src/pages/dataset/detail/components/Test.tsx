@@ -244,7 +244,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                   }}
                   onClick={onOpen}
                 >
-                  <MyIcon mr={2} name={'csvImport'} w={'24px'} />
+                  <MyIcon mr={2} name={'file/csvImport'} w={'24px'} />
                   <Box>
                     {selectFile ? selectFile.name : t('core.dataset.test.Batch test Placeholder')}
                   </Box>

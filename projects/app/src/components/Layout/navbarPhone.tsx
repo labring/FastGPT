@@ -14,7 +14,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
     () => [
       {
         label: t('navbar.Chat'),
-        icon: 'chat',
+        icon: 'core/chat/chatLight',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
@@ -28,14 +28,14 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       },
       {
         label: t('navbar.Tools'),
-        icon: 'tabbarMore',
+        icon: 'phoneTabbar/tabbarMore',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
       },
       {
         label: t('navbar.Account'),
-        icon: 'tabbarMe',
+        icon: 'phoneTabbar/tabbarMe',
         link: '/account',
         activeLink: ['/account'],
         unread

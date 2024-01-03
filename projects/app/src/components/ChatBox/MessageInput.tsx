@@ -137,7 +137,7 @@ const MessageInput = ({
                   rawFile: file,
                   type: FileTypeEnum.file,
                   name: file.name,
-                  icon: 'pdf'
+                  icon: 'file/pdf'
                 });
               }
             })

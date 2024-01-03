@@ -66,7 +66,7 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
   return (
     <>
       <Flex mb={1} alignItems={'center'}>
-        <MyIcon name={'welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
+        <MyIcon name={'core/modules/welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
         <Box>开场白</Box>
         <MyTooltip label={welcomeTextTip} forceShow>
           <QuestionOutlineIcon display={['none', 'inline']} ml={1} />

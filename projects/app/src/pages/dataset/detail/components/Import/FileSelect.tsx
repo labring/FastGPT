@@ -392,7 +392,7 @@ const FileSelect = ({
       onDrop={handleDrop}
     >
       <Flex justifyContent={'center'} alignItems={'center'}>
-        <MyIcon mr={1} name={'uploadFile'} w={'16px'} />
+        <MyIcon mr={1} name={'file/uploadFile'} w={'16px'} />
         {isDragging ? (
           t('file.Release the mouse to upload the file')
         ) : (

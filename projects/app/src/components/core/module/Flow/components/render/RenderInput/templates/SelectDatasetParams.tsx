@@ -63,7 +63,7 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
     <>
       <Button
         variant={'whitePrimary'}
-        leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+        leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
         onClick={onOpen}
       >
         {t('core.dataset.search.Params Setting')}

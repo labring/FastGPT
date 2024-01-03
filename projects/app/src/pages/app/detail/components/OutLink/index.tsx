@@ -30,7 +30,7 @@ const OutLink = ({ appId }: { appId: string }) => {
               value: OutLinkTypeEnum.share
             },
             {
-              icon: 'apikeyFill',
+              icon: 'support/outlink/apikeyFill',
               title: 'API 访问',
               desc: '通过 API 接入到已有系统中，或企微、飞书等',
               value: OutLinkTypeEnum.apikey

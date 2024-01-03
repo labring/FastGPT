@@ -29,8 +29,8 @@ const Navbar = ({ unread }: { unread: number }) => {
     () => [
       {
         label: t('navbar.Chat'),
-        icon: 'chat',
-        activeIcon: 'chatFill',
+        icon: 'core/chat/chatLight',
+        activeIcon: 'chatcore/dataset/chatFillFill',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat']
       },
@@ -50,26 +50,15 @@ const Navbar = ({ unread }: { unread: number }) => {
       },
       {
         label: t('navbar.Datasets'),
-        icon: 'dbLight',
-        activeIcon: 'dbFill',
+        icon: 'core/dataset/datasetLight',
+        activeIcon: 'core/dataset/datasetFill',
         link: `/dataset/list`,
         activeLink: ['/dataset/list', '/dataset/detail']
       },
-      ...(feConfigs?.show_appStore
-        ? [
-            {
-              label: t('navbar.Store'),
-              icon: 'appStoreLight',
-              activeIcon: 'appStoreFill',
-              link: '/appStore',
-              activeLink: ['/appStore']
-            }
-          ]
-        : []),
       {
         label: t('navbar.Account'),
-        icon: 'meLight',
-        activeIcon: 'meFill',
+        icon: 'support/user/userLight',
+        activeIcon: 'support/user/userFill',
         link: '/account',
         activeLink: ['/account']
       }
@@ -191,7 +180,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             mt={0}
             color={'#9096a5'}
           >
-            <MyIcon name={'git'} width={'22px'} height={'22px'} />
+            <MyIcon name={'common/gitLight'} width={'22px'} height={'22px'} />
           </Link>
         </MyTooltip>
       )}

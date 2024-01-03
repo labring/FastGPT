@@ -88,7 +88,7 @@ const Editor = React.memo(function Editor({
           onClick={onOpenModal}
         >
           <MyTooltip label={t('common.ui.textarea.Magnifying')}>
-            <MyIcon name={'fullScreenLight'} w={'14px'} color={'myGray.600'} />
+            <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
           </MyTooltip>
         </Box>
       )}

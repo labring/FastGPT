@@ -386,7 +386,7 @@ const CollectionCard = () => {
                       color={'white'}
                       h={['28px', '35px']}
                     >
-                      <MyIcon name={'importLight'} mr={2} w={'14px'} />
+                      <MyIcon name={'common/importLight'} mr={2} w={'14px'} />
                       <Box>{t('dataset.collections.Create And Import')}</Box>
                     </Flex>
                   </MenuButton>

@@ -84,7 +84,7 @@ const NodePluginOutput = React.memo(function NodePluginOutput({
               </MyTooltip>
             )}
             <MyIcon
-              name={'settingLight'}
+              name={'common/settingLight'}
               w={'14px'}
               cursor={'pointer'}
               ml={3}

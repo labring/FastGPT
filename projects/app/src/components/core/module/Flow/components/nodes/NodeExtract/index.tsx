@@ -70,7 +70,7 @@ const NodeExtract = React.memo(function NodeExtract({ data }: { data: FlowModule
                           <Td whiteSpace={'nowrap'}>
                             <MyIcon
                               mr={3}
-                              name={'settingLight'}
+                              name={'common/settingLight'}
                               w={'16px'}
                               cursor={'pointer'}
                               onClick={() => {

@@ -14,7 +14,7 @@ const CloseIcon = (props: FlexProps) => {
       _hover={{ bg: 'myGray.200' }}
       {...props}
     >
-      <MyIcon name={'closeLight'} w={'12px'} color={'myGray.500'} />
+      <MyIcon name={'common/closeLight'} w={'12px'} color={'myGray.500'} />
     </Flex>
   );
 };

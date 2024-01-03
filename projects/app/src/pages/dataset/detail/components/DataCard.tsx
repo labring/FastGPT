@@ -167,7 +167,7 @@ const DataCard = () => {
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'primary.500'} />}
+          icon={<MyIcon name={'common/backFill'} w={['14px', '18px']} color={'primary.500'} />}
           variant={'whitePrimary'}
           size={'smSquare'}
           borderRadius={'50%'}

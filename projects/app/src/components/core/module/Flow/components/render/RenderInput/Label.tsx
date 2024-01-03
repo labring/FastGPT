@@ -68,7 +68,7 @@ const InputLabel = ({ moduleId, inputKey, mode, ...item }: Props) => {
       {edit && (
         <>
           <MyIcon
-            name={'settingLight'}
+            name={'common/settingLight'}
             w={'14px'}
             cursor={'pointer'}
             ml={3}

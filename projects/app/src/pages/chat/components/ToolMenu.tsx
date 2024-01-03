@@ -12,7 +12,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const menuList = useMemo(
     () => [
       {
-        icon: 'chat',
+        icon: 'core/chat/chatLight',
         label: '新对话',
         onClick: () => {
           router.replace({
@@ -24,12 +24,12 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         }
       },
       {
-        icon: 'apiLight',
+        icon: 'core/app/appApiLight',
         label: 'HTML导出',
         onClick: () => onExportChat({ type: 'html', history })
       },
       {
-        icon: 'markdown',
+        icon: 'file/markdown',
         label: 'Markdown导出',
         onClick: () => onExportChat({ type: 'md', history })
       },

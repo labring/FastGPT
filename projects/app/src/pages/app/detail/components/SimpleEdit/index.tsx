@@ -269,7 +269,7 @@ function ConfigForm({
                 selectSimpleTemplate.systemForm.aiSettings.quoteTemplate ||
                 selectSimpleTemplate.systemForm.aiSettings.quotePrompt) && (
                 <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
-                  <MyIcon mr={1} name={'settingLight'} w={'14px'} />
+                  <MyIcon mr={1} name={'common/settingLight'} w={'14px'} />
                   {t('app.Open AI Advanced Settings')}
                 </Flex>
               )}
@@ -638,7 +638,7 @@ function Settings({ appId }: { appId: string }) {
             <Button
               size={['sm', 'md']}
               variant={'whitePrimary'}
-              leftIcon={<MyIcon name={'chat'} w={'16px'} />}
+              leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
               onClick={() => router.push(`/chat?appId=${appId}`)}
             >
               对话
@@ -647,7 +647,7 @@ function Settings({ appId }: { appId: string }) {
               mx={3}
               size={['sm', 'md']}
               variant={'whitePrimary'}
-              leftIcon={<MyIcon name={'shareLight'} w={'16px'} />}
+              leftIcon={<MyIcon name={'support/outlink/shareLight'} w={'16px'} />}
               onClick={() => {
                 router.replace({
                   query: {
@@ -663,7 +663,7 @@ function Settings({ appId }: { appId: string }) {
               <Button
                 size={['sm', 'md']}
                 variant={'whitePrimary'}
-                leftIcon={<MyIcon name={'settingLight'} w={'16px'} />}
+                leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
                 onClick={() => setSettingAppInfo(appDetail)}
               >
                 设置
@@ -754,7 +754,7 @@ function ChatTest({ appId }: { appId: string }) {
           <IconButton
             className="chat"
             size={'smSquare'}
-            icon={<MyIcon name={'clear'} w={'14px'} />}
+            icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
             variant={'whiteDanger'}
             borderRadius={'md'}
             aria-label={'delete'}
