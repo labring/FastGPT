@@ -296,6 +296,7 @@
       "Select Image": "Select Image",
       "Send Message": "Send Message",
       "Speaking": "I'm listening...",
+      "Start Chat": "Start Chat",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "error": {
@@ -379,6 +380,7 @@
       "Name": "Name",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
+      "Search score tip": "{{scoreText}}Here are the rankings and scores:\n----\n{{detailScore}}",
       "Set Empty Result Tip": ",Response empty text",
       "Set Website Config": "Configuring Website",
       "Similarity": "Similarity",
@@ -435,6 +437,7 @@
         "Too Long": "Content is too long",
         "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
+        "get data error": "Get data error",
         "id": "Data ID"
       },
       "error": {
@@ -482,6 +485,7 @@
       "link": "Link",
       "search": {
         "Dataset Search Params": "Dataset Search Params",
+        "Embedding score": "Embedding score",
         "Empty result response": "Empty Response",
         "Empty result response Tips": "If you fill in the content, if no suitable content is found, you will directly reply to the content.",
         "Max Tokens": "Max Tokens",
@@ -489,8 +493,14 @@
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
         "Params Setting": "Params Setting",
+        "Rank": "Rank",
+        "Rank Tip": "Ranking in all data",
         "ReRank": "ReRank",
         "ReRank desc": "The rearrangement model is used for secondary ranking to enhance the overall ranking.",
+        "Read score": "Read score",
+        "Rerank score": "ReRank score",
+        "Score": "Score",
+        "Search type": "Type",
         "Top K": "Top K",
         "mode": {
           "embedding": "Vector search",
@@ -500,6 +510,12 @@
           "mixedRecall": "Mixedrecall",
           "mixedRecall desc": "Returns the combined results of vector and full-text searches, sorted using the RRF algorithm."
         },
+        "score": {
+          "embedding": "Embedding",
+          "fullText": "Full text",
+          "reRank": "ReRank",
+          "rrf": "RRF Merge"
+        },
         "search mode": "Search Mode"
       },
       "status": {
@@ -507,11 +523,15 @@
         "syncing": "Syncing"
       },
       "test": {
+        "Batch test": "Batch test",
+        "Batch test Placeholder": "Select one csv file",
         "Search Test": "Search Test",
         "Test": "Start",
+        "Test File": "",
         "Test Result": "Results",
         "Test Text": "Text",
         "Test Text Placeholder": "Enter the text you want to test",
+        "Test params": "Search Params",
         "delete test history": "Delete the test result",
         "test history": "Test History",
         "test result placeholder": "The test results will be presented here",

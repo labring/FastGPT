@@ -15,6 +15,7 @@ import {
   Input_Template_Switch,
   Input_Template_UserChatInput
 } from '../input';
+import { Output_Template_UserChatInput } from '../output';
 
 export const AiCFR: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
@@ -50,6 +51,7 @@ export const AiCFR: FlowModuleTemplateType = {
     Input_Template_UserChatInput
   ],
   outputs: [
+    Output_Template_UserChatInput,
     {
       key: ModuleOutputKeyEnum.text,
       label: 'core.module.output.label.cfr result',

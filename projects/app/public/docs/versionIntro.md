@@ -1,4 +1,4 @@
-### Fast GPT V4.6.5
+### Fast GPT V4.6.6
 
 1. 新增 - [问题补全模块](https://doc.fastgpt.in/docs/workflow/modules/coreferenceresolution/)
 2. 新增 - [文本编辑模块](https://doc.fastgpt.in/docs/workflow/modules/text_editor/)

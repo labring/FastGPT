@@ -156,7 +156,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               borderRight={theme.borders.base}
             >
               <Flex mb={4} alignItems={'center'}>
-                <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'lg'} />
+                <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'md'} />
                 <Box ml={2}>
                   <Box fontWeight={'bold'}>{datasetDetail.name}</Box>
                 </Box>

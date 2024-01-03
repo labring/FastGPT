@@ -275,25 +275,20 @@ export async function searchDatasetData(props: {
     const oneChunkToken = 50;
     const estimatedLen = Math.max(20, Math.ceil(maxTokens / oneChunkToken));
 
-    // Increase search range, reduce hnsw loss. 20 ~ 100
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return {
-        embeddingLimit: Math.min(estimatedLen, 100),
+        embeddingLimit: Math.min(estimatedLen, 80),
         fullTextLimit: 0
       };
     }
-    // 50 < 2*limit < value < 100
     if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
       return {
         embeddingLimit: 0,
         fullTextLimit: Math.min(estimatedLen, 50)
       };
     }
-    // mixed
-    // 50 < 2*limit < embedding < 80
-    // 20 < limit < fullTextLimit < 40
     return {
-      embeddingLimit: Math.min(estimatedLen, 80),
+      embeddingLimit: Math.min(estimatedLen, 60),
       fullTextLimit: Math.min(estimatedLen, 40)
     };
   };
@@ -340,7 +335,6 @@ export async function searchDatasetData(props: {
           q: data.q,
           a: data.a,
           chunkIndex: data.chunkIndex,
-          indexes: data.indexes,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
           sourceName: collection.name || '',
@@ -389,7 +383,6 @@ export async function searchDatasetData(props: {
               collectionId: 1,
               q: 1,
               a: 1,
-              indexes: 1,
               chunkIndex: 1
             }
           )
@@ -464,6 +457,7 @@ export async function searchDatasetData(props: {
 
       return mergeResult;
     } catch (error) {
+      usingReRank = false;
       return [];
     }
   };
@@ -553,6 +547,11 @@ export async function searchDatasetData(props: {
   const rrfConcat = (
     arr: { k: number; list: SearchDataResponseItemType[] }[]
   ): SearchDataResponseItemType[] => {
+    arr = arr.filter((item) => item.list.length > 0);
+
+    if (arr.length === 0) return [];
+    if (arr.length === 1) return arr[0].list;
+
     const map = new Map<string, SearchDataResponseItemType & { rrfScore: number }>();
 
     // rrf
@@ -643,7 +642,7 @@ export async function searchDatasetData(props: {
   // embedding recall and fullText recall rrf concat
   const rrfConcatResults = rrfConcat([
     { k: 60, list: embeddingRecallResults },
-    { k: 60, list: fullTextRecallResults },
+    { k: 64, list: fullTextRecallResults },
     { k: 60, list: reRankResults }
   ]);
 
@@ -685,6 +684,10 @@ export async function searchDatasetData(props: {
   return {
     searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
     tokens,
+    searchMode,
+    limit: maxTokens,
+    similarity,
+    usingReRank,
     usingSimilarityFilter
   };
 }

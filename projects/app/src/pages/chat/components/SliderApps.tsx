@@ -46,7 +46,7 @@ const SliderApps = ({ appId }: { appId: string }) => {
             px={3}
             mb={3}
             cursor={'pointer'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             alignItems={'center'}
             {...(item._id === appId
               ? {
