@@ -211,7 +211,7 @@ const Kb = () => {
             borderWidth={1.5}
             borderColor={dragTargetId === dataset._id ? 'primary.600' : 'borderColor.low'}
             bg={'white'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             minH={'130px'}
             position={'relative'}
             data-drag-id={dataset.type === DatasetTypeEnum.folder ? dataset._id : undefined}
@@ -390,7 +390,7 @@ const Kb = () => {
               />
             )}
             <Flex alignItems={'center'} h={'38px'}>
-              <Avatar src={dataset.avatar} borderRadius={'lg'} w={'28px'} />
+              <Avatar src={dataset.avatar} borderRadius={'md'} w={'28px'} />
               <Box mx={3} className="textEllipsis3">
                 {dataset.name}
               </Box>

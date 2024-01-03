@@ -99,7 +99,7 @@ const MyApps = () => {
               borderWidth={'1.5px'}
               borderColor={'borderColor.low'}
               bg={'white'}
-              borderRadius={'lg'}
+              borderRadius={'md'}
               userSelect={'none'}
               position={'relative'}
               display={'flex'}

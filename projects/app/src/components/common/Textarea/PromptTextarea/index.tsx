@@ -77,7 +77,7 @@ const Editor = React.memo(function Editor({
 
   return (
     <Box h={'100%'} w={'100%'} position={'relative'}>
-      <Textarea ref={textareaRef} textAlign={'justify'} maxW={'100%'} {...props} />
+      <Textarea ref={textareaRef} maxW={'100%'} {...props} />
       {onOpenModal && (
         <Box
           zIndex={1}

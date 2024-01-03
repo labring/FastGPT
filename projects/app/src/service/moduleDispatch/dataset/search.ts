@@ -52,7 +52,12 @@ export async function dispatchDatasetSearch(
   const concatQueries = [userChatInput];
 
   // start search
-  const { searchRes, tokens, usingSimilarityFilter } = await searchDatasetData({
+  const {
+    searchRes,
+    tokens,
+    usingSimilarityFilter,
+    usingReRank: searchUsingReRank
+  } = await searchDatasetData({
     rawQuery: userChatInput,
     queries: concatQueries,
     model: vectorModel.model,
@@ -81,7 +86,7 @@ export async function dispatchDatasetSearch(
       similarity: usingSimilarityFilter ? similarity : undefined,
       limit,
       searchMode,
-      searchUsingReRank: usingReRank
+      searchUsingReRank: searchUsingReRank
     }
   };
 }

@@ -296,6 +296,7 @@
       "Select Image": "选择图片",
       "Send Message": "发送",
       "Speaking": "我在听，请说...",
+      "Start Chat": "开始对话",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
       "error": {
@@ -379,6 +380,7 @@
       "Name": "知识库名称",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
+      "Search score tip": "{{scoreText}}下面是详细排名和得分情况:\n----\n{{detailScore}}",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Set Website Config": "开始配置网站信息",
       "Similarity": "相关度",
@@ -435,6 +437,7 @@
         "Too Long": "总长度超长了",
         "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
+        "get data error": "获取数据异常",
         "id": "数据ID"
       },
       "error": {
@@ -482,6 +485,7 @@
       "link": "链接",
       "search": {
         "Dataset Search Params": "搜索参数",
+        "Embedding score": "语意检索得分",
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
         "Max Tokens": "引用上限",
@@ -489,8 +493,14 @@
         "Min Similarity": "最低相关度",
         "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
         "Params Setting": "搜索参数设置",
+        "Rank": "排名",
+        "Rank Tip": "在所有数据中的排名",
         "ReRank": "结果重排",
         "ReRank desc": "使用重排模型来进行二次排序，可增强综合排名。",
+        "Read score": "查看得分",
+        "Rerank score": "结果重排得分",
+        "Score": "得分",
+        "Search type": "类型",
         "Top K": "单次搜索上限",
         "mode": {
           "embedding": "语义检索",
@@ -500,6 +510,12 @@
           "mixedRecall": "混合检索",
           "mixedRecall desc": "使用向量检索与全文检索的综合结果返回，使用RRF算法进行排序。"
         },
+        "score": {
+          "embedding": "语义检索",
+          "fullText": "全文检索",
+          "reRank": "结果重排",
+          "rrf": "RRF 合并"
+        },
         "search mode": "搜索模式"
       },
       "status": {
@@ -507,11 +523,15 @@
         "syncing": "同步中"
       },
       "test": {
+        "Batch test": "批量测试",
+        "Batch test Placeholder": "选择一个 Csv 文件",
         "Search Test": "搜索测试",
         "Test": "测试",
+        "Test File": "批量测试",
         "Test Result": "测试结果",
-        "Test Text": "测试文本",
+        "Test Text": "单个文本测试",
         "Test Text Placeholder": "输入需要测试的文本",
+        "Test params": "测试参数",
         "delete test history": "删除该测试结果",
         "test history": "测试历史",
         "test result placeholder": "测试结果将在这里展示",
@@ -847,7 +867,7 @@
     "Response Detail": "返回详情",
     "Response Detail tips": "是否需要返回详情（引用内容，调用时间等，不会返回预设提示词和完整上下文）",
     "token auth": "身份验证",
-    "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会想指定服务器发送一个请求，进行身份校验",
+    "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
     "token auth use cases": "查看身份验证使用说明"
   },
   "permission": {

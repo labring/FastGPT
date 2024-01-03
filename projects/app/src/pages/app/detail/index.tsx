@@ -108,7 +108,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             borderRight={theme.borders.base}
           >
             <Flex mb={4} alignItems={'center'}>
-              <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'lg'} />
+              <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'md'} />
               <Box ml={2} fontWeight={'bold'}>
                 {appDetail.name}
               </Box>

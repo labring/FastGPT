@@ -597,7 +597,7 @@ function Settings({ appId }: { appId: string }) {
         <Box
           borderWidth={'1px'}
           borderColor={'primary.1'}
-          borderRadius={'lg'}
+          borderRadius={'md'}
           mt={2}
           px={5}
           py={4}
