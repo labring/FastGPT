@@ -10,6 +10,7 @@ import {
   Input_Template_Switch,
   Input_Template_UserChatInput
 } from '../input';
+import { Output_Template_UserChatInput } from '../output';
 
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
@@ -72,6 +73,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     }
   ],
   outputs: [
+    Output_Template_UserChatInput,
     // custom output
     {
       key: 'wqre',

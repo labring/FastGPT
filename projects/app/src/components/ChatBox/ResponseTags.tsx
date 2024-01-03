@@ -98,7 +98,6 @@ const ResponseTags = ({
               <MyTooltip key={item.sourceName} label={t('core.chat.quote.Read Quote')}>
                 <Flex
                   alignItems={'center'}
-                  flexWrap={'wrap'}
                   fontSize={'sm'}
                   border={theme.borders.sm}
                   py={1}
@@ -113,12 +112,6 @@ const ResponseTags = ({
                   position={'relative'}
                   cursor={'pointer'}
                   onClick={(e) => {
-                    console.log({
-                      collectionId: item.collectionId,
-                      sourceId: item.sourceId,
-                      sourceName: item.sourceName
-                    });
-
                     e.stopPropagation();
                     setQuoteModalData({
                       rawSearch: quoteList,
@@ -130,8 +123,8 @@ const ResponseTags = ({
                     });
                   }}
                 >
-                  <Image src={item.icon} alt={''} mr={1} w={'12px'} />
-                  <Box className="textEllipsis" flex={'1 0 0'}>
+                  <Image src={item.icon} alt={''} mr={1} flexShrink={0} w={'12px'} />
+                  <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
                     {item.sourceName}
                   </Box>
                 </Flex>
