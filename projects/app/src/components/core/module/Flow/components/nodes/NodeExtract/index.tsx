@@ -10,7 +10,7 @@ import RenderInput from '../../render/RenderInput';
 import Divider from '../../modules/Divider';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import RenderOutput from '../../render/RenderOutput';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -70,7 +70,7 @@ const NodeExtract = React.memo(function NodeExtract({ data }: { data: FlowModule
                           <Td whiteSpace={'nowrap'}>
                             <MyIcon
                               mr={3}
-                              name={'settingLight'}
+                              name={'common/settingLight'}
                               w={'16px'}
                               cursor={'pointer'}
                               onClick={() => {

@@ -4,8 +4,7 @@ import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
-import MyIcon from '../Icon';
-import styles from './index.module.scss';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -137,7 +136,7 @@ const MessageInput = ({
                   rawFile: file,
                   type: FileTypeEnum.file,
                   name: file.name,
-                  icon: 'pdf'
+                  icon: 'file/pdf'
                 });
               }
             })

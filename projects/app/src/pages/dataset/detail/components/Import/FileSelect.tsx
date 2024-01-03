@@ -1,4 +1,4 @@
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -392,7 +392,7 @@ const FileSelect = ({
       onDrop={handleDrop}
     >
       <Flex justifyContent={'center'} alignItems={'center'}>
-        <MyIcon mr={1} name={'uploadFile'} w={'16px'} />
+        <MyIcon mr={1} name={'file/uploadFile'} w={'16px'} />
         {isDragging ? (
           t('file.Release the mouse to upload the file')
         ) : (

@@ -9,7 +9,7 @@ import {
 } from '@/web/core/dataset/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -26,7 +26,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant'
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import SideTabs from '@/components/SideTabs';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import DeleteIcon from '@/components/Icon/delete';
+import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/constants/dataset';
 import { getDocPath } from '@/web/common/system/doc';
 
@@ -83,7 +83,7 @@ const InputDataModal = ({
   });
 
   const tabList = [
-    { label: t('dataset.data.edit.Content'), id: TabEnum.content, icon: 'overviewLight' },
+    { label: t('dataset.data.edit.Content'), id: TabEnum.content, icon: 'common/overviewLight' },
     {
       label: t('dataset.data.edit.Index', { amount: indexes.length }),
       id: TabEnum.index,

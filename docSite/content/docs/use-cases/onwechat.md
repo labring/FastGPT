@@ -21,7 +21,7 @@ weight: 504
 密钥需要自己保管好，一旦关闭就无法再复制密钥，只能创建新密钥再复制。
 {{% /alert %}}
 
-![](/imgs/fastgpt-api.png)
+![](/imgs/fastgpt-api.jpg)
 
 
 ## 3. 创建 docker-compose.yml 文件

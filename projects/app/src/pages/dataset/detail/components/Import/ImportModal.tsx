@@ -98,19 +98,19 @@ const ImportData = ({
             gridTemplateColumns={['repeat(1,1fr)', 'repeat(3,1fr)']}
             list={[
               {
-                icon: 'indexImport',
+                icon: 'file/indexImport',
                 title: t('core.dataset.import.Chunk Split'),
                 desc: t('core.dataset.import.Chunk Split Tip'),
                 value: ImportTypeEnum.chunk
               },
               {
-                icon: 'qaImport',
+                icon: 'file/qaImport',
                 title: t('core.dataset.import.QA Import'),
                 desc: t('core.dataset.import.QA Import Tip'),
                 value: ImportTypeEnum.qa
               },
               {
-                icon: 'csvImport',
+                icon: 'file/csv',
                 title: t('core.dataset.import.CSV Import'),
                 desc: t('core.dataset.import.CSV Import Tip'),
                 value: ImportTypeEnum.csv

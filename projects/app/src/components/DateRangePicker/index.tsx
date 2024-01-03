@@ -2,7 +2,7 @@ import React, { useState, useMemo, useRef } from 'react';
 import { Box, Card, Flex, useTheme, useOutsideClick, Button } from '@chakra-ui/react';
 import { addDays, format } from 'date-fns';
 import { type DateRange, DayPicker } from 'react-day-picker';
-import MyIcon from '../Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import 'react-day-picker/dist/style.css';
 import zhCN from 'date-fns/locale/zh-CN';
 

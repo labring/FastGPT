@@ -27,7 +27,7 @@ import {
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
@@ -93,10 +93,10 @@ const VariableEdit = ({
   const BoxBtnStyles: BoxProps = {
     cursor: 'pointer',
     px: 3,
-    py: '2px',
+    py: 1,
     borderRadius: 'md',
     _hover: {
-      bg: 'myGray.200'
+      bg: 'myGray.150'
     }
   };
 
@@ -119,12 +119,14 @@ const VariableEdit = ({
         </Box>
         <Flex
           {...BoxBtnStyles}
+          alignItems={'center'}
           onClick={() => {
             resetEdit({ variable: addVariable() });
             onOpenEdit();
           }}
         >
-          +&ensp;{t('common.Add New')}
+          <SmallAddIcon />
+          {t('common.Add New')}
         </Flex>
       </Flex>
       {formatVariables.length > 0 && (
@@ -152,7 +154,7 @@ const VariableEdit = ({
                     <Td>
                       <MyIcon
                         mr={3}
-                        name={'settingLight'}
+                        name={'common/settingLight'}
                         w={'16px'}
                         cursor={'pointer'}
                         onClick={() => {

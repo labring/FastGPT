@@ -15,7 +15,7 @@ weight: 505
 密钥需要自己保管好，一旦关闭就无法再复制密钥，只能创建新密钥再复制。
 {{% /alert %}}
 
-![](/imgs/fastgpt-api.png)
+![](/imgs/fastgpt-api.jpg)
 
 {{% alert icon="🍅" context="success" %}}
 Tips: 安全起见，你可以设置一个额度或者过期时间，放置 key 被滥用。

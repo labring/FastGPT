@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Flex, Button, Card } from '@chakra-ui/react';
 import type { ShareAppItem } from '@/types/app';
 import { useRouter } from 'next/router';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 

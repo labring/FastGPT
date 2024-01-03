@@ -5,7 +5,7 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import MyTooltip from '@/components/MyTooltip';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const QuestionGuide = ({ text }: { text: string }) => {
   const theme = useTheme();

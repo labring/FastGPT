@@ -59,14 +59,17 @@ FastGPT 商业版共包含了3个应用（fastgpt, fastgpt-plus, fastgpt-admin�
 例如，目前是4.5 版本，要升级到4.5.1，就先把镜像版本改成v4.5.1，执行一下升级脚本，等待完成后再继续升级。如果目标版本不需要执行初始化，则可以跳过。
 
 升级步骤：
-1. 打开sealos的应用管理
-2. 有3个应用 fastgpt ， fastgpt-plugin 和 fastgpt-admin
-3. 点击对应应用右边3个点，变更。或者点详情后右上角的变更。
-4. 修改镜像名栏
+
+1. 查看[更新文档](/docs/development/upgrading/intro/)，确认要升级的版本，避免跨版本升级。
+2. 打开 sealos 的应用管理
+3. 有2个应用 fastgpt ， fastgpt-pro
+4. 点击对应应用右边3个点，变更。或者点详情后右上角的变更。
+5. 修改镜像的版本号
+
 ![](/imgs/onsealos2.png)
 
-5. 点击变更/重启，会自动拉取最新镜像进行更新
-6. 执行对应版本的初始化脚本
+6. 点击变更/重启，会自动拉取最新镜像进行更新
+7. 执行对应版本的初始化脚本(如果有)
 
 ### 如何获取 FastGPT 访问链接
 
@@ -88,34 +91,6 @@ FastGPT 商业版共包含了3个应用（fastgpt, fastgpt-plus, fastgpt-admin�
 
 [配置文件参考](https://doc.fastgpt.in/docs/development/configuration/)
 
-FeConfig 参考下面（目前未做可视化）
-```
-"FeConfig": {
-    "show_emptyChat": false, // 是否展示聊天时空白的内容
-    "show_register": true, // 展示注册按键
-    "show_appStore": false, // 应用市场（暂时不可用）
-    "show_contact": false, // 联系方式（目前不可配置，直接false）
-    "show_git": false, // 展示 github
-    "show_doc": false, // 展示文档
-    "show_pay": true, // 展示支付
-    "show_openai_account": false,  // 用户可自定义 openai key
-    "show_promotion": false, // 邀请好友机制
-    "docUrl": "https://doc.fastgpt.in", // 文档基本地址
-    "systemTitle": "FastGPT", // 系统的 title
-    "googleClientVerKey": "", // 谷歌 v3 校验前端凭证
-    "isPlus": true, // 直接设置 true    
-    "oauth": { // oauth登录
-      "github": "",
-      "google": ""
-    },
-    "limit": {
-      "exportLimitMinutes": 0 // 导出间隔限制
-    },
-    "scripts": [
-    ]
-  }
-```
-
 ### 修改站点名称以及 favicon
 修改应用的环境变量，增加
 
@@ -134,6 +109,7 @@ SYSTEM_FAVICON 可以是一个网络地址
 新增一个挂载文件，文件名为：/app/projects/app/public/icon/logo.svg ，值为 svg 对应的值。
 
 ![](/imgs/onsealos7.png)
+
 ![](/imgs/onsealos8.png)
 
 ### 管理后台
@@ -148,45 +124,8 @@ SYSTEM_FAVICON 可以是一个网络地址
   "license": "",
   "system": {
     "title": "" // 系统名称
-  },
-  "censor": {
-    "BAIDU_TEXT_CENSOR_CLIENTID": "", // 百度文本安全校验
-    "BAIDU_TEXT_CENSOR_CLIENTSECRET": "" // 百度文本安全校验
-  },
-  "auth": {
-    "googleServiceVerKey": "", // 谷歌 v3 校验
-    "github": { // github oauth
-      "clientId": "",
-      "secret": ""
-    },
-    "google": { // google oauth
-      "clientId": "",
-      "secret": ""
-    },
-    "email": { // 注册邮箱配置
-      "service": "qq",
-      "user": "",
-      "pass": ""
-    },
-    "phone": { // 阿里短信配置
-      "SNED_PHONE_ACCESSKEYID": "",
-      "SNED_PHONE_ACCESSSECRET": "",
-      "SNED_PHONE_SIGNNAME": "",
-      "SNED_PHONE_TEMPLATE": ""
-    }
-  },
-  "pay": { // 微信支付配置
-    "wx": {
-      "WX_APPID": "",
-      "WX_MCHID": "",
-      "WX_V3_CODE": "",
-      "WX_NOTIFY_URL": "",
-      "WX_SERIAL_NO": "",
-      "WX_PRIVATE_KEY": ""
-    }
   }
 }
-
 ```
 
 ### One API 使用
