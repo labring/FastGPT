@@ -128,7 +128,7 @@ const VariableEdit = ({
         </Flex>
       </Flex>
       {formatVariables.length > 0 && (
-        <Box mt={2} borderRadius={'lg'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
+        <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
           <TableContainer>
             <Table bg={'white'}>
               <Thead>
@@ -266,7 +266,7 @@ const VariableEdit = ({
                         w={'16px'}
                         cursor={'pointer'}
                         p={2}
-                        borderRadius={'lg'}
+                        borderRadius={'md'}
                         _hover={{ bg: 'red.100' }}
                         onClick={() => removeEnums(i)}
                       />

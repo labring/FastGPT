@@ -128,7 +128,7 @@ const Logs = ({ appId }: { appId: string }) => {
                       py={1}
                       alignItems={'center'}
                       justifyContent={'center'}
-                      borderRadius={'lg'}
+                      borderRadius={'md'}
                       fontWeight={'bold'}
                     >
                       <MyIcon
@@ -148,7 +148,7 @@ const Logs = ({ appId }: { appId: string }) => {
                       py={1}
                       alignItems={'center'}
                       justifyContent={'center'}
-                      borderRadius={'lg'}
+                      borderRadius={'md'}
                       fontWeight={'bold'}
                     >
                       <MyIcon

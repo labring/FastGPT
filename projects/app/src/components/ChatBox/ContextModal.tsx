@@ -32,7 +32,7 @@ const ContextModal = ({
           <Box
             key={i}
             p={2}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             border={theme.borders.base}
             _notLast={{ mb: 2 }}
             position={'relative'}

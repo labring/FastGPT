@@ -170,7 +170,7 @@ const ChatHistorySlider = ({
             variant={'whiteDanger'}
             size={'mdSquare'}
             aria-label={''}
-            borderRadius={'xl'}
+            borderRadius={'50%'}
             onClick={openConfirm(onClearHistory)}
           >
             <MyIcon name={'clear'} w={'16px'} />
@@ -191,7 +191,7 @@ const ChatHistorySlider = ({
                 px={4}
                 cursor={'pointer'}
                 userSelect={'none'}
-                borderRadius={'lg'}
+                borderRadius={'md'}
                 mb={2}
                 _hover={{
                   bg: 'myGray.100',
@@ -287,7 +287,7 @@ const ChatHistorySlider = ({
                 py={2}
                 px={3}
                 mb={3}
-                borderRadius={'lg'}
+                borderRadius={'md'}
                 alignItems={'center'}
                 {...(item._id === appId
                   ? {

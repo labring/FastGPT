@@ -162,7 +162,10 @@ export type DatasetFileSchema = {
 };
 
 /* ============= search =============== */
-export type SearchDataResponseItemType = Omit<DatasetDataItemType, 'isOwner' | 'canWrite'> & {
+export type SearchDataResponseItemType = Omit<
+  DatasetDataItemType,
+  'indexes' | 'isOwner' | 'canWrite'
+> & {
   score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
   // score: number;
 };

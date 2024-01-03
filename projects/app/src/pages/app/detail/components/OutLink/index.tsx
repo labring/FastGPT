@@ -20,7 +20,7 @@ const OutLink = ({ appId }: { appId: string }) => {
       </Box>
       <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
         <MyRadio
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 360px))']}
+          gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 400px))']}
           iconSize={'20px'}
           list={[
             {

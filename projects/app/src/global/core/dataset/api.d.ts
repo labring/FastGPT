@@ -59,8 +59,13 @@ export type SearchTestProps = {
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
   usingReRank: boolean;
+  similarity?: number;
 };
 export type SearchTestResponse = {
   list: SearchDataResponseItemType[];
   duration: string;
+  limit: number;
+  searchMode: `${DatasetSearchModeEnum}`;
+  usingReRank: boolean;
+  similarity: number;
 };

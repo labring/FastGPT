@@ -12,6 +12,9 @@ export type SearchTestStoreItemType = {
   duration: string;
   results: SearchDataResponseItemType[];
   searchMode: `${DatasetSearchModeEnum}`;
+  limit: number;
+  usingReRank: boolean;
+  similarity: number;
 };
 
 type State = {

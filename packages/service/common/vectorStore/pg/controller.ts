@@ -24,10 +24,9 @@ export async function initPg() {
       );
     `);
 
-    await PgClient.query(`
-    CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName}
-      USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);
-    `);
+    await PgClient.query(
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);`
+    );
 
     console.log('init pg successful');
   } catch (error) {

@@ -18,7 +18,8 @@ export function reRankRecall({ query, inputs }: PostReRankProps) {
     {
       headers: {
         Authorization: `Bearer ${model.requestAuth}`
-      }
+      },
+      timeout: 120000
     }
   )
     .then((data) => {

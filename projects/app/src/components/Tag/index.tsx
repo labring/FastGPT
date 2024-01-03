@@ -39,7 +39,7 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
       px={2}
       lineHeight={1}
       py={1}
-      borderRadius={'md'}
+      borderRadius={'sm'}
       fontSize={'xs'}
       alignItems={'center'}
       {...theme}
