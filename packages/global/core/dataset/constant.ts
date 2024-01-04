@@ -73,6 +73,19 @@ export const DatasetCollectionTrainingTypeMap = {
   }
 };
 
+export enum DatasetCollectionSyncResultEnum {
+  sameRaw = 'sameRaw',
+  success = 'success'
+}
+export const DatasetCollectionSyncResultMap = {
+  [DatasetCollectionSyncResultEnum.sameRaw]: {
+    label: 'core.dataset.collection.sync.result.sameRaw'
+  },
+  [DatasetCollectionSyncResultEnum.success]: {
+    label: 'core.dataset.collection.sync.result.success'
+  }
+};
+
 /* ------------ data -------------- */
 export enum DatasetDataIndexTypeEnum {
   chunk = 'chunk',

@@ -25,7 +25,10 @@ import type {
 } from '@/global/core/dataset/api.d';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionSyncResultEnum,
+  DatasetTypeEnum
+} from '@fastgpt/global/core/dataset/constant';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
@@ -77,7 +80,9 @@ export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
 export const delDatasetCollectionById = (params: { collectionId: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
 export const postLinkCollectionSync = (collectionId: string) =>
-  POST(`/core/dataset/collection/sync/link`, { collectionId });
+  POST<`${DatasetCollectionSyncResultEnum}`>(`/core/dataset/collection/sync/link`, {
+    collectionId
+  });
 
 /* =============================== data ==================================== */
 /* get dataset list */

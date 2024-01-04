@@ -421,6 +421,12 @@
           "active": "已就绪",
           "syncing": "同步中"
         },
+        "sync": {
+          "result": {
+            "sameRaw": "内容未变动，无需更新",
+            "success": "开始同步"
+          }
+        },
         "training": {
           "type chunk": "直接分段",
           "type manual": "手动",
