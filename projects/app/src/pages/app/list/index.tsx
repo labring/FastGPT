@@ -73,8 +73,11 @@ const MyApps = () => {
   return (
     <PageContainer isLoading={isFetching} insertProps={{ px: [5, '48px'] }}>
       <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
-        <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
-          {t('app.My Apps')}
+        <Box display="flex" alignItems="center">
+          <Image src={'/imgs/module/ai.svg'} alt={''} mr={2} h={'24px'} />
+          <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
+            {t('app.My Apps')}
+          </Box>
         </Box>
         <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
           {t('common.New Create')}
