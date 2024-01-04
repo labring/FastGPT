@@ -72,7 +72,14 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, ...props }: Props) 
         </Box>
       )}
 
-      <Box borderWidth={'1px'} borderRadius={'base'} borderColor={'myGray.200'} py={2} {...props}>
+      <Box
+        borderWidth={'1px'}
+        borderRadius={'base'}
+        borderColor={'myGray.200'}
+        py={2}
+        {...props}
+        height={'auto'}
+      >
         <Editor
           height={height}
           defaultLanguage="json"
