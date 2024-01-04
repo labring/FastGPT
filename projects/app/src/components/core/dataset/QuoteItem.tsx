@@ -54,6 +54,13 @@ const QuoteItem = ({
   }, [quoteItem.score]);
 
   const score = useMemo(() => {
+    if (!Array.isArray(quoteItem.score)) {
+      return {
+        value: undefined,
+        tip: ''
+      };
+    }
+
     let searchScore: number | undefined = undefined;
     let text = '';
 
@@ -101,6 +108,9 @@ ${t('core.dataset.search.Score')}: ${item.value.toFixed(4)}`
         fontSize={'sm'}
         whiteSpace={'pre-wrap'}
         _hover={{ '& .hover-data': { display: 'flex' } }}
+        h={'100%'}
+        display={'flex'}
+        flexDirection={'column'}
       >
         <Flex alignItems={'flex-end'} mb={3}>
           {rank !== undefined && (
@@ -134,8 +144,11 @@ ${t('core.dataset.search.Score')}: ${item.value.toFixed(4)}`
           )}
         </Flex>
 
-        <Box color={'black'}>{quoteItem.q}</Box>
-        <Box color={'myGray.600'}>{quoteItem.a}</Box>
+        <Box flex={'1 0 0'}>
+          <Box color={'black'}>{quoteItem.q}</Box>
+          <Box color={'myGray.600'}>{quoteItem.a}</Box>
+        </Box>
+
         {canViewSource && (
           <Flex alignItems={'center'} mt={3} gap={4} color={'myGray.500'} fontSize={'xs'}>
             {isPc && (
