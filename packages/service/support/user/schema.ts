@@ -47,15 +47,6 @@ const UserSchema = new Schema({
     type: Number,
     default: 15
   },
-  limit: {
-    exportKbTime: {
-      // Every half hour
-      type: Date
-    },
-    datasetMaxCount: {
-      type: Number
-    }
-  },
   openaiAccount: {
     type: {
       key: String,
