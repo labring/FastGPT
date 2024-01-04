@@ -44,7 +44,8 @@ export type FastGPTFeConfigsType = {
     google?: string;
   };
   limit?: {
-    exportLimitMinutes?: number;
+    exportDatasetLimitMinutes?: number;
+    websiteSyncLimitMinuted?: number;
   };
   scripts?: { [key: string]: string }[];
   favicon?: string;

@@ -13,6 +13,7 @@
     "@chakra-ui/system": "^2.6.1",
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
+    "@monaco-editor/react": "^4.6.0",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "i18next": "^22.5.1",

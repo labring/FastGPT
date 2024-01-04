@@ -41,6 +41,7 @@ export type FileItemType = {
   type: DatasetCollectionTypeEnum.file | DatasetCollectionTypeEnum.link;
   fileId?: string;
   rawLink?: string;
+  metadata?: Record<string, any>;
 };
 
 export interface Props extends BoxProps {
@@ -232,7 +233,7 @@ const FileSelect = ({
   // link fetch
   const onUrlFetch = useCallback(
     (e: UrlFetchResponse) => {
-      const result: FileItemType[] = e.map<FileItemType>(({ url, content }) => {
+      const result: FileItemType[] = e.map<FileItemType>(({ url, content, selector }) => {
         const { chunks, tokens } = splitText2Chunks({
           text: content,
           chunkLen,
@@ -250,7 +251,10 @@ const FileSelect = ({
           chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
-          }))
+          })),
+          metadata: {
+            webPageSelector: selector
+          }
         };
       });
       onPushFiles(result);

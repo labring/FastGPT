@@ -410,6 +410,7 @@
           "Read Metadata": "Read Metadata",
           "Training Type": "Training Type",
           "Updatetime": "Update Time",
+          "Web page selector": "Web Selector",
           "metadata": "Metadata",
           "read source": "Read Source",
           "source": "Source",
@@ -419,6 +420,12 @@
         "status": {
           "active": "Ready",
           "syncing": "Syncing"
+        },
+        "sync": {
+          "result": {
+            "sameRaw": "The content has not changed and no update is required.",
+            "success": "Start synchronization"
+          }
         },
         "training": {
           "type chunk": "Chunk",

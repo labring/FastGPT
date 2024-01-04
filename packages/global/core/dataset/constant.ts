@@ -73,6 +73,19 @@ export const DatasetCollectionTrainingTypeMap = {
   }
 };
 
+export enum DatasetCollectionSyncResultEnum {
+  sameRaw = 'sameRaw',
+  success = 'success'
+}
+export const DatasetCollectionSyncResultMap = {
+  [DatasetCollectionSyncResultEnum.sameRaw]: {
+    label: 'core.dataset.collection.sync.result.sameRaw'
+  },
+  [DatasetCollectionSyncResultEnum.success]: {
+    label: 'core.dataset.collection.sync.result.success'
+  }
+};
+
 /* ------------ data -------------- */
 export enum DatasetDataIndexTypeEnum {
   chunk = 'chunk',
@@ -150,16 +163,24 @@ export enum SearchScoreTypeEnum {
 }
 export const SearchScoreTypeMap = {
   [SearchScoreTypeEnum.embedding]: {
-    label: 'core.dataset.search.score.embedding'
+    label: 'core.dataset.search.score.embedding',
+    desc: 'core.dataset.search.score.embedding desc',
+    showScore: true
   },
   [SearchScoreTypeEnum.fullText]: {
-    label: 'core.dataset.search.score.fullText'
+    label: 'core.dataset.search.score.fullText',
+    desc: 'core.dataset.search.score.fullText desc',
+    showScore: false
   },
   [SearchScoreTypeEnum.reRank]: {
-    label: 'core.dataset.search.score.reRank'
+    label: 'core.dataset.search.score.reRank',
+    desc: 'core.dataset.search.score.reRank desc',
+    showScore: true
   },
   [SearchScoreTypeEnum.rrf]: {
-    label: 'core.dataset.search.score.rrf'
+    label: 'core.dataset.search.score.rrf',
+    desc: 'core.dataset.search.score.rrf desc',
+    showScore: false
   }
 };
 

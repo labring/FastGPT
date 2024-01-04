@@ -28,14 +28,14 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       },
       {
         label: t('navbar.Tools'),
-        icon: 'phoneTabbar/tabbarMore',
+        icon: 'phoneTabbar/more',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
       },
       {
         label: t('navbar.Account'),
-        icon: 'phoneTabbar/tabbarMe',
+        icon: 'phoneTabbar/me',
         link: '/account',
         activeLink: ['/account'],
         unread

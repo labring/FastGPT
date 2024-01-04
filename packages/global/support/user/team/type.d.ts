@@ -10,6 +10,10 @@ export type TeamSchema = {
   balance: number;
   maxSize: number;
   lastDatasetBillTime: Date;
+  limit: {
+    lastExportDatasetTime: Date;
+    lastWebsiteSyncTime: Date;
+  };
 };
 
 export type TeamMemberSchema = {

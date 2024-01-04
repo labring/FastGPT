@@ -50,7 +50,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   concatMd:
     '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://doc.fastgpt.in/wechat-fastgpt.webp)',
   limit: {
-    exportLimitMinutes: 0
+    exportDatasetLimitMinutes: 0,
+    websiteSyncLimitMinuted: 0
   },
   scripts: [],
   favicon: '/favicon.ico'

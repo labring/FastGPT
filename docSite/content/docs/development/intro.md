@@ -71,6 +71,8 @@ git clone git@github.com:<github_username>/FastGPT.git
 ### 5. 运行
 
 ```bash
+# 给脚本代码执行权限
+chmod -R +x ./scripts/
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 pnpm i
 # 切换到应用目录
@@ -104,6 +106,10 @@ docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=ta
 
 1. 如果你是连接远程的数据库，先检查对应的端口是否开放。
 2. 如果是本地运行的数据库，可尝试`host`改成`localhost`或`127.0.0.1`
+
+### sh ./scripts/postinstall.sh 没权限
+
+FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI`的`Type`。如果没有权限，可以先执行`chmod -R +x ./scripts/`，再执行`pnpm i`。
 
 ### 加入社区
 

@@ -121,46 +121,55 @@ const DataCard = () => {
     [collection?.canWrite, userInfo?.team?.role]
   );
 
-  const metadataList = useMemo(
-    () =>
-      collection
+  const metadataList = useMemo(() => {
+    if (!collection) return [];
+
+    const webSelector =
+      collection?.datasetId?.websiteConfig?.selector || collection?.metadata?.webPageSelector;
+
+    return [
+      {
+        label: t('core.dataset.collection.metadata.source'),
+        value: t(DatasetCollectionTypeMap[collection.type]?.name)
+      },
+      {
+        label: t('core.dataset.collection.metadata.source name'),
+        value: collection.file?.filename || collection?.rawLink || collection?.name
+      },
+      {
+        label: t('core.dataset.collection.metadata.source size'),
+        value: collection.file ? formatFileSize(collection.file.length) : '-'
+      },
+      {
+        label: t('core.dataset.collection.metadata.Createtime'),
+        value: formatTime2YMDHM(collection.createTime)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Updatetime'),
+        value: formatTime2YMDHM(collection.updateTime)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Raw text length'),
+        value: collection.rawTextLength ?? '-'
+      },
+      {
+        label: t('core.dataset.collection.metadata.Training Type'),
+        value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Chunk Size'),
+        value: collection.chunkSize || '-'
+      },
+      ...(webSelector
         ? [
             {
-              label: t('core.dataset.collection.metadata.source'),
-              value: t(DatasetCollectionTypeMap[collection.type]?.name)
-            },
-            {
-              label: t('core.dataset.collection.metadata.source name'),
-              value: collection.file?.filename || collection?.rawLink || collection?.name
-            },
-            {
-              label: t('core.dataset.collection.metadata.source size'),
-              value: collection.file ? formatFileSize(collection.file.length) : '-'
-            },
-            {
-              label: t('core.dataset.collection.metadata.Createtime'),
-              value: formatTime2YMDHM(collection.createTime)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Updatetime'),
-              value: formatTime2YMDHM(collection.updateTime)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Raw text length'),
-              value: collection.rawTextLength ?? '-'
-            },
-            {
-              label: t('core.dataset.collection.metadata.Training Type'),
-              value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Chunk Size'),
-              value: collection.chunkSize || '-'
+              label: t('core.dataset.collection.metadata.Web page selector'),
+              value: webSelector
             }
           ]
-        : [],
-    [collection, t]
-  );
+        : [])
+    ];
+  }, [collection, t]);
 
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>

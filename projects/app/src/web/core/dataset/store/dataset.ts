@@ -13,6 +13,7 @@ import { defaultDatasetDetail } from '@/constants/dataset';
 import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constant';
 import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
+import { checkTeamWebSyncLimit } from '@/web/support/user/api';
 
 type State = {
   allDatasets: DatasetListItemType[];
@@ -86,6 +87,8 @@ export const useDatasetStore = create<State>()(
           });
         },
         async startWebsiteSync() {
+          await checkTeamWebSyncLimit();
+
           const [_, billId] = await Promise.all([
             get().updateDataset({
               id: get().datasetDetail._id,
