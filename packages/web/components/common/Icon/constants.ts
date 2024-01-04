@@ -15,6 +15,7 @@ export const iconPaths = {
   'common/confirm/deleteTip': () => import('./icons/common/confirm/deleteTip.svg'),
   'common/courseLight': () => import('./icons/common/courseLight.svg'),
   'common/customTitleLight': () => import('./icons/common/customTitleLight.svg'),
+  'common/editor/resizer': () => import('./icons/common/editor/resizer.svg'),
   'common/file/move': () => import('./icons/common/file/move.svg'),
   'common/fullScreenLight': () => import('./icons/common/fullScreenLight.svg'),
   'common/gitFill': () => import('./icons/common/gitFill.svg'),
