@@ -87,3 +87,15 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 mongo连接失败，检查
 1. mongo 服务有没有起来(有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以dockerhub找个最新的4.x，修改镜像版本，重新运行）
 2. 环境变量（账号密码，注意host和port）
+
+## 本地开发问题
+
+### TypeError: Cannot read properties of null (reading 'useMemo' )
+
+用 Node18 试试，可能最新的 Node 有问题。 本地开发流程：
+
+1. 根目录: `pnpm i`
+2. 复制 `config.json` -> `config.local.json`
+3. 复制 `.env.template` -> `.env.local`
+4. `cd projects/app`
+5. `pnpm dev`
