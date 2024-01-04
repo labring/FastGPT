@@ -156,19 +156,24 @@ const Provider = ({
     return formatModelPrice2Read(totalTokens * inputPrice);
   }, [inputPrice, mode, outputPrice, totalTokens]);
 
-  /* start upload data */
+  /* 
+    start upload data 
+    1. create training bill
+    2. create collection
+    3. upload chunks
+  */
   const { mutate: onclickUpload, isLoading: uploading } = useRequest({
     mutationFn: async (props?: { prompt?: string }) => {
       const { prompt } = props || {};
       let totalInsertion = 0;
       for await (const file of files) {
-        const chunks = file.chunks;
         // create training bill
         const billId = await postCreateTrainingBill({
           name: t('dataset.collections.Create Training Data', { filename: file.filename }),
           vectorModel,
           agentModel
         });
+
         // create a file collection and training bill
         const collectionId = await postDatasetCollection({
           datasetId,
@@ -181,10 +186,12 @@ const Provider = ({
           trainingType: collectionTrainingType,
           qaPrompt: mode === TrainingModeEnum.qa ? prompt : '',
           rawTextLength: file.rawText.length,
-          hashRawText: hashStr(file.rawText)
+          hashRawText: hashStr(file.rawText),
+          metadata: file.metadata
         });
 
-        // upload data
+        // upload chunks
+        const chunks = file.chunks;
         const { insertLen } = await chunksUpload({
           collectionId,
           billId,

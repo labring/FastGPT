@@ -92,7 +92,8 @@ export const loadingOneChunkCollection = async ({
       // crawl new data
       const result = await urlsFetch({
         urlList: [collection.rawLink],
-        selector: collection.datasetId?.websiteConfig?.selector
+        selector:
+          collection.datasetId?.websiteConfig?.selector || collection?.metadata?.webPageSelector
       });
 
       return result[0].content;
