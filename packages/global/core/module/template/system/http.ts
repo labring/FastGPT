@@ -55,7 +55,7 @@ export const HttpModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleInputKeyEnum.httpHeader,
-      type: FlowNodeInputTypeEnum.textarea,
+      type: FlowNodeInputTypeEnum.JSONEditor,
       valueType: ModuleIOValueTypeEnum.string,
       label: 'core.module.input.label.Http Request Header',
       description: 'core.module.input.description.Http Request Header',
