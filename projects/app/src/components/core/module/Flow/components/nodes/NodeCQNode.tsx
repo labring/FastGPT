@@ -94,7 +94,7 @@ const NodeCQNode = React.memo(function NodeCQNode({ data }: { data: FlowModuleIt
                         />
                         <SourceHandle
                           handleKey={item.key}
-                          valueType={ModuleIOValueTypeEnum.string}
+                          valueType={ModuleIOValueTypeEnum.boolean}
                         />
                       </Box>
                     </Box>
