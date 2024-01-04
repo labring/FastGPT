@@ -31,6 +31,10 @@ OneAPI 中没有配置该模型渠道。
 
 页面中是用 stream=true 模式，所以API也需要设置 stream=true 来进行测试。部分模型接口（国产居多）非 Stream 的兼容有点垃圾。
 
+### Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
+
+OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 stop 然后 rm 掉，最后再 up -d 运行一次）。可以`exec`进入容器，`env`查看环境变量是否生效。
+
 ## Docker 部署常见问题
 
 ### 如何更新？

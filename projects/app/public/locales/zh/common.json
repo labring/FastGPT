@@ -522,9 +522,13 @@
         },
         "score": {
           "embedding": "语义检索",
+          "embedding desc": "通过计算向量之间的距离获取得分，范围为 0~1。",
           "fullText": "全文检索",
+          "fullText desc": "计算相同关键词的得分，范围为 0~无穷。",
           "reRank": "结果重排",
-          "rrf": "RRF 合并"
+          "reRank desc": "通过 ReRank 模型计算句子之间的关联度，范围为 0~1。",
+          "rrf": "综合排名",
+          "rrf desc": "通过倒排计算的方式，合并多个检索结果。"
         },
         "search mode": "搜索模式"
       },
