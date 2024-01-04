@@ -7,12 +7,12 @@ import { checkExportDatasetLimit } from '@fastgpt/service/support/user/utils';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    let { datasetId } = req.query as {
+    const { datasetId } = req.query as {
       datasetId: string;
     };
 
     if (!datasetId) {
-      throw new Error('缺少参数');
+      throw new Error('datasetId is required');
     }
 
     // 凭证校验

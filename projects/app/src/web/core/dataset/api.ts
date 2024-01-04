@@ -59,9 +59,6 @@ export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
     timeout: 600000
   }).catch();
 
-export const getCheckExportLimit = (datasetId: string) =>
-  GET(`/core/dataset/checkExportLimit`, { datasetId });
-
 /* =========== search test ============ */
 export const postSearchText = (data: SearchTestProps) =>
   POST<SearchTestResponse>(`/core/dataset/searchTest`, data);
