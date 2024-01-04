@@ -64,6 +64,10 @@ const RenderList: {
   {
     types: [FlowNodeInputTypeEnum.addInputParam],
     Component: dynamic(() => import('./templates/AddInputParam'))
+  },
+  {
+    types: [FlowNodeInputTypeEnum.JSONEditor],
+    Component: dynamic(() => import('./templates/JsonEditor'))
   }
 ];
 const UserChatInput = dynamic(() => import('./templates/UserChatInput'));

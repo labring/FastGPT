@@ -1,13 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes, responseWriteController } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetIdTreeByTopDatasetId } from '@fastgpt/service/core/dataset/controller';
-import { limitCheck } from './checkExportLimit';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
+import {
+  checkExportDatasetLimit,
+  updateExportDatasetLimit
+} from '@fastgpt/service/support/user/utils';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -21,11 +23,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const { userId } = await authDataset({ req, authToken: true, datasetId, per: 'w' });
+    const { teamId } = await authDataset({ req, authToken: true, datasetId, per: 'w' });
 
-    await limitCheck({
-      userId,
-      datasetId
+    await checkExportDatasetLimit({
+      teamId,
+      limitMinutes: global.feConfigs?.limit?.exportDatasetLimitMinutes
     });
 
     const exportIds = await findDatasetIdTreeByTopDatasetId(datasetId);
@@ -43,7 +45,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         datasetId: { $in: exportIds }
       },
       'q a'
-    ).cursor();
+    )
+      .limit(50000)
+      .cursor();
 
     const write = responseWriteController({
       res,
@@ -59,12 +63,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       write(`\n"${q}","${a}"`);
     });
 
-    cursor.on('end', async () => {
+    cursor.on('end', () => {
       cursor.close();
       res.end();
-      await MongoUser.findByIdAndUpdate(userId, {
-        'limit.exportKbTime': new Date()
-      });
+      updateExportDatasetLimit(teamId);
     });
 
     cursor.on('error', (err) => {

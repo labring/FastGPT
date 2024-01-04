@@ -32,6 +32,14 @@ const TeamSchema = new Schema({
   },
   lastDatasetBillTime: {
     type: Date
+  },
+  limit: {
+    lastExportDatasetTime: {
+      type: Date
+    },
+    lastWebsiteSyncTime: {
+      type: Date
+    }
   }
 });
 

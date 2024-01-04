@@ -21,6 +21,9 @@ export const htmlToMarkdown = (html?: string | null) =>
       worker.terminate();
       reject(err);
     });
+    worker.on('exit', (code) => {
+      console.log('html 2 md finish', code);
+    });
 
     worker.postMessage(html);
   });

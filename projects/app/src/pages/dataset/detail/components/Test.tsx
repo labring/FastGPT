@@ -60,6 +60,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const [inputType, setInputType] = useState<'text' | 'file'>('text');
   const [datasetTestItem, setDatasetTestItem] = useState<SearchTestStoreItemType>();
   const [refresh, setRefresh] = useState(false);
+  const [isFocus, setIsFocus] = useState(false);
   const { File, onOpen } = useSelectFile({
     fileType: '.csv',
     multiple: false
@@ -169,7 +170,20 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         py={4}
         borderRight={['none', theme.borders.base]}
       >
-        <Box border={'2px solid'} borderColor={'primary.500'} p={3} mx={4} borderRadius={'md'}>
+        <Box
+          border={'2px solid'}
+          p={3}
+          mx={4}
+          borderRadius={'md'}
+          {...(isFocus
+            ? {
+                borderColor: 'primary.500',
+                boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+              }
+            : {
+                borderColor: 'primary.300'
+              })}
+        >
           {/* header */}
           <Flex alignItems={'center'} justifyContent={'space-between'}>
             <MySelect
@@ -221,8 +235,12 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 variant={'unstyled'}
                 maxLength={datasetDetail.vectorModel.maxToken}
                 placeholder={t('core.dataset.test.Test Text Placeholder')}
+                onFocus={() => setIsFocus(true)}
                 {...register('inputText', {
-                  required: true
+                  required: true,
+                  onBlur: () => {
+                    setIsFocus(false);
+                  }
                 })}
               />
             )}
@@ -340,25 +358,26 @@ const TestHistories = React.memo(function TestHistories({
   );
   return (
     <>
-      <Flex alignItems={'center'} color={'myGray.600'}>
-        <MyIcon mr={2} name={'history'} w={'16px'} h={'16px'} />
-        <Box fontSize={'2xl'}>{t('core.dataset.test.test history')}</Box>
+      <Flex alignItems={'center'} color={'myGray.900'}>
+        <MyIcon mr={2} name={'history'} w={'18px'} h={'18px'} color={'myGray.900'} />
+        <Box fontSize={'xl'}>{t('core.dataset.test.test history')}</Box>
       </Flex>
       <Box mt={2}>
-        <Flex py={2} fontWeight={'bold'} borderBottom={theme.borders.sm}>
-          <Box flex={'0 0 80px'}>{t('core.dataset.search.search mode')}</Box>
-          <Box flex={1}>{t('core.dataset.test.Test Text')}</Box>
-          <Box flex={'0 0 70px'}>{t('common.Time')}</Box>
-          <Box w={'14px'}></Box>
-        </Flex>
         {testHistories.map((item) => (
           <Flex
             key={item.id}
-            p={1}
+            py={2}
+            px={3}
             alignItems={'center'}
-            borderBottom={theme.borders.base}
+            borderColor={'borderColor.low'}
+            borderWidth={'1px'}
+            borderRadius={'md'}
+            _notLast={{
+              mb: 2
+            }}
             _hover={{
-              bg: '#f4f4f4',
+              borderColor: 'primary.300',
+              boxShadow: '1',
               '& .delete': {
                 display: 'block'
               }
@@ -369,7 +388,7 @@ const TestHistories = React.memo(function TestHistories({
           >
             <Box flex={'0 0 80px'}>
               {DatasetSearchModeMap[item.searchMode] ? (
-                <Flex alignItems={'center'}>
+                <Flex alignItems={'center'} fontWeight={'500'} color={'myGray.500'}>
                   <MyIcon
                     name={DatasetSearchModeMap[item.searchMode].icon as any}
                     w={'12px'}
@@ -381,7 +400,7 @@ const TestHistories = React.memo(function TestHistories({
                 '-'
               )}
             </Box>
-            <Box flex={1} mr={2} wordBreak={'break-all'}>
+            <Box flex={1} mr={2} wordBreak={'break-all'} fontWeight={'400'}>
               {item.text}
             </Box>
             <Box flex={'0 0 70px'}>{formatTimeToChatTime(item.time)}</Box>
@@ -433,13 +452,20 @@ const TestResults = React.memo(function TestResults({
         </Flex>
       ) : (
         <>
-          <Box fontSize={'xl'} color={'myGray.600'}>
+          <Flex fontSize={'xl'} color={'myGray.900'} alignItems={'center'}>
+            <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
             {t('core.dataset.test.Test params')}
-          </Box>
-          <TableContainer mb={3} bg={'myGray.150'} borderRadius={'md'}>
+          </Flex>
+          <TableContainer
+            mt={3}
+            bg={'primary.50'}
+            borderRadius={'lg'}
+            borderWidth={'1px'}
+            borderColor={'primary.1'}
+          >
             <Table>
               <Thead>
-                <Tr>
+                <Tr color={'myGray.600'}>
                   <Th>{t('core.dataset.search.search mode')}</Th>
                   <Th>{t('core.dataset.search.ReRank')}</Th>
                   <Th>{t('core.dataset.search.Max Tokens')}</Th>
@@ -447,8 +473,8 @@ const TestResults = React.memo(function TestResults({
                 </Tr>
               </Thead>
               <Tbody>
-                <Tr>
-                  <Td>
+                <Tr color={'myGray.800'}>
+                  <Td pt={0}>
                     <Flex alignItems={'center'}>
                       <MyIcon
                         name={DatasetSearchModeMap[datasetTestItem.searchMode]?.icon as any}
@@ -458,45 +484,31 @@ const TestResults = React.memo(function TestResults({
                       {t(DatasetSearchModeMap[datasetTestItem.searchMode]?.title)}
                     </Flex>
                   </Td>
-                  <Td>{datasetTestItem.usingReRank ? '✅' : '❌'}</Td>
-                  <Td>{datasetTestItem.limit}</Td>
-                  <Td>{datasetTestItem.similarity}</Td>
+                  <Td pt={0}>{datasetTestItem.usingReRank ? '✅' : '❌'}</Td>
+                  <Td pt={0}>{datasetTestItem.limit}</Td>
+                  <Td pt={0}>{datasetTestItem.similarity}</Td>
                 </Tr>
               </Tbody>
             </Table>
           </TableContainer>
-          <Flex alignItems={'center'}>
-            <Box fontSize={'xl'} color={'myGray.600'}>
+
+          <Flex mt={5} mb={3} alignItems={'center'}>
+            <Flex fontSize={'xl'} color={'myGray.900'} alignItems={'center'}>
+              <MyIcon name={'common/resultLight'} w={'18px'} mr={2} />
               {t('core.dataset.test.Test Result')}
-            </Box>
+            </Flex>
             <MyTooltip label={t('core.dataset.test.test result tip')} forceShow>
               <QuestionOutlineIcon mx={2} color={'myGray.600'} cursor={'pointer'} fontSize={'lg'} />
             </MyTooltip>
             <Box>({datasetTestItem.duration})</Box>
           </Flex>
-          <Grid
-            mt={1}
-            gridTemplateColumns={[
-              'repeat(1,minmax(0, 1fr))',
-              'repeat(1,minmax(0, 1fr))',
-              'repeat(1,minmax(0, 1fr))',
-              'repeat(1,minmax(0, 1fr))',
-              'repeat(2,minmax(0, 1fr))'
-            ]}
-            gridGap={4}
-          >
+          <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (
-              <Box
-                key={item.id}
-                p={2}
-                borderRadius={'sm'}
-                border={theme.borders.base}
-                _notLast={{ mb: 2 }}
-              >
+              <Box key={item.id} p={3} borderRadius={'lg'} bg={'myGray.100'} _notLast={{ mb: 2 }}>
                 <QuoteItem quoteItem={item} canViewSource />
               </Box>
             ))}
-          </Grid>
+          </Box>
         </>
       )}
     </>

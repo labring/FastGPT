@@ -46,7 +46,8 @@ import {
   DatasetCollectionTrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum
+  DatasetStatusEnum,
+  DatasetCollectionSyncResultMap
 } from '@fastgpt/global/core/dataset/constant';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
@@ -61,6 +62,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionSyncResultEnum } from '../../../../../../../packages/global/core/dataset/constant';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 const WebSiteConfigModal = dynamic(() => import('./Import/WebsiteConfig'), {});
@@ -246,8 +248,12 @@ const CollectionCard = () => {
     mutationFn: (collectionId: string) => {
       return postLinkCollectionSync(collectionId);
     },
-    onSuccess() {
+    onSuccess(res: DatasetCollectionSyncResultEnum) {
       getData(pageNum);
+      toast({
+        status: 'success',
+        title: t(DatasetCollectionSyncResultMap[res]?.label)
+      });
     },
     errorToast: t('core.dataset.error.Start Sync Failed')
   });

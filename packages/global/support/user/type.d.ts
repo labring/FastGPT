@@ -17,10 +17,6 @@ export type UserModelSchema = {
     key: string;
     baseUrl: string;
   };
-  limit: {
-    exportKbTime?: Date;
-    datasetMaxCount?: number;
-  };
 };
 
 export type UserType = {

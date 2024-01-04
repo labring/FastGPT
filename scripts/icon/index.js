@@ -33,7 +33,7 @@ app.get('/', (req, res) => {
 
   svgPaths.forEach((filePath) => {
     const name = filePath.split('.')[0];
-    iconHtml += `<div class="item" id="${name}" onclick="onclickCopy(${name})">
+    iconHtml += `<div class="item" id="${name}" onclick="onclickCopy('${name}')">
       <img src="/icons/${filePath}" width="30" height="30" /> 
       <div>${name}</div>
     </div>`;
@@ -76,16 +76,16 @@ app.get('/', (req, res) => {
   </body>
   <script>
     const onclickCopy = (name) => {
-      console.log(name.id)
+      console.log(name)
       try {
         if (navigator.clipboard) {
-          navigator.clipboard.writeText(name.id);
+          navigator.clipboard.writeText(name);
         } else {
           throw new Error('');
         }
       } catch (error) {
         const textarea = document.createElement('textarea');
-        textarea.value = name.id;
+        textarea.value = name;
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');

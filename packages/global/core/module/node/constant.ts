@@ -7,7 +7,10 @@ export enum FlowNodeInputTypeEnum {
   slider = 'slider',
   target = 'target', // data input
   switch = 'switch',
+
+  // editor
   textarea = 'textarea',
+  JSONEditor = 'JSONEditor',
 
   addInputParam = 'addInputParam', // params input
 
