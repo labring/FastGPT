@@ -25,7 +25,9 @@ export async function getVectorsByText({
       }
     }
   }
-
+  if (typeof input === 'string') {
+    input = [input];
+  }
   try {
     // 获取 chatAPI
     const ai = getAIApi();
