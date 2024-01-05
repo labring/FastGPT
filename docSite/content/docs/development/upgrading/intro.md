@@ -36,13 +36,13 @@ FastGPT 升级包括两个步骤：
 
 2. 选择对应的应用 - 点击右边三个点 - 变更
 
-![](/imgs/updateImageSealos2.jpg)
+![](/imgs/updateImageSealos2.png)
 
 3. 修改镜像 - 确认变更
 
     如果要修改配置文件，可以拉到下面的`配置文件`进行修改。
 
-![](/imgs/updateImageSealos3.jpg)
+![](/imgs/updateImageSealos3.png)
 
 ## Docker-Compose 修改镜像
 
@@ -66,7 +66,7 @@ docker-compose up -d
 
 Sealos 中，你可以在下图中找到你的域名：
 
-![](/imgs/updateImageSealos4.jpg)
+![](/imgs/updateImageSealos4.png)
 
 
 ### 如何获取 rootkey

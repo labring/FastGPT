@@ -1,6 +1,6 @@
 {
   "systemEnv": {
-    "pluginBaseUrl": "",
+    "openapiPrefix": "fastgpt",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgHNSWEfSearch": 100

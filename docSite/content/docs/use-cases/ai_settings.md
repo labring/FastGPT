@@ -113,9 +113,9 @@ Tips: 建议根据不同的场景，每种知识库仅选择1类数据类型，�
 
 | 通用模板配置及效果 | 问答模板配置及效果 |
 | --- | --- |
-| ![](/imgs/datasetprompt1.png) | ![](/imgs/datasetprompt2.png) |
-| ![](/imgs/datasetprompt3.png) | ![](/imgs/datasetprompt5.png) |
-| ![](/imgs/datasetprompt4.png) | ![](/imgs/datasetprompt6.png) |
+| ![](/imgs/datasetprompt1.jpg) | ![](/imgs/datasetprompt2.jpg) |
+| ![](/imgs/datasetprompt3.jpg) | ![](/imgs/datasetprompt5.jpg) |
+| ![](/imgs/datasetprompt4.jpg) | ![](/imgs/datasetprompt6.jpg) |
 
 #### 严格模板
 
@@ -123,7 +123,7 @@ Tips: 建议根据不同的场景，每种知识库仅选择1类数据类型，�
 
 | 非严格模板效果 | 选择严格模板 | 严格模板效果 |
 | --- | --- | --- |
-| ![](/imgs/datasetprompt7.png) | ![](/imgs/datasetprompt8.png) |![](/imgs/datasetprompt9.png) |
+| ![](/imgs/datasetprompt7.jpg) | ![](/imgs/datasetprompt8.jpg) |![](/imgs/datasetprompt9.jpg) |
 
 #### 提示词设计思路
 
