@@ -126,63 +126,88 @@ const QuoteItem = ({
       >
         <Flex alignItems={'center'} mb={3}>
           {score?.primaryScore && (
-            <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc)}>
-              <Flex
-                px={'12px'}
-                py={'5px'}
-                mr={4}
-                borderRadius={'md'}
-                color={'primary.700'}
-                bg={'primary.50'}
-                borderWidth={'1px'}
-                borderColor={'primary.200'}
-                alignItems={'center'}
-                fontSize={'sm'}
-              >
-                <Box>#{score.primaryScore.index + 1}</Box>
-                <Box borderRightColor={'primary.700'} borderRightWidth={'1px'} h={'14px'} mx={2} />
-                <Box>
-                  {t(SearchScoreTypeMap[score.primaryScore.type]?.label)}
-                  {SearchScoreTypeMap[score.primaryScore.type]?.showScore
-                    ? ` ${score.primaryScore.value.toFixed(4)}`
-                    : ''}
-                </Box>
-              </Flex>
-            </MyTooltip>
-          )}
-          {score.secondaryScore.map((item, i) => (
-            <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc)}>
-              <Box fontSize={'xs'} mr={3}>
-                <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
-                  <Box
-                    px={'5px'}
+            <>
+              {canViewSource ? (
+                <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc)}>
+                  <Flex
+                    px={'12px'}
+                    py={'5px'}
+                    mr={4}
+                    borderRadius={'md'}
+                    color={'primary.700'}
+                    bg={'primary.50'}
                     borderWidth={'1px'}
-                    borderRadius={'sm'}
-                    mr={1}
-                    {...(scoreTheme[i] && scoreTheme[i])}
+                    borderColor={'primary.200'}
+                    alignItems={'center'}
+                    fontSize={'sm'}
                   >
-                    <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
-                  </Box>
-                  <Box transform={'scale(0.9)'}>
-                    {t(SearchScoreTypeMap[item.type]?.label)}: {item.value.toFixed(4)}
-                  </Box>
-                </Flex>
-                <Box h={'4px'}>
-                  {SearchScoreTypeMap[item.type]?.showScore && (
-                    <Progress
-                      value={item.value * 100}
-                      h={'4px'}
-                      w={'100%'}
-                      size="sm"
-                      borderRadius={'20px'}
-                      colorScheme={scoreTheme[i]?.colorSchema}
-                      bg="#E8EBF0"
+                    <Box>#{score.primaryScore.index + 1}</Box>
+                    <Box
+                      borderRightColor={'primary.700'}
+                      borderRightWidth={'1px'}
+                      h={'14px'}
+                      mx={2}
                     />
-                  )}
+                    <Box>
+                      {t(SearchScoreTypeMap[score.primaryScore.type]?.label)}
+                      {SearchScoreTypeMap[score.primaryScore.type]?.showScore
+                        ? ` ${score.primaryScore.value.toFixed(4)}`
+                        : ''}
+                    </Box>
+                  </Flex>
+                </MyTooltip>
+              ) : (
+                <Flex
+                  px={'12px'}
+                  py={'1px'}
+                  mr={4}
+                  borderRadius={'md'}
+                  color={'primary.700'}
+                  bg={'primary.50'}
+                  borderWidth={'1px'}
+                  borderColor={'primary.200'}
+                  alignItems={'center'}
+                  fontSize={'sm'}
+                >
+                  <Box>#{score.primaryScore.index + 1}</Box>
+                </Flex>
+              )}
+            </>
+          )}
+          {canViewSource &&
+            score.secondaryScore.map((item, i) => (
+              <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc)}>
+                <Box fontSize={'xs'} mr={3}>
+                  <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
+                    <Box
+                      px={'5px'}
+                      borderWidth={'1px'}
+                      borderRadius={'sm'}
+                      mr={1}
+                      {...(scoreTheme[i] && scoreTheme[i])}
+                    >
+                      <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
+                    </Box>
+                    <Box transform={'scale(0.9)'}>
+                      {t(SearchScoreTypeMap[item.type]?.label)}: {item.value.toFixed(4)}
+                    </Box>
+                  </Flex>
+                  <Box h={'4px'}>
+                    {SearchScoreTypeMap[item.type]?.showScore && (
+                      <Progress
+                        value={item.value * 100}
+                        h={'4px'}
+                        w={'100%'}
+                        size="sm"
+                        borderRadius={'20px'}
+                        colorScheme={scoreTheme[i]?.colorSchema}
+                        bg="#E8EBF0"
+                      />
+                    )}
+                  </Box>
                 </Box>
-              </Box>
-            </MyTooltip>
-          ))}
+              </MyTooltip>
+            ))}
         </Flex>
 
         <Box flex={'1 0 0'}>

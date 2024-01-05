@@ -25,7 +25,7 @@ FastGPT 的 API Key **有 2 类**，一类是全局通用的 key (无法直接�
 
 |        通用key               |           应用特定 key            |
 | --------------------- | --------------------- |
-| ![](/imgs/fastgpt-api2.png) | ![](/imgs/fastgpt-api.png) |
+| ![](/imgs/fastgpt-api2.jpg) | ![](/imgs/fastgpt-api.jpg) |
 
 ## 基本配置
 

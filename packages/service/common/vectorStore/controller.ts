@@ -48,7 +48,7 @@ export const updateDatasetDataVector = async ({
   // get vector
   const { vectors, tokens } = await getVectorsByText({
     model,
-    input: [query]
+    input: query
   });
 
   await getVectorObj().update({

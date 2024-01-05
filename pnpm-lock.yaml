@@ -163,6 +163,9 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
+      '@fingerprintjs/fingerprintjs':
+        specifier: ^4.2.1
+        version: registry.npmmirror.com/@fingerprintjs/fingerprintjs@4.2.1
       '@monaco-editor/react':
         specifier: ^4.6.0
         version: registry.npmmirror.com/@monaco-editor/react@4.6.0(monaco-editor@0.45.0)(react-dom@18.2.0)(react@18.2.0)
@@ -3835,6 +3838,14 @@ packages:
     transitivePeerDependencies:
       - supports-color
     dev: true
+
+  registry.npmmirror.com/@fingerprintjs/fingerprintjs@4.2.1:
+    resolution: {integrity: sha512-uW+GVUNTgCXbVPEbgnbf5Aor22e1dyYR0JRwdUiZBaikfxr7KlhV9y0aahA1FB99fEeQVvhCEvTcPIFSYTy9Pw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@fingerprintjs/fingerprintjs/-/fingerprintjs-4.2.1.tgz}
+    name: '@fingerprintjs/fingerprintjs'
+    version: 4.2.1
+    dependencies:
+      tslib: registry.npmmirror.com/tslib@2.6.2
+    dev: false
 
   registry.npmmirror.com/@humanwhocodes/config-array@0.11.13:
     resolution: {integrity: sha512-JSBDMiDKSzQVngfRjOdFXgFfklaXI4K9nLF49Auh21lmBWRLIK3+xTErTWD4KU54pb6coM6ESE7Awz/FNU3zgQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@humanwhocodes/config-array/-/config-array-0.11.13.tgz}
