@@ -36,7 +36,6 @@ export async function getVectorsByText({
           // @ts-ignore
           return Promise.reject(res.data?.err?.message || 'Embedding API Error');
         }
-        console.log(res?.data);
 
         return {
           tokens: res.usage.total_tokens || 0,
