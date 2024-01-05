@@ -93,4 +93,4 @@ FastGPT 商业版软件根据不同的部署方式，分为 3 类收费模式。
 
 Sealos 云服务属于按量计费，下面是它的价格表：
 
-![](/imgs/sealos_price.png)
+![](/imgs/sealos_price.jpg)
