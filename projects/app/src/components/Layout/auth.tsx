@@ -1,4 +1,3 @@
-import React from 'react';
 import { useRouter } from 'next/router';
 import { useToast } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -8,8 +7,10 @@ const unAuthPage: { [key: string]: boolean } = {
   '/': true,
   '/login': true,
   '/login/provider': true,
+  '/login/fastlogin': true,
   '/appStore': true,
-  '/chat/share': true
+  '/chat/share': true,
+  '/tools/price': true
 };
 
 const Auth = ({ children }: { children: JSX.Element }) => {

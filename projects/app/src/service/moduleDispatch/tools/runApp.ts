@@ -1,40 +1,43 @@
-import { moduleDispatchResType, ChatItemType } from '@/types/chat';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
-import { dispatchModules } from '@/pages/api/v1/chat/completions';
-import { App } from '@/service/mongo';
+import { dispatchModules } from '../index';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { ChatRoleEnum, TaskResponseKeyEnum, sseResponseEventEnum } from '@/constants/chat';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { getHistories } from '../utils';
 
 type Props = ModuleDispatchProps<{
-  userChatInput: string;
-  history?: ChatItemType[];
+  [ModuleInputKeyEnum.userChatInput]: string;
+  [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   app: SelectAppItemType;
 }>;
 type Response = {
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType[];
-  [TaskResponseKeyEnum.answerText]: string;
-  [TaskResponseKeyEnum.history]: ChatItemType[];
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType[];
+  [ModuleOutputKeyEnum.answerText]: string;
+  [ModuleOutputKeyEnum.history]: ChatItemType[];
 };
 
-export const dispatchAppRequest = async (props: Record<string, any>): Promise<Response> => {
+export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     res,
-    variables,
     user,
     stream,
     detail,
-    inputs: { userChatInput, history = [], app }
-  } = props as Props;
+    histories,
+    inputs: { userChatInput, history, app }
+  } = props;
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
 
-  const appData = await App.findOne({
+  const appData = await MongoApp.findOne({
     _id: app.id,
-    userId: user._id
+    teamId: user.team.teamId
   });
 
   if (!appData) {
@@ -51,20 +54,19 @@ export const dispatchAppRequest = async (props: Record<string, any>): Promise<Re
     });
   }
 
+  const chatHistories = getHistories(history, histories);
+
   const { responseData, answerText } = await dispatchModules({
-    res,
+    ...props,
+    appId: app.id,
     modules: appData.modules,
-    user,
-    variables,
-    params: {
-      history,
+    histories: chatHistories,
+    startParams: {
       userChatInput
-    },
-    stream,
-    detail
+    }
   });
 
-  const completeMessages = history.concat([
+  const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
       value: userChatInput
@@ -77,7 +79,7 @@ export const dispatchAppRequest = async (props: Record<string, any>): Promise<Re
 
   return {
     responseData,
-    [TaskResponseKeyEnum.answerText]: answerText,
-    [TaskResponseKeyEnum.history]: completeMessages
+    answerText: answerText,
+    history: completeMessages
   };
 };

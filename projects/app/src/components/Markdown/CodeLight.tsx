@@ -1,7 +1,7 @@
 import React from 'react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { Box, Flex, useColorModeValue } from '@chakra-ui/react';
-import Icon from '@/components/Icon';
+import Icon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 
 const codeLight: { [key: string]: React.CSSProperties } = {
@@ -296,7 +296,7 @@ const CodeLight = ({
 }) => {
   const { copyData } = useCopyData();
 
-  if (!inline && match) {
+  if (!inline) {
     return (
       <Box my={3} borderRadius={'md'} overflow={'overlay'} backgroundColor={'#222'}>
         <Flex
@@ -315,7 +315,7 @@ const CodeLight = ({
           </Flex>
         </Flex>
         <SyntaxHighlighter style={codeLight as any} language={match?.[1]} PreTag="pre">
-          {String(children)}
+          {String(children).replace(/&nbsp;/g, ' ')}
         </SyntaxHighlighter>
       </Box>
     );

@@ -1,45 +1,37 @@
-import React, {
-  useCallback,
-  useState,
-  useRef,
-  forwardRef,
-  useImperativeHandle,
-  ForwardedRef
-} from 'react';
+import React, { useCallback, useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, Button, FormControl, IconButton, Input } from '@chakra-ui/react';
-import { QuestionOutlineIcon, DeleteIcon } from '@chakra-ui/icons';
-import { delDatasetById, putDatasetById } from '@/web/core/dataset/api';
+import { Box, Flex, Button, IconButton, Input, Textarea } from '@chakra-ui/react';
+import { DeleteIcon } from '@chakra-ui/icons';
+import { delDatasetById } from '@/web/core/dataset/api';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { UseFormReturn } from 'react-hook-form';
-import { compressImg } from '@/web/common/file/utils';
-import type { DatasetItemType } from '@/types/core/dataset';
+import { useForm } from 'react-hook-form';
+import { compressImgFileAndUpload } from '@/web/common/file/controller';
+import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@/components/Avatar';
-import Tag from '@/components/Tag';
 import MyTooltip from '@/components/MyTooltip';
+import { useTranslation } from 'next-i18next';
+import PermissionRadio from '@/components/support/permission/Radio';
+import MySelect from '@/components/Select';
+import { qaModelList } from '@/web/common/system/staticData';
+import { useRequest } from '@/web/common/hooks/useRequest';
 
-export interface ComponentRef {
-  initInput: (tags: string) => void;
-}
+const Info = ({ datasetId }: { datasetId: string }) => {
+  const { t } = useTranslation();
+  const { datasetDetail, loadDatasets, updateDataset } = useDatasetStore();
+  const { getValues, setValue, register, handleSubmit } = useForm<DatasetItemType>({
+    defaultValues: datasetDetail
+  });
 
-const Info = (
-  { datasetId, form }: { datasetId: string; form: UseFormReturn<DatasetItemType, any> },
-  ref: ForwardedRef<ComponentRef>
-) => {
-  const { getValues, formState, setValue, register, handleSubmit } = form;
-  const InputRef = useRef<HTMLInputElement>(null);
-
-  const { toast } = useToast();
   const router = useRouter();
 
-  const [btnLoading, setBtnLoading] = useState(false);
   const [refresh, setRefresh] = useState(false);
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: '确认删除该知识库？数据将无法恢复，请确认！'
+    content: t('core.dataset.Delete Confirm'),
+    type: 'delete'
   });
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
@@ -47,127 +39,68 @@ const Info = (
     multiple: false
   });
 
-  const { datasetDetail, loadDatasetDetail, loadDatasets } = useDatasetStore();
-
   /* 点击删除 */
-  const onclickDelKb = useCallback(async () => {
-    setBtnLoading(true);
-    try {
-      await delDatasetById(datasetId);
-      toast({
-        title: '删除成功',
-        status: 'success'
-      });
+  const { mutate: onclickDelete, isLoading: isDeleting } = useRequest({
+    mutationFn: () => {
+      return delDatasetById(datasetId);
+    },
+    onSuccess() {
       router.replace(`/dataset/list`);
-      await loadDatasets();
-    } catch (err: any) {
-      toast({
-        title: err?.message || '删除失败',
-        status: 'error'
+    },
+    successToast: t('common.Delete Success'),
+    errorToast: t('common.Delete Failed')
+  });
+
+  const { mutate: onclickSave, isLoading: isSaving } = useRequest({
+    mutationFn: (data: DatasetItemType) => {
+      return updateDataset({
+        id: datasetId,
+        ...data
       });
-    }
-    setBtnLoading(false);
-  }, [setBtnLoading, datasetId, toast, router, loadDatasets]);
-
-  const saveSubmitSuccess = useCallback(
-    async (data: DatasetItemType) => {
-      setBtnLoading(true);
-      try {
-        await putDatasetById({
-          id: datasetId,
-          ...data
-        });
-        await loadDatasetDetail(datasetId, true);
-        toast({
-          title: '更新成功',
-          status: 'success'
-        });
-        loadDatasets();
-      } catch (err: any) {
-        toast({
-          title: err?.message || '更新失败',
-          status: 'error'
-        });
-      }
-      setBtnLoading(false);
     },
-    [loadDatasetDetail, datasetId, loadDatasets, toast]
-  );
-  const saveSubmitError = useCallback(() => {
-    // deep search message
-    const deepSearch = (obj: any): string => {
-      if (!obj) return '提交表单错误';
-      if (!!obj.message) {
-        return obj.message;
-      }
-      return deepSearch(Object.values(obj)[0]);
-    };
-    toast({
-      title: deepSearch(formState.errors),
-      status: 'error',
-      duration: 4000,
-      isClosable: true
-    });
-  }, [formState.errors, toast]);
+    onSuccess() {
+      loadDatasets();
+    },
+    successToast: t('common.Update Success'),
+    errorToast: t('common.Update Failed')
+  });
 
-  const onSelectFile = useCallback(
-    async (e: File[]) => {
+  const { mutate: onSelectFile, isLoading: isSelecting } = useRequest({
+    mutationFn: (e: File[]) => {
       const file = e[0];
-      if (!file) return;
-      try {
-        const src = await compressImg({
-          file,
-          maxW: 100,
-          maxH: 100
-        });
-
+      if (!file) return Promise.resolve(null);
+      return compressImgFileAndUpload({
+        file,
+        maxW: 300,
+        maxH: 300
+      });
+    },
+    onSuccess(src: string | null) {
+      if (src) {
         setValue('avatar', src);
-
         setRefresh((state) => !state);
-      } catch (err: any) {
-        toast({
-          title: typeof err === 'string' ? err : '头像选择异常',
-          status: 'warning'
-        });
       }
     },
-    [setRefresh, setValue, toast]
-  );
+    errorToast: t('common.avatar.Select Failed')
+  });
 
-  useImperativeHandle(ref, () => ({
-    initInput: (tags: string) => {
-      if (InputRef.current) {
-        InputRef.current.value = tags;
-      }
-    }
-  }));
+  const btnLoading = useMemo(() => isDeleting || isSaving, [isDeleting, isSaving]);
 
   return (
     <Box py={5} px={[5, 10]}>
       <Flex mt={5} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          知识库 ID
+          {t('core.dataset.Dataset ID')}
         </Box>
         <Box flex={1}>{datasetDetail._id}</Box>
       </Flex>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          索引模型
-        </Box>
-        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
-      </Flex>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          MaxTokens
-        </Box>
-        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
-      </Flex>
+
       <Flex mt={5} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          知识库头像
+          {t('core.dataset.Avatar')}
         </Box>
         <Box flex={[1, '0 0 300px']}>
-          <MyTooltip label={'点击切换头像'}>
+          <MyTooltip label={t('common.avatar.Select Avatar')}>
             <Avatar
               m={'auto'}
               src={getValues('avatar')}
@@ -179,69 +112,86 @@ const Info = (
           </MyTooltip>
         </Box>
       </Flex>
-      <FormControl mt={8} w={'100%'} display={'flex'} alignItems={'center'}>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          知识库名称
+          {t('core.dataset.Name')}
         </Box>
-        <Input
-          flex={[1, '0 0 300px']}
-          maxLength={30}
-          {...register('name', {
-            required: '知识库名称不能为空'
-          })}
-        />
-      </FormControl>
-      <Flex mt={8} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          标签
-          <MyTooltip label={'用空格隔开多个标签，便于搜索'} forceShow>
-            <QuestionOutlineIcon ml={1} />
-          </MyTooltip>
-        </Box>
-        <Input
-          flex={[1, '0 0 300px']}
-          ref={InputRef}
-          defaultValue={getValues('tags')}
-          placeholder={'标签,使用空格分割。'}
-          maxLength={30}
-          onChange={(e) => {
-            setValue('tags', e.target.value);
-            setRefresh(!refresh);
-          }}
-        />
-        <Flex w={'100%'} pl={['90px', '160px']} mt={2}>
-          {getValues('tags')
-            .split(' ')
-            .filter((item) => item)
-            .map((item, i) => (
-              <Tag mr={2} mb={2} key={i} whiteSpace={'nowrap'}>
-                {item}
-              </Tag>
-            ))}
-        </Flex>
+        <Input flex={[1, '0 0 300px']} maxLength={30} {...register('name')} />
       </Flex>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.ai.model.Vector Model')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
+      </Flex>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.Max Token')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
+      </Flex>
+      <Flex mt={6} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.ai.model.Dataset Agent Model')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>
+          <MySelect
+            w={'100%'}
+            value={getValues('agentModel').model}
+            list={qaModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onchange={(e) => {
+              const agentModel = qaModelList.find((item) => item.model === e);
+              if (!agentModel) return;
+              setValue('agentModel', agentModel);
+              setRefresh((state) => !state);
+            }}
+          />
+        </Box>
+      </Flex>
+      <Flex mt={8} alignItems={'center'} w={'100%'}>
+        <Box flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</Box>
+        <Textarea flex={[1, '0 0 300px']} {...register('intro')} placeholder={t('common.Intro')} />
+      </Flex>
+      {datasetDetail.isOwner && (
+        <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
+          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+            {t('user.Permission')}
+          </Box>
+          <Box>
+            <PermissionRadio
+              value={getValues('permission')}
+              onChange={(e) => {
+                setValue('permission', e);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
+        </Flex>
+      )}
+
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}></Box>
         <Button
           isLoading={btnLoading}
           mr={4}
           w={'100px'}
-          onClick={handleSubmit(saveSubmitSuccess, saveSubmitError)}
+          onClick={handleSubmit((data) => onclickSave(data))}
         >
-          保存
+          {t('common.Save')}
         </Button>
-        <IconButton
-          isLoading={btnLoading}
-          icon={<DeleteIcon />}
-          aria-label={''}
-          variant={'outline'}
-          size={'sm'}
-          _hover={{
-            color: 'red.600',
-            borderColor: 'red.600'
-          }}
-          onClick={openConfirm(onclickDelKb)}
-        />
+        {datasetDetail.isOwner && (
+          <IconButton
+            isLoading={btnLoading}
+            icon={<DeleteIcon />}
+            aria-label={''}
+            variant={'whiteDanger'}
+            size={'smSquare'}
+            onClick={openConfirm(onclickDelete)}
+          />
+        )}
       </Flex>
       <File onSelect={onSelectFile} />
       <ConfirmModal />
@@ -249,4 +199,4 @@ const Info = (
   );
 };
 
-export default forwardRef(Info);
+export default React.memo(Info);

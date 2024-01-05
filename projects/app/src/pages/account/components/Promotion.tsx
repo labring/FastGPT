@@ -16,7 +16,7 @@ import {
 } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { getPromotionInitData, getPromotionRecords } from '@/web/support/user/api';
+import { getPromotionInitData, getPromotionRecords } from '@/web/support/activity/promotion/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useLoading } from '@/web/common/hooks/useLoading';
 
@@ -25,7 +25,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import type { PromotionRecordType } from '@/global/support/api/userRes.d';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 
 const Promotion = () => {
@@ -42,7 +42,8 @@ const Promotion = () => {
     pageSize,
     Pagination
   } = usePagination<PromotionRecordType>({
-    api: getPromotionRecords
+    api: getPromotionRecords,
+    pageSize: 20
   });
 
   const { data: { invitedAmount = 0, earningsAmount = 0 } = {} } = useQuery(
@@ -92,7 +93,7 @@ const Promotion = () => {
           </Flex>
           <Button
             mt={4}
-            variant={'base'}
+            variant={'whitePrimary'}
             fontSize={'sm'}
             onClick={() => {
               copyData(`${location.origin}/?hiId=${userInfo?._id}`);

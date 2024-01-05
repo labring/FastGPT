@@ -1,5 +1,5 @@
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import React, {
   useMemo,
   useCallback,
@@ -9,13 +9,14 @@ import React, {
   ForwardedRef
 } from 'react';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
-import { getGuideModule } from '@/global/core/app/modules/utils';
+import { getGuideModule } from '@fastgpt/global/core/module/utils';
+import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -39,15 +40,23 @@ const ChatTest = (
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
-      const historyMaxLen =
-        modules
-          ?.find((item) => item.flowType === FlowNodeTypeEnum.historyNode)
-          ?.inputs?.find((item) => item.key === 'maxContext')?.value || 0;
+      let historyMaxLen = 6;
+      modules.forEach((module) => {
+        module.inputs.forEach((input) => {
+          if (
+            (input.key === ModuleInputKeyEnum.history ||
+              input.key === ModuleInputKeyEnum.historyMaxAmount) &&
+            typeof input.value === 'number'
+          ) {
+            historyMaxLen = Math.max(historyMaxLen, input.value);
+          }
+        });
+      });
       const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
-        url: '/api/chat/chatTest',
+        url: '/api/core/chat/chatTest',
         data: {
           history,
           prompt: chatList[chatList.length - 2].value,
@@ -95,9 +104,9 @@ const ChatTest = (
           <MyTooltip label={'重置'}>
             <IconButton
               className="chat"
-              size={'sm'}
-              icon={<MyIcon name={'clear'} w={'14px'} />}
-              variant={'base'}
+              size={'smSquare'}
+              icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
+              variant={'whiteDanger'}
               borderRadius={'md'}
               aria-label={'delete'}
               onClick={(e) => {
@@ -115,6 +124,7 @@ const ChatTest = (
             userAvatar={userInfo?.avatar}
             showMarkIcon
             userGuideModule={getGuideModule(modules)}
+            showFileSelector={checkChatSupportSelectFileByModules(modules)}
             onStartChat={startChat}
             onDelMessage={() => {}}
           />

@@ -26,19 +26,20 @@ import {
   delOpenApiById,
   putOpenApiKey
 } from '@/web/support/openapi/api';
-import type { EditApiKeyProps } from '@/global/support/api/openapiReq';
+import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
 import { AddIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { feConfigs } from '@/web/common/system/staticData';
-import { useTranslation } from 'react-i18next';
-import MyIcon from '@/components/Icon';
+import { useTranslation } from 'next-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
+import { getDocPath } from '@/web/common/system/doc';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -53,7 +54,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const { Loading } = useLoading();
   const theme = useTheme();
   const { copyData } = useCopyData();
-  const [baseUrl, setBaseUrl] = useState('https://fastgpt.run/api');
+  const [baseUrl, setBaseUrl] = useState('https://fastgpt.in/api');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
 
@@ -71,7 +72,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   } = useQuery(['getOpenApiKeys', appId], () => getOpenApiKeys({ appId }));
 
   useEffect(() => {
-    setBaseUrl(`${location.origin}/api`);
+    setBaseUrl(feConfigs?.customApiDomain || `${location.origin}/api`);
   }, []);
 
   return (
@@ -82,14 +83,16 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
               API 秘钥管理
             </Box>
-            <Link
-              href={feConfigs.openAPIDocUrl || 'https://doc.fastgpt.run/docs/development/openapi'}
-              target={'_blank'}
-              ml={1}
-              color={'myBlue.600'}
-            >
-              查看文档
-            </Link>
+            {feConfigs?.docUrl && (
+              <Link
+                href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
+                target={'_blank'}
+                ml={1}
+                color={'primary.500'}
+              >
+                查看文档
+              </Link>
+            )}
           </Flex>
           <Box fontSize={'sm'} color={'myGray.600'}>
             {tips}
@@ -116,7 +119,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Button
             ml={3}
             leftIcon={<AddIcon fontSize={'md'} />}
-            variant={'base'}
+            variant={'whitePrimary'}
             onClick={() =>
               setEditData({
                 ...defaultEditData,
@@ -219,16 +222,23 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           }}
         />
       )}
-      <MyModal isOpen={!!apiKey} w={['400px', '600px']} onClose={() => setApiKey('')}>
-        <Box py={3} px={5}>
-          <Box fontWeight={'bold'} fontSize={'2xl'}>
-            新的 API 秘钥
+      <MyModal
+        isOpen={!!apiKey}
+        w={['400px', '600px']}
+        iconSrc="/imgs/modal/key.svg"
+        title={
+          <Box>
+            <Box fontWeight={'bold'} fontSize={'xl'}>
+              新的 API 秘钥
+            </Box>
+            <Box fontSize={'sm'} color={'myGray.600'}>
+              请保管好你的秘钥，秘钥不会再次展示~
+            </Box>
           </Box>
-          <Box fontSize={'sm'} color={'myGray.600'}>
-            请保管好你的秘钥，秘钥不会再次展示~
-          </Box>
-        </Box>
-        <ModalBody>
+        }
+        onClose={() => setApiKey('')}
+      >
+        <ModalBody pt={5}>
           <Flex
             bg={'myGray.100'}
             px={3}
@@ -236,6 +246,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             whiteSpace={'pre-wrap'}
             wordBreak={'break-all'}
             cursor={'pointer'}
+            borderRadius={'md'}
             onClick={() => copyData(apiKey)}
           >
             <Box flex={1}>{apiKey}</Box>
@@ -243,8 +254,8 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           </Flex>
         </ModalBody>
         <ModalFooter>
-          <Button variant="base" onClick={() => setApiKey('')}>
-            好的
+          <Button variant="whiteBase" onClick={() => setApiKey('')}>
+            {t('common.OK')}
           </Button>
         </ModalFooter>
       </MyModal>
@@ -292,7 +303,11 @@ function EditKeyModal({
   });
 
   return (
-    <MyModal isOpen={true} title={isEdit ? t('outlink.Edit API Key') : t('outlink.Create API Key')}>
+    <MyModal
+      isOpen={true}
+      iconSrc="/imgs/modal/key.svg"
+      title={isEdit ? t('outlink.Edit API Key') : t('outlink.Create API Key')}
+    >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('Name')}:</Box>
@@ -343,7 +358,7 @@ function EditKeyModal({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('Cancel')}
         </Button>
 

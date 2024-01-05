@@ -1,4 +1,4 @@
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useToast } from './useToast';
 
 /**
@@ -21,12 +21,14 @@ export const useCopyData = () => {
           throw new Error('');
         }
       } catch (error) {
+        console.log(error);
+
         const textarea = document.createElement('textarea');
         textarea.value = data;
         document.body.appendChild(textarea);
         textarea.select();
         document.execCommand('copy');
-        document.body.removeChild(textarea);
+        document.body?.removeChild(textarea);
       }
 
       toast({

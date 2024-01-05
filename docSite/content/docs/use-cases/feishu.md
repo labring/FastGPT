@@ -4,7 +4,7 @@ description: "FastGPT 接入飞书机器人 "
 icon: "chat"
 draft: false
 toc: true
-weight: 322
+weight: 503
 ---
 
 # FastGPT 一分钟接入飞书
@@ -37,7 +37,7 @@ FastGPT 集成**重点参数：**
 #上一步FastGPT的OpenAPI 秘钥
 OPENAI_KEY=fastgpt-z51pkjqm9nrk03a1rx2funoy
 #调用OpenAI的BaseUrl要换成FastGPT的
-API_URL=https://fastgpt.run/api/openapi
+API_URL=https://api.fastgpt.in/api/openapi
 ```
 
 ## 3. 创建飞书机器人

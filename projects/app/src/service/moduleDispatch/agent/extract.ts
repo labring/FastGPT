@@ -1,51 +1,59 @@
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
-import { ChatContextFilter } from '@/service/common/tiktoken';
-import type { moduleDispatchResType, ChatItemType } from '@/types/chat';
-import { ChatRoleEnum, TaskResponseKeyEnum } from '@/constants/chat';
+import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ContextExtractAgentItemType } from '@/types/app';
-import { ContextExtractEnum } from '@/constants/flow/flowField';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
-import { replaceVariable } from '@/global/common/string/tools';
-import { FunctionModelItemType } from '@/types/model';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { getHistories } from '../utils';
+import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
-  history?: ChatItemType[];
-  [ContextExtractEnum.content]: string;
-  [ContextExtractEnum.extractKeys]: ContextExtractAgentItemType[];
-  [ContextExtractEnum.description]: string;
+  [ModuleInputKeyEnum.history]?: ChatItemType[];
+  [ModuleInputKeyEnum.contextExtractInput]: string;
+  [ModuleInputKeyEnum.extractKeys]: ContextExtractAgentItemType[];
+  [ModuleInputKeyEnum.description]: string;
+  [ModuleInputKeyEnum.aiModel]: string;
 }>;
 type Response = {
-  [ContextExtractEnum.success]?: boolean;
-  [ContextExtractEnum.failed]?: boolean;
-  [ContextExtractEnum.fields]: string;
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.success]?: boolean;
+  [ModuleOutputKeyEnum.failed]?: boolean;
+  [ModuleOutputKeyEnum.contextExtractFields]: string;
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
 };
 
-const agentFunName = 'agent_extract_data';
+const agentFunName = 'extract_json_data';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
-    inputs: { content, description, extractKeys }
+    histories,
+    inputs: { content, history = 6, model, description, extractKeys }
   } = props;
 
   if (!content) {
     return Promise.reject('Input is empty');
   }
 
-  const extractModel = global.extractModels[0];
+  const extractModel = getExtractModel(model);
+  const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await (async () => {
-    if (extractModel.functionCall) {
-      return functionCall({
+  const { arg, inputTokens, outputTokens } = await (async () => {
+    if (extractModel.toolChoice) {
+      return toolChoice({
         ...props,
+        histories: chatHistories,
         extractModel
       });
     }
     return completions({
       ...props,
+      histories: chatHistories,
       extractModel
     });
   })();
@@ -53,6 +61,9 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   // remove invalid key
   for (let key in arg) {
     if (!extractKeys.find((item) => item.key === key)) {
+      delete arg[key];
+    }
+    if (arg[key] === '') {
       delete arg[key];
     }
   }
@@ -69,36 +80,59 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     }
   }
 
+  const { total, modelName } = formatModelPrice2Store({
+    model: extractModel.model,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
+    type: ModelTypeEnum.extract
+  });
+
   return {
-    [ContextExtractEnum.success]: success ? true : undefined,
-    [ContextExtractEnum.failed]: success ? undefined : true,
-    [ContextExtractEnum.fields]: JSON.stringify(arg),
+    [ModuleOutputKeyEnum.success]: success ? true : undefined,
+    [ModuleOutputKeyEnum.failed]: success ? undefined : true,
+    [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
-    [TaskResponseKeyEnum.responseData]: {
-      price: user.openaiAccount?.key ? 0 : extractModel.price * tokens,
-      model: extractModel.name || '',
-      tokens,
+    [ModuleOutputKeyEnum.responseData]: {
+      price: user.openaiAccount?.key ? 0 : total,
+      model: modelName,
+      query: content,
+      inputTokens,
+      outputTokens,
       extractDescription: description,
-      extractResult: arg
+      extractResult: arg,
+      contextTotalLen: chatHistories.length + 2
     }
   };
 }
 
-async function functionCall({
+async function toolChoice({
   extractModel,
   user,
-  inputs: { history = [], content, extractKeys, description }
+  histories,
+  inputs: { content, extractKeys, description }
 }: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
-    ...history,
+    ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: content
+      value: `你的任务：
+"""
+${description || '根据用户要求获取适当的 JSON 字符串。'}
+"""
+
+要求：
+"""
+- 如果字段为空，你返回空字符串。
+- 字符串不要换行。
+- 结合上下文和当前问题进行获取。
+"""
+
+当前问题: "${content}"`
     }
   ];
   const filterMessages = ChatContextFilter({
     messages,
-    maxTokens: extractModel.maxToken
+    maxTokens: extractModel.maxContext
   });
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
@@ -112,14 +146,15 @@ async function functionCall({
   extractKeys.forEach((item) => {
     properties[item.key] = {
       type: 'string',
-      description: item.desc
+      description: item.desc,
+      ...(item.enum ? { enum: item.enum.split('\n') } : {})
     };
   });
 
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: `${description}\n如果内容不存在，返回空字符串。`,
+    description,
     parameters: {
       type: 'object',
       properties,
@@ -133,24 +168,32 @@ async function functionCall({
     model: extractModel.model,
     temperature: 0,
     messages: [...adaptMessages],
-    function_call: { name: agentFunName },
-    functions: [agentFunction]
+    tools: [
+      {
+        type: 'function',
+        function: agentFunction
+      }
+    ],
+    tool_choice: { type: 'function', function: { name: agentFunName } }
   });
 
   const arg: Record<string, any> = (() => {
     try {
-      return JSON.parse(response.choices?.[0]?.message?.function_call?.arguments || '{}');
+      return JSON.parse(
+        response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '{}'
+      );
     } catch (error) {
       console.log(agentFunction.parameters);
-      console.log(response.choices?.[0]?.message);
-      console.log('Your model may not support function_call', error);
+      console.log(response.choices?.[0]?.message?.tool_calls?.[0]?.function);
+      console.log('Your model may not support tool_call', error);
       return {};
     }
   })();
 
-  const tokens = response.usage?.total_tokens || 0;
   return {
-    tokens,
+    rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
+    inputTokens: response.usage?.prompt_tokens || 0,
+    outputTokens: response.usage?.completion_tokens || 0,
     arg
   };
 }
@@ -158,7 +201,8 @@ async function functionCall({
 async function completions({
   extractModel,
   user,
-  inputs: { history = [], content, extractKeys, description }
+  histories,
+  inputs: { content, extractKeys, description }
 }: Props & { extractModel: FunctionModelItemType }) {
   const messages: ChatItemType[] = [
     {
@@ -168,12 +212,12 @@ async function completions({
         json: extractKeys
           .map(
             (item) =>
-              `key="${item.key}"，描述="${item.desc}"，required="${
-                item.required ? 'true' : 'false'
-              }"`
+              `{"key":"${item.key}", "description":"${item.desc}", "required":${item.required}${
+                item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
+              }}`
           )
           .join('\n'),
-        text: `${history.map((item) => `${item.obj}:${item.value}`).join('\n')}
+        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
 Human: ${content}`
       })
     }
@@ -188,7 +232,8 @@ Human: ${content}`
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
-  const totalTokens = data.usage?.total_tokens || 0;
+  const inputTokens = data.usage?.prompt_tokens || 0;
+  const outputTokens = data.usage?.completion_tokens || 0;
 
   // parse response
   const start = answer.indexOf('{');
@@ -196,7 +241,9 @@ Human: ${content}`
 
   if (start === -1 || end === -1)
     return {
-      tokens: totalTokens,
+      rawResponse: answer,
+      inputTokens,
+      outputTokens,
       arg: {}
     };
 
@@ -207,12 +254,16 @@ Human: ${content}`
 
   try {
     return {
-      tokens: totalTokens,
+      rawResponse: answer,
+      inputTokens,
+      outputTokens,
       arg: JSON.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
     return {
-      tokens: totalTokens,
+      rawResponse: answer,
+      inputTokens,
+      outputTokens,
       arg: {}
     };
   }

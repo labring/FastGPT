@@ -23,6 +23,7 @@ const PromotionRecordSchema = new Schema({
     enum: ['pay', 'register']
   },
   amount: {
+    // 1 * PRICE_SCALE
     type: Number,
     required: true
   }
@@ -30,3 +31,4 @@ const PromotionRecordSchema = new Schema({
 
 export const MongoPromotionRecord: Model<PromotionRecordType> =
   models['promotionRecord'] || model('promotionRecord', PromotionRecordSchema);
+MongoPromotionRecord.syncIndexes();

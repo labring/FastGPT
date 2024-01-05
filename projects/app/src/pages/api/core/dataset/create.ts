@@ -1,33 +1,45 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import type { CreateDatasetParams } from '@/global/core/api/datasetReq.d';
-import { createDefaultCollection } from './collection/create';
+import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
+import { createDefaultCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, tags, avatar, vectorModel, parentId, type } = req.body as CreateDatasetParams;
+    const {
+      parentId,
+      name,
+      type,
+      avatar,
+      vectorModel = global.vectorModels[0].model,
+      agentModel
+    } = req.body as CreateDatasetParams;
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true });
+    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
 
     const { _id } = await MongoDataset.create({
       name,
-      userId,
-      tags,
+      teamId,
+      tmbId,
       vectorModel,
+      agentModel,
       avatar,
       parentId: parentId || null,
       type
     });
 
-    await createDefaultCollection({
-      datasetId: _id,
-      userId
-    });
+    if (type === DatasetTypeEnum.dataset) {
+      await createDefaultCollection({
+        datasetId: _id,
+        teamId,
+        tmbId
+      });
+    }
 
     jsonRes(res, { data: _id });
   } catch (err) {

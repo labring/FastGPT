@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import axios from 'axios';
-import { OAuthEnum } from '@/constants/user';
+import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -59,7 +59,7 @@ export const useSystemStore = create<State>()(
             state.isPc = val;
           });
         },
-        gitStar: 3700,
+        gitStar: 6100,
         async loadGitStar() {
           try {
             const { data: git } = await axios.get('https://api.github.com/repos/labring/FastGPT');

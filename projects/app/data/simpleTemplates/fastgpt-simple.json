@@ -1,0 +1,31 @@
+{
+  "name": "极简模板",
+  "desc": "极简模板\n已内置参数细节",
+  "systemForm": {
+    "aiSettings": {
+      "model": true,
+      "systemPrompt": true,
+      "temperature": false,
+      "maxToken": false,
+      "quoteTemplate": false,
+      "quotePrompt": false
+    },
+    "cfr": {
+      "background": true
+    },
+    "dataset": {
+      "datasets": true,
+      "similarity": false,
+      "limit": false,
+      "searchMode": false,
+      "usingReRank": false,
+      "searchEmptyText": false
+    },
+    "userGuide": {
+      "welcomeText": true,
+      "variables": false,
+      "questionGuide": false,
+      "tts": true
+    }
+  }
+}

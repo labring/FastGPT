@@ -1,19 +1,19 @@
-import { TaskResponseKeyEnum } from '@/constants/chat';
-import { moduleDispatchResType } from '@/types/chat';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export type PluginOutputProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 export type PluginOutputResponse = {
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
 };
 
 export const dispatchPluginOutput = (props: PluginOutputProps): PluginOutputResponse => {
   const { inputs } = props;
 
   return {
-    [TaskResponseKeyEnum.responseData]: {
+    responseData: {
       price: 0,
       pluginOutput: inputs
     }

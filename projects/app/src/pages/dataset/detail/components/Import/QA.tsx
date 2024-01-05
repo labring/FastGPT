@@ -1,24 +1,24 @@
-import React, { useState, useMemo } from 'react';
-import { Box, Flex, Button, Input } from '@chakra-ui/react';
+import React, { useState } from 'react';
+import { Box, Flex, Button, Textarea, Grid } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon, InfoOutlineIcon } from '@chakra-ui/icons';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
-import { replaceVariable } from '@/global/common/string/tools';
 import { useImportStore, SelectorContainer, PreviewFileOrChunk } from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useTranslation } from 'next-i18next';
 
-const fileExtension = '.txt, .doc, .docx, .pdf, .md';
+const fileExtension = '.txt, .docx, .pdf, .md, .html';
 
 const QAImport = () => {
+  const { t } = useTranslation();
   const { datasetDetail } = useDatasetStore();
-  const vectorModel = datasetDetail.vectorModel;
-  const unitPrice = vectorModel?.price || 0.2;
+  const agentModel = datasetDetail.agentModel;
 
   const {
     successChunks,
     totalChunks,
+    totalTokens,
     isUnselectedFile,
     price,
     onclickUpload,
@@ -28,61 +28,73 @@ const QAImport = () => {
   } = useImportStore();
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: `该任务无法终止！导入后会自动调用大模型生成问答对，会有一些细节丢失，请确认！如果余额不足，未完成的任务会被暂停。`
+    content: t('core.dataset.import.Import Tip')
   });
 
-  const [prompt, setPrompt] = useState('');
-
-  const previewQAPrompt = useMemo(() => {
-    return replaceVariable(Prompt_AgentQA.prompt, {
-      theme: prompt || Prompt_AgentQA.defaultTheme
-    });
-  }, [prompt]);
+  const [prompt, setPrompt] = useState(Prompt_AgentQA.description);
 
   return (
     <Box display={['block', 'flex']} h={['auto', '100%']}>
       <SelectorContainer fileExtension={fileExtension}>
         {/* prompt */}
-        <Box py={5}>
-          <Box mb={2}>
-            QA 拆分引导词{' '}
-            <MyTooltip label={previewQAPrompt} forceShow>
-              <InfoOutlineIcon ml={1} />
-            </MyTooltip>
+        <Box p={3} bg={'myWhite.600'} borderRadius={'md'}>
+          <Box mb={1} fontWeight={'bold'}>
+            {t('core.dataset.collection.QA Prompt')}
           </Box>
-          <Flex alignItems={'center'} fontSize={'sm'}>
-            <Box mr={2}>文件主题</Box>
-            <Input
-              fontSize={'sm'}
-              flex={1}
-              placeholder={Prompt_AgentQA.defaultTheme}
-              bg={'myWhite.500'}
+          <Box whiteSpace={'pre-wrap'} fontSize={'sm'}>
+            <Textarea
               defaultValue={prompt}
-              onChange={(e) => setPrompt(e.target.value || '')}
+              rows={8}
+              fontSize={'sm'}
+              onChange={(e) => {
+                setPrompt(e.target.value);
+              }}
             />
-          </Flex>
+            <Box>{Prompt_AgentQA.fixedText}</Box>
+          </Box>
         </Box>
         {/* price */}
-        <Flex py={5} alignItems={'center'}>
-          <Box>
-            预估价格
-            <MyTooltip
-              label={`索引生成计费为: ${formatPrice(unitPrice, 1000)}/1k tokens`}
-              forceShow
-            >
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
-          </Box>
-          <Box ml={4}>{price}元</Box>
-        </Flex>
+        <Grid mt={4} gridTemplateColumns={'1fr 1fr'} gridGap={2}>
+          <Flex alignItems={'center'}>
+            <Box>{t('core.dataset.import.Total tokens')}：</Box>
+            <Box>{totalTokens}</Box>
+          </Flex>
+          {/* price */}
+          <Flex alignItems={'center'}>
+            <Box>
+              {t('core.dataset.import.Estimated Price')}
+              <MyTooltip
+                label={t('core.dataset.import.QA Estimated Price Tips', {
+                  inputPrice: agentModel?.inputPrice,
+                  outputPrice: agentModel?.outputPrice
+                })}
+                forceShow
+              >
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
+            </Box>
+            <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
+          </Flex>
+        </Grid>
         <Flex mt={3}>
           {showRePreview && (
-            <Button variant={'base'} mr={4} onClick={onReSplitChunks}>
-              重新生成预览
+            <Button variant={'whitePrimary'} mr={4} onClick={onReSplitChunks}>
+              {t('core.dataset.import.Re Preview')}
             </Button>
           )}
-          <Button isDisabled={uploading} onClick={openConfirm(onclickUpload)}>
-            {uploading ? <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box> : '确认导入'}
+          <Button
+            isDisabled={uploading}
+            onClick={() => {
+              onReSplitChunks();
+
+              openConfirm(() => onclickUpload({ prompt }))();
+            }}
+          >
+            {uploading ? (
+              <Box>{Math.round((successChunks / totalChunks) * 100)}%</Box>
+            ) : (
+              t('common.Confirm Import')
+            )}
           </Button>
         </Flex>
       </SelectorContainer>

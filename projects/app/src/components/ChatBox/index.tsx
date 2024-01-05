@@ -10,12 +10,9 @@ import React, {
 } from 'react';
 import Script from 'next/script';
 import { throttle } from 'lodash';
-import {
-  ChatHistoryItemResType,
-  ChatItemType,
-  ChatSiteItemType,
-  ExportChatType
-} from '@/types/chat';
+import type { ExportChatType } from '@/types/chat.d';
+import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -25,36 +22,40 @@ import {
   Card,
   Flex,
   Input,
-  Textarea,
   Button,
   useTheme,
   BoxProps,
-  FlexProps
+  FlexProps,
+  Image,
+  Textarea,
+  Checkbox
 } from '@chakra-ui/react';
 import { feConfigs } from '@/web/common/system/staticData';
-import { eventBus } from '@/web/common/utils/eventbus';
-import { adaptChat2GptMessages } from '@/utils/common/adapt/message';
+import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { VariableInputEnum } from '@/constants/app';
+import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import { useForm } from 'react-hook-form';
-import type { MessageItemType } from '@/types/core/chat/type';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { TaskResponseKeyEnum } from '@/constants/chat';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { customAlphabet } from 'nanoid';
-import { adminUpdateChatFeedback, userUpdateChatFeedback } from '@/web/core/chat/api';
+import {
+  closeCustomFeedback,
+  updateChatAdminFeedback,
+  updateChatUserFeedback
+} from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
-import Markdown from '@/components/Markdown';
+import Markdown, { CodeClassName } from '@/components/Markdown';
 import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
-import ChatBoxDivider from '@/components/core/chat/Divider';
 import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
@@ -63,7 +64,11 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 
 import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
-import { splitGuideModule } from '@/global/core/app/modules/utils';
+import { splitGuideModule } from '@fastgpt/global/core/module/utils';
+import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
+import MessageInput from './MessageInput';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import ChatBoxDivider from '../core/chat/Divider';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -73,14 +78,14 @@ type generatingMessageProps = { text?: string; name?: string; status?: 'running'
 
 export type StartChatFnProps = {
   chatList: ChatSiteItemType[];
-  messages: MessageItemType[];
+  messages: ChatMessageItemType[];
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;
 };
 
 export type ComponentRef = {
-  getChatHistory: () => ChatSiteItemType[];
+  getChatHistories: () => ChatSiteItemType[];
   resetVariables: (data?: Record<string, any>) => void;
   resetHistory: (history: ChatSiteItemType[]) => void;
   scrollToBottom: (behavior?: 'smooth' | 'auto') => void;
@@ -101,11 +106,19 @@ type Props = {
   appAvatar?: string;
   userAvatar?: string;
   userGuideModule?: ModuleItemType;
-  active?: boolean;
+  showFileSelector?: boolean;
+  active?: boolean; // can use
+
+  // not chat test params
+  appId?: string;
+  chatId?: string;
+  shareId?: string;
+  outLinkUid?: string;
+
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
     responseText: string;
-    [TaskResponseKeyEnum.responseData]: ChatHistoryItemResType[];
+    [ModuleOutputKeyEnum.responseData]: ChatHistoryItemResType[];
     isNewChat?: boolean;
   }>;
   onDelMessage?: (e: { contentId?: string; index: number }) => void;
@@ -120,7 +133,12 @@ const ChatBox = (
     appAvatar,
     userAvatar,
     userGuideModule,
+    showFileSelector,
     active = true,
+    appId,
+    chatId,
+    shareId,
+    outLinkUid,
     onUpdateVariable,
     onStartChat,
     onDelMessage
@@ -132,7 +150,7 @@ const ChatBox = (
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { isPc } = useSystemStore();
+  const { isPc, setLoading } = useSystemStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
@@ -143,10 +161,8 @@ const ChatBox = (
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
-    // read feedback modal data
     chatItemId: string;
     content: string;
-    isMarked: boolean;
   }>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
@@ -158,7 +174,7 @@ const ChatBox = (
     [chatHistory]
   );
 
-  const { welcomeText, variableModules, questionGuide } = useMemo(
+  const { welcomeText, variableModules, questionGuide, ttsConfig } = useMemo(
     () => splitGuideModule(userGuideModule),
     [userGuideModule]
   );
@@ -206,32 +222,28 @@ const ChatBox = (
     []
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const generatingMessage = useCallback(
-    // concat text to end of message
-    ({ text = '', status, name }: generatingMessageProps) => {
-      setChatHistory((state) =>
-        state.map((item, index) => {
-          if (index !== state.length - 1) return item;
-          return {
-            ...item,
-            ...(text
-              ? {
-                  value: item.value + text
-                }
-              : {}),
-            ...(status && name
-              ? {
-                  status,
-                  moduleName: name
-                }
-              : {})
-          };
-        })
-      );
-      generatingScroll();
-    },
-    [generatingScroll, setChatHistory]
-  );
+  const generatingMessage = ({ text = '', status, name }: generatingMessageProps) => {
+    setChatHistory((state) =>
+      state.map((item, index) => {
+        if (index !== state.length - 1) return item;
+        return {
+          ...item,
+          ...(text
+            ? {
+                value: item.value + text
+              }
+            : {}),
+          ...(status && name
+            ? {
+                status,
+                moduleName: name
+              }
+            : {})
+        };
+      })
+    );
+    generatingScroll();
+  };
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {
@@ -244,6 +256,7 @@ const ChatBox = (
         TextareaDom.current.style.height =
           val === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
       }
+      setRefresh((state) => !state);
     }, 100);
   }, []);
 
@@ -259,7 +272,7 @@ const ChatBox = (
         const result = await postQuestionGuide(
           {
             messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6),
-            shareId: router.query.shareId as string
+            shareId
           },
           abortSignal
         );
@@ -271,7 +284,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, scrollToBottom, router.query.shareId]
+    [questionGuide, scrollToBottom, shareId]
   );
 
   /**
@@ -324,7 +337,6 @@ const ChatBox = (
       setTimeout(() => {
         scrollToBottom();
       }, 100);
-
       try {
         // create abort obj
         const abortSignal = new AbortController();
@@ -337,7 +349,13 @@ const ChatBox = (
           responseText,
           isNewChat = false
         } = await onStartChat({
-          chatList: newChatList,
+          chatList: newChatList.map((item) => ({
+            dataId: item.dataId,
+            obj: item.obj,
+            value: item.value,
+            status: item.status,
+            moduleName: item.moduleName
+          })),
           messages,
           controller: abortSignal,
           generatingMessage,
@@ -374,7 +392,7 @@ const ChatBox = (
         }, 100);
       } catch (err: any) {
         toast({
-          title: getErrText(err, '聊天出错了~'),
+          title: t(getErrText(err, 'core.chat.error.Chat error')),
           status: 'error',
           duration: 5000,
           isClosable: true
@@ -407,7 +425,8 @@ const ChatBox = (
       generatingMessage,
       createQuestionGuide,
       generatingScroll,
-      isPc
+      isPc,
+      t
     ]
   );
 
@@ -416,15 +435,20 @@ const ChatBox = (
     async (index: number) => {
       if (!onDelMessage) return;
       const delHistory = chatHistory.slice(index);
-      setChatHistory((state) => (index === 0 ? [] : state.slice(0, index)));
 
-      await Promise.all(
-        delHistory.map((item, i) => onDelMessage({ contentId: item.dataId, index: index + i }))
-      );
+      setLoading(true);
 
-      sendPrompt(variables, delHistory[0].value, chatHistory.slice(0, index));
+      try {
+        await Promise.all(
+          delHistory.map((item, i) => onDelMessage({ contentId: item.dataId, index: index + i }))
+        );
+        setChatHistory((state) => (index === 0 ? [] : state.slice(0, index)));
+
+        sendPrompt(variables, delHistory[0].value, chatHistory.slice(0, index));
+      } catch (error) {}
+      setLoading(false);
     },
-    [chatHistory, onDelMessage, sendPrompt, variables]
+    [chatHistory, onDelMessage, sendPrompt, setLoading, variables]
   );
   // delete one message
   const delOneMessage = useCallback(
@@ -440,7 +464,7 @@ const ChatBox = (
 
   // output data
   useImperativeHandle(ref, () => ({
-    getChatHistory: () => chatHistory,
+    getChatHistories: () => chatHistory,
     resetVariables(e) {
       const defaultVal: Record<string, any> = {};
       variableModules?.forEach((item) => {
@@ -481,7 +505,7 @@ const ChatBox = (
     const colorMap = {
       loading: 'myGray.700',
       running: '#67c13b',
-      finish: 'myBlue.600'
+      finish: 'primary.500'
     };
     if (!isChatting) return;
     const chatContent = chatHistory[chatHistory.length - 1];
@@ -489,7 +513,7 @@ const ChatBox = (
 
     return {
       bg: colorMap[chatContent.status] || colorMap.loading,
-      name: t(chatContent.moduleName || 'common.Loading')
+      name: t(chatContent.moduleName || '') || t('common.Loading')
     };
   }, [chatHistory, isChatting, t]);
   /* style end */
@@ -506,7 +530,7 @@ const ChatBox = (
     };
   }, [router.query]);
 
-  // add guide text listener
+  // add listener
   useEffect(() => {
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
       if (data?.type === 'sendPrompt' && data?.text) {
@@ -514,16 +538,22 @@ const ChatBox = (
       }
     };
     window.addEventListener('message', windowMessage);
-    eventBus.on('guideClick', ({ text }: { text: string }) => {
+
+    eventBus.on(EventNameEnum.sendQuestion, ({ text }: { text: string }) => {
       if (!text) return;
       handleSubmit((data) => sendPrompt(data, text))();
     });
+    eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
+      if (!text) return;
+      resetInputVal(text);
+    });
 
     return () => {
-      eventBus.off('guideClick');
       window.removeEventListener('message', windowMessage);
+      eventBus.off(EventNameEnum.sendQuestion);
+      eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [handleSubmit, sendPrompt]);
+  }, [handleSubmit, resetInputVal, sendPrompt]);
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -560,9 +590,21 @@ const ChatBox = (
                       {item.type === VariableInputEnum.input && (
                         <Input
                           isDisabled={variableIsFinish}
+                          bg={'myWhite.400'}
                           {...register(item.key, {
                             required: item.required
                           })}
+                        />
+                      )}
+                      {item.type === VariableInputEnum.textarea && (
+                        <Textarea
+                          isDisabled={variableIsFinish}
+                          bg={'myWhite.400'}
+                          {...register(item.key, {
+                            required: item.required
+                          })}
+                          rows={5}
+                          maxLength={4000}
                         />
                       )}
                       {item.type === VariableInputEnum.select && (
@@ -587,17 +629,16 @@ const ChatBox = (
                   ))}
                   {!variableIsFinish && (
                     <Button
-                      leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                      leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                       size={'sm'}
                       maxW={'100px'}
-                      borderRadius={'lg'}
                       onClick={handleSubmit((data) => {
                         onUpdateVariable?.(data);
                         setVariables(data);
                         setVariableInputFinish(true);
                       })}
                     >
-                      {'开始对话'}
+                      {t('core.chat.Start Chat')}
                     </Button>
                   )}
                 </Card>
@@ -608,12 +649,7 @@ const ChatBox = (
           {/* chat history */}
           <Box id={'history'}>
             {chatHistory.map((item, index) => (
-              <Box
-                key={item.dataId}
-                flexDirection={'column'}
-                alignItems={item.obj === 'Human' ? 'flex-end' : 'flex-start'}
-                py={5}
-              >
+              <Box key={item.dataId} py={5}>
                 {item.obj === 'Human' && (
                   <>
                     {/* control icon */}
@@ -635,13 +671,12 @@ const ChatBox = (
                     <Box mt={['6px', 2]} textAlign={'right'}>
                       <Card
                         className="markdown"
-                        whiteSpace={'pre-wrap'}
                         {...MessageCardStyle}
-                        bg={'myBlue.300'}
+                        bg={'primary.200'}
                         borderRadius={'8px 0 8px 8px'}
                         textAlign={'left'}
                       >
-                        <Box as={'p'}>{item.value}</Box>
+                        <Markdown source={item.value} isChatting={false} />
                       </Card>
                     </Box>
                   </>
@@ -654,8 +689,10 @@ const ChatBox = (
                       <ChatController
                         ml={2}
                         chat={item}
+                        setChatHistory={setChatHistory}
                         display={index === chatHistory.length - 1 && isChatting ? 'none' : 'flex'}
                         showVoiceIcon={showVoiceIcon}
+                        ttsConfig={ttsConfig}
                         onDelete={
                           onDelMessage
                             ? () => {
@@ -686,33 +723,93 @@ const ChatBox = (
                               }
                             : undefined
                         }
-                        onReadFeedback={
+                        onAddUserLike={(() => {
+                          if (feedbackType !== FeedbackTypeEnum.user || item.userBadFeedback) {
+                            return;
+                          }
+                          return () => {
+                            if (!item.dataId || !chatId || !appId) return;
+
+                            const isGoodFeedback = !!item.userGoodFeedback;
+                            setChatHistory((state) =>
+                              state.map((chatItem) =>
+                                chatItem.dataId === item.dataId
+                                  ? {
+                                      ...chatItem,
+                                      userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                                    }
+                                  : chatItem
+                              )
+                            );
+                            try {
+                              updateChatUserFeedback({
+                                appId,
+                                chatId,
+                                chatItemId: item.dataId,
+                                shareId,
+                                outLinkUid,
+                                userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                              });
+                            } catch (error) {}
+                          };
+                        })()}
+                        onCloseUserLike={
                           feedbackType === FeedbackTypeEnum.admin
-                            ? () =>
-                                setReadFeedbackData({
-                                  chatItemId: item.dataId || '',
-                                  content: item.userFeedback || '',
-                                  isMarked: !!item.adminFeedback
-                                })
+                            ? () => {
+                                if (!item.dataId || !chatId || !appId) return;
+                                setChatHistory((state) =>
+                                  state.map((chatItem) =>
+                                    chatItem.dataId === item.dataId
+                                      ? { ...chatItem, userGoodFeedback: undefined }
+                                      : chatItem
+                                  )
+                                );
+                                updateChatUserFeedback({
+                                  appId,
+                                  chatId,
+                                  chatItemId: item.dataId,
+                                  userGoodFeedback: undefined
+                                });
+                              }
                             : undefined
                         }
-                        onFeedback={
-                          feedbackType === FeedbackTypeEnum.user
-                            ? item.userFeedback
-                              ? () => {
-                                  if (!item.dataId) return;
-                                  setChatHistory((state) =>
-                                    state.map((chatItem) =>
-                                      chatItem.dataId === item.dataId
-                                        ? { ...chatItem, userFeedback: undefined }
-                                        : chatItem
-                                    )
-                                  );
-                                  try {
-                                    userUpdateChatFeedback({ chatItemId: item.dataId });
-                                  } catch (error) {}
-                                }
-                              : () => setFeedbackId(item.dataId)
+                        onAddUserDislike={(() => {
+                          if (feedbackType !== FeedbackTypeEnum.user || item.userGoodFeedback) {
+                            return;
+                          }
+                          if (item.userBadFeedback) {
+                            return () => {
+                              if (!item.dataId || !chatId || !appId) return;
+                              setChatHistory((state) =>
+                                state.map((chatItem) =>
+                                  chatItem.dataId === item.dataId
+                                    ? { ...chatItem, userBadFeedback: undefined }
+                                    : chatItem
+                                )
+                              );
+                              try {
+                                updateChatUserFeedback({
+                                  appId,
+                                  chatId,
+                                  chatItemId: item.dataId,
+                                  shareId,
+                                  outLinkUid
+                                });
+                              } catch (error) {}
+                            };
+                          } else {
+                            return () => setFeedbackId(item.dataId);
+                          }
+                        })()}
+                        onReadUserDislike={
+                          feedbackType === FeedbackTypeEnum.admin
+                            ? () => {
+                                if (!item.dataId) return;
+                                setReadFeedbackData({
+                                  chatItemId: item.dataId || '',
+                                  content: item.userBadFeedback || ''
+                                });
+                              }
                             : undefined
                         }
                       />
@@ -744,47 +841,80 @@ const ChatBox = (
                     <Box textAlign={'left'} mt={['6px', 2]}>
                       <Card bg={'white'} {...MessageCardStyle}>
                         <Markdown
-                          source={item.value}
+                          source={(() => {
+                            const text = item.value as string;
+
+                            // replace quote tag: [source1] 标识第一个来源，需要提取数字1，从而去数组里查找来源
+                            const quoteReg = /\[source:(.+)\]/g;
+                            const replaceText = text.replace(quoteReg, `[QUOTE SIGN]($1)`);
+
+                            // question guide
+                            if (
+                              index === chatHistory.length - 1 &&
+                              !isChatting &&
+                              questionGuides.length > 0
+                            ) {
+                              return `${replaceText}\n\`\`\`${
+                                CodeClassName.questionGuide
+                              }\n${JSON.stringify(questionGuides)}`;
+                            }
+                            return replaceText;
+                          })()}
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
-                        <ResponseTags responseData={item.responseData} />
-                        {/* question guide */}
-                        {index === chatHistory.length - 1 &&
-                          !isChatting &&
-                          questionGuides.length > 0 && (
-                            <Box mt={2}>
-                              <ChatBoxDivider
-                                icon="core/chat/QGFill"
-                                text={t('chat.Question Guide Tips')}
-                              />
-                              <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
-                                {questionGuides.map((item) => (
-                                  <Button
-                                    key={item}
-                                    borderRadius={'md'}
-                                    variant={'outline'}
-                                    colorScheme={'gray'}
-                                    size={'xs'}
-                                    onClick={() => {
-                                      resetInputVal(item);
+
+                        <ResponseTags responseData={item.responseData} isShare={!!shareId} />
+
+                        {/* custom feedback */}
+                        {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                          <Box>
+                            <ChatBoxDivider
+                              icon={'core/app/customFeedback'}
+                              text={t('core.app.feedback.Custom feedback')}
+                            />
+                            {item.customFeedbacks.map((text, i) => (
+                              <Box key={`${text}${i}`}>
+                                <MyTooltip label={t('core.app.feedback.close custom feedback')}>
+                                  <Checkbox
+                                    onChange={(e) => {
+                                      if (e.target.checked && appId && chatId && item.dataId) {
+                                        closeCustomFeedback({
+                                          appId,
+                                          chatId,
+                                          chatItemId: item.dataId,
+                                          index: i
+                                        });
+                                        // update dom
+                                        setChatHistory((state) =>
+                                          state.map((chatItem) =>
+                                            chatItem.dataId === item.dataId
+                                              ? {
+                                                  ...chatItem,
+                                                  customFeedbacks: chatItem.customFeedbacks?.filter(
+                                                    (item, index) => index !== i
+                                                  )
+                                                }
+                                              : chatItem
+                                          )
+                                        );
+                                      }
+                                      console.log(e);
                                     }}
                                   >
-                                    {item}
-                                  </Button>
-                                ))}
-                              </Flex>
-                            </Box>
-                          )}
+                                    {text}
+                                  </Checkbox>
+                                </MyTooltip>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (
                           <Box>
-                            <Flex alignItems={'center'} py={2}>
-                              <MyIcon name={'markLight'} w={'14px'} color={'myGray.900'} />
-                              <Box ml={2} color={'myGray.500'}>
-                                {t('chat.Admin Mark Content')}
-                              </Box>
-                              <Box h={'1px'} bg={'myGray.300'} flex={'1'} />
-                            </Flex>
+                            <ChatBoxDivider
+                              icon="core/app/markLight"
+                              text={t('chat.Admin Mark Content')}
+                            />
                             <Box whiteSpace={'pre'}>{`${item.adminFeedback.q || ''}${
                               item.adminFeedback.a ? `\n${item.adminFeedback.a}` : ''
                             }`}</Box>
@@ -801,99 +931,33 @@ const ChatBox = (
       </Box>
       {/* message input */}
       {onStartChat && variableIsFinish && active ? (
-        <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(750px, 100%)']} px={[0, 5]}>
-          <Box
-            py={'18px'}
-            position={'relative'}
-            boxShadow={`0 0 10px rgba(0,0,0,0.2)`}
-            borderTop={['1px solid', 0]}
-            borderTopColor={'myGray.200'}
-            borderRadius={['none', 'md']}
-            backgroundColor={'white'}
-          >
-            {/* 输入框 */}
-            <Textarea
-              ref={TextareaDom}
-              py={0}
-              pr={['45px', '55px']}
-              border={'none'}
-              _focusVisible={{
-                border: 'none'
-              }}
-              placeholder="提问"
-              resize={'none'}
-              rows={1}
-              height={'22px'}
-              lineHeight={'22px'}
-              maxHeight={'150px'}
-              maxLength={-1}
-              overflowY={'auto'}
-              whiteSpace={'pre-wrap'}
-              wordBreak={'break-all'}
-              boxShadow={'none !important'}
-              color={'myGray.900'}
-              onChange={(e) => {
-                const textarea = e.target;
-                textarea.style.height = textareaMinH;
-                textarea.style.height = `${textarea.scrollHeight}px`;
-              }}
-              onKeyDown={(e) => {
-                // enter send.(pc or iframe && enter and unPress shift)
-                if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
-                  handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
-                  e.preventDefault();
-                }
-                // 全选内容
-                // @ts-ignore
-                e.key === 'a' && e.ctrlKey && e.target?.select();
-              }}
-            />
-            {/* 发送和等待按键 */}
-            <Flex
-              alignItems={'center'}
-              justifyContent={'center'}
-              h={'25px'}
-              w={'25px'}
-              position={'absolute'}
-              right={['12px', '20px']}
-              bottom={'15px'}
-            >
-              {isChatting ? (
-                <MyIcon
-                  className={styles.stopIcon}
-                  width={['22px', '25px']}
-                  height={['22px', '25px']}
-                  cursor={'pointer'}
-                  name={'stop'}
-                  color={'gray.500'}
-                  onClick={() => chatController.current?.abort('stop')}
-                />
-              ) : (
-                <MyIcon
-                  name={'chatSend'}
-                  width={['18px', '20px']}
-                  height={['18px', '20px']}
-                  cursor={'pointer'}
-                  color={'gray.500'}
-                  onClick={() => {
-                    handleSubmit((data) => sendPrompt(data, TextareaDom.current?.value))();
-                  }}
-                />
-              )}
-            </Flex>
-          </Box>
-        </Box>
+        <MessageInput
+          onChange={(e) => {
+            setRefresh(!refresh);
+          }}
+          onSendMessage={(e) => {
+            handleSubmit((data) => sendPrompt(data, e))();
+          }}
+          onStop={() => chatController.current?.abort('stop')}
+          isChatting={isChatting}
+          TextareaDom={TextareaDom}
+          resetInputVal={resetInputVal}
+          showFileSelector={showFileSelector}
+        />
       ) : null}
-
       {/* user feedback modal */}
-      {!!feedbackId && (
+      {!!feedbackId && chatId && appId && (
         <FeedbackModal
+          appId={appId}
+          chatId={chatId}
           chatItemId={feedbackId}
+          shareId={shareId}
+          outLinkUid={outLinkUid}
           onClose={() => setFeedbackId(undefined)}
           onSuccess={(content: string) => {
             setChatHistory((state) =>
               state.map((item) =>
-                item.dataId === feedbackId ? { ...item, userFeedback: content } : item
+                item.dataId === feedbackId ? { ...item, userBadFeedback: content } : item
               )
             );
             setFeedbackId(undefined);
@@ -903,27 +967,24 @@ const ChatBox = (
       {/* admin read feedback modal */}
       {!!readFeedbackData && (
         <ReadFeedbackModal
-          {...readFeedbackData}
+          content={readFeedbackData.content}
           onClose={() => setReadFeedbackData(undefined)}
-          onMark={() => {
-            const index = chatHistory.findIndex(
-              (item) => item.dataId === readFeedbackData.chatItemId
-            );
-            if (index === -1) return setReadFeedbackData(undefined);
-            setAdminMarkData({
-              chatItemId: readFeedbackData.chatItemId,
-              q: chatHistory[index - 1]?.value || '',
-              a: chatHistory[index]?.value || ''
-            });
-          }}
-          onSuccess={() => {
+          onCloseFeedback={() => {
             setChatHistory((state) =>
               state.map((chatItem) =>
                 chatItem.dataId === readFeedbackData.chatItemId
-                  ? { ...chatItem, userFeedback: undefined }
+                  ? { ...chatItem, userBadFeedback: undefined }
                   : chatItem
               )
             );
+            try {
+              if (!chatId || !appId) return;
+              updateChatUserFeedback({
+                appId,
+                chatId,
+                chatItemId: readFeedbackData.chatItemId
+              });
+            } catch (error) {}
             setReadFeedbackData(undefined);
           }}
         />
@@ -935,7 +996,10 @@ const ChatBox = (
           setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
           onClose={() => setAdminMarkData(undefined)}
           onSuccess={(adminFeedback) => {
-            adminUpdateChatFeedback({
+            if (!appId || !chatId || !adminMarkData.chatItemId) return;
+            updateChatAdminFeedback({
+              appId,
+              chatId,
               chatItemId: adminMarkData.chatItemId,
               ...adminFeedback
             });
@@ -951,15 +1015,17 @@ const ChatBox = (
               )
             );
 
-            if (readFeedbackData) {
-              userUpdateChatFeedback({
+            if (readFeedbackData && chatId && appId) {
+              updateChatUserFeedback({
+                appId,
+                chatId,
                 chatItemId: readFeedbackData.chatItemId,
-                userFeedback: undefined
+                userBadFeedback: undefined
               });
               setChatHistory((state) =>
                 state.map((chatItem) =>
                   chatItem.dataId === readFeedbackData.chatItemId
-                    ? { ...chatItem, userFeedback: undefined }
+                    ? { ...chatItem, userBadFeedback: undefined }
                     : chatItem
                 )
               );
@@ -1077,10 +1143,10 @@ function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
       w={['28px', '34px']}
       h={['28px', '34px']}
       p={'2px'}
-      borderRadius={'lg'}
+      borderRadius={'sm'}
       border={theme.borders.base}
       boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-      bg={type === 'Human' ? 'white' : 'myBlue.100'}
+      bg={type === 'Human' ? 'white' : 'primary.50'}
     >
       <Avatar src={src} w={'100%'} h={'100%'} />
     </Box>
@@ -1106,34 +1172,44 @@ function Empty() {
 
 function ChatController({
   chat,
+  setChatHistory,
   display,
   showVoiceIcon,
-  onReadFeedback,
+  ttsConfig,
+  onReadUserDislike,
+  onCloseUserLike,
   onMark,
   onRetry,
   onDelete,
-  onFeedback,
+  onAddUserDislike,
+  onAddUserLike,
   ml,
   mr
 }: {
   chat: ChatSiteItemType;
+  setChatHistory?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   showVoiceIcon?: boolean;
+  ttsConfig?: AppTTSConfigType;
   onRetry?: () => void;
   onDelete?: () => void;
   onMark?: () => void;
-  onReadFeedback?: () => void;
-  onFeedback?: () => void;
+  onReadUserDislike?: () => void;
+  onCloseUserLike?: () => void;
+  onAddUserLike?: () => void;
+  onAddUserDislike?: () => void;
 } & FlexProps) {
   const theme = useTheme();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({});
+  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({
+    ttsConfig
+  });
   const controlIconStyle = {
     w: '14px',
     cursor: 'pointer',
     p: 1,
     bg: 'white',
-    borderRadius: 'lg',
+    borderRadius: 'md',
     boxShadow: '0 0 5px rgba(0,0,0,0.1)',
     border: theme.borders.base,
     mr: 3
@@ -1151,7 +1227,7 @@ function ChatController({
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
-          _hover={{ color: 'myBlue.700' }}
+          _hover={{ color: 'primary.600' }}
           onClick={() => copyData(chat.value)}
         />
       </MyTooltip>
@@ -1161,7 +1237,7 @@ function ChatController({
             <MyTooltip label={t('chat.retry')}>
               <MyIcon
                 {...controlIconStyle}
-                name={'retryLight'}
+                name={'common/retryLight'}
                 _hover={{ color: 'green.500' }}
                 onClick={onRetry}
               />
@@ -1181,24 +1257,46 @@ function ChatController({
         hasAudio &&
         (audioLoading ? (
           <MyTooltip label={'加载中...'}>
-            <MyIcon {...controlIconStyle} name={'loading'} />
+            <MyIcon {...controlIconStyle} name={'common/loading'} />
           </MyTooltip>
         ) : audioPlaying ? (
-          <MyTooltip label={'终止播放'}>
-            <MyIcon
-              {...controlIconStyle}
-              name={'pause'}
-              _hover={{ color: '#E74694' }}
-              onClick={() => cancelAudio()}
-            />
-          </MyTooltip>
+          <Flex alignItems={'center'} mr={2}>
+            <MyTooltip label={t('core.chat.tts.Stop Speech')}>
+              <MyIcon
+                {...controlIconStyle}
+                mr={1}
+                name={'core/chat/stopSpeech'}
+                color={'#E74694'}
+                onClick={() => cancelAudio()}
+              />
+            </MyTooltip>
+            <Image src="/icon/speaking.gif" w={'23px'} alt={''} />
+          </Flex>
         ) : (
-          <MyTooltip label={'语音播报'}>
+          <MyTooltip label={t('core.app.TTS')}>
             <MyIcon
               {...controlIconStyle}
-              name={'voice'}
+              name={'common/voiceLight'}
               _hover={{ color: '#E74694' }}
-              onClick={() => playAudio(chat.value)}
+              onClick={async () => {
+                const response = await playAudio({
+                  buffer: chat.ttsBuffer,
+                  chatItemId: chat.dataId,
+                  text: chat.value
+                });
+
+                if (!setChatHistory || !response.buffer) return;
+                setChatHistory((state) =>
+                  state.map((item) =>
+                    item.dataId === chat.dataId
+                      ? {
+                          ...item,
+                          ttsBuffer: response.buffer
+                        }
+                      : item
+                  )
+                );
+              }}
             />
           </MyTooltip>
         ))}
@@ -1206,45 +1304,68 @@ function ChatController({
         <MyTooltip label={t('chat.Mark')}>
           <MyIcon
             {...controlIconStyle}
-            name={'markLight'}
+            name={'core/app/markLight'}
             _hover={{ color: '#67c13b' }}
             onClick={onMark}
           />
         </MyTooltip>
       )}
-      {!!onReadFeedback && (
-        <MyTooltip label={t('chat.Read User Feedback')}>
+      {!!onCloseUserLike && chat.userGoodFeedback && (
+        <MyTooltip label={t('core.chat.feedback.Close User Like')}>
           <MyIcon
-            display={chat.userFeedback ? 'block' : 'none'}
+            {...controlIconStyle}
+            color={'white'}
+            bg={'green.500'}
+            fontWeight={'bold'}
+            name={'core/chat/feedback/goodLight'}
+            onClick={onCloseUserLike}
+          />
+        </MyTooltip>
+      )}
+      {!!onReadUserDislike && chat.userBadFeedback && (
+        <MyTooltip label={t('core.chat.feedback.Read User dislike')}>
+          <MyIcon
             {...controlIconStyle}
             color={'white'}
             bg={'#FC9663'}
             fontWeight={'bold'}
-            name={'badLight'}
-            onClick={onReadFeedback}
+            name={'core/chat/feedback/badLight'}
+            onClick={onReadUserDislike}
           />
         </MyTooltip>
       )}
-      {!!onFeedback && (
-        <MyTooltip
-          label={chat.userFeedback ? `取消反馈。\n您当前反馈内容为:\n${chat.userFeedback}` : '反馈'}
-        >
-          <MyIcon
-            {...controlIconStyle}
-            {...(!!chat.userFeedback
-              ? {
-                  color: 'white',
-                  bg: '#FC9663',
-                  fontWeight: 'bold',
-                  onClick: onFeedback
-                }
-              : {
-                  _hover: { color: '#FB7C3C' },
-                  onClick: onFeedback
-                })}
-            name={'badLight'}
-          />
-        </MyTooltip>
+      {!!onAddUserLike && (
+        <MyIcon
+          {...controlIconStyle}
+          {...(!!chat.userGoodFeedback
+            ? {
+                color: 'white',
+                bg: 'green.500',
+                fontWeight: 'bold'
+              }
+            : {
+                _hover: { color: 'green.600' }
+              })}
+          name={'core/chat/feedback/goodLight'}
+          onClick={onAddUserLike}
+        />
+      )}
+      {!!onAddUserDislike && (
+        <MyIcon
+          {...controlIconStyle}
+          {...(!!chat.userBadFeedback
+            ? {
+                color: 'white',
+                bg: '#FC9663',
+                fontWeight: 'bold',
+                onClick: onAddUserDislike
+              }
+            : {
+                _hover: { color: '#FB7C3C' },
+                onClick: onAddUserDislike
+              })}
+          name={'core/chat/feedback/badLight'}
+        />
       )}
     </Flex>
   );

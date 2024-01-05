@@ -1,12 +1,12 @@
 import React from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
-import { getInforms, readInform } from '@/web/support/user/api';
+import { getInforms, readInform } from '@/web/support/user/inform/api';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import type { UserInformSchema } from '@fastgpt/global/support/user/type';
+import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const BillTable = () => {
   const theme = useTheme();
@@ -59,7 +59,7 @@ const BillTable = () => {
                 w={'5px'}
                 h={'5px'}
                 borderRadius={'10px'}
-                bg={'myRead.600'}
+                bg={'red.600'}
                 position={'absolute'}
                 bottom={'8px'}
                 right={'8px'}
@@ -67,15 +67,16 @@ const BillTable = () => {
             )}
           </Box>
         ))}
+        {!isLoading && informs.length === 0 && (
+          <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              暂无通知~
+            </Box>
+          </Flex>
+        )}
       </Box>
-      {!isLoading && informs.length === 0 && (
-        <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'} pt={'-48px'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            暂无通知~
-          </Box>
-        </Flex>
-      )}
+
       {total > pageSize && (
         <Flex w={'100%'} mt={4} px={[3, 8]} justifyContent={'flex-end'}>
           <Pagination />

@@ -15,10 +15,6 @@ interface ResponseDataType {
  * 请求开始
  */
 function requestStart(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
-  if (config.headers) {
-    config.headers.rootkey = process.env.ROOT_KEY;
-  }
-
   return config;
 }
 
@@ -62,7 +58,9 @@ function responseError(err: any) {
 const instance = axios.create({
   timeout: 60000, // 超时时间
   headers: {
-    'content-type': 'application/json'
+    'content-type': 'application/json',
+    'Cache-Control': 'no-cache',
+    rootkey: process.env.ROOT_KEY
   }
 });
 
@@ -72,8 +70,9 @@ instance.interceptors.request.use(requestStart, (err) => Promise.reject(err));
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
 export function request(url: string, data: any, config: ConfigType, method: Method): any {
-  if (!global.systemEnv?.pluginBaseUrl) {
-    return Promise.reject('商业版插件加载中...');
+  if (!global.systemEnv || !global.systemEnv?.pluginBaseUrl) {
+    console.log('未部署商业版接口', url);
+    return Promise.reject('The The request was denied...');
   }
 
   /* 去空 */
@@ -103,18 +102,18 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
  * @param {Object} config
  * @returns
  */
-export function GET<T>(url: string, params = {}, config: ConfigType = {}): Promise<T> {
+export function GET<T = undefined>(url: string, params = {}, config: ConfigType = {}): Promise<T> {
   return request(url, params, config, 'GET');
 }
 
-export function POST<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function POST<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'POST');
 }
 
-export function PUT<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function PUT<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'PUT');
 }
 
-export function DELETE<T>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
+export function DELETE<T = undefined>(url: string, data = {}, config: ConfigType = {}): Promise<T> {
   return request(url, data, config, 'DELETE');
 }

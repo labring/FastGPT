@@ -5,7 +5,7 @@ import RemarkGfm from 'remark-gfm';
 import RemarkMath from 'remark-math';
 import RehypeKatex from 'rehype-katex';
 import RemarkBreaks from 'remark-breaks';
-import { eventBus } from '@/web/common/utils/eventbus';
+import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 
 import 'katex/dist/katex.min.css';
 import styles from '../index.module.scss';
@@ -23,11 +23,11 @@ function MyLink(e: any) {
     <Box as={'li'} mb={1}>
       <Box
         as={'span'}
-        color={'blue.600'}
+        color={'primary.700'}
         textDecoration={'underline'}
         cursor={'pointer'}
         onClick={() => {
-          eventBus.emit('guideClick', { text });
+          eventBus.emit(EventNameEnum.sendQuestion, { text });
         }}
       >
         {text}

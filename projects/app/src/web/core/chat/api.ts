@@ -1,45 +1,62 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { ChatHistoryItemType } from '@/types/chat';
-import type { InitChatResponse } from '@/global/core/api/chatRes.d';
-import type { RequestPaging } from '@/types';
-import type { Props as UpdateHistoryProps } from '@/pages/api/chat/history/updateChatHistory';
-import type { AdminUpdateFeedbackParams } from '@/global/core/api/chatReq.d';
+import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  CloseCustomFeedbackParams,
+  InitChatProps,
+  InitChatResponse,
+  InitOutLinkChatProps,
+  getHistoriesProps
+} from '@/global/core/chat/api.d';
+import type {
+  AdminUpdateFeedbackParams,
+  ClearHistoriesProps,
+  DelHistoryProps,
+  DeleteChatItemProps,
+  UpdateHistoryProps
+} from '@/global/core/chat/api.d';
+import { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 
 /**
  * 获取初始化聊天内容
  */
-export const getInitChatSiteInfo = (data: { appId: string; chatId?: string }) =>
-  GET<InitChatResponse>(`/chat/init`, data);
+export const getInitChatInfo = (data: InitChatProps) =>
+  GET<InitChatResponse>(`/core/chat/init`, data);
+export const getInitOutLinkChatInfo = (data: InitOutLinkChatProps) =>
+  GET<InitChatResponse>(`/core/chat/outLink/init`, data);
 
 /**
- * 获取历史记录
+ * get current window history(appid or shareId)
  */
-export const getChatHistory = (data: RequestPaging & { appId?: string }) =>
-  POST<ChatHistoryItemType[]>('/chat/history/getHistory', data);
+export const getChatHistories = (data: getHistoriesProps) =>
+  POST<ChatHistoryItemType[]>('/core/chat/getHistories', data);
 
 /**
- * 删除一条历史记录
+ * delete one history
  */
-export const delChatHistoryById = (chatId: string) => DELETE(`/chat/removeHistory`, { chatId });
+export const delChatHistoryById = (data: DelHistoryProps) => DELETE(`/core/chat/delHistory`, data);
 /**
  * clear all history by appid
  */
-export const clearChatHistoryByAppId = (appId: string) => DELETE(`/chat/removeHistory`, { appId });
+export const clearChatHistoryByAppId = (data: ClearHistoriesProps) =>
+  DELETE(`/core/chat/clearHistories`, data);
 
 /**
- * 删除一句对话
+ * delete one chat record
  */
-export const delChatRecordById = (data: { chatId: string; contentId: string }) =>
-  DELETE(`/chat/delChatRecordByContentId`, data);
+export const delChatRecordById = (data: DeleteChatItemProps) =>
+  DELETE(`/core/chat/item/delete`, data);
 
 /**
  * 修改历史记录: 标题/置顶
  */
-export const putChatHistory = (data: UpdateHistoryProps) =>
-  PUT('/chat/history/updateChatHistory', data);
+export const putChatHistory = (data: UpdateHistoryProps) => PUT('/core/chat/updateHistory', data);
 
-export const userUpdateChatFeedback = (data: { chatItemId: string; userFeedback?: string }) =>
-  POST('/chat/feedback/userUpdate', data);
+/* -------------- feedback ------------ */
+export const updateChatUserFeedback = (data: UpdateChatFeedbackProps) =>
+  POST('/core/chat/feedback/updateUserFeedback', data);
 
-export const adminUpdateChatFeedback = (data: AdminUpdateFeedbackParams) =>
-  POST('/chat/feedback/adminUpdate', data);
+export const updateChatAdminFeedback = (data: AdminUpdateFeedbackParams) =>
+  POST('/core/chat/feedback/adminUpdate', data);
+
+export const closeCustomFeedback = (data: CloseCustomFeedbackParams) =>
+  POST('/core/chat/feedback/closeCustom', data).catch();

@@ -1,7 +1,7 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ModalFooter, ModalBody, Input, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useRequest } from '@/web/common/hooks/useRequest';
 
 const EditFolderModal = ({
@@ -42,7 +42,7 @@ const EditFolderModal = ({
   });
 
   return (
-    <MyModal isOpen onClose={onClose} title={typeMap.title}>
+    <MyModal isOpen onClose={onClose} iconSrc="/imgs/modal/folder.svg" title={typeMap.title}>
       <ModalBody>
         <Input
           ref={inputRef}
@@ -53,7 +53,7 @@ const EditFolderModal = ({
         />
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'base'} onClick={onClose}>
+        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           {t('Cancel')}
         </Button>
         <Button isLoading={isLoading} onClick={onSave}>

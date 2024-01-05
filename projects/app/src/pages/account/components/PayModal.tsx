@@ -1,14 +1,13 @@
 import React, { useState, useCallback } from 'react';
 import { ModalFooter, ModalBody, Button, Input, Box, Grid } from '@chakra-ui/react';
-import { getPayCode, checkPayResult } from '@/web/common/bill/api';
+import { getPayCode, checkPayResult } from '@/web/support/wallet/pay/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useRouter } from 'next/router';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Markdown from '@/components/Markdown';
 import MyModal from '@/components/MyModal';
-import { priceMd } from '@/web/common/system/staticData';
 
 const PayModal = ({ onClose }: { onClose: () => void }) => {
   const router = useRouter();
@@ -54,7 +53,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       onSuccess(res) {
         if (!res) return;
         toast({
-          title: '充值成功',
+          title: res,
           status: 'success'
         });
         router.reload();
@@ -67,13 +66,13 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       isOpen={true}
       onClose={payId ? undefined : onClose}
       title={t('user.Pay')}
-      isCentered={!payId}
+      iconSrc="/imgs/modal/pay.svg"
     >
-      <ModalBody p={0} minH={payId ? 'auto' : '70vh'} display={'flex'} flexDirection={'column'}>
+      <ModalBody px={0} display={'flex'} flexDirection={'column'}>
         {!payId && (
           <>
-            <Grid gridTemplateColumns={'repeat(4,1fr)'} gridGap={5} mb={4} px={6}>
-              {[10, 20, 50, 100].map((item) => (
+            <Grid gridTemplateColumns={'repeat(3,1fr)'} gridGap={5} mb={4} px={6}>
+              {[10, 20, 50, 100, 200, 500].map((item) => (
                 <Button
                   key={item}
                   variant={item === inputVal ? 'solid' : 'outline'}
@@ -83,7 +82,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                 </Button>
               ))}
             </Grid>
-            <Box mb={4} px={6}>
+            <Box px={6}>
               <Input
                 value={inputVal}
                 type={'number'}
@@ -93,9 +92,6 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
                   setInputVal(Math.floor(+e.target.value));
                 }}
               ></Input>
-            </Box>
-            <Box flex={[1, '1 0 0']} overflow={'overlay'} px={6}>
-              <Markdown source={priceMd} />
             </Box>
           </>
         )}
@@ -109,8 +105,8 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       <ModalFooter>
         {!payId && (
           <>
-            <Button variant={'base'} onClick={onClose}>
-              取消
+            <Button variant={'whiteBase'} onClick={onClose}>
+              {t('common.Close')}
             </Button>
             <Button
               ml={3}

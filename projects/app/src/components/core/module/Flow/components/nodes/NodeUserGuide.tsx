@@ -15,50 +15,58 @@ import {
   Switch
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { SystemInputEnum } from '@/constants/app';
-import { welcomeTextTip, variableTip, questionGuideTip } from '@/constants/flow/ModuleTemplate';
+import { FlowModuleItemType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { welcomeTextTip, variableTip } from '@fastgpt/global/core/module/template/tip';
 import { onChangeNode } from '../../FlowProvider';
 
-import VariableEditModal, { addVariable } from '../../../VariableEditModal';
-import MyIcon from '@/components/Icon';
+import VariableEdit from '../modules/VariableEdit';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
-import NodeCard from '../modules/NodeCard';
-import { VariableItemType } from '@/types/app';
+import NodeCard from '../render/NodeCard';
+import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
+import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
+import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
+import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 
-const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeUserGuide = React.memo(function NodeUserGuide({ data }: { data: FlowModuleItemType }) {
   const theme = useTheme();
   return (
     <>
       <NodeCard minW={'300px'} {...data}>
-        <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
+        <Container className="nodrag" borderTop={'2px solid'} borderTopColor={'myGray.200'}>
           <WelcomeText data={data} />
           <Box pt={4} pb={2}>
             <ChatStartVariable data={data} />
           </Box>
           <Box pt={3} borderTop={theme.borders.base}>
+            <TTSGuide data={data} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={theme.borders.base}>
             <QuestionGuide data={data} />
           </Box>
         </Container>
       </NodeCard>
     </>
   );
-};
-export default React.memo(NodeUserGuide);
+});
 
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodeUserGuide data={data} />;
+}
 export function WelcomeText({ data }: { data: FlowModuleItemType }) {
   const { inputs, moduleId } = data;
 
   const welcomeText = useMemo(
-    () => inputs.find((item) => item.key === SystemInputEnum.welcomeText),
+    () => inputs.find((item) => item.key === ModuleInputKeyEnum.welcomeText),
     [inputs]
   );
 
   return (
     <>
       <Flex mb={1} alignItems={'center'}>
-        <MyIcon name={'welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
+        <MyIcon name={'core/modules/welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
         <Box>开场白</Box>
         <MyTooltip label={welcomeTextTip} forceShow>
           <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
@@ -75,7 +83,7 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
           onChange={(e) => {
             onChangeNode({
               moduleId,
-              key: SystemInputEnum.welcomeText,
+              key: ModuleInputKeyEnum.welcomeText,
               type: 'updateInput',
               value: {
                 ...welcomeText,
@@ -94,21 +102,19 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
 
   const variables = useMemo(
     () =>
-      (inputs.find((item) => item.key === SystemInputEnum.variables)
+      (inputs.find((item) => item.key === ModuleInputKeyEnum.variables)
         ?.value as VariableItemType[]) || [],
     [inputs]
   );
-
-  const [editVariable, setEditVariable] = useState<VariableItemType>();
 
   const updateVariables = useCallback(
     (value: VariableItemType[]) => {
       onChangeNode({
         moduleId,
-        key: SystemInputEnum.variables,
+        key: ModuleInputKeyEnum.variables,
         type: 'updateInput',
         value: {
-          ...inputs.find((item) => item.key === SystemInputEnum.variables),
+          ...inputs.find((item) => item.key === ModuleInputKeyEnum.variables),
           value
         }
       });
@@ -116,92 +122,7 @@ function ChatStartVariable({ data }: { data: FlowModuleItemType }) {
     [inputs, moduleId]
   );
 
-  const onclickSubmit = useCallback(
-    ({ variable }: { variable: VariableItemType }) => {
-      updateVariables(variables.map((item) => (item.id === variable.id ? variable : item)));
-      setEditVariable(undefined);
-    },
-    [updateVariables, variables]
-  );
-
-  return (
-    <>
-      <Flex mb={1} alignItems={'center'}>
-        <MyIcon name={'variable'} mr={2} w={'16px'} color={'#fb7c3d'} />
-        <Box>对话框变量</Box>
-        <MyTooltip label={variableTip} forceShow>
-          <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-        </MyTooltip>
-        <Box flex={1} />
-        <Flex
-          ml={2}
-          textAlign={'right'}
-          cursor={'pointer'}
-          px={3}
-          py={'2px'}
-          borderRadius={'md'}
-          _hover={{ bg: 'myGray.200' }}
-          onClick={() => {
-            const newVariable = addVariable();
-            updateVariables(variables.concat(newVariable));
-            setEditVariable(newVariable);
-          }}
-        >
-          +&ensp;新增
-        </Flex>
-      </Flex>
-      {variables.length > 0 && (
-        <TableContainer borderWidth={'1px'} borderBottom="none" borderRadius={'lg'}>
-          <Table>
-            <Thead>
-              <Tr>
-                <Th>变量名</Th>
-                <Th>变量 key</Th>
-                <Th>必填</Th>
-                <Th></Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {variables.map((item, index) => (
-                <Tr key={index}>
-                  <Td>{item.label} </Td>
-                  <Td>{item.key}</Td>
-                  <Td>{item.required ? '✔' : ''}</Td>
-                  <Td>
-                    <MyIcon
-                      mr={3}
-                      name={'settingLight'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() => {
-                        setEditVariable(item);
-                      }}
-                    />
-                    <MyIcon
-                      name={'delete'}
-                      w={'16px'}
-                      cursor={'pointer'}
-                      onClick={() =>
-                        updateVariables(variables.filter((variable) => variable.id !== item.id))
-                      }
-                    />
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-        </TableContainer>
-      )}
-
-      {!!editVariable && (
-        <VariableEditModal
-          defaultVariable={editVariable}
-          onClose={() => setEditVariable(undefined)}
-          onSubmit={onclickSubmit}
-        />
-      )}
-    </>
-  );
+  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
 }
 
 function QuestionGuide({ data }: { data: FlowModuleItemType }) {
@@ -209,35 +130,49 @@ function QuestionGuide({ data }: { data: FlowModuleItemType }) {
 
   const questionGuide = useMemo(
     () =>
-      (inputs.find((item) => item.key === SystemInputEnum.questionGuide)?.value as boolean) ||
+      (inputs.find((item) => item.key === ModuleInputKeyEnum.questionGuide)?.value as boolean) ||
       false,
     [inputs]
   );
 
   return (
-    <Flex alignItems={'center'}>
-      <MyIcon name={'questionGuide'} mr={2} w={'16px'} />
-      <Box>下一步指引</Box>
-      <MyTooltip label={questionGuideTip} forceShow>
-        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-      </MyTooltip>
-      <Box flex={1} />
-      <Switch
-        isChecked={questionGuide}
-        size={'lg'}
-        onChange={(e) => {
-          const value = e.target.checked;
-          onChangeNode({
-            moduleId,
-            key: SystemInputEnum.questionGuide,
-            type: 'updateInput',
-            value: {
-              ...inputs.find((item) => item.key === SystemInputEnum.questionGuide),
-              value
-            }
-          });
-        }}
-      />
-    </Flex>
+    <QGSwitch
+      isChecked={questionGuide}
+      size={'lg'}
+      onChange={(e) => {
+        const value = e.target.checked;
+        onChangeNode({
+          moduleId,
+          key: ModuleInputKeyEnum.questionGuide,
+          type: 'updateInput',
+          value: {
+            ...inputs.find((item) => item.key === ModuleInputKeyEnum.questionGuide),
+            value
+          }
+        });
+      }}
+    />
+  );
+}
+
+function TTSGuide({ data }: { data: FlowModuleItemType }) {
+  const { inputs, moduleId } = data;
+  const { ttsConfig } = splitGuideModule({ inputs } as ModuleItemType);
+
+  return (
+    <TTSSelect
+      value={ttsConfig}
+      onChange={(e) => {
+        onChangeNode({
+          moduleId,
+          key: ModuleInputKeyEnum.tts,
+          type: 'updateInput',
+          value: {
+            ...inputs.find((item) => item.key === ModuleInputKeyEnum.tts),
+            value: e
+          }
+        });
+      }}
+    />
   );
 }

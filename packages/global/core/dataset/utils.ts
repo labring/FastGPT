@@ -1,4 +1,4 @@
-import { DatasetCollectionTypeEnum } from './constant';
+import { DatasetCollectionTypeEnum, DatasetDataIndexTypeEnum } from './constant';
 import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
@@ -43,4 +43,15 @@ export function getSourceNameIcon({
     return '/imgs/files/mark.svg';
   }
   return '/imgs/files/collection.svg';
+}
+
+export function getDefaultIndex(props?: { q?: string; a?: string; dataId?: string }) {
+  const { q = '', a, dataId } = props || {};
+  const qaStr = `${q}\n${a}`.trim();
+  return {
+    defaultIndex: true,
+    type: a ? DatasetDataIndexTypeEnum.qa : DatasetDataIndexTypeEnum.chunk,
+    text: a ? qaStr : q,
+    dataId
+  };
 }

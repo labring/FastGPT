@@ -1,16 +1,16 @@
 import React from 'react';
 import { Flex, Box, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
-import { useTranslation } from 'react-i18next';
-import MyIcon from '@/components/Icon';
+import { useTranslation } from 'next-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const SliderApps = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { myApps, loadMyApps } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
 
   useQuery(['loadModels'], () => loadMyApps(false));
 
@@ -28,11 +28,10 @@ const SliderApps = ({ appId }: { appId: string }) => {
         >
           <IconButton
             mr={3}
-            icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+            icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
             bg={'white'}
             boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-            h={'28px'}
-            size={'sm'}
+            size={'smSquare'}
             borderRadius={'50%'}
             aria-label={''}
           />
@@ -47,7 +46,7 @@ const SliderApps = ({ appId }: { appId: string }) => {
             px={3}
             mb={3}
             cursor={'pointer'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             alignItems={'center'}
             {...(item._id === appId
               ? {

@@ -5,8 +5,6 @@ on:
     paths:
       - 'projects/app/**'
       - 'packages/**'
-    branches:
-      - 'main'
     tags:
       - 'v*.*.*'
 jobs:
@@ -53,9 +51,8 @@ jobs:
           docker buildx build \
           --build-arg name=app \
           --platform linux/amd64,linux/arm64 \
-          --label "org.opencontainers.image.source=  https://github.com/  ${{ github.repository_owner }}/FastGPT" \
+          --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
           --label "org.opencontainers.image.description=fastgpt image" \
-          --label "org.opencontainers.image.licenses=Apache" \
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \

@@ -1,22 +1,57 @@
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeSpecialInputKeyEnum,
-  FlowNodeTypeEnum
-} from './node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from './node/constant';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
-import { ModuleItemType } from './type';
+import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
+import { Input_Template_Switch } from './template/input';
 
-export function getPluginTemplatePluginIdInput(pluginId: string) {
+export const getGuideModule = (modules: ModuleItemType[]) =>
+  modules.find((item) => item.flowType === FlowNodeTypeEnum.userGuide);
+
+export const splitGuideModule = (guideModules?: ModuleItemType) => {
+  const welcomeText: string =
+    guideModules?.inputs?.find((item) => item.key === ModuleInputKeyEnum.welcomeText)?.value || '';
+
+  const variableModules: VariableItemType[] =
+    guideModules?.inputs.find((item) => item.key === ModuleInputKeyEnum.variables)?.value || [];
+
+  const questionGuide: boolean =
+    !!guideModules?.inputs?.find((item) => item.key === ModuleInputKeyEnum.questionGuide)?.value ||
+    false;
+
+  const ttsConfig: AppTTSConfigType = guideModules?.inputs?.find(
+    (item) => item.key === ModuleInputKeyEnum.tts
+  )?.value || { type: 'web' };
+
   return {
-    key: FlowNodeSpecialInputKeyEnum.pluginId,
-    type: FlowNodeInputTypeEnum.hidden,
-    label: 'pluginId',
-    value: pluginId,
-    connected: true
+    welcomeText,
+    variableModules,
+    questionGuide,
+    ttsConfig
   };
-}
+};
 
-export function formatPluginIOModules(
+export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {
+  if (input.value !== undefined || !input.valueType) return input.value;
+
+  const map: Record<string, any> = {
+    [ModuleIOValueTypeEnum.boolean]: false,
+    [ModuleIOValueTypeEnum.number]: 0,
+    [ModuleIOValueTypeEnum.string]: ''
+  };
+
+  return map[input.valueType];
+};
+
+export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
+  if (input.type === FlowNodeInputTypeEnum.input || input.type === FlowNodeInputTypeEnum.textarea) {
+    return {
+      placeholder: input.placeholder || input.description
+    };
+  }
+  return {};
+};
+
+export function plugin2ModuleIO(
   pluginId: string,
   modules: ModuleItemType[]
 ): {
@@ -24,21 +59,35 @@ export function formatPluginIOModules(
   outputs: FlowNodeOutputItemType[];
 } {
   const pluginInput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginInput);
-  const customOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
+  const pluginOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
 
   return {
     inputs: pluginInput
       ? [
-          getPluginTemplatePluginIdInput(pluginId),
+          {
+            // plugin id
+            key: ModuleInputKeyEnum.pluginId,
+            type: FlowNodeInputTypeEnum.hidden,
+            label: 'pluginId',
+            value: pluginId,
+            valueType: ModuleIOValueTypeEnum.string,
+            connected: true,
+            showTargetInApp: false,
+            showTargetInPlugin: false
+          },
+          // switch
+          Input_Template_Switch,
           ...pluginInput.inputs.map((item) => ({
             ...item,
+            ...getModuleInputUiField(item),
+            value: getOrInitModuleInputValue(item),
             edit: false,
             connected: false
           }))
         ]
       : [],
-    outputs: customOutput
-      ? customOutput.outputs.map((item) => ({
+    outputs: pluginOutput
+      ? pluginOutput.outputs.map((item) => ({
           ...item,
           edit: false
         }))

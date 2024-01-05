@@ -1,20 +1,22 @@
 import React, { useMemo, useState } from 'react';
 import { Box, type BoxProps, Flex, useTheme, ModalCloseButton } from '@chakra-ui/react';
-import MyRadio from '@/components/Radio/index';
+import MyRadio from '@/components/common/MyRadio/index';
 import dynamic from 'next/dynamic';
 import ChunkImport from './Chunk';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 const QAImport = dynamic(() => import('./QA'), {});
 const CsvImport = dynamic(() => import('./Csv'), {});
 import MyModal from '@/components/MyModal';
 import Provider from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { qaModelList } from '@/web/common/system/staticData';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionTrainingModeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constant';
 
 export enum ImportTypeEnum {
-  index = 'index',
+  chunk = 'chunk',
   qa = 'qa',
   csv = 'csv'
 }
@@ -33,30 +35,46 @@ const ImportData = ({
   const { t } = useTranslation();
   const theme = useTheme();
   const { datasetDetail } = useDatasetStore();
-  const [importType, setImportType] = useState<`${ImportTypeEnum}`>(ImportTypeEnum.index);
+  const [importType, setImportType] = useState<`${ImportTypeEnum}`>(ImportTypeEnum.chunk);
+  const vectorModel = datasetDetail.vectorModel;
+  const agentModel = datasetDetail.agentModel;
 
   const typeMap = useMemo(() => {
-    const vectorModel = datasetDetail.vectorModel;
-    const qaModel = qaModelList[0];
     const map = {
-      [ImportTypeEnum.index]: {
+      [ImportTypeEnum.chunk]: {
         defaultChunkLen: vectorModel?.defaultToken || 500,
-        unitPrice: vectorModel?.price || 0.2,
-        mode: TrainingModeEnum.index
+        chunkOverlapRatio: 0.2,
+        inputPrice: vectorModel?.inputPrice || 0,
+        outputPrice: 0,
+        mode: TrainingModeEnum.chunk,
+        collectionTrainingType: DatasetCollectionTrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
-        defaultChunkLen: qaModel?.maxToken * 0.5 || 8000,
-        unitPrice: qaModel?.price || 3,
-        mode: TrainingModeEnum.qa
+        defaultChunkLen: agentModel?.maxContext * 0.55 || 8000,
+        chunkOverlapRatio: 0,
+        inputPrice: agentModel?.inputPrice || 0,
+        outputPrice: agentModel?.outputPrice || 0,
+        mode: TrainingModeEnum.qa,
+        collectionTrainingType: DatasetCollectionTrainingModeEnum.qa
       },
       [ImportTypeEnum.csv]: {
-        defaultChunkLen: vectorModel?.defaultToken || 500,
-        unitPrice: vectorModel?.price || 0.2,
-        mode: TrainingModeEnum.index
+        defaultChunkLen: 0,
+        chunkOverlapRatio: 0,
+        inputPrice: vectorModel?.inputPrice || 0,
+        outputPrice: 0,
+        mode: TrainingModeEnum.chunk,
+        collectionTrainingType: DatasetCollectionTrainingModeEnum.manual
       }
     };
     return map[importType];
-  }, [datasetDetail.vectorModel, importType]);
+  }, [
+    agentModel?.inputPrice,
+    agentModel?.maxContext,
+    agentModel?.outputPrice,
+    importType,
+    vectorModel?.defaultToken,
+    vectorModel?.inputPrice
+  ]);
 
   const TitleStyle: BoxProps = {
     fontWeight: 'bold',
@@ -65,35 +83,36 @@ const ImportData = ({
 
   return (
     <MyModal
+      iconSrc="/imgs/modal/import.svg"
       title={<Box {...TitleStyle}>{t('dataset.data.File import')}</Box>}
       isOpen
       isCentered
-      maxW={['90vw', '85vw']}
-      w={['90vw', '85vw']}
+      maxW={['90vw', 'min(1440px,85vw)']}
+      w={['90vw', 'min(1440px,85vw)']}
       h={'90vh'}
     >
       <ModalCloseButton onClick={onClose} />
-      <Flex flexDirection={'column'} flex={'1 0 0'}>
+      <Flex mt={2} flexDirection={'column'} flex={'1 0 0'}>
         <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
           <MyRadio
             gridTemplateColumns={['repeat(1,1fr)', 'repeat(3,1fr)']}
             list={[
               {
-                icon: 'indexImport',
-                title: '直接分段',
-                desc: '选择文本文件，直接将其按分段进行处理',
-                value: ImportTypeEnum.index
+                icon: 'file/indexImport',
+                title: t('core.dataset.import.Chunk Split'),
+                desc: t('core.dataset.import.Chunk Split Tip'),
+                value: ImportTypeEnum.chunk
               },
               {
-                icon: 'qaImport',
-                title: 'QA拆分',
-                desc: '选择文本文件，让大模型自动生成问答对',
+                icon: 'file/qaImport',
+                title: t('core.dataset.import.QA Import'),
+                desc: t('core.dataset.import.QA Import Tip'),
                 value: ImportTypeEnum.qa
               },
               {
-                icon: 'csvImport',
-                title: 'CSV 导入',
-                desc: '批量导入问答对，是最精准的数据',
+                icon: 'file/csv',
+                title: t('core.dataset.import.CSV Import'),
+                desc: t('core.dataset.import.CSV Import Tip'),
                 value: ImportTypeEnum.csv
               }
             ]}
@@ -104,13 +123,15 @@ const ImportData = ({
 
         <Provider
           {...typeMap}
+          vectorModel={vectorModel.model}
+          agentModel={agentModel.model}
+          datasetId={datasetDetail._id}
           importType={importType}
-          datasetId={datasetId}
           parentId={parentId}
           onUploadSuccess={uploadSuccess}
         >
           <Box flex={'1 0 0'} h={0}>
-            {importType === ImportTypeEnum.index && <ChunkImport />}
+            {importType === ImportTypeEnum.chunk && <ChunkImport />}
             {importType === ImportTypeEnum.qa && <QAImport />}
             {importType === ImportTypeEnum.csv && <CsvImport />}
           </Box>

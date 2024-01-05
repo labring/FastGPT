@@ -1,9 +1,7 @@
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeValTypeEnum,
-  FlowNodeTypeEnum
-} from './constant';
+import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from './constant';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
+import { SelectedDatasetType } from '../api';
+import { EditInputFieldMap, EditOutputFieldMap } from './type';
 
 export type FlowNodeChangeProps = {
   moduleId: string;
@@ -23,23 +21,34 @@ export type FlowNodeChangeProps = {
 };
 
 export type FlowNodeInputItemType = {
-  key: string; // 字段名
+  valueType?: `${ModuleIOValueTypeEnum}`; // data type
+  type: `${FlowNodeInputTypeEnum}`; // Node Type. Decide on a render style
+  key: `${ModuleInputKeyEnum}` | string;
   value?: any;
-  valueType?: `${FlowNodeValTypeEnum}`;
-  type: `${FlowNodeInputTypeEnum}`;
   label: string;
-  edit?: boolean;
-  connected?: boolean;
   description?: string;
-  placeholder?: string;
-  max?: number;
-  min?: number;
-  step?: number;
   required?: boolean;
-  list?: { label: string; value: any }[];
-  markList?: { label: string; value: any }[];
-  customData?: () => any;
-  valueCheck?: (value: any) => boolean;
+
+  edit?: boolean; // Whether to allow editing
+  editField?: EditInputFieldMap;
+  defaultEditField?: EditNodeFieldType;
+
+  connected?: boolean; // There are incoming data
+
+  showTargetInApp?: boolean;
+  showTargetInPlugin?: boolean;
+
+  hideInApp?: boolean;
+  hideInPlugin?: boolean;
+
+  placeholder?: string; // input,textarea
+
+  list?: { label: string; value: any }[]; // select
+
+  markList?: { label: string; value: any }[]; // slider
+  step?: number; // slider
+  max?: number; // slider, number input
+  min?: number; // slider, number input
 };
 
 export type FlowNodeOutputTargetItemType = {
@@ -47,11 +56,56 @@ export type FlowNodeOutputTargetItemType = {
   key: string;
 };
 export type FlowNodeOutputItemType = {
-  key: string; // 字段名
-  label?: string;
-  edit?: boolean;
-  description?: string;
-  valueType?: `${FlowNodeValTypeEnum}`;
   type?: `${FlowNodeOutputTypeEnum}`;
+  key: `${ModuleOutputKeyEnum}` | string;
+  valueType?: `${ModuleIOValueTypeEnum}`;
+
+  label?: string;
+  description?: string;
+
+  edit?: boolean;
+  editField?: EditOutputFieldMap;
+  defaultEditField?: EditNodeFieldType;
+
   targets: FlowNodeOutputTargetItemType[];
+};
+
+/* --------------- edit field ------------------- */
+export type EditInputFieldMap = EditOutputFieldMap & {
+  inputType?: boolean;
+  required?: boolean;
+};
+export type EditOutputFieldMap = {
+  name?: boolean;
+  key?: boolean;
+  description?: boolean;
+  dataType?: boolean;
+};
+export type EditNodeFieldType = {
+  inputType?: `${FlowNodeInputTypeEnum}`; // input type
+  outputType?: `${FlowNodeOutputTypeEnum}`;
+  required?: boolean;
+  key?: string;
+  label?: string;
+  description?: string;
+  valueType?: `${ModuleIOValueTypeEnum}`;
+};
+
+/* ------------- item type --------------- */
+/* ai chat modules props */
+export type AIChatModuleProps = {
+  [ModuleInputKeyEnum.aiModel]: string;
+  [ModuleInputKeyEnum.aiSystemPrompt]?: string;
+  [ModuleInputKeyEnum.aiChatTemperature]: number;
+  [ModuleInputKeyEnum.aiChatMaxToken]: number;
+  [ModuleInputKeyEnum.aiChatIsResponseText]: boolean;
+  [ModuleInputKeyEnum.aiChatQuoteTemplate]?: string;
+  [ModuleInputKeyEnum.aiChatQuotePrompt]?: string;
+};
+
+export type DatasetModuleProps = {
+  [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [ModuleInputKeyEnum.datasetSimilarity]: number;
+  [ModuleInputKeyEnum.datasetLimit]: number;
+  [ModuleInputKeyEnum.datasetStartReRank]: boolean;
 };

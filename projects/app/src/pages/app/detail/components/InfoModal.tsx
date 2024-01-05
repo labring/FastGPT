@@ -7,18 +7,21 @@ import {
   Input,
   Textarea,
   ModalFooter,
-  ModalBody
+  ModalBody,
+  Image
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { AppSchema } from '@/types/mongoSchema';
+import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@/components/MyModal';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import PermissionRadio from '@/components/support/permission/Radio';
+import { useTranslation } from 'next-i18next';
 
 const InfoModal = ({
   defaultApp,
@@ -29,8 +32,9 @@ const InfoModal = ({
   onClose: () => void;
   onSuccess?: () => void;
 }) => {
+  const { t } = useTranslation();
   const { toast } = useToast();
-  const { updateAppDetail } = useUserStore();
+  const { updateAppDetail } = useAppStore();
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -55,7 +59,7 @@ const InfoModal = ({
         name: data.name,
         avatar: data.avatar,
         intro: data.intro,
-        share: data.share
+        permission: data.permission
       });
     },
     onSuccess() {
@@ -97,10 +101,10 @@ const InfoModal = ({
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgFileAndUpload({
           file,
-          maxW: 100,
-          maxH: 100
+          maxW: 300,
+          maxH: 300
         });
         setValue('avatar', src);
         setRefresh((state) => !state);
@@ -115,7 +119,12 @@ const InfoModal = ({
   );
 
   return (
-    <MyModal isOpen={true} onClose={onClose} title={'应用信息设置'}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/module/ai.svg"
+      title={t('core.app.setting')}
+    >
       <ModalBody>
         <Box>头像 & 名称</Box>
         <Flex mt={2} alignItems={'center'}>
@@ -124,7 +133,7 @@ const InfoModal = ({
             w={['26px', '34px']}
             h={['26px', '34px']}
             cursor={'pointer'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             mr={4}
             title={'点击切换头像'}
             onClick={() => onOpenSelectFile()}
@@ -139,7 +148,7 @@ const InfoModal = ({
             ></Input>
           </FormControl>
         </Flex>
-        <Box mt={7} mb={1}>
+        <Box mt={4} mb={1}>
           应用介绍
         </Box>
         {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
@@ -152,10 +161,20 @@ const InfoModal = ({
           bg={'myWhite.600'}
           {...register('intro')}
         />
+        <Box mt={4}>
+          <Box mb={1}>{t('user.Permission')}</Box>
+          <PermissionRadio
+            value={getValues('permission')}
+            onChange={(e) => {
+              setValue('permission', e);
+              setRefresh(!refresh);
+            }}
+          />
+        </Box>
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           取消
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>

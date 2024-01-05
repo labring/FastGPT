@@ -1,7 +1,7 @@
-import { SystemInputEnum } from '@/constants/app';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 export type UserChatInputProps = ModuleDispatchProps<{
-  [SystemInputEnum.userChatInput]: string;
+  [ModuleInputKeyEnum.userChatInput]: string;
 }>;
 
 export const dispatchChatInput = (props: Record<string, any>) => {

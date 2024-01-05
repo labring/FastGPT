@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { updatePasswordByOld } from '@/web/support/user/api';
@@ -32,12 +32,17 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
     onSuccess() {
       onClose();
     },
-    successToast: t('user.Update password succseful'),
+    successToast: t('user.Update password successful'),
     errorToast: t('user.Update password failed')
   });
 
   return (
-    <MyModal isOpen onClose={onClose} title={t('user.Update Password')}>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="/imgs/modal/password.svg"
+      title={t('user.Update Password')}
+    >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 70px'}>旧密码:</Box>
@@ -73,7 +78,7 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
         </Flex>
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'base'} onClick={onClose}>
+        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           取消
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>

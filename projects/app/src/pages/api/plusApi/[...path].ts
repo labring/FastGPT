@@ -1,12 +1,15 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { request } from '@fastgpt/service/common/api/plusRequest';
 import type { Method } from 'axios';
-import { connectToDatabase } from '@/service/mongo';
+import { setCookie } from '@fastgpt/service/support/permission/controller';
+import { getInitConfig } from '../common/system/getInitData';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
-    await connectToDatabase();
+    if (!global.systemEnv?.pluginBaseUrl) {
+      await getInitConfig();
+    }
 
     const method = (req.method || 'POST') as Method;
     const { path = [], ...query } = req.query as any;
@@ -26,11 +29,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       url,
       data,
       {
-        // @ts-ignore
-        headers: req.headers
+        headers: {
+          ...req.headers,
+          // @ts-ignore
+          rootkey: undefined
+        }
       },
       method
     );
+
+    /* special response */
+    // response cookie
+    if (repose?.cookie) {
+      setCookie(res, repose.cookie);
+
+      return jsonRes(res, {
+        data: repose?.cookie
+      });
+    }
 
     jsonRes(res, {
       data: repose

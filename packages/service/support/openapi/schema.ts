@@ -1,14 +1,27 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
-import { PRICE_SCALE } from '@fastgpt/global/common/bill/constants';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 const OpenApiSchema = new Schema(
   {
     userId: {
       type: Schema.Types.ObjectId,
-      ref: 'user',
+      ref: 'user'
+    },
+    teamId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamCollectionName,
+      required: true
+    },
+    tmbId: {
+      type: Schema.Types.ObjectId,
+      ref: TeamMemberCollectionName,
       required: true
     },
     apiKey: {
@@ -35,7 +48,7 @@ const OpenApiSchema = new Schema(
       // total usage. value from bill total
       type: Number,
       default: 0,
-      get: (val: number) => formatPrice(val)
+      get: (val: number) => formatStorePrice2Read(val)
     },
     limit: {
       expiredTime: {
@@ -46,7 +59,7 @@ const OpenApiSchema = new Schema(
         type: Number,
         default: -1,
         set: (val: number) => val * PRICE_SCALE,
-        get: (val: number) => formatPrice(val)
+        get: (val: number) => formatStorePrice2Read(val)
       }
     }
   },
@@ -57,3 +70,4 @@ const OpenApiSchema = new Schema(
 
 export const MongoOpenApi: Model<OpenApiSchema> =
   models['openapi'] || model('openapi', OpenApiSchema);
+MongoOpenApi.syncIndexes();

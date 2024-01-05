@@ -2,9 +2,9 @@ import React, { useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Flex, Box } from '@chakra-ui/react';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Badge from '../Badge';
-import MyIcon from '../Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const NavbarPhone = ({ unread }: { unread: number }) => {
   const router = useRouter();
@@ -14,7 +14,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
     () => [
       {
         label: t('navbar.Chat'),
-        icon: 'chat',
+        icon: 'core/chat/chatLight',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
@@ -28,14 +28,14 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       },
       {
         label: t('navbar.Tools'),
-        icon: 'tabbarMore',
+        icon: 'phoneTabbar/more',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
       },
       {
         label: t('navbar.Account'),
-        icon: 'tabbarMe',
+        icon: 'phoneTabbar/me',
         link: '/account',
         activeLink: ['/account'],
         unread

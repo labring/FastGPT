@@ -1,35 +1,31 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { authCollection } from '@fastgpt/service/core/dataset/auth';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum, TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
 import { startQueue } from '@/service/utils/tools';
-import { DatasetChunkItemType } from '@fastgpt/global/core/dataset/type';
-import { countPromptTokens } from '@/global/common/tiktoken';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
-import type { PushDataProps } from '@/global/core/api/datasetReq.d';
-import { getVectorModel } from '@/service/core/ai/model';
-
-const modeMap = {
-  [TrainingModeEnum.index]: true,
-  [TrainingModeEnum.qa]: true
-};
+import type { PushDatasetDataProps } from '@/global/core/dataset/api.d';
+import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
+import { simpleText } from '@fastgpt/global/common/string/tools';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { collectionId, data, mode = TrainingModeEnum.index } = req.body as PushDataProps;
+    const { collectionId, data, mode = TrainingModeEnum.chunk } = req.body as PushDatasetDataProps;
 
     if (!collectionId || !Array.isArray(data)) {
       throw new Error('collectionId or data is empty');
     }
 
-    if (modeMap[mode] === undefined) {
-      throw new Error('Mode is not index or qa');
+    if (!TrainingTypeMap[mode]) {
+      throw new Error(`Mode is not ${Object.keys(TrainingTypeMap).join(', ')}`);
     }
 
     if (data.length > 200) {
@@ -37,12 +33,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    const { userId } = await authUser({ req, authToken: true, authApiKey: true });
+    const { teamId, tmbId } = await authDatasetCollection({
+      req,
+      authToken: true,
+      authApiKey: true,
+      collectionId,
+      per: 'w'
+    });
 
     jsonRes<PushDataResponse>(res, {
       data: await pushDataToDatasetCollection({
         ...req.body,
-        userId
+        teamId,
+        tmbId
       })
     });
   } catch (err) {
@@ -54,42 +57,45 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 });
 
 export async function pushDataToDatasetCollection({
-  userId,
+  teamId,
+  tmbId,
   collectionId,
   data,
   mode,
   prompt,
   billId
-}: { userId: string } & PushDataProps): Promise<PushDataResponse> {
-  // auth dataset & get training model
-  const {
-    dataset: { _id: datasetId, vectorModel }
-  } = await authCollection({
-    userId,
+}: {
+  teamId: string;
+  tmbId: string;
+} & PushDatasetDataProps): Promise<PushDataResponse> {
+  const { datasetId, model, maxToken, weight } = await checkModelValid({
+    mode,
     collectionId
   });
-  const vectorModelData = getVectorModel(vectorModel);
 
-  const modeMap = {
-    [TrainingModeEnum.index]: {
-      maxToken: vectorModelData.maxToken * 1.5,
-      model: vectorModelData.model
-    },
-    [TrainingModeEnum.qa]: {
-      maxToken: global.qaModels[0].maxToken * 0.8,
-      model: global.qaModels[0].model
-    }
-  };
+  // format q and a, remove empty char
+  data.forEach((item) => {
+    item.q = simpleText(item.q);
+    item.a = simpleText(item.a);
+
+    item.indexes = item.indexes
+      ?.map((index) => {
+        return {
+          ...index,
+          text: simpleText(index.text)
+        };
+      })
+      .filter(Boolean);
+  });
 
   // filter repeat or equal content
   const set = new Set();
-  const filterResult: Record<string, DatasetChunkItemType[]> = {
+  const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
     success: [],
     overToken: [],
     repeat: [],
     error: []
   };
-
   await Promise.all(
     data.map(async (item) => {
       if (!item.q) {
@@ -102,12 +108,13 @@ export async function pushDataToDatasetCollection({
       // count q token
       const token = countPromptTokens(item.q);
 
-      if (token > modeMap[mode].maxToken) {
+      if (token > maxToken) {
         filterResult.overToken.push(item);
         return;
       }
 
       if (set.has(text)) {
+        console.log('repeat', item);
         filterResult.repeat.push(item);
       } else {
         filterResult.success.push(item);
@@ -118,16 +125,20 @@ export async function pushDataToDatasetCollection({
 
   // 插入记录
   const insertRes = await MongoDatasetTraining.insertMany(
-    filterResult.success.map((item) => ({
-      userId,
+    filterResult.success.map((item, i) => ({
+      teamId,
+      tmbId,
       datasetId,
-      datasetCollectionId: collectionId,
+      collectionId,
       billId,
       mode,
       prompt,
-      model: modeMap[mode].model,
+      model,
       q: item.q,
-      a: item.a
+      a: item.a,
+      chunkIndex: item.chunkIndex ?? i,
+      weight: weight ?? 0,
+      indexes: item.indexes
     }))
   );
 
@@ -138,6 +149,47 @@ export async function pushDataToDatasetCollection({
     insertLen: insertRes.length,
     ...filterResult
   };
+}
+
+export async function checkModelValid({
+  mode,
+  collectionId
+}: {
+  mode: `${TrainingModeEnum}`;
+  collectionId: string;
+}) {
+  const {
+    datasetId: { _id: datasetId, vectorModel, agentModel }
+  } = await getCollectionWithDataset(collectionId);
+
+  if (mode === TrainingModeEnum.chunk) {
+    if (!collectionId) return Promise.reject(`CollectionId is empty`);
+    const vectorModelData = getVectorModel(vectorModel);
+    if (!vectorModelData) {
+      return Promise.reject(`Model ${vectorModel} is inValid`);
+    }
+
+    return {
+      datasetId,
+      maxToken: vectorModelData.maxToken * 1.5,
+      model: vectorModelData.model,
+      weight: vectorModelData.weight
+    };
+  }
+
+  if (mode === TrainingModeEnum.qa) {
+    const qaModelData = getQAModel(agentModel);
+    if (!qaModelData) {
+      return Promise.reject(`Model ${agentModel} is inValid`);
+    }
+    return {
+      datasetId,
+      maxToken: qaModelData.maxContext * 0.8,
+      model: qaModelData.model,
+      weight: 0
+    };
+  }
+  return Promise.reject(`Mode ${mode} is inValid`);
 }
 
 export const config = {

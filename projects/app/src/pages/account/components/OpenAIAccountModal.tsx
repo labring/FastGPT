@@ -1,10 +1,10 @@
 import React from 'react';
 import { ModalBody, Box, Flex, Input, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { UserType } from '@/types/user';
+import type { UserType } from '@fastgpt/global/support/user/type.d';
 
 const OpenAIAccountModal = ({
   defaultData,
@@ -29,7 +29,12 @@ const OpenAIAccountModal = ({
   });
 
   return (
-    <MyModal isOpen onClose={onClose} title={t('user.OpenAI Account Setting')}>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="/imgs/modal/openai.svg"
+      title={t('user.OpenAI Account Setting')}
+    >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
           可以填写 OpenAI/OneAPI 的相关秘钥。如果你填写了该内容，在线上平台使用 OpenAI Chat
@@ -49,7 +54,7 @@ const OpenAIAccountModal = ({
         </Flex>
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'base'} onClick={onClose}>
+        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           取消
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>

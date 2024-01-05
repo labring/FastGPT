@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
-import type { DatasetPathItemType } from '@/types/core/dataset';
+import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
+import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -10,7 +11,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { parentId } = req.query as { parentId: string };
 
-    jsonRes<DatasetPathItemType[]>(res, {
+    if (!parentId) {
+      return jsonRes(res, {
+        data: []
+      });
+    }
+
+    await authDataset({ req, authToken: true, datasetId: parentId, per: 'r' });
+
+    jsonRes<ParentTreePathItemType[]>(res, {
       data: await getParents(parentId)
     });
   } catch (err) {
@@ -21,7 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   }
 }
 
-async function getParents(parentId?: string): Promise<DatasetPathItemType[]> {
+async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> {
   if (!parentId) {
     return [];
   }

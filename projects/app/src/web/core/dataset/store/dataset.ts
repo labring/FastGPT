@@ -1,20 +1,30 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import type { DatasetItemType, DatasetsItemType } from '@/types/core/dataset';
-import { getAllDataset, getDatasets, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
-import { defaultKbDetail } from '@/constants/dataset';
-import type { DatasetUpdateParams } from '@/global/core/api/datasetReq.d';
+import type { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
+import {
+  getAllDataset,
+  getDatasets,
+  getDatasetById,
+  putDatasetById,
+  postWebsiteSync
+} from '@/web/core/dataset/api';
+import { defaultDatasetDetail } from '@/constants/dataset';
+import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
+import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constant';
+import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
+import { checkTeamWebSyncLimit } from '@/web/support/user/api';
 
 type State = {
-  allDatasets: DatasetsItemType[];
-  loadAllDatasets: () => Promise<DatasetsItemType[]>;
-  myDatasets: DatasetsItemType[];
+  allDatasets: DatasetListItemType[];
+  loadAllDatasets: () => Promise<DatasetListItemType[]>;
+  myDatasets: DatasetListItemType[];
   loadDatasets: (parentId?: string) => Promise<any>;
-  setDatasets(val: DatasetsItemType[]): void;
+  setDatasets(val: DatasetListItemType[]): void;
   datasetDetail: DatasetItemType;
   loadDatasetDetail: (id: string, init?: boolean) => Promise<DatasetItemType>;
-  updateDataset: (data: DatasetUpdateParams) => Promise<any>;
+  updateDataset: (data: DatasetUpdateBody) => Promise<any>;
+  startWebsiteSync: () => Promise<any>;
 };
 
 export const useDatasetStore = create<State>()(
@@ -42,7 +52,7 @@ export const useDatasetStore = create<State>()(
             state.myDatasets = val;
           });
         },
-        datasetDetail: defaultKbDetail,
+        datasetDetail: defaultDatasetDetail,
         async loadDatasetDetail(id: string, init = false) {
           if (!id || (id === get().datasetDetail._id && !init)) return get().datasetDetail;
 
@@ -55,10 +65,12 @@ export const useDatasetStore = create<State>()(
           return data;
         },
         async updateDataset(data) {
+          await putDatasetById(data);
+
           if (get().datasetDetail._id === data.id) {
             set((state) => {
               state.datasetDetail = {
-                ...state.datasetDetail,
+                ...get().datasetDetail,
                 ...data
               };
             });
@@ -68,13 +80,29 @@ export const useDatasetStore = create<State>()(
               item._id === data.id
                 ? {
                     ...item,
-                    ...data,
-                    tags: data.tags?.split(' ') || []
+                    ...data
                   }
                 : item
             );
           });
-          await putDatasetById(data);
+        },
+        async startWebsiteSync() {
+          await checkTeamWebSyncLimit();
+
+          const [_, billId] = await Promise.all([
+            get().updateDataset({
+              id: get().datasetDetail._id,
+              status: DatasetStatusEnum.syncing
+            }),
+            postCreateTrainingBill({
+              name: 'core.dataset.training.Website Sync',
+              vectorModel: get().datasetDetail.vectorModel.model,
+              agentModel: get().datasetDetail.agentModel.model
+            })
+          ]);
+          try {
+            postWebsiteSync({ datasetId: get().datasetDetail._id, billId });
+          } catch (error) {}
         }
       })),
       {

@@ -1,29 +1,34 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useForm } from 'react-hook-form';
 import { useQuery } from '@tanstack/react-query';
-import { DatasetItemType } from '@/types/core/dataset';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { type ComponentRef } from './components/Info';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import Info from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useTranslation } from 'react-i18next';
-import { getTrainingQueueLen, delDatasetEmptyFiles } from '@/web/core/dataset/api';
+import { useTranslation } from 'next-i18next';
+import { getTrainingQueueLen } from '@/web/core/dataset/api';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { feConfigs } from '@/web/common/system/staticData';
 import Script from 'next/script';
 import CollectionCard from './components/CollectionCard';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import {
+  DatasetStatusEnum,
+  DatasetTypeEnum,
+  DatasetTypeMap
+} from '@fastgpt/global/core/dataset/constant';
+import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useRequest } from '@/web/common/hooks/useRequest';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false
@@ -40,19 +45,30 @@ export enum TabEnum {
 }
 
 const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${TabEnum}` }) => {
-  const InfoRef = useRef<ComponentRef>(null);
   const theme = useTheme();
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { isPc } = useSystemStore();
-  const { datasetDetail, loadDatasetDetail } = useDatasetStore();
+  const { datasetDetail, loadDatasetDetail, startWebsiteSync } = useDatasetStore();
+  const { userInfo } = useUserStore();
 
-  const tabList = useRef([
-    { label: '数据集', id: TabEnum.collectionCard, icon: 'overviewLight' },
-    { label: '搜索测试', id: TabEnum.test, icon: 'kbTest' },
-    { label: '配置', id: TabEnum.info, icon: 'settingLight' }
-  ]);
+  const tabList = [
+    { label: t('core.dataset.Dataset'), id: TabEnum.collectionCard, icon: 'common/overviewLight' },
+    { label: t('core.dataset.test.Search Test'), id: TabEnum.test, icon: 'kbTest' },
+    ...(userInfo?.team.canWrite && datasetDetail.isOwner
+      ? [{ label: t('common.Config'), id: TabEnum.info, icon: 'common/settingLight' }]
+      : [])
+  ];
+
+  const { ConfirmModal: ConfirmSyncModal, openConfirm: openConfirmSync } = useConfirm({
+    type: 'common'
+  });
+
+  const { mutate: onUpdateDatasetWebsiteConfig, isLoading: isUpdating } = useRequest({
+    mutationFn: () => startWebsiteSync(),
+    errorToast: t('common.Update Failed')
+  });
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -66,35 +82,65 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
     [datasetId, router]
   );
 
-  const form = useForm<DatasetItemType>({
-    defaultValues: datasetDetail
-  });
-
   useQuery([datasetId], () => loadDatasetDetail(datasetId), {
-    onSuccess(res) {
-      form.reset(res);
-      InfoRef.current?.initInput(res.tags);
-    },
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({
-        title: getErrText(err, '获取知识库异常'),
+        title: getErrText(err, t('common.Load Failed')),
         status: 'error'
       });
     }
   });
 
-  const { data: trainingQueueLen = 0 } = useQuery(['getTrainingQueueLen'], getTrainingQueueLen, {
-    refetchInterval: 10000
-  });
-
-  useEffect(() => {
-    return () => {
-      try {
-        delDatasetEmptyFiles(datasetId);
-      } catch (error) {}
+  const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
+    ['getTrainingQueueLen'],
+    () =>
+      getTrainingQueueLen({
+        vectorModel: datasetDetail.vectorModel.model,
+        agentModel: datasetDetail.agentModel.model
+      }),
+    {
+      refetchInterval: 10000
+    }
+  );
+  const { vectorTrainingMap, agentTrainingMap } = useMemo(() => {
+    const vectorTrainingMap = (() => {
+      if (vectorTrainingCount < 1000)
+        return {
+          colorSchema: 'green',
+          tip: t('core.dataset.training.Leisure')
+        };
+      if (vectorTrainingCount < 10000)
+        return {
+          colorSchema: 'yellow',
+          tip: t('core.dataset.training.Waiting')
+        };
+      return {
+        colorSchema: 'red',
+        tip: t('core.dataset.training.Full')
+      };
+    })();
+    const agentTrainingMap = (() => {
+      if (agentTrainingCount < 100)
+        return {
+          colorSchema: 'green',
+          tip: t('core.dataset.training.Leisure')
+        };
+      if (agentTrainingCount < 1000)
+        return {
+          colorSchema: 'yellow',
+          tip: t('core.dataset.training.Waiting')
+        };
+      return {
+        colorSchema: 'red',
+        tip: t('core.dataset.training.Full')
+      };
+    })();
+    return {
+      vectorTrainingMap,
+      agentTrainingMap
     };
-  }, [datasetId]);
+  }, [agentTrainingCount, t, vectorTrainingCount]);
 
   return (
     <>
@@ -110,35 +156,77 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               borderRight={theme.borders.base}
             >
               <Flex mb={4} alignItems={'center'}>
-                <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'lg'} />
-                <Box ml={2} fontWeight={'bold'}>
-                  {datasetDetail.name}
+                <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'md'} />
+                <Box ml={2}>
+                  <Box fontWeight={'bold'}>{datasetDetail.name}</Box>
                 </Box>
               </Flex>
+              {DatasetTypeMap[datasetDetail.type] && (
+                <Flex alignItems={'center'} pl={2}>
+                  <MyIcon
+                    name={DatasetTypeMap[datasetDetail.type]?.icon as any}
+                    mr={1}
+                    w={'16px'}
+                  />
+                  <Box flex={1}>{t(DatasetTypeMap[datasetDetail.type]?.label)}</Box>
+                  {datasetDetail.type === DatasetTypeEnum.websiteDataset &&
+                    datasetDetail.status === DatasetStatusEnum.active && (
+                      <MyTooltip label={t('core.dataset.website.Start Sync')}>
+                        <MyIcon
+                          mt={1}
+                          name={'common/refreshLight'}
+                          w={'12px'}
+                          color={'myGray.500'}
+                          cursor={'pointer'}
+                          onClick={() =>
+                            openConfirmSync(
+                              onUpdateDatasetWebsiteConfig,
+                              undefined,
+                              t('core.dataset.website.Confirm Create Tips')
+                            )()
+                          }
+                        />
+                      </MyTooltip>
+                    )}
+                </Flex>
+              )}
               <SideTabs
                 flex={1}
                 mx={'auto'}
-                mt={2}
+                mt={3}
                 w={'100%'}
-                list={tabList.current}
+                list={tabList}
                 activeId={currentTab}
                 onChange={(e: any) => {
                   setCurrentTab(e);
                 }}
               />
-              <Box textAlign={'center'}>
-                <Flex justifyContent={'center'} alignItems={'center'}>
-                  <MyIcon mr={1} name="overviewLight" w={'16px'} color={'green.500'} />
-                  <Box>{t('dataset.System Data Queue')}</Box>
-                  <MyTooltip
-                    label={t('dataset.Queue Desc', { title: feConfigs?.systemTitle })}
-                    placement={'top'}
-                  >
-                    <QuestionOutlineIcon ml={1} w={'16px'} />
-                  </MyTooltip>
-                </Flex>
-                <Box mt={1} fontWeight={'bold'}>
-                  {trainingQueueLen}
+              <Box>
+                <Box mb={3}>
+                  <Box fontSize={'sm'}>
+                    {t('core.dataset.training.Agent queue')}({agentTrainingMap.tip})
+                  </Box>
+                  <Progress
+                    value={100}
+                    size={'xs'}
+                    colorScheme={agentTrainingMap.colorSchema}
+                    borderRadius={'10px'}
+                    isAnimated
+                    hasStripe
+                  />
+                </Box>
+                <Box mb={3}>
+                  <Box fontSize={'sm'}>
+                    {t('core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
+                  </Box>
+                  <Progress
+                    value={100}
+                    size={'xs'}
+                    colorScheme={vectorTrainingMap.colorSchema}
+                    borderRadius={'10px'}
+                    isAnimated
+                    hasStripe
+                  />
                 </Box>
               </Box>
               <Flex
@@ -152,15 +240,14 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               >
                 <IconButton
                   mr={3}
-                  icon={<MyIcon name={'backFill'} w={'18px'} color={'myBlue.600'} />}
+                  icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
                   bg={'white'}
                   boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-                  h={'28px'}
-                  size={'sm'}
+                  size={'smSquare'}
                   borderRadius={'50%'}
                   aria-label={''}
                 />
-                全部知识库
+                {t('core.dataset.All Dataset')}
               </Flex>
             </Flex>
           ) : (
@@ -169,7 +256,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                 m={'auto'}
                 w={'260px'}
                 size={isPc ? 'md' : 'sm'}
-                list={tabList.current.map((item) => ({
+                list={tabList.map((item) => ({
                   id: item.id,
                   label: item.label
                 }))}
@@ -184,13 +271,12 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               {currentTab === TabEnum.collectionCard && <CollectionCard />}
               {currentTab === TabEnum.dataCard && <DataCard />}
               {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
-              {currentTab === TabEnum.info && (
-                <Info ref={InfoRef} datasetId={datasetId} form={form} />
-              )}
+              {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
             </Box>
           )}
         </Flex>
       </PageContainer>
+      <ConfirmSyncModal isLoading={isUpdating} />
     </>
   );
 };

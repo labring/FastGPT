@@ -4,9 +4,10 @@ import MyModal from '@/components/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const SelectAppModal = ({
   defaultApps = [],
@@ -26,7 +27,7 @@ const SelectAppModal = ({
   const theme = useTheme();
   const [selectedApps, setSelectedApps] = React.useState<string[]>(defaultApps);
   /* 加载模型 */
-  const { myApps, loadMyApps } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
   const { isLoading } = useQuery(['loadMyApos'], () => loadMyApps());
 
   const apps = useMemo(
@@ -38,6 +39,7 @@ const SelectAppModal = ({
     <MyModal
       isOpen
       title={`选择应用${max > 1 ? `(${selectedApps.length}/${max})` : ''}`}
+      iconSrc="/imgs/module/ai.svg"
       onClose={onClose}
       minW={'700px'}
       position={'relative'}
@@ -58,7 +60,7 @@ const SelectAppModal = ({
             cursor={'pointer'}
             {...(selectedApps.includes(app._id)
               ? {
-                  bg: 'myBlue.200',
+                  bg: 'primary.100',
                   onClick: () => {
                     setSelectedApps(selectedApps.filter((e) => e !== app._id));
                   }
@@ -81,7 +83,7 @@ const SelectAppModal = ({
         ))}
       </ModalBody>
       <ModalFooter>
-        <Button variant={'base'} onClick={onClose}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           {t('Cancel')}
         </Button>
         <Button

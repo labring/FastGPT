@@ -1,76 +1,93 @@
-import { ChatItemType } from '@/types/chat';
-import { Chat, App, ChatItem } from '@/service/mongo';
-import { ChatSourceEnum } from '@/constants/chat';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { addLog } from '@fastgpt/service/common/system/log';
+import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 
 type Props = {
   chatId: string;
   appId: string;
-  userId: string;
+  teamId: string;
+  tmbId: string;
   variables?: Record<string, any>;
-  isOwner: boolean;
+  updateUseTime: boolean;
   source: `${ChatSourceEnum}`;
   shareId?: string;
+  outLinkUid?: string;
   content: [ChatItemType, ChatItemType];
 };
 
 export async function saveChat({
   chatId,
   appId,
-  userId,
+  teamId,
+  tmbId,
   variables,
-  isOwner,
+  updateUseTime,
   source,
   shareId,
+  outLinkUid,
   content
 }: Props) {
   try {
-    const chatHistory = await Chat.findOne(
+    const chat = await MongoChat.findOne(
       {
         chatId,
-        userId,
+        teamId,
+        tmbId,
         appId
       },
       '_id'
     );
 
     const promise: any[] = [
-      ChatItem.insertMany(
+      MongoChatItem.insertMany(
         content.map((item) => ({
           chatId,
-          userId,
+          teamId,
+          tmbId,
           appId,
           ...item
         }))
       )
     ];
 
-    if (chatHistory) {
+    const title =
+      chatContentReplaceBlock(content[0].value).slice(0, 20) ||
+      content[1]?.value?.slice(0, 20) ||
+      'Chat';
+
+    if (chat) {
       promise.push(
-        Chat.updateOne(
-          { chatId, userId, appId },
+        MongoChat.updateOne(
+          { chatId },
           {
-            title: content[0].value.slice(0, 20),
+            title,
             updateTime: new Date()
           }
         )
       );
     } else {
       promise.push(
-        Chat.create({
+        MongoChat.create({
           chatId,
-          userId,
+          teamId,
+          tmbId,
           appId,
           variables,
-          title: content[0].value.slice(0, 20),
+          title,
           source,
-          shareId
+          shareId,
+          outLinkUid
         })
       );
     }
 
-    if (isOwner && source === ChatSourceEnum.online) {
+    if (updateUseTime && source === ChatSourceEnum.online) {
       promise.push(
-        App.findByIdAndUpdate(appId, {
+        MongoApp.findByIdAndUpdate(appId, {
           updateTime: new Date()
         })
       );
@@ -78,16 +95,6 @@ export async function saveChat({
 
     await Promise.all(promise);
   } catch (error) {
-    Chat.updateOne(
-      { chatId, userId },
-      {
-        $push: {
-          content: {
-            $each: [],
-            $slice: -10
-          }
-        }
-      }
-    );
+    addLog.error(`update chat history error`, error);
   }
 }

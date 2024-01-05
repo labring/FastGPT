@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, Grid } from '@chakra-ui/react';
 import type { GridProps } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
 // @ts-ignore
 interface Props extends GridProps {
@@ -55,10 +55,10 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
           whiteSpace={'nowrap'}
           {...(activeId === item.id
             ? {
-                color: 'myBlue.700',
+                color: 'primary.600',
                 cursor: 'default',
                 fontWeight: 'bold',
-                borderBottomColor: 'myBlue.700'
+                borderBottomColor: 'primary.600'
               }
             : {
                 cursor: 'pointer'

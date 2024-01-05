@@ -1,17 +1,8 @@
 import React, { useCallback, useState } from 'react';
-import {
-  Box,
-  Flex,
-  Button,
-  ModalHeader,
-  ModalBody,
-  Input,
-  Textarea,
-  IconButton
-} from '@chakra-ui/react';
+import { Box, Flex, Button, ModalBody, Input, Textarea, IconButton } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
-import { compressImg } from '@/web/common/file/utils';
+import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useRouter } from 'next/router';
@@ -21,20 +12,48 @@ import { delOnePlugin, postCreatePlugin, putUpdatePlugin } from '@/web/core/plug
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
+import { customAlphabet } from 'nanoid';
+const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-export type FormType = {
+export type FormType = CreateOnePluginParams & {
   id?: string;
-  avatar: string;
-  name: string;
-  intro: string;
 };
-export const defaultForm = {
+export const defaultForm: FormType = {
   avatar: '/icon/logo.svg',
   name: '',
-  intro: ''
+  intro: '',
+  modules: [
+    {
+      moduleId: nanoid(),
+      name: '定义插件输入',
+      avatar: '/imgs/module/input.png',
+      flowType: 'pluginInput',
+      showStatus: false,
+      position: {
+        x: 616.4226348688949,
+        y: -165.05298493910115
+      },
+      inputs: [],
+      outputs: []
+    },
+    {
+      moduleId: nanoid(),
+      name: '定义插件输出',
+      avatar: '/imgs/module/output.png',
+      flowType: 'pluginOutput',
+      showStatus: false,
+      position: {
+        x: 1607.7142331269126,
+        y: -151.8669210746189
+      },
+      inputs: [],
+      outputs: []
+    }
+  ]
 };
 
 const CreateModal = ({
@@ -63,7 +82,7 @@ const CreateModal = ({
   });
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
-    fileType: '.jpg,.png,.svg',
+    fileType: 'image/*',
     multiple: false
   });
 
@@ -72,10 +91,10 @@ const CreateModal = ({
       const file = e[0];
       if (!file) return;
       try {
-        const src = await compressImg({
+        const src = await compressImgFileAndUpload({
           file,
-          maxW: 100,
-          maxH: 100
+          maxW: 300,
+          maxH: 300
         });
         setValue('avatar', src);
         setRefresh((state) => !state);
@@ -134,10 +153,13 @@ const CreateModal = ({
   }, [defaultValue.id, onClose, toast, t, onDelete]);
 
   return (
-    <MyModal isOpen onClose={onClose} isCentered={!isPc}>
-      <ModalHeader fontSize={'2xl'}>
-        {defaultValue.id ? t('plugin.Update Your Plugin') : t('plugin.Create Your Plugin')}
-      </ModalHeader>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="/imgs/modal/edit.svg"
+      title={defaultValue.id ? t('plugin.Update Your Plugin') : t('plugin.Create Your Plugin')}
+      isCentered={!isPc}
+    >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
           {t('plugin.Set Name')}
@@ -170,14 +192,13 @@ const CreateModal = ({
         </Box>
       </ModalBody>
 
-      <Flex px={5} py={4}>
+      <Flex px={5} py={4} alignItems={'center'}>
         {!!defaultValue.id && (
           <IconButton
             className="delete"
-            size={'sm'}
+            size={'xsSquare'}
             icon={<MyIcon name={'delete'} w={'14px'} />}
-            variant={'base'}
-            borderRadius={'md'}
+            variant={'whiteDanger'}
             aria-label={'delete'}
             _hover={{
               bg: 'red.100'
@@ -189,7 +210,7 @@ const CreateModal = ({
           />
         )}
         <Box flex={1} />
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
         {!!defaultValue.id ? (

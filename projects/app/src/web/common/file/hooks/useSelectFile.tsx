@@ -1,16 +1,21 @@
 import React, { useRef, useCallback } from 'react';
 import { Box } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 
-export const useSelectFile = (props?: { fileType?: string; multiple?: boolean }) => {
+export const useSelectFile = (props?: {
+  fileType?: string;
+  multiple?: boolean;
+  maxCount?: number;
+}) => {
   const { t } = useTranslation();
-  const { fileType = '*', multiple = false } = props || {};
+  const { fileType = '*', multiple = false, maxCount = 10 } = props || {};
   const { toast } = useToast();
   const SelectFileDom = useRef<HTMLInputElement>(null);
+  const openSign = useRef<any>();
 
   const File = useCallback(
-    ({ onSelect }: { onSelect: (e: File[]) => void }) => (
+    ({ onSelect }: { onSelect: (e: File[], sign?: any) => void }) => (
       <Box position={'absolute'} w={0} h={0} overflow={'hidden'}>
         <input
           ref={SelectFileDom}
@@ -19,21 +24,22 @@ export const useSelectFile = (props?: { fileType?: string; multiple?: boolean })
           multiple={multiple}
           onChange={(e) => {
             if (!e.target.files || e.target.files?.length === 0) return;
-            if (e.target.files.length > 10) {
+            if (e.target.files.length > maxCount) {
               return toast({
                 status: 'warning',
                 title: t('file.Select a maximum of 10 files')
               });
             }
-            onSelect(Array.from(e.target.files));
+            onSelect(Array.from(e.target.files), openSign.current);
           }}
         />
       </Box>
     ),
-    [fileType, multiple, t, toast]
+    [fileType, maxCount, multiple]
   );
 
-  const onOpen = useCallback(() => {
+  const onOpen = useCallback((sign?: any) => {
+    openSign.current = sign;
     SelectFileDom.current && SelectFileDom.current.click();
   }, []);
 

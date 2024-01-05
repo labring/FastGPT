@@ -9,7 +9,7 @@ import { useChatStore } from '@/web/core/chat/storeChat';
 import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { setToken } from '@/web/support/user/auth';
+import { clearToken, setToken } from '@/web/support/user/auth';
 import { feConfigs } from '@/web/common/system/staticData';
 import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
@@ -53,6 +53,7 @@ const Login = () => {
   }
 
   useEffect(() => {
+    clearToken();
     router.prefetch('/app/list');
   }, []);
 
@@ -73,59 +74,33 @@ const Login = () => {
         px={[0, '10vw']}
       >
         <Flex
-          height="100%"
-          w={'100%'}
-          maxW={'1240px'}
-          maxH={['auto', 'max(660px,80vh)']}
-          backgroundColor={'#fff'}
-          alignItems={'center'}
-          justifyContent={'center'}
-          py={[5, 10]}
-          px={'5vw'}
-          borderRadius={isPc ? 'md' : 'none'}
-          gap={5}
+          flexDirection={'column'}
+          w={['100%', 'auto']}
+          h={['100%', '700px']}
+          maxH={'90vh'}
+          bg={'white'}
+          px={['5vw', '88px']}
+          py={'5vh'}
+          borderRadius={[0, '24px']}
+          boxShadow={[
+            '',
+            '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)'
+          ]}
         >
-          {isPc && (
-            <Image
-              src={'/icon/loginLeft.svg'}
-              order={pageType === PageTypeEnum.login ? 0 : 2}
-              flex={'1 0 0'}
-              w="0"
-              maxW={'600px'}
-              height={'100%'}
-              maxH={'450px'}
-              alt=""
-              loading={'lazy'}
-            />
-          )}
-
-          <Box
-            position={'relative'}
-            order={1}
-            flex={`0 0 ${isPc ? '400px' : '100%'}`}
-            height={'100%'}
-            border="1px"
-            borderColor="gray.200"
-            py={5}
-            px={10}
-            borderRadius={isPc ? 'md' : 'none'}
-          >
+          <Box w={['100%', '380px']} flex={'1 0 0'}>
             <DynamicComponent type={pageType} />
-
-            {feConfigs?.show_contact && (
-              <Box
-                fontSize={'sm'}
-                color={'myGray.600'}
-                cursor={'pointer'}
-                position={'absolute'}
-                right={5}
-                bottom={3}
-                onClick={onOpen}
-              >
-                无法登录，点击联系
-              </Box>
-            )}
           </Box>
+          {feConfigs?.concatMd && (
+            <Box
+              mt={8}
+              color={'primary.700'}
+              cursor={'pointer'}
+              textAlign={'center'}
+              onClick={onOpen}
+            >
+              无法登录，点击联系
+            </Box>
+          )}
         </Flex>
 
         {isOpen && <CommunityModal onClose={onClose} />}

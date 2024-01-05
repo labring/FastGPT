@@ -1,7 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { ChatHistoryItemResType, ChatItemType } from '@/types/chat';
-import { Flex, BoxProps, useDisclosure, Image, useTheme } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { Flex, BoxProps, useDisclosure, Image, useTheme, Box } from '@chakra-ui/react';
+import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
@@ -10,16 +11,30 @@ import MyTooltip from '../MyTooltip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
+import { strIsLink } from '@fastgpt/global/common/string/tools';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
 
-const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemResType[] }) => {
+const ResponseTags = ({
+  responseData = [],
+  isShare
+}: {
+  responseData?: ChatHistoryItemResType[];
+  isShare: boolean;
+}) => {
   const theme = useTheme();
   const { isPc } = useSystemStore();
   const { t } = useTranslation();
-  const [quoteModalData, setQuoteModalData] = useState<SearchDataResponseItemType[]>();
+  const [quoteModalData, setQuoteModalData] = useState<{
+    rawSearch: SearchDataResponseItemType[];
+    metadata?: {
+      collectionId: string;
+      sourceId?: string;
+      sourceName: string;
+    };
+  }>();
   const [contextModalData, setContextModalData] = useState<ChatItemType[]>();
   const {
     isOpen: isOpenWholeModal,
@@ -39,11 +54,11 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
       .filter((item) => item.moduleType === FlowNodeTypeEnum.chatNode)
       .map((item) => item.quoteList)
       .flat()
-      .filter((item) => item) as SearchDataResponseItemType[];
+      .filter(Boolean) as SearchDataResponseItemType[];
     const sourceList = quoteList.reduce(
       (acc: Record<string, SearchDataResponseItemType[]>, cur) => {
-        if (!acc[cur.sourceName]) {
-          acc[cur.sourceName] = [cur];
+        if (!acc[cur.collectionId]) {
+          acc[cur.collectionId] = [cur];
         }
         return acc;
       },
@@ -58,12 +73,15 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
         .flat()
         .map((item) => ({
           sourceName: item.sourceName,
-          icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName })
+          sourceId: item.sourceId,
+          icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
+          canReadQuote: !isShare || strIsLink(item.sourceId),
+          collectionId: item.collectionId
         })),
       historyPreview: chatData?.historyPreview,
       runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
-  }, [responseData]);
+  }, [isShare, responseData]);
 
   const TagStyles: BoxProps = {
     mr: 2,
@@ -77,36 +95,52 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
           <ChatBoxDivider icon="core/chat/quoteFill" text={t('chat.Quote')} />
           <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
             {sourceList.map((item) => (
-              <Flex
-                key={item.sourceName}
-                alignItems={'center'}
-                flexWrap={'wrap'}
-                fontSize={'sm'}
-                cursor={'pointer'}
-                border={theme.borders.sm}
-                py={1}
-                px={2}
-                borderRadius={'md'}
-                _hover={{
-                  bg: 'myBlue.100'
-                }}
-                onClick={() => setQuoteModalData(quoteList)}
-              >
-                <Image src={item.icon} alt={''} mr={1} w={'12px'} />
-                {item.sourceName}
-              </Flex>
+              <MyTooltip key={item.sourceName} label={t('core.chat.quote.Read Quote')}>
+                <Flex
+                  alignItems={'center'}
+                  fontSize={'sm'}
+                  border={theme.borders.sm}
+                  py={1}
+                  px={2}
+                  borderRadius={'sm'}
+                  _hover={{
+                    '.controller': {
+                      display: 'flex'
+                    }
+                  }}
+                  overflow={'hidden'}
+                  position={'relative'}
+                  cursor={'pointer'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setQuoteModalData({
+                      rawSearch: quoteList,
+                      metadata: {
+                        collectionId: item.collectionId,
+                        sourceId: item.sourceId,
+                        sourceName: item.sourceName
+                      }
+                    });
+                  }}
+                >
+                  <Image src={item.icon} alt={''} mr={1} flexShrink={0} w={'12px'} />
+                  <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
+                    {item.sourceName}
+                  </Box>
+                </Flex>
+              </MyTooltip>
             ))}
           </Flex>
         </>
       )}
-      <Flex alignItems={'center'} mt={2} flexWrap={'wrap'}>
+      <Flex alignItems={'center'} mt={3} flexWrap={'wrap'}>
         {quoteList.length > 0 && (
           <MyTooltip label="查看引用">
             <Tag
               colorSchema="blue"
               cursor={'pointer'}
               {...TagStyles}
-              onClick={() => setQuoteModalData(quoteList)}
+              onClick={() => setQuoteModalData({ rawSearch: quoteList })}
             >
               {quoteList.length}条引用
             </Tag>
@@ -141,20 +175,28 @@ const ResponseTags = ({ responseData = [] }: { responseData?: ChatHistoryItemRes
             </Tag>
           </MyTooltip>
         )}
-        <MyTooltip label={'点击查看完整响应'}>
+        <MyTooltip label={t('core.chat.response.Read complete response tips')}>
           <Tag colorSchema="gray" cursor={'pointer'} {...TagStyles} onClick={onOpenWholeModal}>
-            {t('chat.Complete Response')}
+            {t('core.chat.response.Read complete response')}
           </Tag>
         </MyTooltip>
 
         {!!quoteModalData && (
-          <QuoteModal rawSearch={quoteModalData} onClose={() => setQuoteModalData(undefined)} />
+          <QuoteModal
+            {...quoteModalData}
+            isShare={isShare}
+            onClose={() => setQuoteModalData(undefined)}
+          />
         )}
         {!!contextModalData && (
           <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
         )}
         {isOpenWholeModal && (
-          <WholeResponseModal response={responseData} onClose={onCloseWholeModal} />
+          <WholeResponseModal
+            response={responseData}
+            isShare={isShare}
+            onClose={onCloseWholeModal}
+          />
         )}
       </Flex>
     </>

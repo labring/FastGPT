@@ -1,89 +1,92 @@
-import { PgClient } from '@/service/pg';
-import type { moduleDispatchResType } from '@/types/chat';
-import { TaskResponseKeyEnum } from '@/constants/chat';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
-import { countModelPrice } from '@/service/common/bill/push';
-import type { SelectedDatasetType } from '@/types/core/dataset';
-import type {
-  SearchDataResponseItemType,
-  SearchDataResultItemType
-} from '@fastgpt/global/core/dataset/type';
-import { PgDatasetTableName } from '@/constants/plugin';
-import type { ModuleDispatchProps } from '@/types/core/chat/type';
+import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
+import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
+import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-import { getDatasetDataItemInfo } from '@/pages/api/core/dataset/data/getDataById';
+import { searchDatasetData } from '@/service/core/dataset/data/controller';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 type DatasetSearchProps = ModuleDispatchProps<{
-  datasets: SelectedDatasetType;
-  similarity: number;
-  limit: number;
-  userChatInput: string;
+  [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [ModuleInputKeyEnum.datasetSimilarity]: number;
+  [ModuleInputKeyEnum.datasetLimit]: number;
+  [ModuleInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
+  [ModuleInputKeyEnum.userChatInput]: string;
+  [ModuleInputKeyEnum.datasetSearchUsingReRank]: boolean;
 }>;
-export type KBSearchResponse = {
-  [TaskResponseKeyEnum.responseData]: moduleDispatchResType;
-  isEmpty?: boolean;
-  unEmpty?: boolean;
-  quoteQA: SearchDataResponseItemType[];
+export type DatasetSearchResponse = {
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
+  [ModuleOutputKeyEnum.datasetIsEmpty]?: boolean;
+  [ModuleOutputKeyEnum.datasetUnEmpty]?: boolean;
+  [ModuleOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 };
 
-export async function dispatchDatasetSearch(props: Record<string, any>): Promise<KBSearchResponse> {
+export async function dispatchDatasetSearch(
+  props: DatasetSearchProps
+): Promise<DatasetSearchResponse> {
   const {
-    user,
-    inputs: { datasets = [], similarity = 0.4, limit = 5, userChatInput }
+    inputs: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
+  if (!Array.isArray(datasets)) {
+    return Promise.reject('Quote type error');
+  }
+
   if (datasets.length === 0) {
-    return Promise.reject("You didn't choose the knowledge base");
+    return Promise.reject('core.chat.error.Select dataset empty');
   }
 
   if (!userChatInput) {
-    return Promise.reject('Your input is empty');
+    return Promise.reject('core.chat.error.User question empty');
   }
 
   // get vector
   const vectorModel = datasets[0]?.vectorModel || global.vectorModels[0];
-  const { vectors, tokenLen } = await getVector({
+
+  // const { queries: extensionQueries } = await searchQueryExtension({
+  //   query: userChatInput,
+  //   model: global.chatModels[0].model
+  // });
+  const concatQueries = [userChatInput];
+
+  // start search
+  const {
+    searchRes,
+    tokens,
+    usingSimilarityFilter,
+    usingReRank: searchUsingReRank
+  } = await searchDatasetData({
+    rawQuery: userChatInput,
+    queries: concatQueries,
     model: vectorModel.model,
-    input: [userChatInput]
+    similarity,
+    limit,
+    datasetIds: datasets.map((item) => item.datasetId),
+    searchMode,
+    usingReRank
   });
 
-  // search kb
-  const results: any = await PgClient.query(
-    `BEGIN;
-    SET LOCAL hnsw.ef_search = ${global.systemEnv.pgHNSWEfSearch || 100};
-    select id, q, a, dataset_id, collection_id, (vector <#> '[${
-      vectors[0]
-    }]') * -1 AS score from ${PgDatasetTableName} where user_id='${
-      user._id
-    }' AND dataset_id IN (${datasets
-      .map((item) => `'${item.datasetId}'`)
-      .join(',')}) AND vector <#> '[${vectors[0]}]' < -${similarity} order by vector <#> '[${
-      vectors[0]
-    }]' limit ${limit};
-    COMMIT;`
-  );
-
-  const rows = results?.[2]?.rows as SearchDataResultItemType[];
-  const collectionsData = await getDatasetDataItemInfo({ pgDataList: rows });
-  const searchRes: SearchDataResponseItemType[] = collectionsData.map((item, index) => ({
-    ...item,
-    score: rows[index].score
-  }));
+  const { total, modelName } = formatModelPrice2Store({
+    model: vectorModel.model,
+    inputLen: tokens,
+    type: ModelTypeEnum.vector
+  });
 
   return {
     isEmpty: searchRes.length === 0 ? true : undefined,
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      price: countModelPrice({
-        model: vectorModel.model,
-        tokens: tokenLen,
-        type: ModelTypeEnum.vector
-      }),
-      model: vectorModel.name,
-      tokens: tokenLen,
-      similarity,
-      limit
+      price: total,
+      query: concatQueries.join('\n'),
+      model: modelName,
+      inputTokens: tokens,
+      similarity: usingSimilarityFilter ? similarity : undefined,
+      limit,
+      searchMode,
+      searchUsingReRank: searchUsingReRank
     }
   };
 }

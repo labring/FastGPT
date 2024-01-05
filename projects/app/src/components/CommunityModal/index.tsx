@@ -1,25 +1,25 @@
 import React from 'react';
 import { Button, ModalFooter, ModalBody } from '@chakra-ui/react';
 import MyModal from '../MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import Markdown from '../Markdown';
-
-const md = `
-| 交流群 | 小助手 |
-| ----------------------- | -------------------- |
-| ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) |
-`;
+import { feConfigs } from '@/web/common/system/staticData';
 
 const CommunityModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   return (
-    <MyModal isOpen={true} onClose={onClose} title={t('home.Community')}>
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/modal/concat.svg"
+      title={t('home.Community')}
+    >
       <ModalBody textAlign={'center'}>
-        <Markdown source={md} />
+        <Markdown source={feConfigs?.concatMd || ''} />
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} onClick={onClose}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           关闭
         </Button>
       </ModalFooter>

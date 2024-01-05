@@ -1,18 +1,19 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@/service/response';
+import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { authUser } from '@fastgpt/service/support/user/auth';
-import { updateOnePlugin } from '@fastgpt/service/core/plugin/controller';
 import type { UpdatePluginParams } from '@fastgpt/global/core/plugin/controller';
+import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin';
+import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { userId } = await authUser({ req, authToken: true });
-    const body = req.body as UpdatePluginParams;
+    const { id, ...props } = req.body as UpdatePluginParams;
+
+    await authPluginCrud({ req, authToken: true, id, per: 'owner' });
 
     jsonRes(res, {
-      data: await updateOnePlugin({ userId, ...body })
+      data: await MongoPlugin.findByIdAndUpdate(id, props)
     });
   } catch (err) {
     jsonRes(res, {

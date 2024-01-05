@@ -1,63 +1,88 @@
-import { CreateOnePluginParams, UpdatePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { MongoPlugin } from './schema';
 import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { formatPluginIOModules } from '@fastgpt/global/core/module/utils';
+import { plugin2ModuleIO } from '@fastgpt/global/core/module/utils';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import type { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
+import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 
-export async function createOnePlugin(data: CreateOnePluginParams & { userId: string }) {
-  const { _id } = await MongoPlugin.create(data);
-  return _id;
+/* 
+  plugin id rule:
+  personal: id
+  community: community-id
+  commercial: commercial-id
+*/
+
+export async function splitCombinePluginId(id: string) {
+  const splitRes = id.split('-');
+  if (splitRes.length === 1) {
+    return {
+      source: PluginSourceEnum.personal,
+      pluginId: id
+    };
+  }
+
+  const [source, pluginId] = id.split('-') as [`${PluginSourceEnum}`, string];
+  if (!source || !pluginId) return Promise.reject('pluginId not found');
+
+  return { source, pluginId: id };
 }
 
-export async function updateOnePlugin({
-  id,
-  userId,
-  ...data
-}: UpdatePluginParams & { userId: string }) {
-  await MongoPlugin.findOneAndUpdate({ _id: id, userId }, data);
-}
+const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> => {
+  const { source, pluginId } = await splitCombinePluginId(id);
+  if (source === PluginSourceEnum.community) {
+    const item = global.communityPlugins?.find((plugin) => plugin.id === pluginId);
+    if (!item) return Promise.reject('plugin not found');
 
-export async function deleteOnePlugin({ id, userId }: { id: string; userId: string }) {
-  await MongoPlugin.findOneAndDelete({ _id: id, userId });
-}
-export async function getUserPlugins({ userId }: { userId: string }) {
-  return MongoPlugin.find({ userId }, 'name avatar intro');
-}
-export async function getOnePluginDetail({ id, userId }: { userId: string; id: string }) {
-  return MongoPlugin.findOne({ _id: id, userId });
-}
-/* plugin templates */
-export async function getUserPlugins2Templates({
-  userId
+    return item;
+  }
+  if (source === PluginSourceEnum.personal) {
+    const item = await MongoPlugin.findById(id).lean();
+    if (!item) return Promise.reject('plugin not found');
+    return {
+      id: String(item._id),
+      teamId: String(item.teamId),
+      name: item.name,
+      avatar: item.avatar,
+      intro: item.intro,
+      showStatus: true,
+      source: PluginSourceEnum.personal,
+      modules: item.modules,
+      templateType: ModuleTemplateTypeEnum.personalPlugin
+    };
+  }
+  return Promise.reject('plugin not found');
+};
+
+/* format plugin modules to plugin preview module */
+export async function getPluginPreviewModule({
+  id
 }: {
-  userId: string;
-}): Promise<FlowModuleTemplateType[]> {
-  const plugins = await MongoPlugin.find({ userId }).lean();
+  id: string;
+}): Promise<FlowModuleTemplateType> {
+  const plugin = await getPluginTemplateById(id);
 
-  return plugins.map((plugin) => ({
-    id: String(plugin._id),
-    flowType: FlowNodeTypeEnum.pluginModule,
-    logo: plugin.avatar,
-    name: plugin.name,
-    description: plugin.intro,
-    intro: plugin.intro,
-    showStatus: false,
-    inputs: [],
-    outputs: []
-  }));
-}
-/* one plugin 2 module detail */
-export async function getPluginModuleDetail({ id, userId }: { userId: string; id: string }) {
-  const plugin = await getOnePluginDetail({ id, userId });
-  if (!plugin) return Promise.reject('plugin not found');
   return {
-    id: String(plugin._id),
+    id: plugin.id,
+    templateType: plugin.templateType,
     flowType: FlowNodeTypeEnum.pluginModule,
-    logo: plugin.avatar,
+    avatar: plugin.avatar,
     name: plugin.name,
-    description: plugin.intro,
     intro: plugin.intro,
-    showStatus: false,
-    ...formatPluginIOModules(String(plugin._id), plugin.modules)
+    showStatus: plugin.showStatus,
+    ...plugin2ModuleIO(plugin.id, plugin.modules)
+  };
+}
+
+/* run plugin time */
+export async function getPluginRuntimeById(id: string): Promise<PluginRuntimeType> {
+  const plugin = await getPluginTemplateById(id);
+
+  return {
+    teamId: plugin.teamId,
+    name: plugin.name,
+    avatar: plugin.avatar,
+    showStatus: plugin.showStatus,
+    modules: plugin.modules
   };
 }

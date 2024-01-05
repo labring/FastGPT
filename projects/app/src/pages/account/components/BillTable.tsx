@@ -11,13 +11,13 @@ import {
   Box,
   Button
 } from '@chakra-ui/react';
-import { BillSourceMap } from '@/constants/user';
-import { getUserBills } from '@/web/common/bill/api';
-import type { UserBillType } from '@/types/user';
+import { BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
+import { getUserBills } from '@/web/support/wallet/bill/api';
+import type { BillItemType } from '@fastgpt/global/support/wallet/bill/type';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
@@ -33,14 +33,14 @@ const BillTable = () => {
     to: new Date()
   });
   const { isPc } = useSystemStore();
-  const [billDetail, setBillDetail] = useState<UserBillType>();
+  const [billDetail, setBillDetail] = useState<BillItemType>();
 
   const {
     data: bills,
     isLoading,
     Pagination,
     getData
-  } = usePagination<UserBillType>({
+  } = usePagination<BillItemType>({
     api: getUserBills,
     pageSize: isPc ? 20 : 10,
     params: {
@@ -55,6 +55,7 @@ const BillTable = () => {
         <Table>
           <Thead>
             <Tr>
+              <Th>{t('user.team.Member Name')}</Th>
               <Th>{t('user.Time')}</Th>
               <Th>{t('user.Source')}</Th>
               <Th>{t('user.Application Name')}</Th>
@@ -65,12 +66,13 @@ const BillTable = () => {
           <Tbody fontSize={'sm'}>
             {bills.map((item) => (
               <Tr key={item.id}>
+                <Td>{item.memberName}</Td>
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
                 <Td>{BillSourceMap[item.source]}</Td>
                 <Td>{t(item.appName) || '-'}</Td>
                 <Td>{item.total}元</Td>
                 <Td>
-                  <Button size={'sm'} variant={'base'} onClick={() => setBillDetail(item)}>
+                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setBillDetail(item)}>
                     详情
                   </Button>
                 </Td>

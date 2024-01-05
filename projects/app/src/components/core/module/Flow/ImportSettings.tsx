@@ -1,18 +1,28 @@
 import React, { useState } from 'react';
 import { Textarea, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useFlowProviderStore } from './FlowProvider';
 
-const ImportSettings = ({ onClose }: { onClose: () => void }) => {
+type Props = {
+  onClose: () => void;
+};
+
+const ImportSettings = ({ onClose }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [value, setValue] = useState('');
   const { setNodes, setEdges, initData } = useFlowProviderStore();
+  const [value, setValue] = useState('');
 
   return (
-    <MyModal isOpen w={'600px'} onClose={onClose} title={t('app.Import Config')}>
+    <MyModal
+      isOpen
+      w={'600px'}
+      onClose={onClose}
+      iconSrc="/imgs/modal/params.svg"
+      title={t('app.Import Configs')}
+    >
       <ModalBody>
         <Textarea
           placeholder={t('app.Paste Config') || 'app.Paste Config'}
@@ -23,7 +33,7 @@ const ImportSettings = ({ onClose }: { onClose: () => void }) => {
       </ModalBody>
       <ModalFooter>
         <Button
-          variant="base"
+          variant="whiteBase"
           onClick={() => {
             if (!value) {
               return onClose();
@@ -38,7 +48,7 @@ const ImportSettings = ({ onClose }: { onClose: () => void }) => {
               onClose();
             } catch (error) {
               toast({
-                title: t('app.Import Config Failed')
+                title: t('app.Import Configs Failed')
               });
             }
           }}

@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { getInitChatSiteInfo, delChatRecordById, putChatHistory } from '@/web/core/chat/api';
+import { getInitChatInfo } from '@/web/core/chat/api';
 import {
   Box,
   Flex,
@@ -19,8 +19,8 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-import type { ChatHistoryItemType } from '@/types/chat';
-import { useTranslation } from 'react-i18next';
+import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
+import { useTranslation } from 'next-i18next';
 
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import PageContainer from '@/components/PageContainer';
@@ -31,6 +31,10 @@ import ChatHeader from './components/ChatHeader';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
+import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
+import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -46,15 +50,18 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     setLastChatAppId,
     lastChatId,
     setLastChatId,
-    history,
-    loadHistory,
+    histories,
+    loadHistories,
+    pushHistory,
     updateHistory,
-    delHistory,
-    clearHistory,
+    delOneHistory,
+    clearHistories,
     chatData,
-    setChatData
+    setChatData,
+    delOneHistoryItem
   } = useChatStore();
-  const { myApps, loadMyApps, userInfo } = useUserStore();
+  const { myApps, loadMyApps } = useAppStore();
+  const { userInfo } = useUserStore();
 
   const { isPc } = useSystemStore();
   const { Loading, setIsLoading } = useLoading();
@@ -76,9 +83,12 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         abortSignal: controller
       });
 
-      const newTitle = prompts[0].content?.slice(0, 20) || '新对话';
+      const newTitle =
+        chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
+        prompts[1]?.value?.slice(0, 20) ||
+        '新对话';
 
-      // update history
+      // new chat
       if (completionChatId !== chatId) {
         const newHistory: ChatHistoryItemType = {
           chatId: completionChatId,
@@ -87,7 +97,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
           appId,
           top: false
         };
-        updateHistory(newHistory);
+        pushHistory(newHistory);
         if (controller.signal.reason !== 'leave') {
           forbidRefresh.current = true;
           router.replace({
@@ -98,7 +108,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
           });
         }
       } else {
-        const currentChat = history.find((item) => item.chatId === chatId);
+        // update chat
+        const currentChat = histories.find((item) => item.chatId === chatId);
         currentChat &&
           updateHistory({
             ...currentChat,
@@ -110,30 +121,12 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       setChatData((state) => ({
         ...state,
         title: newTitle,
-        history: ChatBoxRef.current?.getChatHistory() || state.history
+        history: ChatBoxRef.current?.getChatHistories() || state.history
       }));
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [appId, chatId, history, router, setChatData, updateHistory]
-  );
-
-  // del one chat content
-  const delOneHistoryItem = useCallback(
-    async ({ contentId, index }: { contentId?: string; index: number }) => {
-      if (!chatId || !contentId) return;
-
-      try {
-        setChatData((state) => ({
-          ...state,
-          history: state.history.filter((_, i) => i !== index)
-        }));
-        await delChatRecordById({ chatId, contentId });
-      } catch (err) {
-        console.log(err);
-      }
-    },
-    [chatId, setChatData]
+    [appId, chatId, histories, pushHistory, router, setChatData, updateHistory]
   );
 
   // get chat app info
@@ -149,10 +142,10 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     }) => {
       try {
         loading && setIsLoading(true);
-        const res = await getInitChatSiteInfo({ appId, chatId });
+        const res = await getInitChatInfo({ appId, chatId });
         const history = res.history.map((item) => ({
           ...item,
-          status: 'finish' as any
+          status: ChatStatusEnum.finish
         }));
 
         setChatData({
@@ -178,8 +171,13 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         });
         if (e?.code === 501) {
           router.replace('/app/list');
-        } else {
-          router.replace('/chat');
+        } else if (chatId) {
+          router.replace({
+            query: {
+              ...router.query,
+              chatId: ''
+            }
+          });
         }
       }
       setIsLoading(false);
@@ -188,7 +186,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId, toast]
   );
   // 初始化聊天框
-  useQuery(['init', appId, chatId], () => {
+  useQuery(['init', { appId, chatId }], () => {
     // pc: redirect to latest model chat
     if (!appId && lastChatAppId) {
       return router.replace({
@@ -243,7 +241,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     });
   });
 
-  useQuery(['loadHistory', appId], () => (appId ? loadHistory({ appId }) : null));
+  useQuery(['loadHistories', appId], () => (appId ? loadHistories({ appId }) : null));
 
   return (
     <Flex h={'100%'}>
@@ -257,8 +255,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         </Box>
       )}
 
-      <PageContainer flex={'1 0 0'} w={0} bg={'myWhite.600'} position={'relative'}>
-        <Flex h={'100%'} flexDirection={['column', 'row']}>
+      <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
+        <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
           {/* pc always show history. */}
           {((children: React.ReactNode) => {
             return isPc || !appId ? (
@@ -282,7 +280,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
               onClose={onCloseSlider}
-              history={history.map((item, i) => ({
+              history={histories.map((item, i) => ({
                 id: item.chatId,
                 title: item.title,
                 customTitle: item.customTitle,
@@ -299,39 +297,25 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                   onCloseSlider();
                 }
               }}
-              onDelHistory={delHistory}
+              onDelHistory={(e) => delOneHistory({ ...e, appId })}
               onClearHistory={() => {
-                clearHistory(appId);
+                clearHistories({ appId });
                 router.replace({
                   query: {
                     appId
                   }
                 });
               }}
-              onSetHistoryTop={async (e) => {
-                try {
-                  await putChatHistory(e);
-                  const historyItem = history.find((item) => item.chatId === e.chatId);
-                  if (!historyItem) return;
-                  updateHistory({
-                    ...historyItem,
-                    top: e.top
-                  });
-                } catch (error) {}
+              onSetHistoryTop={(e) => {
+                updateHistory({ ...e, appId });
               }}
               onSetCustomTitle={async (e) => {
-                try {
-                  await putChatHistory({
-                    chatId: e.chatId,
-                    customTitle: e.title
-                  });
-                  const historyItem = history.find((item) => item.chatId === e.chatId);
-                  if (!historyItem) return;
-                  updateHistory({
-                    ...historyItem,
-                    customTitle: e.title
-                  });
-                } catch (error) {}
+                updateHistory({
+                  appId,
+                  chatId: e.chatId,
+                  title: e.title,
+                  customTitle: e.title
+                });
               }}
             />
           )}
@@ -351,6 +335,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               history={chatData.history}
               chatModels={chatData.app.chatModels}
               onOpenSlider={onOpenSlider}
+              showHistory
             />
 
             {/* chat box */}
@@ -361,10 +346,13 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
                 userGuideModule={chatData.app?.userGuideModule}
+                showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
-                onDelMessage={delOneHistoryItem}
+                onDelMessage={(e) => delOneHistoryItem({ ...e, appId, chatId })}
+                appId={appId}
+                chatId={chatId}
               />
             </Box>
           </Flex>

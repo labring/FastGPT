@@ -12,10 +12,7 @@ import type {
   FlowModuleItemType,
   FlowModuleTemplateType
 } from '@fastgpt/global/core/module/type.d';
-import type {
-  FlowNodeOutputTargetItemType,
-  FlowNodeChangeProps
-} from '@fastgpt/global/core/module/node/type';
+import type { FlowNodeChangeProps } from '@fastgpt/global/core/module/node/type';
 import React, {
   type SetStateAction,
   type Dispatch,
@@ -28,11 +25,8 @@ import React, {
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@/web/common/hooks/useToast';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum,
-  FlowNodeValTypeEnum
-} from '@fastgpt/global/core/module/node/constant';
+import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -42,6 +36,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 export type useFlowProviderStoreType = {
   reactFlowWrapper: null | React.RefObject<HTMLDivElement>;
+  mode: 'app' | 'plugin';
   filterAppIds: string[];
   nodes: Node<FlowModuleItemType, string | undefined>[];
   setNodes: Dispatch<SetStateAction<Node<FlowModuleItemType, string | undefined>[]>>;
@@ -53,7 +48,7 @@ export type useFlowProviderStoreType = {
   onDelNode: (nodeId: string) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
   onCopyNode: (nodeId: string) => void;
-  onResetNode: (id: string, module: FlowModuleTemplateType) => void;
+  onResetNode: (e: { id: string; module: FlowModuleTemplateType }) => void;
   onDelEdge: (e: {
     moduleId: string;
     sourceHandle?: string | undefined;
@@ -63,9 +58,17 @@ export type useFlowProviderStoreType = {
   onConnect: ({ connect }: { connect: Connection }) => any;
   initData: (modules: ModuleItemType[]) => void;
 };
+type requestEventType =
+  | 'onChangeNode'
+  | 'onCopyNode'
+  | 'onResetNode'
+  | 'onDelNode'
+  | 'onDelConnect'
+  | 'setNodes';
 
 const StateContext = createContext<useFlowProviderStoreType>({
   reactFlowWrapper: null,
+  mode: 'app',
   filterAppIds: [],
   nodes: [],
   setNodes: function (
@@ -111,16 +114,18 @@ const StateContext = createContext<useFlowProviderStoreType>({
   initData: function (modules: ModuleItemType[]): void {
     throw new Error('Function not implemented.');
   },
-  onResetNode: function (id: string, module: FlowModuleTemplateType): void {
+  onResetNode: function (e): void {
     throw new Error('Function not implemented.');
   }
 });
 export const useFlowProviderStore = () => useContext(StateContext);
 
 export const FlowProvider = ({
+  mode,
   filterAppIds = [],
   children
 }: {
+  mode: useFlowProviderStoreType['mode'];
   filterAppIds?: string[];
   children: React.ReactNode;
 }) => {
@@ -173,7 +178,7 @@ export const FlowProvider = ({
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
-          return FlowNodeValTypeEnum.boolean;
+          return ModuleIOValueTypeEnum.string;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -192,8 +197,8 @@ export const FlowProvider = ({
         });
       }
       if (
-        sourceType !== FlowNodeValTypeEnum.any &&
-        targetType !== FlowNodeValTypeEnum.any &&
+        sourceType !== ModuleIOValueTypeEnum.any &&
+        targetType !== ModuleIOValueTypeEnum.any &&
         sourceType !== targetType
       ) {
         return toast({
@@ -206,8 +211,7 @@ export const FlowProvider = ({
         addEdge(
           {
             ...connect,
-            type: 'buttonedge',
-            animated: true,
+            type: EDGE_TYPE,
             data: {
               onDelete: onDelConnect
             }
@@ -227,6 +231,7 @@ export const FlowProvider = ({
     [setEdges, setNodes]
   );
 
+  /* change */
   const onChangeNode = useCallback(
     ({ moduleId, type, key, value, index }: FlowNodeChangeProps) => {
       setNodes((nodes) =>
@@ -328,10 +333,9 @@ export const FlowProvider = ({
         const node = nodes.find((node) => node.id === nodeId);
         if (!node) return nodes;
         const template = {
-          logo: node.data.logo,
+          avatar: node.data.avatar,
           name: node.data.name,
           intro: node.data.intro,
-          description: node.data.description,
           flowType: node.data.flowType,
           inputs: node.data.inputs,
           outputs: node.data.outputs,
@@ -353,7 +357,7 @@ export const FlowProvider = ({
 
   // reset a node data. delete edge and replace it
   const onResetNode = useCallback(
-    (id: string, module: FlowModuleTemplateType) => {
+    ({ id, module }: { id: string; module: FlowModuleTemplateType }) => {
       setNodes((state) =>
         state.map((node) => {
           if (node.id === id) {
@@ -382,8 +386,7 @@ export const FlowProvider = ({
   const initData = useCallback(
     (modules: ModuleItemType[]) => {
       const edges = appModule2FlowEdge({
-        modules,
-        onDelete: onDelConnect
+        modules
       });
       setEdges(edges);
 
@@ -391,22 +394,58 @@ export const FlowProvider = ({
 
       onFixView();
     },
-    [onDelConnect, setEdges, setNodes, onFixView]
+    [setEdges, setNodes, onFixView]
   );
 
   // use eventbus to avoid refresh ReactComponents
   useEffect(() => {
-    const update = (e: FlowNodeChangeProps) => {
-      onChangeNode(e);
-    };
-    eventBus.on(EventNameEnum.updaterNode, update);
+    eventBus.on(
+      EventNameEnum.requestFlowEvent,
+      ({ type, data }: { type: requestEventType; data: any }) => {
+        switch (type) {
+          case 'onChangeNode':
+            onChangeNode(data);
+            return;
+          case 'onCopyNode':
+            onCopyNode(data);
+            return;
+          case 'onResetNode':
+            onResetNode(data);
+            return;
+          case 'onDelNode':
+            onDelNode(data);
+            return;
+          case 'onDelConnect':
+            onDelConnect(data);
+            return;
+          case 'setNodes':
+            setNodes(data);
+            return;
+        }
+      }
+    );
     return () => {
-      eventBus.off(EventNameEnum.updaterNode);
+      eventBus.off(EventNameEnum.requestFlowEvent);
     };
-  }, [onChangeNode]);
+  }, []);
+  useEffect(() => {
+    eventBus.on(EventNameEnum.requestFlowStore, () => {
+      eventBus.emit('receiveFlowStore', {
+        nodes,
+        edges,
+        mode,
+        filterAppIds,
+        reactFlowWrapper
+      });
+    });
+    return () => {
+      eventBus.off(EventNameEnum.requestFlowStore);
+    };
+  }, [edges, filterAppIds, mode, nodes]);
 
   const value = {
     reactFlowWrapper,
+    mode,
     filterAppIds,
     nodes,
     setNodes,
@@ -431,52 +470,53 @@ export const FlowProvider = ({
 export default React.memo(FlowProvider);
 
 export const onChangeNode = (e: FlowNodeChangeProps) => {
-  eventBus.emit(EventNameEnum.updaterNode, e);
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onChangeNode',
+    data: e
+  });
+};
+export const onCopyNode = (nodeId: string) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onCopyNode',
+    data: nodeId
+  });
+};
+export const onResetNode = (e: Parameters<useFlowProviderStoreType['onResetNode']>[0]) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onResetNode',
+    data: e
+  });
+};
+export const onDelNode = (nodeId: string) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onDelNode',
+    data: nodeId
+  });
+};
+export const onDelConnect = (e: Parameters<useFlowProviderStoreType['onDelConnect']>[0]) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onDelConnect',
+    data: e
+  });
+};
+export const onSetNodes = (e: useFlowProviderStoreType['nodes']) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'setNodes',
+    data: e
+  });
 };
 
-export function flowNode2Modules({
-  nodes,
-  edges
-}: {
-  nodes: Node<FlowModuleItemType, string | undefined>[];
-  edges: Edge<any>[];
-}) {
-  const modules: ModuleItemType[] = nodes.map((item) => ({
-    moduleId: item.data.moduleId,
-    name: item.data.name,
-    logo: item.data.logo,
-    flowType: item.data.flowType,
-    showStatus: item.data.showStatus,
-    position: item.position,
-    inputs: item.data.inputs.map((item) => ({
-      ...item,
-      connected: item.connected ?? item.type !== FlowNodeInputTypeEnum.target
-    })),
-    outputs: item.data.outputs.map((item) => ({
-      ...item,
-      targets: [] as FlowNodeOutputTargetItemType[]
-    }))
-  }));
-
-  // update inputs and outputs
-  modules.forEach((module) => {
-    module.inputs.forEach((input) => {
-      input.connected =
-        input.connected ||
-        !!edges.find((edge) => edge.target === module.moduleId && edge.targetHandle === input.key);
+export const getFlowStore = () =>
+  new Promise<{
+    nodes: useFlowProviderStoreType['nodes'];
+    edges: useFlowProviderStoreType['edges'];
+    mode: useFlowProviderStoreType['mode'];
+    filterAppIds: useFlowProviderStoreType['filterAppIds'];
+    reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
+  }>((resolve) => {
+    eventBus.on('receiveFlowStore', (data: any) => {
+      resolve(data);
+      eventBus.off('receiveFlowStore');
     });
-    module.outputs.forEach((output) => {
-      output.targets = edges
-        .filter(
-          (edge) =>
-            edge.source === module.moduleId && edge.sourceHandle === output.key && edge.targetHandle
-        )
-        .map((edge) => ({
-          moduleId: edge.target,
-          key: edge.targetHandle || ''
-        }));
-    });
+    eventBus.emit(EventNameEnum.requestFlowStore);
   });
-
-  return modules;
-}

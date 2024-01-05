@@ -1,14 +1,24 @@
-import { insertData2Dataset } from '../core/dataset/data/utils';
-import { getVector } from '@/pages/api/openapi/plugin/vector';
+import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { sendInform } from '@/pages/api/user/inform/send';
-import { addLog } from '../utils/tools';
+import { sendOneInform } from '../support/user/inform/api';
+import { addLog } from '@fastgpt/service/common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { authTeamBalance } from '@/service/support/permission/auth/bill';
+import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
-const reduceQueue = () => {
+const reduceQueue = (retry = false) => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
+
+  if (global.vectorQueueLen === 0 && retry) {
+    setTimeout(() => {
+      generateVector();
+    }, 60000);
+  }
+
+  return global.vectorQueueLen === 0;
 };
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
@@ -16,72 +26,136 @@ export async function generateVector(): Promise<any> {
   if (global.vectorQueueLen >= global.systemEnv.vectorMaxProcess) return;
   global.vectorQueueLen++;
 
-  let trainingId = '';
-  let userId = '';
-  let dataItems: {
-    q: string;
-    a: string;
-  } = {
-    q: '',
-    a: ''
-  };
+  // get training data
+  const {
+    data,
+    dataItem,
+    done = false,
+    error = false
+  } = await (async () => {
+    try {
+      const data = await MongoDatasetTraining.findOneAndUpdate(
+        {
+          mode: TrainingModeEnum.chunk,
+          lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
+        },
+        {
+          lockTime: new Date()
+        }
+      )
+        .sort({
+          weight: -1
+        })
+        .select({
+          _id: 1,
+          userId: 1,
+          teamId: 1,
+          tmbId: 1,
+          datasetId: 1,
+          collectionId: 1,
+          q: 1,
+          a: 1,
+          chunkIndex: 1,
+          indexes: 1,
+          model: 1,
+          billId: 1
+        })
+        .lean();
 
-  try {
-    const data = await MongoDatasetTraining.findOneAndUpdate(
-      {
-        mode: TrainingModeEnum.index,
-        lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
-      },
-      {
-        lockTime: new Date()
+      // task preemption
+      if (!data) {
+        return {
+          done: true
+        };
       }
-    )
-      .select({
-        _id: 1,
-        userId: 1,
-        datasetId: 1,
-        datasetCollectionId: 1,
-        q: 1,
-        a: 1,
-        model: 1,
-        billId: 1
-      })
-      .lean();
+      return {
+        data,
+        dataItem: {
+          q: data.q,
+          a: data.a || '',
+          indexes: data.indexes
+        }
+      };
+    } catch (error) {
+      console.log(`Get Training Data error`, error);
+      return {
+        error: true
+      };
+    }
+  })();
 
-    // task preemption
-    if (!data) {
+  if (done || !data) {
+    if (reduceQueue()) {
+      console.log(`【index】Task done`);
+    }
+    return;
+  }
+  if (error) {
+    reduceQueue();
+    return generateVector();
+  }
+
+  // auth balance
+  try {
+    await authTeamBalance(data.teamId);
+  } catch (error: any) {
+    if (error?.statusText === UserErrEnum.balanceNotEnough) {
+      // send inform and lock data
+      try {
+        sendOneInform({
+          type: 'system',
+          title: '文本训练任务中止',
+          content:
+            '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+          tmbId: data.tmbId
+        });
+        console.log('余额不足，暂停【向量】生成任务');
+        lockTrainingDataByTeamId(data.teamId);
+      } catch (error) {}
+    }
+
+    reduceQueue();
+    return generateVector();
+  }
+
+  // create vector and insert
+  try {
+    // invalid data
+    if (!data.q.trim()) {
+      await MongoDatasetTraining.findByIdAndDelete(data._id);
       reduceQueue();
-      global.vectorQueueLen <= 0 && console.log(`【索引】任务完成`);
+      generateVector();
       return;
     }
 
-    trainingId = data._id;
-    userId = String(data.userId);
-
-    dataItems = {
-      q: data.q.replace(/[\x00-\x08]/g, ' '),
-      a: data.a?.replace(/[\x00-\x08]/g, ' ') || ''
-    };
-
-    // insert data 2 pg
-    await insertData2Dataset({
-      userId,
+    // insert data to pg
+    const { tokens } = await insertData2Dataset({
+      teamId: data.teamId,
+      tmbId: data.tmbId,
       datasetId: data.datasetId,
-      collectionId: data.datasetCollectionId,
-      q: dataItems.q,
-      a: dataItems.a,
+      collectionId: data.collectionId,
+      q: dataItem.q,
+      a: dataItem.a,
+      chunkIndex: data.chunkIndex,
+      indexes: dataItem.indexes,
+      model: data.model
+    });
+
+    // push bill
+    pushGenerateVectorBill({
+      teamId: data.teamId,
+      tmbId: data.tmbId,
+      tokens,
       model: data.model,
       billId: data.billId
     });
 
     // delete data from training
     await MongoDatasetTraining.findByIdAndDelete(data._id);
-    // console.log(`生成向量成功: ${data._id}`);
-
     reduceQueue();
     generateVector();
   } catch (err: any) {
-    reduceQueue();
+    reduceQueue(true);
     // log
     if (err?.response) {
       addLog.info('openai error: 生成向量错误', {
@@ -97,44 +171,18 @@ export async function generateVector(): Promise<any> {
     // message error or openai account error
     if (
       err?.message === 'invalid message format' ||
-      err.response?.data?.error?.type === 'invalid_request_error'
+      err.response?.data?.error?.type === 'invalid_request_error' ||
+      err?.code === 500
     ) {
-      addLog.info('invalid message format', {
-        dataItems
-      });
+      addLog.info('Lock training data');
+      console.log(err?.code);
+      console.log(err.response?.data?.error?.type);
+      console.log(err?.message);
+
       try {
-        await MongoDatasetTraining.findByIdAndUpdate(trainingId, {
+        await MongoDatasetTraining.findByIdAndUpdate(data._id, {
           lockTime: new Date('2998/5/5')
         });
-      } catch (error) {}
-      return generateVector();
-    }
-
-    // err vector data
-    if (err?.code === 500) {
-      await MongoDatasetTraining.findByIdAndDelete(trainingId);
-      return generateVector();
-    }
-
-    // 账号余额不足，暂停任务
-    if (userId && err === ERROR_ENUM.insufficientQuota) {
-      try {
-        sendInform({
-          type: 'system',
-          title: '索引生成任务中止',
-          content:
-            '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-          userId
-        });
-        console.log('余额不足，暂停向量生成任务');
-        await MongoDatasetTraining.updateMany(
-          {
-            userId
-          },
-          {
-            lockTime: new Date('2999/5/5')
-          }
-        );
       } catch (error) {}
       return generateVector();
     }

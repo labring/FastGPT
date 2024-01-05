@@ -11,21 +11,24 @@ import {
   Tbody,
   Image,
   MenuButton,
-  useTheme,
-  useDisclosure
+  useDisclosure,
+  Button,
+  Link,
+  useTheme
 } from '@chakra-ui/react';
 import {
   getDatasetCollections,
   delDatasetCollectionById,
   putDatasetCollectionById,
   postDatasetCollection,
-  getDatasetCollectionPathById
+  getDatasetCollectionPathById,
+  postLinkCollectionSync
 } from '@/web/core/dataset/api';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { useTranslation } from 'react-i18next';
-import MyIcon from '@/components/Icon';
+import { useTranslation } from 'next-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -35,13 +38,18 @@ import { usePagination } from '@/web/common/hooks/usePagination';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
-import type { DatasetCollectionsListItemType } from '@/global/core/dataset/response';
+import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import EmptyTip from '@/components/EmptyTip';
-import { AddIcon } from '@chakra-ui/icons';
-import { FolderAvatarSrc, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
-
+import {
+  FolderAvatarSrc,
+  DatasetCollectionTypeEnum,
+  DatasetCollectionTrainingModeEnum,
+  DatasetTypeEnum,
+  DatasetTypeMap,
+  DatasetStatusEnum,
+  DatasetCollectionSyncResultMap
+} from '@fastgpt/global/core/dataset/constant';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
-
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
 import { TabEnum } from '..';
 import ParentPath from '@/components/common/ParentPaths';
@@ -50,34 +58,53 @@ import { useDrag } from '@/web/common/hooks/useDrag';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useToast } from '@/web/common/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionSyncResultEnum } from '../../../../../../../packages/global/core/dataset/constant';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
+const WebSiteConfigModal = dynamic(() => import('./Import/WebsiteConfig'), {});
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const lastSearch = useRef('');
   const router = useRouter();
+  const theme = useTheme();
   const { toast } = useToast();
   const { parentId = '', datasetId } = router.query as { parentId: string; datasetId: string };
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { isPc } = useSystemStore();
+  const { userInfo } = useUserStore();
   const [searchText, setSearchText] = useState('');
-  const { setLoading } = useSystemStore();
+  const { datasetDetail, updateDataset, startWebsiteSync, loadDatasetDetail } = useDatasetStore();
 
-  const { openConfirm, ConfirmModal } = useConfirm({
+  const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
     content: t('dataset.Confirm to delete the file')
   });
+  const { openConfirm: openSyncConfirm, ConfirmModal: ConfirmSyncModal } = useConfirm({
+    content: t('core.dataset.collection.Start Sync Tip')
+  });
+
   const {
     isOpen: isOpenFileImportModal,
     onOpen: onOpenFileImportModal,
     onClose: onCloseFileImportModal
   } = useDisclosure();
+  const {
+    isOpen: isOpenWebsiteModal,
+    onOpen: onOpenWebsiteModal,
+    onClose: onCloseWebsiteModal
+  } = useDisclosure();
   const { onOpenModal: onOpenCreateVirtualFileModal, EditModal: EditCreateVirtualFileModal } =
     useEditTitle({
       title: t('dataset.Create Virtual File'),
-      tip: t('dataset.Virtual File Tip')
+      tip: t('dataset.Virtual File Tip'),
+      canEmpty: false
     });
+
   const { onOpenModal: onOpenEditTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('Rename')
   });
@@ -90,7 +117,7 @@ const CollectionCard = () => {
     Pagination,
     total,
     getData,
-    isLoading,
+    isLoading: isGetting,
     pageNum,
     pageSize
   } = usePagination<DatasetCollectionsListItemType>({
@@ -125,48 +152,60 @@ const CollectionCard = () => {
     () =>
       collections.map((collection) => {
         const icon = getCollectionIcon(collection.type, collection.name);
+        const status = (() => {
+          if (collection.trainingAmount > 0) {
+            return {
+              statusText: t('dataset.collections.Collection Embedding', {
+                total: collection.trainingAmount
+              }),
+              color: 'myGray.500'
+            };
+          }
+          return {
+            statusText: t('core.dataset.collection.status.active'),
+            color: 'green.500'
+          };
+        })();
 
         return {
           ...collection,
           icon,
-          ...(collection.trainingAmount > 0
-            ? {
-                statusText: t('dataset.collections.Collection Embedding', {
-                  total: collection.trainingAmount
-                }),
-                color: 'myGray.500'
-              }
-            : {
-                statusText: t('dataset.collections.Ready'),
-                color: 'green.500'
-              })
+          ...status
         };
       }),
     [collections, t]
   );
-  const hasTrainingData = useMemo(
-    () => !!formatCollections.find((item) => item.trainingAmount > 0),
-    [formatCollections]
-  );
 
-  const { mutate: onCreateVirtualFile } = useRequest({
-    mutationFn: ({ name }: { name: string }) => {
-      setLoading(true);
-      return postDatasetCollection({
+  const { mutate: onCreateCollection, isLoading: isCreating } = useRequest({
+    mutationFn: async ({
+      name,
+      type,
+      callback,
+      ...props
+    }: {
+      name: string;
+      type: `${DatasetCollectionTypeEnum}`;
+      callback?: (id: string) => void;
+      trainingType?: `${DatasetCollectionTrainingModeEnum}`;
+      rawLink?: string;
+      chunkSize?: number;
+    }) => {
+      const id = await postDatasetCollection({
         parentId,
         datasetId,
         name,
-        type: DatasetCollectionTypeEnum.virtual
+        type,
+        ...props
       });
+      callback?.(id);
+      return id;
     },
     onSuccess() {
       getData(pageNum);
     },
-    onSettled() {
-      setLoading(false);
-    },
-    successToast: t('dataset.collections.Create Virtual File Success'),
-    errorToast: t('common.Create Virtual File Failed')
+
+    successToast: t('common.Create Success'),
+    errorToast: t('common.Create Failed')
   });
   const { mutate: onUpdateCollectionName } = useRequest({
     mutationFn: ({ collectionId, name }: { collectionId: string; name: string }) => {
@@ -182,9 +221,8 @@ const CollectionCard = () => {
     successToast: t('common.Rename Success'),
     errorToast: t('common.Rename Failed')
   });
-  const { mutate: onDelCollection } = useRequest({
+  const { mutate: onDelCollection, isLoading: isDeleting } = useRequest({
     mutationFn: (collectionId: string) => {
-      setLoading(true);
       return delDatasetCollectionById({
         collectionId
       });
@@ -192,26 +230,64 @@ const CollectionCard = () => {
     onSuccess() {
       getData(pageNum);
     },
-    onSettled() {
-      setLoading(false);
-    },
     successToast: t('common.Delete Success'),
     errorToast: t('common.Delete Failed')
+  });
+  const { mutate: onUpdateDatasetWebsiteConfig, isLoading: isUpdating } = useRequest({
+    mutationFn: async (websiteConfig: DatasetSchemaType['websiteConfig']) => {
+      onCloseWebsiteModal();
+      await updateDataset({
+        id: datasetDetail._id,
+        websiteConfig
+      });
+      return startWebsiteSync();
+    },
+    errorToast: t('common.Update Failed')
+  });
+  const { mutate: onclickStartSync, isLoading: isSyncing } = useRequest({
+    mutationFn: (collectionId: string) => {
+      return postLinkCollectionSync(collectionId);
+    },
+    onSuccess(res: DatasetCollectionSyncResultEnum) {
+      getData(pageNum);
+      toast({
+        status: 'success',
+        title: t(DatasetCollectionSyncResultMap[res]?.label)
+      });
+    },
+    errorToast: t('core.dataset.error.Start Sync Failed')
   });
 
   const { data: paths = [] } = useQuery(['getDatasetCollectionPathById', parentId], () =>
     getDatasetCollectionPathById(parentId)
   );
 
+  const hasTrainingData = useMemo(
+    () => !!formatCollections.find((item) => item.trainingAmount > 0),
+    [formatCollections]
+  );
+  const isLoading = useMemo(
+    () =>
+      isCreating ||
+      isDeleting ||
+      isUpdating ||
+      isSyncing ||
+      (isGetting && collections.length === 0),
+    [collections.length, isCreating, isDeleting, isGetting, isSyncing, isUpdating]
+  );
+
   useQuery(
     ['refreshCollection'],
     () => {
       getData(1);
+      if (datasetDetail.status === DatasetStatusEnum.syncing) {
+        loadDatasetDetail(datasetId, true);
+      }
       return null;
     },
     {
       refetchInterval: 6000,
-      enabled: hasTrainingData
+      enabled: hasTrainingData || datasetDetail.status === DatasetStatusEnum.syncing
     }
   );
 
@@ -221,17 +297,33 @@ const CollectionCard = () => {
 
   return (
     <Flex flexDirection={'column'} ref={BoxRef} py={[1, 3]} h={'100%'}>
-      <Flex px={[2, 5]} alignItems={['flex-start', 'center']}>
+      <Flex px={[2, 5]} alignItems={['flex-start', 'center']} h={'35px'}>
         <Box flex={1}>
           <ParentPath
             paths={paths.map((path, i) => ({
               parentId: path.parentId,
-              parentName: i === paths.length - 1 ? `${path.parentName}(${total})` : path.parentName
+              parentName: i === paths.length - 1 ? `${path.parentName}` : path.parentName
             }))}
             FirstPathDom={
-              <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
-                {t('common.File')}({total})
-              </Box>
+              <>
+                <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
+                  {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel)}({total})
+                </Box>
+                {datasetDetail?.websiteConfig?.url && (
+                  <Flex fontSize={'sm'}>
+                    {t('core.dataset.website.Base Url')}:
+                    <Link
+                      href={datasetDetail.websiteConfig.url}
+                      target="_blank"
+                      mr={2}
+                      textDecoration={'underline'}
+                      color={'primary.600'}
+                    >
+                      {datasetDetail.websiteConfig.url}
+                    </Link>
+                  </Flex>
+                )}
+              </>
             }
             onClick={(e) => {
               router.replace({
@@ -248,7 +340,12 @@ const CollectionCard = () => {
           <Flex alignItems={'center'} mr={2}>
             <MyInput
               leftIcon={
-                <MyIcon name="searchLight" position={'absolute'} w={'14px'} color={'myGray.500'} />
+                <MyIcon
+                  name="common/searchLight"
+                  position={'absolute'}
+                  w={'14px'}
+                  color={'myGray.500'}
+                />
               }
               w={['100%', '250px']}
               size={['sm', 'md']}
@@ -271,67 +368,110 @@ const CollectionCard = () => {
             />
           </Flex>
         )}
-        <MyMenu
-          offset={[-40, 10]}
-          width={120}
-          Button={
-            <MenuButton
-              _hover={{
-                color: 'myBlue.600'
-              }}
-              fontSize={['sm', 'md']}
-            >
-              <Flex
-                alignItems={'center'}
-                px={5}
-                py={2}
-                borderRadius={'md'}
-                cursor={'pointer'}
-                bg={'myBlue.600'}
-                overflow={'hidden'}
-                color={'white'}
-                h={['28px', '35px']}
-              >
-                <MyIcon name={'importLight'} mr={2} w={'14px'} />
-                <Box>{t('dataset.collections.Create And Import')}</Box>
+        {datasetDetail?.type === DatasetTypeEnum.dataset && (
+          <>
+            {userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
+              <MyMenu
+                offset={[-40, 10]}
+                width={120}
+                Button={
+                  <MenuButton
+                    _hover={{
+                      color: 'primary.500'
+                    }}
+                    fontSize={['sm', 'md']}
+                  >
+                    <Flex
+                      alignItems={'center'}
+                      px={5}
+                      py={2}
+                      borderRadius={'md'}
+                      cursor={'pointer'}
+                      bg={'primary.500'}
+                      overflow={'hidden'}
+                      color={'white'}
+                      h={['28px', '35px']}
+                    >
+                      <MyIcon name={'common/importLight'} mr={2} w={'14px'} />
+                      <Box>{t('dataset.collections.Create And Import')}</Box>
+                    </Flex>
+                  </MenuButton>
+                }
+                menuList={[
+                  {
+                    child: (
+                      <Flex>
+                        <Image src={FolderAvatarSrc} alt={''} w={'20px'} mr={2} />
+                        {t('Folder')}
+                      </Flex>
+                    ),
+                    onClick: () => setEditFolderData({})
+                  },
+                  {
+                    child: (
+                      <Flex>
+                        <Image src={'/imgs/files/collection.svg'} alt={''} w={'20px'} mr={2} />
+                        {t('dataset.Create Virtual File')}
+                      </Flex>
+                    ),
+                    onClick: () => {
+                      onOpenCreateVirtualFileModal({
+                        defaultVal: '',
+                        onSuccess: (name) => {
+                          onCreateCollection({ name, type: DatasetCollectionTypeEnum.virtual });
+                        }
+                      });
+                    }
+                  },
+                  {
+                    child: (
+                      <Flex>
+                        <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
+                        {t('dataset.File Input')}
+                      </Flex>
+                    ),
+                    onClick: onOpenFileImportModal
+                  }
+                ]}
+              />
+            )}
+          </>
+        )}
+        {datasetDetail?.type === DatasetTypeEnum.websiteDataset && (
+          <>
+            {datasetDetail?.websiteConfig?.url ? (
+              <Flex alignItems={'center'}>
+                {datasetDetail.status === DatasetStatusEnum.active && (
+                  <Button onClick={onOpenWebsiteModal}>{t('common.Config')}</Button>
+                )}
+                {datasetDetail.status === DatasetStatusEnum.syncing && (
+                  <Flex
+                    ml={3}
+                    alignItems={'center'}
+                    px={3}
+                    py={1}
+                    borderRadius="md"
+                    border={theme.borders.base}
+                  >
+                    <Box
+                      animation={'zoomStopIcon 0.5s infinite alternate'}
+                      bg={'myGray.700'}
+                      w="8px"
+                      h="8px"
+                      borderRadius={'50%'}
+                      mt={'1px'}
+                    ></Box>
+                    <Box ml={2} color={'myGray.600'}>
+                      {t('core.dataset.status.syncing')}
+                    </Box>
+                  </Flex>
+                )}
               </Flex>
-            </MenuButton>
-          }
-          menuList={[
-            {
-              child: (
-                <Flex>
-                  <Image src={FolderAvatarSrc} alt={''} w={'20px'} mr={2} />
-                  {t('Folder')}
-                </Flex>
-              ),
-              onClick: () => setEditFolderData({})
-            },
-            {
-              child: (
-                <Flex>
-                  <Image src={'/imgs/files/collection.svg'} alt={''} w={'20px'} mr={2} />
-                  {t('dataset.Create Virtual File')}
-                </Flex>
-              ),
-              onClick: () => {
-                onOpenCreateVirtualFileModal({
-                  defaultVal: '',
-                  onSuccess: (name) => onCreateVirtualFile({ name })
-                });
-              }
-            },
-            {
-              child: (
-                <Flex>
-                  <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
-                  {t('dataset.File Input')}
-                </Flex>
-              ),
-              onClick: onOpenFileImportModal
-            }
-          ]}
-        />
+            ) : (
+              <Button onClick={onOpenWebsiteModal}>{t('core.dataset.Set Website Config')}</Button>
+            )}
+          </>
+        )}
       </Flex>
 
       <TableContainer mt={[0, 3]} position={'relative'} flex={'1 0 0'} overflowY={'auto'}>
@@ -341,7 +481,7 @@ const CollectionCard = () => {
               <Th>#</Th>
               <Th>{t('common.Name')}</Th>
               <Th>{t('dataset.collections.Data Amount')}</Th>
-              <Th>{t('common.Time')}</Th>
+              <Th>{t('core.dataset.Sync Time')}</Th>
               <Th>{t('common.Status')}</Th>
               <Th />
             </Tr>
@@ -355,7 +495,7 @@ const CollectionCard = () => {
                 data-drag-id={
                   collection.type === DatasetCollectionTypeEnum.folder ? collection._id : undefined
                 }
-                bg={dragTargetId === collection._id ? 'myBlue.200' : ''}
+                bg={dragTargetId === collection._id ? 'primary.100' : ''}
                 userSelect={'none'}
                 onDragStart={(e) => {
                   setDragStartId(collection._id);
@@ -418,7 +558,7 @@ const CollectionCard = () => {
                     </MyTooltip>
                   </Flex>
                 </Td>
-                <Td fontSize={'md'}>{collection.dataAmount ?? '-'}</Td>
+                <Td fontSize={'md'}>{collection.dataAmount || '-'}</Td>
                 <Td>{dayjs(collection.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
                 <Td>
                   <Flex
@@ -429,107 +569,159 @@ const CollectionCard = () => {
                       h: '10px',
                       mr: 2,
                       borderRadius: 'lg',
-                      bg: collection?.color
+                      bg: collection.color
                     }}
                   >
-                    {collection?.statusText}
+                    {t(collection.statusText)}
                   </Flex>
                 </Td>
                 <Td onClick={(e) => e.stopPropagation()}>
-                  <MyMenu
-                    width={100}
-                    Button={
-                      <MenuButton
-                        w={'22px'}
-                        h={'22px'}
-                        borderRadius={'md'}
-                        _hover={{
-                          color: 'myBlue.600',
-                          '& .icon': {
-                            bg: 'myGray.100'
-                          }
-                        }}
-                      >
-                        <MyIcon
-                          className="icon"
-                          name={'more'}
-                          h={'16px'}
-                          w={'16px'}
-                          px={1}
-                          py={1}
+                  {collection.canWrite && userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
+                    <MyMenu
+                      width={100}
+                      Button={
+                        <MenuButton
+                          w={'22px'}
+                          h={'22px'}
                           borderRadius={'md'}
-                          cursor={'pointer'}
-                        />
-                      </MenuButton>
-                    }
-                    menuList={[
-                      {
-                        child: (
-                          <Flex alignItems={'center'}>
-                            <MyIcon name={'moveLight'} w={'14px'} mr={2} />
-                            {t('Move')}
-                          </Flex>
-                        ),
-                        onClick: () => setMoveCollectionData({ collectionId: collection._id })
-                      },
-                      {
-                        child: (
-                          <Flex alignItems={'center'}>
-                            <MyIcon name={'edit'} w={'14px'} mr={2} />
-                            {t('Rename')}
-                          </Flex>
-                        ),
-                        onClick: () =>
-                          onOpenEditTitleModal({
-                            defaultVal: collection.name,
-                            onSuccess: (newName) => {
-                              onUpdateCollectionName({
-                                collectionId: collection._id,
-                                name: newName
-                              });
+                          _hover={{
+                            color: 'primary.500',
+                            '& .icon': {
+                              bg: 'myGray.200'
                             }
-                          })
-                      },
-                      {
-                        child: (
-                          <Flex alignItems={'center'}>
-                            <MyIcon
-                              mr={1}
-                              name={'delete'}
-                              w={'14px'}
-                              _hover={{ color: 'red.600' }}
-                            />
-                            <Box>{t('common.Delete')}</Box>
-                          </Flex>
-                        ),
-                        onClick: () =>
-                          openConfirm(
-                            () => {
-                              onDelCollection(collection._id);
-                            },
-                            undefined,
-                            collection.type === DatasetCollectionTypeEnum.folder
-                              ? t('dataset.collections.Confirm to delete the folder')
-                              : t('dataset.Confirm to delete the file')
-                          )()
+                          }}
+                        >
+                          <MyIcon
+                            className="icon"
+                            name={'more'}
+                            h={'16px'}
+                            w={'16px'}
+                            px={1}
+                            py={1}
+                            borderRadius={'md'}
+                            cursor={'pointer'}
+                          />
+                        </MenuButton>
                       }
-                    ]}
-                  />
+                      menuList={[
+                        ...(collection.type === DatasetCollectionTypeEnum.link
+                          ? [
+                              {
+                                child: (
+                                  <Flex alignItems={'center'}>
+                                    <MyIcon name={'common/refreshLight'} w={'14px'} mr={2} />
+                                    {t('core.dataset.collection.Sync')}
+                                  </Flex>
+                                ),
+                                onClick: () =>
+                                  openSyncConfirm(() => {
+                                    onclickStartSync(collection._id);
+                                  })()
+                              }
+                            ]
+                          : []),
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
+                              {t('Move')}
+                            </Flex>
+                          ),
+                          onClick: () => setMoveCollectionData({ collectionId: collection._id })
+                        },
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'edit'} w={'14px'} mr={2} />
+                              {t('Rename')}
+                            </Flex>
+                          ),
+                          onClick: () =>
+                            onOpenEditTitleModal({
+                              defaultVal: collection.name,
+                              onSuccess: (newName) => {
+                                onUpdateCollectionName({
+                                  collectionId: collection._id,
+                                  name: newName
+                                });
+                              }
+                            })
+                        },
+                        {
+                          child: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon
+                                mr={1}
+                                name={'delete'}
+                                w={'14px'}
+                                _hover={{ color: 'red.600' }}
+                              />
+                              <Box>{t('common.Delete')}</Box>
+                            </Flex>
+                          ),
+                          onClick: () =>
+                            openDeleteConfirm(
+                              () => {
+                                onDelCollection(collection._id);
+                              },
+                              undefined,
+                              collection.type === DatasetCollectionTypeEnum.folder
+                                ? t('dataset.collections.Confirm to delete the folder')
+                                : t('dataset.Confirm to delete the file')
+                            )()
+                        }
+                      ]}
+                    />
+                  )}
                 </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
-        <Loading loading={isLoading && collections.length === 0} fixed={false} />
         {total > pageSize && (
           <Flex mt={2} justifyContent={'center'}>
             <Pagination />
           </Flex>
         )}
-        {total === 0 && <EmptyTip text="数据集空空如也" />}
+        {total === 0 && (
+          <EmptyTip
+            text={
+              datasetDetail.type === DatasetTypeEnum.dataset ? (
+                t('core.dataset.collection.Empty Tip')
+              ) : (
+                <Flex>
+                  {datasetDetail.status === DatasetStatusEnum.syncing && (
+                    <>{t('core.dataset.status.syncing')}</>
+                  )}
+                  {datasetDetail.status === DatasetStatusEnum.active && (
+                    <>
+                      {!datasetDetail?.websiteConfig?.url ? (
+                        <>
+                          {t('core.dataset.collection.Website Empty Tip')}
+                          {', '}
+                          <Box
+                            textDecoration={'underline'}
+                            cursor={'pointer'}
+                            onClick={onOpenWebsiteModal}
+                          >
+                            {t('core.dataset.collection.Click top config website')}
+                          </Box>
+                        </>
+                      ) : (
+                        <>{t('core.dataset.website.UnValid Website Tip')}</>
+                      )}
+                    </>
+                  )}
+                </Flex>
+              )
+            }
+          />
+        )}
       </TableContainer>
+      <Loading loading={isLoading} />
 
-      <ConfirmModal />
+      <ConfirmDeleteModal />
+      <ConfirmSyncModal />
       <EditTitleModal />
       <EditCreateVirtualFileModal />
       {isOpenFileImportModal && (
@@ -543,7 +735,6 @@ const CollectionCard = () => {
           onClose={onCloseFileImportModal}
         />
       )}
-
       {!!editFolderData && (
         <EditFolderModal
           onClose={() => setEditFolderData(undefined)}
@@ -554,15 +745,13 @@ const CollectionCard = () => {
                   id: editFolderData.id,
                   name
                 });
+                getData(pageNum);
               } else {
-                await postDatasetCollection({
-                  parentId,
-                  datasetId,
+                onCreateCollection({
                   name,
                   type: DatasetCollectionTypeEnum.folder
                 });
               }
-              getData(pageNum);
             } catch (error) {
               return Promise.reject(error);
             }
@@ -571,7 +760,6 @@ const CollectionCard = () => {
           name={editFolderData.name}
         />
       )}
-
       {!!moveCollectionData && (
         <SelectCollections
           datasetId={datasetId}
@@ -589,6 +777,16 @@ const CollectionCard = () => {
               status: 'success',
               title: t('common.folder.Move Success')
             });
+          }}
+        />
+      )}
+      {isOpenWebsiteModal && (
+        <WebSiteConfigModal
+          onClose={onCloseWebsiteModal}
+          onSuccess={onUpdateDatasetWebsiteConfig}
+          defaultValue={{
+            url: datasetDetail?.websiteConfig?.url,
+            selector: datasetDetail?.websiteConfig?.selector
           }}
         />
       )}

@@ -1,32 +1,49 @@
 import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
-import type { ChatHistoryItemResType } from '@/types/chat';
-import { useTranslation } from 'react-i18next';
-import { ModuleTemplatesFlat } from '@/constants/flow/ModuleTemplate';
-import Tabs from '../Tabs';
+import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import { useTranslation } from 'next-i18next';
+import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
 
+import Tabs from '../Tabs';
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatPrice } from '@fastgpt/global/common/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import Markdown from '../Markdown';
+import { QuoteList } from './QuoteModal';
+import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
 
-function Row({ label, value }: { label: string; value?: string | number | React.ReactNode }) {
+function Row({
+  label,
+  value,
+  rawDom
+}: {
+  label: string;
+  value?: string | number | boolean;
+  rawDom?: React.ReactNode;
+}) {
+  const { t } = useTranslation();
   const theme = useTheme();
-  return value !== undefined && value !== '' && value !== 'undefined' ? (
-    <Box mb={2}>
-      <Box fontSize={['sm', 'md']} mb={1} flex={'0 0 90px'}>
-        {label}:
+  const val = value || rawDom;
+  const strValue = `${value}`;
+  const isCodeBlock = strValue.startsWith('~~~json');
+
+  return val !== undefined && val !== '' && val !== 'undefined' ? (
+    <Box mb={3}>
+      <Box fontSize={['sm', 'md']} mb={isCodeBlock ? 0 : 1} flex={'0 0 90px'}>
+        {t(label)}:
       </Box>
       <Box
-        borderRadius={'lg'}
-        border={theme.borders.base}
-        px={3}
-        py={1}
-        position={'relative'}
-        whiteSpace={'pre-wrap'}
+        borderRadius={'md'}
         fontSize={'sm'}
+        {...(isCodeBlock
+          ? { transform: 'translateY(-3px)' }
+          : value
+          ? { px: 3, py: 1, border: theme.borders.base }
+          : {})}
       >
-        {value}
+        {value && <Markdown source={strValue} />}
+        {rawDom}
       </Box>
     </Box>
   ) : null;
@@ -34,11 +51,48 @@ function Row({ label, value }: { label: string; value?: string | number | React.
 
 const WholeResponseModal = ({
   response,
+  isShare,
   onClose
 }: {
   response: ChatHistoryItemResType[];
+  isShare: boolean;
   onClose: () => void;
 }) => {
+  const { t } = useTranslation();
+
+  return (
+    <MyModal
+      isCentered
+      isOpen={true}
+      onClose={onClose}
+      h={['90vh', '80vh']}
+      minW={['90vw', '600px']}
+      iconSrc="/imgs/modal/wholeRecord.svg"
+      title={
+        <Flex alignItems={'center'}>
+          {t('core.chat.response.Complete Response')}
+          <MyTooltip label={'从左往右，为各个模块的响应顺序'}>
+            <QuestionOutlineIcon ml={2} />
+          </MyTooltip>
+        </Flex>
+      }
+    >
+      <Flex h={'100%'} flexDirection={'column'}>
+        <ResponseBox response={response} isShare={isShare} />
+      </Flex>
+    </MyModal>
+  );
+};
+
+export default WholeResponseModal;
+
+const ResponseBox = React.memo(function ResponseBox({
+  response,
+  isShare
+}: {
+  response: ChatHistoryItemResType[];
+  isShare: boolean;
+}) {
   const theme = useTheme();
   const { t } = useTranslation();
 
@@ -51,17 +105,18 @@ const WholeResponseModal = ({
               mr={2}
               src={
                 item.moduleLogo ||
-                ModuleTemplatesFlat.find((template) => item.moduleType === template.flowType)?.logo
+                moduleTemplatesFlat.find((template) => item.moduleType === template.flowType)
+                  ?.avatar
               }
               alt={''}
               w={['14px', '16px']}
             />
-            {item.moduleName}
+            {t(item.moduleName)}
           </Flex>
         ),
         id: `${i}`
       })),
-    [response]
+    [response, t]
   );
 
   const [currentTab, setCurrentTab] = useState(`0`);
@@ -69,146 +124,134 @@ const WholeResponseModal = ({
   const activeModule = useMemo(() => response[Number(currentTab)], [currentTab, response]);
 
   return (
-    <MyModal
-      isCentered
-      isOpen={true}
-      onClose={onClose}
-      h={['90vh', '80vh']}
-      w={['90vw', '500px']}
-      title={
-        <Flex alignItems={'center'}>
-          {t('chat.Complete Response')}
-          <MyTooltip label={'从左往右，为各个模块的响应顺序'}>
-            <QuestionOutlineIcon ml={2} />
-          </MyTooltip>
-        </Flex>
-      }
-    >
-      <Flex h={'100%'} flexDirection={'column'}>
-        <Box>
-          <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
-        </Box>
-        <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
-          <Row label={t('chat.response.module name')} value={activeModule?.moduleName} />
-          {activeModule?.price !== undefined && (
-            <Row
-              label={t('chat.response.module price')}
-              value={`￥${formatPrice(activeModule?.price)}`}
-            />
-          )}
+    <>
+      <Box>
+        <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
+      </Box>
+      <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
+        <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
+        {activeModule?.price !== undefined && (
           <Row
-            label={t('chat.response.module time')}
-            value={`${activeModule?.runningTime || 0}s`}
+            label={t('core.chat.response.module price')}
+            value={`￥${formatStorePrice2Read(activeModule?.price)}`}
           />
-          <Row label={t('chat.response.module tokens')} value={`${activeModule?.tokens}`} />
-          <Row label={t('chat.response.module model')} value={activeModule?.model} />
+        )}
+        <Row
+          label={t('core.chat.response.module time')}
+          value={`${activeModule?.runningTime || 0}s`}
+        />
+        <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
+        <Row label={t('wallet.bill.Input Token Length')} value={`${activeModule?.inputTokens}`} />
+        <Row label={t('wallet.bill.Output Token Length')} value={`${activeModule?.outputTokens}`} />
+        <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
+        <Row
+          label={t('core.chat.response.context total length')}
+          value={activeModule?.contextTotalLen}
+        />
 
-          {/* ai chat */}
-          <Row label={t('chat.response.module question')} value={activeModule?.question} />
-          <Row label={t('chat.response.module temperature')} value={activeModule?.temperature} />
-          <Row label={t('chat.response.module maxToken')} value={activeModule?.maxToken} />
+        {/* ai chat */}
+        <Row label={t('core.chat.response.module temperature')} value={activeModule?.temperature} />
+        <Row label={t('core.chat.response.module maxToken')} value={activeModule?.maxToken} />
+        <Row
+          label={t('core.chat.response.module historyPreview')}
+          rawDom={
+            activeModule.historyPreview ? (
+              <Box px={3} py={2} border={theme.borders.base} borderRadius={'md'}>
+                {activeModule.historyPreview?.map((item, i) => (
+                  <Box
+                    key={i}
+                    _notLast={{
+                      borderBottom: '1px solid',
+                      borderBottomColor: 'myWhite.700',
+                      mb: 2
+                    }}
+                    pb={2}
+                  >
+                    <Box fontWeight={'bold'}>{item.obj}</Box>
+                    <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              ''
+            )
+          }
+        />
+        {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
-            label={t('chat.response.module quoteList')}
-            value={(() => {
-              try {
-                JSON.stringify(activeModule.quoteList, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
+            label={t('core.chat.response.module quoteList')}
+            rawDom={<QuoteList isShare={isShare} rawSearch={activeModule.quoteList} />}
           />
-          <Row
-            label={t('chat.response.module historyPreview')}
-            value={(() => {
-              if (!activeModule?.historyPreview) return '';
-              return (
-                <>
-                  {activeModule.historyPreview.map((item, i) => (
-                    <Box key={i} _notLast={{ mb: 3, borderBottom: theme.borders.base }} pb={3}>
-                      <Box fontWeight={'bold'}>{item.obj}</Box>
-                      <Box>{item.value}</Box>
-                    </Box>
-                  ))}
-                </>
-              );
-            })()}
-          />
+        )}
 
-          {/* dataset search */}
-          <Row label={t('chat.response.module similarity')} value={activeModule?.similarity} />
-          <Row label={t('chat.response.module limit')} value={activeModule?.limit} />
+        {/* dataset search */}
+        {activeModule?.searchMode && (
+          <Row
+            label={t('core.dataset.search.search mode')}
+            // @ts-ignore
+            value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+          />
+        )}
+        <Row label={t('core.chat.response.module similarity')} value={activeModule?.similarity} />
+        <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
+        <Row
+          label={t('core.chat.response.search using reRank')}
+          value={activeModule?.searchUsingReRank}
+        />
 
-          {/* classify question */}
-          <Row
-            label={t('chat.response.module cq')}
-            value={(() => {
-              if (!activeModule?.cqList) return '';
-              return (
-                <Box as={'ol'} px={3}>
-                  {activeModule.cqList.map((item) => (
-                    <Box key={item.key} as={'li'}>
-                      {item.value}
-                    </Box>
-                  ))}
-                </Box>
-              );
-            })()}
-          />
-          <Row label={t('chat.response.module cq result')} value={activeModule?.cqResult} />
+        {/* classify question */}
+        <Row
+          label={t('core.chat.response.module cq')}
+          value={(() => {
+            if (!activeModule?.cqList) return '';
+            return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
+          })()}
+        />
+        <Row label={t('core.chat.response.module cq result')} value={activeModule?.cqResult} />
 
-          {/* extract */}
+        {/* extract */}
+        <Row
+          label={t('core.chat.response.module extract description')}
+          value={activeModule?.extractDescription}
+        />
+        {activeModule?.extractResult && (
           <Row
-            label={t('chat.response.module extract description')}
-            value={activeModule?.extractDescription}
+            label={t('core.chat.response.module extract result')}
+            value={`~~~json\n${JSON.stringify(activeModule?.extractResult, null, 2)}`}
           />
-          <Row
-            label={t('chat.response.module extract result')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.extractResult, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
-          />
+        )}
 
-          {/* http */}
+        {/* http */}
+        {activeModule?.body && (
           <Row
-            label={t('chat.response.module http body')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.body, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
+            label={t('core.chat.response.module http body')}
+            value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`}
           />
+        )}
+        {activeModule?.httpResult && (
           <Row
-            label={t('chat.response.module http result')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.httpResult, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
+            label={t('core.chat.response.module http result')}
+            value={`~~~json\n${JSON.stringify(activeModule?.httpResult, null, 2)}`}
           />
+        )}
 
-          {/* plugin */}
+        {/* plugin */}
+        {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
           <Row
-            label={t('chat.response.plugin output')}
-            value={(() => {
-              try {
-                return JSON.stringify(activeModule?.pluginOutput, null, 2);
-              } catch (error) {
-                return '';
-              }
-            })()}
+            label={t('core.chat.response.Plugin Resonse Detail')}
+            rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
           />
-        </Box>
-      </Flex>
-    </MyModal>
+        )}
+        {activeModule?.pluginOutput && (
+          <Row
+            label={t('core.chat.response.plugin output')}
+            value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
+          />
+        )}
+
+        {/* text output */}
+        <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
+      </Box>
+    </>
   );
-};
-
-export default WholeResponseModal;
+});

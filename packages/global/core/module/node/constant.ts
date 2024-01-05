@@ -1,33 +1,46 @@
 export enum FlowNodeInputTypeEnum {
   systemInput = 'systemInput', // history, userChatInput, variableInput
+
   input = 'input', // one line input
-  textarea = 'textarea',
   numberInput = 'numberInput',
   select = 'select',
   slider = 'slider',
-  custom = 'custom',
   target = 'target', // data input
   switch = 'switch',
-  chatInput = 'chatInput',
+
+  // editor
+  textarea = 'textarea',
+  JSONEditor = 'JSONEditor',
+
+  addInputParam = 'addInputParam', // params input
+
   selectApp = 'selectApp',
+
   // chat special input
   aiSettings = 'aiSettings',
-  maxToken = 'maxToken',
+
+  // ai model select
   selectChatModel = 'selectChatModel',
+  selectCQModel = 'selectCQModel',
+  selectExtractModel = 'selectExtractModel',
+
   // dataset special input
   selectDataset = 'selectDataset',
-  hidden = 'hidden'
+  selectDatasetParamsModal = 'selectDatasetParamsModal',
+
+  hidden = 'hidden',
+  custom = 'custom'
 }
 
 export enum FlowNodeOutputTypeEnum {
   answer = 'answer',
   source = 'source',
-  hidden = 'hidden'
+  hidden = 'hidden',
+
+  addOutputParam = 'addOutputParam'
 }
 
 export enum FlowNodeTypeEnum {
-  empty = 'empty',
-  variable = 'variable',
   userGuide = 'userGuide',
   questionInput = 'questionInput',
   historyNode = 'historyNode',
@@ -40,20 +53,11 @@ export enum FlowNodeTypeEnum {
   runApp = 'app',
   pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
-  pluginOutput = 'pluginOutput'
+  pluginOutput = 'pluginOutput',
+  cfr = 'cfr',
+
+  // abandon
+  variable = 'variable'
 }
 
-export enum FlowNodeSpecialInputKeyEnum {
-  'answerText' = 'text',
-  'agents' = 'agents', // cq agent key
-  'pluginId' = 'pluginId'
-}
-
-export enum FlowNodeValTypeEnum {
-  'string' = 'string',
-  'number' = 'number',
-  'boolean' = 'boolean',
-  'chatHistory' = 'chatHistory',
-  'datasetQuote' = 'datasetQuote',
-  'any' = 'any'
-}
+export const EDGE_TYPE = 'default';

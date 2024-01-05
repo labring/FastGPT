@@ -1,108 +1,175 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushQABill } from '@/service/common/bill/push';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { sendInform } from '@/pages/api/user/inform/send';
-import { authBalanceByUid } from '@fastgpt/service/support/user/auth';
+import { pushQABill } from '@/service/support/wallet/bill/push';
+import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ChatCompletionRequestMessage } from '@fastgpt/global/core/ai/type.d';
-import { addLog } from '../utils/tools';
-import { splitText2Chunks } from '@/global/common/string/tools';
-import { replaceVariable } from '@/global/common/string/tools';
+import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
+import { addLog } from '@fastgpt/service/common/system/log';
+import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { pushDataToDatasetCollection } from '@/pages/api/core/dataset/data/pushData';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { authTeamBalance } from '../support/permission/auth/bill';
+import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
+import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
-const reduceQueue = () => {
+const reduceQueue = (retry = false) => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
+  if (global.qaQueueLen === 0 && retry) {
+    setTimeout(() => {
+      generateQA();
+    }, 60000);
+  }
+
+  return global.vectorQueueLen === 0;
 };
 
 export async function generateQA(): Promise<any> {
   if (global.qaQueueLen >= global.systemEnv.qaMaxProcess) return;
   global.qaQueueLen++;
 
-  let trainingId = '';
-  let userId = '';
+  // get training data
+  const {
+    data,
+    text,
+    done = false,
+    error = false
+  } = await (async () => {
+    try {
+      const data = await MongoDatasetTraining.findOneAndUpdate(
+        {
+          mode: TrainingModeEnum.qa,
+          lockTime: { $lte: new Date(Date.now() - 6 * 60 * 1000) }
+        },
+        {
+          lockTime: new Date()
+        }
+      )
+        .select({
+          _id: 1,
+          userId: 1,
+          teamId: 1,
+          tmbId: 1,
+          datasetId: 1,
+          collectionId: 1,
+          q: 1,
+          model: 1,
+          chunkIndex: 1,
+          billId: 1,
+          prompt: 1
+        })
+        .lean();
 
-  try {
-    const data = await MongoDatasetTraining.findOneAndUpdate(
-      {
-        mode: TrainingModeEnum.qa,
-        lockTime: { $lte: new Date(Date.now() - 10 * 60 * 1000) }
-      },
-      {
-        lockTime: new Date()
+      // task preemption
+      if (!data) {
+        return {
+          done: true
+        };
       }
-    ).select({
-      _id: 1,
-      userId: 1,
-      datasetCollectionId: 1,
-      q: 1,
-      model: 1,
-      prompt: 1,
-      billId: 1
-    });
+      return {
+        data,
+        text: data.q
+      };
+    } catch (error) {
+      console.log(`Get Training Data error`, error);
+      return {
+        error: true
+      };
+    }
+  })();
 
-    // task preemption
-    if (!data) {
-      reduceQueue();
-      global.qaQueueLen <= 0 && console.log(`【QA】任务完成`);
-      return;
+  if (done || !data) {
+    if (reduceQueue()) {
+      console.log(`【QA】Task Done`);
+    }
+    return;
+  }
+  if (error) {
+    reduceQueue();
+    return generateQA();
+  }
+
+  // auth balance
+  try {
+    await authTeamBalance(data.teamId);
+  } catch (error: any) {
+    if (error?.statusText === UserErrEnum.balanceNotEnough) {
+      // send inform and lock data
+      try {
+        sendOneInform({
+          type: 'system',
+          title: '文本训练任务中止',
+          content:
+            '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+          tmbId: data.tmbId
+        });
+        console.log('余额不足，暂停【QA】生成任务');
+        lockTrainingDataByTeamId(data.teamId);
+      } catch (error) {}
     }
 
-    trainingId = data._id;
-    userId = String(data.userId);
+    reduceQueue();
+    return generateQA();
+  }
 
-    await authBalanceByUid(userId);
-
+  try {
     const startTime = Date.now();
+    const model = data.model ?? global.qaModels[0].model;
+    const prompt = `${data.prompt || Prompt_AgentQA.description}
+${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     // request LLM to get QA
-    const text = data.q;
-    const messages: ChatCompletionRequestMessage[] = [
+    const messages: ChatMessageItemType[] = [
       {
         role: 'user',
-        content: data.prompt
-          ? replaceVariable(data.prompt, { text })
-          : replaceVariable(Prompt_AgentQA.prompt, {
-              theme: Prompt_AgentQA.defaultTheme,
-              text
-            })
+        content: prompt
       }
     ];
-    const ai = getAIApi(undefined, 480000);
+
+    const ai = getAIApi(undefined, 600000);
     const chatResponse = await ai.chat.completions.create({
-      model: global.qaModels[0].model,
-      temperature: 0.01,
+      model,
+      temperature: 0.3,
       messages,
       stream: false
     });
-    const answer = chatResponse.choices?.[0].message?.content;
-    const totalTokens = chatResponse.usage?.total_tokens || 0;
+    const answer = chatResponse.choices?.[0].message?.content || '';
 
-    const qaArr = formatSplitText(answer || ''); // 格式化后的QA对
+    const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 
     // get vector and insert
     await pushDataToDatasetCollection({
-      userId,
-      collectionId: data.datasetCollectionId,
-      data: qaArr,
-      mode: TrainingModeEnum.index,
+      teamId: data.teamId,
+      tmbId: data.tmbId,
+      collectionId: data.collectionId,
+      data: qaArr.map((item) => ({
+        ...item,
+        chunkIndex: data.chunkIndex
+      })),
+      mode: TrainingModeEnum.chunk,
       billId: data.billId
     });
 
     // delete data from training
     await MongoDatasetTraining.findByIdAndDelete(data._id);
 
-    console.log(`split result length: `, qaArr.length);
-    console.log('生成QA成功，time:', `${(Date.now() - startTime) / 1000}s`);
+    addLog.info(`QA Training Finish`, {
+      time: `${(Date.now() - startTime) / 1000}s`,
+      splitLength: qaArr.length,
+      usage: chatResponse.usage
+    });
 
-    // 计费
+    // add bill
     if (qaArr.length > 0) {
       pushQABill({
-        userId: data.userId,
-        totalTokens,
-        billId: data.billId
+        teamId: data.teamId,
+        tmbId: data.tmbId,
+        inputTokens: chatResponse.usage?.prompt_tokens || 0,
+        outputTokens: chatResponse.usage?.completion_tokens || 0,
+        billId: data.billId,
+        model
       });
     } else {
       addLog.info(`QA result 0:`, { answer });
@@ -111,39 +178,33 @@ export async function generateQA(): Promise<any> {
     reduceQueue();
     generateQA();
   } catch (err: any) {
-    reduceQueue();
+    reduceQueue(true);
     // log
     if (err?.response) {
-      console.log('openai error: 生成QA错误');
-      console.log(err.response?.status, err.response?.statusText, err.response?.data);
+      addLog.info('openai error: 生成QA错误', {
+        status: err.response?.status,
+        stateusText: err.response?.statusText,
+        data: err.response?.data
+      });
     } else {
       console.log(err);
       addLog.error(getErrText(err, '生成 QA 错误'));
     }
 
     // message error or openai account error
-    if (err?.message === 'invalid message format') {
-      await MongoDatasetTraining.findByIdAndRemove(trainingId);
-    }
-
-    // 账号余额不足，删除任务
-    if (userId && err === ERROR_ENUM.insufficientQuota) {
-      sendInform({
-        type: 'system',
-        title: 'QA 任务中止',
-        content:
-          '由于账号余额不足，索引生成任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-        userId
+    if (
+      err?.message === 'invalid message format' ||
+      err.response?.data?.error?.type === 'invalid_request_error' ||
+      err?.code === 500
+    ) {
+      addLog.info('invalid message format', {
+        text
       });
-      console.log('余额不足，暂停向量生成任务');
-      await MongoDatasetTraining.updateMany(
-        {
-          userId
-        },
-        {
-          lockTime: new Date('2999/5/5')
-        }
-      );
+      try {
+        await MongoDatasetTraining.findByIdAndUpdate(data._id, {
+          lockTime: new Date('2998/5/5')
+        });
+      } catch (error) {}
       return generateQA();
     }
 
@@ -156,31 +217,44 @@ export async function generateQA(): Promise<any> {
 /**
  * 检查文本是否按格式返回
  */
-function formatSplitText(text: string) {
+function formatSplitText(text: string, rawText: string) {
   text = text.replace(/\\n/g, '\n'); // 将换行符替换为空格
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q|$)/g; // 匹配Q和A的正则表达式
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
-  const result = []; // 存储最终的结果
+  const result: PushDatasetDataChunkProps[] = []; // 存储最终的结果
   for (const match of matches) {
-    const q = match[2];
-    const a = match[5];
-    if (q && a) {
-      // 如果Q和A都存在，就将其添加到结果中
+    const q = match[2] || '';
+    const a = match[5] || '';
+    if (q) {
       result.push({
-        q: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`,
-        a: ''
+        q,
+        a,
+        indexes: [
+          {
+            defaultIndex: true,
+            type: DatasetDataIndexTypeEnum.qa,
+            text: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`
+          }
+        ]
       });
     }
   }
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const splitRes = splitText2Chunks({ text: text, maxLen: 500 });
-    splitRes.chunks.forEach((item) => {
+    const { chunks } = splitText2Chunks({ text: rawText, chunkLen: 512, countTokens: false });
+    chunks.forEach((chunk) => {
       result.push({
-        q: item,
-        a: ''
+        q: chunk,
+        a: '',
+        indexes: [
+          {
+            defaultIndex: true,
+            type: DatasetDataIndexTypeEnum.chunk,
+            text: chunk
+          }
+        ]
       });
     });
   }

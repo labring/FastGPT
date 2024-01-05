@@ -2,15 +2,24 @@ import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { OutLinkSchema as SchemaType } from '@fastgpt/global/support/outLink/type';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
 
 const OutLinkSchema = new Schema({
   shareId: {
     type: String,
     required: true
   },
-  userId: {
+  teamId: {
     type: Schema.Types.ObjectId,
-    ref: 'user',
+    ref: TeamCollectionName,
+    required: true
+  },
+  tmbId: {
+    type: Schema.Types.ObjectId,
+    ref: TeamMemberCollectionName,
     required: true
   },
   appId: {
@@ -58,3 +67,5 @@ const OutLinkSchema = new Schema({
 
 export const MongoOutLink: Model<SchemaType> =
   models['outlinks'] || model('outlinks', OutLinkSchema);
+
+MongoOutLink.syncIndexes();

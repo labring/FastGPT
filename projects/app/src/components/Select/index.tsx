@@ -1,31 +1,24 @@
-import React, { useRef, forwardRef } from 'react';
-import {
-  Menu,
-  Box,
-  MenuList,
-  MenuItem,
-  Button,
-  useDisclosure,
-  useOutsideClick
-} from '@chakra-ui/react';
+import React, { useRef, forwardRef, useMemo } from 'react';
+import { Menu, MenuList, MenuItem, Button, useDisclosure, MenuButton } from '@chakra-ui/react';
 import type { ButtonProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-interface Props extends ButtonProps {
+
+export type SelectProps = ButtonProps & {
   value?: string;
   placeholder?: string;
   list: {
-    label: string;
+    alias?: string;
+    label: string | React.ReactNode;
     value: string;
   }[];
-  onchange?: (val: string) => void;
-}
+  onchange?: (val: any) => void;
+};
 
 const MySelect = (
-  { placeholder, value, width = '100%', list, onchange, ...props }: Props,
+  { placeholder, value, width = '100%', list, onchange, ...props }: SelectProps,
   selectRef: any
 ) => {
   const ref = useRef<HTMLButtonElement>(null);
-  const SelectRef = useRef<HTMLDivElement>(null);
   const menuItemStyles = {
     borderRadius: 'sm',
     py: 2,
@@ -36,87 +29,77 @@ const MySelect = (
     }
   };
   const { isOpen, onOpen, onClose } = useDisclosure();
-
-  useOutsideClick({
-    ref: SelectRef,
-    handler: () => {
-      onClose();
-    }
-  });
+  const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
 
   return (
-    <Menu autoSelect={false} isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
-      <Box
-        ref={SelectRef}
-        position={'relative'}
-        onClick={() => {
-          isOpen ? onClose() : onOpen();
+    <Menu
+      autoSelect={false}
+      isOpen={isOpen}
+      onOpen={onOpen}
+      onClose={onClose}
+      strategy={'fixed'}
+      matchWidth
+    >
+      <MenuButton
+        as={Button}
+        ref={ref}
+        width={width}
+        px={3}
+        rightIcon={<ChevronDownIcon />}
+        variant={'whitePrimary'}
+        textAlign={'left'}
+        _active={{
+          transform: 'none'
         }}
-      >
-        <Button
-          ref={ref}
-          width={width}
-          px={3}
-          variant={'base'}
-          display={'flex'}
-          alignItems={'center'}
-          justifyContent={'space-between'}
-          _active={{
-            transform: ''
-          }}
-          {...(isOpen
-            ? {
-                boxShadow: '0px 0px 4px #A8DBFF',
-                borderColor: 'myBlue.600'
-              }
-            : {})}
-          {...props}
-        >
-          {list.find((item) => item.value === value)?.label || placeholder}
-          <Box flex={1} />
-          <ChevronDownIcon />
-        </Button>
-
-        <MenuList
-          minW={(() => {
-            const w = ref.current?.clientWidth;
-            if (w) {
-              return `${w}px !important`;
+        {...(isOpen
+          ? {
+              boxShadow: '0px 0px 4px #A8DBFF',
+              borderColor: 'primary.500'
             }
-            return Array.isArray(width)
-              ? width.map((item) => `${item} !important`)
-              : `${width} !important`;
-          })()}
-          p={'6px'}
-          border={'1px solid #fff'}
-          boxShadow={
-            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
+          : {})}
+        {...props}
+      >
+        {selectItem?.alias || selectItem?.label || placeholder}
+      </MenuButton>
+
+      <MenuList
+        minW={(() => {
+          const w = ref.current?.clientWidth;
+          if (w) {
+            return `${w}px !important`;
           }
-          zIndex={99}
-          transform={'translateY(35px) !important'}
-          maxH={'40vh'}
-          overflowY={'auto'}
-        >
-          {list.map((item) => (
-            <MenuItem
-              key={item.value}
-              {...menuItemStyles}
-              {...(value === item.value
-                ? {
-                    color: 'myBlue.600'
-                  }
-                : {})}
-              onClick={() => {
-                if (onchange && value !== item.value) {
-                  onchange(item.value);
+          return Array.isArray(width)
+            ? width.map((item) => `${item} !important`)
+            : `${width} !important`;
+        })()}
+        p={'6px'}
+        border={'1px solid #fff'}
+        boxShadow={'0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'}
+        zIndex={99}
+        maxH={'40vh'}
+        overflowY={'auto'}
+      >
+        {list.map((item) => (
+          <MenuItem
+            key={item.value}
+            {...menuItemStyles}
+            {...(value === item.value
+              ? {
+                  color: 'primary.500',
+                  bg: 'myWhite.300'
                 }
-              }}
-            >
-              {item.label}
-            </MenuItem>
-          ))}
-        </MenuList>
-      </Box>
+              : {})}
+            onClick={() => {
+              if (onchange && value !== item.value) {
+                onchange(item.value);
+              }
+            }}
+            whiteSpace={'pre-wrap'}
+          >
+            {item.label}
+          </MenuItem>
+        ))}
+      </MenuList>
     </Menu>
   );
 };

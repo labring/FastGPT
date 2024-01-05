@@ -4,7 +4,7 @@ description: "FastGPT 用户问题模块介绍"
 icon: "input"
 draft: false
 toc: true
-weight: 131
+weight: 356
 ---
 
 ## 特点
