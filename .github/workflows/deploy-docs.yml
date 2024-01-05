@@ -68,3 +68,8 @@ jobs:
           vercel-args: '--prod --local-config ../vercel.json' # Optional
           working-directory: docSite/public
 
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GH_PAT }}
+          publish_dir: docSite/public
