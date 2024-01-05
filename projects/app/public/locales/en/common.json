@@ -522,9 +522,13 @@
         },
         "score": {
           "embedding": "Embedding",
+          "embedding desc": "",
           "fullText": "Full text",
+          "fullText desc": "",
           "reRank": "ReRank",
-          "rrf": "RRF Merge"
+          "reRank desc": "",
+          "rrf": "RRF Merge",
+          "rrf desc": ""
         },
         "search mode": "Search Mode"
       },
@@ -874,8 +878,6 @@
     "QPM": "QPM",
     "QPM Tips": "The maximum number of queries per IP address per minute",
     "QPM is empty": "QPM is empty",
-    "Response Detail": "Quote",
-    "Response Detail tips": "Whether detailed data such as references to be returned",
     "token auth": "Token Auth",
     "token auth Tips": "Identity verification server address. If this value is set, the server will be specified to send a request for identity verification before each session",
     "token auth use cases": "Review the authentication instructions"
@@ -903,6 +905,12 @@
     "Update Your Plugin": "Update Plugin"
   },
   "support": {
+    "outlink": {
+      "share": {
+        "Response Quote": "Show Quote",
+        "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document."
+      }
+    },
     "user": {
       "Price": "Price",
       "auth": {
