@@ -45,6 +45,10 @@ jobs:
               - 'docSite/content/docs/**'
           base: main
 
+      - name: Add cdn for images
+        run: |
+          sed -i "s#\](/imgs/#\](https://cdn.jsdelivr.us/gh/yangchuansheng/fastgpt-imgs@main/imgs/#g" $(grep -rl "\](/imgs/" docSite/content/docs)
+
       # Step 3 - Install Hugo (specific version)
       - name: Install Hugo
         uses: peaceiris/actions-hugo@v2
