@@ -307,7 +307,7 @@ const DataCard = () => {
           >
             <Flex zIndex={1} alignItems={'center'} justifyContent={'space-between'}>
               <Box border={theme.borders.base} px={2} fontSize={'sm'} mr={1} borderRadius={'md'}>
-                # {index + 1}
+                # {item.chunkIndex ?? '-'}
               </Box>
               <Box className={'textEllipsis'} color={'myGray.500'} fontSize={'xs'}>
                 ID:{item._id}
