@@ -4,17 +4,17 @@
     let failed;
     let isRunning;
     const DEST_LIST = [
-      'cdn.jsdelivr.net',
-      'jsd.cdn.zzko.cn',
       'cdn.jsdelivr.us',
+      'jsd.cdn.zzko.cn',
       'jsd.onmicrosoft.cn',
       'fastly.jsdelivr.net',
-      'gcore.jsdelivr.net'
+      'gcore.jsdelivr.net',
+      'cdn.jsdelivr.net',
     ];
     const PREFIX = '//';
     const SOURCE = DEST_LIST[0];
     const starTime = Date.now();
-    const TIMEOUT = 2000;
+    const TIMEOUT = 1000;
     const STORE_KEY = 'jsdelivr-auto-fallback';
     const TEST_PATH = '/gh/PipecraftNet/jsdelivr-auto-fallback@main/empty.css?';
     const shouldReplace = (text) => text && text.includes(PREFIX + SOURCE);
