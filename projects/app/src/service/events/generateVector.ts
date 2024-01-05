@@ -26,6 +26,8 @@ export async function generateVector(): Promise<any> {
   if (global.vectorQueueLen >= global.systemEnv.vectorMaxProcess) return;
   global.vectorQueueLen++;
 
+  const start = Date.now();
+
   // get training data
   const {
     data,
@@ -154,6 +156,8 @@ export async function generateVector(): Promise<any> {
     await MongoDatasetTraining.findByIdAndDelete(data._id);
     reduceQueue();
     generateVector();
+
+    console.log(`embedding finished, time: ${Date.now() - start}ms`);
   } catch (err: any) {
     reduceQueue(true);
     // log

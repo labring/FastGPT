@@ -96,7 +96,7 @@ const Share = ({ appId }: { appId: string }) => {
             <Tr>
               <Th>名称</Th>
               <Th>金额消耗</Th>
-              <Th>返回详情</Th>
+              <Th>返回引用</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>IP限流（人/分钟）</Th>
@@ -373,8 +373,8 @@ function EditLinkModal({
 
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('outlink.Response Detail')}
-            <MyTooltip label={t('outlink.Response Detail tips' || '')}>
+            {t('support.outlink.share.Response Quote')}
+            <MyTooltip label={t('support.outlink.share.Response Quote tips' || '')}>
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Flex>

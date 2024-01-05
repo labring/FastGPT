@@ -133,72 +133,69 @@ const ResponseTags = ({
           </Flex>
         </>
       )}
-      <Flex alignItems={'center'} mt={3} flexWrap={'wrap'}>
-        {quoteList.length > 0 && (
-          <MyTooltip label="查看引用">
-            <Tag
-              colorSchema="blue"
-              cursor={'pointer'}
-              {...TagStyles}
-              onClick={() => setQuoteModalData({ rawSearch: quoteList })}
-            >
-              {quoteList.length}条引用
+      {!isShare && (
+        <Flex alignItems={'center'} mt={3} flexWrap={'wrap'}>
+          {quoteList.length > 0 && (
+            <MyTooltip label="查看引用">
+              <Tag
+                colorSchema="blue"
+                cursor={'pointer'}
+                {...TagStyles}
+                onClick={() => setQuoteModalData({ rawSearch: quoteList })}
+              >
+                {quoteList.length}条引用
+              </Tag>
+            </MyTooltip>
+          )}
+          {chatAccount === 1 && (
+            <>
+              {historyPreview.length > 0 && (
+                <MyTooltip label={'点击查看完整对话记录'}>
+                  <Tag
+                    colorSchema="green"
+                    cursor={'pointer'}
+                    {...TagStyles}
+                    onClick={() => setContextModalData(historyPreview)}
+                  >
+                    {historyPreview.length}条上下文
+                  </Tag>
+                </MyTooltip>
+              )}
+            </>
+          )}
+          {chatAccount > 1 && (
+            <Tag colorSchema="blue" {...TagStyles}>
+              多组 AI 对话
+            </Tag>
+          )}
+
+          {isPc && runningTime > 0 && (
+            <MyTooltip label={'模块运行时间和'}>
+              <Tag colorSchema="purple" cursor={'default'} {...TagStyles}>
+                {runningTime}s
+              </Tag>
+            </MyTooltip>
+          )}
+          <MyTooltip label={t('core.chat.response.Read complete response tips')}>
+            <Tag colorSchema="gray" cursor={'pointer'} {...TagStyles} onClick={onOpenWholeModal}>
+              {t('core.chat.response.Read complete response')}
             </Tag>
           </MyTooltip>
-        )}
-        {chatAccount === 1 && (
-          <>
-            {historyPreview.length > 0 && (
-              <MyTooltip label={'点击查看完整对话记录'}>
-                <Tag
-                  colorSchema="green"
-                  cursor={'pointer'}
-                  {...TagStyles}
-                  onClick={() => setContextModalData(historyPreview)}
-                >
-                  {historyPreview.length}条上下文
-                </Tag>
-              </MyTooltip>
-            )}
-          </>
-        )}
-        {chatAccount > 1 && (
-          <Tag colorSchema="blue" {...TagStyles}>
-            多组 AI 对话
-          </Tag>
-        )}
-
-        {isPc && runningTime > 0 && (
-          <MyTooltip label={'模块运行时间和'}>
-            <Tag colorSchema="purple" cursor={'default'} {...TagStyles}>
-              {runningTime}s
-            </Tag>
-          </MyTooltip>
-        )}
-        <MyTooltip label={t('core.chat.response.Read complete response tips')}>
-          <Tag colorSchema="gray" cursor={'pointer'} {...TagStyles} onClick={onOpenWholeModal}>
-            {t('core.chat.response.Read complete response')}
-          </Tag>
-        </MyTooltip>
-
-        {!!quoteModalData && (
-          <QuoteModal
-            {...quoteModalData}
-            isShare={isShare}
-            onClose={() => setQuoteModalData(undefined)}
-          />
-        )}
-        {!!contextModalData && (
-          <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
-        )}
-        {isOpenWholeModal && (
-          <WholeResponseModal
-            response={responseData}
-            isShare={isShare}
-            onClose={onCloseWholeModal}
-          />
-        )}
-      </Flex>
+        </Flex>
+      )}
+      {!!quoteModalData && (
+        <QuoteModal
+          {...quoteModalData}
+          isShare={isShare}
+          onClose={() => setQuoteModalData(undefined)}
+        />
+      )}
+      {!!contextModalData && (
+        <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
+      )}
+      {isOpenWholeModal && (
+        <WholeResponseModal response={responseData} isShare={isShare} onClose={onCloseWholeModal} />
+      )}
     </>
   );
 };

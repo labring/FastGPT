@@ -2,7 +2,7 @@ import { getAIApi } from '../config';
 
 export type GetVectorProps = {
   model: string;
-  input: string | string[];
+  input: string;
 };
 
 // text to vector
@@ -10,24 +10,13 @@ export async function getVectorsByText({
   model = 'text-embedding-ada-002',
   input
 }: GetVectorProps) {
-  if (typeof input === 'string' && !input) {
+  if (!input) {
     return Promise.reject({
       code: 500,
       message: 'input is empty'
     });
-  } else if (Array.isArray(input)) {
-    for (let i = 0; i < input.length; i++) {
-      if (!input[i]) {
-        return Promise.reject({
-          code: 500,
-          message: 'input array is empty'
-        });
-      }
-    }
   }
-  if (typeof input === 'string') {
-    input = [input];
-  }
+
   try {
     // 获取 chatAPI
     const ai = getAIApi();
@@ -36,7 +25,7 @@ export async function getVectorsByText({
     const result = await ai.embeddings
       .create({
         model,
-        input
+        input: [input]
       })
       .then(async (res) => {
         if (!res.data) {
@@ -47,6 +36,7 @@ export async function getVectorsByText({
           // @ts-ignore
           return Promise.reject(res.data?.err?.message || 'Embedding API Error');
         }
+
         return {
           tokens: res.usage.total_tokens || 0,
           vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))

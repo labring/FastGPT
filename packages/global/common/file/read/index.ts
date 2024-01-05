@@ -20,13 +20,13 @@ export const readPdfFile = async ({ pdf }: { pdf: string | URL | ArrayBuffer }) 
 
     const viewport = page.getViewport({ scale: 1 });
     const pageHeight = viewport.height;
-    const headerThreshold = pageHeight * 0.07; // 假设页头在页面顶部5%的区域内
-    const footerThreshold = pageHeight * 0.93; // 假设页脚在页面底部5%的区域内
+    const headerThreshold = pageHeight * 0.95;
+    const footerThreshold = pageHeight * 0.05;
 
     const pageTexts: TokenType[] = tokenizedText.items.filter((token: TokenType) => {
       return (
         !token.transform ||
-        (token.transform[5] > headerThreshold && token.transform[5] < footerThreshold)
+        (token.transform[5] < headerThreshold && token.transform[5] > footerThreshold)
       );
     });
 
