@@ -247,7 +247,7 @@ function filterQuote({
     maxTokens: model.quoteMaxToken,
     messages: quoteQA.map((item, index) => ({
       obj: ChatRoleEnum.System,
-      value: getValue(item, index)
+      value: getValue(item, index).trim()
     }))
   });
 

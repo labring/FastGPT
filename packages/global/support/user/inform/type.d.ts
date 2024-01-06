@@ -1,4 +1,4 @@
-import { InformTypeEnum } from './constant';
+import { InformTypeEnum } from './constants';
 
 export type SendInformProps = {
   tmbId?: string;

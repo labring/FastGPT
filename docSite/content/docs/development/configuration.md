@@ -21,7 +21,6 @@ weight: 708
 ```json
 {
   "SystemParams": {
-    "pluginBaseUrl": "", // 商业版接口地址
     "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
     "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
     "pgHNSWEfSearch": 100  // pg vector 索引参数，越大精度高但速度慢
@@ -169,7 +168,6 @@ weight: 708
 ```json
 {
   "systemEnv": {
-    "pluginBaseUrl": "", // 商业版接口地址
     "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
     "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
     "pgHNSWEfSearch": 100  // pg vector 索引参数，越大精度高但速度慢
@@ -234,7 +232,8 @@ weight: 708
       "name": "GPT35-16k",
       "maxContext": 16000,
       "maxResponse": 16000,
-      "price": 0
+      "inputPrice": 0,
+      "outputPrice": 0
     }
   ],
   "cqModels": [ // 问题分类模型
@@ -254,6 +253,7 @@ weight: 708
       "maxContext": 8000,
       "maxResponse": 8000,
       "inputPrice": 0,
+      "outputPrice": 0,
       "toolChoice": true,
       "functionPrompt": ""
     }
@@ -264,7 +264,8 @@ weight: 708
       "name": "GPT35-1106",
       "maxContext": 16000,
       "maxResponse": 4000,
-            "outputPrice": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "toolChoice": true,
       "functionPrompt": ""
     }

@@ -7,6 +7,11 @@ toc: true
 weight: 706
 ---
 
+## 部署架构图
+
+![](/imgs/sealos-fastgpt.webp)
+
+## 一键部署
 Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
 
 [![](https://fastly.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
@@ -19,11 +24,13 @@ Sealos 的服务器在国外，不需要额外处理网络问题，无需服务�
 
 ![](/imgs/sealos2.png)
 
-> 用户名：`root`
-> 
-> 密码就是刚刚一键部署时设置的环境变量
+### 登录
 
-## 修改配置文件和环境变量
+用户名：`root`
+
+密码是刚刚一键部署时设置的`root_password`
+
+### 修改配置文件和环境变量
 
 在 Sealos 中，你可以打开`应用管理`（App Launchpad）看到部署的 FastGPT，可以打开`数据库`（Database）看到对应的数据库。
 
@@ -35,13 +42,9 @@ Sealos 的服务器在国外，不需要额外处理网络问题，无需服务�
 在 Sealos 上，FastGPT 一共运行了 1 个服务和 2 个数据库，如暂停和删除请注意数据库一同操作。（你可以白天启动，晚上暂停它们，省钱大法）
 {{% /alert %}}
 
-## 更新
+### 更新
 
-点击重启会自动拉取最新镜像更新，请确保镜像`tag`正确。
-
-## 部署架构图
-
-![](/imgs/sealos-fastgpt.webp)
+点击变更或重启会自动拉取镜像更新，请确保镜像`tag`正确。建议不要使用`latest`，改成固定版本号。
 
 ## Sealos 使用
 
