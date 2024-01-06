@@ -6,10 +6,7 @@
     const DEST_LIST = [
       'cdn.jsdelivr.us',
       'jsd.cdn.zzko.cn',
-      'jsd.onmicrosoft.cn',
-      'fastly.jsdelivr.net',
-      'gcore.jsdelivr.net',
-      'cdn.jsdelivr.net',
+      'jsd.onmicrosoft.cn'
     ];
     const PREFIX = '//';
     const SOURCE = DEST_LIST[0];
