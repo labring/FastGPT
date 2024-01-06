@@ -96,32 +96,31 @@ export async function pushDataToDatasetCollection({
     repeat: [],
     error: []
   };
-  await Promise.all(
-    data.map(async (item) => {
-      if (!item.q) {
-        filterResult.error.push(item);
-        return;
-      }
 
-      const text = item.q + item.a;
+  data.forEach((item) => {
+    if (!item.q) {
+      filterResult.error.push(item);
+      return;
+    }
 
-      // count q token
-      const token = countPromptTokens(item.q);
+    const text = item.q + item.a;
 
-      if (token > maxToken) {
-        filterResult.overToken.push(item);
-        return;
-      }
+    // count q token
+    const token = countPromptTokens(item.q);
 
-      if (set.has(text)) {
-        console.log('repeat', item);
-        filterResult.repeat.push(item);
-      } else {
-        filterResult.success.push(item);
-        set.add(text);
-      }
-    })
-  );
+    if (token > maxToken) {
+      filterResult.overToken.push(item);
+      return;
+    }
+
+    if (set.has(text)) {
+      console.log('repeat', item);
+      filterResult.repeat.push(item);
+    } else {
+      filterResult.success.push(item);
+      set.add(text);
+    }
+  });
 
   // 插入记录
   const insertRes = await MongoDatasetTraining.insertMany(

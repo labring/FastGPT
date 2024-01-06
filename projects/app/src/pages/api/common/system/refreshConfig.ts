@@ -12,8 +12,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     console.log(`refresh config`);
     console.log({
-      feConfigs: global.feConfigs,
-      systemEnv: global.systemEnv,
       chatModels: global.chatModels,
       qaModels: global.qaModels,
       cqModels: global.cqModels,
@@ -22,7 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       vectorModels: global.vectorModels,
       reRankModels: global.reRankModels,
       audioSpeechModels: global.audioSpeechModels,
-      whisperModel: global.whisperModel
+      whisperModel: global.whisperModel,
+      feConfigs: global.feConfigs,
+      systemEnv: global.systemEnv
     });
   } catch (error) {
     console.log(error);

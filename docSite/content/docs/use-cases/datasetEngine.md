@@ -80,7 +80,7 @@ FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，�
 
 有些数据较为独特，可能需要单独的进行预处理分割后再导入 FastGPT，此时可以选择 csv 导入，可批量的将处理好的数据导入。
 
-![](/imgs/datasetEngine11.png)
+![](/imgs/datasetEngine11.jpg)
 
 ### 导入数据方案5 - API导入
 

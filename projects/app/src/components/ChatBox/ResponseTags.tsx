@@ -95,7 +95,7 @@ const ResponseTags = ({
           <ChatBoxDivider icon="core/chat/quoteFill" text={t('chat.Quote')} />
           <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
             {sourceList.map((item) => (
-              <MyTooltip key={item.sourceName} label={t('core.chat.quote.Read Quote')}>
+              <MyTooltip key={item.collectionId} label={t('core.chat.quote.Read Quote')}>
                 <Flex
                   alignItems={'center'}
                   fontSize={'sm'}

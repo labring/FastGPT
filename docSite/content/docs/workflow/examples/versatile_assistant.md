@@ -40,7 +40,7 @@ weight: 406
 
 1. 找到查询天气的 API 接口
 
-![](/imgs/versatile_assistant_3.jpg)
+![](/imgs/versatile_assistant_3.png)
 
 2. 由于我想要的效果是用户可以随意问接下来一周内任意时间的天气（比如用户可以问“接下来一周的天气适合晾被子吗”），所以选择了上面接口的这个格式：https://api.vvhan.com/api/weather?city=徐州&type=week
 
@@ -109,7 +109,7 @@ if __name__ == '__main__':
 
 第一步就是对用户问题进行分类，如图红框部分：
 
-![](/imgs/versatile_assistant_4.jpg)
+![](/imgs/versatile_assistant_4.png)
 
 ### 接口参数获取及处理
 
@@ -132,7 +132,7 @@ if __name__ == '__main__':
 
 如图：
 
-![](/imgs/versatile_assistant_5.jpg)
+![](/imgs/versatile_assistant_5.png)
 
 ### AI 总结回复
 
@@ -147,7 +147,7 @@ if __name__ == '__main__':
 
 如图：
 
-![](/imgs/versatile_assistant_6.jpg)
+![](/imgs/versatile_assistant_6.png)
 
 ## 模块编排
 
@@ -1526,7 +1526,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
 
 ## 效果图
 
-![](/imgs/versatile_assistant_7.jpg)
+![](/imgs/versatile_assistant_7.png)
 
 ## 后记
 

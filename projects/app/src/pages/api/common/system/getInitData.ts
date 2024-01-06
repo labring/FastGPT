@@ -14,6 +14,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
 import { readConfigData } from '@/service/common/system';
 import { exit } from 'process';
+import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -105,10 +106,13 @@ export async function initSystemConfig() {
   const config: FastGPTConfigFileType = {
     feConfigs: {
       ...defaultFeConfigs,
-      ...(fileRes.feConfigs || {}),
-      ...(dbConfig.feConfigs || {})
+      ...(dbConfig.feConfigs || {}),
+      isPlus: !!FastGPTProUrl
     },
-    systemEnv: fileRes.systemEnv,
+    systemEnv: {
+      ...fileRes.systemEnv,
+      ...(dbConfig.systemEnv || {})
+    },
     chatModels: dbConfig.chatModels || fileRes.chatModels || [],
     qaModels: dbConfig.qaModels || fileRes.qaModels || [],
     cqModels: dbConfig.cqModels || fileRes.cqModels || [],
@@ -121,10 +125,7 @@ export async function initSystemConfig() {
   };
 
   // set config
-  global.feConfigs = {
-    isPlus: !!config.systemEnv?.pluginBaseUrl,
-    ...config.feConfigs
-  };
+  global.feConfigs = config.feConfigs;
   global.systemEnv = config.systemEnv;
 
   global.chatModels = config.chatModels;

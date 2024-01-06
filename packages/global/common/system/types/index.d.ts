@@ -54,7 +54,6 @@ export type FastGPTFeConfigsType = {
 };
 
 export type SystemEnvType = {
-  pluginBaseUrl?: string;
   openapiPrefix?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;

@@ -105,7 +105,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
   [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
 
-  由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
+  由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。相关使用教程可查看：[Sealos 部署 FastGPT](https://doc.fastgpt.in/docs/development/sealos/)
 
 * [快开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
 * [部署 FastGPT](https://doc.fastgpt.in/docs/development/sealos)
