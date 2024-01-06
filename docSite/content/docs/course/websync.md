@@ -25,13 +25,13 @@ curl https://doc.fastgpt.in/docs/intro/
 
 ### 1. 新建知识库，选择 Web 站点同步
 
-![](/imgs/webSync2.jpg)
+![](/imgs/webSync2.png)
 
-![](/imgs/webSync3.jpg)
+![](/imgs/webSync3.png)
 
 ### 2. 点击配置站点信息
 
-![](/imgs/webSync4.jpg)
+![](/imgs/webSync4.png)
 
 ### 3. 填写网址和选择器
 

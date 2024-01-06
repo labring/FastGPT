@@ -133,7 +133,9 @@
     "Name is empty": "名称不能为空",
     "New Create": "新建",
     "Next Step": "下一步",
+    "Not open": "未开启",
     "OK": "好的",
+    "Opened": "已开启",
     "Output": "输出",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
@@ -244,12 +246,13 @@
       "create app": "创建属于你的 AI 应用",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
+        "Open cfr": "开启自动补全",
         "Out Ad Edit": "您即将退出高级编排页面，请确认",
         "Prompt Editor": "提示词编辑",
         "Save and out": "保存并退出",
         "UnSave": "不保存",
-        "cfr background prompt": "问题补全 - 对话背景描述",
-        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示不使用问题补全功能。"
+        "cfr background prompt": "对话背景描述",
+        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n值为空时，表示【首个问题】不使用问题补全功能。\n值为 none 时，表示不使用问题补全功能。"
       },
       "feedback": {
         "Custom feedback": "自定义反馈",
@@ -407,6 +410,7 @@
           "Read Metadata": "查看元数据",
           "Training Type": "训练模式",
           "Updatetime": "更新时间",
+          "Web page selector": "网站选择器",
           "metadata": "元数据",
           "read source": "查看原始内容",
           "source": "数据来源",
@@ -416,6 +420,12 @@
         "status": {
           "active": "已就绪",
           "syncing": "同步中"
+        },
+        "sync": {
+          "result": {
+            "sameRaw": "内容未变动，无需更新",
+            "success": "开始同步"
+          }
         },
         "training": {
           "type chunk": "直接分段",
@@ -512,9 +522,13 @@
         },
         "score": {
           "embedding": "语义检索",
+          "embedding desc": "通过计算向量之间的距离获取得分，范围为 0~1。",
           "fullText": "全文检索",
+          "fullText desc": "计算相同关键词的得分，范围为 0~无穷。",
           "reRank": "结果重排",
-          "rrf": "RRF 合并"
+          "reRank desc": "通过 ReRank 模型计算句子之间的关联度，范围为 0~1。",
+          "rrf": "综合排名",
+          "rrf desc": "通过倒排计算的方式，合并多个检索结果。"
         },
         "search mode": "搜索模式"
       },
@@ -864,8 +878,6 @@
     "QPM": "",
     "QPM Tips": "每个 IP 每分钟最多提问多少次",
     "QPM is empty": "QPM 不能为空",
-    "Response Detail": "返回详情",
-    "Response Detail tips": "是否需要返回详情（引用内容，调用时间等，不会返回预设提示词和完整上下文）",
     "token auth": "身份验证",
     "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
     "token auth use cases": "查看身份验证使用说明"
@@ -893,6 +905,12 @@
     "Update Your Plugin": "更新插件"
   },
   "support": {
+    "outlink": {
+      "share": {
+        "Response Quote": "返回引用",
+        "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"
+      }
+    },
     "user": {
       "Price": "计费标准",
       "auth": {

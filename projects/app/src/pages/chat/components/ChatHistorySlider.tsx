@@ -15,7 +15,7 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
@@ -156,7 +156,7 @@ const ChatHistorySlider = ({
           h={'100%'}
           color={'primary.600'}
           borderRadius={'xl'}
-          leftIcon={<MyIcon name={'chat'} w={'16px'} />}
+          leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
           overflow={'hidden'}
           onClick={() => onChangeChat()}
         >
@@ -173,7 +173,7 @@ const ChatHistorySlider = ({
             borderRadius={'50%'}
             onClick={openConfirm(onClearHistory)}
           >
-            <MyIcon name={'clear'} w={'16px'} />
+            <MyIcon name={'common/clearLight'} w={'16px'} />
           </IconButton>
         )}
       </Flex>
@@ -211,7 +211,10 @@ const ChatHistorySlider = ({
                       }
                     })}
               >
-                <MyIcon name={item.id === activeChatId ? 'chatFill' : 'chat'} w={'16px'} />
+                <MyIcon
+                  name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
+                  w={'16px'}
+                />
                 <Box flex={'1 0 0'} ml={3} className="textEllipsis">
                   {item.customTitle || item.title}
                 </Box>
@@ -236,7 +239,7 @@ const ChatHistorySlider = ({
                               onSetHistoryTop({ chatId: item.id, top: !item.top });
                             }}
                           >
-                            <MyIcon mr={2} name={'setTop'} w={'16px'}></MyIcon>
+                            <MyIcon mr={2} name={'core/chat/setTopLight'} w={'16px'}></MyIcon>
                             {item.top ? '取消置顶' : '置顶'}
                           </MenuItem>
                         )}
@@ -254,7 +257,7 @@ const ChatHistorySlider = ({
                               });
                             }}
                           >
-                            <MyIcon mr={2} name={'customTitle'} w={'16px'}></MyIcon>
+                            <MyIcon mr={2} name={'common/customTitleLight'} w={'16px'}></MyIcon>
                             {t('common.Custom Title')}
                           </MenuItem>
                         )}
@@ -326,7 +329,7 @@ const ChatHistorySlider = ({
         >
           <IconButton
             mr={3}
-            icon={<MyIcon name={'backFill'} w={'18px'} color={'primary.500'} />}
+            icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
             bg={'white'}
             boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
             size={'smSquare'}

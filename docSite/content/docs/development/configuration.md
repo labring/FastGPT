@@ -178,7 +178,8 @@ weight: 708
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
-      "price": 0, // 除以 100000 后等于1个token的价格
+      "inputPrice": 0, // 输入价格。 xx元/1k tokens
+      "outputPrice": 0, // 输出价格。 xx元/1k tokens
       "maxContext": 16000, // 最大上下文长度
       "maxResponse": 4000, // 最大回复长度
       "quoteMaxToken": 2000, // 最大引用内容长度
@@ -192,7 +193,8 @@ weight: 708
       "name": "GPT35-16k",
       "maxContext": 16000,
       "maxResponse": 16000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "quoteMaxToken": 8000,
       "maxTemperature": 1.2,
       "censor": false,
@@ -204,7 +206,8 @@ weight: 708
       "name": "GPT4-8k",
       "maxContext": 8000,
       "maxResponse": 8000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "quoteMaxToken": 4000,
       "maxTemperature": 1.2,
       "censor": false,
@@ -216,7 +219,8 @@ weight: 708
       "name": "GPT4-Vision",
       "maxContext": 128000,
       "maxResponse": 4000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
       "censor": false,
@@ -239,7 +243,8 @@ weight: 708
       "name": "GPT35-1106",
       "maxContext": 16000,
       "maxResponse": 4000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "toolChoice": true, // 是否支持openai的 toolChoice， 不支持的模型需要设置为 false，会走提示词生成
       "functionPrompt": ""
     },
@@ -248,7 +253,7 @@ weight: 708
       "name": "GPT4-8k",
       "maxContext": 8000,
       "maxResponse": 8000,
-      "price": 0,
+      "inputPrice": 0,
       "toolChoice": true,
       "functionPrompt": ""
     }
@@ -259,7 +264,7 @@ weight: 708
       "name": "GPT35-1106",
       "maxContext": 16000,
       "maxResponse": 4000,
-      "price": 0,
+            "outputPrice": 0,
       "toolChoice": true,
       "functionPrompt": ""
     }
@@ -270,14 +275,15 @@ weight: 708
       "name": "GPT35-1106",
       "maxContext": 1600,
       "maxResponse": 4000,
-      "price": 0
+      "inputPrice": 0,
+      "outputPrice": 0,
     }
   ],
   "vectorModels": [ // 向量模型
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "price": 0.2,
+      "inputPrice": 0,
       "defaultToken": 700,
       "maxToken": 3000
     }
@@ -287,7 +293,7 @@ weight: 708
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
-      "price": 0,
+      "inputPrice": 0,
       "baseUrl": "",
       "key": "",
       "voices": [
@@ -303,7 +309,7 @@ weight: 708
   "whisperModel": {
     "model": "whisper-1",
     "name": "Whisper1",
-    "price": 0
+    "inputPrice": 0
   }
 }
 ```

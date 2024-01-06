@@ -10,6 +10,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
 
 type Props = GetVectorProps & {
+  input: string | string[];
   billId?: string;
 };
 
@@ -22,6 +23,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('input is nor array or string');
     }
 
+    const query = Array.isArray(input) ? input[0] : input;
+
     const { teamId, tmbId, apikey, authType } = await authCert({
       req,
       authToken: true,
@@ -30,7 +33,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     await authTeamBalance(teamId);
 
-    const { tokens, vectors } = await getVectorsByText({ input, model });
+    const { tokens, vectors } = await getVectorsByText({ input: query, model });
 
     jsonRes(res, {
       data: {

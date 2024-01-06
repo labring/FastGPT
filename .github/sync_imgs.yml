@@ -1,0 +1,4 @@
+yangchuansheng/fastgpt-imgs:
+  - source: docSite/assets/imgs/
+    dest: imgs/
+    deleteOrphaned: true

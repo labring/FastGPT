@@ -38,14 +38,14 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = [
     {
-      icon: 'meLight',
+      icon: 'support/user/userLight',
       label: t('user.Personal Information'),
       id: TabEnum.info
     },
     ...(feConfigs?.isPlus
       ? [
           {
-            icon: 'billRecordLight',
+            icon: 'support/bill/billRecordLight',
             label: t('user.Usage Record'),
             id: TabEnum.bill
           }
@@ -81,7 +81,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(userInfo?.team.canWrite
       ? [
           {
-            icon: 'apikey',
+            icon: 'support/outlink/apikeyLight',
             label: t('user.apikey.key'),
             id: TabEnum.apikey
           }
@@ -90,7 +90,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs.isPlus
       ? [
           {
-            icon: 'informLight',
+            icon: 'support/user/informLight',
             label: t('user.Notice'),
             id: TabEnum.inform
           }

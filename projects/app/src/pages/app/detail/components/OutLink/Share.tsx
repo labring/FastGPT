@@ -21,7 +21,7 @@ import {
   Link
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -96,7 +96,7 @@ const Share = ({ appId }: { appId: string }) => {
             <Tr>
               <Th>名称</Th>
               <Th>金额消耗</Th>
-              <Th>返回详情</Th>
+              <Th>返回引用</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>IP限流（人/分钟）</Th>
@@ -282,7 +282,7 @@ function EditLinkModal({
   return (
     <MyModal
       isOpen={true}
-      iconSrc="/imgs/modal/shareLight.svg"
+      iconSrc="/imgs/modal/shareFill.svg"
       title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}
     >
       <ModalBody>
@@ -373,8 +373,8 @@ function EditLinkModal({
 
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('outlink.Response Detail')}
-            <MyTooltip label={t('outlink.Response Detail tips' || '')}>
+            {t('support.outlink.share.Response Quote')}
+            <MyTooltip label={t('support.outlink.share.Response Quote tips' || '')}>
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Flex>

@@ -51,7 +51,7 @@ import {
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import MySelect from '@/components/Select';
@@ -629,7 +629,7 @@ const ChatBox = (
                   ))}
                   {!variableIsFinish && (
                     <Button
-                      leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                      leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                       size={'sm'}
                       maxW={'100px'}
                       onClick={handleSubmit((data) => {
@@ -1276,7 +1276,7 @@ function ChatController({
           <MyTooltip label={t('core.app.TTS')}>
             <MyIcon
               {...controlIconStyle}
-              name={'voice'}
+              name={'common/voiceLight'}
               _hover={{ color: '#E74694' }}
               onClick={async () => {
                 const response = await playAudio({

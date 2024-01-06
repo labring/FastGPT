@@ -24,7 +24,7 @@ import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@fastgpt/global/common/time/timezone';
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { langMap, setLngStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';

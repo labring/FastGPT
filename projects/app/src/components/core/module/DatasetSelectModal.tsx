@@ -14,7 +14,7 @@ import Avatar from '@/components/Avatar';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import { useToast } from '@/web/common/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { useTranslation } from 'next-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';

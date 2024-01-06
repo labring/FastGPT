@@ -13,7 +13,7 @@ import {
   useDisclosure,
   ModalBody
 } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api';
@@ -315,7 +315,7 @@ const DetailLogsModal = ({
             _hover={{ bg: 'myGray.100' }}
             onClick={onClose}
           >
-            <MyIcon name={'closeLight'} w={'12px'} h={'12px'} color={'myGray.700'} />
+            <MyIcon name={'common/closeLight'} w={'12px'} h={'12px'} color={'myGray.700'} />
           </Flex>
         </Flex>
         <Box pt={2} flex={'1 0 0'}>

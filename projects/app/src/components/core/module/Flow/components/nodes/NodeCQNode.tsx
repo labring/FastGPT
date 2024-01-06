@@ -9,7 +9,7 @@ import RenderInput from '../render/RenderInput';
 import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 4);
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleIOValueTypeEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
@@ -94,7 +94,7 @@ const NodeCQNode = React.memo(function NodeCQNode({ data }: { data: FlowModuleIt
                         />
                         <SourceHandle
                           handleKey={item.key}
-                          valueType={ModuleIOValueTypeEnum.string}
+                          valueType={ModuleIOValueTypeEnum.boolean}
                         />
                       </Box>
                     </Box>

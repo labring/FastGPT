@@ -7,7 +7,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { chatModelList } from '@/web/common/system/staticData';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/module/DatasetParamsModal';
 
 const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
@@ -63,7 +63,7 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
     <>
       <Button
         variant={'whitePrimary'}
-        leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+        leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
         onClick={onOpen}
       >
         {t('core.dataset.search.Params Setting')}

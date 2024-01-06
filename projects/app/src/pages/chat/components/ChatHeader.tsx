@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Flex, useTheme, Box } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Tag from '@/components/Tag';
 import Avatar from '@/components/Avatar';
 import ToolMenu from './ToolMenu';

@@ -26,7 +26,9 @@ export const dispatchCFR = async ({
     return Promise.reject('Question is empty');
   }
 
-  if (histories.length === 0 && !systemPrompt) {
+  // none
+  // first chat and no system prompt
+  if (systemPrompt === 'none' || (histories.length === 0 && !systemPrompt)) {
     return {
       [ModuleOutputKeyEnum.text]: userChatInput
     };

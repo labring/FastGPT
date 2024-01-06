@@ -9,7 +9,7 @@ import {
   Box,
   Image
 } from '@chakra-ui/react';
-import MyIcon from '../Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export interface MyModalProps extends ModalContentProps {

@@ -26,7 +26,7 @@ import {
   useDisclosure,
   MenuButton
 } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {

@@ -71,3 +71,8 @@ export const postLogin = ({ password, ...props }: PostLoginProps) =>
 export const loginOut = () => GET('/support/user/account/loginout');
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
+
+/* team limit */
+export const checkTeamExportDatasetLimit = (datasetId: string) =>
+  GET(`/support/user/team/limit/exportDatasetLimit`, { datasetId });
+export const checkTeamWebSyncLimit = () => GET(`/support/user/team/limit/webSyncLimit`);

@@ -272,8 +272,8 @@ function filterQuote({
   });
 
   const quoteText =
-    filterQuoteQA.length > 0
-      ? `${filterQuoteQA.map((item, index) => getValue(item, index)).join('\n')}`
+    sortQuoteQAList.length > 0
+      ? `${sortQuoteQAList.map((item, index) => getValue(item, index)).join('\n')}`
       : '';
 
   return {

@@ -68,7 +68,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   });
 
   return {
-    [result.key]: result.value,
+    [result.key]: true,
     [ModuleOutputKeyEnum.responseData]: {
       price: user.openaiAccount?.key ? 0 : total,
       model: modelName,

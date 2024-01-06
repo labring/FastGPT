@@ -49,7 +49,10 @@ export type DatasetCollectionSchemaType = {
   qaPrompt?: string;
   rawTextLength?: number;
   hashRawText?: string;
-  metadata?: Record<string, any>;
+  metadata?: {
+    webPageSelector?: string;
+    [key: string]: any;
+  };
 };
 
 export type DatasetDataIndexItemType = {

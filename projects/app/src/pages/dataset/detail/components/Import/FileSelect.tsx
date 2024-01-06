@@ -1,4 +1,4 @@
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -41,6 +41,7 @@ export type FileItemType = {
   type: DatasetCollectionTypeEnum.file | DatasetCollectionTypeEnum.link;
   fileId?: string;
   rawLink?: string;
+  metadata?: Record<string, any>;
 };
 
 export interface Props extends BoxProps {
@@ -232,7 +233,7 @@ const FileSelect = ({
   // link fetch
   const onUrlFetch = useCallback(
     (e: UrlFetchResponse) => {
-      const result: FileItemType[] = e.map<FileItemType>(({ url, content }) => {
+      const result: FileItemType[] = e.map<FileItemType>(({ url, content, selector }) => {
         const { chunks, tokens } = splitText2Chunks({
           text: content,
           chunkLen,
@@ -250,7 +251,10 @@ const FileSelect = ({
           chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
-          }))
+          })),
+          metadata: {
+            webPageSelector: selector
+          }
         };
       });
       onPushFiles(result);
@@ -392,7 +396,7 @@ const FileSelect = ({
       onDrop={handleDrop}
     >
       <Flex justifyContent={'center'} alignItems={'center'}>
-        <MyIcon mr={1} name={'uploadFile'} w={'16px'} />
+        <MyIcon mr={1} name={'file/uploadFile'} w={'16px'} />
         {isDragging ? (
           t('file.Release the mouse to upload the file')
         ) : (

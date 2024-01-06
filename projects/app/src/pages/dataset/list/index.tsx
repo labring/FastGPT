@@ -20,12 +20,12 @@ import {
   delDatasetById,
   getDatasetPaths,
   putDatasetById,
-  postCreateDataset,
-  getCheckExportLimit
+  postCreateDataset
 } from '@/web/core/dataset/api';
+import { checkTeamExportDatasetLimit } from '@/web/support/user/api';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
 import {
@@ -99,7 +99,7 @@ const Kb = () => {
   const { mutate: exportDataset } = useRequest({
     mutationFn: async (dataset: DatasetItemType) => {
       setLoading(true);
-      await getCheckExportLimit(dataset._id);
+      await checkTeamExportDatasetLimit(dataset._id);
       const a = document.createElement('a');
       a.href = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
       a.download = `${dataset.name}.csv`;

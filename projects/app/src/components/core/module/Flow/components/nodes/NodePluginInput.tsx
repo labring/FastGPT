@@ -11,7 +11,7 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
 import Container from '../modules/Container';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import SourceHandle from '../render/SourceHandle';
 import type {
@@ -65,7 +65,7 @@ const NodePluginInput = React.memo(function NodePluginInput({
             mb={7}
           >
             <MyIcon
-              name={'settingLight'}
+              name={'common/settingLight'}
               w={'14px'}
               cursor={'pointer'}
               mr={3}

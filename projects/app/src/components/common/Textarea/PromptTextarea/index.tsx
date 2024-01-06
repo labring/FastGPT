@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 
 type Props = TextareaProps & {
@@ -88,7 +88,7 @@ const Editor = React.memo(function Editor({
           onClick={onOpenModal}
         >
           <MyTooltip label={t('common.ui.textarea.Magnifying')}>
-            <MyIcon name={'fullScreenLight'} w={'14px'} color={'myGray.600'} />
+            <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
           </MyTooltip>
         </Box>
       )}

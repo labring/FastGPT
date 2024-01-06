@@ -55,8 +55,8 @@ defaultContentLanguage = 'zh-cn'
     ["JetBrains Mono", "500, 700"]
   ]
 
-  sans_serif_font = "LXGW WenKai Screen"     # Default is System font
-  secondary_font  = "LXGW WenKai Screen"     # Default is System font
+  #sans_serif_font = "LXGW WenKai Screen"     # Default is System font
+  #secondary_font  = "LXGW WenKai Screen"     # Default is System font
   mono_font       = "JetBrains Mono" # Default is System font
 
     [params.footer]

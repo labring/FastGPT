@@ -42,7 +42,7 @@ export const AiCFR: FlowModuleTemplateType = {
       label: 'core.module.input.label.cfr background',
       max: 300,
       valueType: ModuleIOValueTypeEnum.string,
-      description: 'core.module.input.description.cfr background',
+      description: 'core.app.edit.cfr background tip',
       placeholder: 'core.module.input.placeholder.cfr background',
       showTargetInApp: true,
       showTargetInPlugin: true

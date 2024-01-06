@@ -19,14 +19,16 @@ export async function createOneCollection({
   qaPrompt,
   hashRawText,
   rawTextLength,
-  metadata = {}
-}: CreateDatasetCollectionParams & { teamId: string; tmbId: string }) {
+  metadata = {},
+  ...props
+}: CreateDatasetCollectionParams & { teamId: string; tmbId: string; [key: string]: any }) {
   const { _id } = await MongoDatasetCollection.create({
-    name,
+    ...props,
     teamId,
     tmbId,
-    datasetId,
     parentId: parentId || null,
+    datasetId,
+    name,
     type,
     trainingType,
     chunkSize,
