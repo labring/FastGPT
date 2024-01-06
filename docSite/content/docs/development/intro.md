@@ -21,10 +21,10 @@ weight: 705
 
 ## 开始本地开发
 
-**Tips**
-
+{{% alert context="success" %}}
 1. 用户默认的时区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
 2. 建议先服务器装好**数据库**，再进行本地开发。
+{{% /alert %}}
 
 ### 1. Fork 存储库
 
@@ -115,4 +115,4 @@ FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI
 
 遇到困难了吗？有任何问题吗? 加入微信群与开发者和用户保持沟通。
 
-<center><image width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" /></center>
+<img width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" class="medium-zoom-image" />
