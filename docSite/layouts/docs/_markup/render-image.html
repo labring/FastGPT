@@ -9,11 +9,11 @@
         {{ if eq $image.MediaType.SubType "svg" }}
           {{ $image.Content | safeHTML }}
         {{ else }}
-          <img src="{{ $image.RelPermalink | safeURL }}" alt="{{ $text }}" width="{{ $image.Width }}" height="{{ $image.Height }}" loading="lazy">
+          <img src="{{ $image.RelPermalink | safeURL }}" alt="{{ $text }}" width="{{ $image.Width }}" height="{{ $image.Height }}" loading="lazy" class="medium-zoom-image">
         {{ end }}
       {{ end }}
     {{ else }}
-      <img src="{{ $dest | safeURL }}" alt="{{ $text }}" loading="lazy">
+      <img src="{{ $dest | safeURL }}" alt="{{ $text }}" loading="lazy" class="medium-zoom-image">
     {{ end }}
     <figcaption>{{ .Title | markdownify }}</figcaption>
   </figure>
@@ -23,10 +23,10 @@
       {{ if eq $image.MediaType.SubType "svg" }}
         {{ $image.Content | safeHTML }}
       {{ else }}
-        <img src="{{ $image.RelPermalink | safeURL }}" alt="{{ $text }}" width="{{ $image.Width }}" height="{{ $image.Height }}" loading="lazy">
+        <img src="{{ $image.RelPermalink | safeURL }}" alt="{{ $text }}" width="{{ $image.Width }}" height="{{ $image.Height }}" loading="lazy" class="medium-zoom-image">
       {{ end }}
     {{ end }}
   {{ else }}
-    <img src="{{ $dest | safeURL }}" alt="{{ $text }}" loading="lazy">
+    <img src="{{ $dest | safeURL }}" alt="{{ $text }}" loading="lazy" class="medium-zoom-image">
   {{ end }}
 {{ end }}
