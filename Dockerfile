@@ -17,6 +17,14 @@ COPY ./projects/$name/package.json ./projects/$name/package.json
 
 RUN [ -f pnpm-lock.yaml ] || (echo "Lockfile not found." && exit 1)
 
+RUN apk add --no-cache \
+    build-base \
+    cairo-dev \
+    pango-dev \
+    jpeg-dev \
+    giflib-dev \
+    librsvg-dev
+
 RUN pnpm i
 
 # --------- install dependence -----------

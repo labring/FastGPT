@@ -41,6 +41,14 @@ const nextConfig = {
       unknownContextCritical: false
     };
 
+    config.externals = config.externals || [];
+    config.externals.push(function(context, request, callback) {
+      if (request === 'canvas') {
+        return callback(null, 'commonjs canvas');
+      }
+      callback();
+    });
+
     return config;
   },
   transpilePackages: ['@fastgpt/*'],

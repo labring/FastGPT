@@ -1,6 +1,8 @@
 import { UrlFetchParams, UrlFetchResponse } from '@fastgpt/global/common/file/api';
 import * as cheerio from 'cheerio';
 import axios from 'axios';
+import { JSDOM } from 'jsdom';
+import { Readability } from '@mozilla/readability';
 import { htmlToMarkdown } from './markdown';
 
 export const cheerioToHtml = ({
@@ -43,6 +45,9 @@ export const cheerioToHtml = ({
     }
   });
 
+  // 微信公众号文章会隐藏内容。
+  $('#js_content').removeAttr('style');
+
   const html = selectDom
     .map((item, dom) => {
       return $(dom).html();
@@ -50,8 +55,15 @@ export const cheerioToHtml = ({
     .get()
     .join('\n');
 
+  const dom = new JSDOM(html, {
+    beforeParse(window) {
+      window.Canvas = function () {};
+    }
+  });
+  const article = new Readability(dom.window.document).parse();
+
   return {
-    html,
+    html: article?.content,
     usedSelector
   };
 };
