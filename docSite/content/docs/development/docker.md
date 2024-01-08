@@ -10,11 +10,11 @@ weight: 707
 ## 推荐配置
 
 {{< table "table-hover table-striped-columns" >}}
-| 环境 | 推荐配置（单节点） |
-| ---- | ---- |
-| 测试 | 2c2g  |
-| 100w 组向量 | 4c16g |
-| 500w 组向量 | 16c64g |
+| 环境 | 最低配置（单节点） | 推荐配置 |
+| ---- | ---- | ---- |
+| 测试 | 2c2g  | 2c4g |
+| 100w 组向量 | 4c8g 50GB | 4c16g 50GB |
+| 500w 组向量 | 8c32g | 16c64g 200GB |
 {{< /table >}}
 
 ### 1. 准备好代理环境（国外服务器可忽略）
@@ -27,7 +27,7 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 可选择 [Sealos 快速部署 OneAPI](/docs/development/one-api)，更多部署方法可参考该项目的 [README](https://github.com/songquanpeng/one-api)，也可以直接通过以下按钮一键部署：
 
-[![](https://fastly.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Done-api)
+<a href="https://template.cloud.sealos.io/deploy?templateName=one-api" rel="external" target="_blank"><img src="https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
 
 ## 一、安装 Docker 和 docker-compose
 

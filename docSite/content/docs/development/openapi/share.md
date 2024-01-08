@@ -41,7 +41,7 @@ weight: 860
 ## 配置教程
 ### 1. 配置身份校验地址
 
-![](/imgs/share-setlink.jpg)
+![](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
@@ -251,7 +251,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 
 ### 1. 创建3个Laf接口
 
-![](/imgs/share-auth1.jpg)
+![](/imgs/share-auth1.png)
 
 
 

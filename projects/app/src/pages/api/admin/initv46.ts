@@ -24,6 +24,7 @@ import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getGFSCollection } from '@fastgpt/service/common/file/gridfs/controller';
+import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await initDatasetAndApp();
     await initCollectionFileTeam(limit);
 
-    if (global.systemEnv.pluginBaseUrl) {
+    if (FastGPTProUrl) {
       POST('/admin/init46');
     }
 
