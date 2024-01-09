@@ -69,6 +69,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   } = req.body as Props;
 
   try {
+    const originIp = requestIp.getClientIp(req);
+
     await connectToDatabase();
     // body data check
     if (!messages) {
@@ -99,7 +101,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       if (shareId && outLinkUid) {
         const { user, appId, authType, responseDetail, uid } = await authOutLinkChatStart({
           shareId,
-          ip: requestIp.getClientIp(req),
+          ip: originIp,
           outLinkUid,
           question: question.value
         });
@@ -245,7 +247,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             value: answerText,
             responseData
           }
-        ]
+        ],
+        metadata: {
+          originIp
+        }
       });
     }
 
