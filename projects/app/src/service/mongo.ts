@@ -6,7 +6,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
-import { initSystemConfig } from '@/pages/api/common/system/getInitData';
+import { getInitConfig } from '@/pages/api/common/system/getInitData';
 import { setUpdateSystemConfigCron, setTrainingQueueCron } from './common/system/cron';
 
 /**
@@ -20,7 +20,7 @@ export function connectToDatabase(): Promise<void> {
       // start queue
       startQueue();
       // init system config
-      initSystemConfig();
+      getInitConfig();
 
       // cron
       setUpdateSystemConfigCron();

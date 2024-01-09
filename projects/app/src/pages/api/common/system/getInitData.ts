@@ -59,31 +59,60 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
 };
 
 export async function getInitConfig() {
+  if (global.systemInitd) return;
+  global.systemInitd = true;
+
   try {
-    if (global.feConfigs) return;
     await connectToDatabase();
 
-    initGlobal();
-    await initSystemConfig();
+    await Promise.all([
+      initGlobal(),
+      initSystemConfig(),
+      getSimpleModeTemplates(),
+      getSystemVersion(),
+      getSystemPlugin()
+    ]);
+
+    console.log({
+      simpleModeTemplates: global.simpleModeTemplates,
+      communityPlugins: global.communityPlugins,
+      feConfigs: global.feConfigs,
+      systemEnv: global.systemEnv,
+      chatModels: global.chatModels,
+      qaModels: global.qaModels,
+      cqModels: global.cqModels,
+      extractModels: global.extractModels,
+      qgModels: global.qgModels,
+      vectorModels: global.vectorModels,
+      reRankModels: global.reRankModels,
+      audioSpeechModels: global.audioSpeechModels,
+      whisperModel: global.whisperModel
+    });
   } catch (error) {
     console.error('Load init config error', error);
+    global.systemInitd = false;
 
     if (!global.feConfigs) {
       exit(1);
     }
   }
-  await getSimpleModeTemplates();
+}
 
-  getSystemVersion();
-  getSystemPlugin();
+export function initGlobal() {
+  if (global.communityPlugins) return;
 
-  console.log({
-    simpleModeTemplates: global.simpleModeTemplates,
-    communityPlugins: global.communityPlugins
-  });
+  global.communityPlugins = [];
+  global.simpleModeTemplates = [];
+  global.qaQueueLen = global.qaQueueLen ?? 0;
+  global.vectorQueueLen = global.vectorQueueLen ?? 0;
+  // init tikToken
+  getTikTokenEnc();
+  initHttpAgent();
 }
 
 export async function initSystemConfig() {
+  if (global.feConfigs) return;
+
   // load config
   const [dbConfig, fileConfig] = await Promise.all([
     getFastGPTConfigFromDB(),
@@ -126,33 +155,10 @@ export async function initSystemConfig() {
   global.reRankModels = config.reRankModels;
   global.audioSpeechModels = config.audioSpeechModels;
   global.whisperModel = config.whisperModel;
-
-  console.log({
-    feConfigs: global.feConfigs,
-    systemEnv: global.systemEnv,
-    chatModels: global.chatModels,
-    qaModels: global.qaModels,
-    cqModels: global.cqModels,
-    extractModels: global.extractModels,
-    qgModels: global.qgModels,
-    vectorModels: global.vectorModels,
-    reRankModels: global.reRankModels,
-    audioSpeechModels: global.audioSpeechModels,
-    whisperModel: global.whisperModel
-  });
-}
-
-export function initGlobal() {
-  global.communityPlugins = [];
-  global.simpleModeTemplates = [];
-  global.qaQueueLen = global.qaQueueLen ?? 0;
-  global.vectorQueueLen = global.vectorQueueLen ?? 0;
-  // init tikToken
-  getTikTokenEnc();
-  initHttpAgent();
 }
 
 export function getSystemVersion() {
+  if (global.systemVersion) return;
   try {
     if (process.env.NODE_ENV === 'development') {
       global.systemVersion = process.env.npm_package_version || '0.0.0';

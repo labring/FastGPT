@@ -67,4 +67,5 @@ export type SystemEnvType = {
 declare global {
   var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;
+  var systemInitd: boolean;
 }
