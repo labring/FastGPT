@@ -48,14 +48,16 @@ enum TabEnum {
 const InputDataModal = ({
   collectionId,
   dataId,
+  defaultValue,
   onClose,
   onSuccess,
   onDelete
 }: {
   collectionId: string;
   dataId?: string;
+  defaultValue?: { q: string; a?: string };
   onClose: () => void;
-  onSuccess: (data: InputDataType) => void;
+  onSuccess: (data: InputDataType & { dataId: string }) => void;
   onDelete?: () => void;
 }) => {
   const { t } = useTranslation();
@@ -105,12 +107,19 @@ const InputDataModal = ({
     },
     {
       onSuccess(res) {
-        if (!res) return;
-        reset({
-          q: res.q,
-          a: res.a,
-          indexes: res.indexes
-        });
+        if (res) {
+          reset({
+            q: res.q,
+            a: res.a,
+            indexes: res.indexes
+          });
+        } else if (defaultValue) {
+          reset({
+            q: defaultValue.q,
+            a: defaultValue.a,
+            indexes: [getDefaultIndex({ dataId: `${Date.now()}` })]
+          });
+        }
       },
       onError(err) {
         toast({
@@ -146,7 +155,7 @@ const InputDataModal = ({
 
       const data = { ...e };
 
-      await postInsertData2Dataset({
+      const dataId = await postInsertData2Dataset({
         collectionId: collection._id,
         q: e.q,
         a: e.a,
@@ -156,7 +165,10 @@ const InputDataModal = ({
         )
       });
 
-      return data;
+      return {
+        ...data,
+        dataId
+      };
     },
     successToast: t('dataset.data.Input Success Tip'),
     onSuccess(e) {
@@ -182,7 +194,10 @@ const InputDataModal = ({
         ...e
       });
 
-      return e;
+      return {
+        dataId,
+        ...e
+      };
     },
     successToast: t('dataset.data.Update Success Tip'),
     errorToast: t('common.error.unKnow'),
