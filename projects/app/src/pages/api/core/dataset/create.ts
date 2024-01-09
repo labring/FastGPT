@@ -16,11 +16,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       type,
       avatar,
       vectorModel = global.vectorModels[0].model,
-      agentModel
+      agentModel = global.qaModels[0].model
     } = req.body as CreateDatasetParams;
 
-    // 凭证校验
+    // auth
     const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
+
+    // check model valid
+    const vectorModelStore = global.vectorModels.find((item) => item.model === vectorModel);
+    const agentModelStore = global.qaModels.find((item) => item.model === agentModel);
+    if (!vectorModelStore || !agentModelStore) {
+      throw new Error('vectorModel or qaModel is invalid');
+    }
+
+    // check limit
+    const authCount = await MongoDataset.countDocuments({
+      teamId,
+      type: DatasetTypeEnum.dataset
+    });
+    if (authCount >= 50) {
+      throw new Error('每个团队上限 50 个知识库');
+    }
 
     const { _id } = await MongoDataset.create({
       name,

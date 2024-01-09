@@ -224,7 +224,7 @@ const CollectionCard = () => {
   const { mutate: onDelCollection, isLoading: isDeleting } = useRequest({
     mutationFn: (collectionId: string) => {
       return delDatasetCollectionById({
-        collectionId
+        id: collectionId
       });
     },
     onSuccess() {

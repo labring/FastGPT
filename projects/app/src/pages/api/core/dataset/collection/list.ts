@@ -27,10 +27,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       simple = false
     } = req.body as GetDatasetCollectionsProps;
     searchText = searchText?.replace(/'/g, '');
+    pageSize = Math.min(pageSize, 30);
 
     // auth dataset and get my role
-    const { tmbId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
-    const { canWrite } = await authUserRole({ req, authToken: true });
+    const { tmbId, canWrite } = await authDataset({
+      req,
+      authToken: true,
+      authApiKey: true,
+      datasetId,
+      per: 'r'
+    });
 
     const match = {
       datasetId: new Types.ObjectId(datasetId),

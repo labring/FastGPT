@@ -74,7 +74,7 @@ export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
-export const delDatasetCollectionById = (params: { collectionId: string }) =>
+export const delDatasetCollectionById = (params: { id: string }) =>
   DELETE(`/core/dataset/collection/delete`, params);
 export const postLinkCollectionSync = (collectionId: string) =>
   POST<`${DatasetCollectionSyncResultEnum}`>(`/core/dataset/collection/sync/link`, {
@@ -86,8 +86,8 @@ export const postLinkCollectionSync = (collectionId: string) =>
 export const getDatasetDataList = (data: GetDatasetDataListProps) =>
   POST(`/core/dataset/data/list`, data);
 
-export const getDatasetDataItemById = (dataId: string) =>
-  GET<DatasetDataItemType>(`/core/dataset/data/detail`, { dataId });
+export const getDatasetDataItemById = (id: string) =>
+  GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });
 
 /**
  * push data to training queue
@@ -109,8 +109,8 @@ export const putDatasetDataById = (data: UpdateDatasetDataProps) =>
 /**
  * 删除一条知识库数据
  */
-export const delOneDatasetDataById = (dataId: string) =>
-  DELETE<string>(`/core/dataset/data/delete`, { dataId });
+export const delOneDatasetDataById = (id: string) =>
+  DELETE<string>(`/core/dataset/data/delete`, { id });
 
 /* ================ training ==================== */
 /* get length of system training queue */

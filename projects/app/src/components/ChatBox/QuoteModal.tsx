@@ -5,7 +5,7 @@ import MyModal from '../MyModal';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import QuoteItem from '../core/dataset/QuoteItem';
-import { RawSourceText } from '@/pages/dataset/detail/components/InputDataModal';
+import RawSourceBox from '../core/dataset/RawSourceBox';
 
 const QuoteModal = ({
   rawSearch = [],
@@ -46,7 +46,7 @@ const QuoteModal = ({
         title={
           <Box>
             {metadata ? (
-              <RawSourceText {...metadata} canView={false} />
+              <RawSourceBox {...metadata} canView={false} />
             ) : (
               <>{t('core.chat.Quote Amount', { amount: rawSearch.length })}</>
             )}
