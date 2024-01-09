@@ -383,7 +383,7 @@ const InputDataModal = ({
             )}
           </Box>
           <Flex justifyContent={'flex-end'} px={5} mt={4}>
-            <Button variant={'whitePrimary'} mr={3} onClick={onClose}>
+            <Button variant={'whiteBase'} mr={3} onClick={onClose}>
               {t('common.Close')}
             </Button>
             <MyTooltip label={collection.canWrite ? '' : t('dataset.data.Can not edit')}>

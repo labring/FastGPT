@@ -17,9 +17,18 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    await authDatasetData({ req, authToken: true, authApiKey: true, dataId, per: 'w' });
+    const { datasetData } = await authDatasetData({
+      req,
+      authToken: true,
+      authApiKey: true,
+      dataId,
+      per: 'w'
+    });
 
-    await delDatasetDataByDataId(dataId);
+    await delDatasetDataByDataId({
+      collectionId: datasetData.collectionId,
+      mongoDataId: dataId
+    });
 
     jsonRes(res, {
       data: 'success'
