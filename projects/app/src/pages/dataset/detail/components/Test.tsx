@@ -233,7 +233,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 h={'100%'}
                 resize={'none'}
                 variant={'unstyled'}
-                maxLength={datasetDetail.vectorModel.maxToken}
+                maxLength={datasetDetail.vectorModel?.maxToken}
                 placeholder={t('core.dataset.test.Test Text Placeholder')}
                 onFocus={() => setIsFocus(true)}
                 {...register('inputText', {

@@ -439,7 +439,9 @@ export async function searchDatasetData(props: {
         }))
       });
 
-      if (!Array.isArray(results)) return [];
+      if (!Array.isArray(results)) {
+        return [];
+      }
 
       // add new score to data
       const mergeResult = results
@@ -457,7 +459,6 @@ export async function searchDatasetData(props: {
 
       return mergeResult;
     } catch (error) {
-      usingReRank = false;
       return [];
     }
   };

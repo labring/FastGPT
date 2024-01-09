@@ -9,17 +9,15 @@ export const updateOutLinkUsage = async ({
   shareId: string;
   total: number;
 }) => {
-  try {
-    await MongoOutLink.findOneAndUpdate(
-      { shareId },
-      {
-        $inc: { total },
-        lastTime: new Date()
-      }
-    );
-  } catch (err) {
+  MongoOutLink.findOneAndUpdate(
+    { shareId },
+    {
+      $inc: { total },
+      lastTime: new Date()
+    }
+  ).catch((err) => {
     console.log('update shareChat error', err);
-  }
+  });
 };
 
 export const pushResult2Remote = async ({
