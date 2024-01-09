@@ -83,6 +83,7 @@ try {
   ChatItemSchema.index({ time: -1 });
   ChatItemSchema.index({ appId: 1 });
   ChatItemSchema.index({ chatId: 1 });
+  ChatItemSchema.index({ obj: 1 });
   ChatItemSchema.index({ userGoodFeedback: 1 });
   ChatItemSchema.index({ userBadFeedback: 1 });
   ChatItemSchema.index({ customFeedbacks: 1 });
