@@ -78,17 +78,6 @@ export async function getInitConfig() {
   getSystemPlugin();
 
   console.log({
-    feConfigs: global.feConfigs,
-    systemEnv: global.systemEnv,
-    chatModels: global.chatModels,
-    qaModels: global.qaModels,
-    cqModels: global.cqModels,
-    extractModels: global.extractModels,
-    qgModels: global.qgModels,
-    vectorModels: global.vectorModels,
-    reRankModels: global.reRankModels,
-    audioSpeechModels: global.audioSpeechModels,
-    whisperModel: global.whisperModel,
     simpleModeTemplates: global.simpleModeTemplates,
     communityPlugins: global.communityPlugins
   });
@@ -137,6 +126,20 @@ export async function initSystemConfig() {
   global.reRankModels = config.reRankModels;
   global.audioSpeechModels = config.audioSpeechModels;
   global.whisperModel = config.whisperModel;
+
+  console.log({
+    feConfigs: global.feConfigs,
+    systemEnv: global.systemEnv,
+    chatModels: global.chatModels,
+    qaModels: global.qaModels,
+    cqModels: global.cqModels,
+    extractModels: global.extractModels,
+    qgModels: global.qgModels,
+    vectorModels: global.vectorModels,
+    reRankModels: global.reRankModels,
+    audioSpeechModels: global.audioSpeechModels,
+    whisperModel: global.whisperModel
+  });
 }
 
 export function initGlobal() {
