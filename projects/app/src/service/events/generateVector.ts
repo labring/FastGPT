@@ -9,14 +9,8 @@ import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
-const reduceQueue = (retry = false) => {
+const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
-
-  if (global.vectorQueueLen === 0 && retry) {
-    setTimeout(() => {
-      generateVector();
-    }, 60000);
-  }
 
   return global.vectorQueueLen === 0;
 };
@@ -159,7 +153,7 @@ export async function generateVector(): Promise<any> {
 
     console.log(`embedding finished, time: ${Date.now() - start}ms`);
   } catch (err: any) {
-    reduceQueue(true);
+    reduceQueue();
     // log
     if (err?.response) {
       addLog.info('openai error: 生成向量错误', {

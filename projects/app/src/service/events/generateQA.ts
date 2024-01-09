@@ -15,13 +15,8 @@ import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
-const reduceQueue = (retry = false) => {
+const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
-  if (global.qaQueueLen === 0 && retry) {
-    setTimeout(() => {
-      generateQA();
-    }, 60000);
-  }
 
   return global.vectorQueueLen === 0;
 };
@@ -178,7 +173,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     reduceQueue();
     generateQA();
   } catch (err: any) {
-    reduceQueue(true);
+    reduceQueue();
     // log
     if (err?.response) {
       addLog.info('openai error: 生成QA错误', {

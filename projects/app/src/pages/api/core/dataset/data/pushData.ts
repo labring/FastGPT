@@ -149,7 +149,7 @@ export async function pushDataToDatasetCollection({
     }))
   );
 
-  insertRes.length > 0 && startQueue(1);
+  startQueue();
   delete filterResult.success;
 
   return {

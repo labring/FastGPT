@@ -7,6 +7,7 @@ import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller
 import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
 import { initSystemConfig } from '@/pages/api/common/system/getInitData';
+import { setUpdateSystemConfigCron } from './common/system/cron';
 
 /**
  * connect MongoDB and init data
@@ -14,12 +15,17 @@ import { initSystemConfig } from '@/pages/api/common/system/getInitData';
 export function connectToDatabase(): Promise<void> {
   return connectMongo({
     beforeHook: () => {},
-    afterHook: () => {
+    afterHook: async () => {
       initVectorStore();
       // start queue
       startQueue();
+      // init system config
       initSystemConfig();
-      return initRootUser();
+
+      // cron
+      setUpdateSystemConfigCron();
+
+      initRootUser();
     }
   });
 }

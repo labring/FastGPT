@@ -150,7 +150,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
 
     if (data.find((item) => item.trainingAmount > 0)) {
-      startQueue(1);
+      startQueue();
     }
 
     // count collections
