@@ -43,10 +43,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     // auth dataset limit
+    const predictDataLength = (() => {
+      if (mode === TrainingModeEnum.chunk) return data.length;
+      return data.length * 20;
+    })();
     await checkDatasetLimit({
       teamId,
       freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize,
-      insertLen: data.length
+      insertLen: predictDataLength
     });
 
     jsonRes<PushDataResponse>(res, {
