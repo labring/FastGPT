@@ -161,6 +161,7 @@
     "Set Avatar": "点击设置头像",
     "Set Name": "取个名字",
     "Status": "状态",
+    "Submit success": "提交成功",
     "Team": "团队",
     "Test": "测试",
     "Time": "时间",
@@ -170,6 +171,7 @@
     "Update Success": "更新成功",
     "Update Successful": "更新成功",
     "Update Time": "更新时间",
+    "Update success": "更新成功",
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
     "Website": "网站",
@@ -188,6 +190,7 @@
       "Common Tip": "没有什么数据噢~"
     },
     "error": {
+      "Update error": "更新失败",
       "unKnow": "出现了点意外~"
     },
     "export": "",
@@ -455,7 +458,8 @@
         "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
         "get data error": "获取数据异常",
-        "id": "数据ID"
+        "id": "数据ID",
+        "unit": "条"
       },
       "error": {
         "Start Sync Failed": "开始同步失败",
@@ -918,6 +922,9 @@
         "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"
       }
     },
+    "subscription": {
+      "Cancel subscription": "取消订阅"
+    },
     "user": {
       "Price": "计费标准",
       "auth": {
@@ -927,6 +934,21 @@
         "Github": "Github 登录",
         "Google": "Google 登录",
         "Provider error": "登录异常，请重试"
+      },
+      "team": {
+        "Dataset usage": "知识库容量"
+      }
+    },
+    "wallet": {
+      "Buy more": "扩容",
+      "Confirm pay": "支付确认",
+      "Pay error": "支付失败",
+      "Pay success": "支付成功",
+      "subscription": {
+        "Current dataset store": "当前额外容量",
+        "Dataset store": "知识库容量",
+        "Dataset store price tip": "每月1号从账号余额里扣除",
+        "Expand size": "扩大容量"
       }
     }
   },

@@ -30,9 +30,6 @@ const TeamSchema = new Schema({
     type: Number,
     default: 5
   },
-  lastDatasetBillTime: {
-    type: Date
-  },
   limit: {
     lastExportDatasetTime: {
       type: Date

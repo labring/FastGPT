@@ -34,10 +34,11 @@ export const uploadFiles = ({
   });
 };
 
-export const getUploadMdImgController = ({
+export const getUploadBase64ImgController = ({
   base64Img,
-  metadata
-}: {
+  metadata,
+  ...props
+}: CompressImgProps & {
   base64Img: string;
   metadata: Record<string, any>;
 }) =>
@@ -46,7 +47,8 @@ export const getUploadMdImgController = ({
     maxW: 4000,
     maxH: 4000,
     maxSize: 1024 * 1024 * 5,
-    metadata
+    metadata,
+    ...props
   });
 
 /**

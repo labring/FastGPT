@@ -89,6 +89,7 @@ const DatasetCollectionSchema = new Schema({
 });
 
 try {
+  DatasetCollectionSchema.index({ teamId: 1 });
   DatasetCollectionSchema.index({ datasetId: 1 });
   DatasetCollectionSchema.index({ datasetId: 1, parentId: 1 });
   DatasetCollectionSchema.index({ updateTime: -1 });

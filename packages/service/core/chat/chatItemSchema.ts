@@ -2,8 +2,7 @@ import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -16,7 +15,7 @@ const ChatItemSchema = new Schema({
   dataId: {
     type: String,
     require: true,
-    default: () => nanoid()
+    default: () => getNanoid(22)
   },
   appId: {
     type: Schema.Types.ObjectId,

@@ -15,7 +15,9 @@ export const htmlToMarkdown = (html?: string | null) =>
     worker.on('message', (md: string) => {
       worker.terminate();
 
-      resolve(simpleMarkdownText(md));
+      let rawText = simpleMarkdownText(md);
+
+      resolve(rawText);
     });
     worker.on('error', (err) => {
       worker.terminate();

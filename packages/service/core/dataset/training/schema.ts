@@ -106,6 +106,7 @@ try {
   TrainingDataSchema.index({ lockTime: 1 });
   TrainingDataSchema.index({ datasetId: 1 });
   TrainingDataSchema.index({ collectionId: 1 });
+  TrainingDataSchema.index({ teamId: 1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 });
 } catch (error) {
   console.log(error);

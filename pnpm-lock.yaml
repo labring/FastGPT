@@ -47,12 +47,12 @@ importers:
       js-tiktoken:
         specifier: ^1.0.7
         version: registry.npmmirror.com/js-tiktoken@1.0.7
+      nanoid:
+        specifier: ^4.0.1
+        version: registry.npmmirror.com/nanoid@4.0.1
       openai:
         specifier: 4.23.0
         version: registry.npmmirror.com/openai@4.23.0(encoding@0.1.13)
-      pdfjs-dist:
-        specifier: ^4.0.269
-        version: registry.npmmirror.com/pdfjs-dist@4.0.269(encoding@0.1.13)
       timezones-list:
         specifier: ^3.0.2
         version: registry.npmmirror.com/timezones-list@3.0.2
@@ -96,21 +96,24 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: registry.npmmirror.com/jsonwebtoken@9.0.2
+      mammoth:
+        specifier: ^1.6.0
+        version: registry.npmmirror.com/mammoth@1.6.0
       mongoose:
         specifier: ^7.0.2
         version: registry.npmmirror.com/mongoose@7.0.2
       multer:
         specifier: 1.4.5-lts.1
         version: registry.npmmirror.com/multer@1.4.5-lts.1
-      nanoid:
-        specifier: ^4.0.1
-        version: registry.npmmirror.com/nanoid@4.0.1
       next:
         specifier: 13.5.2
         version: registry.npmmirror.com/next@13.5.2(@babel/core@7.23.7)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
       nextjs-cors:
         specifier: ^2.1.2
         version: registry.npmmirror.com/nextjs-cors@2.1.2(next@13.5.2)
+      pdfjs-dist:
+        specifier: ^4.0.269
+        version: registry.npmmirror.com/pdfjs-dist@4.0.269(encoding@0.1.13)
       pg:
         specifier: ^8.10.0
         version: registry.npmmirror.com/pg@8.10.0
@@ -175,9 +178,15 @@ importers:
       joplin-turndown-plugin-gfm:
         specifier: ^1.0.12
         version: registry.npmmirror.com/joplin-turndown-plugin-gfm@1.0.12
+      mammoth:
+        specifier: ^1.6.0
+        version: registry.npmmirror.com/mammoth@1.6.0
       next-i18next:
         specifier: ^13.3.0
         version: registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.5.2)(react-i18next@12.3.1)(react@18.2.0)
+      pdfjs-dist:
+        specifier: ^4.0.269
+        version: registry.npmmirror.com/pdfjs-dist@4.0.269(encoding@0.1.13)
       react:
         specifier: 18.2.0
         version: registry.npmmirror.com/react@18.2.0
@@ -287,9 +296,6 @@ importers:
       lodash:
         specifier: ^4.17.21
         version: registry.npmmirror.com/lodash@4.17.21
-      mammoth:
-        specifier: ^1.6.0
-        version: registry.npmmirror.com/mammoth@1.6.0
       mermaid:
         specifier: ^10.2.3
         version: registry.npmmirror.com/mermaid@10.2.3

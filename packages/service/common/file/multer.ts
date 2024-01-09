@@ -1,11 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { customAlphabet } from 'nanoid';
 import multer from 'multer';
 import path from 'path';
 import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
-import fs from 'fs';
-
-const nanoid = customAlphabet('1234567890abcdef', 12);
+import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { tmpFileDirPath } from './constants';
 
 type FileType = {
   fieldname: string;
@@ -17,7 +15,9 @@ type FileType = {
   size: number;
 };
 
-export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
+const expiredTime = 30 * 60 * 1000;
+
+export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
   maxSize *= 1024 * 1024;
   class UploadModel {
     uploader = multer({
@@ -26,9 +26,12 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
       },
       preservePath: true,
       storage: multer.diskStorage({
-        filename: (_req, file, cb) => {
+        // destination: (_req, _file, cb) => {
+        //   cb(null, tmpFileDirPath);
+        // },
+        filename: async (req, file, cb) => {
           const { ext } = path.parse(decodeURIComponent(file.originalname));
-          cb(null, nanoid() + ext);
+          cb(null, `${Date.now() + expiredTime}-${getNanoid(32)}${ext}`);
         }
       })
     }).any();
@@ -75,14 +78,4 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
   }
 
   return new UploadModel();
-}
-
-export const removeFilesByPaths = (paths: string[]) => {
-  paths.forEach((path) => {
-    fs.unlink(path, (err) => {
-      if (err) {
-        console.error(err);
-      }
-    });
-  });
 };

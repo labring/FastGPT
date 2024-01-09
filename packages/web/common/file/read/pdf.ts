@@ -1,18 +1,18 @@
 /* read file to txt */
 import * as pdfjsLib from 'pdfjs-dist';
 
-export const readPdfFile = async ({ pdf }: { pdf: string | URL | ArrayBuffer }) => {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.js';
+type TokenType = {
+  str: string;
+  dir: string;
+  width: number;
+  height: number;
+  transform: number[];
+  fontName: string;
+  hasEOL: boolean;
+};
 
-  type TokenType = {
-    str: string;
-    dir: string;
-    width: number;
-    height: number;
-    transform: number[];
-    fontName: string;
-    hasEOL: boolean;
-  };
+export const readPdfFile = async ({ pdf }: { pdf: ArrayBuffer }) => {
+  pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.js';
 
   const readPDFPage = async (doc: any, pageNo: number) => {
     const page = await doc.getPage(pageNo);
@@ -58,5 +58,7 @@ export const readPdfFile = async ({ pdf }: { pdf: string | URL | ArrayBuffer }) 
   }
   const pageTexts = await Promise.all(pageTextPromises);
 
-  return pageTexts.join('');
+  return {
+    rawText: pageTexts.join('')
+  };
 };

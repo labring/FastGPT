@@ -14,6 +14,7 @@ import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { simpleText } from '@fastgpt/global/common/string/tools';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -39,6 +40,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       authApiKey: true,
       collectionId,
       per: 'w'
+    });
+
+    // auth dataset limit
+    await checkDatasetLimit({
+      teamId,
+      freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize,
+      insertLen: data.length
     });
 
     jsonRes<PushDataResponse>(res, {

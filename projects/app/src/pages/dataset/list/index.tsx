@@ -22,7 +22,7 @@ import {
   putDatasetById,
   postCreateDataset
 } from '@/web/core/dataset/api';
-import { checkTeamExportDatasetLimit } from '@/web/support/user/api';
+import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';

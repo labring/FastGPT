@@ -6,6 +6,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
+import { initSystemConfig } from '@/pages/api/common/system/getInitData';
 
 /**
  * connect MongoDB and init data
@@ -17,6 +18,7 @@ export function connectToDatabase(): Promise<void> {
       initVectorStore();
       // start queue
       startQueue();
+      initSystemConfig();
       return initRootUser();
     }
   });

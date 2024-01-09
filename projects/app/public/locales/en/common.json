@@ -161,6 +161,7 @@
     "Set Avatar": "Set Avatar",
     "Set Name": "Make a nice name",
     "Status": "Status",
+    "Submit success": "Update Success",
     "Team": "Team",
     "Test": "Test",
     "Time": "Time",
@@ -170,6 +171,7 @@
     "Update Success": "Update Success",
     "Update Successful": "Update Successful",
     "Update Time": "Update Time",
+    "Update success": "Update success",
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
     "Website": "Website",
@@ -188,6 +190,7 @@
       "Common Tip": "No data"
     },
     "error": {
+      "Update error": "Update error",
       "unKnow": "There was an accident"
     },
     "export": "",
@@ -455,7 +458,8 @@
         "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
         "get data error": "Get data error",
-        "id": "Data ID"
+        "id": "Data ID",
+        "unit": "pieces"
       },
       "error": {
         "Start Sync Failed": "Start Sync Failed",
@@ -918,6 +922,9 @@
         "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document."
       }
     },
+    "subscription": {
+      "Cancel subscription": "Cancel"
+    },
     "user": {
       "Price": "Price",
       "auth": {
@@ -927,6 +934,21 @@
         "Github": "Github",
         "Google": "Google",
         "Provider error": "Login exception, please try again"
+      },
+      "team": {
+        "Dataset usage": "Dataset usage"
+      }
+    },
+    "wallet": {
+      "Buy more": "Buy more",
+      "Confirm pay": "Confirm pay",
+      "Pay error": "Pay error",
+      "Pay success": "Pay success",
+      "subscription": {
+        "Current dataset store": "Current dataset store subscription",
+        "Dataset store": "Dataset store size",
+        "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
+        "Expand size": "Expand size"
       }
     }
   },

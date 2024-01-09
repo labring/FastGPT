@@ -13,7 +13,7 @@ import { defaultDatasetDetail } from '@/constants/dataset';
 import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constant';
 import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
-import { checkTeamWebSyncLimit } from '@/web/support/user/api';
+import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 
 type State = {
   allDatasets: DatasetListItemType[];
