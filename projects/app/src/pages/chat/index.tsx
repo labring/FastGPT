@@ -86,7 +86,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       const newTitle =
         chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
         prompts[1]?.value?.slice(0, 20) ||
-        '新对话';
+        t('chat.New Chat');
 
       // new chat
       if (completionChatId !== chatId) {
@@ -166,7 +166,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         setLastChatAppId('');
         setLastChatId('');
         toast({
-          title: getErrText(e, '初始化聊天失败'),
+          title: getErrText(e, t('chat.Failed to initialize chat')),
           status: 'error'
         });
         if (e?.code === 501) {
