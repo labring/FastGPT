@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, useTheme, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import MyTooltip from '@/components/MyTooltip';
@@ -116,7 +116,7 @@ const NodeCard = (props: Props) => {
       },
 
       {
-        icon: 'back',
+        icon: 'common/backLight',
         label: t('common.Back'),
         onClick: () => {}
       }

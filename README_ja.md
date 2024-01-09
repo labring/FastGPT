@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.in/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -15,13 +15,13 @@ FastGPT は、LLM 上 に 構築 された 知識 ベースの Q&A システム�
 </div>
 
 <p align="center">
-  <a href="https://fastgpt.run/">
+  <a href="https://fastgpt.in/">
     <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
-  <a href="https://doc.fastgpt.run/docs/intro">
+  <a href="https://doc.fastgpt.in/docs/intro">
     <img height="21" src="https://img.shields.io/badge/相关文档-7d09f1?style=flat-square" alt="document">
   </a>
-  <a href="https://doc.fastgpt.run/docs/development">
+  <a href="https://doc.fastgpt.in/docs/development">
     <img height="21" src="https://img.shields.io/badge/本地开发-%23d4eaf7?style=flat-square&logo=xcode&logoColor=7d09f1" alt="development">
   </a>
   <a href="/#-%E7%9B%B8%E5%85%B3%E9%A1%B9%E7%9B%AE">
@@ -36,7 +36,8 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 クラウドサービスの 利用
 
-[fastgpt.run](https://fastgpt.run/)
+[fastgpt.in](https://fastgpt.in/)
+
 | | |
 | ---------------------------------- | ---------------------------------- |
 | ![Demo](./.github/imgs/intro1.png) | ![Demo](./.github/imgs/intro2.png) |
@@ -97,11 +98,11 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
   デプロイ 後、データベースをセットアップするので、2～4分待 ってください。基本設定 を 使 っているので、最初 は 少 し 遅 いかもしれません。
 
-- [ローカル 開発入門](https://doc.fastgpt.run/docs/development)
-- [FastGPT のデプロイ](https://doc.fastgpt.run/docs/installation)
-- [システム 設定 ガイド](https://doc.fastgpt.run/docs/installation/reference)
-- [複数 モデルの 設定](https://doc.fastgpt.run/docs/installation/reference/models)
-- [バージョン 更新 とアップグレード](https://doc.fastgpt.run/docs/installation/upgrading)
+- [ローカル 開発入門](https://doc.fastgpt.in/docs/development)
+- [FastGPT のデプロイ](https://doc.fastgpt.in/docs/installation)
+- [システム 設定 ガイド](https://doc.fastgpt.in/docs/installation/reference)
+- [複数 モデルの 設定](https://doc.fastgpt.in/docs/installation/reference/models)
+- [バージョン 更新 とアップグレード](https://doc.fastgpt.in/docs/installation/upgrading)
 
 <!-- ## :point_right: ロードマップ
 - [FastGPT ロードマップ](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->

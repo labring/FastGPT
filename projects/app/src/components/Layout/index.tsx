@@ -25,14 +25,16 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/login/fastlogin': true,
   '/chat/share': true,
   '/app/edit': true,
-  '/chat': true
+  '/chat': true,
+  '/tools/price': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
   '/login': true,
   '/login/provider': true,
   '/login/fastlogin': true,
-  '/chat/share': true
+  '/chat/share': true,
+  '/tools/price': true
 };
 
 const Layout = ({ children }: { children: JSX.Element }) => {

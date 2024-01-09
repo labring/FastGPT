@@ -68,6 +68,7 @@ export function usePagination<T = any>({
           <Input
             defaultValue={pageNum}
             w={'50px'}
+            h={'30px'}
             size={'xs'}
             type={'number'}
             min={1}

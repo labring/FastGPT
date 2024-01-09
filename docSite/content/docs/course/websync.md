@@ -9,6 +9,8 @@ weight: 105
 
 ![](/imgs/webSync1.jpg)
 
+该功能目前仅向商业版用户开放。
+
 ## 什么是 Web 站点同步
 
 Web 站点同步利用爬虫的技术，可以通过一个入口网站，自动捕获`同域名`下的所有网站，目前最多支持`200`个子页面。出于合规与安全角度，FastGPT 仅支持`静态站点`的爬取，主要用于各个文档站点快速构建知识库。
@@ -16,20 +18,20 @@ Web 站点同步利用爬虫的技术，可以通过一个入口网站，自动�
 Tips: 国内的媒体站点基本不可用，公众号、csdn、知乎等。可以通过终端发送`curl`请求检测是否为静态站点，例如：
 
 ```bash
-curl ai.fastgpt.in
+curl https://doc.fastgpt.in/docs/intro/
 ```
 
 ## 如何使用
 
 ### 1. 新建知识库，选择 Web 站点同步
 
-![](/imgs/webSync2.jpg)
+![](/imgs/webSync2.png)
 
-![](/imgs/webSync3.jpg)
+![](/imgs/webSync3.png)
 
 ### 2. 点击配置站点信息
 
-![](/imgs/webSync4.jpg)
+![](/imgs/webSync4.png)
 
 ### 3. 填写网址和选择器
 

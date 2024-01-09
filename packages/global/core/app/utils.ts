@@ -26,7 +26,8 @@ export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEd
       similarity: 0.4,
       limit: 1500,
       searchEmptyText: '',
-      searchMode: DatasetSearchModeEnum.embedding
+      searchMode: DatasetSearchModeEnum.embedding,
+      usingReRank: false
     },
     userGuide: {
       welcomeText: '',
@@ -95,6 +96,10 @@ export const appModules2Form = ({
       defaultAppForm.dataset.searchMode =
         findInputValueByKey(module.inputs, ModuleInputKeyEnum.datasetSearchMode) ||
         DatasetSearchModeEnum.embedding;
+      defaultAppForm.dataset.usingReRank = !!findInputValueByKey(
+        module.inputs,
+        ModuleInputKeyEnum.datasetSearchUsingReRank
+      );
 
       // empty text
       const emptyOutputs =

@@ -6,8 +6,11 @@ import { AuthUserTypeEnum } from '../../permission/constant';
 /**
  * dataset price / PRICE_SCALE = real price
  */
-export const formatPrice = (val = 0, multiple = 1) => {
+export const formatStorePrice2Read = (val = 0, multiple = 1) => {
   return Number(((val / PRICE_SCALE) * multiple).toFixed(10));
+};
+export const formatModelPrice2Read = (val = 0) => {
+  return Number((val / 1000).toFixed(10));
 };
 
 export const getBillSourceByAuthType = ({

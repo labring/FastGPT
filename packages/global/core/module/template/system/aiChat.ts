@@ -16,7 +16,7 @@ import {
   Input_Template_UserChatInput
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
-import { Output_Template_Finish } from '../output';
+import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
 
 export const AiChatModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
@@ -131,6 +131,7 @@ export const AiChatModule: FlowModuleTemplateType = {
     Input_Template_UserChatInput
   ],
   outputs: [
+    Output_Template_UserChatInput,
     {
       key: ModuleOutputKeyEnum.history,
       label: '新的上下文',

@@ -2,7 +2,8 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { customAlphabet } from 'nanoid';
 import multer from 'multer';
 import path from 'path';
-import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
+import fs from 'fs';
 
 const nanoid = customAlphabet('1234567890abcdef', 12);
 
@@ -44,6 +45,12 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
             return reject(error);
           }
 
+          // check bucket name
+          const bucketName = req.body?.bucketName as `${BucketNameEnum}`;
+          if (bucketName && !bucketNameMap[bucketName]) {
+            return reject('BucketName is invalid');
+          }
+
           resolve({
             ...req.body,
             files:
@@ -69,3 +76,13 @@ export function getUploadModel({ maxSize = 500 }: { maxSize?: number }) {
 
   return new UploadModel();
 }
+
+export const removeFilesByPaths = (paths: string[]) => {
+  paths.forEach((path) => {
+    fs.unlink(path, (err) => {
+      if (err) {
+        console.error(err);
+      }
+    });
+  });
+};

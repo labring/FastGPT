@@ -340,6 +340,10 @@ export const theme = extendTheme({
       1000: '#313132'
     },
     myGray: {
+      '05': 'rgba(17, 24, 36, 0.05)',
+      1: 'rgba(17, 24, 36, 0.1)',
+      15: 'rgba(17, 24, 36, 0.15)',
+
       25: '#FBFBFC',
       50: '#F7F8FA',
       100: '#F4F4F7',
@@ -413,8 +417,8 @@ export const theme = extendTheme({
     body: 'PingFang,Noto Sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
   },
   fontSizes: {
-    xs: '10',
-    sm: '12px',
+    xs: '12px',
+    sm: '13px',
     md: '14px',
     lg: '16px',
     xl: '18px',
@@ -436,7 +440,7 @@ export const theme = extendTheme({
     md: '1px solid #DAE0E2',
     lg: '1px solid #D0E0E2'
   },
-  borderRadius: {
+  radii: {
     xs: '4px',
     sm: '6px',
     md: '8px',

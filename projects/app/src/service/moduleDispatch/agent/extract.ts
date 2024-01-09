@@ -10,7 +10,8 @@ import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
-import { getExtractModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -42,7 +43,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const extractModel = getExtractModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await (async () => {
+  const { arg, inputTokens, outputTokens } = await (async () => {
     if (extractModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -79,16 +80,24 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     }
   }
 
+  const { total, modelName } = formatModelPrice2Store({
+    model: extractModel.model,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
+    type: ModelTypeEnum.extract
+  });
+
   return {
     [ModuleOutputKeyEnum.success]: success ? true : undefined,
     [ModuleOutputKeyEnum.failed]: success ? undefined : true,
     [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
     [ModuleOutputKeyEnum.responseData]: {
-      price: user.openaiAccount?.key ? 0 : extractModel.price * tokens,
-      model: extractModel.name || '',
+      price: user.openaiAccount?.key ? 0 : total,
+      model: modelName,
       query: content,
-      tokens,
+      inputTokens,
+      outputTokens,
       extractDescription: description,
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
@@ -181,10 +190,10 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
     }
   })();
 
-  const tokens = response.usage?.total_tokens || 0;
   return {
     rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
-    tokens,
+    inputTokens: response.usage?.prompt_tokens || 0,
+    outputTokens: response.usage?.completion_tokens || 0,
     arg
   };
 }
@@ -223,7 +232,8 @@ Human: ${content}`
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
-  const totalTokens = data.usage?.total_tokens || 0;
+  const inputTokens = data.usage?.prompt_tokens || 0;
+  const outputTokens = data.usage?.completion_tokens || 0;
 
   // parse response
   const start = answer.indexOf('{');
@@ -232,7 +242,8 @@ Human: ${content}`
   if (start === -1 || end === -1)
     return {
       rawResponse: answer,
-      tokens: totalTokens,
+      inputTokens,
+      outputTokens,
       arg: {}
     };
 
@@ -244,13 +255,15 @@ Human: ${content}`
   try {
     return {
       rawResponse: answer,
-      tokens: totalTokens,
+      inputTokens,
+      outputTokens,
       arg: JSON.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
     return {
       rawResponse: answer,
-      tokens: totalTokens,
+      inputTokens,
+      outputTokens,
       arg: {}
     };
   }

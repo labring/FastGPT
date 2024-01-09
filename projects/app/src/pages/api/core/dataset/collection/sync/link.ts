@@ -2,14 +2,20 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
-import { loadingOneChunkCollection } from '@fastgpt/service/core/dataset/collection/utils';
+import {
+  getCollectionAndRawText,
+  reloadCollectionChunks
+} from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionSyncResultEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -32,6 +38,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return Promise.reject(DatasetErrEnum.unLinkCollection);
     }
 
+    const { rawText, isSameRawText } = await getCollectionAndRawText({
+      collection
+    });
+
+    if (isSameRawText) {
+      return jsonRes(res, {
+        data: DatasetCollectionSyncResultEnum.sameRaw
+      });
+    }
+
+    /* Not the same original text, create and reload */
+
     const vectorModelData = getVectorModel(collection.datasetId.vectorModel);
     const agentModelData = getQAModel(collection.datasetId.agentModel);
     // create training bill
@@ -45,26 +63,27 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // create a collection and delete old
-    const { _id } = await MongoDatasetCollection.create({
-      parentId: collection.parentId,
+    const _id = await createOneCollection({
       teamId: collection.teamId,
       tmbId: collection.tmbId,
+      parentId: collection.parentId,
       datasetId: collection.datasetId._id,
-      type: collection.type,
       name: collection.name,
-      createTime: collection.createTime,
+      type: collection.type,
       trainingType: collection.trainingType,
       chunkSize: collection.chunkSize,
       fileId: collection.fileId,
       rawLink: collection.rawLink,
-      metadata: collection.metadata
+      metadata: collection.metadata,
+      createTime: collection.createTime
     });
 
     // start load
-    await loadingOneChunkCollection({
+    await reloadCollectionChunks({
       collectionId: _id,
       tmbId,
-      billId
+      billId,
+      rawText
     });
 
     // delete old collection
@@ -73,7 +92,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       fileIds: collection.fileId ? [collection.fileId] : []
     });
 
-    jsonRes(res);
+    jsonRes(res, {
+      data: DatasetCollectionSyncResultEnum.success
+    });
   } catch (err) {
     jsonRes(res, {
       code: 500,

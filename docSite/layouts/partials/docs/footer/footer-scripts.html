@@ -58,13 +58,13 @@
 
 <!-- change -->
 <script
-  src="https://jsdelivr.icloudnative.io/npm/medium-zoom/dist/medium-zoom.min.js"
+  src="https://cdn.jsdelivr.us/npm/medium-zoom/dist/medium-zoom.min.js"
   crossorigin="anonymous"
   referrerpolicy="no-referrer"
 ></script>
 
 <script>
-  const images = Array.from(document.querySelectorAll(".main-content img"));
+  const images = Array.from(document.querySelectorAll('.medium-zoom-image'));
   images.forEach((img) => {
     mediumZoom(img, {
       margin: 0 /* The space outside the zoomed image */,

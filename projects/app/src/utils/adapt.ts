@@ -7,6 +7,7 @@ import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
 import { adaptRole_Message2Chat } from '@fastgpt/global/core/chat/adapt';
 import { EDGE_TYPE } from '@fastgpt/global/core/module/node/constant';
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 export const gptMessage2ChatType = (messages: ChatMessageItemType[]): ChatItemType[] => {
@@ -34,7 +35,16 @@ export const textAdaptGptResponse = ({
     object: '',
     created: 0,
     model,
-    choices: [{ delta: text === null ? {} : { content: text }, index: 0, finish_reason }]
+    choices: [
+      {
+        delta:
+          text === null
+            ? {}
+            : { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: text },
+        index: 0,
+        finish_reason
+      }
+    ]
   });
 };
 

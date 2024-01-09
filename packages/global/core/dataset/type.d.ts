@@ -6,6 +6,7 @@ import {
   DatasetDataIndexTypeEnum,
   DatasetStatusEnum,
   DatasetTypeEnum,
+  SearchScoreTypeEnum,
   TrainingModeEnum
 } from './constant';
 
@@ -46,8 +47,12 @@ export type DatasetCollectionSchemaType = {
   fileId?: string;
   rawLink?: string;
   qaPrompt?: string;
+  rawTextLength?: number;
   hashRawText?: string;
-  metadata?: Record<string, any>;
+  metadata?: {
+    webPageSelector?: string;
+    [key: string]: any;
+  };
 };
 
 export type DatasetDataIndexItemType = {
@@ -160,6 +165,10 @@ export type DatasetFileSchema = {
 };
 
 /* ============= search =============== */
-export type SearchDataResponseItemType = Omit<DatasetDataItemType, 'isOwner' | 'canWrite'> & {
-  score: number;
+export type SearchDataResponseItemType = Omit<
+  DatasetDataItemType,
+  'indexes' | 'isOwner' | 'canWrite'
+> & {
+  score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
+  // score: number;
 };

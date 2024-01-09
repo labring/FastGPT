@@ -1,0 +1,35 @@
+name: Sync images
+on:
+  pull_request_target:
+    branches:
+      - main
+    paths:
+      - docSite/assets/imgs/**
+  push:
+    branches:
+      - main
+    paths:
+      - docSite/assets/imgs/**
+  workflow_dispatch:
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        if: ${{ (github.event_name == 'pull_request_target') }}
+        with:
+          ref: ${{ github.event.pull_request.head.ref }}
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Run GitHub File Sync
+        uses: BetaHuhn/repo-file-sync-action@v1.21.0
+        with:
+          GH_PAT: ${{ secrets.IMG_GH_PAT }}
+          CONFIG_PATH: .github/sync_imgs.yml
+          ORIGINAL_MESSAGE: true
+          SKIP_PR: true
+          COMMIT_EACH_FILE: false

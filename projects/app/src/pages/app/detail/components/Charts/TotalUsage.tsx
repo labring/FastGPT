@@ -4,7 +4,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getAppTotalUsage } from '@/web/core/app/api';
 import { useQuery } from '@tanstack/react-query';
 import dayjs from 'dayjs';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import Loading from '@/components/Loading';
 import { Box } from '@chakra-ui/react';
 
@@ -135,7 +135,7 @@ const TokenUsage = ({ appId }: { appId: string }) => {
           return `
           <div>
             <div>${dayjs(data.axisValue).format('YYYY/MM/DD')}</div>
-            <div>${formatPrice(e[0]?.value || 0)}元</div>
+            <div>${formatStorePrice2Read(e[0]?.value || 0)}元</div>
           </div>
 `;
         }

@@ -20,12 +20,12 @@ import {
   delDatasetById,
   getDatasetPaths,
   putDatasetById,
-  postCreateDataset,
-  getCheckExportLimit
+  postCreateDataset
 } from '@/web/core/dataset/api';
+import { checkTeamExportDatasetLimit } from '@/web/support/user/api';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
 import {
@@ -99,7 +99,7 @@ const Kb = () => {
   const { mutate: exportDataset } = useRequest({
     mutationFn: async (dataset: DatasetItemType) => {
       setLoading(true);
-      await getCheckExportLimit(dataset._id);
+      await checkTeamExportDatasetLimit(dataset._id);
       const a = document.createElement('a');
       a.href = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
       a.download = `${dataset.name}.csv`;
@@ -211,7 +211,7 @@ const Kb = () => {
             borderWidth={1.5}
             borderColor={dragTargetId === dataset._id ? 'primary.600' : 'borderColor.low'}
             bg={'white'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             minH={'130px'}
             position={'relative'}
             data-drag-id={dataset.type === DatasetTypeEnum.folder ? dataset._id : undefined}
@@ -390,7 +390,7 @@ const Kb = () => {
               />
             )}
             <Flex alignItems={'center'} h={'38px'}>
-              <Avatar src={dataset.avatar} borderRadius={'lg'} w={'28px'} />
+              <Avatar src={dataset.avatar} borderRadius={'md'} w={'28px'} />
               <Box mx={3} className="textEllipsis3">
                 {dataset.name}
               </Box>

@@ -7,6 +7,7 @@ import dynamic from 'next/dynamic';
 import InputLabel from './Label';
 import type { RenderInputProps } from './type.d';
 import { getFlowStore, type useFlowProviderStoreType } from '../../../FlowProvider';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const RenderList: {
   types: `${FlowNodeInputTypeEnum}`[];
@@ -63,8 +64,13 @@ const RenderList: {
   {
     types: [FlowNodeInputTypeEnum.addInputParam],
     Component: dynamic(() => import('./templates/AddInputParam'))
+  },
+  {
+    types: [FlowNodeInputTypeEnum.JSONEditor],
+    Component: dynamic(() => import('./templates/JsonEditor'))
   }
 ];
+const UserChatInput = dynamic(() => import('./templates/UserChatInput'));
 
 type Props = {
   flowInputList: FlowNodeInputItemType[];
@@ -124,18 +130,23 @@ const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) =
         })();
 
         return (
-          input.type !== FlowNodeInputTypeEnum.hidden && (
-            <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
-              {!!input.label && (
-                <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
-              )}
-              {!!RenderComponent && (
-                <Box mt={2} className={'nodrag'}>
-                  {RenderComponent}
-                </Box>
-              )}
-            </Box>
-          )
+          <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
+            {input.key === ModuleInputKeyEnum.userChatInput && (
+              <UserChatInput inputs={filterInputs} item={input} moduleId={moduleId} />
+            )}
+            {input.type !== FlowNodeInputTypeEnum.hidden && (
+              <>
+                {!!input.label && (
+                  <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
+                )}
+                {!!RenderComponent && (
+                  <Box mt={2} className={'nodrag'}>
+                    {RenderComponent}
+                  </Box>
+                )}
+              </>
+            )}
+          </Box>
         );
       })}
     </>

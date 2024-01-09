@@ -7,24 +7,24 @@ toc: true
 weight: 705
 ---
 
-本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.run)。
+本文档介绍了如何设置开发环境以构建和测试 [FastGPT](https://fastgpt.in)。
 
 
 ## 前置依赖项
 
-您需要在计算机上安装和配置以下依赖项才能构建 [FastGPT](https://fastgpt.run)：
+您需要在计算机上安装和配置以下依赖项才能构建 [FastGPT](https://fastgpt.in)：
 
 - [Git](http://git-scm.com/)
 - [Docker](https://www.docker.com/)（构建镜像）
-- [Node.js v18.x (LTS)](http://nodejs.org)
+- [Node.js v18.x (不推荐最新的，可能有兼容问题)](http://nodejs.org)
 - [pnpm](https://pnpm.io/) 版本 8.x.x 
 
 ## 开始本地开发
 
-**Tips**
-
+{{% alert context="success" %}}
 1. 用户默认的时区为 `Asia/Shanghai`,非 linux 环境时候，获取系统时间会异常，本地开发时候，可以将用户的时区调整成 UTC（+0）。
-2. 建议先服务器装好数据库在进行本地开发。
+2. 建议先服务器装好**数据库**，再进行本地开发。
+{{% /alert %}}
 
 ### 1. Fork 存储库
 
@@ -71,6 +71,8 @@ git clone git@github.com:<github_username>/FastGPT.git
 ### 5. 运行
 
 ```bash
+# 给脚本代码执行权限
+chmod -R +x ./scripts/
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 pnpm i
 # 切换到应用目录
@@ -79,11 +81,13 @@ cd projects/app
 pnpm dev
 ```
 
-### 6. 发布 - 镜像打包
+### 6. 部署打包
 
 ```bash
 # 根目录下执行
-docker build -t dockername/fastgpt --build-arg name=app .
+docker build -t dockername/fastgpt:tag --build-arg name=app .
+# 使用代理
+docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=taobao .
 ```
 
 ## 提交代码至开源仓库
@@ -103,8 +107,12 @@ docker build -t dockername/fastgpt --build-arg name=app .
 1. 如果你是连接远程的数据库，先检查对应的端口是否开放。
 2. 如果是本地运行的数据库，可尝试`host`改成`localhost`或`127.0.0.1`
 
+### sh ./scripts/postinstall.sh 没权限
+
+FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI`的`Type`。如果没有权限，可以先执行`chmod -R +x ./scripts/`，再执行`pnpm i`。
+
 ### 加入社区
 
 遇到困难了吗？有任何问题吗? 加入微信群与开发者和用户保持沟通。
 
-<center><image width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" /></center>
+<img width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" class="medium-zoom-image" />

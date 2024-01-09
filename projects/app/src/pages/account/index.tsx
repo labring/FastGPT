@@ -1,9 +1,8 @@
-import React, { useCallback, useMemo, useRef } from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import React, { useCallback } from 'react';
+import { Box, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
-import { clearToken } from '@/web/support/user/auth';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
@@ -20,11 +19,13 @@ const BillTable = dynamic(() => import('./components/BillTable'));
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
+const PriceBox = dynamic(() => import('@/components/support/wallet/Price'));
 
 enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
   'bill' = 'bill',
+  'price' = 'price',
   'pay' = 'pay',
   'inform' = 'inform',
   'apikey' = 'apikey',
@@ -37,16 +38,25 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = [
     {
-      icon: 'meLight',
+      icon: 'support/user/userLight',
       label: t('user.Personal Information'),
       id: TabEnum.info
     },
     ...(feConfigs?.isPlus
       ? [
           {
-            icon: 'billRecordLight',
+            icon: 'support/bill/billRecordLight',
             label: t('user.Usage Record'),
             id: TabEnum.bill
+          }
+        ]
+      : []),
+    ...(feConfigs?.isPlus && feConfigs?.show_pay
+      ? [
+          {
+            icon: 'support/pay/priceLight',
+            label: t('support.user.Price'),
+            id: TabEnum.price
           }
         ]
       : []),
@@ -71,7 +81,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(userInfo?.team.canWrite
       ? [
           {
-            icon: 'apikey',
+            icon: 'support/outlink/apikeyLight',
             label: t('user.apikey.key'),
             id: TabEnum.apikey
           }
@@ -80,7 +90,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs.isPlus
       ? [
           {
-            icon: 'informLight',
+            icon: 'support/user/informLight',
             label: t('user.Notice'),
             id: TabEnum.inform
           }
@@ -97,6 +107,11 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认退出登录？'
   });
+  const {
+    isOpen: isOpenPriceBox,
+    onOpen: onOpenPriceBox,
+    onClose: onClosePriceBox
+  } = useDisclosure();
 
   const router = useRouter();
   const theme = useTheme();
@@ -109,6 +124,8 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           setUserInfo(null);
           router.replace('/login');
         })();
+      } else if (tab === TabEnum.price) {
+        onOpenPriceBox();
       } else {
         router.replace({
           query: {
@@ -117,7 +134,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         });
       }
     },
-    [openConfirm, router, setUserInfo]
+    [onOpenPriceBox, openConfirm, router, setUserInfo]
   );
 
   return (
@@ -169,6 +186,8 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         </Flex>
         <ConfirmModal />
       </PageContainer>
+
+      {isOpenPriceBox && <PriceBox onClose={onClosePriceBox} />}
     </>
   );
 };

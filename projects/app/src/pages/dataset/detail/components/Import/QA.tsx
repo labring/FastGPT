@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Box, Flex, Button, Textarea } from '@chakra-ui/react';
+import { Box, Flex, Button, Textarea, Grid } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
@@ -15,11 +14,11 @@ const QAImport = () => {
   const { t } = useTranslation();
   const { datasetDetail } = useDatasetStore();
   const agentModel = datasetDetail.agentModel;
-  const unitPrice = agentModel?.price || 3;
 
   const {
     successChunks,
     totalChunks,
+    totalTokens,
     isUnselectedFile,
     price,
     onclickUpload,
@@ -55,20 +54,28 @@ const QAImport = () => {
           </Box>
         </Box>
         {/* price */}
-        <Flex py={5} alignItems={'center'}>
-          <Box>
-            {t('core.dataset.import.Estimated Price')}
-            <MyTooltip
-              label={t('core.dataset.import.Estimated Price Tips', {
-                price: formatPrice(unitPrice, 1000)
-              })}
-              forceShow
-            >
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
-          </Box>
-          <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
-        </Flex>
+        <Grid mt={4} gridTemplateColumns={'1fr 1fr'} gridGap={2}>
+          <Flex alignItems={'center'}>
+            <Box>{t('core.dataset.import.Total tokens')}：</Box>
+            <Box>{totalTokens}</Box>
+          </Flex>
+          {/* price */}
+          <Flex alignItems={'center'}>
+            <Box>
+              {t('core.dataset.import.Estimated Price')}
+              <MyTooltip
+                label={t('core.dataset.import.QA Estimated Price Tips', {
+                  inputPrice: agentModel?.inputPrice,
+                  outputPrice: agentModel?.outputPrice
+                })}
+                forceShow
+              >
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
+            </Box>
+            <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
+          </Flex>
+        </Grid>
         <Flex mt={3}>
           {showRePreview && (
             <Button variant={'whitePrimary'} mr={4} onClick={onReSplitChunks}>

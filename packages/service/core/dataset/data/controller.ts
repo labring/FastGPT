@@ -1,11 +1,11 @@
 import { MongoDatasetData } from './schema';
-import { deletePgDataById } from './pg';
 import { MongoDatasetTraining } from '../training/schema';
 import { delFileByFileIdList, delFileByMetadata } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { MongoDatasetCollection } from '../collection/schema';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { delImgByFileIdList } from '../../../common/file/image/controller';
+import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';
 
 /* delete all data by datasetIds */
 export async function delDatasetRelevantData({ datasetIds }: { datasetIds: string[] }) {
@@ -21,7 +21,7 @@ export async function delDatasetRelevantData({ datasetIds }: { datasetIds: strin
   // delete dataset.datas
   await MongoDatasetData.deleteMany({ datasetId: { $in: datasetIds } });
   // delete pg data
-  await deletePgDataById(`dataset_id IN ('${datasetIds.join("','")}')`);
+  await deleteDatasetDataVector({ datasetIds });
 
   // delete collections
   await MongoDatasetCollection.deleteMany({
@@ -56,7 +56,7 @@ export async function delCollectionRelevantData({
   // delete dataset.datas
   await MongoDatasetData.deleteMany({ collectionId: { $in: collectionIds } });
   // delete pg data
-  await deletePgDataById(`collection_id IN ('${collectionIds.join("','")}')`);
+  await deleteDatasetDataVector({ collectionIds });
 
   // delete collections
   await MongoDatasetCollection.deleteMany({
@@ -76,6 +76,6 @@ export async function delCollectionRelevantData({
  * delete one data by mongoDataId
  */
 export async function delDatasetDataByDataId(mongoDataId: string) {
-  await deletePgDataById(['data_id', mongoDataId]);
+  await deleteDatasetDataVector({ dataIds: [mongoDataId] });
   await MongoDatasetData.findByIdAndDelete(mongoDataId);
 }

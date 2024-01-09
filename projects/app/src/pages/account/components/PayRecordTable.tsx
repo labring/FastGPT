@@ -15,10 +15,10 @@ import { getPayOrders, checkPayResult } from '@/web/support/wallet/pay/api';
 import type { PaySchema } from '@fastgpt/global/support/wallet/pay/type.d';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const PayRecordTable = () => {
   const { Loading, setIsLoading } = useLoading();
@@ -85,7 +85,7 @@ const PayRecordTable = () => {
                   <Td>
                     {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                   </Td>
-                  <Td>{formatPrice(item.price)}元</Td>
+                  <Td>{formatStorePrice2Read(item.price)}元</Td>
                   <Td>{item.status}</Td>
                   <Td>
                     {item.status === 'NOTPAY' && (

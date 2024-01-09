@@ -6,7 +6,7 @@ import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import EditModal, { defaultForm, FormType } from './component/EditModal';
@@ -60,7 +60,7 @@ const MyModules = () => {
             borderWidth={'1.5px'}
             borderColor={'borderColor.low'}
             bg={'white'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             userSelect={'none'}
             position={'relative'}
             _hover={{

@@ -36,11 +36,7 @@ export const Prompt_ExtractJson = `你可以从 <对话记录></对话记录> �
 </对话记录>
 `;
 
-export const Prompt_CQJson = `我会给你几个问题类型，请参考额外的背景知识（可能为空）和对话内容，判断我本次的问题类型，并返回对应类型的 ID，格式为 JSON 字符串:
-"""
-'{"问题类型":"类型的 ID"}'
-"""
-
+export const Prompt_CQJson = `我会给你几个问题类型，请参考背景知识（可能为空）和对话记录，判断我“本次问题”的类型，并返回一个问题“类型ID”:
 <问题类型>
 {{typeList}}
 </问题类型>
@@ -49,9 +45,13 @@ export const Prompt_CQJson = `我会给你几个问题类型，请参考额外�
 {{systemPrompt}}
 </背景知识>
 
-<对话内容>
-{{text}}
-</对话内容>
+<对话记录>
+{{history}}
+</对话记录>
+
+Human："{{question}}"
+
+类型ID=
 `;
 
 export const Prompt_QuestionGuide = `我不太清楚问你什么问题，请帮我生成 3 个问题，引导我继续提问。问题的长度应小于20个字符，按 JSON 格式返回: ["问题1", "问题2", "问题3"]`;

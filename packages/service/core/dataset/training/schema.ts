@@ -102,6 +102,7 @@ const TrainingDataSchema = new Schema({
 });
 
 try {
+  TrainingDataSchema.index({ weight: -1 });
   TrainingDataSchema.index({ lockTime: 1 });
   TrainingDataSchema.index({ datasetId: 1 });
   TrainingDataSchema.index({ collectionId: 1 });

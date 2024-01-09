@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
-import { getUploadModel } from '@fastgpt/service/common/file/upload/multer';
+import { getUploadModel, removeFilesByPaths } from '@fastgpt/service/common/file/upload/multer';
 
 /**
  * Creates the multer uploader
@@ -13,10 +13,15 @@ const upload = getUploadModel({
 });
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  let filePaths: string[] = [];
+
   try {
+    const { files, bucketName, metadata } = await upload.doUpload(req, res);
+
+    filePaths = files.map((file) => file.path);
+
     await connectToDatabase();
     const { userId, teamId, tmbId } = await authCert({ req, authToken: true });
-    const { files, bucketName, metadata } = await upload.doUpload(req, res);
 
     if (!bucketName) {
       throw new Error('bucketName is empty');
@@ -48,6 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       error
     });
   }
+
+  removeFilesByPaths(filePaths);
 }
 
 export const config = {

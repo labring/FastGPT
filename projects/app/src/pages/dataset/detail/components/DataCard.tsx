@@ -29,7 +29,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import InputDataModal, { RawSourceText, type InputDataType } from '../components/InputDataModal';
@@ -121,49 +121,62 @@ const DataCard = () => {
     [collection?.canWrite, userInfo?.team?.role]
   );
 
-  const metadataList = useMemo(
-    () =>
-      collection
+  const metadataList = useMemo(() => {
+    if (!collection) return [];
+
+    const webSelector =
+      collection?.datasetId?.websiteConfig?.selector || collection?.metadata?.webPageSelector;
+
+    return [
+      {
+        label: t('core.dataset.collection.metadata.source'),
+        value: t(DatasetCollectionTypeMap[collection.type]?.name)
+      },
+      {
+        label: t('core.dataset.collection.metadata.source name'),
+        value: collection.file?.filename || collection?.rawLink || collection?.name
+      },
+      {
+        label: t('core.dataset.collection.metadata.source size'),
+        value: collection.file ? formatFileSize(collection.file.length) : '-'
+      },
+      {
+        label: t('core.dataset.collection.metadata.Createtime'),
+        value: formatTime2YMDHM(collection.createTime)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Updatetime'),
+        value: formatTime2YMDHM(collection.updateTime)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Raw text length'),
+        value: collection.rawTextLength ?? '-'
+      },
+      {
+        label: t('core.dataset.collection.metadata.Training Type'),
+        value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Chunk Size'),
+        value: collection.chunkSize || '-'
+      },
+      ...(webSelector
         ? [
             {
-              label: t('core.dataset.collection.metadata.source'),
-              value: t(DatasetCollectionTypeMap[collection.type]?.name)
-            },
-            {
-              label: t('core.dataset.collection.metadata.source name'),
-              value: collection.file?.filename || collection?.rawLink || collection?.name
-            },
-            {
-              label: t('core.dataset.collection.metadata.source size'),
-              value: collection.file ? formatFileSize(collection.file.length) : '-'
-            },
-            {
-              label: t('core.dataset.collection.metadata.Createtime'),
-              value: formatTime2YMDHM(collection.createTime)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Updatetime'),
-              value: formatTime2YMDHM(collection.updateTime)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Training Type'),
-              value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Chunk Size'),
-              value: collection.chunkSize || '-'
+              label: t('core.dataset.collection.metadata.Web page selector'),
+              value: webSelector
             }
           ]
-        : [],
-    [collection, t]
-  );
+        : [])
+    ];
+  }, [collection, t]);
 
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'primary.500'} />}
+          icon={<MyIcon name={'common/backFill'} w={['14px', '18px']} color={'primary.500'} />}
           variant={'whitePrimary'}
           size={'smSquare'}
           borderRadius={'50%'}
@@ -294,7 +307,7 @@ const DataCard = () => {
           >
             <Flex zIndex={1} alignItems={'center'} justifyContent={'space-between'}>
               <Box border={theme.borders.base} px={2} fontSize={'sm'} mr={1} borderRadius={'md'}>
-                # {index + 1}
+                # {item.chunkIndex ?? '-'}
               </Box>
               <Box className={'textEllipsis'} color={'myGray.500'} fontSize={'xs'}>
                 ID:{item._id}

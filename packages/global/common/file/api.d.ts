@@ -12,4 +12,5 @@ export type UrlFetchParams = {
 export type UrlFetchResponse = {
   url: string;
   content: string;
+  selector?: string;
 }[];

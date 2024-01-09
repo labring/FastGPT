@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   Box,
   Flex,
@@ -8,10 +8,10 @@ import {
   NumberInputStepper,
   NumberIncrementStepper,
   NumberDecrementStepper,
-  Input
+  Input,
+  Grid
 } from '@chakra-ui/react';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -25,7 +25,7 @@ const ChunkImport = () => {
   const { t } = useTranslation();
   const { datasetDetail } = useDatasetStore();
   const vectorModel = datasetDetail.vectorModel;
-  const unitPrice = vectorModel?.price || 0.2;
+  const unitPrice = vectorModel?.inputPrice || 0.002;
 
   const {
     chunkLen,
@@ -33,6 +33,7 @@ const ChunkImport = () => {
     setCustomSplitChar,
     successChunks,
     totalChunks,
+    totalTokens,
     isUnselectedFile,
     price,
     onclickUpload,
@@ -108,21 +109,27 @@ const ChunkImport = () => {
             />
           </Box>
         </Box>
-        {/* price */}
-        <Flex mt={4} alignItems={'center'}>
-          <Box>
-            {t('core.dataset.import.Estimated Price')}
-            <MyTooltip
-              label={t('core.dataset.import.Estimated Price Tips', {
-                price: formatPrice(unitPrice, 1000)
-              })}
-              forceShow
-            >
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
-          </Box>
-          <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
-        </Flex>
+        <Grid mt={4} gridTemplateColumns={'1fr 1fr'} gridGap={2}>
+          <Flex alignItems={'center'}>
+            <Box>{t('core.dataset.import.Total tokens')}：</Box>
+            <Box>{totalTokens}</Box>
+          </Flex>
+          {/* price */}
+          <Flex alignItems={'center'}>
+            <Box>
+              {t('core.dataset.import.Estimated Price')}
+              <MyTooltip
+                label={t('core.dataset.import.Embedding Estimated Price Tips', {
+                  price: unitPrice
+                })}
+                forceShow
+              >
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
+            </Box>
+            <Box ml={4}>{t('common.price.Amount', { amount: price, unit: '元' })}</Box>
+          </Flex>
+        </Grid>
         <Flex mt={3}>
           {showRePreview && (
             <Button variant={'whitePrimary'} mr={4} onClick={onReSplitChunks}>

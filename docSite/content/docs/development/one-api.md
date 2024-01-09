@@ -17,7 +17,7 @@ MySQL 版本支持多实例，高并发。
 
 直接点击以下按钮即可一键部署 👇
 
-[![](https://fastly.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Done-api)
+<a href="https://template.cloud.sealos.io/deploy?templateName=one-api" rel="external" target="_blank"><img src="https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
 
 部署完后会跳转「应用管理」，数据库在另一个应用「数据库」中。需要等待 1~3 分钟数据库运行后才能访问成功。
 
@@ -29,7 +29,7 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 
 **2. 打开 AppLaunchpad(应用管理) 工具**
 
-![step1](/imgs/oneapi-step1.png)
+![step1](/imgs/oneapi-step1.jpg)
 
 **3. 点击创建新应用**
 

@@ -21,12 +21,12 @@ weight: 504
 密钥需要自己保管好，一旦关闭就无法再复制密钥，只能创建新密钥再复制。
 {{% /alert %}}
 
-![](/imgs/fastgpt-api.png)
+![](/imgs/fastgpt-api.jpg)
 
 
 ## 3. 创建 docker-compose.yml 文件
 
-只需要修改 `OPEN_AI_API_KEY` 和 `OPEN_AI_API_BASE` 两个环境变量即可。其中 `OPEN_AI_API_KEY` 为第一步获取的秘钥，`OPEN_AI_API_BASE` 为 FastGPT 的 OpenAPI 地址，例如：`https://fastgpt.run/api/v1`。
+只需要修改 `OPEN_AI_API_KEY` 和 `OPEN_AI_API_BASE` 两个环境变量即可。其中 `OPEN_AI_API_KEY` 为第一步获取的秘钥，`OPEN_AI_API_BASE` 为 FastGPT 的 OpenAPI 地址，例如：`https://api.fastgpt.in/api/v1`。
 
 随便找一个目录，创建一个 docker-compose.yml 文件，将下面的代码复制进去。
 
@@ -40,7 +40,7 @@ services:
       - seccomp:unconfined
     environment:
       OPEN_AI_API_KEY: 'fastgpt-z51pkjqm9nrk03a1rx2funoy'
-      OPEN_AI_API_BASE: 'https://fastgpt.run/api/v1'
+      OPEN_AI_API_BASE: 'https://api.fastgpt.in/api/v1'
       MODEL: 'gpt-3.5-turbo'
       CHANNEL_TYPE: 'wx'
       PROXY: ''

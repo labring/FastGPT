@@ -41,7 +41,7 @@ weight: 860
 ## 配置教程
 ### 1. 配置身份校验地址
 
-![](/imgs/share-setlink.jpg)
+![](/imgs/share-setlink.png)
 
 配置校验地址后，在每次分享链接使用时，都会向对应的地址发起校验和上报请求。
 
@@ -53,9 +53,9 @@ weight: 860
 
 在分享链接的地址中，增加一个额外的参数: authToken。例如：
 
-原始的链接：`https://fastgpt.run/chat/share?shareId=648aaf5ae121349a16d62192`  
+原始的链接：`https://share.fastgpt.in/chat/share?shareId=648aaf5ae121349a16d62192`  
 
-完整链接: `https://fastgpt.run/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345`
+完整链接: `https://share.fastgpt.in/chat/share?shareId=648aaf5ae121349a16d62192&authToken=userid12345`
 
 这个`authToken`通常是你系统生成的用户唯一凭证（Token之类的）。FastGPT 会在鉴权接口的`body`中携带 token={{authToken}} 的参数。
 
@@ -251,7 +251,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 
 ### 1. 创建3个Laf接口
 
-![](/imgs/share-auth1.jpg)
+![](/imgs/share-auth1.png)
 
 
 
@@ -342,9 +342,9 @@ export default async function (ctx: FunctionContext) {
 
 ### 3. 修改分享链接参数
 
-源分享链接：`https://fastgpt.run/chat/share?shareId=64be36376a438af0311e599c`
+源分享链接：`https://share.fastgpt.in/chat/share?shareId=64be36376a438af0311e599c`
 
-修改后：`https://fastgpt.run/chat/share?shareId=64be36376a438af0311e599c&authToken=fastgpt`
+修改后：`https://share.fastgpt.in/chat/share?shareId=64be36376a438af0311e599c&authToken=fastgpt`
 
 ### 4. 测试效果
 

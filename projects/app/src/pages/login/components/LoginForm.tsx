@@ -19,7 +19,7 @@ import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/web/common/hooks/useToast';
 import { feConfigs } from '@/web/common/system/staticData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
 import { getDocPath } from '@/web/common/system/doc';
 import Avatar from '@/components/Avatar';
@@ -86,7 +86,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {
             label: t('support.user.login.Github'),
             provider: OAuthEnum.github,
-            icon: 'gitFill',
+            icon: 'common/gitFill',
             redirectUrl: `https://github.com/login/oauth/authorize?client_id=${feConfigs?.oauth?.github}&redirect_uri=${redirectUri}&state=${state.current}&scope=user:email%20read:user`
           }
         ]
@@ -96,7 +96,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {
             label: t('support.user.login.Google'),
             provider: OAuthEnum.google,
-            icon: 'googleFill',
+            icon: 'common/googleFill',
             redirectUrl: `https://accounts.google.com/o/oauth2/v2/auth?client_id=${feConfigs?.oauth?.google}&redirect_uri=${redirectUri}&state=${state.current}&response_type=code&scope=https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.profile%20https%3A%2F%2Fwww.googleapis.com%2Fauth%2Fuserinfo.email%20openid&include_granted_scopes=true`
           }
         ]
@@ -106,7 +106,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const isCommunityVersion = feConfigs?.show_register === false && feConfigs?.show_git;
 
   return (
-    <>
+    <Flex flexDirection={'column'} h={'100%'}>
       <Flex alignItems={'center'}>
         <Flex
           w={['48px', '56px']}
@@ -124,7 +124,14 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           {feConfigs?.systemTitle}
         </Box>
       </Flex>
-      <Box mt={'42px'}>
+      <Box
+        mt={'42px'}
+        onKeyDown={(e) => {
+          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+            handleSubmit(onclickLogin)();
+          }
+        }}
+      >
         <FormControl isInvalid={!!errors.username}>
           <Input
             bg={'myGray.50'}
@@ -196,48 +203,49 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             </Flex>
           </>
         )}
-        {/* oauth */}
-        {feConfigs?.show_register && (
-          <>
-            <Box mt={'80px'} position={'relative'}>
-              <Divider />
-              <AbsoluteCenter bg="white" px="4" color={'myGray.500'}>
-                or
-              </AbsoluteCenter>
-            </Box>
-            <Box mt={8}>
-              {oAuthList.map((item) => (
-                <Box key={item.provider} _notFirst={{ mt: 4 }}>
-                  <Button
-                    variant={'whitePrimary'}
-                    w={'100%'}
-                    h={'42px'}
-                    leftIcon={
-                      <MyIcon
-                        name={item.icon as any}
-                        w={'20px'}
-                        cursor={'pointer'}
-                        color={'myGray.800'}
-                      />
-                    }
-                    onClick={() => {
-                      setLoginStore({
-                        provider: item.provider,
-                        lastRoute,
-                        state: state.current
-                      });
-                      router.replace(item.redirectUrl, '_self');
-                    }}
-                  >
-                    {item.label}
-                  </Button>
-                </Box>
-              ))}
-            </Box>
-          </>
-        )}
       </Box>
-    </>
+      <Box flex={1} />
+      {/* oauth */}
+      {feConfigs?.show_register && oAuthList.length > 0 && (
+        <>
+          <Box position={'relative'}>
+            <Divider />
+            <AbsoluteCenter bg="white" px="4" color={'myGray.500'}>
+              or
+            </AbsoluteCenter>
+          </Box>
+          <Box mt={8}>
+            {oAuthList.map((item) => (
+              <Box key={item.provider} _notFirst={{ mt: 4 }}>
+                <Button
+                  variant={'whitePrimary'}
+                  w={'100%'}
+                  h={'42px'}
+                  leftIcon={
+                    <MyIcon
+                      name={item.icon as any}
+                      w={'20px'}
+                      cursor={'pointer'}
+                      color={'myGray.800'}
+                    />
+                  }
+                  onClick={() => {
+                    setLoginStore({
+                      provider: item.provider,
+                      lastRoute,
+                      state: state.current
+                    });
+                    router.replace(item.redirectUrl, '_self');
+                  }}
+                >
+                  {item.label}
+                </Button>
+              </Box>
+            ))}
+          </Box>
+        </>
+      )}
+    </Flex>
   );
 };
 
