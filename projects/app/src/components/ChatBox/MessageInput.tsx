@@ -12,6 +12,7 @@ import { customAlphabet } from 'nanoid';
 import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
 import { useRequest } from '@/web/common/hooks/useRequest';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 enum FileTypeEnum {
@@ -72,12 +73,13 @@ const MessageInput = ({
       if (file.type === FileTypeEnum.image) {
         try {
           const src = await compressImgFileAndUpload({
+            type: MongoImageTypeEnum.chatImage,
             file: file.rawFile,
             maxW: 4329,
             maxH: 4329,
             maxSize: 1024 * 1024 * 5,
             // 30 day expired.
-            expiredTime: addDays(new Date(), 30),
+            expiredTime: addDays(new Date(), 7),
             shareId
           });
           setFileList((state) =>

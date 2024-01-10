@@ -33,6 +33,7 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import { getTeamDatasetValidSub } from '@/web/support/wallet/sub/api';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'));
@@ -95,6 +96,7 @@ const UserInfo = () => {
       if (!file || !userInfo) return;
       try {
         const src = await compressImgFileAndUpload({
+          type: MongoImageTypeEnum.userAvatar,
           file,
           maxW: 300,
           maxH: 300

@@ -1,8 +1,14 @@
-export type UploadImgProps = {
-  base64Img: string;
+import { MongoImageTypeEnum } from './image/constants';
+
+export type preUploadImgProps = {
+  type: `${MongoImageTypeEnum}`;
+
   expiredTime?: Date;
   metadata?: Record<string, any>;
   shareId?: string;
+};
+export type UploadImgProps = preUploadImgProps & {
+  base64Img: string;
 };
 
 export type UrlFetchParams = {

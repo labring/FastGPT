@@ -20,6 +20,7 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { UrlFetchResponse } from '@fastgpt/global/common/file/api.d';
 import { readFileRawContent } from '@fastgpt/web/common/file/read/index';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -168,6 +169,7 @@ const FileSelect = ({
             uploadBase64Controller: (base64Img) =>
               getUploadBase64ImgController({
                 base64Img,
+                type: MongoImageTypeEnum.docImage,
                 metadata: {
                   fileId
                 }

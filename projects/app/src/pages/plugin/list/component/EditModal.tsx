@@ -17,6 +17,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { customAlphabet } from 'nanoid';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export type FormType = CreateOnePluginParams & {
@@ -92,6 +93,7 @@ const CreateModal = ({
       if (!file) return;
       try {
         const src = await compressImgFileAndUpload({
+          type: MongoImageTypeEnum.pluginAvatar,
           file,
           maxW: 300,
           maxH: 300
