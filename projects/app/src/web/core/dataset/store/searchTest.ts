@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 export type SearchTestStoreItemType = {
   id: string;
@@ -10,6 +11,10 @@ export type SearchTestStoreItemType = {
   time: Date;
   duration: string;
   results: SearchDataResponseItemType[];
+  searchMode: `${DatasetSearchModeEnum}`;
+  limit: number;
+  usingReRank: boolean;
+  similarity: number;
 };
 
 type State = {

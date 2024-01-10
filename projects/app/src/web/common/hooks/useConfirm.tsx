@@ -94,7 +94,7 @@ export const useConfirm = (props?: {
             <ModalFooter>
               {showCancel && (
                 <Button
-                  variant={'base'}
+                  variant={'whiteBase'}
                   onClick={() => {
                     onClose();
                     typeof cancelCb.current === 'function' && cancelCb.current();

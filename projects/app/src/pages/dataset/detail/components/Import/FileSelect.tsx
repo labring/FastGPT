@@ -1,4 +1,4 @@
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -7,11 +7,11 @@ import { simpleText } from '@fastgpt/global/common/string/tools';
 import {
   fileDownload,
   readCsvContent,
-  readTxtContent,
   readPdfContent,
   readDocContent
 } from '@/web/common/file/utils';
-import { uploadFiles } from '@/web/common/file/controller';
+import { readFileRawText, readMdFile, readHtmlFile } from '@fastgpt/web/common/file/read';
+import { getUploadMdImgController, uploadFiles } from '@/web/common/file/controller';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import React, { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -41,6 +41,7 @@ export type FileItemType = {
   type: DatasetCollectionTypeEnum.file | DatasetCollectionTypeEnum.link;
   fileId?: string;
   rawLink?: string;
+  metadata?: Record<string, any>;
 };
 
 export interface Props extends BoxProps {
@@ -48,6 +49,7 @@ export interface Props extends BoxProps {
   onPushFiles: (files: FileItemType[]) => void;
   tipText?: string;
   chunkLen?: number;
+  customSplitChar?: string;
   overlapRatio?: number;
   fileTemplate?: {
     type: string;
@@ -64,6 +66,7 @@ const FileSelect = ({
   onPushFiles,
   tipText,
   chunkLen = 500,
+  customSplitChar,
   overlapRatio,
   fileTemplate,
   showUrlFetch = true,
@@ -133,7 +136,7 @@ const FileSelect = ({
           });
           const fileId = filesId[0];
 
-          /* csv file */
+          /* QA csv file */
           if (extension === 'csv') {
             const { header, data } = await readCsvContent(file);
             if (header[0] !== 'index' || header[1] !== 'content') {
@@ -168,8 +171,19 @@ const FileSelect = ({
           let text = await (async () => {
             switch (extension) {
               case 'txt':
+                return readFileRawText(file);
               case 'md':
-                return readTxtContent(file);
+                return readMdFile({
+                  file,
+                  uploadImgController: (base64Img) =>
+                    getUploadMdImgController({ base64Img, metadata: { fileId } })
+                });
+              case 'html':
+                return readHtmlFile({
+                  file,
+                  uploadImgController: (base64Img) =>
+                    getUploadMdImgController({ base64Img, metadata: { fileId } })
+                });
               case 'pdf':
                 return readPdfContent(file);
               case 'docx':
@@ -185,7 +199,8 @@ const FileSelect = ({
             const { chunks, tokens } = splitText2Chunks({
               text,
               chunkLen,
-              overlapRatio
+              overlapRatio,
+              customReg: customSplitChar ? [customSplitChar] : []
             });
 
             const fileItem: FileItemType = {
@@ -213,16 +228,17 @@ const FileSelect = ({
       }
       setSelectingText(undefined);
     },
-    [chunkLen, datasetDetail._id, onPushFiles, overlapRatio, t, toast]
+    [chunkLen, customSplitChar, datasetDetail._id, onPushFiles, overlapRatio, t, toast]
   );
   // link fetch
   const onUrlFetch = useCallback(
     (e: UrlFetchResponse) => {
-      const result: FileItemType[] = e.map<FileItemType>(({ url, content }) => {
+      const result: FileItemType[] = e.map<FileItemType>(({ url, content, selector }) => {
         const { chunks, tokens } = splitText2Chunks({
           text: content,
           chunkLen,
-          overlapRatio
+          overlapRatio,
+          customReg: customSplitChar ? [customSplitChar] : []
         });
         return {
           id: nanoid(),
@@ -235,12 +251,15 @@ const FileSelect = ({
           chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
-          }))
+          })),
+          metadata: {
+            webPageSelector: selector
+          }
         };
       });
       onPushFiles(result);
     },
-    [chunkLen, onPushFiles, overlapRatio]
+    [chunkLen, customSplitChar, onPushFiles, overlapRatio]
   );
   // manual create file and copy data
   const onCreateFile = useCallback(
@@ -262,7 +281,8 @@ const FileSelect = ({
       const { chunks, tokens } = splitText2Chunks({
         text: content,
         chunkLen,
-        overlapRatio
+        overlapRatio,
+        customReg: customSplitChar ? [customSplitChar] : []
       });
 
       onPushFiles([
@@ -281,7 +301,7 @@ const FileSelect = ({
         }
       ]);
     },
-    [chunkLen, datasetDetail._id, onPushFiles, overlapRatio]
+    [chunkLen, customSplitChar, datasetDetail._id, onPushFiles, overlapRatio]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
@@ -352,7 +372,7 @@ const FileSelect = ({
     ml: 1,
     as: 'span',
     cursor: 'pointer',
-    color: 'blue.600',
+    color: 'primary.600',
     _hover: {
       textDecoration: 'underline'
     }
@@ -364,7 +384,7 @@ const FileSelect = ({
       textAlign={'center'}
       bg={'myWhite.400'}
       p={5}
-      borderRadius={'lg'}
+      borderRadius={'md'}
       border={'1px dashed'}
       borderColor={'myGray.300'}
       w={'100%'}
@@ -376,7 +396,7 @@ const FileSelect = ({
       onDrop={handleDrop}
     >
       <Flex justifyContent={'center'} alignItems={'center'}>
-        <MyIcon mr={1} name={'uploadFile'} w={'16px'} />
+        <MyIcon mr={1} name={'file/uploadFile'} w={'16px'} />
         {isDragging ? (
           t('file.Release the mouse to upload the file')
         ) : (
@@ -417,7 +437,7 @@ const FileSelect = ({
           mt={1}
           cursor={'pointer'}
           textDecoration={'underline'}
-          color={'blue.500'}
+          color={'primary.500'}
           fontSize={'12px'}
           onClick={() =>
             fileDownload({

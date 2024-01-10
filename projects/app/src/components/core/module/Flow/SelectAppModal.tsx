@@ -60,7 +60,7 @@ const SelectAppModal = ({
             cursor={'pointer'}
             {...(selectedApps.includes(app._id)
               ? {
-                  bg: 'blue.100',
+                  bg: 'primary.100',
                   onClick: () => {
                     setSelectedApps(selectedApps.filter((e) => e !== app._id));
                   }
@@ -83,7 +83,7 @@ const SelectAppModal = ({
         ))}
       </ModalBody>
       <ModalFooter>
-        <Button variant={'base'} onClick={onClose}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           {t('Cancel')}
         </Button>
         <Button

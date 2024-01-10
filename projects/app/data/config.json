@@ -1,15 +1,16 @@
 {
-  "SystemParams": {
-    "pluginBaseUrl": "",
+  "systemEnv": {
+    "openapiPrefix": "fastgpt",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
     "pgHNSWEfSearch": 100
   },
-  "ChatModels": [
+  "chatModels": [
     {
       "model": "gpt-3.5-turbo",
       "name": "GPT35",
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "maxContext": 4000,
       "maxResponse": 4000,
       "quoteMaxToken": 2000,
@@ -23,7 +24,8 @@
       "name": "GPT35-16k",
       "maxContext": 16000,
       "maxResponse": 16000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "quoteMaxToken": 8000,
       "maxTemperature": 1.2,
       "censor": false,
@@ -35,7 +37,8 @@
       "name": "GPT4-8k",
       "maxContext": 8000,
       "maxResponse": 8000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "quoteMaxToken": 4000,
       "maxTemperature": 1.2,
       "censor": false,
@@ -47,7 +50,8 @@
       "name": "GPT4-Vision",
       "maxContext": 128000,
       "maxResponse": 4000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
       "censor": false,
@@ -55,22 +59,24 @@
       "defaultSystemChatPrompt": ""
     }
   ],
-  "QAModels": [
+  "qaModels": [
     {
       "model": "gpt-3.5-turbo-16k",
       "name": "GPT35-16k",
       "maxContext": 16000,
       "maxResponse": 16000,
-      "price": 0
+      "inputPrice": 0,
+      "outputPrice": 0
     }
   ],
-  "CQModels": [
+  "cqModels": [
     {
       "model": "gpt-3.5-turbo",
       "name": "GPT35",
       "maxContext": 4000,
       "maxResponse": 4000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "toolChoice": true,
       "functionPrompt": ""
     },
@@ -79,46 +85,52 @@
       "name": "GPT4-8k",
       "maxContext": 8000,
       "maxResponse": 8000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "toolChoice": true,
       "functionPrompt": ""
     }
   ],
-  "ExtractModels": [
+  "extractModels": [
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
       "maxContext": 16000,
       "maxResponse": 4000,
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "toolChoice": true,
       "functionPrompt": ""
     }
   ],
-  "QGModels": [
+  "qgModels": [
     {
       "model": "gpt-3.5-turbo-1106",
       "name": "GPT35-1106",
       "maxContext": 1600,
       "maxResponse": 4000,
-      "price": 0
+      "inputPrice": 0,
+      "outputPrice": 0
     }
   ],
-  "VectorModels": [
+  "vectorModels": [
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "price": 0.2,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "defaultToken": 700,
-      "maxToken": 3000
+      "maxToken": 3000,
+      "weight": 100
     }
   ],
-  "ReRankModels": [],
-  "AudioSpeechModels": [
+  "reRankModels": [],
+  "audioSpeechModels": [
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
-      "price": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "voices": [
         { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
         { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
@@ -129,9 +141,10 @@
       ]
     }
   ],
-  "WhisperModel": {
+  "whisperModel": {
     "model": "whisper-1",
     "name": "Whisper1",
-    "price": 0
+    "inputPrice": 0,
+    "outputPrice": 0
   }
 }

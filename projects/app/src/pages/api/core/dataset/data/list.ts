@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     const [data, total] = await Promise.all([
-      MongoDatasetData.find(match, '_id datasetId collectionId q a indexes')
+      MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex indexes')
         .sort({ chunkIndex: 1, updateTime: -1 })
         .skip((pageNum - 1) * pageSize)
         .limit(pageSize)

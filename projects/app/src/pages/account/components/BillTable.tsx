@@ -17,7 +17,7 @@ import type { BillItemType } from '@fastgpt/global/support/wallet/bill/type';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
@@ -72,7 +72,7 @@ const BillTable = () => {
                 <Td>{t(item.appName) || '-'}</Td>
                 <Td>{item.total}元</Td>
                 <Td>
-                  <Button size={'sm'} variant={'base'} onClick={() => setBillDetail(item)}>
+                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setBillDetail(item)}>
                     详情
                   </Button>
                 </Td>

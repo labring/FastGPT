@@ -9,8 +9,9 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { getCQModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getCQModel } from '@/service/core/ai/model';
 import { getHistories } from '../utils';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -42,7 +43,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const chatHistories = getHistories(history, histories);
 
-  const { arg, tokens } = await (async () => {
+  const { arg, inputTokens, outputTokens } = await (async () => {
     if (cqModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -59,13 +60,21 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
+  const { total, modelName } = formatModelPrice2Store({
+    model: cqModel.model,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
+    type: ModelTypeEnum.cq
+  });
+
   return {
-    [result.key]: result.value,
+    [result.key]: true,
     [ModuleOutputKeyEnum.responseData]: {
-      price: user.openaiAccount?.key ? 0 : cqModel.price * tokens,
-      model: cqModel.name || '',
+      price: user.openaiAccount?.key ? 0 : total,
+      model: modelName,
       query: userChatInput,
-      tokens,
+      inputTokens,
+      outputTokens,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
@@ -140,7 +149,8 @@ ${systemPrompt}
 
     return {
       arg,
-      tokens: response.usage?.total_tokens || 0
+      inputTokens: response.usage?.prompt_tokens || 0,
+      outputTokens: response.usage?.completion_tokens || 0
     };
   } catch (error) {
     console.log(agentFunction.parameters);
@@ -150,7 +160,8 @@ ${systemPrompt}
 
     return {
       arg: {},
-      tokens: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 }
@@ -165,10 +176,12 @@ async function completions({
     {
       obj: ChatRoleEnum.Human,
       value: replaceVariable(cqModel.functionPrompt || Prompt_CQJson, {
-        systemPrompt,
-        typeList: agents.map((item) => `{"${item.value}": ${item.key}}`).join('\n'),
-        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
-Human:${userChatInput}`
+        systemPrompt: systemPrompt || 'null',
+        typeList: agents
+          .map((item) => `{"questionType": "${item.value}", "typeId": "${item.key}"}`)
+          .join('\n'),
+        history: histories.map((item) => `${item.obj}:${item.value}`).join('\n'),
+        question: userChatInput
       })
     }
   ];
@@ -182,12 +195,13 @@ Human:${userChatInput}`
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
-  const totalTokens = data.usage?.total_tokens || 0;
 
-  const id = agents.find((item) => answer.includes(item.key))?.key || '';
+  const id =
+    agents.find((item) => answer.includes(item.key) || answer.includes(item.value))?.key || '';
 
   return {
-    tokens: totalTokens,
+    inputTokens: data.usage?.prompt_tokens || 0,
+    outputTokens: data.usage?.completion_tokens || 0,
     arg: { type: id }
   };
 }

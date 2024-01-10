@@ -11,7 +11,7 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
 import Container from '../modules/Container';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import SourceHandle from '../render/SourceHandle';
 import type {
@@ -41,7 +41,11 @@ const createEditField = {
   inputType: true
 };
 
-const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodePluginInput = React.memo(function NodePluginInput({
+  data
+}: {
+  data: FlowModuleItemType;
+}) {
   const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
   const [createField, setCreateField] = useState<EditNodeFieldType>();
@@ -61,11 +65,11 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
             mb={7}
           >
             <MyIcon
-              name={'settingLight'}
+              name={'common/settingLight'}
               w={'14px'}
               cursor={'pointer'}
               mr={3}
-              _hover={{ color: 'blue.500' }}
+              _hover={{ color: 'primary.500' }}
               onClick={() =>
                 setEditField({
                   inputType: item.type,
@@ -121,7 +125,7 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
         ))}
         <Box textAlign={'right'} mt={5}>
           <Button
-            variant={'base'}
+            variant={'whitePrimary'}
             leftIcon={<SmallAddIcon />}
             onClick={() => {
               setCreateField(defaultCreateField);
@@ -253,5 +257,7 @@ const NodePluginInput = ({ data }: NodeProps<FlowModuleItemType>) => {
       )}
     </NodeCard>
   );
-};
-export default React.memo(NodePluginInput);
+});
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodePluginInput data={data} />;
+}

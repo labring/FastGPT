@@ -1,17 +1,9 @@
 import React, { useRef, forwardRef, useMemo } from 'react';
-import {
-  Menu,
-  Box,
-  MenuList,
-  MenuItem,
-  Button,
-  useDisclosure,
-  useOutsideClick,
-  MenuButton
-} from '@chakra-ui/react';
+import { Menu, MenuList, MenuItem, Button, useDisclosure, MenuButton } from '@chakra-ui/react';
 import type { ButtonProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-interface Props extends ButtonProps {
+
+export type SelectProps = ButtonProps & {
   value?: string;
   placeholder?: string;
   list: {
@@ -20,10 +12,10 @@ interface Props extends ButtonProps {
     value: string;
   }[];
   onchange?: (val: any) => void;
-}
+};
 
 const MySelect = (
-  { placeholder, value, width = '100%', list, onchange, ...props }: Props,
+  { placeholder, value, width = '100%', list, onchange, ...props }: SelectProps,
   selectRef: any
 ) => {
   const ref = useRef<HTMLButtonElement>(null);
@@ -54,7 +46,7 @@ const MySelect = (
         width={width}
         px={3}
         rightIcon={<ChevronDownIcon />}
-        variant={'base'}
+        variant={'whitePrimary'}
         textAlign={'left'}
         _active={{
           transform: 'none'
@@ -62,7 +54,7 @@ const MySelect = (
         {...(isOpen
           ? {
               boxShadow: '0px 0px 4px #A8DBFF',
-              borderColor: 'blue.500'
+              borderColor: 'primary.500'
             }
           : {})}
         {...props}
@@ -93,7 +85,7 @@ const MySelect = (
             {...menuItemStyles}
             {...(value === item.value
               ? {
-                  color: 'blue.500',
+                  color: 'primary.500',
                   bg: 'myWhite.300'
                 }
               : {})}

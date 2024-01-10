@@ -21,7 +21,7 @@ import {
   Link
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -36,7 +36,7 @@ import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/app';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
@@ -76,7 +76,7 @@ const Share = ({ appId }: { appId: string }) => {
           </MyTooltip>
         </Box>
         <Button
-          variant={'base'}
+          variant={'whitePrimary'}
           colorScheme={'blue'}
           size={['sm', 'md']}
           {...(shareChatList.length >= 10
@@ -96,7 +96,7 @@ const Share = ({ appId }: { appId: string }) => {
             <Tr>
               <Th>名称</Th>
               <Th>金额消耗</Th>
-              <Th>返回详情</Th>
+              <Th>返回引用</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>IP限流（人/分钟）</Th>
@@ -113,7 +113,7 @@ const Share = ({ appId }: { appId: string }) => {
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
                 <Td>
-                  {formatPrice(item.total)}
+                  {formatStorePrice2Read(item.total)}
                   {feConfigs?.isPlus
                     ? `${
                         item.limit && item.limit.credit > -1
@@ -282,7 +282,7 @@ function EditLinkModal({
   return (
     <MyModal
       isOpen={true}
-      iconSrc="/imgs/modal/shareLight.svg"
+      iconSrc="/imgs/modal/shareFill.svg"
       title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}
     >
       <ModalBody>
@@ -373,8 +373,8 @@ function EditLinkModal({
 
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('outlink.Response Detail')}
-            <MyTooltip label={t('outlink.Response Detail tips' || '')}>
+            {t('support.outlink.share.Response Quote')}
+            <MyTooltip label={t('support.outlink.share.Response Quote tips' || '')}>
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Flex>
@@ -383,7 +383,7 @@ function EditLinkModal({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           取消
         </Button>
 

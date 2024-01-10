@@ -25,9 +25,15 @@ const Loading = ({
       justifyContent={'center'}
       flexDirection={'column'}
     >
-      <Spinner thickness="4px" speed="0.65s" emptyColor="myGray.100" color="blue.500" size="xl" />
+      <Spinner
+        thickness="4px"
+        speed="0.65s"
+        emptyColor="myGray.100"
+        color="primary.500"
+        size="xl"
+      />
       {text && (
-        <Box mt={2} color="blue.600" fontWeight={'bold'}>
+        <Box mt={2} color="primary.600" fontWeight={'bold'}>
           {text}
         </Box>
       )}

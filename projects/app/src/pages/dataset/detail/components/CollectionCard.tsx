@@ -28,7 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -46,7 +46,8 @@ import {
   DatasetCollectionTrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
-  DatasetStatusEnum
+  DatasetStatusEnum,
+  DatasetCollectionSyncResultMap
 } from '@fastgpt/global/core/dataset/constant';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
@@ -61,6 +62,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
+import { DatasetCollectionSyncResultEnum } from '../../../../../../../packages/global/core/dataset/constant';
 
 const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 const WebSiteConfigModal = dynamic(() => import('./Import/WebsiteConfig'), {});
@@ -246,8 +248,12 @@ const CollectionCard = () => {
     mutationFn: (collectionId: string) => {
       return postLinkCollectionSync(collectionId);
     },
-    onSuccess() {
+    onSuccess(res: DatasetCollectionSyncResultEnum) {
       getData(pageNum);
+      toast({
+        status: 'success',
+        title: t(DatasetCollectionSyncResultMap[res]?.label)
+      });
     },
     errorToast: t('core.dataset.error.Start Sync Failed')
   });
@@ -311,7 +317,7 @@ const CollectionCard = () => {
                       target="_blank"
                       mr={2}
                       textDecoration={'underline'}
-                      color={'blue.600'}
+                      color={'primary.600'}
                     >
                       {datasetDetail.websiteConfig.url}
                     </Link>
@@ -371,7 +377,7 @@ const CollectionCard = () => {
                 Button={
                   <MenuButton
                     _hover={{
-                      color: 'blue.500'
+                      color: 'primary.500'
                     }}
                     fontSize={['sm', 'md']}
                   >
@@ -381,12 +387,12 @@ const CollectionCard = () => {
                       py={2}
                       borderRadius={'md'}
                       cursor={'pointer'}
-                      bg={'blue.500'}
+                      bg={'primary.500'}
                       overflow={'hidden'}
                       color={'white'}
                       h={['28px', '35px']}
                     >
-                      <MyIcon name={'importLight'} mr={2} w={'14px'} />
+                      <MyIcon name={'common/importLight'} mr={2} w={'14px'} />
                       <Box>{t('dataset.collections.Create And Import')}</Box>
                     </Flex>
                   </MenuButton>
@@ -489,7 +495,7 @@ const CollectionCard = () => {
                 data-drag-id={
                   collection.type === DatasetCollectionTypeEnum.folder ? collection._id : undefined
                 }
-                bg={dragTargetId === collection._id ? 'blue.100' : ''}
+                bg={dragTargetId === collection._id ? 'primary.100' : ''}
                 userSelect={'none'}
                 onDragStart={(e) => {
                   setDragStartId(collection._id);
@@ -579,9 +585,9 @@ const CollectionCard = () => {
                           h={'22px'}
                           borderRadius={'md'}
                           _hover={{
-                            color: 'blue.500',
+                            color: 'primary.500',
                             '& .icon': {
-                              bg: 'myGray.100'
+                              bg: 'myGray.200'
                             }
                           }}
                         >

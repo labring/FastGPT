@@ -28,7 +28,7 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
     <Box
       position={'absolute'}
       top={'50%'}
-      right={'-16px'}
+      right={'-18px'}
       transform={'translate(50%,-50%)'}
       {...props}
     >
@@ -40,8 +40,8 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
       >
         <Handle
           style={{
-            width: '12px',
-            height: '12px',
+            width: '14px',
+            height: '14px',
             ...valueStyle
           }}
           type="source"

@@ -9,7 +9,7 @@ import React, {
   ForwardedRef
 } from 'react';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -104,9 +104,9 @@ const ChatTest = (
           <MyTooltip label={'重置'}>
             <IconButton
               className="chat"
-              size={'sm'}
-              icon={<MyIcon name={'clear'} w={'14px'} />}
-              variant={'base'}
+              size={'smSquare'}
+              icon={<MyIcon name={'common/clearLight'} w={'14px'} />}
+              variant={'whiteDanger'}
               borderRadius={'md'}
               aria-label={'delete'}
               onClick={(e) => {

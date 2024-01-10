@@ -22,7 +22,6 @@ const systemConfigSchema = new Schema({
 });
 
 try {
-  systemConfigSchema.index({ createTime: -1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
   systemConfigSchema.index({ type: 1 });
 } catch (error) {
   console.log(error);

@@ -133,7 +133,7 @@ const InfoModal = ({
             w={['26px', '34px']}
             h={['26px', '34px']}
             cursor={'pointer'}
-            borderRadius={'lg'}
+            borderRadius={'md'}
             mr={4}
             title={'点击切换头像'}
             onClick={() => onOpenSelectFile()}
@@ -174,7 +174,7 @@ const InfoModal = ({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           取消
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>

@@ -52,7 +52,8 @@ const BillSchema = new Schema({
 });
 
 try {
-  BillSchema.index({ userId: 1 });
+  BillSchema.index({ teamId: 1 });
+  BillSchema.index({ tmbId: 1 });
   BillSchema.index({ time: 1 }, { expireAfterSeconds: 90 * 24 * 60 * 60 });
 } catch (error) {
   console.log(error);

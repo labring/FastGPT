@@ -135,7 +135,7 @@ function EditModal({
         {!!defaultData.id ? (
           <>
             <Box flex={1} />
-            <Button variant={'base'} mr={3} onClick={onClose}>
+            <Button variant={'whiteBase'} mr={3} onClick={onClose}>
               {t('common.Close')}
             </Button>
             <Button isLoading={updating} onClick={handleSubmit((data) => onclickUpdate(data))}>

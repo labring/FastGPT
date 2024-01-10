@@ -9,7 +9,7 @@ weight: 853
 
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |
 | --------------------- | --------------------- |
-| ![](/imgs/getDatasetId.png) | ![](/imgs/getfile_id.png) |
+| ![](/imgs/getDatasetId.jpg) | ![](/imgs/getfile_id.png) |
 
 
 
@@ -18,7 +18,7 @@ weight: 853
 **请求示例**
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/support/wallet/bill/createTrainingBill' \
+curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/bill/createTrainingBill' \
 --header 'Authorization: Bearer {{apikey}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -46,7 +46,7 @@ data 为 billId，可用于添加知识库数据时进行账单聚合。
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/core/dataset/data/pushData' \
+curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pushData' \
 --header 'Authorization: Bearer apikey' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -157,21 +157,36 @@ A2:
 
 ## 搜索测试
 
-{{< tabs tabTotal="2" >}}
+{{< tabs tabTotal="3" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest' \
+curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/searchTest' \
 --header 'Authorization: Bearer fastgpt-xxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{
     "datasetId": "知识库的ID",
     "text": "导演是谁",
-    "rarank": true,
-    "limit": 20
+    "limit": 5000,
+    "similarity": 0,
+    "searchMode": "embedding",
+    "usingReRank": false
 }'
 ```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+- datasetId - 知识库ID
+- text - 需要测试的文本
+- limit - 最大 tokens 数量
+- similarity - 最低相关度（0~1，可选）
+- searchMode - 搜索模式：embedding | fullTextRecall | mixedRecall
+- usingReRank - 使用重排
 
 {{< /markdownify >}}
 {{< /tab >}}
@@ -179,7 +194,7 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
 {{< tab tabName="响应示例" >}}
 {{< markdownify >}}
 
-返回 top k 结果， limit 为预估条数，会按每条数据 800 tokens 的长度进行预估，20条也就是返回 16000 tokens 长度的数据，最多测试 30000 tokens 的数据。
+返回 top k 结果， limit 为最大 Tokens 数量，最多 20000 tokens。
 
 ```bash
 {
@@ -190,15 +205,6 @@ curl --location --request POST 'https://fastgpt.run/api/core/dataset/searchTest'
         "id": "65599c54a5c814fb803363cb",
         "q": "你是谁",
         "a": "我是FastGPT助手",
-        "indexes": [
-            {
-                "defaultIndex": true,
-                "type": "qa",
-                "dataId": "3645952",
-                "text": "你是谁\n我是FastGPT助手",
-                "_id": "65599c5588271af95b019862"
-            }
-        ],
         "datasetId": "6554684f7f9ed18a39a4d15c",
         "collectionId": "6556cd795e4b663e770bb66d",
         "sourceName": "GBT 15104-2021 装饰单板贴面人造板.pdf",

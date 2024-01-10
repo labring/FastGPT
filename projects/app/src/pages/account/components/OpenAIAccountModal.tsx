@@ -54,7 +54,7 @@ const OpenAIAccountModal = ({
         </Flex>
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'base'} onClick={onClose}>
+        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
           取消
         </Button>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => onSubmit(data))}>

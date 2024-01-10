@@ -25,7 +25,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import type { PromotionRecordType } from '@/global/support/api/userRes.d';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 
 const Promotion = () => {
@@ -93,7 +93,7 @@ const Promotion = () => {
           </Flex>
           <Button
             mt={4}
-            variant={'base'}
+            variant={'whitePrimary'}
             fontSize={'sm'}
             onClick={() => {
               copyData(`${location.origin}/?hiId=${userInfo?._id}`);

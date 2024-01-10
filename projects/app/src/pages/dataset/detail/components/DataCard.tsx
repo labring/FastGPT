@@ -29,7 +29,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import InputDataModal, { RawSourceText, type InputDataType } from '../components/InputDataModal';
@@ -121,52 +121,64 @@ const DataCard = () => {
     [collection?.canWrite, userInfo?.team?.role]
   );
 
-  const metadataList = useMemo(
-    () =>
-      collection
+  const metadataList = useMemo(() => {
+    if (!collection) return [];
+
+    const webSelector =
+      collection?.datasetId?.websiteConfig?.selector || collection?.metadata?.webPageSelector;
+
+    return [
+      {
+        label: t('core.dataset.collection.metadata.source'),
+        value: t(DatasetCollectionTypeMap[collection.type]?.name)
+      },
+      {
+        label: t('core.dataset.collection.metadata.source name'),
+        value: collection.file?.filename || collection?.rawLink || collection?.name
+      },
+      {
+        label: t('core.dataset.collection.metadata.source size'),
+        value: collection.file ? formatFileSize(collection.file.length) : '-'
+      },
+      {
+        label: t('core.dataset.collection.metadata.Createtime'),
+        value: formatTime2YMDHM(collection.createTime)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Updatetime'),
+        value: formatTime2YMDHM(collection.updateTime)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Raw text length'),
+        value: collection.rawTextLength ?? '-'
+      },
+      {
+        label: t('core.dataset.collection.metadata.Training Type'),
+        value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
+      },
+      {
+        label: t('core.dataset.collection.metadata.Chunk Size'),
+        value: collection.chunkSize || '-'
+      },
+      ...(webSelector
         ? [
             {
-              label: t('core.dataset.collection.metadata.source'),
-              value: t(DatasetCollectionTypeMap[collection.type]?.name)
-            },
-            {
-              label: t('core.dataset.collection.metadata.source name'),
-              value: collection.file?.filename || collection?.rawLink || collection?.name
-            },
-            {
-              label: t('core.dataset.collection.metadata.source size'),
-              value: collection.file ? formatFileSize(collection.file.length) : '-'
-            },
-            {
-              label: t('core.dataset.collection.metadata.Createtime'),
-              value: formatTime2YMDHM(collection.createTime)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Updatetime'),
-              value: formatTime2YMDHM(collection.updateTime)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Training Type'),
-              value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
-            },
-            {
-              label: t('core.dataset.collection.metadata.Chunk Size'),
-              value: collection.chunkSize || '-'
+              label: t('core.dataset.collection.metadata.Web page selector'),
+              value: webSelector
             }
           ]
-        : [],
-    [collection, t]
-  );
+        : [])
+    ];
+  }, [collection, t]);
 
   return (
     <Box ref={BoxRef} position={'relative'} px={5} py={[1, 5]} h={'100%'} overflow={'overlay'}>
       <Flex alignItems={'center'}>
         <IconButton
           mr={3}
-          icon={<MyIcon name={'backFill'} w={['14px', '18px']} color={'blue.500'} />}
-          bg={'white'}
-          boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-          size={'sm'}
+          icon={<MyIcon name={'common/backFill'} w={['14px', '18px']} color={'primary.500'} />}
+          variant={'whitePrimary'}
+          size={'smSquare'}
           borderRadius={'50%'}
           aria-label={''}
           onClick={() =>
@@ -200,7 +212,7 @@ const DataCard = () => {
           <Box>
             <Button
               mx={2}
-              variant={'base'}
+              variant={'whitePrimary'}
               size={['sm', 'md']}
               onClick={() => {
                 if (!collection) return;
@@ -217,7 +229,7 @@ const DataCard = () => {
         {isPc && (
           <MyTooltip label={t('core.dataset.collection.metadata.Read Metadata')}>
             <IconButton
-              variant={'base'}
+              variant={'whiteBase'}
               size={['sm', 'md']}
               icon={<MyIcon name={'menu'} w={'18px'} />}
               aria-label={''}
@@ -295,7 +307,7 @@ const DataCard = () => {
           >
             <Flex zIndex={1} alignItems={'center'} justifyContent={'space-between'}>
               <Box border={theme.borders.base} px={2} fontSize={'sm'} mr={1} borderRadius={'md'}>
-                # {index + 1}
+                # {item.chunkIndex ?? '-'}
               </Box>
               <Box className={'textEllipsis'} color={'myGray.500'} fontSize={'xs'}>
                 ID:{item._id}
@@ -338,12 +350,9 @@ const DataCard = () => {
                   <IconButton
                     display={'flex'}
                     icon={<DeleteIcon />}
-                    variant={'base'}
-                    colorScheme={'gray'}
+                    variant={'whiteDanger'}
+                    size={'xsSquare'}
                     aria-label={'delete'}
-                    size={'xs'}
-                    borderRadius={'md'}
-                    _hover={{ color: 'red.600' }}
                     onClick={(e) => {
                       e.stopPropagation();
                       openConfirm(async () => {
@@ -385,7 +394,7 @@ const DataCard = () => {
             ))}
             {collection?.sourceId && (
               <Button
-                variant={'base'}
+                variant={'whitePrimary'}
                 onClick={() => collection.sourceId && getFileAndOpen(collection.sourceId)}
               >
                 {t('core.dataset.collection.metadata.read source')}
@@ -394,7 +403,7 @@ const DataCard = () => {
           </DrawerBody>
 
           <DrawerFooter>
-            <Button variant={'base'} onClick={onClose}>
+            <Button variant={'whitePrimary'} onClick={onClose}>
               {t('common.Close')}
             </Button>
           </DrawerFooter>

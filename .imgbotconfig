@@ -1,0 +1,9 @@
+{
+    "schedule": "daily", // daily|weekly|monthly
+    "ignoredFiles": [
+        "*.svg", 
+        "packages/*",
+        "projects/*",
+    ],
+    "minKBReduced": 200, // delay new prs until size reduction meets this threshold (default to 10)
+}

@@ -41,7 +41,7 @@ const MyMenu = ({ width, offset = [0, 10], Button, menuList }: Props) => {
               e.stopPropagation();
               item.onClick && item.onClick();
             }}
-            color={item.isActive ? 'blue.500' : ''}
+            color={item.isActive ? 'primary.500' : ''}
             whiteSpace={'pre-wrap'}
           >
             {item.child}

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PermissionTypeEnum, PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
 import { Box, Flex, FlexProps } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 
 const PermissionIconText = ({
@@ -12,7 +12,7 @@ const PermissionIconText = ({
   return PermissionTypeMap[permission] ? (
     <Flex alignItems={'center'} {...props}>
       <MyIcon name={PermissionTypeMap[permission]?.iconLight as any} w={'14px'} />
-      <Box ml={'1px'}>{t(PermissionTypeMap[permission]?.label)}</Box>
+      <Box ml={'2px'}>{t(PermissionTypeMap[permission]?.label)}</Box>
     </Flex>
   ) : null;
 };

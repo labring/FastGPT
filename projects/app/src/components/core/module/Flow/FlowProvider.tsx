@@ -48,7 +48,7 @@ export type useFlowProviderStoreType = {
   onDelNode: (nodeId: string) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
   onCopyNode: (nodeId: string) => void;
-  onResetNode: (id: string, module: FlowModuleTemplateType) => void;
+  onResetNode: (e: { id: string; module: FlowModuleTemplateType }) => void;
   onDelEdge: (e: {
     moduleId: string;
     sourceHandle?: string | undefined;
@@ -58,6 +58,13 @@ export type useFlowProviderStoreType = {
   onConnect: ({ connect }: { connect: Connection }) => any;
   initData: (modules: ModuleItemType[]) => void;
 };
+type requestEventType =
+  | 'onChangeNode'
+  | 'onCopyNode'
+  | 'onResetNode'
+  | 'onDelNode'
+  | 'onDelConnect'
+  | 'setNodes';
 
 const StateContext = createContext<useFlowProviderStoreType>({
   reactFlowWrapper: null,
@@ -107,7 +114,7 @@ const StateContext = createContext<useFlowProviderStoreType>({
   initData: function (modules: ModuleItemType[]): void {
     throw new Error('Function not implemented.');
   },
-  onResetNode: function (id: string, module: FlowModuleTemplateType): void {
+  onResetNode: function (e): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -350,7 +357,7 @@ export const FlowProvider = ({
 
   // reset a node data. delete edge and replace it
   const onResetNode = useCallback(
-    (id: string, module: FlowModuleTemplateType) => {
+    ({ id, module }: { id: string; module: FlowModuleTemplateType }) => {
       setNodes((state) =>
         state.map((node) => {
           if (node.id === id) {
@@ -379,8 +386,7 @@ export const FlowProvider = ({
   const initData = useCallback(
     (modules: ModuleItemType[]) => {
       const edges = appModule2FlowEdge({
-        modules,
-        onDelete: onDelConnect
+        modules
       });
       setEdges(edges);
 
@@ -388,19 +394,54 @@ export const FlowProvider = ({
 
       onFixView();
     },
-    [onDelConnect, setEdges, setNodes, onFixView]
+    [setEdges, setNodes, onFixView]
   );
 
   // use eventbus to avoid refresh ReactComponents
   useEffect(() => {
-    const update = (e: FlowNodeChangeProps) => {
-      onChangeNode(e);
-    };
-    eventBus.on(EventNameEnum.updaterNode, update);
+    eventBus.on(
+      EventNameEnum.requestFlowEvent,
+      ({ type, data }: { type: requestEventType; data: any }) => {
+        switch (type) {
+          case 'onChangeNode':
+            onChangeNode(data);
+            return;
+          case 'onCopyNode':
+            onCopyNode(data);
+            return;
+          case 'onResetNode':
+            onResetNode(data);
+            return;
+          case 'onDelNode':
+            onDelNode(data);
+            return;
+          case 'onDelConnect':
+            onDelConnect(data);
+            return;
+          case 'setNodes':
+            setNodes(data);
+            return;
+        }
+      }
+    );
     return () => {
-      eventBus.off(EventNameEnum.updaterNode);
+      eventBus.off(EventNameEnum.requestFlowEvent);
     };
-  }, [onChangeNode]);
+  }, []);
+  useEffect(() => {
+    eventBus.on(EventNameEnum.requestFlowStore, () => {
+      eventBus.emit('receiveFlowStore', {
+        nodes,
+        edges,
+        mode,
+        filterAppIds,
+        reactFlowWrapper
+      });
+    });
+    return () => {
+      eventBus.off(EventNameEnum.requestFlowStore);
+    };
+  }, [edges, filterAppIds, mode, nodes]);
 
   const value = {
     reactFlowWrapper,
@@ -429,5 +470,53 @@ export const FlowProvider = ({
 export default React.memo(FlowProvider);
 
 export const onChangeNode = (e: FlowNodeChangeProps) => {
-  eventBus.emit(EventNameEnum.updaterNode, e);
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onChangeNode',
+    data: e
+  });
 };
+export const onCopyNode = (nodeId: string) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onCopyNode',
+    data: nodeId
+  });
+};
+export const onResetNode = (e: Parameters<useFlowProviderStoreType['onResetNode']>[0]) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onResetNode',
+    data: e
+  });
+};
+export const onDelNode = (nodeId: string) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onDelNode',
+    data: nodeId
+  });
+};
+export const onDelConnect = (e: Parameters<useFlowProviderStoreType['onDelConnect']>[0]) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'onDelConnect',
+    data: e
+  });
+};
+export const onSetNodes = (e: useFlowProviderStoreType['nodes']) => {
+  eventBus.emit(EventNameEnum.requestFlowEvent, {
+    type: 'setNodes',
+    data: e
+  });
+};
+
+export const getFlowStore = () =>
+  new Promise<{
+    nodes: useFlowProviderStoreType['nodes'];
+    edges: useFlowProviderStoreType['edges'];
+    mode: useFlowProviderStoreType['mode'];
+    filterAppIds: useFlowProviderStoreType['filterAppIds'];
+    reactFlowWrapper: useFlowProviderStoreType['reactFlowWrapper'];
+  }>((resolve) => {
+    eventBus.on('receiveFlowStore', (data: any) => {
+      resolve(data);
+      eventBus.off('receiveFlowStore');
+    });
+    eventBus.emit(EventNameEnum.requestFlowStore);
+  });

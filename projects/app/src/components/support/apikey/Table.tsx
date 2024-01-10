@@ -34,7 +34,7 @@ import { AddIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { feConfigs } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -54,7 +54,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const { Loading } = useLoading();
   const theme = useTheme();
   const { copyData } = useCopyData();
-  const [baseUrl, setBaseUrl] = useState('https://fastgpt.run/api');
+  const [baseUrl, setBaseUrl] = useState('https://fastgpt.in/api');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
 
@@ -72,7 +72,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   } = useQuery(['getOpenApiKeys', appId], () => getOpenApiKeys({ appId }));
 
   useEffect(() => {
-    setBaseUrl(`${location.origin}/api`);
+    setBaseUrl(feConfigs?.customApiDomain || `${location.origin}/api`);
   }, []);
 
   return (
@@ -88,7 +88,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 href={feConfigs.openAPIDocUrl || getDocPath('/docs/development/openapi')}
                 target={'_blank'}
                 ml={1}
-                color={'blue.500'}
+                color={'primary.500'}
               >
                 查看文档
               </Link>
@@ -119,7 +119,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           <Button
             ml={3}
             leftIcon={<AddIcon fontSize={'md'} />}
-            variant={'base'}
+            variant={'whitePrimary'}
             onClick={() =>
               setEditData({
                 ...defaultEditData,
@@ -254,8 +254,8 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           </Flex>
         </ModalBody>
         <ModalFooter>
-          <Button variant="base" onClick={() => setApiKey('')}>
-            好的
+          <Button variant="whiteBase" onClick={() => setApiKey('')}>
+            {t('common.OK')}
           </Button>
         </ModalFooter>
       </MyModal>
@@ -358,7 +358,7 @@ function EditKeyModal({
       </ModalBody>
 
       <ModalFooter>
-        <Button variant={'base'} mr={3} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('Cancel')}
         </Button>
 

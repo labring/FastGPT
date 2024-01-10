@@ -24,12 +24,12 @@ import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@fastgpt/global/common/time/timezone';
 import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { langMap, setLngStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import MySelect from '@/components/Select';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 
@@ -128,7 +128,6 @@ const UserInfo = () => {
       py={[2, 10]}
       justifyContent={'center'}
       alignItems={'flex-start'}
-      fontSize={['lg', 'xl']}
     >
       <Flex
         flexDirection={'column'}
@@ -230,7 +229,7 @@ const UserInfo = () => {
         <Flex mt={6} alignItems={'center'} w={['85%', '300px']}>
           <Box flex={'0 0 80px'}>{t('user.Password')}:&nbsp;</Box>
           <Box flex={1}>*****</Box>
-          <Button size={['sm', 'md']} variant={'base'} ml={5} onClick={onOpenUpdatePsw}>
+          <Button size={['sm', 'md']} variant={'whitePrimary'} ml={5} onClick={onOpenUpdatePsw}>
             {t('user.Change')}
           </Button>
         </Flex>
@@ -240,7 +239,7 @@ const UserInfo = () => {
               {t('user.team.Balance')}:&nbsp;
             </Box>
             <Box flex={1}>
-              <strong>{formatPrice(userInfo?.team?.balance).toFixed(3)}</strong> 元
+              <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
             </Box>
             {feConfigs?.show_pay && userInfo?.team?.canWrite && (
               <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>

@@ -1,13 +1,12 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { countModelPrice } from '@/service/support/wallet/bill/utils';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum } from '@/service/core/ai/model';
-import { searchDatasetData } from '@/service/core/dataset/data/pg';
+import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { searchQueryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -15,6 +14,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetLimit]: number;
   [ModuleInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [ModuleInputKeyEnum.userChatInput]: string;
+  [ModuleInputKeyEnum.datasetSearchUsingReRank]: boolean;
 }>;
 export type DatasetSearchResponse = {
   [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
@@ -27,7 +27,7 @@ export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
   const {
-    inputs: { datasets = [], similarity = 0.4, limit = 5, searchMode, userChatInput }
+    inputs: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
   if (!Array.isArray(datasets)) {
@@ -52,14 +52,26 @@ export async function dispatchDatasetSearch(
   const concatQueries = [userChatInput];
 
   // start search
-  const { searchRes, tokenLen } = await searchDatasetData({
+  const {
+    searchRes,
+    tokens,
+    usingSimilarityFilter,
+    usingReRank: searchUsingReRank
+  } = await searchDatasetData({
     rawQuery: userChatInput,
     queries: concatQueries,
     model: vectorModel.model,
     similarity,
     limit,
     datasetIds: datasets.map((item) => item.datasetId),
-    searchMode
+    searchMode,
+    usingReRank
+  });
+
+  const { total, modelName } = formatModelPrice2Store({
+    model: vectorModel.model,
+    inputLen: tokens,
+    type: ModelTypeEnum.vector
   });
 
   return {
@@ -67,17 +79,14 @@ export async function dispatchDatasetSearch(
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData: {
-      price: countModelPrice({
-        model: vectorModel.model,
-        tokens: tokenLen,
-        type: ModelTypeEnum.vector
-      }),
+      price: total,
       query: concatQueries.join('\n'),
-      model: vectorModel.name,
-      tokens: tokenLen,
-      similarity,
+      model: modelName,
+      inputTokens: tokens,
+      similarity: usingSimilarityFilter ? similarity : undefined,
       limit,
-      searchMode
+      searchMode,
+      searchUsingReRank: searchUsingReRank
     }
   };
 }

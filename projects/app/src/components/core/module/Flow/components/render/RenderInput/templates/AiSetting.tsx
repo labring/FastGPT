@@ -4,7 +4,7 @@ import { onChangeNode } from '../../../../FlowProvider';
 import { useTranslation } from 'next-i18next';
 import { Button, useDisclosure } from '@chakra-ui/react';
 import { AIChatModuleProps } from '@fastgpt/global/core/module/node/type';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import AIChatSettingsModal from '@/components/core/module/AIChatSettingsModal';
 
 const AiSettingRender = ({ inputs = [], moduleId }: RenderInputProps) => {
@@ -26,8 +26,8 @@ const AiSettingRender = ({ inputs = [], moduleId }: RenderInputProps) => {
   return (
     <>
       <Button
-        variant={'base'}
-        leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+        variant={'whitePrimary'}
+        leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
         onClick={onOpenAIChatSetting}
       >
         {t('app.AI Settings')}

@@ -1,7 +1,11 @@
 export enum EventNameEnum {
   sendQuestion = 'sendQuestion',
   editQuestion = 'editQuestion',
-  updaterNode = 'updaterNode'
+
+  // flow
+  requestFlowEvent = 'requestFlowEvent',
+  requestFlowStore = 'requestFlowStore',
+  receiveFlowStore = 'receiveFlowStore'
 }
 type EventNameType = `${EventNameEnum}`;
 

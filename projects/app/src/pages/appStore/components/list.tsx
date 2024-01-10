@@ -2,7 +2,7 @@ import React from 'react';
 import { Box, Flex, Button, Card } from '@chakra-ui/react';
 import type { ShareAppItem } from '@/types/app';
 import { useRouter } from 'next/router';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 
@@ -61,7 +61,7 @@ const ShareModelList = ({
             <Flex
               alignItems={'center'}
               cursor={'pointer'}
-              color={model.isCollection ? 'blue.600' : 'blackAlpha.700'}
+              color={model.isCollection ? 'primary.600' : 'blackAlpha.700'}
               onClick={() => onclickCollection(model._id)}
             >
               <MyIcon
@@ -74,7 +74,7 @@ const ShareModelList = ({
             <Box>
               <Button
                 size={'sm'}
-                variant={'base'}
+                variant={'whitePrimary'}
                 w={['60px', '70px']}
                 onClick={() => router.push(`/chat?appId=${model._id}`)}
               >

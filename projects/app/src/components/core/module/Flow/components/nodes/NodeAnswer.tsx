@@ -6,7 +6,7 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeAnswer = ({ data }: NodeProps<FlowModuleItemType>) => {
+const NodeAnswer = React.memo(function NodeAnswer({ data }: { data: FlowModuleItemType }) {
   const { moduleId, inputs, outputs } = data;
   return (
     <NodeCard minW={'400px'} {...data}>
@@ -16,5 +16,7 @@ const NodeAnswer = ({ data }: NodeProps<FlowModuleItemType>) => {
       </Container>
     </NodeCard>
   );
-};
-export default React.memo(NodeAnswer);
+});
+export default function Node({ data }: NodeProps<FlowModuleItemType>) {
+  return <NodeAnswer data={data} />;
+}

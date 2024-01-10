@@ -58,7 +58,7 @@ const CreateFileModal = ({
         />
       </ModalBody>
       <ModalFooter>
-        <Button variant={'base'} mr={4} onClick={onClose}>
+        <Button variant={'whiteBase'} mr={4} onClick={onClose}>
           {t('common.Close')}
         </Button>
         <Button isLoading={isLoading} onClick={mutate}>

@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -6,7 +6,8 @@ import dynamic from 'next/dynamic';
 
 import InputLabel from './Label';
 import type { RenderInputProps } from './type.d';
-import { useFlowProviderStore, type useFlowProviderStoreType } from '../../../FlowProvider';
+import { getFlowStore, type useFlowProviderStoreType } from '../../../FlowProvider';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const RenderList: {
   types: `${FlowNodeInputTypeEnum}`[];
@@ -63,22 +64,22 @@ const RenderList: {
   {
     types: [FlowNodeInputTypeEnum.addInputParam],
     Component: dynamic(() => import('./templates/AddInputParam'))
+  },
+  {
+    types: [FlowNodeInputTypeEnum.JSONEditor],
+    Component: dynamic(() => import('./templates/JsonEditor'))
   }
 ];
+const UserChatInput = dynamic(() => import('./templates/UserChatInput'));
 
 type Props = {
   flowInputList: FlowNodeInputItemType[];
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
 };
-const RenderInput = ({
-  flowInputList,
-  moduleId,
-  CustomComponent = {},
-  mode
-}: Props & {
-  mode: useFlowProviderStoreType['mode'];
-}) => {
+const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) => {
+  const [mode, setMode] = useState<useFlowProviderStoreType['mode']>('app');
+
   const sortInputs = useMemo(
     () =>
       flowInputList.sort((a, b) => {
@@ -108,6 +109,13 @@ const RenderInput = ({
     [mode, sortInputs]
   );
 
+  useEffect(() => {
+    async () => {
+      const { mode } = await getFlowStore();
+      setMode(mode);
+    };
+  }, []);
+
   return (
     <>
       {filterInputs.map((input) => {
@@ -122,23 +130,27 @@ const RenderInput = ({
         })();
 
         return (
-          input.type !== FlowNodeInputTypeEnum.hidden && (
-            <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
-              {!!input.label && <InputLabel moduleId={moduleId} inputKey={input.key} {...input} />}
-              {!!RenderComponent && (
-                <Box mt={2} className={'nodrag'}>
-                  {RenderComponent}
-                </Box>
-              )}
-            </Box>
-          )
+          <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
+            {input.key === ModuleInputKeyEnum.userChatInput && (
+              <UserChatInput inputs={filterInputs} item={input} moduleId={moduleId} />
+            )}
+            {input.type !== FlowNodeInputTypeEnum.hidden && (
+              <>
+                {!!input.label && (
+                  <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
+                )}
+                {!!RenderComponent && (
+                  <Box mt={2} className={'nodrag'}>
+                    {RenderComponent}
+                  </Box>
+                )}
+              </>
+            )}
+          </Box>
         );
       })}
     </>
   );
 };
 
-export default React.memo(function (props: Props) {
-  const { mode } = useFlowProviderStore();
-  return <RenderInput {...props} mode={mode} />;
-});
+export default React.memo(RenderInput);

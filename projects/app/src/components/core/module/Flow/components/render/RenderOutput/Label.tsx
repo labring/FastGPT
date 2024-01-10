@@ -2,7 +2,7 @@ import { EditNodeFieldType, FlowNodeOutputItemType } from '@fastgpt/global/core/
 import React, { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { onChangeNode } from '../../../FlowProvider';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -37,11 +37,11 @@ const OutputLabel = ({
       {edit && (
         <>
           <MyIcon
-            name={'settingLight'}
+            name={'common/settingLight'}
             w={'14px'}
             cursor={'pointer'}
             mr={3}
-            _hover={{ color: 'blue.500' }}
+            _hover={{ color: 'primary.500' }}
             onClick={() =>
               setEditField({
                 key: outputKey,

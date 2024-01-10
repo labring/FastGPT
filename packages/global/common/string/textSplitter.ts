@@ -31,7 +31,7 @@ export const splitText2Chunks = (props: {
 
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const stepReges: { reg: RegExp; maxLen: number }[] = [
-    ...customReg.map((text) => ({ reg: new RegExp(`([${text}])`, 'g'), maxLen: chunkLen * 1.4 })),
+    ...customReg.map((text) => ({ reg: new RegExp(`(${text})`, 'g'), maxLen: chunkLen * 1.4 })),
     { reg: /^(#\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
     { reg: /^(##\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
     { reg: /^(###\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
@@ -64,13 +64,22 @@ export const splitText2Chunks = (props: {
         }
       ];
     }
+
+    const isCustomSteep = checkIsCustomStep(step);
     const isMarkdownSplit = checkIsMarkdownSplit(step);
     const independentChunk = checkIndependentChunk(step);
 
     const { reg } = stepReges[step];
 
     const splitTexts = text
-      .replace(reg, independentChunk ? `${splitMarker}$1` : `$1${splitMarker}`)
+      .replace(
+        reg,
+        (() => {
+          if (isCustomSteep) return splitMarker;
+          if (independentChunk) return `${splitMarker}$1`;
+          return `$1${splitMarker}`;
+        })()
+      )
       .split(`${splitMarker}`)
       .filter((part) => part.trim());
 
@@ -127,11 +136,6 @@ export const splitText2Chunks = (props: {
   }): string[] => {
     const independentChunk = checkIndependentChunk(step);
     const isCustomStep = checkIsCustomStep(step);
-
-    // mini text
-    if (text.length <= chunkLen) {
-      return [text];
-    }
 
     // oversize
     if (step >= stepReges.length) {
@@ -221,6 +225,8 @@ export const splitText2Chunks = (props: {
       } else {
         chunks.push(`${mdTitle}${lastText}`);
       }
+    } else if (lastText && chunks.length === 0) {
+      chunks.push(lastText);
     }
 
     return chunks;

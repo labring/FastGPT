@@ -9,8 +9,8 @@ weight: 403
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/demo-appointment1.png) | ![](/imgs/demo-appointment2.png) |
-| ![](/imgs/demo-appointment3.png) | ![](/imgs/demo-appointment4.png) |
+| ![](/imgs/demo-appointment1.jpg) | ![](/imgs/demo-appointment2.jpg) |
+| ![](/imgs/demo-appointment3.jpg) | ![](/imgs/demo-appointment4.jpg) |
 
 
 
@@ -26,7 +26,7 @@ weight: 403
 
 ## 2. 问题分类
 
-![](/imgs/demo-appointment5.png)
+![](/imgs/demo-appointment5.jpg)
 
 如上图，用户问题作为对话的起点，流入【问题分类模块】，根据用户问题的内容，判断用户是询问实验室相关问题、预约实验室或其他问题。如果用户询问的是非实验问题，会直接拒绝回复内容。再根据问题是属于询问实验室相关/预约类问题，执行不同的流程。
 
@@ -43,7 +43,7 @@ weight: 403
 
 |                       |                       | |
 | --------------------- | --------------------- |--------------------- |
-| ![](/imgs/demo-appointment6.png) | ![](/imgs/demo-appointment7.png) | ![](/imgs/demo-appointment8.png) |
+| ![](/imgs/demo-appointment6.jpg) | ![](/imgs/demo-appointment7.jpg) | ![](/imgs/demo-appointment8.jpg) |
 
 内容提取是 LLM 带来的十分重要的能力，可以从自然语言中提取出结构化的数据，从而方便进行逻辑处理。
 
@@ -57,7 +57,7 @@ weight: 403
 
 HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现一些复杂的业务逻辑。这里我们调用了一个预约实验室的接口，传入的是信息提取模块的结果和预约行为。
 
-![](/imgs/demo-appointment9.png)
+![](/imgs/demo-appointment9.jpg)
 
 具体的入参结构可以参考[HTTP模块](/docs/workflow/modules/http/)，实在不行在接口里多打印 Debug。
 
@@ -69,9 +69,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
 2. 可以通过内容提取模块，实现自然语言转结构化数据，从而实现复杂的逻辑操作。
 3. 内容提取 + HTTP 模块允许你无限扩展。
 
-**难点**
+**困难点**
 
-1. 模型对连续对话的分类和提取能力不足
+1. 模型对连续对话时，分类和提取能力不足
 
 
 # 附件

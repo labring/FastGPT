@@ -26,6 +26,8 @@ export async function generateVector(): Promise<any> {
   if (global.vectorQueueLen >= global.systemEnv.vectorMaxProcess) return;
   global.vectorQueueLen++;
 
+  const start = Date.now();
+
   // get training data
   const {
     data,
@@ -43,6 +45,9 @@ export async function generateVector(): Promise<any> {
           lockTime: new Date()
         }
       )
+        .sort({
+          weight: -1
+        })
         .select({
           _id: 1,
           userId: 1,
@@ -126,7 +131,7 @@ export async function generateVector(): Promise<any> {
     }
 
     // insert data to pg
-    const { tokenLen } = await insertData2Dataset({
+    const { tokens } = await insertData2Dataset({
       teamId: data.teamId,
       tmbId: data.tmbId,
       datasetId: data.datasetId,
@@ -137,11 +142,12 @@ export async function generateVector(): Promise<any> {
       indexes: dataItem.indexes,
       model: data.model
     });
+
     // push bill
     pushGenerateVectorBill({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      tokenLen: tokenLen,
+      tokens,
       model: data.model,
       billId: data.billId
     });
@@ -150,6 +156,8 @@ export async function generateVector(): Promise<any> {
     await MongoDatasetTraining.findByIdAndDelete(data._id);
     reduceQueue();
     generateVector();
+
+    console.log(`embedding finished, time: ${Date.now() - start}ms`);
   } catch (err: any) {
     reduceQueue(true);
     // log

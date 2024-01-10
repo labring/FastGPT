@@ -35,7 +35,7 @@ export function countPromptTokens(
   const text = `${role}\n${prompt}`;
   try {
     const encodeText = enc.encode(text);
-    return encodeText.length + 3; // 补充 role 估算值
+    return encodeText.length + role.length; // 补充 role 估算值
   } catch (error) {
     return text.length;
   }

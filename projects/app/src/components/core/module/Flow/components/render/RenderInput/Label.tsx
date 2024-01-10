@@ -1,17 +1,13 @@
 import { EditNodeFieldType, FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import {
-  onChangeNode,
-  useFlowProviderStore,
-  useFlowProviderStoreType
-} from '../../../FlowProvider';
+import { onChangeNode, useFlowProviderStoreType } from '../../../FlowProvider';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import TargetHandle from '../TargetHandle';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import dynamic from 'next/dynamic';
 
@@ -20,16 +16,10 @@ const FieldEditModal = dynamic(() => import('../FieldEditModal'));
 type Props = FlowNodeInputItemType & {
   moduleId: string;
   inputKey: string;
+  mode: useFlowProviderStoreType['mode'];
 };
 
-const InputLabel = ({
-  moduleId,
-  inputKey,
-  mode,
-  ...item
-}: Props & {
-  mode: useFlowProviderStoreType['mode'];
-}) => {
+const InputLabel = ({ moduleId, inputKey, mode, ...item }: Props) => {
   const { t } = useTranslation();
   const {
     required = false,
@@ -41,6 +31,7 @@ const InputLabel = ({
     showTargetInApp,
     showTargetInPlugin
   } = item;
+
   const [editField, setEditField] = useState<EditNodeFieldType>();
 
   const targetHandle = useMemo(() => {
@@ -77,11 +68,11 @@ const InputLabel = ({
       {edit && (
         <>
           <MyIcon
-            name={'settingLight'}
+            name={'common/settingLight'}
             w={'14px'}
             cursor={'pointer'}
             ml={3}
-            _hover={{ color: 'blue.500' }}
+            _hover={{ color: 'primary.500' }}
             onClick={() =>
               setEditField({
                 inputType: type,
@@ -153,8 +144,4 @@ const InputLabel = ({
   );
 };
 
-export default React.memo(function (props: Props) {
-  const { mode } = useFlowProviderStore();
-
-  return <InputLabel {...props} mode={mode} />;
-});
+export default React.memo(InputLabel);

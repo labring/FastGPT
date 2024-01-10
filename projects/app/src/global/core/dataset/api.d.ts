@@ -43,14 +43,29 @@ export type UpdateDatasetDataProps = {
   })[];
 };
 
+export type GetTrainingQueueProps = {
+  vectorModel: string;
+  agentModel: string;
+};
+export type GetTrainingQueueResponse = {
+  vectorTrainingCount: number;
+  agentTrainingCount: number;
+};
+
 /* -------------- search ---------------- */
 export type SearchTestProps = {
   datasetId: string;
   text: string;
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
+  usingReRank: boolean;
+  similarity?: number;
 };
 export type SearchTestResponse = {
   list: SearchDataResponseItemType[];
   duration: string;
+  limit: number;
+  searchMode: `${DatasetSearchModeEnum}`;
+  usingReRank: boolean;
+  similarity: number;
 };

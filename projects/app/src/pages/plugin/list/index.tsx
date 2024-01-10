@@ -6,7 +6,7 @@ import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import EditModal, { defaultForm, FormType } from './component/EditModal';
@@ -29,8 +29,8 @@ const MyModules = () => {
   });
 
   return (
-    <PageContainer isLoading={isLoading}>
-      <Flex pt={3} px={5} alignItems={'center'}>
+    <PageContainer isLoading={isLoading} insertProps={{ px: [5, '48px'] }}>
+      <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         <Flex flex={1} alignItems={'center'}>
           <Image src={'/imgs/module/plugin.svg'} alt={''} mr={2} h={'24px'} />
           <Box className="textlg" letterSpacing={1} fontSize={['20px', '24px']} fontWeight={'bold'}>
@@ -39,36 +39,35 @@ const MyModules = () => {
         </Flex>
         <Button
           leftIcon={<AddIcon />}
-          variant={'base'}
+          variant={'primaryOutline'}
           onClick={() => setEditModalData(defaultForm)}
         >
           {t('common.New Create')}
         </Button>
       </Flex>
       <Grid
-        p={5}
-        gridTemplateColumns={['1fr', 'repeat(3,1fr)', 'repeat(4,1fr)', 'repeat(5,1fr)']}
+        py={5}
+        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
         gridGap={5}
       >
         {data.map((plugin) => (
-          <Card
+          <Box
             key={plugin._id}
-            py={4}
+            py={3}
             px={5}
             cursor={'pointer'}
-            h={'140px'}
-            border={theme.borders.md}
-            boxShadow={'none'}
+            minH={'140px'}
+            borderWidth={'1.5px'}
+            borderColor={'borderColor.low'}
+            bg={'white'}
+            borderRadius={'md'}
             userSelect={'none'}
             position={'relative'}
             _hover={{
-              boxShadow: '1px 1px 10px rgba(0,0,0,0.2)',
-              borderColor: 'transparent',
-              '& .delete': {
-                display: 'block'
-              },
-              '& .chat': {
-                display: 'block'
+              borderColor: 'primary.300',
+              boxShadow: '1.5',
+              '& .edit': {
+                display: 'flex'
               }
             }}
             onClick={() => router.push(`/plugin/edit?pluginId=${plugin._id}`)}
@@ -77,18 +76,17 @@ const MyModules = () => {
               <Avatar src={plugin.avatar} borderRadius={'md'} w={'28px'} />
               <Box ml={3}>{plugin.name}</Box>
               <IconButton
-                className="delete"
+                className="edit"
                 position={'absolute'}
                 top={4}
                 right={4}
-                size={'sm'}
+                size={'smSquare'}
                 icon={<MyIcon name={'edit'} w={'14px'} />}
-                variant={'base'}
-                borderRadius={'md'}
-                aria-label={'delete'}
+                variant={'whitePrimary'}
+                aria-label={'edit'}
                 display={['', 'none']}
                 _hover={{
-                  bg: 'blue.100'
+                  bg: 'primary.100'
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
@@ -110,7 +108,7 @@ const MyModules = () => {
             >
               {plugin.intro || t('plugin.No Intro')}
             </Box>
-          </Card>
+          </Box>
         ))}
       </Grid>
       {data.length === 0 && <EmptyTip />}

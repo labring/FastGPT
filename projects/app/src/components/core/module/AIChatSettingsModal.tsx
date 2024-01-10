@@ -66,7 +66,7 @@ const AIChatSettingsModal = ({
     fontSize: ['sm', 'md']
   };
   const selectTemplateBtn: BoxProps = {
-    color: 'blue.500',
+    color: 'primary.500',
     cursor: 'pointer'
   };
 
@@ -229,7 +229,7 @@ const AIChatSettingsModal = ({
         )}
       </ModalBody>
       <ModalFooter>
-        <Button variant={'base'} onClick={onClose}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           {t('Cancel')}
         </Button>
         <Button ml={4} onClick={handleSubmit(onSuccess)}>
