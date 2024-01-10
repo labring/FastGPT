@@ -24,7 +24,6 @@ const MdImage = ({ src }: { src?: string }) => {
       return newScale;
     });
   };
-  console.log(scale);
 
   return (
     <Skeleton

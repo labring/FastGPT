@@ -30,7 +30,7 @@ export type InsertOneDatasetDataProps = PushDatasetDataChunkProps & {
 export type PushDatasetDataProps = {
   collectionId: string;
   data: PushDatasetDataChunkProps[];
-  mode: `${TrainingModeEnum}`;
+  trainingMode: `${TrainingModeEnum}`;
   prompt?: string;
   billId?: string;
 };

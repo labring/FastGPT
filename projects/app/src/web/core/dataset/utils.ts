@@ -5,17 +5,17 @@ import { strIsLink } from '@fastgpt/global/common/string/tools';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 
 export async function chunksUpload({
-  collectionId,
   billId,
-  mode,
+  collectionId,
+  trainingMode,
   chunks,
   prompt,
   rate = 150,
   onUploading
 }: {
-  collectionId: string;
   billId: string;
-  mode: `${TrainingModeEnum}`;
+  collectionId: string;
+  trainingMode: `${TrainingModeEnum}`;
   chunks: PushDatasetDataChunkProps[];
   prompt?: string;
   rate?: number;
@@ -24,8 +24,8 @@ export async function chunksUpload({
   async function upload(data: PushDatasetDataChunkProps[]) {
     return postChunks2Dataset({
       collectionId,
+      trainingMode,
       data,
-      mode,
       prompt,
       billId
     });

@@ -10,10 +10,7 @@ const CsvImport = dynamic(() => import('./Csv'), {});
 import MyModal from '@/components/MyModal';
 import Provider from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import {
-  DatasetCollectionTrainingModeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 
 export enum ImportTypeEnum {
   chunk = 'chunk',
@@ -46,24 +43,21 @@ const ImportData = ({
         chunkOverlapRatio: 0.2,
         inputPrice: vectorModel?.inputPrice || 0,
         outputPrice: 0,
-        mode: TrainingModeEnum.chunk,
-        collectionTrainingType: DatasetCollectionTrainingModeEnum.chunk
+        collectionTrainingType: TrainingModeEnum.chunk
       },
       [ImportTypeEnum.qa]: {
         defaultChunkLen: agentModel?.maxContext * 0.55 || 8000,
         chunkOverlapRatio: 0,
         inputPrice: agentModel?.inputPrice || 0,
         outputPrice: agentModel?.outputPrice || 0,
-        mode: TrainingModeEnum.qa,
-        collectionTrainingType: DatasetCollectionTrainingModeEnum.qa
+        collectionTrainingType: TrainingModeEnum.qa
       },
       [ImportTypeEnum.csv]: {
         defaultChunkLen: 0,
         chunkOverlapRatio: 0,
         inputPrice: vectorModel?.inputPrice || 0,
         outputPrice: 0,
-        mode: TrainingModeEnum.chunk,
-        collectionTrainingType: DatasetCollectionTrainingModeEnum.manual
+        collectionTrainingType: TrainingModeEnum.chunk
       }
     };
     return map[importType];

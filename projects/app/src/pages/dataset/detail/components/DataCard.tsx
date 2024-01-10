@@ -41,7 +41,8 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   DatasetCollectionTypeMap,
-  DatasetCollectionTrainingTypeMap
+  TrainingModeEnum,
+  TrainingTypeMap
 } from '@fastgpt/global/core/dataset/constant';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -154,7 +155,7 @@ const DataCard = () => {
       },
       {
         label: t('core.dataset.collection.metadata.Training Type'),
-        value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
+        value: t(TrainingTypeMap[collection.trainingType]?.label)
       },
       {
         label: t('core.dataset.collection.metadata.Chunk Size'),

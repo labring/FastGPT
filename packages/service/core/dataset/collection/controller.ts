@@ -1,7 +1,4 @@
-import {
-  DatasetCollectionTrainingModeEnum,
-  DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
 
@@ -12,11 +9,15 @@ export async function createOneCollection({
   parentId,
   datasetId,
   type,
-  trainingType = DatasetCollectionTrainingModeEnum.manual,
+
+  trainingType = TrainingModeEnum.chunk,
   chunkSize = 0,
+  chunkSplitter,
+  qaPrompt,
+
   fileId,
   rawLink,
-  qaPrompt,
+
   hashRawText,
   rawTextLength,
   metadata = {},
@@ -30,11 +31,15 @@ export async function createOneCollection({
     datasetId,
     name,
     type,
+
     trainingType,
     chunkSize,
+    chunkSplitter,
+    qaPrompt,
+
     fileId,
     rawLink,
-    qaPrompt,
+
     rawTextLength,
     hashRawText,
     metadata
@@ -74,7 +79,7 @@ export function createDefaultCollection({
     datasetId,
     parentId,
     type: DatasetCollectionTypeEnum.virtual,
-    trainingType: DatasetCollectionTrainingModeEnum.manual,
+    trainingType: TrainingModeEnum.chunk,
     chunkSize: 0,
     updateTime: new Date('2099')
   });

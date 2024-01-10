@@ -43,7 +43,7 @@ import EmptyTip from '@/components/EmptyTip';
 import {
   FolderAvatarSrc,
   DatasetCollectionTypeEnum,
-  DatasetCollectionTrainingModeEnum,
+  TrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
   DatasetStatusEnum,
@@ -187,7 +187,7 @@ const CollectionCard = () => {
       name: string;
       type: `${DatasetCollectionTypeEnum}`;
       callback?: (id: string) => void;
-      trainingType?: `${DatasetCollectionTrainingModeEnum}`;
+      trainingType?: `${TrainingModeEnum}`;
       rawLink?: string;
       chunkSize?: number;
     }) => {

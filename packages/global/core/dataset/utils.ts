@@ -1,4 +1,4 @@
-import { DatasetCollectionTypeEnum, DatasetDataIndexTypeEnum } from './constant';
+import { TrainingModeEnum, DatasetCollectionTypeEnum, DatasetDataIndexTypeEnum } from './constant';
 import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
@@ -55,3 +55,8 @@ export function getDefaultIndex(props?: { q?: string; a?: string; dataId?: strin
     dataId
   };
 }
+
+export const predictDataLimitLength = (mode: `${TrainingModeEnum}`, data: any[]) => {
+  if (mode === TrainingModeEnum.qa) return data.length * 20;
+  return data.length;
+};
