@@ -62,7 +62,7 @@ git clone git@github.com:<github_username>/FastGPT.git
 
 **注意：json 配置文件不能包含注释，介绍中为了方便看才加入的注释**
 
-这个文件大部分时候不需要修改。只需要关注 SystemParams 里的参数：
+这个文件大部分时候不需要修改。只需要关注 `systemEnv` 里的参数：
 
 - `vectorMaxProcess`: 向量生成最大进程，根据数据库和 key 的并发数来决定，通常单个 120 号，2c4g 服务器设置 10~15。
 - `qaMaxProcess`: QA 生成最大进程
