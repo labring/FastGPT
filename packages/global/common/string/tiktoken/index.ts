@@ -33,6 +33,12 @@ export function countPromptTokens(
 ) {
   const enc = getTikTokenEnc();
   const text = `${role}\n${prompt}`;
+
+  // too large a text will block the thread
+  if (text.length > 15000) {
+    return text.length * 1.7;
+  }
+
   try {
     const encodeText = enc.encode(text);
     return encodeText.length + role.length; // 补充 role 估算值

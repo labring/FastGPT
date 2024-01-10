@@ -58,7 +58,7 @@ export async function dispatchDatasetSearch(
     usingSimilarityFilter,
     usingReRank: searchUsingReRank
   } = await searchDatasetData({
-    rawQuery: userChatInput,
+    rawQuery: `${userChatInput}`,
     queries: concatQueries,
     model: vectorModel.model,
     similarity,

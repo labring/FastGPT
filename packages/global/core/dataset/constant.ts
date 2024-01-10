@@ -53,23 +53,7 @@ export const DatasetCollectionTypeMap = {
     name: 'core.dataset.link'
   },
   [DatasetCollectionTypeEnum.virtual]: {
-    name: 'core.dataset.Virtual File'
-  }
-};
-export enum DatasetCollectionTrainingModeEnum {
-  manual = 'manual',
-  chunk = 'chunk',
-  qa = 'qa'
-}
-export const DatasetCollectionTrainingTypeMap = {
-  [DatasetCollectionTrainingModeEnum.manual]: {
-    label: 'core.dataset.collection.training.type manual'
-  },
-  [DatasetCollectionTrainingModeEnum.chunk]: {
-    label: 'core.dataset.collection.training.type chunk'
-  },
-  [DatasetCollectionTrainingModeEnum.qa]: {
-    label: 'core.dataset.collection.training.type qa'
+    name: 'core.dataset.Manual collection'
   }
 };
 

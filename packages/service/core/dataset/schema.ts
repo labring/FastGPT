@@ -92,7 +92,7 @@ const DatasetSchema = new Schema({
 });
 
 try {
-  DatasetSchema.index({ userId: 1 });
+  DatasetSchema.index({ teamId: 1 });
 } catch (error) {
   console.log(error);
 }

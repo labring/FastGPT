@@ -112,6 +112,17 @@ function A({ children, ...props }: any) {
 }
 
 const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
+  const components = useMemo<any>(
+    () => ({
+      img: Image,
+      pre: 'div',
+      p: (pProps: any) => <p {...pProps} dir="auto" />,
+      code: Code,
+      a: A
+    }),
+    []
+  );
+
   const formatSource = source
     .replace(/\\n/g, '\n&nbsp;')
     .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
@@ -124,13 +135,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
     `}
       remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
-      components={{
-        img: Image,
-        pre: 'div',
-        p: (pProps) => <p {...pProps} dir="auto" />,
-        code: Code,
-        a: A
-      }}
+      components={components}
       linkTarget={'_blank'}
     >
       {formatSource}

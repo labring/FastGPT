@@ -57,45 +57,6 @@
       "Title is required": "模块名不能为空"
     }
   },
-  "chat": {
-    "Admin Mark Content": "纠正后的回复",
-    "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
-    "Confirm to clear share chat history": "确认删除所有聊天记录？",
-    "Converting to text": "正在转换为文本...",
-    "Exit Chat": "退出聊天",
-    "Feedback Failed": "提交反馈异常",
-    "Feedback Mark": "标注",
-    "Feedback Modal": "结果反馈",
-    "Feedback Modal Tip": "输入你觉得回答不满意的地方",
-    "Feedback Submit": "提交反馈",
-    "Feedback Success": "反馈成功!",
-    "Feedback Update Failed": "更新反馈状态失败",
-    "History": "记录",
-    "Mark": "标注预期回答",
-    "Mark Description": "当前标注功能为测试版。\n\n点击添加标注后，需要选择一个知识库，以便存储标注数据。你可以通过该功能快速的标注问题和预期回答，以便引导模型下次的回答。\n\n目前，标注功能同知识库其他数据一样，受模型的影响，不代表标注后 100% 符合预期。\n\n标注数据仅单向与知识库同步，如果知识库修改了该标注数据，日志展示的标注数据无法同步",
-    "Mark Description Title": "标注功能介绍",
-    "New Chat": "新对话",
-    "Fresh Chat": "新的对话",
-    "Question Guide Tips": "猜你想问",
-    "Quote": "引用",
-    "Pin": "置顶",
-    "Unpin": "取消置顶",
-    "Read Mark Description": "查看标注功能介绍",
-    "Select Mark Kb": "选择知识库",
-    "Select Mark Kb Desc": "选择一个知识库存储预期答案",
-    "You need to a chat app": "你需要创建一个应用",
-    "Failed to initialize chat": "初始化聊天失败",
-    "Custom History Title": "自定义历史记录标题",
-    "Custom History Title Description": "如果设置为空，会自动跟随聊天记录。",
-    "History Amount": "{{amount}}条记录",
-    "logs": {
-      "api": "API 调用",
-      "online": "在线使用",
-      "share": "外部链接调用",
-      "test": "测试"
-    },
-    "retry": "重新生成"
-  },
   "common": {
     "Add": "添加",
     "Add New": "新增",
@@ -161,6 +122,7 @@
     "Set Avatar": "点击设置头像",
     "Set Name": "取个名字",
     "Status": "状态",
+    "Submit success": "提交成功",
     "Team": "团队",
     "Test": "测试",
     "Time": "时间",
@@ -170,6 +132,7 @@
     "Update Success": "更新成功",
     "Update Successful": "更新成功",
     "Update Time": "更新时间",
+    "Update success": "更新成功",
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
     "Website": "网站",
@@ -188,6 +151,7 @@
       "Common Tip": "没有什么数据噢~"
     },
     "error": {
+      "Update error": "更新失败",
       "unKnow": "出现了点意外~"
     },
     "export": "",
@@ -298,17 +262,46 @@
       }
     },
     "chat": {
+      "Admin Mark Content": "纠正后的回复",
       "Audio Speech Error": "语音播报异常",
+      "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
+      "Confirm to clear share chat history": "确认删除所有聊天记录？",
+      "Converting to text": "正在转换为文本...",
+      "Custom History Title": "自定义历史记录标题",
+      "Custom History Title Description": "如果设置为空，会自动跟随聊天记录。",
+      "Exit Chat": "退出聊天",
+      "Failed to initialize chat": "初始化聊天失败",
+      "Feedback Failed": "提交反馈异常",
+      "Feedback Mark": "标注",
+      "Feedback Modal": "结果反馈",
+      "Feedback Modal Tip": "输入你觉得回答不满意的地方",
+      "Feedback Submit": "提交反馈",
+      "Feedback Success": "反馈成功!",
+      "Feedback Update Failed": "更新反馈状态失败",
+      "History": "记录",
+      "History Amount": "{{amount}}条记录",
+      "Mark": "标注预期回答",
+      "Mark Description": "当前标注功能为测试版。\n\n点击添加标注后，需要选择一个知识库，以便存储标注数据。你可以通过该功能快速的标注问题和预期回答，以便引导模型下次的回答。\n\n目前，标注功能同知识库其他数据一样，受模型的影响，不代表标注后 100% 符合预期。\n\n标注数据仅单向与知识库同步，如果知识库修改了该标注数据，日志展示的标注数据无法同步",
+      "Mark Description Title": "标注功能介绍",
+      "New Chat": "新对话",
+      "Pin": "置顶",
+      "Question Guide Tips": "猜你想问",
+      "Quote": "引用",
       "Quote Amount": "知识库引用({{amount}}条)",
+      "Read Mark Description": "查看标注功能介绍",
       "Record": "语音输入",
       "Restart": "重开对话",
       "Select File": "选择文件",
       "Select Image": "选择图片",
+      "Select Mark Kb": "选择知识库",
+      "Select Mark Kb Desc": "选择一个知识库存储预期答案",
       "Send Message": "发送",
       "Speaking": "我在听，请说...",
       "Start Chat": "开始对话",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
+      "Unpin": "取消置顶",
+      "You need to a chat app": "你需要创建一个应用",
       "error": {
         "Chat error": "对话出现异常",
         "Messages empty": "接口内容为空，可能文本超长了~",
@@ -321,6 +314,12 @@
         "Feedback Close": "关闭反馈",
         "No Content": "用户没有填写具体反馈内容",
         "Read User dislike": "用户表示反对\n点击查看内容"
+      },
+      "logs": {
+        "api": "API 调用",
+        "online": "在线使用",
+        "share": "外部链接调用",
+        "test": "测试"
       },
       "markdown": {
         "Edit Question": "编辑问题",
@@ -365,6 +364,7 @@
         "search using reRank": "结果重排",
         "text output": "文本输出"
       },
+      "retry": "重新生成",
       "tts": {
         "Stop Speech": "停止"
       }
@@ -383,9 +383,11 @@
       "Delete Website Tips": "确认删除该站点？",
       "Empty Dataset": "",
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
+      "File collection": "文件数据集",
       "Folder Dataset": "文件夹",
       "Go Dataset": "前往知识库",
       "Intro Placeholder": "这个知识库还没有介绍~",
+      "Manual collection": "手动数据集",
       "My Dataset": "我的知识库",
       "Name": "知识库名称",
       "Quote Length": "引用内容长度",
@@ -395,7 +397,6 @@
       "Set Website Config": "开始配置网站信息",
       "Similarity": "相关度",
       "Sync Time": "最后更新时间",
-      "Virtual File": "虚拟文件",
       "Website Dataset": "Web 站点同步",
       "Website Dataset Desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
       "collection": {
@@ -455,7 +456,8 @@
         "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
         "get data error": "获取数据异常",
-        "id": "数据ID"
+        "id": "数据ID",
+        "unit": "条"
       },
       "error": {
         "Start Sync Failed": "开始同步失败",
@@ -704,7 +706,7 @@
     "Confirm to delete the data": "确认删除该数据？",
     "Confirm to delete the file": "确认删除该文件及其所有数据？",
     "Create Folder": "创建文件夹",
-    "Create Virtual File": "创建虚拟文件",
+    "Create manual collection": "创建手动数据集",
     "Delete Dataset Error": "删除知识库异常",
     "Edit Folder": "编辑文件夹",
     "Export": "导出",
@@ -715,6 +717,7 @@
     "Files": "文件: {{total}}个",
     "Folder Name": "输入文件夹名称",
     "Insert Data": "插入",
+    "Manual collection Tip": "手动数据集允许创建一个空的容器装入数据",
     "Manual Data": "手动录入",
     "Manual Input": "手动录入",
     "Manual Mark": "手动标注",
@@ -727,7 +730,6 @@
     "System Data Queue": "排队长度",
     "Training Name": "数据训练",
     "Upload Time": "上传时间",
-    "Virtual File Tip": "虚拟文件允许创建一个自定义的容器装入数据",
     "collections": {
       "Click to view file": "点击查看文件详情",
       "Click to view folder": "进入目录",
@@ -735,7 +737,7 @@
       "Confirm to delete the folder": "确认删除该文件夹及里面所有内容？",
       "Create And Import": "新建/导入",
       "Create Training Data": "文件训练-{{filename}}",
-      "Create Virtual File Success": "创建虚拟文件成功",
+      "Create manual collection Success": "创建手动数据集成功",
       "Data Amount": "数据总量",
       "Select Collection": "选择文件",
       "Select One Collection To Store": "选择一个文件进行存储"
@@ -918,6 +920,9 @@
         "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"
       }
     },
+    "subscription": {
+      "Cancel subscription": "取消订阅"
+    },
     "user": {
       "Price": "计费标准",
       "auth": {
@@ -927,6 +932,21 @@
         "Github": "Github 登录",
         "Google": "Google 登录",
         "Provider error": "登录异常，请重试"
+      },
+      "team": {
+        "Dataset usage": "知识库容量"
+      }
+    },
+    "wallet": {
+      "Buy more": "扩容",
+      "Confirm pay": "支付确认",
+      "Pay error": "支付失败",
+      "Pay success": "支付成功",
+      "subscription": {
+        "Current dataset store": "当前额外容量",
+        "Dataset store": "知识库容量",
+        "Dataset store price tip": "每月1号从账号余额里扣除",
+        "Expand size": "扩大容量"
       }
     }
   },

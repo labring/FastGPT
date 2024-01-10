@@ -22,6 +22,7 @@ import MyModal from '@/components/MyModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionRadio from '@/components/support/permission/Radio';
 import { useTranslation } from 'next-i18next';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const InfoModal = ({
   defaultApp,
@@ -45,7 +46,6 @@ const InfoModal = ({
     setValue,
     getValues,
     formState: { errors },
-    reset,
     handleSubmit
   } = useForm({
     defaultValues: defaultApp
@@ -102,6 +102,7 @@ const InfoModal = ({
       if (!file) return;
       try {
         const src = await compressImgFileAndUpload({
+          type: MongoImageTypeEnum.appAvatar,
           file,
           maxW: 300,
           maxH: 300
@@ -187,4 +188,4 @@ const InfoModal = ({
   );
 };
 
-export default InfoModal;
+export default React.memo(InfoModal);

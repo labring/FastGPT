@@ -18,14 +18,6 @@ import Markdown from '@/components/Markdown';
 const Price = ({ onClose }: { onClose: () => void }) => {
   const list = [
     {
-      title: '知识库存储',
-      describe: '',
-      md: `
-| 计费项 | 价格(￥) |
-| --- | --- |
-| 知识库索引数量 | 0/1000条/天 |`
-    },
-    {
       title: '对话模型',
       describe: '',
       md: `

@@ -1,10 +1,9 @@
-import React, { useCallback, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Button, IconButton, Input, Textarea } from '@chakra-ui/react';
 import { DeleteIcon } from '@chakra-ui/icons';
 import { delDatasetById } from '@/web/core/dataset/api';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { useToast } from '@/web/common/hooks/useToast';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useForm } from 'react-hook-form';
@@ -17,6 +16,7 @@ import PermissionRadio from '@/components/support/permission/Radio';
 import MySelect from '@/components/Select';
 import { qaModelList } from '@/web/common/system/staticData';
 import { useRequest } from '@/web/common/hooks/useRequest';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
@@ -70,6 +70,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       const file = e[0];
       if (!file) return Promise.resolve(null);
       return compressImgFileAndUpload({
+        type: MongoImageTypeEnum.datasetAvatar,
         file,
         maxW: 300,
         maxH: 300

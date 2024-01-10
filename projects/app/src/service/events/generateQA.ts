@@ -8,20 +8,15 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
-import { pushDataToDatasetCollection } from '@/pages/api/core/dataset/data/pushData';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { authTeamBalance } from '../support/permission/auth/bill';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
+import { pushDataToDatasetCollection } from '@/service/core/dataset/data/controller';
 
-const reduceQueue = (retry = false) => {
+const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
-  if (global.qaQueueLen === 0 && retry) {
-    setTimeout(() => {
-      generateQA();
-    }, 60000);
-  }
 
   return global.vectorQueueLen === 0;
 };
@@ -144,11 +139,11 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
+      trainingMode: TrainingModeEnum.chunk,
       data: qaArr.map((item) => ({
         ...item,
         chunkIndex: data.chunkIndex
       })),
-      mode: TrainingModeEnum.chunk,
       billId: data.billId
     });
 
@@ -178,7 +173,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     reduceQueue();
     generateQA();
   } catch (err: any) {
-    reduceQueue(true);
+    reduceQueue();
     // log
     if (err?.response) {
       addLog.info('openai error: 生成QA错误', {

@@ -88,7 +88,7 @@ const OutLink = ({
       const newTitle =
         chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
         prompts[1]?.value?.slice(0, 20) ||
-        t('chat.New Chat');
+        t('core.chat.New Chat');
 
       // new chat
       if (completionChatId !== chatId) {

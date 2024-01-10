@@ -16,7 +16,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // 凭证校验
-    await authDatasetCollection({ req, authToken: true, collectionId: id, per: 'w' });
+    await authDatasetCollection({
+      req,
+      authToken: true,
+      authApiKey: true,
+      collectionId: id,
+      per: 'w'
+    });
 
     const updateFields: Record<string, any> = {
       ...(parentId !== undefined && { parentId: parentId || null }),

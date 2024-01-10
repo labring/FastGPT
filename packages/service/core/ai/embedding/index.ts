@@ -32,7 +32,7 @@ export async function getVectorsByText({
           return Promise.reject('Embedding API 404');
         }
         if (!res?.data?.[0]?.embedding) {
-          console.log(res?.data);
+          console.log(res);
           // @ts-ignore
           return Promise.reject(res.data?.err?.message || 'Embedding API Error');
         }

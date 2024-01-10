@@ -1,5 +1,5 @@
 import {
-  DatasetCollectionTrainingModeEnum,
+  TrainingModeEnum,
   DatasetCollectionTypeEnum,
   DatasetTypeEnum
 } from '@fastgpt/global/core/dataset/constant';

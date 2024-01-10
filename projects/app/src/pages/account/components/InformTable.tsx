@@ -46,12 +46,12 @@ const BillTable = () => {
             }}
           >
             <Flex alignItems={'center'} justifyContent={'space-between'}>
-              <Box>{item.title}</Box>
+              <Box fontWeight={'bold'}>{item.title}</Box>
               <Box ml={2} color={'myGray.500'}>
                 {formatTimeToChatTime(item.time)}
               </Box>
             </Flex>
-            <Box fontSize={'sm'} color={'myGray.600'}>
+            <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
               {item.content}
             </Box>
             {!item.read && (

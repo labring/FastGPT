@@ -15,7 +15,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
     () => [
       {
         icon: 'core/chat/chatLight',
-        label: t('chat.New Chat'),
+        label: t('core.chat.New Chat'),
         onClick: () => {
           router.replace({
             query: {

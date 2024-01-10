@@ -86,7 +86,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       const newTitle =
         chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
         prompts[1]?.value?.slice(0, 20) ||
-        t('chat.New Chat');
+        t('core.chat.New Chat');
 
       // new chat
       if (completionChatId !== chatId) {
@@ -166,7 +166,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         setLastChatAppId('');
         setLastChatId('');
         toast({
-          title: getErrText(e, t('chat.Failed to initialize chat')),
+          title: getErrText(e, t('core.chat.Failed to initialize chat')),
           status: 'error'
         });
         if (e?.code === 501) {
@@ -210,7 +210,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         if (apps.length === 0) {
           toast({
             status: 'error',
-            title: t('chat.You need to a chat app')
+            title: t('core.chat.You need to a chat app')
           });
           router.replace('/app/list');
         } else {

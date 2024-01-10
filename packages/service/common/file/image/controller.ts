@@ -1,5 +1,5 @@
 import { UploadImgProps } from '@fastgpt/global/common/file/api';
-import { imageBaseUrl } from './constant';
+import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoImage } from './schema';
 
 export function getMongoImgUrl(id: string) {
@@ -8,10 +8,13 @@ export function getMongoImgUrl(id: string) {
 
 export const maxImgSize = 1024 * 1024 * 12;
 export async function uploadMongoImg({
+  type,
   base64Img,
   teamId,
   expiredTime,
-  metadata
+  metadata,
+
+  shareId
 }: UploadImgProps & {
   teamId: string;
 }) {
@@ -20,12 +23,16 @@ export async function uploadMongoImg({
   }
 
   const base64Data = base64Img.split(',')[1];
+  const binary = Buffer.from(base64Data, 'base64');
 
   const { _id } = await MongoImage.create({
+    type,
     teamId,
-    binary: Buffer.from(base64Data, 'base64'),
+    binary,
     expiredTime: expiredTime,
-    metadata
+    metadata,
+
+    shareId
   });
 
   return getMongoImgUrl(String(_id));

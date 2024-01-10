@@ -8,10 +8,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
-import { useToast } from '@/web/common/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 enum FileTypeEnum {
@@ -45,7 +46,6 @@ const MessageInput = ({
   resetInputVal: (val: string) => void;
 }) => {
   const { shareId } = useRouter().query as { shareId?: string };
-  const { toast } = useToast();
   const {
     isSpeaking,
     isTransCription,
@@ -68,17 +68,18 @@ const MessageInput = ({
     maxCount: 10
   });
 
-  const uploadFile = useCallback(
-    async (file: FileItemType) => {
+  const { mutate: uploadFile } = useRequest({
+    mutationFn: async (file: FileItemType) => {
       if (file.type === FileTypeEnum.image) {
         try {
           const src = await compressImgFileAndUpload({
+            type: MongoImageTypeEnum.chatImage,
             file: file.rawFile,
             maxW: 4329,
             maxH: 4329,
             maxSize: 1024 * 1024 * 5,
             // 30 day expired.
-            expiredTime: addDays(new Date(), 30),
+            expiredTime: addDays(new Date(), 7),
             shareId
           });
           setFileList((state) =>
@@ -94,16 +95,13 @@ const MessageInput = ({
         } catch (error) {
           setFileList((state) => state.filter((item) => item.id !== file.id));
           console.log(error);
-
-          toast({
-            status: 'error',
-            title: t('common.Upload File Failed')
-          });
+          return Promise.reject(error);
         }
       }
     },
-    [shareId, t, toast]
-  );
+    errorToast: t('common.Upload File Failed')
+  });
+
   const onSelectFile = useCallback(
     async (files: File[]) => {
       if (!files || files.length === 0) {
@@ -219,7 +217,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
           visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
         >
           <Spinner size={'sm'} mr={4} />
-          {t('chat.Converting to text')}
+          {t('core.chat.Converting to text')}
         </Flex>
 
         {/* file preview */}

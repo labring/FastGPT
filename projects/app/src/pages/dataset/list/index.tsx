@@ -22,7 +22,7 @@ import {
   putDatasetById,
   postCreateDataset
 } from '@/web/core/dataset/api';
-import { checkTeamExportDatasetLimit } from '@/web/support/user/api';
+import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { useTranslation } from 'next-i18next';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -44,6 +44,7 @@ import PermissionIconText from '@/components/support/permission/IconText';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import ParentPaths from '@/components/common/ParentPaths';
+import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -409,8 +410,9 @@ const Kb = () => {
               <Box flex={1}>
                 <PermissionIconText permission={dataset.permission} color={'myGray.600'} />
               </Box>
-              <MyIcon mr={1} name={dataset.icon as any} w={'12px'} />
-              <Box color={'myGray.500'}>{t(dataset.label)}</Box>
+              {dataset.type !== DatasetTypeEnum.folder && (
+                <DatasetTypeTag type={dataset.type} py={1} px={2} />
+              )}
             </Flex>
           </Box>
         ))}

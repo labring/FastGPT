@@ -8,15 +8,13 @@ import { UploadImgProps } from '@fastgpt/global/common/file/api';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { base64Img, expiredTime, metadata, shareId } = req.body as UploadImgProps;
+    const { shareId, ...body } = req.body as UploadImgProps;
 
     const { teamId } = await authCertOrShareId({ req, shareId, authToken: true });
 
     const data = await uploadMongoImg({
       teamId,
-      base64Img,
-      expiredTime,
-      metadata
+      ...body
     });
 
     jsonRes(res, { data });
