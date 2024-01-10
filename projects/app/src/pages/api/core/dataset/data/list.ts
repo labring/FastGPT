@@ -17,8 +17,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       collectionId
     } = req.body as GetDatasetDataListProps;
 
+    pageSize = Math.min(pageSize, 30);
+
     // 凭证校验
-    await authDatasetCollection({ req, authToken: true, collectionId, per: 'r' });
+    await authDatasetCollection({ req, authToken: true, authApiKey: true, collectionId, per: 'r' });
 
     searchText = searchText.replace(/'/g, '');
 
@@ -32,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     };
 
     const [data, total] = await Promise.all([
-      MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex indexes')
+      MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex')
         .sort({ chunkIndex: 1, updateTime: -1 })
         .skip((pageNum - 1) * pageSize)
         .limit(pageSize)

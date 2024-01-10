@@ -16,10 +16,7 @@ import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import {
-  DatasetCollectionTrainingModeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { Box, Flex, Image, useTheme } from '@chakra-ui/react';
 import { CloseIcon } from '@chakra-ui/icons';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
@@ -104,7 +101,6 @@ const Provider = ({
   parentId,
   inputPrice,
   outputPrice,
-  mode,
   collectionTrainingType,
   vectorModel,
   agentModel,
@@ -118,8 +114,7 @@ const Provider = ({
   parentId: string;
   inputPrice: number;
   outputPrice: number;
-  mode: `${TrainingModeEnum}`;
-  collectionTrainingType: `${DatasetCollectionTrainingModeEnum}`;
+  collectionTrainingType: `${TrainingModeEnum}`;
   vectorModel: string;
   agentModel: string;
   defaultChunkLen: number;
@@ -147,14 +142,14 @@ const Provider = ({
   const totalTokens = useMemo(() => files.reduce((sum, file) => sum + file.tokens, 0), [files]);
 
   const price = useMemo(() => {
-    if (mode === TrainingModeEnum.qa) {
+    if (collectionTrainingType === TrainingModeEnum.qa) {
       const inputTotal = totalTokens * inputPrice;
       const outputTotal = totalTokens * 0.5 * outputPrice;
 
       return formatModelPrice2Read(inputTotal + outputTotal);
     }
     return formatModelPrice2Read(totalTokens * inputPrice);
-  }, [inputPrice, mode, outputPrice, totalTokens]);
+  }, [collectionTrainingType, inputPrice, outputPrice, totalTokens]);
 
   /* 
     start upload data 
@@ -169,7 +164,7 @@ const Provider = ({
       for await (const file of files) {
         // create training bill
         const billId = await postCreateTrainingBill({
-          name: t('dataset.collections.Create Training Data', { filename: file.filename }),
+          name: file.filename,
           vectorModel,
           agentModel
         });
@@ -180,11 +175,15 @@ const Provider = ({
           parentId,
           name: file.filename,
           type: file.type,
+
+          trainingType: collectionTrainingType,
+          chunkSize: chunkLen,
+          chunkSplitter: customSplitChar,
+          qaPrompt: collectionTrainingType === TrainingModeEnum.qa ? prompt : '',
+
           fileId: file.fileId,
           rawLink: file.rawLink,
-          chunkSize: chunkLen,
-          trainingType: collectionTrainingType,
-          qaPrompt: mode === TrainingModeEnum.qa ? prompt : '',
+
           rawTextLength: file.rawText.length,
           hashRawText: hashStr(file.rawText),
           metadata: file.metadata
@@ -195,8 +194,8 @@ const Provider = ({
         const { insertLen } = await chunksUpload({
           collectionId,
           billId,
+          trainingMode: collectionTrainingType,
           chunks,
-          mode,
           onUploading: (insertLen) => {
             setSuccessChunks((state) => state + insertLen);
           },

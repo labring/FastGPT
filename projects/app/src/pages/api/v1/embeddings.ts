@@ -35,19 +35,17 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const { tokens, vectors } = await getVectorsByText({ input: query, model });
 
-    jsonRes(res, {
-      data: {
-        object: 'list',
-        data: vectors.map((item, index) => ({
-          object: 'embedding',
-          index: index,
-          embedding: item
-        })),
-        model,
-        usage: {
-          prompt_tokens: tokens,
-          total_tokens: tokens
-        }
+    res.json({
+      object: 'list',
+      data: vectors.map((item, index) => ({
+        object: 'embedding',
+        index: index,
+        embedding: item
+      })),
+      model,
+      usage: {
+        prompt_tokens: tokens,
+        total_tokens: tokens
       }
     });
 

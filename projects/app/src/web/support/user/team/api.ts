@@ -39,3 +39,8 @@ export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/plusApi/support/user/team/member/updateInvite', data);
 export const delLeaveTeam = (teamId: string) =>
   DELETE('/plusApi/support/user/team/member/leave', { teamId });
+
+/* team limit */
+export const checkTeamExportDatasetLimit = (datasetId: string) =>
+  GET(`/support/user/team/limit/exportDatasetLimit`, { datasetId });
+export const checkTeamWebSyncLimit = () => GET(`/support/user/team/limit/webSyncLimit`);

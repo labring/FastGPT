@@ -81,7 +81,7 @@ const Logs = ({ appId }: { appId: string }) => {
                 cursor={'pointer'}
                 onClick={onOpenMarkDesc}
               >
-                {t('chat.Read Mark Description')}
+                {t('core.chat.Read Mark Description')}
               </Box>
             </Box>
           </>
@@ -202,9 +202,9 @@ const Logs = ({ appId }: { appId: string }) => {
       <MyModal
         isOpen={isOpenMarkDesc}
         onClose={onCloseMarkDesc}
-        title={t('chat.Mark Description Title')}
+        title={t('core.chat.Mark Description Title')}
       >
-        <ModalBody whiteSpace={'pre-wrap'}>{t('chat.Mark Description')}</ModalBody>
+        <ModalBody whiteSpace={'pre-wrap'}>{t('core.chat.Mark Description')}</ModalBody>
       </MyModal>
     </Flex>
   );

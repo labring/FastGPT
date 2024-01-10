@@ -57,45 +57,6 @@
       "Title is required": "Title is required"
     }
   },
-  "chat": {
-    "Admin Mark Content": "Corrected response",
-    "Confirm to clear history": "Confirm to clear history?",
-    "Confirm to clear share chat history": " Are you sure to delete all chats?",
-    "Converting to text": "Converting to text...",
-    "Exit Chat": "Exit",
-    "Feedback Failed": "Feedback Failed",
-    "Feedback Mark": "Mark",
-    "Feedback Modal": "Feedback",
-    "Feedback Modal Tip": "Enter what you find unsatisfactory",
-    "Feedback Submit": "Submit",
-    "Feedback Success": "Feedback Success",
-    "Feedback Update Failed": "Feedback Update Failed",
-    "History": "History",
-    "Mark": "Mark",
-    "Mark Description": "The annotation feature is currently in beta. \n\n After clicking Add annotation, you need to select a knowledge base in order to store annotation data. You can use this feature to quickly annotate questions and expected answers to guide the model to the next answer. At present, the annotation function, like other data in the knowledge base, is affected by the model, which does not mean that the annotation meets 100% expectations. The \n\n annotation data is only unidirectional synchronization with the knowledge base. If the knowledge base modifies the annotation data, the annotation data displayed in the log cannot be synchronized",
-    "Mark Description Title": "Mark Description",
-    "New Chat": "New Chat",
-    "Fresh Chat": "New Chat",
-    "Question Guide Tips": "I guess what you're asking is",
-    "Quote": "Quote",
-    "Pin": "Pin",
-    "Unpin": "Unpin",
-    "Read Mark Description": "Read mark description",
-    "Select Mark Kb": "Select Dataset",
-    "Select Mark Kb Desc": "Select a dataset to store the expected answers",
-    "You need to a chat app": "You need to a chat app",
-    "Failed to initialize chat": "Failed to initialize chat",
-    "Custom History Title": "Custom history title",
-    "Custom History Title Description": "If set to empty, chat history will be followed automatically.",
-    "History Amount": "{{amount}} records",
-    "logs": {
-      "api": "API",
-      "online": "Online Chat",
-      "share": "Share",
-      "test": "Test Chat "
-    },
-    "retry": "Retry"
-  },
   "common": {
     "Add": "Add",
     "Add New": "Add",
@@ -161,6 +122,7 @@
     "Set Avatar": "Set Avatar",
     "Set Name": "Make a nice name",
     "Status": "Status",
+    "Submit success": "Update Success",
     "Team": "Team",
     "Test": "Test",
     "Time": "Time",
@@ -170,6 +132,7 @@
     "Update Success": "Update Success",
     "Update Successful": "Update Successful",
     "Update Time": "Update Time",
+    "Update success": "Update success",
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
     "Website": "Website",
@@ -188,6 +151,7 @@
       "Common Tip": "No data"
     },
     "error": {
+      "Update error": "Update error",
       "unKnow": "There was an accident"
     },
     "export": "",
@@ -298,17 +262,46 @@
       }
     },
     "chat": {
+      "Admin Mark Content": "Corrected response",
       "Audio Speech Error": "Audio Speech Error",
+      "Confirm to clear history": "Confirm to clear history?",
+      "Confirm to clear share chat history": " Are you sure to delete all chats?",
+      "Converting to text": "Converting to text...",
+      "Custom History Title": "Custom history title",
+      "Custom History Title Description": "If set to empty, chat history will be followed automatically.",
+      "Exit Chat": "Exit",
+      "Failed to initialize chat": "Failed to initialize chat",
+      "Feedback Failed": "Feedback Failed",
+      "Feedback Mark": "Mark",
+      "Feedback Modal": "Feedback",
+      "Feedback Modal Tip": "Enter what you find unsatisfactory",
+      "Feedback Submit": "Submit",
+      "Feedback Success": "Feedback Success",
+      "Feedback Update Failed": "Feedback Update Failed",
+      "History": "History",
+      "History Amount": "{{amount}} records",
+      "Mark": "Mark",
+      "Mark Description": "The annotation feature is currently in beta. \n\n After clicking Add annotation, you need to select a knowledge base in order to store annotation data. You can use this feature to quickly annotate questions and expected answers to guide the model to the next answer. At present, the annotation function, like other data in the knowledge base, is affected by the model, which does not mean that the annotation meets 100% expectations. The \n\n annotation data is only unidirectional synchronization with the knowledge base. If the knowledge base modifies the annotation data, the annotation data displayed in the log cannot be synchronized",
+      "Mark Description Title": "Mark Description",
+      "New Chat": "New Chat",
+      "Pin": "Pin",
+      "Question Guide Tips": "I guess what you're asking is",
+      "Quote": "Quote",
       "Quote Amount": "Dataset Quote:{{amount}}",
+      "Read Mark Description": "Read mark description",
       "Record": "Speech",
       "Restart": "Restart",
       "Select File": "Select file",
       "Select Image": "Select Image",
+      "Select Mark Kb": "Select Dataset",
+      "Select Mark Kb Desc": "Select a dataset to store the expected answers",
       "Send Message": "Send Message",
       "Speaking": "I'm listening...",
       "Start Chat": "Start Chat",
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
+      "Unpin": "Unpin",
+      "You need to a chat app": "You need to a chat app",
       "error": {
         "Chat error": "Chat error",
         "Messages empty": "Interface content is empty, maybe the text is too long ~",
@@ -321,6 +314,12 @@
         "Feedback Close": "Close Feedback",
         "No Content": "The user did not fill in the specific feedback content",
         "Read User dislike": "User dislike\nClick to view content"
+      },
+      "logs": {
+        "api": "API",
+        "online": "Online Chat",
+        "share": "Share",
+        "test": "Test Chat "
       },
       "markdown": {
         "Edit Question": "Edit Question",
@@ -365,6 +364,7 @@
         "search using reRank": "ReRank",
         "text output": "Text Output"
       },
+      "retry": "Retry",
       "tts": {
         "Stop Speech": "Stop"
       }
@@ -383,9 +383,11 @@
       "Delete Website Tips": "Confirm to delete the website",
       "Empty Dataset": "",
       "Empty Dataset Tips": "There is no knowledge base yet, go create one!",
+      "File collection": "File collection",
       "Folder Dataset": "Folder",
       "Go Dataset": "To Dataset",
       "Intro Placeholder": "This dataset has not yet been introduced~",
+      "Manual collection": "Manual collection",
       "My Dataset": "My Dataset",
       "Name": "Name",
       "Quote Length": "Quote Length",
@@ -395,7 +397,6 @@
       "Set Website Config": "Configuring Website",
       "Similarity": "Similarity",
       "Sync Time": "Update Time",
-      "Virtual File": "Virtual File",
       "Website Dataset": "Website Sync",
       "Website Dataset Desc": "Web site synchronization allows you to build a knowledge base directly from a web link",
       "collection": {
@@ -455,7 +456,8 @@
         "Total Amount": "{{total}} Chunks",
         "data is deleted": "Data is deleted",
         "get data error": "Get data error",
-        "id": "Data ID"
+        "id": "Data ID",
+        "unit": "pieces"
       },
       "error": {
         "Start Sync Failed": "Start Sync Failed",
@@ -704,7 +706,7 @@
     "Confirm to delete the data": "Confirm to delete the data?",
     "Confirm to delete the file": "Are you sure to delete the file and all its data?",
     "Create Folder": "Create Folder",
-    "Create Virtual File": "Virtual File",
+    "Create manual collection": "Manual collection",
     "Delete Dataset Error": "Delete dataset failed",
     "Edit Folder": "Edit Folder",
     "Export": "Export",
@@ -715,6 +717,7 @@
     "Files": "{{total}} Files",
     "Folder Name": "Input folder name",
     "Insert Data": "Insert",
+    "Manual collection Tip": "Manual Collections allow you to create a custom container to hold data",
     "Manual Data": "Manual Data",
     "Manual Input": "Manual Input",
     "Manual Mark": "Manual Mark",
@@ -727,7 +730,6 @@
     "System Data Queue": "Data Queue",
     "Training Name": "Dataset Training",
     "Upload Time": "Upload Time",
-    "Virtual File Tip": "Virtual files allow you to create a custom container to hold data",
     "collections": {
       "Click to view file": "View File Data",
       "Click to view folder": "To Folder",
@@ -735,7 +737,7 @@
       "Confirm to delete the folder": "Are you sure to delete this folder and all its contents?",
       "Create And Import": "Create/Import",
       "Create Training Data": "Training-{{filename}}",
-      "Create Virtual File Success": "Create Virtual File Success",
+      "Create manual collection Success": "Create manual collection Success",
       "Data Amount": "Data Amount",
       "Select Collection": "Select Collection",
       "Select One Collection To Store": "Select the collection to store"
@@ -918,6 +920,9 @@
         "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document."
       }
     },
+    "subscription": {
+      "Cancel subscription": "Cancel"
+    },
     "user": {
       "Price": "Price",
       "auth": {
@@ -927,6 +932,21 @@
         "Github": "Github",
         "Google": "Google",
         "Provider error": "Login exception, please try again"
+      },
+      "team": {
+        "Dataset usage": "Dataset usage"
+      }
+    },
+    "wallet": {
+      "Buy more": "Buy more",
+      "Confirm pay": "Confirm pay",
+      "Pay error": "Pay error",
+      "Pay success": "Pay success",
+      "subscription": {
+        "Current dataset store": "Current dataset store subscription",
+        "Dataset store": "Dataset store size",
+        "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
+        "Expand size": "Expand size"
       }
     }
   },

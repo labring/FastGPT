@@ -2,8 +2,7 @@ import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { ChatItemSchema as ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleMap } from '@fastgpt/global/core/chat/constants';
-import { customAlphabet } from 'nanoid';
-const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -13,24 +12,6 @@ import { userCollectionName } from '../../support/user/schema';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const ChatItemSchema = new Schema({
-  dataId: {
-    type: String,
-    require: true,
-    default: () => nanoid()
-  },
-  appId: {
-    type: Schema.Types.ObjectId,
-    ref: appCollectionName,
-    required: true
-  },
-  chatId: {
-    type: String,
-    require: true
-  },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: userCollectionName
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -39,6 +20,24 @@ const ChatItemSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
+    required: true
+  },
+  userId: {
+    type: Schema.Types.ObjectId,
+    ref: userCollectionName
+  },
+  chatId: {
+    type: String,
+    require: true
+  },
+  dataId: {
+    type: String,
+    require: true,
+    default: () => getNanoid(22)
+  },
+  appId: {
+    type: Schema.Types.ObjectId,
+    ref: appCollectionName,
     required: true
   },
   time: {
@@ -80,10 +79,11 @@ const ChatItemSchema = new Schema({
 });
 
 try {
-  ChatItemSchema.index({ dataId: -1 });
+  ChatItemSchema.index({ teamId: 1 });
   ChatItemSchema.index({ time: -1 });
   ChatItemSchema.index({ appId: 1 });
   ChatItemSchema.index({ chatId: 1 });
+  ChatItemSchema.index({ obj: 1 });
   ChatItemSchema.index({ userGoodFeedback: 1 });
   ChatItemSchema.index({ userBadFeedback: 1 });
   ChatItemSchema.index({ customFeedbacks: 1 });

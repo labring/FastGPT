@@ -11,7 +11,7 @@ import { UpdateDatasetDataProps } from '@/global/core/dataset/api';
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { id, q = '', a, indexes } = req.body as UpdateDatasetDataProps;
+    const { id, q = '', a, indexes = [] } = req.body as UpdateDatasetDataProps;
 
     // auth data permission
     const {
@@ -23,6 +23,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     } = await authDatasetData({
       req,
       authToken: true,
+      authApiKey: true,
       dataId: id,
       per: 'w'
     });

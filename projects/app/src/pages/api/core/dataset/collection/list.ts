@@ -11,7 +11,6 @@ import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant
 import { startQueue } from '@/service/utils/tools';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
-import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -27,12 +26,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       simple = false
     } = req.body as GetDatasetCollectionsProps;
     searchText = searchText?.replace(/'/g, '');
+    pageSize = Math.min(pageSize, 30);
 
     // auth dataset and get my role
-    const { tmbId } = await authDataset({ req, authToken: true, datasetId, per: 'r' });
-    const { canWrite } = await authUserRole({ req, authToken: true });
+    const { teamId, tmbId, canWrite } = await authDataset({
+      req,
+      authToken: true,
+      authApiKey: true,
+      datasetId,
+      per: 'r'
+    });
 
     const match = {
+      teamId: new Types.ObjectId(teamId),
       datasetId: new Types.ObjectId(datasetId),
       parentId: parentId ? new Types.ObjectId(parentId) : null,
       ...(selectFolder ? { type: DatasetCollectionTypeEnum.folder } : {}),
@@ -85,9 +91,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
                   }
                 }
               },
-              { $project: { _id: 1 } }
+              { $count: 'count' }
             ],
-            as: 'trainings'
+            as: 'trainingCount'
           }
         },
         // count collection total data
@@ -103,9 +109,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
                   }
                 }
               },
-              { $project: { _id: 1 } }
+              { $count: 'count' }
             ],
-            as: 'datas'
+            as: 'dataCount'
           }
         },
         {
@@ -117,10 +123,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
             type: 1,
             status: 1,
             updateTime: 1,
-            dataAmount: { $size: '$datas' },
-            trainingAmount: { $size: '$trainings' },
             fileId: 1,
-            rawLink: 1
+            rawLink: 1,
+            dataAmount: {
+              $ifNull: [{ $arrayElemAt: ['$dataCount.count', 0] }, 0]
+            },
+            trainingAmount: {
+              $ifNull: [{ $arrayElemAt: ['$trainingCount.count', 0] }, 0]
+            }
           }
         },
         {
@@ -144,7 +154,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
 
     if (data.find((item) => item.trainingAmount > 0)) {
-      startQueue(1);
+      startQueue();
     }
 
     // count collections

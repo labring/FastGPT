@@ -6,6 +6,8 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller';
 import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
+import { getInitConfig } from '@/pages/api/common/system/getInitData';
+import { setUpdateSystemConfigCron, setTrainingQueueCron } from './common/system/cron';
 
 /**
  * connect MongoDB and init data
@@ -13,11 +15,18 @@ import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller'
 export function connectToDatabase(): Promise<void> {
   return connectMongo({
     beforeHook: () => {},
-    afterHook: () => {
+    afterHook: async () => {
       initVectorStore();
       // start queue
       startQueue();
-      return initRootUser();
+      // init system config
+      getInitConfig();
+
+      // cron
+      setUpdateSystemConfigCron();
+      setTrainingQueueCron();
+
+      initRootUser();
     }
   });
 }

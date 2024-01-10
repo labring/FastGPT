@@ -214,7 +214,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       model: modelName,
       inputTokens,
       outputTokens,
-      query: userChatInput,
+      query: `${userChatInput}`,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(completeMessages),
@@ -407,7 +407,7 @@ async function streamResponse({
   }
 
   if (!answer) {
-    return Promise.reject('Chat API is error or undefined');
+    return Promise.reject('core.chat API is error or undefined');
   }
 
   return { answer };

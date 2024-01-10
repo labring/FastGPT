@@ -46,7 +46,7 @@ const SelectMarkCollection = ({
           paths={paths}
           onClose={onClose}
           setParentId={setParentId}
-          tips={t('chat.Select Mark Kb Desc')}
+          tips={t('core.chat.Select Mark Kb Desc')}
         >
           <ModalBody flex={'1 0 0'} overflowY={'auto'}>
             <Grid
@@ -164,19 +164,23 @@ const SelectMarkCollection = ({
         <InputDataModal
           onClose={onClose}
           collectionId={adminMarkData.collectionId}
+          dataId={adminMarkData.dataId}
           defaultValue={{
-            id: adminMarkData.dataId,
             q: adminMarkData.q,
-            a: adminMarkData.a,
-            indexes: [getDefaultIndex({ dataId: `${Date.now()}` })]
+            a: adminMarkData.a
           }}
           onSuccess={(data) => {
-            if (!data.q || !adminMarkData.datasetId || !adminMarkData.collectionId || !data.id) {
+            if (
+              !data.q ||
+              !adminMarkData.datasetId ||
+              !adminMarkData.collectionId ||
+              !data.dataId
+            ) {
               return onClose();
             }
 
             onSuccess({
-              dataId: data.id,
+              dataId: data.dataId,
               datasetId: adminMarkData.datasetId,
               collectionId: adminMarkData.collectionId,
               q: data.q,

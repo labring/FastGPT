@@ -61,7 +61,7 @@ A: ${systemPrompt}
       {
         role: 'user',
         content: replaceVariable(defaultPrompt, {
-          query: userChatInput,
+          query: `${userChatInput}`,
           histories: concatFewShot
         })
       }

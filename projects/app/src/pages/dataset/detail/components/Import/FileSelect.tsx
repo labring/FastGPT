@@ -4,14 +4,8 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import {
-  fileDownload,
-  readCsvContent,
-  readPdfContent,
-  readDocContent
-} from '@/web/common/file/utils';
-import { readFileRawText, readMdFile, readHtmlFile } from '@fastgpt/web/common/file/read';
-import { getUploadMdImgController, uploadFiles } from '@/web/common/file/controller';
+import { fileDownload, readCsvContent } from '@/web/common/file/utils';
+import { getUploadBase64ImgController, uploadFiles } from '@/web/common/file/controller';
 import { Box, Flex, useDisclosure, type BoxProps } from '@chakra-ui/react';
 import React, { DragEvent, useCallback, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -25,6 +19,8 @@ import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { UrlFetchResponse } from '@fastgpt/global/common/file/api.d';
+import { readFileRawContent } from '@fastgpt/web/common/file/read/index';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const UrlFetchModal = dynamic(() => import('./UrlFetchModal'));
 const CreateFileModal = dynamic(() => import('./CreateFileModal'));
@@ -168,36 +164,22 @@ const FileSelect = ({
           }
 
           // parse and upload files
-          let text = await (async () => {
-            switch (extension) {
-              case 'txt':
-                return readFileRawText(file);
-              case 'md':
-                return readMdFile({
-                  file,
-                  uploadImgController: (base64Img) =>
-                    getUploadMdImgController({ base64Img, metadata: { fileId } })
-                });
-              case 'html':
-                return readHtmlFile({
-                  file,
-                  uploadImgController: (base64Img) =>
-                    getUploadMdImgController({ base64Img, metadata: { fileId } })
-                });
-              case 'pdf':
-                return readPdfContent(file);
-              case 'docx':
-                return readDocContent(file, {
+          let { rawText } = await readFileRawContent({
+            file,
+            uploadBase64Controller: (base64Img) =>
+              getUploadBase64ImgController({
+                base64Img,
+                type: MongoImageTypeEnum.docImage,
+                metadata: {
                   fileId
-                });
-            }
-            return '';
-          })();
+                }
+              })
+          });
 
-          if (text) {
-            text = simpleText(text);
+          if (rawText) {
+            rawText = simpleText(rawText);
             const { chunks, tokens } = splitText2Chunks({
-              text,
+              text: rawText,
               chunkLen,
               overlapRatio,
               customReg: customSplitChar ? [customSplitChar] : []
@@ -207,7 +189,7 @@ const FileSelect = ({
               id: nanoid(),
               filename: file.name,
               icon,
-              rawText: text,
+              rawText,
               tokens,
               type: DatasetCollectionTypeEnum.file,
               fileId,

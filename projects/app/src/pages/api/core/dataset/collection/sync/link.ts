@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return Promise.reject(DatasetErrEnum.unLinkCollection);
     }
 
-    const { rawText, isSameRawText } = await getCollectionAndRawText({
+    const { title, rawText, isSameRawText } = await getCollectionAndRawText({
       collection
     });
 
@@ -68,7 +68,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       tmbId: collection.tmbId,
       parentId: collection.parentId,
       datasetId: collection.datasetId._id,
-      name: collection.name,
+      name: title || collection.name,
       type: collection.type,
       trainingType: collection.trainingType,
       chunkSize: collection.chunkSize,

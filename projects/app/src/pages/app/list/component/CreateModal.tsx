@@ -26,6 +26,7 @@ import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 type FormType = {
   avatar: string;
@@ -59,6 +60,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       if (!file) return;
       try {
         const src = await compressImgFileAndUpload({
+          type: MongoImageTypeEnum.appAvatar,
           file,
           maxW: 300,
           maxH: 300

@@ -101,14 +101,19 @@ export const deleteDatasetDataVector = async (
     retry?: number;
   }
 ): Promise<any> => {
-  const { id, datasetIds, collectionIds, dataIds, retry = 2 } = props;
+  const { id, datasetIds, collectionIds, collectionId, dataIds, retry = 2 } = props;
 
   const where = await (() => {
     if (id) return `id=${id}`;
     if (datasetIds) return `dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})`;
-    if (collectionIds)
+    if (collectionIds) {
       return `collection_id IN (${collectionIds.map((id) => `'${String(id)}'`).join(',')})`;
-    if (dataIds) return `data_id IN (${dataIds.map((id) => `'${String(id)}'`).join(',')})`;
+    }
+    if (collectionId && dataIds) {
+      return `collection_id='${String(collectionId)}' and data_id IN (${dataIds
+        .map((id) => `'${String(id)}'`)
+        .join(',')})`;
+    }
     return Promise.reject('deleteDatasetData: no where');
   })();
 

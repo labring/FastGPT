@@ -75,7 +75,13 @@ export async function delCollectionRelevantData({
 /**
  * delete one data by mongoDataId
  */
-export async function delDatasetDataByDataId(mongoDataId: string) {
-  await deleteDatasetDataVector({ dataIds: [mongoDataId] });
+export async function delDatasetDataByDataId({
+  collectionId,
+  mongoDataId
+}: {
+  collectionId: string;
+  mongoDataId: string;
+}) {
+  await deleteDatasetDataVector({ collectionId, dataIds: [mongoDataId] });
   await MongoDatasetData.findByIdAndDelete(mongoDataId);
 }

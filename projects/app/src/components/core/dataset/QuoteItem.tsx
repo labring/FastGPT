@@ -1,9 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Link, Progress } from '@chakra-ui/react';
-import {
-  type InputDataType,
-  RawSourceText
-} from '@/pages/dataset/detail/components/InputDataModal';
+import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type.d';
 import NextLink from 'next/link';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -11,9 +8,6 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@/components/common/MyBox';
-import { getDatasetDataItemById } from '@/web/core/dataset/api';
-import { useRequest } from '@/web/common/hooks/useRequest';
-import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constant';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
@@ -58,17 +52,7 @@ const QuoteItem = ({
   linkToDataset?: boolean;
 }) => {
   const { t } = useTranslation();
-  const [editInputData, setEditInputData] = useState<InputDataType & { collectionId: string }>();
-
-  const { mutate: onclickEdit, isLoading } = useRequest({
-    mutationFn: async (id: string) => {
-      return getDatasetDataItemById(id);
-    },
-    onSuccess(data: DatasetDataItemType) {
-      setEditInputData(data);
-    },
-    errorToast: t('core.dataset.data.get data error')
-  });
+  const [editInputData, setEditInputData] = useState<{ dataId: string; collectionId: string }>();
 
   const score = useMemo(() => {
     if (!Array.isArray(quoteItem.score)) {
@@ -114,7 +98,6 @@ const QuoteItem = ({
   return (
     <>
       <MyBox
-        isLoading={isLoading}
         position={'relative'}
         overflow={'hidden'}
         fontSize={'sm'}
@@ -124,7 +107,7 @@ const QuoteItem = ({
         display={'flex'}
         flexDirection={'column'}
       >
-        <Flex alignItems={'center'} mb={3}>
+        <Flex alignItems={'center'} mb={3} flexWrap={'wrap'} gap={3}>
           {score?.primaryScore && (
             <>
               {canViewSource ? (
@@ -132,7 +115,6 @@ const QuoteItem = ({
                   <Flex
                     px={'12px'}
                     py={'5px'}
-                    mr={4}
                     borderRadius={'md'}
                     color={'primary.700'}
                     bg={'primary.50'}
@@ -177,13 +159,13 @@ const QuoteItem = ({
           {canViewSource &&
             score.secondaryScore.map((item, i) => (
               <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc)}>
-                <Box fontSize={'xs'} mr={3}>
+                <Box fontSize={'xs'}>
                   <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
                     <Box
                       px={'5px'}
                       borderWidth={'1px'}
                       borderRadius={'sm'}
-                      mr={1}
+                      mr={'2px'}
                       {...(scoreTheme[i] && scoreTheme[i])}
                     >
                       <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
@@ -223,7 +205,7 @@ const QuoteItem = ({
                 {quoteItem.q.length + (quoteItem.a?.length || 0)}
               </Flex>
             </MyTooltip>
-            <RawSourceText
+            <RawSourceBox
               fontWeight={'bold'}
               color={'black'}
               sourceName={quoteItem.sourceName}
@@ -249,7 +231,12 @@ const QuoteItem = ({
                     _hover={{
                       color: 'primary.600'
                     }}
-                    onClick={() => onclickEdit(quoteItem.id)}
+                    onClick={() =>
+                      setEditInputData({
+                        dataId: quoteItem.id,
+                        collectionId: quoteItem.collectionId
+                      })
+                    }
                   />
                 </Box>
               </MyTooltip>
@@ -271,7 +258,7 @@ const QuoteItem = ({
         )}
       </MyBox>
 
-      {editInputData && editInputData.id && (
+      {editInputData && (
         <InputDataModal
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => {
@@ -280,7 +267,7 @@ const QuoteItem = ({
           onDelete={() => {
             console.log('删除引用成功');
           }}
-          defaultValue={editInputData}
+          dataId={editInputData.dataId}
           collectionId={editInputData.collectionId}
         />
       )}

@@ -50,8 +50,11 @@ export const cheerioToHtml = ({
     .get()
     .join('\n');
 
+  const title = $('head title').text() || $('h1:first').text() || fetchUrl;
+
   return {
     html,
+    title,
     usedSelector
   };
 };
@@ -70,7 +73,7 @@ export const urlsFetch = async ({
           });
 
           const $ = cheerio.load(fetchRes.data);
-          const { html, usedSelector } = cheerioToHtml({
+          const { title, html, usedSelector } = cheerioToHtml({
             fetchUrl: url,
             $,
             selector
@@ -79,6 +82,7 @@ export const urlsFetch = async ({
 
           return {
             url,
+            title,
             content: md,
             selector: usedSelector
           };
@@ -87,6 +91,7 @@ export const urlsFetch = async ({
 
           return {
             url,
+            title: '',
             content: '',
             selector: ''
           };

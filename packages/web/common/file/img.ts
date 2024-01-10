@@ -4,15 +4,13 @@ export type CompressImgProps = {
   maxSize?: number;
 };
 
-export const compressBase64ImgAndUpload = ({
+export const compressBase64Img = ({
   base64Img,
   maxW = 1080,
   maxH = 1080,
-  maxSize = 1024 * 500, // 300kb
-  uploadController
+  maxSize = 1024 * 500 // 500kb
 }: CompressImgProps & {
   base64Img: string;
-  uploadController: (base64: string) => Promise<string>;
 }) => {
   return new Promise<string>((resolve, reject) => {
     const fileType =
@@ -54,12 +52,7 @@ export const compressBase64ImgAndUpload = ({
         return reject('图片太大了');
       }
 
-      try {
-        const src = await uploadController(compressedDataUrl);
-        resolve(src);
-      } catch (error) {
-        reject(error);
-      }
+      resolve(compressedDataUrl);
     };
     img.onerror = reject;
   });

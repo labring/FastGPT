@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { dataset, canWrite, isOwner } = await authDataset({
       req,
       authToken: true,
+      authApiKey: true,
       datasetId,
       per: 'r'
     });

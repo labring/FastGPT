@@ -4,13 +4,12 @@ import { connectToDatabase } from '@/service/mongo';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
-import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
 
-    const { collectionId } = req.query as { collectionId: string };
+    const { id: collectionId } = req.query as { id: string };
 
     if (!collectionId) {
       throw new Error('CollectionIdId is required');
@@ -19,6 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await authDatasetCollection({
       req,
       authToken: true,
+      authApiKey: true,
       collectionId,
       per: 'w'
     });
