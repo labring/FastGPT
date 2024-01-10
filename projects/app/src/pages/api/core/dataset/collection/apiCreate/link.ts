@@ -4,29 +4,31 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import type { TextCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
+import type { LinkCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { TrainingModeEnum, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { pushDataToDatasetCollection } from '@/service/core/dataset/data/controller';
-import { hashStr } from '@fastgpt/global/common/string/tools';
+import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
+import { startQueue } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const {
-      text,
+      link,
       trainingType = TrainingModeEnum.chunk,
       chunkSize = 512,
       chunkSplitter,
       qaPrompt,
       ...body
-    } = req.body as TextCreateDatasetCollectionParams;
+    } = req.body as LinkCreateDatasetCollectionParams;
 
-    const { teamId, tmbId } = await authDataset({
+    const { teamId, tmbId, dataset } = await authDataset({
       req,
       authToken: true,
       authApiKey: true,
@@ -34,52 +36,48 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       per: 'w'
     });
 
-    // 1. split text to chunks
-    const { chunks } = splitText2Chunks({
-      text,
-      chunkLen: chunkSize,
-      overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
-      customReg: chunkSplitter ? [chunkSplitter] : [],
-      countTokens: false
-    });
-
-    // 2. check dataset limit
+    // 1. check dataset limit
     await checkDatasetLimit({
       teamId,
       freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize,
-      insertLen: predictDataLimitLength(trainingType, chunks)
+      insertLen: predictDataLimitLength(trainingType, new Array(10))
     });
 
-    // 3. create collection
+    // 2. create collection
     const collectionId = await createOneCollection({
       ...body,
+      name: link,
       teamId,
       tmbId,
-      type: DatasetCollectionTypeEnum.virtual,
+      type: DatasetCollectionTypeEnum.link,
 
       trainingType,
       chunkSize,
       chunkSplitter,
       qaPrompt,
 
-      hashRawText: hashStr(text),
-      rawTextLength: text.length
+      rawLink: link
     });
 
-    // 4. push chunks to training queue
-    const insertResults = await pushDataToDatasetCollection({
+    // 3. create bill and start sync
+    const { billId } = await createTrainingBill({
       teamId,
       tmbId,
+      appName: 'core.dataset.collection.Sync Collection',
+      billSource: BillSourceEnum.training,
+      vectorModel: getVectorModel(dataset.vectorModel).name,
+      agentModel: getQAModel(dataset.agentModel).name
+    });
+    await reloadCollectionChunks({
       collectionId,
-      trainingMode: trainingType,
-      data: chunks.map((text, index) => ({
-        q: text,
-        chunkIndex: index
-      }))
+      tmbId,
+      billId
     });
 
+    startQueue();
+
     jsonRes(res, {
-      data: { collectionId, results: insertResults }
+      data: { collectionId }
     });
   } catch (err) {
     jsonRes(res, {

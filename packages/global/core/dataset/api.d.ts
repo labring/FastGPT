@@ -43,6 +43,10 @@ export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
   name: string;
   text: string;
 };
+export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  link: string;
+  chunkSplitter?: string;
+};
 
 /* ================= data ===================== */
 export type PgSearchRawType = {
