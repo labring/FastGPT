@@ -35,7 +35,7 @@ const ChatHeader = ({
     () =>
       chatContentReplaceBlock(history[history.length - 2]?.value)?.slice(0, 8) ||
       appName ||
-      t('chat.New Chat'),
+      t('core.chat.New Chat'),
     [appName, history]
   );
 
@@ -56,8 +56,8 @@ const ChatHeader = ({
             <MyIcon name={'history'} w={'14px'} />
             <Box ml={1}>
               {history.length === 0
-                ? t('chat.Fresh Chat')
-                : t('chat.History Amount', { amount: history.length })}
+                ? t('core.chat.New Chat')
+                : t('core.chat.History Amount', { amount: history.length })}
             </Box>
           </Tag>
           {!!chatModels && chatModels.length > 0 && (

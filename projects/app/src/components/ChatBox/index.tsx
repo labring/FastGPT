@@ -913,7 +913,7 @@ const ChatBox = (
                           <Box fontSize={'sm'}>
                             <ChatBoxDivider
                               icon="core/app/markLight"
-                              text={t('chat.Admin Mark Content')}
+                              text={t('core.chat.Admin Mark Content')}
                             />
                             <Box whiteSpace={'pre'}>
                               <Box color={'black'}>{item.adminFeedback.q}</Box>
@@ -1237,7 +1237,7 @@ function ChatController({
       {!!onDelete && (
         <>
           {onRetry && (
-            <MyTooltip label={t('chat.retry')}>
+            <MyTooltip label={t('core.chat.retry')}>
               <MyIcon
                 {...controlIconStyle}
                 name={'common/retryLight'}
@@ -1304,7 +1304,7 @@ function ChatController({
           </MyTooltip>
         ))}
       {!!onMark && (
-        <MyTooltip label={t('chat.Mark')}>
+        <MyTooltip label={t('core.chat.Mark')}>
           <MyIcon
             {...controlIconStyle}
             name={'core/app/markLight'}

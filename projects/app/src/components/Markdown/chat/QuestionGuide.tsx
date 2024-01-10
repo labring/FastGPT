@@ -24,7 +24,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
 
   return questionGuides.length > 0 ? (
     <Box mt={2}>
-      <ChatBoxDivider icon="core/chat/QGFill" text={t('chat.Question Guide Tips')} />
+      <ChatBoxDivider icon="core/chat/QGFill" text={t('core.chat.Question Guide Tips')} />
       <Flex alignItems={'center'} flexWrap={'wrap'} gap={2}>
         {questionGuides.map((text) => (
           <Flex

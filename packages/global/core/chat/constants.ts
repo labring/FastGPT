@@ -31,16 +31,16 @@ export enum ChatSourceEnum {
 }
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
-    name: 'chat.logs.test'
+    name: 'core.chat.logs.test'
   },
   [ChatSourceEnum.online]: {
-    name: 'chat.logs.online'
+    name: 'core.chat.logs.online'
   },
   [ChatSourceEnum.share]: {
-    name: 'chat.logs.share'
+    name: 'core.chat.logs.share'
   },
   [ChatSourceEnum.api]: {
-    name: 'chat.logs.api'
+    name: 'core.chat.logs.api'
   }
 };
 

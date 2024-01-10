@@ -217,7 +217,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
           visibility={isSpeaking && isTransCription ? 'visible' : 'hidden'}
         >
           <Spinner size={'sm'} mr={4} />
-          {t('chat.Converting to text')}
+          {t('core.chat.Converting to text')}
         </Flex>
 
         {/* file preview */}

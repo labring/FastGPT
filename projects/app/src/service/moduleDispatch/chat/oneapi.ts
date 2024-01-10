@@ -407,7 +407,7 @@ async function streamResponse({
   }
 
   if (!answer) {
-    return Promise.reject('Chat API is error or undefined');
+    return Promise.reject('core.chat API is error or undefined');
   }
 
   return { answer };
