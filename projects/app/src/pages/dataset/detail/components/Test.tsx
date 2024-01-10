@@ -384,6 +384,9 @@ const TestHistories = React.memo(function TestHistories({
             }}
             cursor={'pointer'}
             fontSize={'sm'}
+            {...(item.id === datasetTestItem?.id && {
+              bg: 'primary.50'
+            })}
             onClick={() => setDatasetTestItem(item)}
           >
             <Box flex={'0 0 80px'}>
