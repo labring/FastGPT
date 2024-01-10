@@ -53,7 +53,7 @@ export const DatasetCollectionTypeMap = {
     name: 'core.dataset.link'
   },
   [DatasetCollectionTypeEnum.virtual]: {
-    name: 'core.dataset.Virtual File'
+    name: 'core.dataset.Manual collection'
   }
 };
 

@@ -101,8 +101,8 @@ const CollectionCard = () => {
   } = useDisclosure();
   const { onOpenModal: onOpenCreateVirtualFileModal, EditModal: EditCreateVirtualFileModal } =
     useEditTitle({
-      title: t('dataset.Create Virtual File'),
-      tip: t('dataset.Virtual File Tip'),
+      title: t('dataset.Create manual collection'),
+      tip: t('dataset.Manual collection Tip'),
       canEmpty: false
     });
 
@@ -297,9 +297,9 @@ const CollectionCard = () => {
   }, [parentId]);
 
   return (
-    <MyBox isLoading={isLoading} h={'100%'}>
+    <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 3]} h={'100%'}>
-        <Flex px={[2, 5]} alignItems={['flex-start', 'center']} h={'35px'}>
+        <Flex px={[2, 6]} alignItems={['flex-start', 'center']} h={'35px'}>
           <Box flex={1}>
             <ParentPath
               paths={paths.map((path, i) => ({
@@ -339,20 +339,22 @@ const CollectionCard = () => {
           </Box>
 
           {isPc && (
-            <Flex alignItems={'center'} mr={2}>
+            <Flex alignItems={'center'} mr={4}>
               <MyInput
+                bg={'myGray.50'}
+                w={['100%', '250px']}
+                size={['sm', 'md']}
+                h={'36px'}
+                placeholder={t('common.Search') || ''}
+                value={searchText}
                 leftIcon={
                   <MyIcon
                     name="common/searchLight"
                     position={'absolute'}
-                    w={'14px'}
+                    w={'16px'}
                     color={'myGray.500'}
                   />
                 }
-                w={['100%', '250px']}
-                size={['sm', 'md']}
-                placeholder={t('common.Search') || ''}
-                value={searchText}
                 onChange={(e) => {
                   setSearchText(e.target.value);
                   debounceRefetch();
@@ -413,7 +415,7 @@ const CollectionCard = () => {
                       child: (
                         <Flex>
                           <Image src={'/imgs/files/collection.svg'} alt={''} w={'20px'} mr={2} />
-                          {t('dataset.Create Virtual File')}
+                          {t('core.dataset.Manual collection')}
                         </Flex>
                       ),
                       onClick: () => {
@@ -429,7 +431,7 @@ const CollectionCard = () => {
                       child: (
                         <Flex>
                           <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
-                          {t('dataset.File Input')}
+                          {t('core.dataset.File collection')}
                         </Flex>
                       ),
                       onClick: onOpenFileImportModal
@@ -476,16 +478,32 @@ const CollectionCard = () => {
           )}
         </Flex>
 
-        <TableContainer mt={[0, 3]} position={'relative'} flex={'1 0 0'} overflowY={'auto'}>
+        <TableContainer
+          px={[2, 6]}
+          mt={[0, 3]}
+          position={'relative'}
+          flex={'1 0 0'}
+          overflowY={'auto'}
+        >
           <Table variant={'simple'} fontSize={'sm'} draggable={false}>
             <Thead draggable={false}>
-              <Tr>
-                <Th>#</Th>
-                <Th>{t('common.Name')}</Th>
-                <Th>{t('dataset.collections.Data Amount')}</Th>
-                <Th>{t('core.dataset.Sync Time')}</Th>
-                <Th>{t('common.Status')}</Th>
-                <Th />
+              <Tr bg={'myGray.100'} mb={2}>
+                <Th borderLeftRadius={'md'} overflow={'hidden'} borderBottom={'none'} py={4}>
+                  #
+                </Th>
+                <Th borderBottom={'none'} py={4}>
+                  {t('common.Name')}
+                </Th>
+                <Th borderBottom={'none'} py={4}>
+                  {t('dataset.collections.Data Amount')}
+                </Th>
+                <Th borderBottom={'none'} py={4}>
+                  {t('core.dataset.Sync Time')}
+                </Th>
+                <Th borderBottom={'none'} py={4}>
+                  {t('common.Status')}
+                </Th>
+                <Th borderRightRadius={'md'} overflow={'hidden'} borderBottom={'none'} py={4} />
               </Tr>
             </Thead>
             <Tbody>

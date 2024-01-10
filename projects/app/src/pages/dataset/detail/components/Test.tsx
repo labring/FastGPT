@@ -314,7 +314,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         </Box>
       </Box>
       {/* result show */}
-      <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'}>
+      <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'} bg={'white'}>
         <TestResults datasetTestItem={datasetTestItem} />
       </Box>
 
