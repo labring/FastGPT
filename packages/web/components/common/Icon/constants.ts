@@ -1,7 +1,6 @@
 // @ts-nocheck
 
 export const iconPaths = {
-  chat: () => import('./icons/chat.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),
   collectionLight: () => import('./icons/collectionLight.svg'),

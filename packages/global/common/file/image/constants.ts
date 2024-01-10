@@ -1,6 +1,7 @@
 export const imageBaseUrl = '/api/system/img/';
 
 export enum MongoImageTypeEnum {
+  systemAvatar = 'systemAvatar',
   appAvatar = 'appAvatar',
   pluginAvatar = 'pluginAvatar',
   datasetAvatar = 'datasetAvatar',
@@ -11,6 +12,10 @@ export enum MongoImageTypeEnum {
   docImage = 'docImage'
 }
 export const mongoImageTypeMap = {
+  [MongoImageTypeEnum.systemAvatar]: {
+    label: 'common.file.type.appAvatar',
+    unique: true
+  },
   [MongoImageTypeEnum.appAvatar]: {
     label: 'common.file.type.appAvatar',
     unique: true

@@ -107,7 +107,7 @@ const QuoteItem = ({
         display={'flex'}
         flexDirection={'column'}
       >
-        <Flex alignItems={'center'} mb={3}>
+        <Flex alignItems={'center'} mb={3} flexWrap={'wrap'} gap={3}>
           {score?.primaryScore && (
             <>
               {canViewSource ? (
@@ -115,7 +115,6 @@ const QuoteItem = ({
                   <Flex
                     px={'12px'}
                     py={'5px'}
-                    mr={4}
                     borderRadius={'md'}
                     color={'primary.700'}
                     bg={'primary.50'}
@@ -160,13 +159,13 @@ const QuoteItem = ({
           {canViewSource &&
             score.secondaryScore.map((item, i) => (
               <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc)}>
-                <Box fontSize={'xs'} mr={3}>
+                <Box fontSize={'xs'}>
                   <Flex alignItems={'flex-start'} lineHeight={1.2} mb={1}>
                     <Box
                       px={'5px'}
                       borderWidth={'1px'}
                       borderRadius={'sm'}
-                      mr={1}
+                      mr={'2px'}
                       {...(scoreTheme[i] && scoreTheme[i])}
                     >
                       <Box transform={'scale(0.9)'}>#{item.index + 1}</Box>
