@@ -5,7 +5,6 @@ import {
   Button,
   Flex,
   useTheme,
-  Grid,
   useDisclosure,
   Table,
   Thead,
@@ -389,7 +388,7 @@ const TestHistories = React.memo(function TestHistories({
             })}
             onClick={() => setDatasetTestItem(item)}
           >
-            <Box flex={'0 0 80px'}>
+            <Box flex={'0 0 auto'} mr={2}>
               {DatasetSearchModeMap[item.searchMode] ? (
                 <Flex alignItems={'center'} fontWeight={'500'} color={'myGray.500'}>
                   <MyIcon
@@ -406,7 +405,11 @@ const TestHistories = React.memo(function TestHistories({
             <Box flex={1} mr={2} wordBreak={'break-all'} fontWeight={'400'}>
               {item.text}
             </Box>
-            <Box flex={'0 0 70px'}>{formatTimeToChatTime(item.time)}</Box>
+            <Box flex={'0 0 70px'}>
+              {formatTimeToChatTime(item.time).includes('.')
+                ? t(formatTimeToChatTime(item.time))
+                : formatTimeToChatTime(item.time)}
+            </Box>
             <MyTooltip label={t('core.dataset.test.delete test history')}>
               <Box w={'14px'} h={'14px'}>
                 <MyIcon

@@ -96,7 +96,7 @@ const AppCard = ({ appId }: { appId: string }) => {
             wordBreak={'break-all'}
             color={'myGray.600'}
           >
-            {appDetail.intro || '快来给应用一个介绍~'}
+            {appDetail.intro || t('core.app.tip.Add a intro to app')}
           </Box>
           <Flex>
             <Button
@@ -105,7 +105,7 @@ const AppCard = ({ appId }: { appId: string }) => {
               leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
               onClick={() => router.push(`/chat?appId=${appId}`)}
             >
-              对话
+              {t('core.Chat')}
             </Button>
             <Button
               mx={3}
@@ -121,7 +121,7 @@ const AppCard = ({ appId }: { appId: string }) => {
                 });
               }}
             >
-              外接
+              {t('core.app.navbar.External')}
             </Button>
             {appDetail.isOwner && (
               <Button
@@ -130,7 +130,7 @@ const AppCard = ({ appId }: { appId: string }) => {
                 leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
                 onClick={() => setSettingAppInfo(appDetail)}
               >
-                设置
+                {t('common.Setting')}
               </Button>
             )}
           </Flex>

@@ -84,7 +84,7 @@ const SelectAppModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('Cancel')}
+          {t('common.Close')}
         </Button>
         <Button
           ml={2}
@@ -101,7 +101,7 @@ const SelectAppModal = ({
             onClose();
           }}
         >
-          {t('Confirm')}
+          {t('common.Confirm')}
         </Button>
       </ModalFooter>
       <Loading loading={isLoading} fixed={false} />

@@ -107,8 +107,8 @@ export const getCollectionAndRawText = async ({
       });
 
       return {
-        title: result[0].title,
-        rawText: result[0].content
+        title: result[0]?.title,
+        rawText: result[0]?.content
       };
     }
 
@@ -121,7 +121,7 @@ export const getCollectionAndRawText = async ({
   })();
 
   const hashRawText = hashStr(rawText);
-  const isSameRawText = col.hashRawText === hashRawText;
+  const isSameRawText = rawText && col.hashRawText === hashRawText;
 
   return {
     collection: col,

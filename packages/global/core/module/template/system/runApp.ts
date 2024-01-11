@@ -22,8 +22,8 @@ export const RunAppModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.runApp,
   avatar: '/imgs/module/app.png',
-  name: '应用调用',
-  intro: '可以选择一个其他应用进行调用',
+  name: 'core.module.template.Running app',
+  intro: 'core.module.template.Running app intro',
   showStatus: true,
   inputs: [
     Input_Template_Switch,

@@ -4,8 +4,10 @@ import fsp from 'fs/promises';
 import fs from 'fs';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { delImgByFileIdList } from '../image/controller';
+import { MongoFileSchema } from './schema';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
+  MongoFileSchema;
   return connectionMongo.connection.db.collection(`${bucket}.files`);
 }
 export function getGridBucket(bucket: `${BucketNameEnum}`) {
@@ -21,6 +23,7 @@ export async function uploadFile({
   tmbId,
   path,
   filename,
+  contentType,
   metadata = {}
 }: {
   bucketName: `${BucketNameEnum}`;
@@ -28,6 +31,7 @@ export async function uploadFile({
   tmbId: string;
   path: string;
   filename: string;
+  contentType?: string;
   metadata?: Record<string, any>;
 }) {
   if (!path) return Promise.reject(`filePath is empty`);
@@ -44,7 +48,7 @@ export async function uploadFile({
 
   const stream = bucket.openUploadStream(filename, {
     metadata,
-    contentType: metadata?.contentType
+    contentType
   });
 
   // save to gridfs

@@ -378,8 +378,8 @@ const DataCard = () => {
 
           <DrawerBody>
             {metadataList.map((item) => (
-              <Flex key={item.label} alignItems={'center'} mb={5}>
-                <Box color={'myGray.500'} w={'100px'}>
+              <Flex key={item.label} alignItems={'center'} mb={5} wordBreak={'break-all'}>
+                <Box color={'myGray.500'} flex={'0 0 100px'}>
                   {item.label}
                 </Box>
                 <Box>{item.value}</Box>

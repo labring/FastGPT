@@ -180,13 +180,9 @@ export async function authDatasetFile({
     datasetId: file.metadata.datasetId,
     per
   });
-  const isOwner =
-    role !== TeamMemberRoleEnum.visitor &&
-    (String(dataset.tmbId) === tmbId || role === TeamMemberRoleEnum.owner);
+  const isOwner = String(dataset.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
 
-  const canWrite =
-    isOwner ||
-    (role !== TeamMemberRoleEnum.visitor && dataset.permission === PermissionTypeEnum.public);
+  const canWrite = isOwner;
 
   if (per === 'r' && !isOwner && dataset.permission !== PermissionTypeEnum.public) {
     return Promise.reject(DatasetErrEnum.unAuthDatasetFile);

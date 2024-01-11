@@ -81,7 +81,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         <Box flex={1}>
           <Flex alignItems={'flex-end'}>
             <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-              API 秘钥管理
+              {t('support.openapi.Api manager')}
             </Box>
             {feConfigs?.docUrl && (
               <Link
@@ -90,7 +90,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 ml={1}
                 color={'primary.500'}
               >
-                查看文档
+                {t('common.Read document')}
               </Link>
             )}
           </Flex>
@@ -106,10 +106,10 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           borderRadius={'md'}
           cursor={'pointer'}
           userSelect={'none'}
-          onClick={() => copyData(baseUrl, '已复制 API 地址')}
+          onClick={() => copyData(baseUrl, t('support.openapi.Copy success'))}
         >
           <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'sm'}>
-            API根地址
+            {t('support.openapi.Api baseurl')}
           </Box>
           <Box ml={2} color={'myGray.900'} fontSize={['sm', 'md']}>
             {baseUrl}
@@ -127,7 +127,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
               })
             }
           >
-            新建
+            {t('common.New Create')}
           </Button>
         </Box>
       </Box>
@@ -137,16 +137,16 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             <Tr>
               <Th>{t('Name')}</Th>
               <Th>Api Key</Th>
-              <Th>已用额度(￥)</Th>
+              <Th>{t('support.openapi.Usage')}</Th>
               {feConfigs?.isPlus && (
                 <>
-                  <Th>最大额度(￥)</Th>
-                  <Th>过期时间</Th>
+                  <Th>{t('support.openapi.Max usage')}</Th>
+                  <Th>{t('common.Expired Time')}</Th>
                 </>
               )}
 
-              <Th>创建时间</Th>
-              <Th>最后一次使用时间</Th>
+              <Th>{t('common.Create Time')}</Th>
+              <Th>{t('common.Last use time')}</Th>
               <Th />
             </Tr>
           </Thead>
@@ -158,7 +158,11 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 <Td>{usage}</Td>
                 {feConfigs?.isPlus && (
                   <>
-                    <Td>{limit?.credit && limit?.credit > -1 ? `${limit?.credit}` : '无限制'}</Td>
+                    <Td>
+                      {limit?.credit && limit?.credit > -1
+                        ? `${limit?.credit}`
+                        : t('common.Unlimited')}
+                    </Td>
                     <Td whiteSpace={'pre-wrap'}>
                       {limit?.expiredTime
                         ? dayjs(limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
@@ -168,7 +172,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 )}
                 <Td whiteSpace={'pre-wrap'}>{dayjs(createTime).format('YYYY/MM/DD\nHH:mm:ss')}</Td>
                 <Td whiteSpace={'pre-wrap'}>
-                  {lastUsedTime ? dayjs(lastUsedTime).format('YYYY/MM/DD\nHH:mm:ss') : '没有使用过'}
+                  {lastUsedTime
+                    ? dayjs(lastUsedTime).format('YYYY/MM/DD\nHH:mm:ss')
+                    : t('common.Un used')}
                 </Td>
                 <Td>
                   <Menu autoSelect={false} isLazy>
@@ -229,10 +235,10 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         title={
           <Box>
             <Box fontWeight={'bold'} fontSize={'xl'}>
-              新的 API 秘钥
+              {t('support.openapi.New api key')}
             </Box>
             <Box fontSize={'sm'} color={'myGray.600'}>
-              请保管好你的秘钥，秘钥不会再次展示~
+              {t('support.openapi.New api key tip')}
             </Box>
           </Box>
         }
@@ -359,14 +365,14 @@ function EditKeyModal({
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          {t('Cancel')}
+          {t('common.Close')}
         </Button>
 
         <Button
           isLoading={creating || updating}
           onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
         >
-          {t('Confirm')}
+          {t('common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

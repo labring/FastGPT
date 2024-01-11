@@ -17,27 +17,25 @@ export type DatasetUpdateBody = {
 
 /* ================= collection ===================== */
 export type DatasetCollectionChunkMetadataType = {
+  parentId?: string;
   trainingType?: `${TrainingModeEnum}`;
   chunkSize?: number;
   chunkSplitter?: string;
   qaPrompt?: string;
+  metadata?: Record<string, any>;
 };
 export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
-  parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
   fileId?: string;
   rawLink?: string;
   rawTextLength?: number;
   hashRawText?: string;
-  metadata?: Record<string, any>;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
-  parentId?: string;
-  metadata?: Record<string, any>;
 };
 export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
@@ -45,7 +43,15 @@ export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 };
 export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   link: string;
-  chunkSplitter?: string;
+};
+export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  name: string;
+  rawTextLength: number;
+  hashRawText: string;
+  trainingType: `${TrainingModeEnum}`;
+  chunkSize: number;
+  chunkSplitter: string;
+  qaPrompt: string;
 };
 
 /* ================= data ===================== */

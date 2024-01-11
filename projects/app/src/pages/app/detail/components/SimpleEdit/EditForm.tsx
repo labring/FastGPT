@@ -24,7 +24,6 @@ import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
-
 import { postForm2Modules } from '@/web/core/app/utils';
 
 import dynamic from 'next/dynamic';
@@ -229,15 +228,15 @@ const EditForm = ({
           {/* simple mode select */}
           <Flex {...BoxStyles}>
             <Flex alignItems={'center'} flex={'1 0 0'}>
-              <Image alt={''} src={'/imgs/module/templates.png'} w={'18px'} />
+              <MyIcon name={'core/app/simpleMode/template'} w={'20px'} />
               <Box mx={2}>{t('core.app.simple.mode template select')}</Box>
             </Flex>
             <MySelect
               w={['200px', '250px']}
               list={
                 simpleModeTemplates?.map((item) => ({
-                  alias: item.name,
-                  label: item.desc,
+                  alias: t(item.name),
+                  label: t(item.desc),
                   value: item.id
                 })) || []
               }
@@ -253,7 +252,7 @@ const EditForm = ({
           {selectSimpleTemplate?.systemForm?.aiSettings && (
             <Box {...BoxStyles}>
               <Flex alignItems={'center'}>
-                <Image alt={''} src={'/imgs/module/AI.png'} w={'18px'} />
+                <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
                 <Box ml={2} flex={1}>
                   {t('app.AI Settings')}
                 </Box>
@@ -263,7 +262,7 @@ const EditForm = ({
                   selectSimpleTemplate.systemForm.aiSettings.quotePrompt) && (
                   <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
                     <MyIcon mr={1} name={'common/settingLight'} w={'14px'} />
-                    {t('app.Open AI Advanced Settings')}
+                    {t('common.More settings')}
                   </Flex>
                 )}
               </Flex>
@@ -293,7 +292,7 @@ const EditForm = ({
                 <Flex mt={10} alignItems={'flex-start'}>
                   <Box {...LabelStyles}>
                     {t('core.ai.Prompt')}
-                    <MyTooltip label={chatNodeSystemPromptTip} forceShow>
+                    <MyTooltip label={t(chatNodeSystemPromptTip)} forceShow>
                       <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
                     </MyTooltip>
                   </Box>
@@ -301,7 +300,7 @@ const EditForm = ({
                     flex={1}
                     bg={'myWhite.400'}
                     rows={5}
-                    placeholder={chatNodeSystemPromptTip}
+                    placeholder={t(chatNodeSystemPromptTip)}
                     defaultValue={getValues('aiSettings.systemPrompt')}
                     onBlur={(e) => {
                       setValue('aiSettings.systemPrompt', e.target.value || '');
@@ -317,7 +316,7 @@ const EditForm = ({
             <Box {...BoxStyles}>
               <Flex alignItems={'center'}>
                 <Flex alignItems={'center'} flex={1}>
-                  <Image alt={''} src={'/imgs/module/db.png'} w={'18px'} />
+                  <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
                   <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
                 </Flex>
                 {selectSimpleTemplate.systemForm.dataset.datasets && (
@@ -422,9 +421,9 @@ const EditForm = ({
           {selectSimpleTemplate?.systemForm?.userGuide?.welcomeText && (
             <Box {...BoxStyles}>
               <Flex alignItems={'center'}>
-                <Image alt={''} src={'/imgs/module/userGuide.png'} w={'18px'} />
+                <MyIcon name={'core/app/simpleMode/chat'} w={'20px'} />
                 <Box mx={2}>{t('core.app.Welcome Text')}</Box>
-                <MyTooltip label={welcomeTextTip} forceShow>
+                <MyTooltip label={t(welcomeTextTip)} forceShow>
                   <QuestionOutlineIcon />
                 </MyTooltip>
               </Flex>
@@ -432,7 +431,7 @@ const EditForm = ({
                 mt={2}
                 bg={'myWhite.400'}
                 rows={5}
-                placeholder={welcomeTextTip}
+                placeholder={t(welcomeTextTip)}
                 defaultValue={getValues('userGuide.welcomeText')}
                 onBlur={(e) => {
                   setValue('userGuide.welcomeText', e.target.value || '');

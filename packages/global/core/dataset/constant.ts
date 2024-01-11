@@ -6,7 +6,7 @@ export enum DatasetTypeEnum {
 }
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
-    icon: 'core/dataset/folderDataset',
+    icon: 'common/folderFill',
     label: 'core.dataset.Folder Dataset',
     collectionLabel: 'common.Folder'
   },
@@ -104,10 +104,12 @@ export enum TrainingModeEnum {
 
 export const TrainingTypeMap = {
   [TrainingModeEnum.chunk]: {
-    label: 'core.dataset.training.type chunk'
+    label: 'core.dataset.training.Chunk mode',
+    tooltip: 'core.dataset.import.Chunk Split Tip'
   },
   [TrainingModeEnum.qa]: {
-    label: 'core.dataset.training.type qa'
+    label: 'core.dataset.training.QA mode',
+    tooltip: 'core.dataset.import.QA Import Tip'
   }
 };
 

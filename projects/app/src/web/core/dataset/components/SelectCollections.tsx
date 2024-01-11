@@ -218,7 +218,7 @@ const SelectCollections = ({
             isDisabled={type === 'collection' && selectedDatasetCollectionIds.length === 0}
             onClick={mutate}
           >
-            {type === 'folder' ? t('common.Confirm Move') : t('Confirm')}
+            {type === 'folder' ? t('common.Confirm Move') : t('common.Confirm')}
           </Button>
         </ModalFooter>
       )}

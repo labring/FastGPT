@@ -87,7 +87,7 @@ const MyRadio = ({
           <Box pr={hiddenCircle ? 0 : 2} color={'myGray.800'}>
             <Box>{typeof item.title === 'string' ? t(item.title) : item.title}</Box>
             {!!item.desc && (
-              <Box fontSize={['xs', 'sm']} color={'myGray.500'}>
+              <Box fontSize={'xs'} color={'myGray.500'} lineHeight={1.2}>
                 {t(item.desc)}
               </Box>
             )}

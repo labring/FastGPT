@@ -46,6 +46,7 @@ const MyModal = ({
         maxW={maxW}
         position={'relative'}
         maxH={'85vh'}
+        boxShadow={'7'}
         {...props}
       >
         {!title && onClose && <ModalCloseButton zIndex={1} />}

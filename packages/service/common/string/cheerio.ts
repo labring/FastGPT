@@ -64,41 +64,39 @@ export const urlsFetch = async ({
 }: UrlFetchParams): Promise<UrlFetchResponse> => {
   urlList = urlList.filter((url) => /^(http|https):\/\/[^ "]+$/.test(url));
 
-  const response = (
-    await Promise.all(
-      urlList.map(async (url) => {
-        try {
-          const fetchRes = await axios.get(url, {
-            timeout: 30000
-          });
+  const response = await Promise.all(
+    urlList.map(async (url) => {
+      try {
+        const fetchRes = await axios.get(url, {
+          timeout: 30000
+        });
 
-          const $ = cheerio.load(fetchRes.data);
-          const { title, html, usedSelector } = cheerioToHtml({
-            fetchUrl: url,
-            $,
-            selector
-          });
-          const md = await htmlToMarkdown(html);
+        const $ = cheerio.load(fetchRes.data);
+        const { title, html, usedSelector } = cheerioToHtml({
+          fetchUrl: url,
+          $,
+          selector
+        });
+        const md = await htmlToMarkdown(html);
 
-          return {
-            url,
-            title,
-            content: md,
-            selector: usedSelector
-          };
-        } catch (error) {
-          console.log(error, 'fetch error');
+        return {
+          url,
+          title,
+          content: md,
+          selector: usedSelector
+        };
+      } catch (error) {
+        console.log(error, 'fetch error');
 
-          return {
-            url,
-            title: '',
-            content: '',
-            selector: ''
-          };
-        }
-      })
-    )
-  ).filter((item) => item.content);
+        return {
+          url,
+          title: '',
+          content: '',
+          selector: ''
+        };
+      }
+    })
+  );
 
   return response;
 };

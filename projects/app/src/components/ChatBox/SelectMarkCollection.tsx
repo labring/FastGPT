@@ -46,7 +46,7 @@ const SelectMarkCollection = ({
           paths={paths}
           onClose={onClose}
           setParentId={setParentId}
-          tips={t('core.chat.Select Mark Kb Desc')}
+          tips={t('core.chat.Select dataset Desc')}
         >
           <ModalBody flex={'1 0 0'} overflowY={'auto'}>
             <Grid

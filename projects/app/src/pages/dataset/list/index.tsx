@@ -167,7 +167,7 @@ const Kb = () => {
                 <MenuButton h={'100%'}>
                   <Flex alignItems={'center'} px={'20px'}>
                     <AddIcon mr={2} />
-                    <Box>{t('Create New')}</Box>
+                    <Box>{t('common.Create New')}</Box>
                   </Flex>
                 </MenuButton>
               </Button>

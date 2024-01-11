@@ -14,7 +14,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
 import MySelect from '@/components/Select';
-import { qaModelList } from '@/web/common/system/staticData';
+import { qaModelList, vectorModelList } from '@/web/common/system/staticData';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
@@ -119,39 +119,44 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
         <Input flex={[1, '0 0 300px']} maxLength={30} {...register('name')} />
       </Flex>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.ai.model.Vector Model')}
-        </Box>
-        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
-      </Flex>
+      {vectorModelList.length > 1 && (
+        <Flex mt={8} w={'100%'} alignItems={'center'}>
+          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+            {t('core.ai.model.Vector Model')}
+          </Box>
+          <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
+        </Flex>
+      )}
       <Flex mt={8} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.Max Token')}
         </Box>
         <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
       </Flex>
-      <Flex mt={6} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.ai.model.Dataset Agent Model')}
-        </Box>
-        <Box flex={[1, '0 0 300px']}>
-          <MySelect
-            w={'100%'}
-            value={getValues('agentModel').model}
-            list={qaModelList.map((item) => ({
-              label: item.name,
-              value: item.model
-            }))}
-            onchange={(e) => {
-              const agentModel = qaModelList.find((item) => item.model === e);
-              if (!agentModel) return;
-              setValue('agentModel', agentModel);
-              setRefresh((state) => !state);
-            }}
-          />
-        </Box>
-      </Flex>
+      {qaModelList.length > 1 && (
+        <Flex mt={6} alignItems={'center'}>
+          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+            {t('core.ai.model.Dataset Agent Model')}
+          </Box>
+          <Box flex={[1, '0 0 300px']}>
+            <MySelect
+              w={'100%'}
+              value={getValues('agentModel').model}
+              list={qaModelList.map((item) => ({
+                label: item.name,
+                value: item.model
+              }))}
+              onchange={(e) => {
+                const agentModel = qaModelList.find((item) => item.model === e);
+                if (!agentModel) return;
+                setValue('agentModel', agentModel);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
+        </Flex>
+      )}
+
       <Flex mt={8} alignItems={'center'} w={'100%'}>
         <Box flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</Box>
         <Textarea flex={[1, '0 0 300px']} {...register('intro')} placeholder={t('common.Intro')} />
