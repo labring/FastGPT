@@ -1,4 +1,4 @@
-import React, { useCallback, useRef } from 'react';
+import React, { useCallback, useMemo, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -8,7 +8,8 @@ import {
   Divider,
   Select,
   Input,
-  Link
+  Link,
+  Progress
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
@@ -22,7 +23,6 @@ import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { feConfigs, systemVersion } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@fastgpt/global/common/time/timezone';
-import Loading from '@/components/Loading';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
@@ -32,20 +32,14 @@ import MySelect from '@/components/Select';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
+import { getTeamDatasetValidSub } from '@/web/support/wallet/sub/api';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
-const PayModal = dynamic(() => import('./PayModal'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
-});
-const UpdatePswModal = dynamic(() => import('./UpdatePswModal'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
-});
-const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'), {
-  loading: () => <Loading fixed={false} />,
-  ssr: false
-});
+const PayModal = dynamic(() => import('./PayModal'));
+const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
+const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
+const SubDatasetModal = dynamic(() => import('@/components/support/wallet/SubDatasetModal'));
 
 const UserInfo = () => {
   const theme = useTheme();
@@ -69,6 +63,11 @@ const UserInfo = () => {
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
+  const {
+    isOpen: isOpenSubDatasetModal,
+    onClose: onCloseSubDatasetModal,
+    onOpen: onOpenSubDatasetModal
+  } = useDisclosure();
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -97,6 +96,7 @@ const UserInfo = () => {
       if (!file || !userInfo) return;
       try {
         const src = await compressImgFileAndUpload({
+          type: MongoImageTypeEnum.userAvatar,
           file,
           maxW: 300,
           maxH: 300
@@ -121,6 +121,27 @@ const UserInfo = () => {
       reset(res);
     }
   });
+
+  const { data: datasetSub = { maxSize: 0, usedSize: 0 } } = useQuery(
+    ['getTeamDatasetValidSub'],
+    getTeamDatasetValidSub
+  );
+  const datasetUsageMap = useMemo(() => {
+    const rate = datasetSub.usedSize / datasetSub.maxSize;
+
+    const colorScheme = (() => {
+      if (rate < 0.5) return 'green';
+      if (rate < 0.8) return 'yellow';
+      return 'red';
+    })();
+
+    return {
+      colorScheme,
+      value: rate * 100,
+      maxSize: datasetSub.maxSize,
+      usedSize: datasetSub.usedSize
+    };
+  }, [datasetSub.maxSize, datasetSub.usedSize]);
 
   return (
     <Box
@@ -233,21 +254,48 @@ const UserInfo = () => {
             {t('user.Change')}
           </Button>
         </Flex>
-        <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
-          <Flex alignItems={'center'}>
-            <Box flex={'0 0 80px'} fontSize={'md'}>
-              {t('user.team.Balance')}:&nbsp;
+        {feConfigs.isPlus && (
+          <>
+            <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
+              <Flex alignItems={'center'}>
+                <Box flex={'0 0 80px'} fontSize={'md'}>
+                  {t('user.team.Balance')}:&nbsp;
+                </Box>
+                <Box flex={1}>
+                  <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
+                </Box>
+                {feConfigs?.show_pay && userInfo?.team?.canWrite && (
+                  <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
+                    {t('user.Pay')}
+                  </Button>
+                )}
+              </Flex>
             </Box>
-            <Box flex={1}>
-              <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
+            <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
+              <Flex alignItems={'center'}>
+                <Box flex={'1 0 0'} fontSize={'md'}>
+                  {t('support.user.team.Dataset usage')}:&nbsp;{datasetUsageMap.usedSize}/
+                  {datasetSub.maxSize}
+                </Box>
+                <Button size={'sm'} onClick={onOpenSubDatasetModal}>
+                  {t('support.wallet.Buy more')}
+                </Button>
+              </Flex>
+              <Box mt={1}>
+                <Progress
+                  value={datasetUsageMap.value}
+                  colorScheme={datasetUsageMap.colorScheme}
+                  borderRadius={'md'}
+                  isAnimated
+                  hasStripe
+                  borderWidth={'1px'}
+                  borderColor={'borderColor.base'}
+                />
+              </Box>
             </Box>
-            {feConfigs?.show_pay && userInfo?.team?.canWrite && (
-              <Button size={['sm', 'md']} ml={5} onClick={onOpenPayModal}>
-                {t('user.Pay')}
-              </Button>
-            )}
-          </Flex>
-        </Box>
+          </>
+        )}
+
         {feConfigs?.docUrl && (
           <Link
             href={getDocPath('/docs/intro')}
@@ -344,9 +392,10 @@ const UserInfo = () => {
           onClose={onCloseOpenai}
         />
       )}
+      {isOpenSubDatasetModal && <SubDatasetModal onClose={onCloseSubDatasetModal} />}
       <File onSelect={onSelectFile} />
     </Box>
   );
 };
 
-export default UserInfo;
+export default React.memo(UserInfo);

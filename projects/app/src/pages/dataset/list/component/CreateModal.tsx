@@ -19,6 +19,7 @@ import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
 import { feConfigs } from '@/web/common/system/staticData';
+import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -49,6 +50,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       if (!file) return;
       try {
         const src = await compressImgFileAndUpload({
+          type: MongoImageTypeEnum.datasetAvatar,
           file,
           maxW: 300,
           maxH: 300
@@ -62,7 +64,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         });
       }
     },
-    [setValue, toast]
+    [setValue, t, toast]
   );
 
   /* create a new kb and router to it */

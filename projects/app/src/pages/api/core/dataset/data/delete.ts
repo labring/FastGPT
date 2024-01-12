@@ -8,8 +8,8 @@ import { delDatasetDataByDataId } from '@fastgpt/service/core/dataset/data/contr
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { dataId } = req.query as {
-      dataId: string;
+    const { id: dataId } = req.query as {
+      id: string;
     };
 
     if (!dataId) {
@@ -17,9 +17,18 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // 凭证校验
-    await authDatasetData({ req, authToken: true, dataId, per: 'w' });
+    const { datasetData } = await authDatasetData({
+      req,
+      authToken: true,
+      authApiKey: true,
+      dataId,
+      per: 'w'
+    });
 
-    await delDatasetDataByDataId(dataId);
+    await delDatasetDataByDataId({
+      collectionId: datasetData.collectionId,
+      mongoDataId: dataId
+    });
 
     jsonRes(res, {
       data: 'success'

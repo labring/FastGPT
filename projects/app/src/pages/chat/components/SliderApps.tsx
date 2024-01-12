@@ -35,7 +35,7 @@ const SliderApps = ({ appId }: { appId: string }) => {
             borderRadius={'50%'}
             aria-label={''}
           />
-          {t('chat.Exit Chat')}
+          {t('core.chat.Exit Chat')}
         </Flex>
       </Box>
       <Box flex={'1 0 0'} h={0} px={5} overflow={'overlay'}>

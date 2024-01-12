@@ -42,11 +42,15 @@ export type DatasetCollectionSchemaType = {
   type: `${DatasetCollectionTypeEnum}`;
   createTime: Date;
   updateTime: Date;
+
   trainingType: `${TrainingModeEnum}`;
   chunkSize: number;
+  chunkSplitter?: string;
+  qaPrompt?: string;
+
   fileId?: string;
   rawLink?: string;
-  qaPrompt?: string;
+
   rawTextLength?: number;
   hashRawText?: string;
   metadata?: {

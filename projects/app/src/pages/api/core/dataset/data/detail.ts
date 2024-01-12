@@ -13,12 +13,18 @@ export type Response = {
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { dataId } = req.query as {
-      dataId: string;
+    const { id: dataId } = req.query as {
+      id: string;
     };
 
     // 凭证校验
-    const { datasetData } = await authDatasetData({ req, authToken: true, dataId, per: 'r' });
+    const { datasetData } = await authDatasetData({
+      req,
+      authToken: true,
+      authApiKey: true,
+      dataId,
+      per: 'r'
+    });
 
     jsonRes(res, {
       data: datasetData

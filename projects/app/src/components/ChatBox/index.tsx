@@ -910,14 +910,15 @@ const ChatBox = (
                         )}
                         {/* admin mark content */}
                         {showMarkIcon && item.adminFeedback && (
-                          <Box>
+                          <Box fontSize={'sm'}>
                             <ChatBoxDivider
                               icon="core/app/markLight"
-                              text={t('chat.Admin Mark Content')}
+                              text={t('core.chat.Admin Mark Content')}
                             />
-                            <Box whiteSpace={'pre'}>{`${item.adminFeedback.q || ''}${
-                              item.adminFeedback.a ? `\n${item.adminFeedback.a}` : ''
-                            }`}</Box>
+                            <Box whiteSpace={'pre'}>
+                              <Box color={'black'}>{item.adminFeedback.q}</Box>
+                              <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                            </Box>
                           </Box>
                         )}
                       </Card>
@@ -996,6 +997,7 @@ const ChatBox = (
           setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
           onClose={() => setAdminMarkData(undefined)}
           onSuccess={(adminFeedback) => {
+            console.log(adminMarkData);
             if (!appId || !chatId || !adminMarkData.chatItemId) return;
             updateChatAdminFeedback({
               appId,
@@ -1003,6 +1005,7 @@ const ChatBox = (
               chatItemId: adminMarkData.chatItemId,
               ...adminFeedback
             });
+
             // update dom
             setChatHistory((state) =>
               state.map((chatItem) =>
@@ -1234,7 +1237,7 @@ function ChatController({
       {!!onDelete && (
         <>
           {onRetry && (
-            <MyTooltip label={t('chat.retry')}>
+            <MyTooltip label={t('core.chat.retry')}>
               <MyIcon
                 {...controlIconStyle}
                 name={'common/retryLight'}
@@ -1301,7 +1304,7 @@ function ChatController({
           </MyTooltip>
         ))}
       {!!onMark && (
-        <MyTooltip label={t('chat.Mark')}>
+        <MyTooltip label={t('core.chat.Mark')}>
           <MyIcon
             {...controlIconStyle}
             name={'core/app/markLight'}

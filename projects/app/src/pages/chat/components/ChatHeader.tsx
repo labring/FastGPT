@@ -7,6 +7,7 @@ import Avatar from '@/components/Avatar';
 import ToolMenu from './ToolMenu';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useRouter } from 'next/router';
+import { useTranslation } from 'next-i18next';
 import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 
 const ChatHeader = ({
@@ -28,12 +29,13 @@ const ChatHeader = ({
 }) => {
   const router = useRouter();
   const theme = useTheme();
+  const { t } = useTranslation();
   const { isPc } = useSystemStore();
   const title = useMemo(
     () =>
       chatContentReplaceBlock(history[history.length - 2]?.value)?.slice(0, 8) ||
       appName ||
-      '新对话',
+      t('core.chat.New Chat'),
     [appName, history]
   );
 
@@ -52,7 +54,11 @@ const ChatHeader = ({
           </Box>
           <Tag>
             <MyIcon name={'history'} w={'14px'} />
-            <Box ml={1}>{history.length === 0 ? '新的对话' : `${history.length}条记录`}</Box>
+            <Box ml={1}>
+              {history.length === 0
+                ? t('core.chat.New Chat')
+                : t('core.chat.History Amount', { amount: history.length })}
+            </Box>
           </Tag>
           {!!chatModels && chatModels.length > 0 && (
             <Tag ml={2} colorSchema={'green'}>

@@ -37,7 +37,6 @@
     "jschardet": "^3.0.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
-    "mammoth": "^1.6.0",
     "mermaid": "^10.2.3",
     "nanoid": "^4.0.1",
     "next": "13.5.2",

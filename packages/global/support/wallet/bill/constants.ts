@@ -7,7 +7,7 @@ export enum BillSourceEnum {
   api = 'api',
   shareLink = 'shareLink',
   training = 'training',
-  datasetStore = 'datasetStore'
+  datasetExpand = 'datasetExpand'
 }
 
 export const BillSourceMap: Record<`${BillSourceEnum}`, string> = {
@@ -15,5 +15,5 @@ export const BillSourceMap: Record<`${BillSourceEnum}`, string> = {
   [BillSourceEnum.api]: 'Api',
   [BillSourceEnum.shareLink]: '免登录链接',
   [BillSourceEnum.training]: '数据训练',
-  [BillSourceEnum.datasetStore]: '知识库存储'
+  [BillSourceEnum.datasetExpand]: '知识库扩容'
 };

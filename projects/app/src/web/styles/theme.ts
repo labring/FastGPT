@@ -195,6 +195,7 @@ const Input: ComponentStyleConfig = {
   baseStyle: {
     fontsize: '14px'
   },
+  sizes: {},
   variants: {
     outline: {
       field: {

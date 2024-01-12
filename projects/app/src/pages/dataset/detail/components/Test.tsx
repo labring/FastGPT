@@ -233,7 +233,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
                 h={'100%'}
                 resize={'none'}
                 variant={'unstyled'}
-                maxLength={datasetDetail.vectorModel.maxToken}
+                maxLength={datasetDetail.vectorModel?.maxToken}
                 placeholder={t('core.dataset.test.Test Text Placeholder')}
                 onFocus={() => setIsFocus(true)}
                 {...register('inputText', {
@@ -314,7 +314,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         </Box>
       </Box>
       {/* result show */}
-      <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'}>
+      <Box p={4} h={['auto', '100%']} overflow={'overlay'} flex={'1 0 0'} bg={'white'}>
         <TestResults datasetTestItem={datasetTestItem} />
       </Box>
 
@@ -384,6 +384,9 @@ const TestHistories = React.memo(function TestHistories({
             }}
             cursor={'pointer'}
             fontSize={'sm'}
+            {...(item.id === datasetTestItem?.id && {
+              bg: 'primary.50'
+            })}
             onClick={() => setDatasetTestItem(item)}
           >
             <Box flex={'0 0 80px'}>

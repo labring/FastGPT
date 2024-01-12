@@ -15,7 +15,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 凭证校验
     const { teamId, tmbId, teamOwner, role, canWrite } = await authUserRole({
       req,
-      authToken: true
+      authToken: true,
+      authApiKey: true
     });
 
     const datasets = await MongoDataset.find({

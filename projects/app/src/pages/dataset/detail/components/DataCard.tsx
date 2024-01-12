@@ -32,16 +32,17 @@ import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import InputDataModal, { RawSourceText, type InputDataType } from '../components/InputDataModal';
+import InputDataModal from '../components/InputDataModal';
+import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
 import { TabEnum } from '..';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
   DatasetCollectionTypeMap,
-  DatasetCollectionTrainingTypeMap
+  TrainingModeEnum,
+  TrainingTypeMap
 } from '@fastgpt/global/core/dataset/constant';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -90,7 +91,7 @@ const DataCard = () => {
     }
   });
 
-  const [editInputData, setEditInputData] = useState<InputDataType>();
+  const [editDataId, setEditDataId] = useState<string>();
 
   // get first page data
   const getFirstData = useCallback(
@@ -154,7 +155,7 @@ const DataCard = () => {
       },
       {
         label: t('core.dataset.collection.metadata.Training Type'),
-        value: t(DatasetCollectionTrainingTypeMap[collection.trainingType]?.label)
+        value: t(TrainingTypeMap[collection.trainingType]?.label)
       },
       {
         label: t('core.dataset.collection.metadata.Chunk Size'),
@@ -193,7 +194,7 @@ const DataCard = () => {
         />
         <Flex className="textEllipsis" flex={'1 0 0'} mr={[3, 5]} alignItems={'center'}>
           <Box lineHeight={1.2}>
-            <RawSourceText
+            <RawSourceBox
               sourceName={collection?.name}
               sourceId={collection?.fileId || collection?.rawLink}
               fontSize={['md', 'lg']}
@@ -216,10 +217,7 @@ const DataCard = () => {
               size={['sm', 'md']}
               onClick={() => {
                 if (!collection) return;
-                setEditInputData({
-                  q: '',
-                  indexes: [getDefaultIndex({ dataId: `${Date.now()}` })]
-                });
+                setEditDataId('');
               }}
             >
               {t('dataset.Insert Data')}
@@ -297,12 +295,7 @@ const DataCard = () => {
             }}
             onClick={() => {
               if (!collection) return;
-              setEditInputData({
-                id: item._id,
-                q: item.q,
-                a: item.a,
-                indexes: item.indexes
-              });
+              setEditDataId(item._id);
             }}
           >
             <Flex zIndex={1} alignItems={'center'} justifyContent={'space-between'}>
@@ -424,11 +417,11 @@ const DataCard = () => {
         </Flex>
       )}
 
-      {editInputData !== undefined && collection && (
+      {editDataId !== undefined && collection && (
         <InputDataModal
           collectionId={collection._id}
-          defaultValue={editInputData}
-          onClose={() => setEditInputData(undefined)}
+          dataId={editDataId}
+          onClose={() => setEditDataId(undefined)}
           onSuccess={() => getData(pageNum)}
           onDelete={() => getData(pageNum)}
         />

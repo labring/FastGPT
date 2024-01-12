@@ -17,6 +17,7 @@ type Props = {
   shareId?: string;
   outLinkUid?: string;
   content: [ChatItemType, ChatItemType];
+  metadata?: Record<string, any>;
 };
 
 export async function saveChat({
@@ -29,7 +30,8 @@ export async function saveChat({
   source,
   shareId,
   outLinkUid,
-  content
+  content,
+  metadata = {}
 }: Props) {
   try {
     const chat = await MongoChat.findOne(
@@ -39,8 +41,13 @@ export async function saveChat({
         tmbId,
         appId
       },
-      '_id'
+      '_id metadata'
     );
+
+    const metadataUpdate = {
+      ...chat?.metadata,
+      ...metadata
+    };
 
     const promise: any[] = [
       MongoChatItem.insertMany(
@@ -65,7 +72,8 @@ export async function saveChat({
           { chatId },
           {
             title,
-            updateTime: new Date()
+            updateTime: new Date(),
+            metadata: metadataUpdate
           }
         )
       );
@@ -80,7 +88,8 @@ export async function saveChat({
           title,
           source,
           shareId,
-          outLinkUid
+          outLinkUid,
+          metadata: metadataUpdate
         })
       );
     }

@@ -74,18 +74,20 @@ const ChatHistorySlider = ({
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
-    title: '自定义历史记录标题',
-    placeholder: '如果设置为空，会自动跟随聊天记录。'
+    title: t('core.chat.Custom History Title'),
+    placeholder: t('core.chat.Custom History Title Description')
   });
   const { openConfirm, ConfirmModal } = useConfirm({
     content: isShare
-      ? t('chat.Confirm to clear share chat history')
-      : t('chat.Confirm to clear history')
+      ? t('core.chat.Confirm to clear share chat history')
+      : t('core.chat.Confirm to clear history')
   });
 
   const concatHistory = useMemo<HistoryItemType[]>(
     () =>
-      !activeChatId ? [{ id: activeChatId, title: t('chat.New Chat') }].concat(history) : history,
+      !activeChatId
+        ? [{ id: activeChatId, title: t('core.chat.New Chat') }].concat(history)
+        : history,
     [activeChatId, history, t]
   );
 
@@ -144,7 +146,7 @@ const ChatHistorySlider = ({
             mr={2}
             list={[
               { label: 'App', id: TabEnum.app },
-              { label: 'chat.History', id: TabEnum.history }
+              { label: t('core.chat.History'), id: TabEnum.history }
             ]}
             activeId={currentTab}
             onChange={(e) => setCurrentTab(e as `${TabEnum}`)}
@@ -160,7 +162,7 @@ const ChatHistorySlider = ({
           overflow={'hidden'}
           onClick={() => onChangeChat()}
         >
-          {t('chat.New Chat')}
+          {t('core.chat.New Chat')}
         </Button>
 
         {(isPc || isShare) && (
@@ -240,7 +242,7 @@ const ChatHistorySlider = ({
                             }}
                           >
                             <MyIcon mr={2} name={'core/chat/setTopLight'} w={'16px'}></MyIcon>
-                            {item.top ? '取消置顶' : '置顶'}
+                            {item.top ? t('core.chat.Unpin') : t('core.chat.Pin')}
                           </MenuItem>
                         )}
                         {onSetCustomTitle && (
@@ -272,7 +274,7 @@ const ChatHistorySlider = ({
                           }}
                         >
                           <MyIcon mr={2} name={'delete'} w={'16px'}></MyIcon>
-                          删除
+                          {t('common.Delete')}
                         </MenuItem>
                       </MenuList>
                     </Menu>
@@ -336,7 +338,7 @@ const ChatHistorySlider = ({
             borderRadius={'50%'}
             aria-label={''}
           />
-          {t('chat.Exit Chat')}
+          {t('core.chat.Exit Chat')}
         </Flex>
       )}
       <EditTitleModal />

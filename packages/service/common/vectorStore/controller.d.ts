@@ -2,6 +2,8 @@ export type DeleteDatasetVectorProps = {
   id?: string;
   datasetIds?: string[];
   collectionIds?: string[];
+
+  collectionId?: string;
   dataIds?: string[];
 };
 

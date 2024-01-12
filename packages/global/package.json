@@ -7,7 +7,7 @@
     "encoding": "^0.1.13",
     "js-tiktoken": "^1.0.7",
     "openai": "4.23.0",
-    "pdfjs-dist": "^4.0.269",
+    "nanoid": "^4.0.1",
     "timezones-list": "^3.0.2"
   },
   "devDependencies": {

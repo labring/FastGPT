@@ -15,10 +15,10 @@ export const simpleMarkdownText = (rawText: string) => {
     return `[${cleanedLinkText}](${url})`;
   });
 
-  // replace special \.* ……
-  const reg1 = /\\([-.!`_(){}\[\]])/g;
+  // replace special #\.* ……
+  const reg1 = /\\([#`!*()+-_\[\]{}\\.])/g;
   if (reg1.test(rawText)) {
-    rawText = rawText.replace(/\\([`!*()+-_\[\]{}\\.])/g, '$1');
+    rawText = rawText.replace(reg1, '$1');
   }
 
   // replace \\n
@@ -45,24 +45,26 @@ export const uploadMarkdownBase64 = async ({
   uploadImgController
 }: {
   rawText: string;
-  uploadImgController: (base64: string) => Promise<string>;
+  uploadImgController?: (base64: string) => Promise<string>;
 }) => {
-  // match base64, upload and replace it
-  const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
-  const base64Arr = rawText.match(base64Regex) || [];
-  // upload base64 and replace it
-  await Promise.all(
-    base64Arr.map(async (base64Img) => {
-      try {
-        const str = await uploadImgController(base64Img);
+  if (uploadImgController) {
+    // match base64, upload and replace it
+    const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
+    const base64Arr = rawText.match(base64Regex) || [];
+    // upload base64 and replace it
+    await Promise.all(
+      base64Arr.map(async (base64Img) => {
+        try {
+          const str = await uploadImgController(base64Img);
 
-        rawText = rawText.replace(base64Img, str);
-      } catch (error) {
-        rawText = rawText.replace(base64Img, '');
-        rawText = rawText.replace(/!\[.*\]\(\)/g, '');
-      }
-    })
-  );
+          rawText = rawText.replace(base64Img, str);
+        } catch (error) {
+          rawText = rawText.replace(base64Img, '');
+          rawText = rawText.replace(/!\[.*\]\(\)/g, '');
+        }
+      })
+    );
+  }
 
   // Remove white space on both sides of the picture
   const trimReg = /(!\[.*\]\(.*\))\s*/g;
@@ -70,5 +72,20 @@ export const uploadMarkdownBase64 = async ({
     rawText = rawText.replace(trimReg, '$1');
   }
 
-  return simpleMarkdownText(rawText);
+  return rawText;
+};
+
+export const markdownProcess = async ({
+  rawText,
+  uploadImgController
+}: {
+  rawText: string;
+  uploadImgController?: (base64: string) => Promise<string>;
+}) => {
+  const imageProcess = await uploadMarkdownBase64({
+    rawText,
+    uploadImgController
+  });
+
+  return simpleMarkdownText(imageProcess);
 };

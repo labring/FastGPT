@@ -69,26 +69,6 @@ const ChatSchema = new Schema({
     //For special storage
     type: Object,
     default: {}
-  },
-  content: {
-    type: [
-      {
-        obj: {
-          type: String,
-          required: true,
-          enum: Object.keys(ChatRoleMap)
-        },
-        value: {
-          type: String,
-          default: ''
-        },
-        [ModuleOutputKeyEnum.responseData]: {
-          type: Array,
-          default: []
-        }
-      }
-    ],
-    default: []
   }
 });
 

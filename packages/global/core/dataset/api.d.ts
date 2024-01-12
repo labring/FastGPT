@@ -1,5 +1,5 @@
 import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
-import { DatasetCollectionTrainingModeEnum, DatasetCollectionTypeEnum } from './constant';
+import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constant';
 import type { LLMModelItemType } from '../ai/model.d';
 
 /* ================= dataset ===================== */
@@ -16,19 +16,36 @@ export type DatasetUpdateBody = {
 };
 
 /* ================= collection ===================== */
-export type CreateDatasetCollectionParams = {
+export type DatasetCollectionChunkMetadataType = {
+  trainingType?: `${TrainingModeEnum}`;
+  chunkSize?: number;
+  chunkSplitter?: string;
+  qaPrompt?: string;
+};
+export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
   parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
-  trainingType?: `${DatasetCollectionTrainingModeEnum}`;
-  chunkSize?: number;
   fileId?: string;
   rawLink?: string;
-  qaPrompt?: string;
   rawTextLength?: number;
   hashRawText?: string;
   metadata?: Record<string, any>;
+};
+
+export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
+  datasetId: string;
+  parentId?: string;
+  metadata?: Record<string, any>;
+};
+export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  name: string;
+  text: string;
+};
+export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  link: string;
+  chunkSplitter?: string;
 };
 
 /* ================= data ===================== */

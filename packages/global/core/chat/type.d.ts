@@ -22,6 +22,7 @@ export type ChatSchema = {
   shareId?: string;
   outLinkUid?: string;
   content: ChatItemType[];
+  metadata?: Record<string, any>;
 };
 
 export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {

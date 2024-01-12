@@ -16,8 +16,6 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import { getTrainingQueueLen } from '@/web/core/dataset/api';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { feConfigs } from '@/web/common/system/staticData';
 import Script from 'next/script';
 import CollectionCard from './components/CollectionCard';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -29,6 +27,7 @@ import {
 } from '@fastgpt/global/core/dataset/constant';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRequest } from '@/web/common/hooks/useRequest';
+import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 
 const DataCard = dynamic(() => import('./components/DataCard'), {
   ssr: false
@@ -150,50 +149,47 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
           {isPc ? (
             <Flex
               flexDirection={'column'}
-              p={4}
+              py={4}
               h={'100%'}
               flex={'0 0 200px'}
               borderRight={theme.borders.base}
             >
-              <Flex mb={4} alignItems={'center'}>
-                <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'md'} />
-                <Box ml={2}>
-                  <Box fontWeight={'bold'}>{datasetDetail.name}</Box>
-                </Box>
-              </Flex>
-              {DatasetTypeMap[datasetDetail.type] && (
-                <Flex alignItems={'center'} pl={2}>
-                  <MyIcon
-                    name={DatasetTypeMap[datasetDetail.type]?.icon as any}
-                    mr={1}
-                    w={'16px'}
-                  />
-                  <Box flex={1}>{t(DatasetTypeMap[datasetDetail.type]?.label)}</Box>
-                  {datasetDetail.type === DatasetTypeEnum.websiteDataset &&
-                    datasetDetail.status === DatasetStatusEnum.active && (
-                      <MyTooltip label={t('core.dataset.website.Start Sync')}>
-                        <MyIcon
-                          mt={1}
-                          name={'common/refreshLight'}
-                          w={'12px'}
-                          color={'myGray.500'}
-                          cursor={'pointer'}
-                          onClick={() =>
-                            openConfirmSync(
-                              onUpdateDatasetWebsiteConfig,
-                              undefined,
-                              t('core.dataset.website.Confirm Create Tips')
-                            )()
-                          }
-                        />
-                      </MyTooltip>
-                    )}
+              <Box px={4} borderBottom={'1px'} borderColor={'myGray.200'} pb={4} mb={4}>
+                <Flex mb={4} alignItems={'center'}>
+                  <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'md'} />
+                  <Box ml={2}>
+                    <Box fontWeight={'bold'}>{datasetDetail.name}</Box>
+                  </Box>
                 </Flex>
-              )}
+                {DatasetTypeMap[datasetDetail.type] && (
+                  <Flex alignItems={'center'} pl={2} justifyContent={'space-between'}>
+                    <DatasetTypeTag type={datasetDetail.type} />
+                    {datasetDetail.type === DatasetTypeEnum.websiteDataset &&
+                      datasetDetail.status === DatasetStatusEnum.active && (
+                        <MyTooltip label={t('core.dataset.website.Start Sync')}>
+                          <MyIcon
+                            mt={1}
+                            name={'common/refreshLight'}
+                            w={'12px'}
+                            color={'myGray.500'}
+                            cursor={'pointer'}
+                            onClick={() =>
+                              openConfirmSync(
+                                onUpdateDatasetWebsiteConfig,
+                                undefined,
+                                t('core.dataset.website.Confirm Create Tips')
+                              )()
+                            }
+                          />
+                        </MyTooltip>
+                      )}
+                  </Flex>
+                )}
+              </Box>
               <SideTabs
+                px={4}
                 flex={1}
                 mx={'auto'}
-                mt={3}
                 w={'100%'}
                 list={tabList}
                 activeId={currentTab}
@@ -201,7 +197,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                   setCurrentTab(e);
                 }}
               />
-              <Box>
+              <Box px={4}>
                 <Box mb={3}>
                   <Box fontSize={'sm'}>
                     {t('core.dataset.training.Agent queue')}({agentTrainingMap.tip})
@@ -229,6 +225,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                   />
                 </Box>
               </Box>
+
               <Flex
                 alignItems={'center'}
                 cursor={'pointer'}
