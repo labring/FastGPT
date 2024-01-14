@@ -26,13 +26,14 @@ import { useRouter } from 'next/router';
 import { TabEnum } from '../../../index';
 import { postCreateDatasetLinkCollection, postDatasetCollection } from '@/web/core/dataset/api';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { checkTeamDatasetSizeLimit } from '@/web/support/user/team/api';
 
 const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { datasetDetail } = useDatasetStore();
-  const { parentId, sources, processParamsForm, chunkSize } = useImportStore();
+  const { parentId, sources, processParamsForm, chunkSize, totalChunks } = useImportStore();
   const [uploadList, setUploadList] = useState<
     (ImportSourceItemType & {
       uploadedFileRate: number;
@@ -45,6 +46,8 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
   const { mutate: startUpload, isLoading } = useRequest({
     mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: FormType) => {
       if (uploadList.length === 0) return;
+
+      await checkTeamDatasetSizeLimit(totalChunks);
 
       let totalInsertion = 0;
 
