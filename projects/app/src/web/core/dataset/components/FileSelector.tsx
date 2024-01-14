@@ -98,7 +98,7 @@ const FileSelector = ({
 
   return (
     <MyBox
-      isLoading={isDragging || isLoading}
+      isLoading={isLoading}
       display={'flex'}
       flexDirection={'column'}
       alignItems={'center'}
@@ -107,22 +107,32 @@ const FileSelector = ({
       py={[4, 7]}
       borderWidth={'1.5px'}
       borderStyle={'dashed'}
-      borderColor={'borderColor.high'}
       borderRadius={'md'}
       cursor={'pointer'}
       _hover={{
         bg: 'primary.50',
         borderColor: 'primary.600'
       }}
+      {...(isDragging
+        ? {
+            borderColor: 'primary.600'
+          }
+        : {
+            borderColor: 'borderColor.high'
+          })}
       {...props}
       onDragEnter={handleDragEnter}
-      onDragOver={handleDragEnter}
+      onDragOver={(e) => e.preventDefault()}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
       onClick={onOpen}
     >
       <MyIcon name={'common/uploadFileFill'} w={'32px'} />
-      <Box fontWeight={'bold'}>{t('common.file.Select and drag file tip')}</Box>
+      <Box fontWeight={'bold'}>
+        {isDragging
+          ? t('file.Release the mouse to upload the file')
+          : t('common.file.Select and drag file tip')}
+      </Box>
       {/* file type */}
       <Box color={'myGray.500'} fontSize={'xs'}>
         {t('common.file.Support file type', { fileType })}
@@ -139,4 +149,4 @@ const FileSelector = ({
   );
 };
 
-export default FileSelector;
+export default React.memo(FileSelector);
