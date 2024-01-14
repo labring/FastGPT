@@ -8,7 +8,7 @@ import {
   DatasetTypeEnum,
   SearchScoreTypeEnum,
   TrainingModeEnum
-} from './constant';
+} from './constants';
 
 /* schema */
 export type DatasetSchemaType = {

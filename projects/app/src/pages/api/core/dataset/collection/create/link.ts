@@ -7,7 +7,10 @@ import { connectToDatabase } from '@/service/mongo';
 import type { LinkCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
-import { TrainingModeEnum, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  TrainingModeEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';

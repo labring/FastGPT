@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { PgDatasetTableName } from '@fastgpt/global/common/vectorStore/constants';
 
 import { authCert } from '@fastgpt/service/support/permission/auth/common';

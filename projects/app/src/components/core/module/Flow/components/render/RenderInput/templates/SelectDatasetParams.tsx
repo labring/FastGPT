@@ -3,7 +3,7 @@ import type { RenderInputProps } from '../type';
 import { getFlowStore, onChangeNode, useFlowProviderStoreType } from '../../../../FlowProvider';
 import { Button, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { chatModelList } from '@/web/common/system/staticData';

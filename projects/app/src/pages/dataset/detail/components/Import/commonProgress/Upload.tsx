@@ -25,7 +25,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useRouter } from 'next/router';
 import { TabEnum } from '../../../index';
 import { postCreateDatasetLinkCollection, postDatasetCollection } from '@/web/core/dataset/api';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
   const { t } = useTranslation();

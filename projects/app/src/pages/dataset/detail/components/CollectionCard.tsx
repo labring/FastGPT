@@ -47,7 +47,7 @@ import {
   DatasetTypeMap,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
 import { TabEnum } from '..';
@@ -61,7 +61,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@/components/common/MyBox';
 import { ImportDataSourceEnum } from './Import';
 

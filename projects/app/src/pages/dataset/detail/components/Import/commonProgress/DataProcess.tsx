@@ -17,7 +17,7 @@ import {
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
-import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
+import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
 import MyTooltip from '@/components/MyTooltip';
 import { useImportStore } from '../Provider';

@@ -7,7 +7,7 @@ import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.
 import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { PagingData } from '@/types';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { startQueue } from '@/service/utils/tools';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';

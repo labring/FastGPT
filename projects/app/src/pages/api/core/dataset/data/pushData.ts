@@ -3,7 +3,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { TrainingModeEnum, TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDatasetDataProps } from '@/global/core/dataset/api.d';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';

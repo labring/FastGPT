@@ -16,7 +16,7 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum,
   TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@/service/common/string/jieba';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
@@ -293,7 +293,7 @@ export async function updateData2Dataset({
 
   // patch index and update pg
   const mongoData = await MongoDatasetData.findById(dataId);
-  if (!mongoData) return Promise.reject('Data not found');
+  if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
   // make sure have one index
   if (indexes.length === 0) {

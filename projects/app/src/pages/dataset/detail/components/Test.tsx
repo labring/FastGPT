@@ -27,7 +27,10 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { SearchTestResponse } from '@/global/core/dataset/api';
-import { DatasetSearchModeEnum, DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetSearchModeEnum,
+  DatasetSearchModeMap
+} from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import MySelect from '@/components/Select';

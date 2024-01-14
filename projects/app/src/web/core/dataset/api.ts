@@ -29,7 +29,7 @@ import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/typ
 import {
   DatasetCollectionSyncResultEnum,
   DatasetTypeEnum
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';

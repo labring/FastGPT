@@ -3,7 +3,7 @@ import {
   DatasetSearchModeEnum,
   DatasetTypeEnum,
   TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetDataIndexItemType,
   SearchDataResponseItemType

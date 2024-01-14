@@ -23,7 +23,7 @@ import {
   DatasetStatusEnum,
   DatasetTypeEnum,
   DatasetTypeMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';

@@ -20,7 +20,7 @@ import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { vectorModelList } from '@/web/common/system/staticData';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import SideTabs from '@/components/SideTabs';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
@@ -124,7 +124,7 @@ const InputDataModal = ({
       onError(err) {
         toast({
           status: 'error',
-          title: getErrText(err)
+          title: t(getErrText(err))
         });
         onClose();
       }

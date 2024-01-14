@@ -481,6 +481,7 @@
       "Empty Dataset Tips": "There is no knowledge base yet, go create one!",
       "File collection": "File collection",
       "Folder Dataset": "Folder",
+      "Folder placeholder": "This is a folder",
       "Go Dataset": "To Dataset",
       "Intro Placeholder": "This dataset has not yet been introduced~",
       "Manual collection": "Manual collection",
@@ -557,6 +558,7 @@
         "unit": "pieces"
       },
       "error": {
+        "Data not found": "The data does not exist or has been deleted",
         "Start Sync Failed": "Start Sync Failed",
         "Template does not exist": "Template does not exist",
         "unAuthDataset": "No access to this knowledge base ",
@@ -564,7 +566,7 @@
         "unAuthDatasetData": "Not authorized to manipulate this data ",
         "unAuthDatasetFile": "No permission to manipulate this file ",
         "unCreateCollection": "No permission to manipulate this data ",
-        "unLinkCollection": "not a network link collection "
+        "unLinkCollection": "not a network link collection"
       },
       "file": "File",
       "folder": "Folder",

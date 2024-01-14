@@ -2,7 +2,7 @@ import React, { useContext, useCallback, createContext, useState, useMemo, useEf
 
 import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';

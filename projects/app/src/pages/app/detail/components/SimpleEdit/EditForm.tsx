@@ -34,7 +34,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
 import PromptTextarea from '@/components/common/Textarea/PromptTextarea/index';
-import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import SelectAiModel from '@/components/Select/SelectAiModel';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));

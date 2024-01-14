@@ -17,7 +17,7 @@ import MySelect from '@/components/Select';
 import { vectorModelList, qaModelList } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { feConfigs } from '@/web/common/system/staticData';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 

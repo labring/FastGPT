@@ -43,7 +43,7 @@ import {
   DatasetCollectionTypeMap,
   TrainingModeEnum,
   TrainingTypeMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileAndOpen } from '@/web/core/dataset/utils';

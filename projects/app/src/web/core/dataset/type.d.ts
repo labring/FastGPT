@@ -1,5 +1,5 @@
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ImportProcessWayEnum } from './constants';
 import { UseFormReturn } from 'react-hook-form';
 

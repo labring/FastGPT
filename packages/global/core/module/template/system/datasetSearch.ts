@@ -12,7 +12,7 @@ import {
 } from '../../constants';
 import { Input_Template_Switch, Input_Template_UserChatInput } from '../input';
 import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
-import { DatasetSearchModeEnum } from '../../../dataset/constant';
+import { DatasetSearchModeEnum } from '../../../dataset/constants';
 
 export const DatasetSearchModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,

@@ -6,7 +6,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;

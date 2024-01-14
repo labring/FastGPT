@@ -481,6 +481,7 @@
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
       "File collection": "文件数据集",
       "Folder Dataset": "文件夹",
+      "Folder placeholder": "这是一个目录",
       "Go Dataset": "前往知识库",
       "Intro Placeholder": "这个知识库还没有介绍~",
       "Manual collection": "手动数据集",
@@ -559,6 +560,7 @@
         "unit": "条"
       },
       "error": {
+        "Data not found": "数据不存在或已被删除",
         "Start Sync Failed": "开始同步失败",
         "Template does not exist": "模板不存在",
         "unAuthDataset": "无权操作该知识库",

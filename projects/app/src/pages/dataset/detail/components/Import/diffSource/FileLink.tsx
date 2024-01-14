@@ -8,7 +8,7 @@ import { useForm } from 'react-hook-form';
 import { Box, Button, Flex, Input, Link, Textarea } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { LinkCollectionIcon } from '@/web/core/dataset/constants';
+import { LinkCollectionIcon } from '@fastgpt/global/core/dataset/constants';
 import { feConfigs } from '@/web/common/system/staticData';
 import { getDocPath } from '@/web/common/system/doc';
 

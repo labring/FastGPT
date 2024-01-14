@@ -16,7 +16,7 @@ import {
   Image,
   ModalBody
 } from '@chakra-ui/react';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';

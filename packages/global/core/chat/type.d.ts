@@ -4,7 +4,7 @@ import { ChatRoleEnum, ChatSourceEnum, ChatStatusEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum } from '../module/constants';
 import { AppSchema } from '../app/type';
-import { DatasetSearchModeEnum } from '../dataset/constant';
+import { DatasetSearchModeEnum } from '../dataset/constants';
 
 export type ChatSchema = {
   _id: string;

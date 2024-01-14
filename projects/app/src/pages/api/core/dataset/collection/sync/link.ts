@@ -10,7 +10,7 @@ import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/co
 import {
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';

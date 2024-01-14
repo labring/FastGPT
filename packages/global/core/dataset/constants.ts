@@ -170,4 +170,8 @@ export const SearchScoreTypeMap = {
   }
 };
 
-export const FolderAvatarSrc = '/imgs/files/folder.svg';
+export const FolderIcon = 'file/fill/folder';
+export const FolderImgUrl = '/imgs/files/folder.svg';
+
+export const CustomCollectionIcon = 'common/linkBlue';
+export const LinkCollectionIcon = 'common/linkBlue';

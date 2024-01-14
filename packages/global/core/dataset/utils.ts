@@ -1,4 +1,4 @@
-import { TrainingModeEnum, DatasetCollectionTypeEnum, DatasetDataIndexTypeEnum } from './constant';
+import { TrainingModeEnum, DatasetCollectionTypeEnum, DatasetDataIndexTypeEnum } from './constants';
 import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
@@ -32,12 +32,7 @@ export function getSourceNameIcon({
     return fileIcon;
   }
 
-  if (sourceName === '手动录入') {
-    return 'file/fill/manual';
-  } else if (sourceName === '手动标注') {
-    return 'file/fill/mark';
-  }
-  return 'file/fill/collection';
+  return 'file/fill/manual';
 }
 
 export function getDefaultIndex(props?: { q?: string; a?: string; dataId?: string }) {

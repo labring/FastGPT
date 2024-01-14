@@ -1,5 +1,5 @@
 import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
-import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constant';
+import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
 
 /* ================= dataset ===================== */

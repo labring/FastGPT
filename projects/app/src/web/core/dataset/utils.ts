@@ -1,5 +1,5 @@
 import { getFileViewUrl, postChunks2Dataset } from '@/web/core/dataset/api';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import type {

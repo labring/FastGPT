@@ -10,7 +10,7 @@ import { DatasetColCollectionName } from '../collection/schema';
 import {
   DatasetDataIndexTypeEnum,
   DatasetDataIndexTypeMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 
 export const DatasetDataCollectionName = 'dataset.datas';
 

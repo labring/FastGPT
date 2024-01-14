@@ -11,7 +11,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import Markdown from '../Markdown';
 import { QuoteList } from './QuoteModal';
-import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 
 function Row({
   label,

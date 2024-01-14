@@ -7,7 +7,7 @@ import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { FileCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /**
  * Creates the multer uploader

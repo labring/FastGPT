@@ -4,7 +4,10 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { MongoDatasetTraining } from '../training/schema';
 import { urlsFetch } from '../../../common/string/cheerio';
-import { DatasetCollectionTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
 /**

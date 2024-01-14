@@ -86,14 +86,6 @@ ${qgModelList
   .join('\n')}`
     },
     {
-      title: '重排模型(增强检索 & 混合检索)',
-      describe: '',
-      md: `
-| 模型 | 价格(￥) |
-| --- | --- |
-${reRankModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 |`).join('\n')}`
-    },
-    {
       title: '语音播放',
       describe: '',
       md: `
