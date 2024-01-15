@@ -6,7 +6,7 @@ import {
   getCollectionAndRawText,
   reloadCollectionChunks
 } from '@fastgpt/service/core/dataset/collection/utils';
-import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
+import { delCollectionAndRelatedSources } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum
@@ -87,10 +87,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // delete old collection
-    await delCollectionRelevantData({
-      teamId,
-      collectionIds: [collection._id],
-      fileIds: collection.fileId ? [collection.fileId] : []
+    await delCollectionAndRelatedSources({
+      collections: [collection]
     });
 
     jsonRes(res, {

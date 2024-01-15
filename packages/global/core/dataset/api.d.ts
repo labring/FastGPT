@@ -52,6 +52,9 @@ export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
   chunkSize: number;
   chunkSplitter: string;
   qaPrompt: string;
+
+  fileMetadata?: Record<string, any>;
+  collectionMetadata?: Record<string, any>;
 };
 
 /* ================= data ===================== */

@@ -9,7 +9,7 @@ export enum MongoImageTypeEnum {
   teamAvatar = 'teamAvatar',
 
   chatImage = 'chatImage',
-  docImage = 'docImage'
+  collectionImage = 'collectionImage'
 }
 export const mongoImageTypeMap = {
   [MongoImageTypeEnum.systemAvatar]: {
@@ -41,8 +41,8 @@ export const mongoImageTypeMap = {
     label: 'common.file.type.chatImage',
     unique: false
   },
-  [MongoImageTypeEnum.docImage]: {
-    label: 'common.file.type.docImage',
+  [MongoImageTypeEnum.collectionImage]: {
+    label: 'common.file.type.collectionImage',
     unique: false
   }
 };

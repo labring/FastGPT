@@ -50,7 +50,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
     mutationFn: async (files: File[]) => {
       {
         for await (const file of files) {
-          const fileId = getNanoid(32);
+          const relatedId = getNanoid(32);
 
           const { rawText } = await (() => {
             try {
@@ -59,9 +59,9 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
                 uploadBase64Controller: (base64Img) =>
                   getUploadBase64ImgController({
                     base64Img,
-                    type: MongoImageTypeEnum.docImage,
+                    type: MongoImageTypeEnum.collectionImage,
                     metadata: {
-                      fileId
+                      relatedId
                     }
                   })
               });
@@ -71,7 +71,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
           })();
 
           const item: FileItemType = {
-            id: fileId,
+            id: relatedId,
             file,
             rawText,
             chunks: [],

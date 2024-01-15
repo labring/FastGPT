@@ -93,6 +93,9 @@ const DatasetCollectionSchema = new Schema({
 try {
   // delete collection
   DatasetCollectionSchema.index({ teamId: 1, datasetId: 1 });
+  // auth file
+  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
+
   // list collection; deep delete collection;
   DatasetCollectionSchema.index({
     teamId: 1,

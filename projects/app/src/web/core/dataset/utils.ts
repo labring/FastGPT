@@ -12,12 +12,12 @@ import { POST } from '@/web/common/api/request';
 /* upload a file to create collection */
 export const fileCollectionCreate = ({
   file,
-  metadata,
+  metadata = {},
   data,
   percentListen
 }: {
   file: File;
-  metadata: Record<string, any>;
+  metadata?: Record<string, any>;
   data: FileCreateDatasetCollectionParams;
   percentListen: (percent: number) => void;
 }) => {

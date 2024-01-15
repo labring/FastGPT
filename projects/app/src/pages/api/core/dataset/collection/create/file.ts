@@ -32,13 +32,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       datasetId
     });
 
-    const { file, metadata, bucketName, data } =
-      await upload.doUpload<FileCreateDatasetCollectionParams>(req, res);
+    const { file, bucketName, data } = await upload.doUpload<FileCreateDatasetCollectionParams>(
+      req,
+      res
+    );
     filePaths = [file.path];
 
     if (!file || !bucketName) {
       throw new Error('file is empty');
     }
+
+    const { fileMetadata, collectionMetadata, ...collectionData } = data;
 
     // upload file and create collection
     const fileId = await uploadFile({
@@ -48,15 +52,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       path: file.path,
       filename: file.originalname,
       contentType: file.mimetype,
-      metadata: {
-        ...metadata,
-        datasetId
-      }
+      metadata: fileMetadata
     });
 
     // create collection
     const collectionId = await createOneCollection({
-      ...data,
+      ...collectionData,
+      metadata: collectionMetadata,
       teamId,
       tmbId,
       type: DatasetCollectionTypeEnum.file,

@@ -55,6 +55,8 @@ export type DatasetCollectionSchemaType = {
   hashRawText?: string;
   metadata?: {
     webPageSelector?: string;
+    relatedImgId?: string; // The id of the associated image collections
+
     [key: string]: any;
   };
 };

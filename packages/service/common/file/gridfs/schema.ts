@@ -4,7 +4,6 @@ const { Schema, model, models } = connectionMongo;
 const FileSchema = new Schema({});
 
 try {
-  FileSchema.index({ 'metadata.datasetId': 1 });
   FileSchema.index({ 'metadata.teamId': 1 });
 } catch (error) {
   console.log(error);

@@ -76,10 +76,12 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
           if (item.file) {
             return fileCollectionCreate({
               file: item.file,
-              metadata: {
-                openId: item.id
+              data: {
+                ...commonParams,
+                collectionMetadata: {
+                  relatedImgId: item.id
+                }
               },
-              data: commonParams,
               percentListen: (e) => {
                 setUploadList((state) =>
                   state.map((uploadItem) =>

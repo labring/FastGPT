@@ -7,5 +7,8 @@ export type MongoImageSchemaType = {
   expiredTime?: Date;
   type: `${MongoImageTypeEnum}`;
 
-  metadata?: { fileId?: string };
+  metadata?: {
+    fileId?: string;
+    relatedId?: string; // This id is associated with a set of images
+  };
 };

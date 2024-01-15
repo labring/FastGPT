@@ -102,8 +102,9 @@ const TrainingDataSchema = new Schema({
 });
 
 try {
-  TrainingDataSchema.index({ teamId: 1, datasetId: 1 });
+  // lock training data; delete training data
   TrainingDataSchema.index({ teamId: 1, collectionId: 1 });
+  // get training data and sort
   TrainingDataSchema.index({ weight: -1 });
   TrainingDataSchema.index({ lockTime: 1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 });

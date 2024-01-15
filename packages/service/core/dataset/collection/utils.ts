@@ -26,7 +26,10 @@ export async function findCollectionAndChild({
 }) {
   async function find(id: string) {
     // find children
-    const children = await MongoDatasetCollection.find({ teamId, datasetId, parentId: id }, fields);
+    const children = await MongoDatasetCollection.find(
+      { teamId, datasetId, parentId: id },
+      fields
+    ).lean();
 
     let collections = children;
 

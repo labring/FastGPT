@@ -3,7 +3,6 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import fsp from 'fs/promises';
 import fs from 'fs';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
-import { delImgByFileIdList } from '../image/controller';
 import { MongoFileSchema } from './schema';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
@@ -99,40 +98,6 @@ export async function delFileByFileIdList({
       return delFileByFileIdList({ bucketName, fileIdList, retry: retry - 1 });
     }
   }
-}
-// delete file by metadata(datasetId)
-export async function delFileByMetadata({
-  bucketName,
-  datasetId
-}: {
-  bucketName: `${BucketNameEnum}`;
-  datasetId?: string;
-}) {
-  const bucket = getGridBucket(bucketName);
-
-  const files = await bucket
-    .find(
-      {
-        ...(datasetId && { 'metadata.datasetId': datasetId })
-      },
-      {
-        projection: {
-          _id: 1
-        }
-      }
-    )
-    .toArray();
-
-  const idList = files.map((item) => String(item._id));
-
-  // delete img
-  await delImgByFileIdList(idList);
-
-  // delete file
-  await delFileByFileIdList({
-    bucketName,
-    fileIdList: idList
-  });
 }
 
 export async function getDownloadStream({

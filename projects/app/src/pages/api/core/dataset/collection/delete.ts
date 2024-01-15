@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
-import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
+import { delCollectionAndRelatedSources } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -28,15 +28,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       teamId,
       datasetId: collection.datasetId._id,
       collectionId,
-      fields: '_id fileId'
+      fields: '_id fileId metadata'
     });
-    const delIdList = collections.map((item) => item._id);
 
     // delete
-    await delCollectionRelevantData({
-      teamId,
-      collectionIds: delIdList,
-      fileIds: collections.map((item) => item?.fileId || '').filter(Boolean)
+    await delCollectionAndRelatedSources({
+      collections
     });
 
     jsonRes(res);
