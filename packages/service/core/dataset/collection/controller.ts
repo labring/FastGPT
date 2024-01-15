@@ -99,27 +99,6 @@ export function createDefaultCollection({
   });
 }
 
-// check same collection
-export const getSameRawTextCollection = async ({
-  teamId,
-  datasetId,
-  hashRawText
-}: {
-  teamId: string;
-  datasetId: string;
-  hashRawText?: string;
-}) => {
-  if (!hashRawText) return undefined;
-
-  const collection = await MongoDatasetCollection.findOne({
-    teamId,
-    datasetId,
-    hashRawText
-  });
-
-  return collection;
-};
-
 /**
  * delete collection and it related data
  */

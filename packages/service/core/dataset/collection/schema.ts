@@ -91,17 +91,14 @@ const DatasetCollectionSchema = new Schema({
 });
 
 try {
-  // delete collection
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1 });
   // auth file
   DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
 
-  // list collection; deep delete collection;
+  // list collection; deep find collections
   DatasetCollectionSchema.index({
     teamId: 1,
     datasetId: 1,
     parentId: 1,
-    searchText: 1,
     updateTime: -1
   });
 } catch (error) {
