@@ -91,11 +91,16 @@ const DatasetCollectionSchema = new Schema({
 });
 
 try {
-  DatasetCollectionSchema.index({ teamId: 1 });
-  DatasetCollectionSchema.index({ datasetId: 1 });
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, parentId: 1 });
-  DatasetCollectionSchema.index({ updateTime: -1 });
-  DatasetCollectionSchema.index({ hashRawText: -1 });
+  // delete collection
+  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1 });
+  // list collection; deep delete collection;
+  DatasetCollectionSchema.index({
+    teamId: 1,
+    datasetId: 1,
+    parentId: 1,
+    searchText: 1,
+    updateTime: -1
+  });
 } catch (error) {
   console.log(error);
 }

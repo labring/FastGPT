@@ -13,10 +13,20 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 /**
  * get all collection by top collectionId
  */
-export async function findCollectionAndChild(id: string, fields = '_id parentId name metadata') {
+export async function findCollectionAndChild({
+  teamId,
+  datasetId,
+  collectionId,
+  fields = '_id parentId name metadata'
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  fields?: string;
+}) {
   async function find(id: string) {
     // find children
-    const children = await MongoDatasetCollection.find({ parentId: id }, fields);
+    const children = await MongoDatasetCollection.find({ teamId, datasetId, parentId: id }, fields);
 
     let collections = children;
 
@@ -28,8 +38,8 @@ export async function findCollectionAndChild(id: string, fields = '_id parentId 
     return collections;
   }
   const [collection, childCollections] = await Promise.all([
-    MongoDatasetCollection.findById(id, fields),
-    find(id)
+    MongoDatasetCollection.findById(collectionId, fields),
+    find(collectionId)
   ]);
 
   if (!collection) {

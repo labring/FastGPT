@@ -87,7 +87,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               {
                 $match: {
                   $expr: {
-                    $eq: ['$collectionId', '$$id']
+                    $and: [{ $eq: ['$teamId', match.teamId] }, { $eq: ['$collectionId', '$$id'] }]
                   }
                 }
               },
@@ -105,7 +105,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               {
                 $match: {
                   $expr: {
-                    $eq: ['$collectionId', '$$id']
+                    $and: [{ $eq: ['$teamId', match.teamId] }, { $eq: ['$collectionId', '$$id'] }]
                   }
                 }
               },

@@ -48,6 +48,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // });
 
     const { searchRes, tokens, ...result } = await searchDatasetData({
+      teamId,
       rawQuery: text,
       queries: [text],
       model: dataset.vectorModel,

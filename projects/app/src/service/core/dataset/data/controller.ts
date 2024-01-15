@@ -406,6 +406,7 @@ export async function updateData2Dataset({
 }
 
 export async function searchDatasetData(props: {
+  teamId: string;
   model: string;
   similarity?: number; // min distance
   limit: number; // max Token limit
@@ -416,6 +417,7 @@ export async function searchDatasetData(props: {
   queries: string[];
 }) {
   let {
+    teamId,
     rawQuery,
     queries,
     model,
@@ -540,6 +542,7 @@ export async function searchDatasetData(props: {
         datasetIds.map((id) =>
           MongoDatasetData.find(
             {
+              teamId,
               datasetId: id,
               $text: { $search: jiebaSplit({ text: query }) }
             },

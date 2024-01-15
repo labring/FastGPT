@@ -8,23 +8,31 @@ import { delImgByFileIdList } from '../../../common/file/image/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';
 
 /* delete all data by datasetIds */
-export async function delDatasetRelevantData({ datasetIds }: { datasetIds: string[] }) {
+export async function delDatasetRelevantData({
+  teamId,
+  datasetIds
+}: {
+  teamId: string;
+  datasetIds: string[];
+}) {
   datasetIds = datasetIds.map((item) => String(item));
 
   // delete training data(There could be a training mission)
   await MongoDatasetTraining.deleteMany({
+    teamId,
     datasetId: { $in: datasetIds }
   });
 
   await delay(2000);
 
   // delete dataset.datas
-  await MongoDatasetData.deleteMany({ datasetId: { $in: datasetIds } });
+  await MongoDatasetData.deleteMany({ teamId, datasetId: { $in: datasetIds } });
   // delete pg data
   await deleteDatasetDataVector({ datasetIds });
 
   // delete collections
   await MongoDatasetCollection.deleteMany({
+    teamId,
     datasetId: { $in: datasetIds }
   });
 
@@ -37,9 +45,11 @@ export async function delDatasetRelevantData({ datasetIds }: { datasetIds: strin
  * delete all data by collectionIds
  */
 export async function delCollectionRelevantData({
+  teamId,
   collectionIds,
   fileIds
 }: {
+  teamId: string;
   collectionIds: string[];
   fileIds: string[];
 }) {
@@ -48,13 +58,14 @@ export async function delCollectionRelevantData({
 
   // delete training data
   await MongoDatasetTraining.deleteMany({
+    teamId,
     collectionId: { $in: collectionIds }
   });
 
   await delay(2000);
 
   // delete dataset.datas
-  await MongoDatasetData.deleteMany({ collectionId: { $in: collectionIds } });
+  await MongoDatasetData.deleteMany({ teamId, collectionId: { $in: collectionIds } });
   // delete pg data
   await deleteDatasetDataVector({ collectionIds });
 

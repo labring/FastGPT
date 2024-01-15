@@ -85,13 +85,11 @@ const DatasetDataSchema = new Schema({
 });
 
 try {
-  DatasetDataSchema.index({ teamId: 1 });
-  DatasetDataSchema.index({ datasetId: 1 });
-  DatasetDataSchema.index({ collectionId: 1 });
+  // list collection and count data;same data check
+  DatasetDataSchema.index({ teamId: 1, collectionId: 1, q: 1, a: 1 });
   DatasetDataSchema.index({ updateTime: -1 });
-  DatasetDataSchema.index({ collectionId: 1, q: 1, a: 1 });
   // full text index
-  DatasetDataSchema.index({ datasetId: 1, fullTextToken: 'text' });
+  DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' });
 } catch (error) {
   console.log(error);
 }

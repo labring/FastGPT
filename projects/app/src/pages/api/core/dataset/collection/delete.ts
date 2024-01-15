@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('CollectionIdId is required');
     }
 
-    await authDatasetCollection({
+    const { teamId, collection } = await authDatasetCollection({
       req,
       authToken: true,
       authApiKey: true,
@@ -24,11 +24,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // find all delete id
-    const collections = await findCollectionAndChild(collectionId, '_id fileId');
+    const collections = await findCollectionAndChild({
+      teamId,
+      datasetId: collection.datasetId._id,
+      collectionId,
+      fields: '_id fileId'
+    });
     const delIdList = collections.map((item) => item._id);
 
     // delete
     await delCollectionRelevantData({
+      teamId,
       collectionIds: delIdList,
       fileIds: collections.map((item) => item?.fileId || '').filter(Boolean)
     });

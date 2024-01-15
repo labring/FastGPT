@@ -42,6 +42,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       a: string;
     }>(
       {
+        teamId,
         datasetId: { $in: exportIds }
       },
       'q a'

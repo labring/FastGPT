@@ -27,6 +27,7 @@ export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
   const {
+    teamId,
     inputs: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
@@ -58,6 +59,7 @@ export async function dispatchDatasetSearch(
     usingSimilarityFilter,
     usingReRank: searchUsingReRank
   } = await searchDatasetData({
+    teamId,
     rawQuery: `${userChatInput}`,
     queries: concatQueries,
     model: vectorModel.model,

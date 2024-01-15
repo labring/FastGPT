@@ -18,12 +18,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // auth owner
-    await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
+    const { teamId } = await authDataset({ req, authToken: true, datasetId: id, per: 'owner' });
 
     const deletedIds = await findDatasetIdTreeByTopDatasetId(id);
 
     // delete all dataset.data and pg data
-    await delDatasetRelevantData({ datasetIds: deletedIds });
+    await delDatasetRelevantData({ teamId, datasetIds: deletedIds });
 
     // delete dataset data
     await MongoDataset.deleteMany({

@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('CollectionIdId is required');
     }
 
-    const { collection, tmbId } = await authDatasetCollection({
+    const { collection, teamId, tmbId } = await authDatasetCollection({
       req,
       authToken: true,
       collectionId,
@@ -88,6 +88,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // delete old collection
     await delCollectionRelevantData({
+      teamId,
       collectionIds: [collection._id],
       fileIds: collection.fileId ? [collection.fileId] : []
     });
