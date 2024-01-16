@@ -92,15 +92,18 @@ const DatasetCollectionSchema = new Schema({
 
 try {
   // auth file
-  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 });
+  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 }, { background: true });
 
   // list collection; deep find collections
-  DatasetCollectionSchema.index({
-    teamId: 1,
-    datasetId: 1,
-    parentId: 1,
-    updateTime: -1
-  });
+  DatasetCollectionSchema.index(
+    {
+      teamId: 1,
+      datasetId: 1,
+      parentId: 1,
+      updateTime: -1
+    },
+    { background: true }
+  );
 } catch (error) {
   console.log(error);
 }

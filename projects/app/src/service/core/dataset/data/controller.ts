@@ -482,6 +482,8 @@ export async function searchDatasetData(props: {
     // get q and a
     const dataList = (await MongoDatasetData.find(
       {
+        teamId,
+        datasetId: { $in: datasetIds },
         'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
       },
       'datasetId collectionId q a chunkIndex indexes'
