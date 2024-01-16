@@ -20,7 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     pageSize = Math.min(pageSize, 30);
 
     // 凭证校验
-    const { teamId } = await authDatasetCollection({
+    const { teamId, collection } = await authDatasetCollection({
       req,
       authToken: true,
       authApiKey: true,
@@ -32,6 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const match = {
       teamId,
+      datasetId: collection.datasetId._id,
       collectionId,
       ...(searchText
         ? {
