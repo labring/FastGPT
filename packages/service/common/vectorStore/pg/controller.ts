@@ -18,7 +18,7 @@ export async function initPg() {
           team_id VARCHAR(50) NOT NULL,
           dataset_id VARCHAR(50) NOT NULL,
           collection_id VARCHAR(50) NOT NULL,
-          createTime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          createtime TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
     `);
 
@@ -151,7 +151,11 @@ export const embeddingRecall = async (
   }
 };
 
-// bill
+export const checkDataExist = async (id: string) => {
+  const { rows } = await PgClient.query(`SELECT id FROM ${PgDatasetTableName} WHERE id=${id};`);
+
+  return rows.length > 0;
+};
 export const getVectorCountByTeamId = async (teamId: string) => {
   const total = await PgClient.count(PgDatasetTableName, {
     where: [['team_id', String(teamId)]]
@@ -160,14 +164,20 @@ export const getVectorCountByTeamId = async (teamId: string) => {
   return total;
 };
 export const getVectorDataByTime = async (start: Date, end: Date) => {
-  const { rows } = await PgClient.query<{ id: string }>(`SELECT id
+  const { rows } = await PgClient.query<{
+    id: string;
+    team_id: string;
+    dataset_id: string;
+  }>(`SELECT id, team_id, dataset_id
   FROM ${PgDatasetTableName}
-  WHERE createTime BETWEEN '${dayjs(start).format('YYYY-MM-DD')}' AND '${dayjs(end).format(
-    'YYYY-MM-DD 23:59:59'
+  WHERE createtime BETWEEN '${dayjs(start).format('YYYY-MM-DD HH:mm:ss')}' AND '${dayjs(end).format(
+    'YYYY-MM-DD HH:mm:ss'
   )}';
   `);
 
   return rows.map((item) => ({
-    id: item.id
+    id: item.id,
+    datasetId: item.dataset_id,
+    teamId: item.team_id
   }));
 };

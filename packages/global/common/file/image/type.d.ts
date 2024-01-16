@@ -8,7 +8,6 @@ export type MongoImageSchemaType = {
   type: `${MongoImageTypeEnum}`;
 
   metadata?: {
-    fileId?: string;
     relatedId?: string; // This id is associated with a set of images
   };
 };
