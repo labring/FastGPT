@@ -24,6 +24,7 @@ import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import {
   DatasetDataSchemaType,
+  DatasetDataWithCollectionType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { reRankRecall } from '../../ai/rerank';
@@ -38,7 +39,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { getQAModel, getVectorModel } from '../../ai/model';
 import { delay } from '@fastgpt/global/common/system/utils';
 
-export async function pushDataToDatasetCollection({
+export async function pushDataToTrainingQueue({
   teamId,
   tmbId,
   collectionId,
@@ -222,7 +223,6 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  const id = new Types.ObjectId();
   const qaStr = `${q}\n${a}`.trim();
 
   // empty indexes check, if empty, create default index
@@ -242,17 +242,14 @@ export async function insertData2Dataset({
         query: item.text,
         model,
         teamId,
-        tmbId,
         datasetId,
-        collectionId,
-        dataId: String(id)
+        collectionId
       })
     )
   );
 
   // create mongo
   const { _id } = await MongoDatasetData.create({
-    _id: id,
     teamId,
     tmbId,
     datasetId,
@@ -354,6 +351,11 @@ export async function updateData2Dataset({
     }
   }
 
+  // update mongo updateTime
+  mongoData.updateTime = new Date();
+  await mongoData.save();
+
+  // update vector
   const result = await Promise.all(
     patchResult.map(async (item) => {
       if (item.type === 'create') {
@@ -361,23 +363,27 @@ export async function updateData2Dataset({
           query: item.index.text,
           model,
           teamId: mongoData.teamId,
-          tmbId: mongoData.tmbId,
           datasetId: mongoData.datasetId,
-          collectionId: mongoData.collectionId,
-          dataId
+          collectionId: mongoData.collectionId
         });
         item.index.dataId = result.insertId;
         return result;
       }
       if (item.type === 'update' && item.index.dataId) {
-        return updateDatasetDataVector({
+        const result = await updateDatasetDataVector({
+          teamId: mongoData.teamId,
+          datasetId: mongoData.datasetId,
+          collectionId: mongoData.collectionId,
           id: item.index.dataId,
           query: item.index.text,
           model
         });
+        item.index.dataId = result.insertId;
+        return result;
       }
       if (item.type === 'delete' && item.index.dataId) {
         await deleteDatasetDataVector({
+          teamId: mongoData.teamId,
           id: item.index.dataId
         });
         return {
@@ -392,7 +398,7 @@ export async function updateData2Dataset({
 
   const tokens = result.reduce((acc, cur) => acc + cur.tokens, 0);
 
-  // update mongo
+  // update mongo other data
   mongoData.q = q || mongoData.q;
   mongoData.a = a ?? mongoData.a;
   mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
@@ -474,31 +480,33 @@ export async function searchDatasetData(props: {
     });
 
     // get q and a
-    const [collections, dataList] = await Promise.all([
-      MongoDatasetCollection.find(
-        {
-          _id: { $in: results.map((item) => item.collectionId) }
-        },
-        'name fileId rawLink'
-      ).lean(),
-      MongoDatasetData.find(
-        {
-          _id: { $in: results.map((item) => item.dataId?.trim()) }
-        },
-        'datasetId collectionId q a chunkIndex indexes'
-      ).lean()
-    ]);
+    const dataList = (await MongoDatasetData.find(
+      {
+        'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
+      },
+      'datasetId collectionId q a chunkIndex indexes'
+    )
+      .populate('collectionId', 'name fileId rawLink')
+      .lean()) as DatasetDataWithCollectionType[];
 
-    const formatResult = results
-      .map((item, index) => {
-        const collection = collections.find(
-          (collection) => String(collection._id) === item.collectionId
-        );
-        const data = dataList.find((data) => String(data._id) === item.dataId);
+    // add score to data(It's already sorted. The first one is the one with the most points)
+    const concatResults = dataList.map((data) => {
+      const dataIdList = data.indexes.map((item) => item.dataId);
 
-        // if collection or data UnExist, the relational mongo data already deleted
-        if (!collection || !data) return null;
+      const maxScoreResult = results.find((item) => {
+        return dataIdList.includes(item.id);
+      });
 
+      return {
+        ...data,
+        score: maxScoreResult?.score || 0
+      };
+    });
+
+    concatResults.sort((a, b) => b.score - a.score);
+
+    const formatResult = concatResults
+      .map((data, index) => {
         const result: SearchDataResponseItemType = {
           id: String(data._id),
           q: data.q,
@@ -506,9 +514,9 @@ export async function searchDatasetData(props: {
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId),
-          sourceName: collection.name || '',
-          sourceId: collection?.fileId || collection?.rawLink,
-          score: [{ type: SearchScoreTypeEnum.embedding, value: item.score, index }]
+          sourceName: data.collectionId.name || '',
+          sourceId: data.collectionId?.fileId || data.collectionId?.rawLink,
+          score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
         };
 
         return result;

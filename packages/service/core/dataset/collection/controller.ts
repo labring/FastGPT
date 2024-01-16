@@ -130,7 +130,7 @@ export async function delCollectionAndRelatedSources({
   // delete dataset.datas
   await MongoDatasetData.deleteMany({ teamId, collectionId: { $in: collectionIds } });
   // delete pg data
-  await deleteDatasetDataVector({ collectionIds });
+  await deleteDatasetDataVector({ teamId, collectionIds });
 
   // delete file and imgs
   await Promise.all([

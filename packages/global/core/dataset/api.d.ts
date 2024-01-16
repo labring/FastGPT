@@ -60,10 +60,7 @@ export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 /* ================= data ===================== */
 export type PgSearchRawType = {
   id: string;
-  team_id: string;
-  tmb_id: string;
   collection_id: string;
-  data_id: string;
   score: number;
 };
 export type PushDatasetDataChunkProps = {

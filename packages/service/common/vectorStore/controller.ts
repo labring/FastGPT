@@ -38,25 +38,20 @@ export const insertDatasetDataVector = async ({
 
 export const updateDatasetDataVector = async ({
   id,
-  query,
-  model
-}: {
+  ...props
+}: InsertVectorProps & {
   id: string;
   query: string;
   model: string;
 }) => {
-  // get vector
-  const { vectors, tokens } = await getVectorsByText({
-    model,
-    input: query
+  // insert new vector
+  const { tokens, insertId } = await insertDatasetDataVector(props);
+
+  // delete old vector
+  await deleteDatasetDataVector({
+    teamId: props.teamId,
+    id
   });
 
-  await getVectorObj().update({
-    id,
-    vectors
-  });
-
-  return {
-    tokens
-  };
+  return { tokens, insertId };
 };

@@ -1,7 +1,6 @@
 import {
   initPg,
   insertDatasetDataVector,
-  updateDatasetDataVector,
   deleteDatasetDataVector,
   embeddingRecall,
   getVectorDataByTime,
@@ -12,7 +11,6 @@ export class PgVector {
   constructor() {}
   init = initPg;
   insert = insertDatasetDataVector;
-  update = updateDatasetDataVector;
   delete = deleteDatasetDataVector;
   recall = embeddingRecall;
   getVectorCountByTeamId = getVectorCountByTeamId;

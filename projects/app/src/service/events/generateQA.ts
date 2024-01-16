@@ -13,7 +13,7 @@ import { authTeamBalance } from '../support/permission/auth/bill';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
-import { pushDataToDatasetCollection } from '@/service/core/dataset/data/controller';
+import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -135,7 +135,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 
     // get vector and insert
-    const { insertLen } = await pushDataToDatasetCollection({
+    const { insertLen } = await pushDataToTrainingQueue({
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,

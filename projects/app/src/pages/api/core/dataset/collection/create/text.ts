@@ -14,7 +14,7 @@ import {
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { pushDataToDatasetCollection } from '@/service/core/dataset/data/controller';
+import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -70,7 +70,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 4. push chunks to training queue
-    const insertResults = await pushDataToDatasetCollection({
+    const insertResults = await pushDataToTrainingQueue({
       teamId,
       tmbId,
       collectionId,
