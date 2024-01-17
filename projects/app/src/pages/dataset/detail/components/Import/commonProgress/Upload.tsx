@@ -33,7 +33,8 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { datasetDetail } = useDatasetStore();
-  const { parentId, sources, processParamsForm, chunkSize, totalChunks } = useImportStore();
+  const { parentId, sources, processParamsForm, chunkSize, totalChunks, uploadRate } =
+    useImportStore();
   const [uploadList, setUploadList] = useState<
     (ImportSourceItemType & {
       uploadedFileRate: number;
@@ -133,6 +134,7 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
           billId,
           trainingMode: mode,
           chunks,
+          rate: uploadRate,
           onUploading: (e) => {
             setUploadList((state) =>
               state.map((uploadItem) =>
@@ -236,7 +238,8 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
                           <Progress
                             value={item.uploadedFileRate}
                             h={'6px'}
-                            w={'210px'}
+                            w={'100%'}
+                            maxW={'210px'}
                             size="sm"
                             borderRadius={'20px'}
                             colorScheme={'blue'}
@@ -254,7 +257,8 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
                         <Progress
                           value={item.uploadedChunksRate}
                           h={'6px'}
-                          w={'210px'}
+                          w={'100%'}
+                          maxW={'210px'}
                           size="sm"
                           borderRadius={'20px'}
                           colorScheme={'purple'}
@@ -282,6 +286,9 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
 
       <Flex justifyContent={'flex-end'} mt={4}>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
+          {uploadList.length > 0
+            ? `${t('core.dataset.import.Total files', { total: uploadList.length })} | `
+            : ''}
           {t('core.dataset.import.Start upload')}
         </Button>
       </Flex>

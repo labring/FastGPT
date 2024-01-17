@@ -629,6 +629,7 @@
         "Sources list": "来源列表",
         "Start upload": "开始上传",
         "Total Chunk Preview": "分段预览({{totalChunks}}组)",
+        "Total files": "共 {{total}} 个文件",
         "Total tokens": "总Tokens",
         "Training mode": "训练模式",
         "Upload data": "上传数据",
@@ -726,6 +727,7 @@
       }
     },
     "module": {
+      "Add question type": "添加问题类型",
       "Data Type": "数据类型",
       "Field Description": "字段描述",
       "Field Name": "字段名",

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ImportDataComponentProps } from '@/web/core/dataset/type.d';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { ImportSourceItemType } from '@/web/core/dataset/type.d';
-import FileSelector from '@/web/core/dataset/components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/web/core/dataset/components/FileSelector';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -21,6 +21,7 @@ const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 type FileItemType = ImportSourceItemType & { file: File };
 const fileType = '.csv';
+const maxSelectFileCount = 1000;
 
 const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {
   return (
@@ -51,9 +52,10 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
   }, [successFiles]);
 
   const { mutate: onSelectFile, isLoading } = useRequest({
-    mutationFn: async (files: File[]) => {
+    mutationFn: async (files: SelectFileItemType[]) => {
       {
-        for await (const file of files) {
+        for await (const selectFile of files) {
+          const { file, folderPath } = selectFile;
           const { header, data } = await readCsvContent(file);
 
           const filterData: FileItemType['chunks'] = data
@@ -70,15 +72,15 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
             rawText: '',
             chunks: filterData,
             chunkChars: 0,
+            sourceFolderPath: folderPath,
             sourceName: file.name,
             sourceSize: formatFileSize(file.size),
             icon: getFileIcon(file.name),
             errorMsg:
-              header[0] !== 'index' || header[1] !== 'content'
+              header[0] !== 'index' || header[1] !== 'content' || filterData.length === 0
                 ? t('core.dataset.import.Csv format error')
                 : ''
           };
-          console.log(item);
 
           setSelectFiles((state) => {
             const results = [item].concat(state).slice(0, 10);
@@ -94,7 +96,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
     <Box>
       <FileSelector
         multiple
-        maxCount={20}
+        maxCount={maxSelectFileCount}
         maxSize={(feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024}
         isLoading={isLoading}
         fileType={fileType}
@@ -154,7 +156,10 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
       </Flex>
 
       <Box textAlign={'right'}>
-        <Button isDisabled={successFiles.length === 0} onClick={goToNext}>
+        <Button isDisabled={successFiles.length === 0 || isLoading} onClick={goToNext}>
+          {selectFiles.length > 0
+            ? `${t('core.dataset.import.Total files', { total: selectFiles.length })} | `
+            : ''}
           {t('common.Next Step')}
         </Button>
       </Box>

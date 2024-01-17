@@ -13,6 +13,7 @@ export type ImportSourceItemType = {
   rawText: string;
   chunks: PushDatasetDataChunkProps[];
   chunkChars: number;
+  sourceFolderPath?: string;
   sourceName: string;
   sourceSize?: string;
   icon: string;

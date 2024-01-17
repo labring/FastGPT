@@ -627,6 +627,7 @@
         "Sources list": "Sources",
         "Start upload": "Start",
         "Total Chunk Preview": "Chunk Preview: {{totalChunks}} ",
+        "Total files": "Total {{total}} files",
         "Total tokens": "Tokens",
         "Training mode": "Training mode",
         "Upload data": "Upload data",
@@ -724,6 +725,7 @@
       }
     },
     "module": {
+      "Add question type": "Add type",
       "Data Type": "Data Type",
       "Field Description": "Description",
       "Field Name": "Name",

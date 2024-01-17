@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Flex, Textarea, useTheme } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -46,11 +46,9 @@ export default function Node({ data }: NodeProps<FlowModuleItemType>) {
 export function WelcomeText({ data }: { data: FlowModuleItemType }) {
   const { t } = useTranslation();
   const { inputs, moduleId } = data;
+  const [, startTst] = useTransition();
 
-  const welcomeText = useMemo(
-    () => inputs.find((item) => item.key === ModuleInputKeyEnum.welcomeText),
-    [inputs]
-  );
+  const welcomeText = inputs.find((item) => item.key === ModuleInputKeyEnum.welcomeText);
 
   return (
     <>
@@ -70,14 +68,16 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
           bg={'myWhite.500'}
           placeholder={t(welcomeTextTip)}
           onChange={(e) => {
-            onChangeNode({
-              moduleId,
-              key: ModuleInputKeyEnum.welcomeText,
-              type: 'updateInput',
-              value: {
-                ...welcomeText,
-                value: e.target.value
-              }
+            startTst(() => {
+              onChangeNode({
+                moduleId,
+                key: ModuleInputKeyEnum.welcomeText,
+                type: 'updateInput',
+                value: {
+                  ...welcomeText,
+                  value: e.target.value
+                }
+              });
             });
           }}
         />

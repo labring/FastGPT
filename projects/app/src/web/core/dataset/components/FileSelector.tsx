@@ -7,6 +7,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import React, { DragEvent, useCallback, useState } from 'react';
 
+export type SelectFileItemType = {
+  folderPath: string;
+  file: File;
+};
+
 const FileSelector = ({
   fileType,
   multiple,
@@ -21,7 +26,7 @@ const FileSelector = ({
   maxCount?: number;
   maxSize?: number;
   isLoading?: boolean;
-  onSelectFile: (e: File[]) => any;
+  onSelectFile: (e: SelectFileItemType[]) => any;
 } & FlexProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -32,13 +37,21 @@ const FileSelector = ({
   });
   const [isDragging, setIsDragging] = useState(false);
 
+  const filterTypeReg = new RegExp(
+    `(${fileType
+      .split(',')
+      .map((item) => item.trim())
+      .join('|')})$`,
+    'i'
+  );
+
   const selectFileCallback = useCallback(
-    (files: File[]) => {
+    (files: SelectFileItemType[]) => {
       // size check
       if (!maxSize) {
         return onSelectFile(files);
       }
-      const filterFiles = files.filter((item) => item.size <= maxSize);
+      const filterFiles = files.filter((item) => item.file.size <= maxSize);
 
       if (filterFiles.length < files.length) {
         toast({
@@ -62,59 +75,65 @@ const FileSelector = ({
     setIsDragging(false);
   };
 
-  const handleDrop = useCallback(
-    async (e: DragEvent<HTMLDivElement>) => {
-      e.preventDefault();
-      setIsDragging(false);
+  const handleDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    setIsDragging(false);
 
-      const items = e.dataTransfer.items;
-      const fileList: File[] = [];
+    const items = e.dataTransfer.items;
+    const fileList: SelectFileItemType[] = [];
 
-      if (e.dataTransfer.items.length <= 1) {
-        const traverseFileTree = async (item: any) => {
-          return new Promise<void>((resolve, reject) => {
-            if (item.isFile) {
-              item.file((file: File) => {
-                fileList.push(file);
-                resolve();
-              });
-            } else if (item.isDirectory) {
-              const dirReader = item.createReader();
-              dirReader.readEntries(async (entries: any[]) => {
-                for (let i = 0; i < entries.length; i++) {
-                  await traverseFileTree(entries[i]);
-                }
-                resolve();
-              });
-            }
-          });
-        };
+    if (e.dataTransfer.items.length <= 1) {
+      const traverseFileTree = async (item: any) => {
+        return new Promise<void>((resolve, reject) => {
+          if (item.isFile) {
+            item.file((file: File) => {
+              const folderPath = (item.fullPath || '').split('/').slice(2, -1).join('/');
 
-        for (let i = 0; i < items.length; i++) {
-          const item = items[i].webkitGetAsEntry();
-          if (item) {
-            await traverseFileTree(item);
+              if (filterTypeReg.test(file.name)) {
+                fileList.push({
+                  folderPath,
+                  file
+                });
+              }
+              resolve();
+            });
+          } else if (item.isDirectory) {
+            const dirReader = item.createReader();
+            dirReader.readEntries(async (entries: any[]) => {
+              for (let i = 0; i < entries.length; i++) {
+                await traverseFileTree(entries[i]);
+              }
+              resolve();
+            });
           }
-        }
-      } else {
-        const files = Array.from(e.dataTransfer.files);
-        let isErr = files.some((item) => item.type === '');
-        if (isErr) {
-          return toast({
-            title: t('file.upload error description'),
-            status: 'error'
-          });
-        }
+        });
+      };
 
-        for (let i = 0; i < files.length; i++) {
-          fileList.push(files[i]);
-        }
+      for await (const item of items) {
+        await traverseFileTree(item.webkitGetAsEntry());
+      }
+    } else {
+      const files = Array.from(e.dataTransfer.files);
+      let isErr = files.some((item) => item.type === '');
+      if (isErr) {
+        return toast({
+          title: t('file.upload error description'),
+          status: 'error'
+        });
       }
 
-      selectFileCallback(fileList.slice(0, maxCount));
-    },
-    [maxCount, selectFileCallback, t, toast]
-  );
+      fileList.push(
+        ...files
+          .filter((item) => filterTypeReg.test(item.name))
+          .map((file) => ({
+            folderPath: '',
+            file
+          }))
+      );
+    }
+
+    selectFileCallback(fileList.slice(0, maxCount));
+  };
 
   return (
     <MyBox
@@ -164,7 +183,16 @@ const FileSelector = ({
         {maxSize && t('common.file.Support max size', { maxSize: formatFileSize(maxSize) })}
       </Box>
 
-      <File onSelect={selectFileCallback} />
+      <File
+        onSelect={(files) =>
+          selectFileCallback(
+            files.map((file) => ({
+              folderPath: '',
+              file
+            }))
+          )
+        }
+      />
     </MyBox>
   );
 };

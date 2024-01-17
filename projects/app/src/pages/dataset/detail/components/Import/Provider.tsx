@@ -36,6 +36,7 @@ type useImportStoreType = {
   chunkSize: number;
   predictPrice: number;
   priceTip: string;
+  uploadRate: number;
   splitSources2Chunks: () => void;
 };
 const StateContext = createContext<useImportStoreType>({
@@ -55,6 +56,7 @@ const StateContext = createContext<useImportStoreType>({
   chunkSize: 0,
   predictPrice: 0,
   priceTip: '',
+  uploadRate: 50,
   splitSources2Chunks: () => {}
 });
 
@@ -107,7 +109,8 @@ const Provider = ({
       outputPrice: 0,
       priceTip: t('core.dataset.import.Embedding Estimated Price Tips', {
         price: vectorModel.inputPrice
-      })
+      }),
+      uploadRate: 150
     },
     [TrainingModeEnum.qa]: {
       chunkOverlapRatio: 0,
@@ -121,7 +124,8 @@ const Provider = ({
       outputPrice: agentModel.outputPrice,
       priceTip: t('core.dataset.import.QA Estimated Price Tips', {
         price: agentModel?.inputPrice
-      })
+      }),
+      uploadRate: 30
     }
   };
   const selectModelStaticParam = useMemo(() => modeStaticParams[mode], [mode]);

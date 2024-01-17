@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ImportDataComponentProps } from '@/web/core/dataset/type.d';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { ImportSourceItemType } from '@/web/core/dataset/type.d';
-import FileSelector from '@/web/core/dataset/components/FileSelector';
+import FileSelector, { type SelectFileItemType } from '@/web/core/dataset/components/FileSelector';
 import { getFileIcon } from '@fastgpt/global/common/file/icon';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
@@ -28,6 +28,7 @@ const PreviewRawText = dynamic(() => import('../components/PreviewRawText'));
 
 type FileItemType = ImportSourceItemType & { file: File };
 const fileType = '.txt, .docx, .pdf, .md, .html';
+const maxSelectFileCount = 1000;
 
 const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {
   return (
@@ -55,9 +56,10 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
   }, [successFiles]);
 
   const { mutate: onSelectFile, isLoading } = useRequest({
-    mutationFn: async (files: File[]) => {
+    mutationFn: async (files: SelectFileItemType[]) => {
       {
-        for await (const file of files) {
+        for await (const selectFile of files) {
+          const { file, folderPath } = selectFile;
           const relatedId = getNanoid(32);
 
           const { rawText } = await (() => {
@@ -84,6 +86,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
             rawText,
             chunks: [],
             chunkChars: 0,
+            sourceFolderPath: folderPath,
             sourceName: file.name,
             sourceSize: formatFileSize(file.size),
             icon: getFileIcon(file.name),
@@ -91,7 +94,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
           };
 
           setSelectFiles((state) => {
-            const results = [item].concat(state).slice(0, 10);
+            const results = [item].concat(state).slice(0, maxSelectFileCount);
             return results;
           });
         }
@@ -105,7 +108,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
         isLoading={isLoading}
         fileType={fileType}
         multiple
-        maxCount={20}
+        maxCount={maxSelectFileCount}
         maxSize={(feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024}
         onSelectFile={onSelectFile}
       />
@@ -160,7 +163,10 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
       </Flex>
 
       <Box textAlign={'right'}>
-        <Button isDisabled={successFiles.length === 0} onClick={goToNext}>
+        <Button isDisabled={successFiles.length === 0 || isLoading} onClick={goToNext}>
+          {selectFiles.length > 0
+            ? `${t('core.dataset.import.Total files', { total: selectFiles.length })} | `
+            : ''}
           {t('common.Next Step')}
         </Button>
       </Box>
