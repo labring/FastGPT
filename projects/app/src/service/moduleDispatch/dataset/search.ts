@@ -55,7 +55,7 @@ export async function dispatchDatasetSearch(
   // start search
   const {
     searchRes,
-    tokens,
+    charsLength,
     usingSimilarityFilter,
     usingReRank: searchUsingReRank
   } = await searchDatasetData({
@@ -72,7 +72,7 @@ export async function dispatchDatasetSearch(
 
   const { total, modelName } = formatModelPrice2Store({
     model: vectorModel.model,
-    inputLen: tokens,
+    inputLen: charsLength,
     type: ModelTypeEnum.vector
   });
 
@@ -84,7 +84,7 @@ export async function dispatchDatasetSearch(
       price: total,
       query: concatQueries.join('\n'),
       model: modelName,
-      inputTokens: tokens,
+      charsLength,
       similarity: usingSimilarityFilter ? similarity : undefined,
       limit,
       searchMode,

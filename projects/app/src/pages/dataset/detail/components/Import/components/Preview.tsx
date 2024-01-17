@@ -23,21 +23,19 @@ const Preview = ({
     showPreviewChunks ? PreviewListEnum.chunks : PreviewListEnum.sources
   );
 
-  const chunks = useMemo(
-    () =>
-      sources
-        .map((source) =>
-          source.chunks.map((chunk, i) => ({
-            ...chunk,
-            chunkIndex: i + 1,
-            sourceName: source.sourceName,
-            sourceIcon: source.icon
-          }))
-        )
-        .flat()
-        .slice(0, 50),
-    [sources]
-  );
+  const chunks = useMemo(() => {
+    const oneSourceChunkLength = Math.max(4, Math.floor(50 / sources.length));
+    return sources
+      .map((source) =>
+        source.chunks.slice(0, oneSourceChunkLength).map((chunk, i) => ({
+          ...chunk,
+          chunkIndex: i + 1,
+          sourceName: source.sourceName,
+          sourceIcon: source.icon
+        }))
+      )
+      .flat();
+  }, [sources]);
 
   return (
     <Box h={'100%'} display={['block', 'flex']} flexDirection={'column'} flex={'1 0 0'}>

@@ -141,6 +141,7 @@ const ResponseBox = React.memo(function ResponseBox({
           value={`${activeModule?.runningTime || 0}s`}
         />
         <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
+        <Row label={t('wallet.bill.Chars length')} value={`${activeModule?.charsLength}`} />
         <Row label={t('wallet.bill.Input Token Length')} value={`${activeModule?.inputTokens}`} />
         <Row label={t('wallet.bill.Output Token Length')} value={`${activeModule?.outputTokens}`} />
         <Row label={t('core.chat.response.module query')} value={activeModule?.query} />

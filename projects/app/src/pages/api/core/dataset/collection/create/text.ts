@@ -42,8 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       text,
       chunkLen: chunkSize,
       overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
-      customReg: chunkSplitter ? [chunkSplitter] : [],
-      countTokens: false
+      customReg: chunkSplitter ? [chunkSplitter] : []
     });
 
     // 2. check dataset limit

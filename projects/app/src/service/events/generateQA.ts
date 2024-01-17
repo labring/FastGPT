@@ -161,8 +161,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQABill({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        inputTokens: chatResponse.usage?.prompt_tokens || 0,
-        outputTokens: chatResponse.usage?.completion_tokens || 0,
+        charsLength: `${prompt}${answer}`.length,
         billId: data.billId,
         model
       });
@@ -238,7 +237,7 @@ function formatSplitText(text: string, rawText: string) {
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const { chunks } = splitText2Chunks({ text: rawText, chunkLen: 512, countTokens: false });
+    const { chunks } = splitText2Chunks({ text: rawText, chunkLen: 512 });
     chunks.forEach((chunk) => {
       result.push({
         q: chunk,

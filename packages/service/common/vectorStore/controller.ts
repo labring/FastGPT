@@ -22,7 +22,7 @@ export const insertDatasetDataVector = async ({
   query: string;
   model: string;
 }) => {
-  const { vectors, tokens } = await getVectorsByText({
+  const { vectors, charsLength } = await getVectorsByText({
     model,
     input: query
   });
@@ -32,7 +32,7 @@ export const insertDatasetDataVector = async ({
   });
 
   return {
-    tokens,
+    charsLength,
     insertId
   };
 };
@@ -46,7 +46,7 @@ export const updateDatasetDataVector = async ({
   model: string;
 }) => {
   // insert new vector
-  const { tokens, insertId } = await insertDatasetDataVector(props);
+  const { charsLength, insertId } = await insertDatasetDataVector(props);
 
   // delete old vector
   await deleteDatasetDataVector({
@@ -54,5 +54,5 @@ export const updateDatasetDataVector = async ({
     id
   });
 
-  return { tokens, insertId };
+  return { charsLength, insertId };
 };

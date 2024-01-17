@@ -248,7 +248,7 @@ export async function insertData2Dataset({
     )
   );
 
-  // create mongo
+  // create mongo data
   const { _id } = await MongoDatasetData.create({
     teamId,
     tmbId,
@@ -266,7 +266,7 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    tokens: result.reduce((acc, cur) => acc + cur.tokens, 0)
+    charsLength: result.reduce((acc, cur) => acc + cur.charsLength, 0)
   };
 }
 
@@ -387,16 +387,16 @@ export async function updateData2Dataset({
           id: item.index.dataId
         });
         return {
-          tokens: 0
+          charsLength: 0
         };
       }
       return {
-        tokens: 0
+        charsLength: 0
       };
     })
   );
 
-  const tokens = result.reduce((acc, cur) => acc + cur.tokens, 0);
+  const charsLength = result.reduce((acc, cur) => acc + cur.charsLength, 0);
 
   // update mongo other data
   mongoData.q = q || mongoData.q;
@@ -407,7 +407,7 @@ export async function updateData2Dataset({
   await mongoData.save();
 
   return {
-    tokens
+    charsLength
   };
 }
 
@@ -468,7 +468,7 @@ export async function searchDatasetData(props: {
     };
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
-    const { vectors, tokens } = await getVectorsByText({
+    const { vectors, charsLength } = await getVectorsByText({
       model,
       input: query
     });
@@ -527,7 +527,7 @@ export async function searchDatasetData(props: {
 
     return {
       embeddingRecallResults: formatResult,
-      tokens
+      charsLength
     };
   };
   const fullTextRecall = async ({
@@ -701,26 +701,27 @@ export async function searchDatasetData(props: {
     // multi query recall
     const embeddingRecallResList: SearchDataResponseItemType[][] = [];
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
-    let embTokens = 0;
+    let totalCharsLength = 0;
     for await (const query of queries) {
-      const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
-        embeddingRecall({
-          query,
-          limit: embeddingLimit
-        }),
-        fullTextRecall({
-          query,
-          limit: fullTextLimit
-        })
-      ]);
-      embTokens += tokens;
+      const [{ charsLength, embeddingRecallResults }, { fullTextRecallResults }] =
+        await Promise.all([
+          embeddingRecall({
+            query,
+            limit: embeddingLimit
+          }),
+          fullTextRecall({
+            query,
+            limit: fullTextLimit
+          })
+        ]);
+      totalCharsLength += charsLength;
 
       embeddingRecallResList.push(embeddingRecallResults);
       fullTextRecallResList.push(fullTextRecallResults);
     }
 
     return {
-      tokens: embTokens,
+      charsLength: totalCharsLength,
       embeddingRecallResults: embeddingRecallResList[0],
       fullTextRecallResults: fullTextRecallResList[0]
     };
@@ -791,7 +792,7 @@ export async function searchDatasetData(props: {
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
-  const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
+  const { embeddingRecallResults, fullTextRecallResults, charsLength } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
@@ -864,7 +865,7 @@ export async function searchDatasetData(props: {
 
   return {
     searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
-    tokens,
+    charsLength,
     searchMode,
     limit: maxTokens,
     similarity,

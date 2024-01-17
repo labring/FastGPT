@@ -92,6 +92,7 @@ export type moduleDispatchResType = {
   runningTime?: number;
   inputTokens?: number;
   outputTokens?: number;
+  charsLength?: number;
   model?: string;
   query?: string;
   contextTotalLen?: number;

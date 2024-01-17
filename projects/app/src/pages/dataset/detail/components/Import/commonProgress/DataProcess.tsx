@@ -43,7 +43,7 @@ function DataProcess({
     showChunkInput,
     showPromptInput,
     maxChunkSize,
-    totalTokens,
+    totalChunkChars,
     totalChunks,
     predictPrice,
     showRePreview,
@@ -269,7 +269,7 @@ function DataProcess({
               {t('core.dataset.Total chunks', { total: totalChunks })}
             </Tag>
             <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
-              {t('core.Total tokens', { total: totalTokens })}
+              {t('core.Total chars', { total: totalChunkChars })}
             </Tag>
             {feConfigs?.show_pay && (
               <MyTooltip label={priceTip}>

@@ -31,7 +31,7 @@ type useImportStoreType = {
   sources: ImportSourceItemType[];
   setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
   showRePreview: boolean;
-  totalTokens: number;
+  totalChunkChars: number;
   totalChunks: number;
   chunkSize: number;
   predictPrice: number;
@@ -50,7 +50,7 @@ const StateContext = createContext<useImportStoreType>({
   showPromptInput: false,
   chunkSizeField: 'embeddingChunkSize',
   showRePreview: false,
-  totalTokens: 0,
+  totalChunkChars: 0,
   totalChunks: 0,
   chunkSize: 0,
   predictPrice: 0,
@@ -120,8 +120,7 @@ const Provider = ({
       inputPrice: agentModel.inputPrice,
       outputPrice: agentModel.outputPrice,
       priceTip: t('core.dataset.import.QA Estimated Price Tips', {
-        inputPrice: agentModel?.inputPrice,
-        outputPrice: agentModel?.outputPrice
+        price: agentModel?.inputPrice
       })
     }
   };
@@ -144,16 +143,19 @@ const Provider = ({
     setShowRePreview(true);
   }, [mode, way, chunkSize, customSplitChar]);
 
-  const totalTokens = useMemo(() => sources.reduce((sum, file) => sum + file.tokens, 0), [sources]);
+  const totalChunkChars = useMemo(
+    () => sources.reduce((sum, file) => sum + file.chunkChars, 0),
+    [sources]
+  );
   const predictPrice = useMemo(() => {
     if (mode === TrainingModeEnum.qa) {
-      const inputTotal = totalTokens * selectModelStaticParam.inputPrice;
-      const outputTotal = totalTokens * 0.5 * selectModelStaticParam.outputPrice;
+      const inputTotal = totalChunkChars * selectModelStaticParam.inputPrice;
+      const outputTotal = totalChunkChars * 0.5 * selectModelStaticParam.inputPrice;
 
       return formatModelPrice2Read(inputTotal + outputTotal);
     }
-    return formatModelPrice2Read(totalTokens * selectModelStaticParam.inputPrice);
-  }, [mode, selectModelStaticParam.inputPrice, selectModelStaticParam.outputPrice, totalTokens]);
+    return formatModelPrice2Read(totalChunkChars * selectModelStaticParam.inputPrice);
+  }, [mode, selectModelStaticParam.inputPrice, totalChunkChars]);
   const totalChunks = useMemo(
     () => sources.reduce((sum, file) => sum + file.chunks.length, 0),
     [sources]
@@ -162,7 +164,7 @@ const Provider = ({
   const splitSources2Chunks = useCallback(() => {
     setSources((state) =>
       state.map((file) => {
-        const { chunks, tokens } = splitText2Chunks({
+        const { chunks, chars } = splitText2Chunks({
           text: file.rawText,
           chunkLen: chunkSize,
           overlapRatio: selectModelStaticParam.chunkOverlapRatio,
@@ -171,7 +173,7 @@ const Provider = ({
 
         return {
           ...file,
-          tokens,
+          chunkChars: chars,
           chunks: chunks.map((chunk) => ({
             q: chunk,
             a: ''
@@ -189,7 +191,7 @@ const Provider = ({
     sources,
     setSources,
     showRePreview,
-    totalTokens,
+    totalChunkChars,
     totalChunks,
     chunkSize,
     predictPrice,

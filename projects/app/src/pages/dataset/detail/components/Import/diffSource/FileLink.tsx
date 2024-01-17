@@ -11,8 +11,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { LinkCollectionIcon } from '@fastgpt/global/core/dataset/constants';
 import { feConfigs } from '@/web/common/system/staticData';
 import { getDocPath } from '@/web/common/system/doc';
+import Loading from '@/components/Loading';
 
-const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
+const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
+  loading: () => <Loading fixed={false} />
+});
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const LinkCollection = ({ activeStep, goToNext }: ImportDataComponentProps) => {
@@ -127,7 +130,7 @@ const CustomLinkImport = ({ goToNext }: { goToNext: () => void }) => {
                 link,
                 rawText: '',
                 chunks: [],
-                tokens: 0,
+                chunkChars: 0,
                 sourceName: link,
                 icon: LinkCollectionIcon
               }))

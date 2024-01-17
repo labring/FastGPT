@@ -33,7 +33,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     await authTeamBalance(teamId);
 
-    const { tokens, vectors } = await getVectorsByText({ input: query, model });
+    const { charsLength, vectors } = await getVectorsByText({ input: query, model });
 
     res.json({
       object: 'list',
@@ -44,15 +44,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       })),
       model,
       usage: {
-        prompt_tokens: tokens,
-        total_tokens: tokens
+        prompt_tokens: charsLength,
+        total_tokens: charsLength
       }
     });
 
     const { total } = pushGenerateVectorBill({
       teamId,
       tmbId,
-      tokens,
+      charsLength,
       model,
       billId,
       source: getBillSourceByAuthType({ authType })

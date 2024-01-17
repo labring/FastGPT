@@ -7,8 +7,11 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import Loading from '@/components/Loading';
 
-const DataProcess = dynamic(() => import('../commonProgress/DataProcess'));
+const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
+  loading: () => <Loading fixed={false} />
+});
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const CustomTet = ({ activeStep, goToNext }: ImportDataComponentProps) => {
@@ -84,7 +87,7 @@ const CustomTextInput = ({ goToNext }: { goToNext: () => void }) => {
                 id: fileId,
                 rawText: data.value,
                 chunks: [],
-                tokens: 0,
+                chunkChars: 0,
                 sourceName: data.name,
                 icon: 'file/fill/manual'
               }

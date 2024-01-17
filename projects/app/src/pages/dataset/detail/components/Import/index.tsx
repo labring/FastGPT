@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -143,7 +143,7 @@ const ImportDataset = () => {
         </Box>
       </Box>
       <Provider dataset={datasetDetail} parentId={parentId}>
-        <Box flex={'1 0 0'} overflow={'auto'}>
+        <Box flex={'1 0 0'} overflow={'auto'} position={'relative'}>
           <ImportComponent activeStep={activeStep} goToNext={goToNext} />
         </Box>
       </Provider>

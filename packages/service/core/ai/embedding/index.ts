@@ -37,7 +37,7 @@ export async function getVectorsByText({
         }
 
         return {
-          tokens: res.usage.total_tokens || 0,
+          charsLength: input.length,
           vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
         };
       });

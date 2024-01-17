@@ -68,7 +68,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
             file,
             rawText: '',
             chunks: filterData,
-            tokens: 0,
+            chunkChars: 0,
             sourceName: file.name,
             sourceSize: formatFileSize(file.size),
             icon: getFileIcon(file.name),

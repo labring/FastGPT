@@ -33,20 +33,16 @@ ${chatModelList
       md: `
 | 模型 | 价格(￥) |
 | --- | --- |
-${vectorModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k tokens |`).join('\n')}
+${vectorModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 |`).join('\n')}
       `
     },
     {
       title: '文件预处理模型(QA 拆分)',
       describe: '',
       md: `
-| 模型 | 输入价格(￥) | 输出价格(￥) |
-| --- | --- | --- |
-${qaModelList
-  ?.map(
-    (item) => `| ${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}
+| 模型 | 价格(￥)  |
+| --- | --- | 
+${qaModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 |`).join('\n')}
       `
     },
     {
