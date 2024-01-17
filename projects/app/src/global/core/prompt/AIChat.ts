@@ -1,5 +1,5 @@
 import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
-
+<Question>
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
     title: '标准模板',
@@ -13,12 +13,12 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: '问答模板',
     desc: '适合 QA 问答结构的知识库，可以让AI较为严格的按预设内容回答',
     value: `<QA>
-<问题>
+<Question>
 {{q}}
-</问题>
-<答案>
+</Question>
+<Answer>
 {{a}}
-</答案>
+</Answer>
 </QA>`
   },
   {
@@ -33,12 +33,12 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
     title: '严格问答模板',
     desc: '在问答模板基础上，对模型的回答做更严格的要求。',
     value: `<QA>
-<问题>
+<Question>
 {{q}}
-</问题>
-<答案>
+</Question>
+<Answer>
 {{a}}
-</答案>
+</Answer>
 </QA>`
   }
 ];
@@ -47,68 +47,68 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
   {
     title: '标准模板',
     desc: '',
-    value: `使用 <data></data> 标记中的内容作为你的知识:
+    value: `Use the content within the <data></data> tags as your knowledge:
 
 {{quote}}
 
-回答要求：
-- 如果你不清楚答案，你需要澄清。
-- 避免提及你是从 data 获取的知识。
-- 保持答案与 data 中描述的一致。
-- 使用与问题相同的语言回答。
+Response Requirements:
+- If you are unsure of the answer, seek clarification.
+- Avoid mentioning that your knowledge is obtained from data.
+- Ensure that your answer aligns with the description in the data.
 
-问题:"{{question}}"`
+Question: "{{question}}"`
+
   },
   {
     title: '问答模板',
     desc: '',
-    value: `使用 <QA></QA> 标记中的问答对进行回答。
+    value: `Use the Q&A pairs within <QA></QA> tags for responses.
 
 {{quote}}
 
-回答要求：
-- 选择其中一个或多个问答对进行回答。
-- 回答的内容应尽可能与 <答案></答案> 中的内容一致。
-- 如果没有相关的问答对，你需要澄清。
-- 避免提及你是从 QA 获取的知识，只需要回复答案。
+Answer Requirements:
+- Choose one or more Q&A pairs to respond to.
+- Ensure that the response closely aligns with the content within <Answer></Answer>.
+- Clarify if there are no relevant Q&A pairs.
+- Avoid mentioning that the knowledge is sourced from QA; simply provide the answers.
+- All formulas must be expressed in LaTex. Inline format: $g_{\mu\nu}$ and block format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$.
 
-问题:"{{question}}"`
+Question:"{{question}}"`
   },
   {
-    title: '标准严格模板',
-    desc: '',
-    value: `忘记你已有的知识，仅使用 <data></data> 标记中的内容作为你的知识:
-
-{{quote}}
-
-思考流程：
-1. 判断问题是否与 <data></data> 标记中的内容有关。
-2. 如果有关，你按下面的要求回答。
-3. 如果无关，你直接拒绝回答本次问题。
-
-回答要求：
-- 避免提及你是从 data 获取的知识。
-- 保持答案与 data 中描述的一致。
-- 使用与问题相同的语言回答。
-
-问题:"{{question}}"`
+    "title": "标准严格模板",
+    "desc": "",
+    "value": `Forget the knowledge you already have; only use the content within <data></data> tags as your knowledge:
+  
+  {{quote}}
+  
+  Thinking process:
+  1. Determine if the question is related to the content within <data></data> tags.
+  2. If relevant, respond according to the following requirements.
+  3. If not relevant, decline to answer the question directly.
+  
+  Answer Requirements:
+  - Avoid mentioning that you obtained knowledge from data.
+  - Ensure that the answer aligns with the description within <data></data>.
+  
+  Question: "{{question}}"`
   },
   {
-    title: '严格问答模板',
-    desc: '',
-    value: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
-
-{{quote}}
-
-思考流程：
-1. 判断问题是否与 <QA></QA> 标记中的内容有关。
-2. 如果无关，你直接拒绝回答本次问题。
-3. 判断是否有相近或相同的问题。
-4. 如果有相同的问题，直接输出对应答案。
-5. 如果只有相近的问题，请把相近的问题和答案一起输出。
-
-最后，避免提及你是从 QA 获取的知识，只需要回复答案。
-
-问题:"{{question}}"`
-  }
+    "title": "严格问答模板",
+    "desc": "",
+    "value": `Forget the knowledge you already have; only use the Q&A pairs within <QA></QA> tags to respond.
+  
+  {{quote}}
+  
+  Thinking process:
+  1. Determine if the question is related to the content within <QA></QA> tags.
+  2. If not, decline to answer the question directly.
+  3. Check for similar or identical questions.
+  4. If there are identical questions, provide the corresponding answers.
+  5. If there are only similar questions, output both the similar questions and answers together.
+  
+  Lastly, avoid mentioning that you obtained knowledge from QA; simply provide the answers.
+  
+  Question: "{{question}}"`
+  }  
 ];
