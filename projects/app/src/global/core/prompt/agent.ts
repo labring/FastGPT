@@ -1,13 +1,13 @@
 export const Prompt_AgentQA = {
-  description: `<context></context> 标记中是一段文本，学习和分析它，并整理学习成果：
-- 提出问题并给出每个问题的答案。
-- 答案需详细完整，给出相关原文描述。
-- 答案可以包含普通文字、链接、代码、表格、公示、媒体链接等 markdown 元素。
-- 最多提出 30 个问题。
+  description: `Within the <context></context> tags is a piece of text for study and analysis. Organize the findings as follows:
+- Pose questions and provide detailed answers for each question.
+- Answers should be thorough and complete, including relevant original text descriptions.
+- Answers can incorporate plain text, links, code, tables, notices, media links, and other markdown elements.
+- Present a maximum of 30 questions.
 `,
-  fixedText: `最后，你需要按下面的格式返回多个问题和答案:
-Q1: 问题。
-A1: 答案。
+  fixedText: `Finally, you need to return multiple questions and answers in the following format:
+Q1: Question.
+A1: Answer.
 Q2:
 A2:
 ……
@@ -18,40 +18,40 @@ A2:
 `
 };
 
-export const Prompt_ExtractJson = `你可以从 <对话记录></对话记录> 中提取指定 JSON 信息，你仅需返回 JSON 字符串，无需回答问题。
-<提取要求>
+export const Prompt_ExtractJson = `You can extract specified JSON information from <Conversation></Conversation> records. Please return the JSON string without answering questions.
+<Extraction Requirements>
 {{description}}
-</提取要求>
+</Extraction Requirements>
 
-<字段说明>
-1. 下面的 JSON 字符串均按照 JSON Schema 的规则描述。
-2. key 代表字段名；description 代表字段的描述；required 代表字段是否必须；enum 是可选值，代表可选的 value。
-3. 如果字段内容为空，你可以返回空字符串。
+<Field Descriptions>
+1. The following JSON strings adhere to the rules of JSON Schema.
+2. Key represents the field name; description represents the field's description; required indicates whether the field is mandatory; enum is optional and represents the possible values.
+3. If the field content is empty, you can return an empty string.
 
 {{json}}
-</字段说明>
+</Field Descriptions>
 
-<对话记录>
+<Conversation Records>
 {{text}}
-</对话记录>
+</Conversation Records>
 `;
 
-export const Prompt_CQJson = `我会给你几个问题类型，请参考背景知识（可能为空）和对话记录，判断我“本次问题”的类型，并返回一个问题“类型ID”:
-<问题类型>
+export const Prompt_CQJson = `I will provide you with several question types. Please refer to background knowledge (which may be empty) and conversation records to determine the type of my "current question." Return a question "type ID" accordingly:
+<Question Types>
 {{typeList}}
-</问题类型>
+</Question Types>
 
-<背景知识>
+<Background Knowledge>
 {{systemPrompt}}
-</背景知识>
+</Background Knowledge>
 
-<对话记录>
+<Conversation Records>
 {{history}}
-</对话记录>
+</Conversation Records>
 
-Human："{{question}}"
+Human: "{{question}}"
 
-类型ID=
+Type ID=
 `;
 
-export const Prompt_QuestionGuide = `我不太清楚问你什么问题，请帮我生成 3 个问题，引导我继续提问。问题的长度应小于20个字符，按 JSON 格式返回: ["问题1", "问题2", "问题3"]`;
+export const Prompt_QuestionGuide = `I'm not sure what questions to ask you. Please help me generate 3 questions to guide further inquiries. The length of each question should be less than 20 characters. Return in JSON format: ["Question1", "Question2", "Question3"]`;
