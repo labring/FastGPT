@@ -73,7 +73,7 @@ export const formatTimeToChatTime = (time: Date) => {
 
   // 如果是今年，展示某月某日
   if (now.isSame(target, 'year')) {
-    return target.format('M/D');
+    return target.format('MM/DD');
   }
 
   // 如果是更久之前，展示某年某月某日

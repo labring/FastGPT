@@ -538,8 +538,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -807,7 +806,7 @@
           "New context": "新的上下文",
           "Quote": "引用内容",
           "Search result empty": "搜索结果为空",
-          "Search result not empty": "搜索结果为空",
+          "Search result not empty": "搜索结果不为空",
           "cfr result": "补全结果",
           "result false": "False",
           "result true": "True",

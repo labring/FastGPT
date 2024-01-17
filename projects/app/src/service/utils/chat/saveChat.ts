@@ -69,7 +69,7 @@ export async function saveChat({
     if (chat) {
       promise.push(
         MongoChat.updateOne(
-          { chatId },
+          { appId, chatId },
           {
             title,
             updateTime: new Date(),

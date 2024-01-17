@@ -31,7 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         appId,
         per: 'r'
       }),
-      chatId ? MongoChat.findOne({ chatId }) : undefined
+      chatId ? MongoChat.findOne({ appId, chatId }) : undefined
     ]);
 
     // auth chat permission
@@ -41,6 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // get app and history
     const { history } = await getChatItems({
+      appId,
       chatId,
       limit: 30,
       field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
