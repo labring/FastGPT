@@ -90,6 +90,7 @@ Question:"{{question}}"`
   Answer Requirements:
   - Avoid mentioning that you obtained knowledge from data.
   - Ensure that the answer aligns with the description within <data></data>.
+  - All formulas must be expressed in LaTex. Inline format: $g_{\mu\nu}$ and block format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$.
   
   Question: "{{question}}"`
   },
