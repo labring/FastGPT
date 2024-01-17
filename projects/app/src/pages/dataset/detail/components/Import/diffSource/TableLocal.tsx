@@ -11,6 +11,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 import { useImportStore } from '../Provider';
+import { feConfigs } from '@/web/common/system/staticData';
 
 import dynamic from 'next/dynamic';
 import { fileDownload, readCsvContent } from '@/web/common/file/utils';
@@ -93,7 +94,8 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
     <Box>
       <FileSelector
         multiple
-        maxCount={10}
+        maxCount={20}
+        maxSize={(feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024}
         isLoading={isLoading}
         fileType={fileType}
         onSelectFile={onSelectFile}

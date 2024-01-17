@@ -1,7 +1,7 @@
 import MyBox from '@/components/common/MyBox';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useToast } from '@/web/common/hooks/useToast';
-import { Box, Flex, FlexProps } from '@chakra-ui/react';
+import { Box, FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -21,7 +21,7 @@ const FileSelector = ({
   maxCount?: number;
   maxSize?: number;
   isLoading?: boolean;
-  onSelectFile: (e: File[], sign?: any) => any;
+  onSelectFile: (e: File[]) => any;
 } & FlexProps) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -31,6 +31,26 @@ const FileSelector = ({
     maxCount
   });
   const [isDragging, setIsDragging] = useState(false);
+
+  const selectFileCallback = useCallback(
+    (files: File[]) => {
+      // size check
+      if (!maxSize) {
+        return onSelectFile(files);
+      }
+      const filterFiles = files.filter((item) => item.size <= maxSize);
+
+      if (filterFiles.length < files.length) {
+        toast({
+          status: 'warning',
+          title: t('common.file.Some file size exceeds limit', { maxSize: formatFileSize(maxSize) })
+        });
+      }
+
+      return onSelectFile(filterFiles);
+    },
+    [maxSize, onSelectFile, t, toast]
+  );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
@@ -91,9 +111,9 @@ const FileSelector = ({
         }
       }
 
-      onSelectFile(fileList.slice(0, maxCount));
+      selectFileCallback(fileList.slice(0, maxCount));
     },
-    [maxCount, onSelectFile, t, toast]
+    [maxCount, selectFileCallback, t, toast]
   );
 
   return (
@@ -144,7 +164,7 @@ const FileSelector = ({
         {maxSize && t('common.file.Support max size', { maxSize: formatFileSize(maxSize) })}
       </Box>
 
-      <File onSelect={onSelectFile} />
+      <File onSelect={selectFileCallback} />
     </MyBox>
   );
 };

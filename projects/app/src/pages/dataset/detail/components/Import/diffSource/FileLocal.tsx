@@ -15,6 +15,7 @@ import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants'
 import MyTooltip from '@/components/MyTooltip';
 import type { PreviewRawTextProps } from '../components/PreviewRawText';
 import { useImportStore } from '../Provider';
+import { feConfigs } from '@/web/common/system/staticData';
 
 import dynamic from 'next/dynamic';
 import Loading from '@/components/Loading';
@@ -104,7 +105,8 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
         isLoading={isLoading}
         fileType={fileType}
         multiple
-        maxCount={10}
+        maxCount={20}
+        maxSize={(feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024}
         onSelectFile={onSelectFile}
       />
 

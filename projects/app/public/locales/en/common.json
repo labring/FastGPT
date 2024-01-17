@@ -180,6 +180,7 @@
       "Select failed": "Select file failed",
       "Select file amount limit": "A maximum of {{max}} files can be selected",
       "Select file amount limit 100": "You can select a maximum of 100 files at a time",
+      "Some file size exceeds limit": "Some files exceed: {{maxSize}}, have been filtered",
       "Support file type": "Support {{fileType}} files",
       "Support max count": "A maximum of {{maxCount}} files are supported.",
       "Support max size": "Maximum for a single file {{maxSize}}.",
