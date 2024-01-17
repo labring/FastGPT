@@ -395,7 +395,7 @@
         "Chat error": "Chat error",
         "Messages empty": "Interface content is empty, maybe the text is too long ~",
         "Select dataset empty": "You didn't choose any dataset.",
-        "user input empty": "User question is empty"
+        "User input empty": "User question is empty"
       },
       "feedback": {
         "Close User Good Feedback": "",

@@ -395,7 +395,7 @@
         "Chat error": "对话出现异常",
         "Messages empty": "接口内容为空，可能文本超长了~",
         "Select dataset empty": "你没有选择知识库",
-        "user input empty": "传入的用户问题为空"
+        "User input empty": "传入的用户问题为空"
       },
       "feedback": {
         "Close User Good Feedback": "",

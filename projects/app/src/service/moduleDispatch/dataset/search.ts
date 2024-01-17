@@ -40,7 +40,7 @@ export async function dispatchDatasetSearch(
   }
 
   if (!userChatInput) {
-    return Promise.reject('core.chat.error.User question empty');
+    return Promise.reject('core.chat.error.User input empty');
   }
 
   // get vector
