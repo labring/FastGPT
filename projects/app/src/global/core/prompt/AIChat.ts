@@ -1,5 +1,5 @@
 import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
-<Question>
+
 export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
     title: '标准模板',
