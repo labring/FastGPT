@@ -34,9 +34,9 @@ jobs:
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
-          registry: ghcr.io
-          username: ${{ github.repository_owner }}
-          password: ${{ secrets.GH_PAT }}
+          registry: docker.pkg.github.com
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Set DOCKER_REPO_TAGGED based on branch or tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
