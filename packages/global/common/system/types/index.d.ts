@@ -56,7 +56,7 @@ export type FastGPTFeConfigsType = {
     datasetStorePrice?: number;
   };
 
-  uploadFileMaxSize: number;
+  uploadFileMaxSize?: number;
 };
 
 export type SystemEnvType = {
