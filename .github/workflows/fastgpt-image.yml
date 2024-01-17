@@ -56,7 +56,7 @@ jobs:
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \
-          -t ${DOCKER_REPO_TAGGED} \
+          -t $DOCKER_REPO_TAGGED \
           -f Dockerfile \
           .
   push-to-docker-hub:
