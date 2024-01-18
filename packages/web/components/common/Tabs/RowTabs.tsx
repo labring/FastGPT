@@ -5,7 +5,7 @@ import MyIcon from '../Icon';
 type Props = {
   list: {
     icon?: string;
-    label: string;
+    label: string | React.ReactNode;
     value: string;
   }[];
   value: string;
