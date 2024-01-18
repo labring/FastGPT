@@ -91,7 +91,7 @@ docker build -t dockername/fastgpt:tag --build-arg name=app .
 docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=taobao .
 ```
 
-## 提交代码至开源仓库
+## Submitting Code to the Open-Source Repository
 
 1. 确保你的代码是 Fork [FastGPT](https://github.com/labring/FastGPT) 仓库
 2. 尽可能少量的提交代码，每次提交仅解决一个问题。
