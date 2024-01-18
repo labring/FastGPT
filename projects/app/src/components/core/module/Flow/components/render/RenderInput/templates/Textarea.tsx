@@ -1,38 +1,46 @@
-import React, { useTransition } from 'react';
+import React, { useCallback, useMemo, useTransition } from 'react';
 import type { RenderInputProps } from '../type';
-import { onChangeNode } from '../../../../FlowProvider';
+import { useFlowProviderStore, onChangeNode } from '../../../../FlowProvider';
 import { useTranslation } from 'next-i18next';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/module/utils';
 
 const TextareaRender = ({ item, moduleId }: RenderInputProps) => {
   const { t } = useTranslation();
   const [, startTst] = useTransition();
+  const { nodes } = useFlowProviderStore();
 
-  const update = (value: string) => {
-    onChangeNode({
-      moduleId,
-      type: 'updateInput',
-      key: item.key,
-      value: {
-        ...item,
-        value
-      }
-    });
-  };
+  // get variable
+  const variables = useMemo(
+    () => splitGuideModule(getGuideModule(nodes.map((node) => node.data)))?.variableModules,
+    [nodes]
+  );
+
+  const onChange = useCallback(
+    (e: string) => {
+      startTst(() => {
+        onChangeNode({
+          moduleId,
+          type: 'updateInput',
+          key: item.key,
+          value: {
+            ...item,
+            value: e
+          }
+        });
+      });
+    },
+    [item, moduleId]
+  );
 
   return (
-    <MyTextarea
+    <PromptEditor
+      variables={variables}
       title={t(item.label)}
-      rows={5}
-      bg={'myWhite.400'}
+      h={150}
       placeholder={t(item.placeholder || '')}
-      resize={'both'}
       defaultValue={item.value}
-      onChange={(e) => {
-        startTst(() => {
-          update(e.target.value);
-        });
-      }}
+      onChange={onChange}
     />
   );
 };

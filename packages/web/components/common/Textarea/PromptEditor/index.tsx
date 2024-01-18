@@ -1,14 +1,14 @@
 import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
 import { VariableItemType } from '@fastgpt/global/core/module/type';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import { $getRoot } from 'lexical';
 
-export default function PromptEditor({
-  variables,
+const PromptEditor = ({
+  variables = [],
   defaultValue,
   onChange,
   onBlur,
@@ -16,14 +16,14 @@ export default function PromptEditor({
   placeholder,
   title
 }: {
-  variables: VariableItemType[];
+  variables?: VariableItemType[];
   defaultValue: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
   h?: number;
   placeholder?: string;
   title: string;
-}) {
+}) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const [newDefaultValue, setNewDefaultValue] = useState(defaultValue);
@@ -78,4 +78,5 @@ export default function PromptEditor({
       </MyModal>
     </>
   );
-}
+};
+export default React.memo(PromptEditor);

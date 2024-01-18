@@ -79,6 +79,8 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     [t]
   );
 
+  const onCloseFlowEdit = useCallback(() => setCurrentTab(TabEnum.simpleEdit), [setCurrentTab]);
+
   useEffect(() => {
     const listen =
       process.env.NODE_ENV === 'production'
@@ -189,7 +191,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
             {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
             {currentTab === TabEnum.adEdit && appDetail && (
-              <FlowEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
+              <FlowEdit app={appDetail} onClose={onCloseFlowEdit} />
             )}
             {currentTab === TabEnum.logs && <Logs appId={appId} />}
             {currentTab === TabEnum.outLink && <OutLink appId={appId} />}

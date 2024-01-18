@@ -73,7 +73,7 @@ export default function Editor({
   );
 
   return (
-    <Box position={'relative'} width={'full'} h={`${height}px`}>
+    <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
       <LexicalComposer initialConfig={initialConfig} key={defaultValue}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
@@ -81,7 +81,9 @@ export default function Editor({
             <Box
               position={'absolute'}
               top={'8px'}
+              bottom={'8px'}
               left={'12px'}
+              right={'12px'}
               color={'myGray.500'}
               fontSize={'xs'}
               userSelect={'none'}
@@ -103,7 +105,7 @@ export default function Editor({
           position={'absolute'}
           right={'0'}
           bottom={'-1'}
-          zIndex={999}
+          zIndex={9}
           cursor={'ns-resize'}
           px={'2px'}
           onMouseDown={handleMouseDown}
@@ -113,7 +115,7 @@ export default function Editor({
       )}
       {showOpenModal && (
         <Box
-          zIndex={1000}
+          zIndex={10}
           position={'absolute'}
           bottom={1}
           right={2}

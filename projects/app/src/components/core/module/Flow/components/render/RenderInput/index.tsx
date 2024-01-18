@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import type { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import { Box } from '@chakra-ui/react';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 
 import InputLabel from './Label';
 import type { RenderInputProps } from './type.d';
-import { getFlowStore, type useFlowProviderStoreType } from '../../../FlowProvider';
+import { useFlowProviderStore } from '../../../FlowProvider';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const RenderList: {
@@ -77,8 +77,8 @@ type Props = {
   moduleId: string;
   CustomComponent?: Record<string, (e: FlowNodeInputItemType) => React.ReactNode>;
 };
-const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) => {
-  const [mode, setMode] = useState<useFlowProviderStoreType['mode']>('app');
+const RenderInput = ({ flowInputList, moduleId, CustomComponent }: Props) => {
+  const { mode } = useFlowProviderStore();
 
   const sortInputs = useMemo(
     () =>
@@ -109,48 +109,43 @@ const RenderInput = ({ flowInputList, moduleId, CustomComponent = {} }: Props) =
     [mode, sortInputs]
   );
 
-  useEffect(() => {
-    async () => {
-      const { mode } = await getFlowStore();
-      setMode(mode);
-    };
-  }, []);
+  const memoCustomComponent = useMemo(() => CustomComponent || {}, [CustomComponent]);
 
-  return (
-    <>
-      {filterInputs.map((input) => {
-        const RenderComponent = (() => {
-          if (input.type === FlowNodeInputTypeEnum.custom && CustomComponent[input.key]) {
-            return <>{CustomComponent[input.key]({ ...input })}</>;
-          }
-          const Component = RenderList.find((item) => item.types.includes(input.type))?.Component;
+  const Render = useMemo(() => {
+    return filterInputs.map((input) => {
+      const RenderComponent = (() => {
+        if (input.type === FlowNodeInputTypeEnum.custom && memoCustomComponent[input.key]) {
+          return <>{memoCustomComponent[input.key]({ ...input })}</>;
+        }
+        const Component = RenderList.find((item) => item.types.includes(input.type))?.Component;
 
-          if (!Component) return null;
-          return <Component inputs={filterInputs} item={input} moduleId={moduleId} />;
-        })();
+        if (!Component) return null;
+        return <Component inputs={filterInputs} item={input} moduleId={moduleId} />;
+      })();
 
-        return (
-          <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
-            {input.key === ModuleInputKeyEnum.userChatInput && (
-              <UserChatInput inputs={filterInputs} item={input} moduleId={moduleId} />
-            )}
-            {input.type !== FlowNodeInputTypeEnum.hidden && (
-              <>
-                {!!input.label && (
-                  <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
-                )}
-                {!!RenderComponent && (
-                  <Box mt={2} className={'nodrag'}>
-                    {RenderComponent}
-                  </Box>
-                )}
-              </>
-            )}
-          </Box>
-        );
-      })}
-    </>
-  );
+      return (
+        <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
+          {input.key === ModuleInputKeyEnum.userChatInput && (
+            <UserChatInput inputs={filterInputs} item={input} moduleId={moduleId} />
+          )}
+          {input.type !== FlowNodeInputTypeEnum.hidden && (
+            <>
+              {!!input.label && (
+                <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
+              )}
+              {!!RenderComponent && (
+                <Box mt={2} className={'nodrag'}>
+                  {RenderComponent}
+                </Box>
+              )}
+            </>
+          )}
+        </Box>
+      );
+    });
+  }, [memoCustomComponent, filterInputs, mode, moduleId]);
+
+  return <>{Render}</>;
 };
 
 export default React.memo(RenderInput);
