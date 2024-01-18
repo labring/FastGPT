@@ -26,7 +26,7 @@ import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d'
 import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type.d';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
-import PromptTextarea from '@/components/common/Textarea/PromptTextarea';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -188,7 +188,7 @@ const AIChatSettingsModal = ({
               </Box>
             </Flex>
 
-            <PromptTextarea
+            <MyTextarea
               title={t('core.app.Quote templates')}
               bg={'myWhite.400'}
               rows={8}
@@ -214,7 +214,7 @@ const AIChatSettingsModal = ({
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Flex>
-            <PromptTextarea
+            <MyTextarea
               title={t('core.app.Quote prompt')}
               bg={'myWhite.400'}
               rows={11}

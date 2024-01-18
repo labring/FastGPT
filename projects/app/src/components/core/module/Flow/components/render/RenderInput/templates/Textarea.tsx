@@ -2,7 +2,7 @@ import React, { useTransition } from 'react';
 import type { RenderInputProps } from '../type';
 import { onChangeNode } from '../../../../FlowProvider';
 import { useTranslation } from 'next-i18next';
-import PromptTextarea from '@/components/common/Textarea/PromptTextarea';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
 
 const TextareaRender = ({ item, moduleId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -21,7 +21,7 @@ const TextareaRender = ({ item, moduleId }: RenderInputProps) => {
   };
 
   return (
-    <PromptTextarea
+    <MyTextarea
       title={t(item.label)}
       rows={5}
       bg={'myWhite.400'}

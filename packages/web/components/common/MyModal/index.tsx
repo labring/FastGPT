@@ -20,7 +20,7 @@ export interface MyModalProps extends ModalContentProps {
   isPc?: boolean;
 }
 
-const MyModal = ({
+const CustomModal = ({
   isOpen,
   onClose,
   iconSrc,
@@ -29,7 +29,6 @@ const MyModal = ({
   isCentered,
   w = 'auto',
   maxW = ['90vw', '600px'],
-  isPc,
   ...props
 }: MyModalProps) => {
   return (
@@ -37,7 +36,7 @@ const MyModal = ({
       isOpen={isOpen}
       onClose={() => onClose && onClose()}
       autoFocus={false}
-      isCentered={isPc ? isCentered : true}
+      isCentered={isCentered}
     >
       <ModalOverlay />
       <ModalContent
@@ -90,4 +89,4 @@ const MyModal = ({
   );
 };
 
-export default MyModal;
+export default CustomModal;

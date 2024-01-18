@@ -3,7 +3,7 @@ import React, { useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
-import PromptTextarea from '@/components/common/Textarea/PromptTextarea';
+import MyTextarea from '@/components/common/Textarea/MyTextarea';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
@@ -32,7 +32,7 @@ const CfrEditModal = ({
         <MyTooltip label={t('core.app.edit.cfr background tip')} forceShow>
           <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
         </MyTooltip>
-        <PromptTextarea
+        <MyTextarea
           mt={1}
           flex={1}
           bg={'myWhite.400'}

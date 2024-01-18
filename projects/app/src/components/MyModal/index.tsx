@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModalContentProps } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import CustomModal from '@fastgpt/web/components/common/MyModal';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
@@ -11,7 +11,7 @@ export interface MyModalProps extends ModalContentProps {
   onClose?: () => void;
 }
 
-const MyModal1 = ({
+const MyModal = ({
   isOpen,
   onClose,
   iconSrc,
@@ -24,20 +24,19 @@ const MyModal1 = ({
 }: MyModalProps) => {
   const { isPc } = useSystemStore();
   return (
-    <MyModal
+    <CustomModal
       isOpen={isOpen}
       onClose={onClose}
       iconSrc={iconSrc}
       title={title}
-      isCentered={isCentered}
+      isCentered={isPc ? isCentered : true}
       w={w}
       maxW={maxW}
-      isPc={isPc}
       {...props}
     >
       {children}
-    </MyModal>
+    </CustomModal>
   );
 };
 
-export default MyModal1;
+export default MyModal;

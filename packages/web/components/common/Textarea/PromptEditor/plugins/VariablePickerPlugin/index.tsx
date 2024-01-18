@@ -8,10 +8,10 @@ import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lex
 import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
 import * as ReactDOM from 'react-dom';
-import styles from '../../index.module.scss';
 import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../Icon';
+import { Box, Flex } from '@chakra-ui/react';
 
 export default function VariablePickerPlugin({ variables }: { variables: VariableItemType[] }) {
   const [editor] = useLexicalComposerContext();
@@ -97,34 +97,52 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
         }
         return anchorElementRef.current && options.length
           ? ReactDOM.createPortal(
-              <div className={styles.typeaheadPopover}>
-                <ul>
-                  {options.map((option: any, index) => (
-                    <li
-                      key={option.key}
-                      className={
-                        selectedIndex === index ? styles.variableItem_selected : styles.variableItem
-                      }
-                      onClick={() => {
-                        setHighlightedIndex(index);
-                        selectOptionAndCleanUp(option);
-                      }}
-                      onMouseEnter={() => {
-                        setHighlightedIndex(index);
-                      }}
-                    >
-                      <MyIcon
-                        name={option.icon}
-                        w={'14px'}
-                        color={selectedIndex === index ? 'primary.500' : 'myGray.500'}
-                      />
-                      <span
-                        className={styles.variableText}
-                      >{`${option.key}(${option.label})`}</span>
-                    </li>
-                  ))}
-                </ul>
-              </div>,
+              <Box
+                bg={'white'}
+                boxShadow={'lg'}
+                borderWidth={'1px'}
+                borderColor={'borderColor.base'}
+                p={2}
+                borderRadius={'md'}
+                position={'fixed'}
+                w={'200px'}
+                overflow={'hidden'}
+                zIndex={99999}
+              >
+                {options.map((option: any, index) => (
+                  <Flex
+                    alignItems={'center'}
+                    as={'li'}
+                    key={option.key}
+                    px={4}
+                    py={2}
+                    borderRadius={'sm'}
+                    cursor={'pointer'}
+                    _notLast={{
+                      mb: 2
+                    }}
+                    {...(selectedIndex === index
+                      ? {
+                          bg: 'primary.50',
+                          color: 'primary.600'
+                        }
+                      : {
+                          bg: 'white',
+                          color: 'myGray.600'
+                        })}
+                    onClick={() => {
+                      setHighlightedIndex(index);
+                      selectOptionAndCleanUp(option);
+                    }}
+                    onMouseEnter={() => {
+                      setHighlightedIndex(index);
+                    }}
+                  >
+                    <MyIcon name={option.icon} w={'14px'} />
+                    <Box ml={2} fontSize={'sm'}>{`${option.key}(${option.label})`}</Box>
+                  </Flex>
+                ))}
+              </Box>,
               anchorElementRef.current
             )
           : null;

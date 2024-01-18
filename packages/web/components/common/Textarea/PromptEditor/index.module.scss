@@ -1,62 +1,23 @@
-.editorWrapper {
+.contentEditable {
   position: relative;
   height: 100%;
-}
-
-.contentEditable {
-  height: 100%;
   width: 100%;
-  border: 1px solid #e8ebf0;
-  border-radius: 4px;
-  padding: 8px;
-  background: #f8fafb;
+  border: 1px solid var(--chakra-colors-borderColor-base);
+  border-radius: var(--chakra-radii-md);
+  padding: 8px 12px;
+  background: var(--chakra-colors-gray-50);
+  font-size: 13px;
+  overflow-y: auto;
 }
 
 .contentEditable:focus {
   outline: none;
-  border: 1px solid #3370ff;
+  border: 1px solid;
+  border-color: var(--chakra-colors-primary-600);
   background: #fff;
-  box-shadow: 0 0 0 2px rgba(51, 112, 255, 0.2);
-}
-
-.placeholder {
-  position: absolute;
-  top: 8px;
-  left: 8px;
-  font-size: 12px;
-  color: #a8acb6;
+  box-shadow: 0px 0px 0px 2.4px rgba(51, 112, 255, 0.15);
 }
 
 .variable {
-  color: #3370ff;
-}
-
-.typeaheadPopover {
-  background: #fff;
-  box-shadow: 0px 5px 10px rgba(0, 0, 0, 0.3);
-  border: 0.5px solid rgba(128, 128, 128, 0.2);
-  border-radius: 4px;
-  position: fixed;
-  width: 200px;
-  z-index: 9999;
-}
-
-.variableItem {
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-}
-
-.variableItem_selected {
-  padding: 8px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  background: #e3eafd;
-  color: #436ff6;
-}
-
-.variableText {
-  margin-left: 4px;
+  color: var(--chakra-colors-primary-600);
 }

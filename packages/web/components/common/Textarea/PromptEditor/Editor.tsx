@@ -1,3 +1,4 @@
+import { useState, useRef } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -13,18 +14,49 @@ import { LexicalEditor } from 'lexical';
 import { textToEditorState } from './utils';
 import { useMemo } from 'react';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
+import MyIcon from '../../Icon';
 
 export default function Editor({
+  h = 200,
+  showResize = true,
+  showOpenModal = true,
+  onOpenModal,
   variables,
   onBlur,
   defaultValue,
   placeholder = ''
 }: {
+  h?: number;
+  showResize?: boolean;
+  showOpenModal?: boolean;
+  onOpenModal?: () => void;
   variables: VariableItemType[];
   onBlur?: (editor: LexicalEditor) => void;
   defaultValue: string;
   placeholder?: string;
 }) {
+  const [height, setHeight] = useState(h);
+
+  const initialY = useRef(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    initialY.current = e.clientY;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - initialY.current;
+      setHeight((prevHeight) => (prevHeight + deltaY < h * 0.5 ? h * 0.5 : prevHeight + deltaY));
+      initialY.current = e.clientY;
+    };
+
+    const handleMouseUp = () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+  };
+
   const initialConfig = useMemo(
     () => ({
       namespace: 'promptEditor',
@@ -38,18 +70,53 @@ export default function Editor({
   );
 
   return (
-    <LexicalComposer initialConfig={initialConfig} key={defaultValue}>
-      <Box width={'full'} className={styles.editorWrapper}>
+    <Box position={'relative'} width={'full'} h={`${height}px`}>
+      <LexicalComposer initialConfig={initialConfig} key={defaultValue}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
-          placeholder={<div className={styles.placeholder}>{placeholder}</div>}
+          placeholder={
+            <Box
+              position={'absolute'}
+              top={'8px'}
+              left={'12px'}
+              color={'myGray.500'}
+              fontSize={'xs'}
+            >
+              {placeholder}
+            </Box>
+          }
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin />
         <OnBlurPlugin onBlur={onBlur} />
-      </Box>
-    </LexicalComposer>
+      </LexicalComposer>
+      {showResize && (
+        <Box
+          position={'absolute'}
+          right={'0'}
+          bottom={'-1'}
+          zIndex={999}
+          cursor={'ns-resize'}
+          px={'2px'}
+          onMouseDown={handleMouseDown}
+        >
+          <MyIcon name={'common/editor/resizer'} width={'14px'} height={'14px'} />
+        </Box>
+      )}
+      {showOpenModal && (
+        <Box
+          zIndex={1}
+          position={'absolute'}
+          bottom={1}
+          right={2}
+          cursor={'pointer'}
+          onClick={onOpenModal}
+        >
+          <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
+        </Box>
+      )}
+    </Box>
   );
 }

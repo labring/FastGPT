@@ -32,10 +32,8 @@ import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
-import VariableEdit, {
-  defaultVariable
-} from '@/components/core/module/Flow/components/modules/VariableEdit';
-import PromptTextarea from '@/components/common/Textarea/PromptTextarea/index';
+import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
+import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import SelectAiModel from '@/components/Select/SelectAiModel';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
@@ -306,11 +304,6 @@ const EditForm = ({
                       setValue('aiSettings.systemPrompt', text);
                     }}
                     variables={getValues('userGuide.variables')}
-                    // defaultVariable={defaultVariable}
-                    // setVariable={(newVariablesList) => {
-                    //   setValue('userGuide.variables', newVariablesList);
-                    //   setRefresh(!refresh);
-                    // }}
                     placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
                     title={t('core.ai.Prompt')}
                   />
@@ -435,7 +428,7 @@ const EditForm = ({
                   <QuestionOutlineIcon />
                 </MyTooltip>
               </Flex>
-              <PromptTextarea
+              <MyTextarea
                 mt={2}
                 bg={'myWhite.400'}
                 rows={5}
