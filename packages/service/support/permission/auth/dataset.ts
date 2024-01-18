@@ -13,7 +13,7 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
-import { getTeamInfoByTmbId } from '../../user/team/controller';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
 
@@ -28,7 +28,7 @@ export async function authDatasetByTmbId({
   datasetId: string;
   per: AuthModeType['per'];
 }) {
-  const { role } = await getTeamInfoByTmbId({ tmbId });
+  const { role } = await getTmbInfoByTmbId({ tmbId });
 
   const { dataset, isOwner, canWrite } = await (async () => {
     const dataset = await MongoDataset.findOne({ _id: datasetId, teamId }).lean();
@@ -108,7 +108,7 @@ export async function authDatasetCollection({
   }
 > {
   const { userId, teamId, tmbId } = await parseHeaderCert(props);
-  const { role } = await getTeamInfoByTmbId({ tmbId });
+  const { role } = await getTmbInfoByTmbId({ tmbId });
 
   const { collection, isOwner, canWrite } = await (async () => {
     const collection = await getCollectionWithDataset(collectionId);

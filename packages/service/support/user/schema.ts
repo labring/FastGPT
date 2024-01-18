@@ -56,6 +56,9 @@ const UserSchema = new Schema({
   timezone: {
     type: String,
     default: 'Asia/Shanghai'
+  },
+  lastLoginTmbId: {
+    type: Schema.Types.ObjectId
   }
 });
 

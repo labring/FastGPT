@@ -2,7 +2,7 @@ import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { AuthModeType } from '../type';
 import { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
 import { parseHeaderCert } from '../controller';
-import { getTeamInfoByTmbId } from '../../user/team/controller';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { MongoOpenApi } from '../../openapi/schema';
 import { OpenApiErrEnum } from '@fastgpt/global/common/error/code/openapi';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
@@ -21,7 +21,7 @@ export async function authOpenApiKeyCrud({
   const result = await parseHeaderCert(props);
   const { tmbId, teamId } = result;
 
-  const { role } = await getTeamInfoByTmbId({ tmbId });
+  const { role } = await getTmbInfoByTmbId({ tmbId });
 
   const { openapi, isOwner, canWrite } = await (async () => {
     const openapi = await MongoOpenApi.findOne({ _id: id, teamId });
