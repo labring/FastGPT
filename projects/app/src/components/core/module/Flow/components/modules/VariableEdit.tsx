@@ -38,6 +38,7 @@ import { variableTip } from '@fastgpt/global/core/module/template/tip';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import MyRadio from '@/components/common/MyRadio';
+import { formatVariablesIcon } from '@fastgpt/global/core/module/utils';
 
 const VariableEdit = ({
   variables,
@@ -101,11 +102,8 @@ const VariableEdit = ({
   };
 
   const formatVariables = useMemo(() => {
-    return variables.map((item) => ({
-      ...item,
-      icon: VariableTypeList.find((type) => type.value === item.type)?.icon
-    }));
-  }, [VariableTypeList, variables]);
+    return formatVariablesIcon(variables);
+  }, [variables]);
 
   return (
     <Box>

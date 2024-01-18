@@ -26,7 +26,7 @@ import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d'
 import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type.d';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
-import MyTextarea from '@/components/common/Textarea/MyTextarea';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -188,16 +188,14 @@ const AIChatSettingsModal = ({
               </Box>
             </Flex>
 
-            <MyTextarea
+            <PromptEditor
               title={t('core.app.Quote templates')}
-              bg={'myWhite.400'}
-              rows={8}
               placeholder={t('template.Quote Content Tip', {
                 default: Prompt_QuoteTemplateList[0].value
               })}
               defaultValue={getValues(ModuleInputKeyEnum.aiChatQuoteTemplate)}
-              onBlur={(e) => {
-                setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e.target.value);
+              onChange={(e) => {
+                setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e);
                 setRefresh(!refresh);
               }}
             />
@@ -214,17 +212,15 @@ const AIChatSettingsModal = ({
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Flex>
-            <MyTextarea
+            <PromptEditor
               title={t('core.app.Quote prompt')}
-              bg={'myWhite.400'}
-              rows={11}
+              h={220}
               placeholder={t('template.Quote Prompt Tip', {
                 default: Prompt_QuotePromptList[0].value
               })}
               defaultValue={getValues(ModuleInputKeyEnum.aiChatQuotePrompt)}
-              onBlur={(e) => {
-                setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e.target.value);
-                setRefresh(!refresh);
+              onChange={(e) => {
+                setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e);
               }}
             />
           </Box>

@@ -1,28 +1,30 @@
 import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import { VariableItemType } from '@fastgpt/global/core/module/type';
 import React, { useState } from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import { $getRoot } from 'lexical';
+import { PickerMenuItemType } from './type.d';
 
 const PromptEditor = ({
+  showOpenModal = true,
   variables = [],
-  defaultValue,
+  defaultValue = '',
   onChange,
   onBlur,
   h,
   placeholder,
   title
 }: {
-  variables?: VariableItemType[];
-  defaultValue: string;
+  showOpenModal?: boolean;
+  variables?: PickerMenuItemType[];
+  defaultValue?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
   h?: number;
   placeholder?: string;
-  title: string;
+  title?: string;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
@@ -34,7 +36,7 @@ const PromptEditor = ({
     <>
       <Editor
         showResize
-        showOpenModal
+        showOpenModal={showOpenModal}
         onOpenModal={onOpen}
         variables={variables}
         h={h}

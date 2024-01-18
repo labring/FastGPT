@@ -10,12 +10,12 @@ import { Box } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
-import { VariableItemType } from '@fastgpt/global/core/module/type';
 import { EditorState, LexicalEditor } from 'lexical';
 import { textToEditorState } from './utils';
 import { useMemo } from 'react';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
+import { PickerMenuItemType } from './type.d';
 
 export default function Editor({
   h = 200,
@@ -32,7 +32,7 @@ export default function Editor({
   showResize?: boolean;
   showOpenModal?: boolean;
   onOpenModal?: () => void;
-  variables: VariableItemType[];
+  variables: PickerMenuItemType[];
   onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
   defaultValue: string;
@@ -80,16 +80,25 @@ export default function Editor({
           placeholder={
             <Box
               position={'absolute'}
-              top={'8px'}
-              bottom={'8px'}
-              left={'12px'}
-              right={'12px'}
-              color={'myGray.500'}
-              fontSize={'xs'}
-              userSelect={'none'}
+              top={0}
+              left={0}
+              right={0}
+              bottom={0}
+              py={3}
+              px={4}
               pointerEvents={'none'}
+              overflow={'overlay'}
             >
-              {placeholder}
+              <Box
+                color={'myGray.500'}
+                fontSize={'xs'}
+                userSelect={'none'}
+                whiteSpace={'pre-wrap'}
+                wordBreak={'break-all'}
+                h={'100%'}
+              >
+                {placeholder}
+              </Box>
             </Box>
           }
           ErrorBoundary={LexicalErrorBoundary}

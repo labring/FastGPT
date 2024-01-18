@@ -37,6 +37,7 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import SelectAiModel from '@/components/Select/SelectAiModel';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { formatVariablesIcon } from '@fastgpt/global/core/module/utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
@@ -63,7 +64,7 @@ const EditForm = ({
   const [refresh, setRefresh] = useState(false);
   const [, startTst] = useTransition();
 
-  const { register, setValue, getValues, reset, handleSubmit, control } =
+  const { register, setValue, getValues, reset, handleSubmit, control, watch } =
     useForm<AppSimpleEditFormType>({
       defaultValues: getDefaultAppForm()
     });
@@ -129,6 +130,9 @@ const EditForm = ({
     if (!mode) return '';
     return t(DatasetSearchModeMap[mode]?.title);
   }, [getValues, t, refresh]);
+
+  const variables = watch('userGuide.variables');
+  const formatVariables = useMemo(() => formatVariablesIcon(variables), [variables]);
 
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
@@ -305,7 +309,7 @@ const EditForm = ({
                         setValue('aiSettings.systemPrompt', text);
                       });
                     }}
-                    variables={getValues('userGuide.variables')}
+                    variables={formatVariables}
                     placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
                     title={t('core.ai.Prompt')}
                   />
@@ -411,7 +415,7 @@ const EditForm = ({
           {selectSimpleTemplate?.systemForm?.userGuide?.variables && (
             <Box {...BoxStyles}>
               <VariableEdit
-                variables={getValues('userGuide.variables')}
+                variables={variables}
                 onChange={(e) => {
                   setValue('userGuide.variables', e);
                   setRefresh(!refresh);

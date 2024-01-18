@@ -1,4 +1,3 @@
-import { VariableItemType } from '@fastgpt/global/core/module/type';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
 import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lexical';
@@ -10,8 +9,9 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
+import { PickerMenuItemType } from '../../type.d';
 
-export default function VariablePickerPlugin({ variables }: { variables: VariableItemType[] }) {
+export default function VariablePickerPlugin({ variables }: { variables: PickerMenuItemType[] }) {
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
   const { t } = useTranslation();
@@ -41,14 +41,20 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
     [t]
   );
 
-  const options: Array<any> = useMemo(() => {
-    return [
-      ...variables.map((item) => ({
-        ...item,
-        icon: VariableTypeList.find((type) => type.value === item.type)?.icon
-      }))
-    ];
-  }, [VariableTypeList, t, variables]);
+  // const options: Array<any> = useMemo(() => {
+  //   // const newVariableOption = {
+  //   //   label: t('common.Add New') + "变量",
+  //   //   key: 'new_variable',
+  //   //   icon: 'core/modules/variable'
+  //   // };
+  //   return [
+  //     ...variables.map((item) => ({
+  //       ...item,
+  //       icon: VariableTypeList.find((type) => type.value === item.type)?.icon
+  //     }))
+  //     // newVariableOption
+  //   ];
+  // }, [VariableTypeList, t, variables]);
 
   const onSelectOption = useCallback(
     (selectedOption: any, nodeToRemove: TextNode | null, closeMenu: () => void) => {
@@ -72,7 +78,7 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={options}
+      options={variables}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
@@ -80,7 +86,7 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
         if (anchorElementRef.current == null) {
           return null;
         }
-        return anchorElementRef.current && options.length
+        return anchorElementRef.current && variables.length
           ? ReactDOM.createPortal(
               <Box
                 bg={'white'}
@@ -94,11 +100,11 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
                 overflow={'hidden'}
                 zIndex={99999}
               >
-                {options.map((option: any, index) => (
+                {variables.map((item, index) => (
                   <Flex
                     alignItems={'center'}
                     as={'li'}
-                    key={option.key}
+                    key={item.key}
                     px={4}
                     py={2}
                     borderRadius={'sm'}
@@ -117,14 +123,14 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
                         })}
                     onClick={() => {
                       setHighlightedIndex(index);
-                      selectOptionAndCleanUp(option);
+                      selectOptionAndCleanUp(item);
                     }}
                     onMouseEnter={() => {
                       setHighlightedIndex(index);
                     }}
                   >
-                    <MyIcon name={option.icon} w={'14px'} />
-                    <Box ml={2} fontSize={'sm'}>{`${option.key}(${option.label})`}</Box>
+                    <MyIcon name={item.icon as any} w={'14px'} />
+                    <Box ml={2} fontSize={'sm'}>{`${item.key}(${item.label})`}</Box>
                   </Flex>
                 ))}
               </Box>,

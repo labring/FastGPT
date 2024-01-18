@@ -3,7 +3,11 @@ import type { RenderInputProps } from '../type';
 import { useFlowProviderStore, onChangeNode } from '../../../../FlowProvider';
 import { useTranslation } from 'next-i18next';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/module/utils';
+import {
+  formatVariablesIcon,
+  getGuideModule,
+  splitGuideModule
+} from '@fastgpt/global/core/module/utils';
 
 const TextareaRender = ({ item, moduleId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -12,7 +16,10 @@ const TextareaRender = ({ item, moduleId }: RenderInputProps) => {
 
   // get variable
   const variables = useMemo(
-    () => splitGuideModule(getGuideModule(nodes.map((node) => node.data)))?.variableModules,
+    () =>
+      formatVariablesIcon(
+        splitGuideModule(getGuideModule(nodes.map((node) => node.data)))?.variableModules || []
+      ),
     [nodes]
   );
 
