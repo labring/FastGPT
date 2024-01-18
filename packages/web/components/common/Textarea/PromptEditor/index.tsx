@@ -5,10 +5,12 @@ import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
+import { $getRoot } from 'lexical';
 
 export default function PromptEditor({
   variables,
   defaultValue,
+  onChange,
   onBlur,
   h,
   placeholder,
@@ -16,6 +18,7 @@ export default function PromptEditor({
 }: {
   variables: VariableItemType[];
   defaultValue: string;
+  onChange?: (text: string) => void;
   onBlur: (text: string) => void;
   h?: number;
   placeholder?: string;
@@ -36,6 +39,10 @@ export default function PromptEditor({
         variables={variables}
         h={h}
         defaultValue={newDefaultValue}
+        onChange={(editorState) => {
+          const text = editorState.read(() => $getRoot().getTextContent());
+          if (onChange) onChange(text.replaceAll('\n\n', '\n'));
+        }}
         onBlur={(editor) => {
           const text = editorStateToText(editor);
           onBlur(text);
@@ -51,6 +58,10 @@ export default function PromptEditor({
             showOpenModal={false}
             variables={variables}
             defaultValue={newDefaultValue}
+            onChange={(editorState) => {
+              const text = editorState.read(() => $getRoot().getTextContent());
+              if (onChange) onChange(text.replaceAll('\n\n', '\n'));
+            }}
             onBlur={(editor) => {
               const text = editorStateToText(editor);
               onBlur(text);

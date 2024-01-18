@@ -1,6 +1,6 @@
 import type { Klass, LexicalEditor, LexicalNode } from 'lexical';
 import type { EntityMatch } from '@lexical/text';
-import { $createParagraphNode, $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
+import { $createTextNode, $getRoot, $isTextNode, TextNode } from 'lexical';
 
 export function registerLexicalTextEntity<T extends TextNode>(
   editor: LexicalEditor,

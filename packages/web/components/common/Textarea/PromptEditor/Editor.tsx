@@ -3,6 +3,7 @@ import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
 import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import { Box } from '@chakra-ui/react';
@@ -10,7 +11,7 @@ import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import { VariableItemType } from '@fastgpt/global/core/module/type';
-import { LexicalEditor } from 'lexical';
+import { EditorState, LexicalEditor } from 'lexical';
 import { textToEditorState } from './utils';
 import { useMemo } from 'react';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
@@ -22,6 +23,7 @@ export default function Editor({
   showOpenModal = true,
   onOpenModal,
   variables,
+  onChange,
   onBlur,
   defaultValue,
   placeholder = ''
@@ -31,6 +33,7 @@ export default function Editor({
   showOpenModal?: boolean;
   onOpenModal?: () => void;
   variables: VariableItemType[];
+  onChange: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
   defaultValue: string;
   placeholder?: string;
@@ -81,6 +84,8 @@ export default function Editor({
               left={'12px'}
               color={'myGray.500'}
               fontSize={'xs'}
+              userSelect={'none'}
+              pointerEvents={'none'}
             >
               {placeholder}
             </Box>
@@ -88,6 +93,7 @@ export default function Editor({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
+        <OnChangePlugin onChange={onChange} />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin />
         <OnBlurPlugin onBlur={onBlur} />

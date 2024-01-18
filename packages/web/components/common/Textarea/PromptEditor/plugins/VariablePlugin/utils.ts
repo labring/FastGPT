@@ -218,7 +218,7 @@ export function getHashtagRegexString(): string {
   // but not all numbers.
   const hashtag =
     `(${hashLeftCharList})` +
-    `(${hashLeftCharList})([a-zA-Z_][a-zA-Z0-9_]{0,29}` +
+    `(${hashLeftCharList})([a-zA-Z0-9_]{0,29}` +
     `)(${hashRightCharList})(${hashRightCharList})`;
 
   return hashtag;
