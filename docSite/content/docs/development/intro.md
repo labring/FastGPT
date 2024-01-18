@@ -26,7 +26,7 @@ weight: 705
 2. 建议先服务器装好**数据库**，再进行本地开发。
 {{% /alert %}}
 
-### 1. Fork 存储库
+### 1. Fork the Repository存储库
 
 您需要 Fork [存储库](https://github.com/labring/FastGPT)。
 
@@ -73,6 +73,9 @@ The following files are all located in the `projects/app` directory.
 ```bash
 # Grant script execution permissions
 chmod -R +x ./scripts/
+# Execute in the root of the code directory to install all dependencies including the root package, projects, and packages dependencies
+pnpm i
+# To ensure a successful GitHub Actions run, update the necessary configurations
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 pnpm i
 # Ensure successful GitHub Actions run by updating the necessary configurations
@@ -85,13 +88,13 @@ pnpm dev
 ### 6. 部署打包
 
 ```bash
-# Build in the root directory
+# Execute the build command in the root directory
 docker build -t dockername/fastgpt:tag --build-arg name=app .
 # Use a proxy
 docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=taobao .
 ```
 
-## Submitting Code to the Open-Source Repository
+## How to Contribute Code to the Open-Source Repository
 
 1. 确保你的代码是 Fork [FastGPT](https://github.com/labring/FastGPT) 仓库
 2. 尽可能少量的提交代码，每次提交仅解决一个问题。
@@ -112,7 +115,7 @@ docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=ta
 
 FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI`的`Type`。如果没有权限，可以先执行`chmod -R +x ./scripts/`，再执行`pnpm i`。
 
-### Joining the Community
+### How to Join the Community
 
 Having trouble? Any questions? Join our WeChat group to communicate with developers and users.
 
