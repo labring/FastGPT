@@ -136,7 +136,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     {
       model,
       temperature,
-      max_tokens,
+      //max_tokens,
       stream,
       presence_penalty: 0,
       frequency_penalty: 0,

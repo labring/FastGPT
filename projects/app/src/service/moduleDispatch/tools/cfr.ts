@@ -56,7 +56,7 @@ A: ${systemPrompt}
   const result = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0,
-    max_tokens: 150,
+    //max_tokens: 150,
     messages: [
       {
         role: 'user',

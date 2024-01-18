@@ -114,24 +114,12 @@ weight: 401
         "value": "gpt-3.5-turbo",
         "list": [
           {
-            "label": "FastGPT-4k",
+            "label": "FastGPT",
             "value": "gpt-3.5-turbo"
-          },
-          {
-            "label": "FastGPT-16k",
-            "value": "gpt-3.5-turbo-16k"
-          },
-          {
-            "label": "文心一言",
-            "value": "ERNIE-Bot"
           },
           {
             "label": "FastGPT-Plus",
             "value": "gpt-4"
-          },
-          {
-            "label": "glm2(演示娱乐)",
-            "value": "glm2-6b"
           }
         ],
         "connected": true
