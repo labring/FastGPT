@@ -19,7 +19,7 @@ export default function PromptEditor({
   variables: VariableItemType[];
   defaultValue: string;
   onChange?: (text: string) => void;
-  onBlur: (text: string) => void;
+  onBlur?: (text: string) => void;
   h?: number;
   placeholder?: string;
   title: string;
@@ -41,11 +41,11 @@ export default function PromptEditor({
         defaultValue={newDefaultValue}
         onChange={(editorState) => {
           const text = editorState.read(() => $getRoot().getTextContent());
-          if (onChange) onChange(text.replaceAll('\n\n', '\n'));
+          onChange?.(text.replaceAll('\n\n', '\n'));
         }}
         onBlur={(editor) => {
           const text = editorStateToText(editor);
-          onBlur(text);
+          onBlur?.(text);
           setNewDefaultValue(text);
         }}
         placeholder={placeholder}
@@ -60,11 +60,11 @@ export default function PromptEditor({
             defaultValue={newDefaultValue}
             onChange={(editorState) => {
               const text = editorState.read(() => $getRoot().getTextContent());
-              if (onChange) onChange(text.replaceAll('\n\n', '\n'));
+              onChange?.(text.replaceAll('\n\n', '\n'));
             }}
             onBlur={(editor) => {
               const text = editorStateToText(editor);
-              onBlur(text);
+              onBlur?.(text);
               setNewDefaultValue(text);
             }}
             placeholder={placeholder}

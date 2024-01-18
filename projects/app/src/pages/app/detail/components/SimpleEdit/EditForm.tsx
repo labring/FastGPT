@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -61,7 +61,7 @@ const EditForm = ({
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
-  const [newVariables] = useState<string[]>([]);
+  const [, startTst] = useTransition();
 
   const { register, setValue, getValues, reset, handleSubmit, control } =
     useForm<AppSimpleEditFormType>({
@@ -300,8 +300,10 @@ const EditForm = ({
                   </Box>
                   <PromptEditor
                     defaultValue={getValues('aiSettings.systemPrompt') || ''}
-                    onBlur={(text) => {
-                      setValue('aiSettings.systemPrompt', text);
+                    onChange={(text) => {
+                      startTst(() => {
+                        setValue('aiSettings.systemPrompt', text);
+                      });
                     }}
                     variables={getValues('userGuide.variables')}
                     placeholder={t('core.app.tip.chatNodeSystemPromptTip')}

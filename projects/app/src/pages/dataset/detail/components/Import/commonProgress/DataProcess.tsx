@@ -301,7 +301,7 @@ function DataProcess({
       <Preview sources={sources} showPreviewChunks={showPreviewChunks} />
 
       {isOpenCustomPrompt && (
-        <PromptEditor
+        <PromptTextarea
           defaultValue={getValues('qaPrompt')}
           onChange={(e) => {
             setValue('qaPrompt', e);
@@ -316,7 +316,7 @@ function DataProcess({
 
 export default React.memo(DataProcess);
 
-const PromptEditor = ({
+const PromptTextarea = ({
   defaultValue,
   onChange,
   onClose

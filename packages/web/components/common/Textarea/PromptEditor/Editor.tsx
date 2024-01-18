@@ -33,7 +33,7 @@ export default function Editor({
   showOpenModal?: boolean;
   onOpenModal?: () => void;
   variables: VariableItemType[];
-  onChange: (editorState: EditorState) => void;
+  onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
   defaultValue: string;
   placeholder?: string;
@@ -93,7 +93,7 @@ export default function Editor({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
-        <OnChangePlugin onChange={onChange} />
+        <OnChangePlugin onChange={(e) => onChange?.(e)} />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin />
         <OnBlurPlugin onBlur={onBlur} />
