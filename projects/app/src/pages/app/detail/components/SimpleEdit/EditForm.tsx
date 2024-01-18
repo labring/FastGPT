@@ -32,10 +32,13 @@ import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
-import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
+import VariableEdit, {
+  defaultVariable
+} from '@/components/core/module/Flow/components/modules/VariableEdit';
 import PromptTextarea from '@/components/common/Textarea/PromptTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import SelectAiModel from '@/components/Select/SelectAiModel';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
@@ -60,6 +63,7 @@ const EditForm = ({
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
+  const [newVariables] = useState<string[]>([]);
 
   const { register, setValue, getValues, reset, handleSubmit, control } =
     useForm<AppSimpleEditFormType>({
@@ -296,15 +300,19 @@ const EditForm = ({
                       <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
                     </MyTooltip>
                   </Box>
-                  <PromptTextarea
-                    flex={1}
-                    bg={'myWhite.400'}
-                    rows={5}
-                    placeholder={t(chatNodeSystemPromptTip)}
-                    defaultValue={getValues('aiSettings.systemPrompt')}
-                    onBlur={(e) => {
-                      setValue('aiSettings.systemPrompt', e.target.value || '');
+                  <PromptEditor
+                    defaultValue={getValues('aiSettings.systemPrompt') || ''}
+                    onBlur={(text) => {
+                      setValue('aiSettings.systemPrompt', text);
                     }}
+                    variables={getValues('userGuide.variables')}
+                    // defaultVariable={defaultVariable}
+                    // setVariable={(newVariablesList) => {
+                    //   setValue('userGuide.variables', newVariablesList);
+                    //   setRefresh(!refresh);
+                    // }}
+                    placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
+                    title={t('core.ai.Prompt')}
                   />
                 </Flex>
               )}

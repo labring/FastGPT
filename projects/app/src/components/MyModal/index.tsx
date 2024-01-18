@@ -1,16 +1,7 @@
 import React from 'react';
-import {
-  Modal,
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalCloseButton,
-  ModalContentProps,
-  Box,
-  Image
-} from '@chakra-ui/react';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import { ModalContentProps } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
@@ -20,7 +11,7 @@ export interface MyModalProps extends ModalContentProps {
   onClose?: () => void;
 }
 
-const MyModal = ({
+const MyModal1 = ({
   isOpen,
   onClose,
   iconSrc,
@@ -33,61 +24,20 @@ const MyModal = ({
 }: MyModalProps) => {
   const { isPc } = useSystemStore();
   return (
-    <Modal
+    <MyModal
       isOpen={isOpen}
-      onClose={() => onClose && onClose()}
-      autoFocus={false}
-      isCentered={isPc ? isCentered : true}
+      onClose={onClose}
+      iconSrc={iconSrc}
+      title={title}
+      isCentered={isCentered}
+      w={w}
+      maxW={maxW}
+      isPc={isPc}
+      {...props}
     >
-      <ModalOverlay />
-      <ModalContent
-        w={w}
-        minW={['90vw', '400px']}
-        maxW={maxW}
-        position={'relative'}
-        maxH={'85vh'}
-        boxShadow={'7'}
-        {...props}
-      >
-        {!title && onClose && <ModalCloseButton zIndex={1} />}
-        {!!title && (
-          <ModalHeader
-            display={'flex'}
-            alignItems={'center'}
-            fontWeight={500}
-            background={'#FBFBFC'}
-            borderBottom={'1px solid #F4F6F8'}
-            roundedTop={'lg'}
-            py={'10px'}
-          >
-            {iconSrc && (
-              <>
-                {iconSrc.startsWith('/') ? (
-                  <Image mr={3} objectFit={'contain'} alt="" src={iconSrc} w={'20px'} />
-                ) : (
-                  <MyIcon mr={3} name={iconSrc as any} w={'20px'} />
-                )}
-              </>
-            )}
-            {title}
-            <Box flex={1} />
-            {onClose && (
-              <ModalCloseButton position={'relative'} fontSize={'sm'} top={0} right={0} />
-            )}
-          </ModalHeader>
-        )}
-
-        <Box
-          overflow={props.overflow || 'overlay'}
-          h={'100%'}
-          display={'flex'}
-          flexDirection={'column'}
-        >
-          {children}
-        </Box>
-      </ModalContent>
-    </Modal>
+      {children}
+    </MyModal>
   );
 };
 
-export default MyModal;
+export default MyModal1;
