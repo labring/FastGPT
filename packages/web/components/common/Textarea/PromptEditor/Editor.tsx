@@ -107,7 +107,7 @@ export default function Editor({
       )}
       {showOpenModal && (
         <Box
-          zIndex={1}
+          zIndex={1000}
           position={'absolute'}
           bottom={1}
           right={2}
