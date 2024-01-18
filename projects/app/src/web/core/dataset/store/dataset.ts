@@ -96,8 +96,7 @@ export const useDatasetStore = create<State>()(
             }),
             postCreateTrainingBill({
               name: 'core.dataset.training.Website Sync',
-              vectorModel: get().datasetDetail.vectorModel.model,
-              agentModel: get().datasetDetail.agentModel.model
+              datasetId: get().datasetDetail._id
             })
           ]);
           try {

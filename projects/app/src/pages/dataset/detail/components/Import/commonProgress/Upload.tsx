@@ -56,8 +56,7 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
       for await (const item of uploadList) {
         const billId = await postCreateTrainingBill({
           name: item.sourceName,
-          vectorModel: datasetDetail.vectorModel.model,
-          agentModel: datasetDetail.agentModel.model
+          datasetId: datasetDetail._id
         });
 
         // create collection
