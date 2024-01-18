@@ -97,7 +97,7 @@ export default function Editor({
         <HistoryPlugin />
         <OnChangePlugin onChange={(e) => onChange?.(e)} />
         <VariablePickerPlugin variables={variables} />
-        <VariablePlugin />
+        <VariablePlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />
       </LexicalComposer>
       {showResize && (

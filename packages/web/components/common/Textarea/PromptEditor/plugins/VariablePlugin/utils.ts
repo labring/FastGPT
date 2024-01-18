@@ -207,10 +207,8 @@ function getHashtagRegexStringChars(): Readonly<{
 }
 
 export function getHashtagRegexString(): string {
-  const { alpha, alphanumeric, leftChars, rightChars } = getHashtagRegexStringChars();
+  const { leftChars, rightChars } = getHashtagRegexStringChars();
 
-  const hashtagAlpha = `[${alpha}]`;
-  const hashtagAlphanumeric = `[${alphanumeric}]`;
   const hashLeftCharList = `[${leftChars}]`;
   const hashRightCharList = `[${rightChars}]`;
 

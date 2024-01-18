@@ -26,7 +26,7 @@ const PromptEditor = ({
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [newDefaultValue, setNewDefaultValue] = useState(defaultValue);
+  const [newDefaultValue, setNewDefaultValue] = useState(defaultValue.replaceAll('}}{{', '}} {{'));
 
   const { t } = useTranslation();
 
@@ -46,7 +46,7 @@ const PromptEditor = ({
         onBlur={(editor) => {
           const text = editorStateToText(editor);
           onBlur?.(text);
-          setNewDefaultValue(text);
+          setNewDefaultValue(text.replaceAll('}}{{', '}} {{'));
         }}
         placeholder={placeholder}
       />
@@ -65,7 +65,7 @@ const PromptEditor = ({
             onBlur={(editor) => {
               const text = editorStateToText(editor);
               onBlur?.(text);
-              setNewDefaultValue(text);
+              setNewDefaultValue(text.replaceAll('}}{{', '}} {{'));
             }}
             placeholder={placeholder}
           />

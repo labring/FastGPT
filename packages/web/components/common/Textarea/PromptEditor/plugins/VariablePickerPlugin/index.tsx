@@ -1,9 +1,6 @@
 import { VariableItemType } from '@fastgpt/global/core/module/type';
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext';
-import {
-  LexicalTypeaheadMenuPlugin,
-  useBasicTypeaheadTriggerMatch
-} from '@lexical/react/LexicalTypeaheadMenuPlugin';
+import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin';
 import { $createTextNode, $getSelection, $isRangeSelection, TextNode } from 'lexical';
 import * as React from 'react';
 import { useCallback, useMemo, useState } from 'react';
@@ -12,6 +9,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../Icon';
 import { Box, Flex } from '@chakra-ui/react';
+import { useBasicTypeaheadTriggerMatch } from '../../utils';
 
 export default function VariablePickerPlugin({ variables }: { variables: VariableItemType[] }) {
   const [editor] = useLexicalComposerContext();
@@ -44,17 +42,11 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
   );
 
   const options: Array<any> = useMemo(() => {
-    // const newVariableOption = {
-    //   label: t('common.Add New') + "变量",
-    //   key: 'new_variable',
-    //   icon: 'core/modules/variable'
-    // };
     return [
       ...variables.map((item) => ({
         ...item,
         icon: VariableTypeList.find((type) => type.value === item.type)?.icon
       }))
-      // newVariableOption
     ];
   }, [VariableTypeList, t, variables]);
 
@@ -68,14 +60,7 @@ export default function VariablePickerPlugin({ variables }: { variables: Variabl
         if (nodeToRemove) {
           nodeToRemove.remove();
         }
-        // if (selectedOption.key === 'new_variable') {
-        //   const prefixNode = $createTextNode('{{')
-        //   const suffixNode = $createTextNode('}}')
-        //   selection.insertNodes([prefixNode, suffixNode])
-        //   prefixNode.select()
-        // } else {
         selection.insertNodes([$createTextNode(`{{${selectedOption.key}}}`)]);
-        // }
         closeMenu();
       });
     },
