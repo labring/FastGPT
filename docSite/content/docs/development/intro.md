@@ -112,8 +112,8 @@ docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=ta
 
 FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI`的`Type`。如果没有权限，可以先执行`chmod -R +x ./scripts/`，再执行`pnpm i`。
 
-### 加入社区
+### Joining the Community
 
-遇到困难了吗？有任何问题吗? 加入微信群与开发者和用户保持沟通。
+Having trouble? Any questions? Join our WeChat group to communicate with developers and users.
 
 <img width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" class="medium-zoom-image" />
