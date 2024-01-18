@@ -46,11 +46,11 @@ git clone git@github.com:<github_username>/FastGPT.git
 
 ### 3. 安装数据库
 
-第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践。数据库部署教程：[Docker 快速部署](/docs/development/docker/)。部署完了，可以本地访问其数据库。
+第一次开发，需要先部署数据库，建议本地开发可以随便找一台 2C2G 的轻量小数据库实践。数据库部署教程：[Docker 快速部署](/docs/development/docker/)。After deploying, ensure the database can be accessed locally.
 
 ### 4. 初始配置
 
-以下文件均在 `projects/app` 路径下。
+The following files are all located in the `projects/app` directory.
 
 **环境变量**
 
@@ -71,13 +71,13 @@ git clone git@github.com:<github_username>/FastGPT.git
 ### 5. 运行
 
 ```bash
-# 给脚本代码执行权限
+# Grant script execution permissions
 chmod -R +x ./scripts/
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 pnpm i
 # 切换到应用目录
 cd projects/app 
-# 开发模式运行
+# Run the development server
 pnpm dev
 ```
 
