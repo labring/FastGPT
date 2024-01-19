@@ -277,7 +277,7 @@ weight: 708
       "maxContext": 1600,
       "maxResponse": 4000,
       "inputPrice": 0,
-      "outputPrice": 0,
+      "outputPrice": 0
     }
   ],
   "vectorModels": [ // 向量模型

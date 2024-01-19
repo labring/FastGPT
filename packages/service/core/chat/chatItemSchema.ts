@@ -11,6 +11,8 @@ import { appCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
+export const ChatItemCollectionName = 'chatitems';
+
 const ChatItemSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
@@ -79,20 +81,23 @@ const ChatItemSchema = new Schema({
 });
 
 try {
-  ChatItemSchema.index({ teamId: 1 });
-  ChatItemSchema.index({ time: -1 });
-  ChatItemSchema.index({ appId: 1 });
-  ChatItemSchema.index({ chatId: 1 });
-  ChatItemSchema.index({ obj: 1 });
-  ChatItemSchema.index({ userGoodFeedback: 1 });
-  ChatItemSchema.index({ userBadFeedback: 1 });
-  ChatItemSchema.index({ customFeedbacks: 1 });
-  ChatItemSchema.index({ adminFeedback: 1 });
+  ChatItemSchema.index({ dataId: 1 }, { background: true });
+  /* delete by app; 
+     delete by chat id;
+     get chat list; 
+     get chat logs; 
+     close custom feedback; 
+  */
+  ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { background: true });
+  ChatItemSchema.index({ userGoodFeedback: 1 }, { background: true });
+  ChatItemSchema.index({ userBadFeedback: 1 }, { background: true });
+  ChatItemSchema.index({ customFeedbacks: 1 }, { background: true });
+  ChatItemSchema.index({ adminFeedback: 1 }, { background: true });
 } catch (error) {
   console.log(error);
 }
 
 export const MongoChatItem: Model<ChatItemType> =
-  models['chatItem'] || model('chatItem', ChatItemSchema);
+  models[ChatItemCollectionName] || model(ChatItemCollectionName, ChatItemSchema);
 
 MongoChatItem.syncIndexes();

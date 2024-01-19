@@ -56,8 +56,17 @@ const UserSchema = new Schema({
   timezone: {
     type: String,
     default: 'Asia/Shanghai'
+  },
+  lastLoginTmbId: {
+    type: Schema.Types.ObjectId
   }
 });
+
+try {
+  UserSchema.index({ createTime: -1 });
+} catch (error) {
+  console.log(error);
+}
 
 export const MongoUser: Model<UserModelSchema> =
   models[userCollectionName] || model(userCollectionName, UserSchema);

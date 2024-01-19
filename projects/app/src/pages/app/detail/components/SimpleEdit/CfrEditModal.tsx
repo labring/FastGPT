@@ -1,9 +1,9 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useState, useTransition } from 'react';
 
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Button, ModalBody, ModalFooter } from '@chakra-ui/react';
-import PromptTextarea from '@/components/common/Textarea/PromptTextarea';
+import { Box, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
@@ -18,6 +18,7 @@ const CfrEditModal = ({
 }) => {
   const { t } = useTranslation();
   const [value, setValue] = useState(defaultValue);
+  const [, startTst] = useTransition();
 
   return (
     <MyModal
@@ -32,17 +33,19 @@ const CfrEditModal = ({
         <MyTooltip label={t('core.app.edit.cfr background tip')} forceShow>
           <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
         </MyTooltip>
-        <PromptTextarea
-          mt={1}
-          flex={1}
-          bg={'myWhite.400'}
-          rows={5}
-          placeholder={t('core.module.input.placeholder.cfr background')}
-          defaultValue={value}
-          onBlur={(e) => {
-            setValue(e.target.value || '');
-          }}
-        />
+        <Box mt={1} flex={1}>
+          <PromptEditor
+            h={200}
+            showOpenModal={false}
+            placeholder={t('core.module.input.placeholder.cfr background')}
+            defaultValue={value}
+            onChange={useCallback((e: string) => {
+              startTst(() => {
+                setValue(e);
+              });
+            }, [])}
+          />
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button

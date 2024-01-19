@@ -25,9 +25,9 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
         color: '#A558C9'
       },
       gray: {
-        borderColor: '#979797',
-        bg: '#F7F7F7',
-        color: '#979797'
+        borderColor: 'borderColor.base',
+        bg: 'myGray.50',
+        color: 'myGray.700'
       }
     };
     return map[colorSchema];
@@ -35,14 +35,14 @@ const Tag = ({ children, colorSchema = 'blue', ...props }: Props) => {
 
   return (
     <Flex
-      border={'1px solid'}
+      {...theme}
+      borderWidth={'1px'}
       px={2}
       lineHeight={1}
       py={1}
       borderRadius={'sm'}
       fontSize={'xs'}
       alignItems={'center'}
-      {...theme}
       {...props}
     >
       {children}

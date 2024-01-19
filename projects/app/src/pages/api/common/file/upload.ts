@@ -18,32 +18,24 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const { userId, teamId, tmbId } = await authCert({ req, authToken: true });
 
-    const { files, bucketName, metadata } = await upload.doUpload(req, res);
+    const { file, bucketName, metadata } = await upload.doUpload(req, res);
 
-    filePaths = files.map((file) => file.path);
-
+    filePaths = [file.path];
     await connectToDatabase();
 
     if (!bucketName) {
       throw new Error('bucketName is empty');
     }
 
-    const upLoadResults = await Promise.all(
-      files.map((file) =>
-        uploadFile({
-          teamId,
-          tmbId,
-          bucketName,
-          path: file.path,
-          filename: file.originalname,
-          metadata: {
-            ...metadata,
-            contentType: file.mimetype,
-            userId
-          }
-        })
-      )
-    );
+    const upLoadResults = await uploadFile({
+      teamId,
+      tmbId,
+      bucketName,
+      path: file.path,
+      filename: file.originalname,
+      contentType: file.mimetype,
+      metadata: metadata
+    });
 
     jsonRes(res, {
       data: upLoadResults

@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { findDatasetIdTreeByTopDatasetId } from '@fastgpt/service/core/dataset/controller';
+import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import {
   checkExportDatasetLimit,
@@ -30,7 +30,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       limitMinutes: global.feConfigs?.limit?.exportDatasetLimitMinutes
     });
 
-    const exportIds = await findDatasetIdTreeByTopDatasetId(datasetId);
+    const datasets = await findDatasetAndAllChildren({
+      teamId,
+      datasetId,
+      fields: '_id'
+    });
 
     res.setHeader('Content-Type', 'text/csv; charset=utf-8;');
     res.setHeader('Content-Disposition', 'attachment; filename=dataset.csv; ');
@@ -42,7 +46,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       a: string;
     }>(
       {
-        datasetId: { $in: exportIds }
+        teamId,
+        datasetId: { $in: datasets.map((d) => d._id) }
       },
       'q a'
     )

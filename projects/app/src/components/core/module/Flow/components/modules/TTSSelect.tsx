@@ -71,7 +71,7 @@ const TTSSelect = ({
 
   return (
     <Flex alignItems={'center'}>
-      <MyIcon name={'core/app/tts'} mr={2} w={'16px'} />
+      <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
       <Box>{t('core.app.TTS')}</Box>
       <MyTooltip label={t('core.app.TTS Tip')} forceShow>
         <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
@@ -93,7 +93,7 @@ const TTSSelect = ({
       <MyModal
         title={
           <>
-            <MyIcon name={'core/app/tts'} mr={2} w={'20px'} />
+            <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
             {t('core.app.TTS')}
           </>
         }

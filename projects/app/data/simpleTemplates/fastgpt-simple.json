@@ -1,6 +1,6 @@
 {
-  "name": "极简模板",
-  "desc": "极简模板\n已内置参数细节",
+  "name": "core.app.template.Simple template",
+  "desc": "core.app.template.Simple template tip",
   "systemForm": {
     "aiSettings": {
       "model": true,

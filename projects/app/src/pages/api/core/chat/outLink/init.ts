@@ -26,7 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // auth app permission
     const [tmb, chat, app] = await Promise.all([
       MongoTeamMember.findById(shareChat.tmbId, '_id userId').populate('userId', 'avatar').lean(),
-      MongoChat.findOne({ chatId, shareId }).lean(),
+      MongoChat.findOne({ appId, chatId, shareId }).lean(),
       MongoApp.findById(appId).lean()
     ]);
 
@@ -40,6 +40,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     const { history } = await getChatItems({
+      appId: app._id,
       chatId,
       limit: 30,
       field: `dataId obj value userGoodFeedback userBadFeedback ${

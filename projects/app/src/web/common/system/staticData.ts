@@ -30,10 +30,12 @@ export let simpleModeTemplates: AppSimpleEditConfigTemplateType[] = [];
 
 let retryTimes = 3;
 
-export const clientInitData = async (): Promise<InitDateResponse> => {
+export const clientInitData = async (): Promise<{
+  feConfigs: FastGPTFeConfigsType;
+}> => {
   try {
     const res = await getSystemInitData();
-    feConfigs = res.feConfigs;
+    feConfigs = res.feConfigs || {};
 
     chatModelList = res.chatModels ?? chatModelList;
     vectorModelList = res.vectorModels ?? vectorModelList;
@@ -51,7 +53,9 @@ export const clientInitData = async (): Promise<InitDateResponse> => {
     systemVersion = res.systemVersion;
     simpleModeTemplates = res.simpleModeTemplates;
 
-    return res;
+    return {
+      feConfigs
+    };
   } catch (error) {
     retryTimes--;
     await delay(500);

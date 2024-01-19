@@ -31,7 +31,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // auth team balance
     await authTeamBalance(teamId);
 
-    const { tokens } = await updateData2Dataset({
+    const { charsLength } = await updateData2Dataset({
       dataId: id,
       q,
       a,
@@ -42,7 +42,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     pushGenerateVectorBill({
       teamId,
       tmbId,
-      tokens,
+      charsLength,
       model: vectorModel
     });
 

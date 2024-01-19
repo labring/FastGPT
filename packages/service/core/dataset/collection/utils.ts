@@ -4,16 +4,32 @@ import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { MongoDatasetTraining } from '../training/schema';
 import { urlsFetch } from '../../../common/string/cheerio';
-import { DatasetCollectionTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetCollectionTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 
 /**
  * get all collection by top collectionId
  */
-export async function findCollectionAndChild(id: string, fields = '_id parentId name metadata') {
+export async function findCollectionAndChild({
+  teamId,
+  datasetId,
+  collectionId,
+  fields = '_id parentId name metadata'
+}: {
+  teamId: string;
+  datasetId: string;
+  collectionId: string;
+  fields?: string;
+}) {
   async function find(id: string) {
     // find children
-    const children = await MongoDatasetCollection.find({ parentId: id }, fields);
+    const children = await MongoDatasetCollection.find(
+      { teamId, datasetId, parentId: id },
+      fields
+    ).lean();
 
     let collections = children;
 
@@ -25,8 +41,8 @@ export async function findCollectionAndChild(id: string, fields = '_id parentId 
     return collections;
   }
   const [collection, childCollections] = await Promise.all([
-    MongoDatasetCollection.findById(id, fields),
-    find(id)
+    MongoDatasetCollection.findById(collectionId, fields),
+    find(collectionId)
   ]);
 
   if (!collection) {
@@ -107,8 +123,8 @@ export const getCollectionAndRawText = async ({
       });
 
       return {
-        title: result[0].title,
-        rawText: result[0].content
+        title: result[0]?.title,
+        rawText: result[0]?.content
       };
     }
 
@@ -121,7 +137,7 @@ export const getCollectionAndRawText = async ({
   })();
 
   const hashRawText = hashStr(rawText);
-  const isSameRawText = col.hashRawText === hashRawText;
+  const isSameRawText = rawText && col.hashRawText === hashRawText;
 
   return {
     collection: col,
@@ -161,8 +177,7 @@ export const reloadCollectionChunks = async ({
   // split data
   const { chunks } = splitText2Chunks({
     text: newRawText,
-    chunkLen: col.chunkSize || 512,
-    countTokens: false
+    chunkLen: col.chunkSize || 512
   });
 
   // insert to training queue

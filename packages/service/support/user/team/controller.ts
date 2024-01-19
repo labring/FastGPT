@@ -8,7 +8,7 @@ import {
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 
-async function getTeam(match: Record<string, any>): Promise<TeamItemType> {
+async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
 
   if (!tmb) {
@@ -31,11 +31,11 @@ async function getTeam(match: Record<string, any>): Promise<TeamItemType> {
   };
 }
 
-export async function getTeamInfoByTmbId({ tmbId }: { tmbId: string }) {
+export async function getTmbInfoByTmbId({ tmbId }: { tmbId: string }) {
   if (!tmbId) {
     return Promise.reject('tmbId or userId is required');
   }
-  return getTeam({
+  return getTeamMember({
     _id: new Types.ObjectId(tmbId),
     status: notLeaveStatus
   });
@@ -45,7 +45,7 @@ export async function getUserDefaultTeam({ userId }: { userId: string }) {
   if (!userId) {
     return Promise.reject('tmbId or userId is required');
   }
-  return getTeam({
+  return getTeamMember({
     userId: new Types.ObjectId(userId),
     defaultTeam: true
   });

@@ -114,7 +114,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           bg={'myGray.25'}
           borderRadius={'xl'}
           borderWidth={'1.5px'}
-          borderColor={theme.borderColor.borderColor}
+          borderColor={'borderColor.base'}
           alignItems={'center'}
           justifyContent={'center'}
         >

@@ -5,6 +5,7 @@ import { authOutLink } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 
 /* 
   outLink: Must be the owner

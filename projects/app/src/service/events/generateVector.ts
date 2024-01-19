@@ -1,6 +1,6 @@
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { sendOneInform } from '../support/user/inform/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -125,7 +125,7 @@ export async function generateVector(): Promise<any> {
     }
 
     // insert data to pg
-    const { tokens } = await insertData2Dataset({
+    const { charsLength } = await insertData2Dataset({
       teamId: data.teamId,
       tmbId: data.tmbId,
       datasetId: data.datasetId,
@@ -141,7 +141,7 @@ export async function generateVector(): Promise<any> {
     pushGenerateVectorBill({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      tokens,
+      charsLength,
       model: data.model,
       billId: data.billId
     });

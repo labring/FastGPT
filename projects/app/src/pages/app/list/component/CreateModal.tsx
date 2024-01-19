@@ -3,7 +3,6 @@ import {
   Box,
   Flex,
   Button,
-  ModalHeader,
   ModalFooter,
   ModalBody,
   Input,
@@ -69,19 +68,19 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
         setRefresh((state) => !state);
       } catch (err: any) {
         toast({
-          title: getErrText(err, '头像选择异常'),
+          title: getErrText(err, t('common.error.Select avatar failed')),
           status: 'warning'
         });
       }
     },
-    [setValue, toast]
+    [setValue, t, toast]
   );
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (data: FormType) => {
       const template = appTemplates.find((item) => item.id === data.templateId);
       if (!template) {
-        return Promise.reject('模板不存在');
+        return Promise.reject(t('core.dataset.error.Template does not exist'));
       }
       return postCreateApp({
         avatar: data.avatar,
@@ -95,8 +94,8 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
       onSuccess();
       onClose();
     },
-    successToast: '创建成功',
-    errorToast: '创建应用异常'
+    successToast: t('common.Create Success'),
+    errorToast: t('common.Create Failed')
   });
 
   return (
@@ -109,10 +108,10 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
     >
       <ModalBody>
         <Box color={'myGray.800'} fontWeight={'bold'}>
-          取个响亮的名字
+          {t('common.Set Name')}
         </Box>
         <Flex mt={3} alignItems={'center'}>
-          <MyTooltip label={'点击设置头像'}>
+          <MyTooltip label={t('common.Set Avatar')}>
             <Avatar
               flexShrink={0}
               src={getValues('avatar')}
@@ -129,14 +128,14 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             autoFocus
             bg={'myWhite.600'}
             {...register('name', {
-              required: '应用名不能为空~'
+              required: t('core.app.error.App name can not be empty')
             })}
           />
         </Flex>
         {!feConfigs?.hide_app_flow && (
           <>
             <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
-              从模板中选择
+              {t('core.app.Select app from template')}
             </Box>
             <Grid
               userSelect={'none'}
@@ -168,11 +167,11 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                   <Flex alignItems={'center'}>
                     <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
                     <Box ml={3} fontWeight={'bold'}>
-                      {item.name}
+                      {t(item.name)}
                     </Box>
                   </Flex>
                   <Box fontSize={'sm'} mt={4}>
-                    {item.intro}
+                    {t(item.intro)}
                   </Box>
                 </Card>
               ))}
@@ -183,10 +182,10 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          取消
+          {t('common.Close')}
         </Button>
         <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
-          确认创建
+          {t('common.Confirm Create')}
         </Button>
       </ModalFooter>
 

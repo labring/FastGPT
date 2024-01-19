@@ -174,7 +174,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             mb={0}
             color={'myGray.500'}
           >
-            <MyIcon name={'common/courseLight'} width={'26px'} height={'26px'} />
+            <MyIcon name={'common/courseLight'} width={'24px'} height={'24px'} />
           </Link>
         </MyTooltip>
       )}
@@ -189,7 +189,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             mt={0}
             color={'myGray.500'}
           >
-            <MyIcon name={'common/gitLight'} width={'22px'} height={'22px'} />
+            <MyIcon name={'common/gitInlight'} width={'26px'} height={'26px'} />
           </Link>
         </MyTooltip>
       )}
