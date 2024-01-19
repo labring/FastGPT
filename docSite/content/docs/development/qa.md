@@ -19,6 +19,10 @@ images: []
 
 ## 通用问题
 
+### 能否纯本地允许
+
+可以。需要准备好向量模型和LLM模型。
+
 ### insufficient_user_quota user quota is not enough 
 
 OneAPI 账号的余额不足，默认 root 用户只有 200 刀，可以手动修改。
@@ -105,7 +109,7 @@ mongo连接失败，检查
 
 ### TypeError: Cannot read properties of null (reading 'useMemo' )
 
-用 Node18 试试，可能最新的 Node 有问题。 本地开发流程：
+删除所有的`node_modules`，用 Node18 重新 install 试试，可能最新的 Node 有问题。 本地开发流程：
 
 1. 根目录: `pnpm i`
 2. 复制 `config.json` -> `config.local.json`
