@@ -134,7 +134,10 @@ export async function delCollectionAndRelatedSources({
 
   // delete file and imgs
   await Promise.all([
-    delImgByRelatedId(relatedImageIds),
+    delImgByRelatedId({
+      teamId,
+      relateIds: relatedImageIds
+    }),
     delFileByFileIdList({
       bucketName: BucketNameEnum.dataset,
       fileIdList

@@ -74,3 +74,14 @@ export type PostWebsiteSyncParams = {
   datasetId: string;
   billId: string;
 };
+
+export type PushDatasetDataProps = {
+  collectionId: string;
+  data: PushDatasetDataChunkProps[];
+  trainingMode: `${TrainingModeEnum}`;
+  prompt?: string;
+  billId?: string;
+};
+export type PushDatasetDataResponse = {
+  insertLen: number;
+};

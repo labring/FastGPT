@@ -8,6 +8,3 @@ import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type';
 /* ======= collection =========== */
 
 /* ==== data ===== */
-export type PushDataResponse = {
-  insertLen: number;
-};
