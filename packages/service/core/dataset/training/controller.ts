@@ -37,7 +37,7 @@ export async function pushDataListToTrainingQueue({
   data,
   prompt,
   billId,
-  trainingMode,
+  trainingMode = TrainingModeEnum.chunk,
 
   vectorModelList = [],
   qaModelList = []
