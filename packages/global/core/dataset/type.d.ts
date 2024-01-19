@@ -8,7 +8,7 @@ import {
   DatasetTypeEnum,
   SearchScoreTypeEnum,
   TrainingModeEnum
-} from './constant';
+} from './constants';
 
 /* schema */
 export type DatasetSchemaType = {
@@ -55,6 +55,8 @@ export type DatasetCollectionSchemaType = {
   hashRawText?: string;
   metadata?: {
     webPageSelector?: string;
+    relatedImgId?: string; // The id of the associated image collections
+
     [key: string]: any;
   };
 };

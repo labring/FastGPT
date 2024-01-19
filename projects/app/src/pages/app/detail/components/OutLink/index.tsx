@@ -6,9 +6,11 @@ import dynamic from 'next/dynamic';
 
 import MyRadio from '@/components/common/MyRadio';
 import Share from './Share';
+import { useTranslation } from 'next-i18next';
 const API = dynamic(() => import('./API'));
 
 const OutLink = ({ appId }: { appId: string }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
 
   const [linkType, setLinkType] = useState<`${OutLinkTypeEnum}`>(OutLinkTypeEnum.share);
@@ -16,7 +18,7 @@ const OutLink = ({ appId }: { appId: string }) => {
   return (
     <Box pt={[1, 5]}>
       <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2} px={[4, 8]}>
-        外部使用途径
+        {t('core.app.External using')}
       </Box>
       <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
         <MyRadio
@@ -25,14 +27,14 @@ const OutLink = ({ appId }: { appId: string }) => {
           list={[
             {
               icon: '/imgs/modal/shareFill.svg',
-              title: '免登录窗口',
-              desc: '分享链接给其他用户，无需登录即可直接进行使用',
+              title: t('core.app.Share link'),
+              desc: t('core.app.Share link desc'),
               value: OutLinkTypeEnum.share
             },
             {
               icon: 'support/outlink/apikeyFill',
-              title: 'API 访问',
-              desc: '通过 API 接入到已有系统中，或企微、飞书等',
+              title: t('core.app.Api request'),
+              desc: t('core.app.Api request desc'),
               value: OutLinkTypeEnum.apikey
             }
             // {

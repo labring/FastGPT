@@ -42,8 +42,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.cfr]: dispatchCFR,
 
   // none
-  [FlowNodeTypeEnum.userGuide]: () => Promise.resolve(),
-  [FlowNodeTypeEnum.variable]: () => Promise.resolve()
+  [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()
 };
 
 /* running */

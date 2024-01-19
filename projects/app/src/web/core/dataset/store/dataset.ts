@@ -11,7 +11,7 @@ import {
 } from '@/web/core/dataset/api';
 import { defaultDatasetDetail } from '@/constants/dataset';
 import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
-import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 
@@ -96,8 +96,7 @@ export const useDatasetStore = create<State>()(
             }),
             postCreateTrainingBill({
               name: 'core.dataset.training.Website Sync',
-              vectorModel: get().datasetDetail.vectorModel.model,
-              agentModel: get().datasetDetail.agentModel.model
+              datasetId: get().datasetDetail._id
             })
           ]);
           try {

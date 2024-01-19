@@ -113,5 +113,16 @@ export enum VariableInputEnum {
   textarea = 'textarea',
   select = 'select'
 }
+export const variableMap = {
+  [VariableInputEnum.input]: {
+    icon: 'core/app/variable/input'
+  },
+  [VariableInputEnum.textarea]: {
+    icon: 'core/app/variable/textarea'
+  },
+  [VariableInputEnum.select]: {
+    icon: 'core/app/variable/select'
+  }
+};
 
 export const DYNAMIC_INPUT_KEY = 'DYNAMIC_INPUT_KEY';

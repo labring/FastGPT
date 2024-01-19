@@ -38,7 +38,7 @@ const DatasetSelectContainer = ({
               parentId: path.parentId,
               parentName: path.parentName
             }))}
-            FirstPathDom={t('core.chat.Select Mark Kb')}
+            FirstPathDom={t('core.chat.Select dataset')}
             onClick={(e) => {
               setParentId(e);
             }}

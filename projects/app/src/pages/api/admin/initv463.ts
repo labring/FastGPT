@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
-import { DatasetStatusEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetStatusEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 
 let success = 0;

@@ -19,8 +19,8 @@ const MyMenu = ({ width, offset = [0, 10], Button, menuList }: Props) => {
     display: 'flex',
     alignItems: 'center',
     _hover: {
-      backgroundColor: 'myWhite.600',
-      color: 'hover.blue'
+      backgroundColor: 'myGray.05',
+      color: 'primary.600'
     }
   };
 
@@ -41,7 +41,7 @@ const MyMenu = ({ width, offset = [0, 10], Button, menuList }: Props) => {
               e.stopPropagation();
               item.onClick && item.onClick();
             }}
-            color={item.isActive ? 'primary.500' : ''}
+            color={item.isActive ? 'primary.700' : 'myGray.600'}
             whiteSpace={'pre-wrap'}
           >
             {item.child}

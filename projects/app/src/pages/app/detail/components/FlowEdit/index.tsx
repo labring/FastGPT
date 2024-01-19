@@ -44,12 +44,18 @@ const Render = ({ app, onClose }: Props) => {
     initData(JSON.parse(JSON.stringify(app.modules)));
   }, [app.modules]);
 
-  return <Flow templates={moduleTemplates} Header={<Header app={app} onClose={onClose} />} />;
+  const memoRender = useMemo(() => {
+    return <Flow templates={moduleTemplates} Header={<Header app={app} onClose={onClose} />} />;
+  }, [app, moduleTemplates.length, onClose]);
+
+  return memoRender;
 };
 
 export default React.memo(function FlowEdit(props: Props) {
+  const filterAppIds = useMemo(() => [props.app._id], [props.app._id]);
+
   return (
-    <FlowProvider mode={'app'} filterAppIds={[props.app._id]}>
+    <FlowProvider mode={'app'} filterAppIds={filterAppIds}>
       <Render {...props} />
     </FlowProvider>
   );

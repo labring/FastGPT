@@ -14,7 +14,7 @@ import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { getDatasets, putDatasetById, getDatasetPaths } from '@/web/core/dataset/api';

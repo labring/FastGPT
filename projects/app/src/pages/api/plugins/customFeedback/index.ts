@@ -12,6 +12,7 @@ type Props = HttpBodyType<{
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const {
+      appId,
       chatId,
       responseChatItemId: chatItemId,
       data: { defaultFeedback, customFeedback }
@@ -30,6 +31,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // wait the chat finish
     setTimeout(() => {
       addCustomFeedbacks({
+        appId,
         chatId,
         chatItemId,
         feedbacks: [feedback]

@@ -2,6 +2,7 @@ import React, { useCallback, useRef } from 'react';
 import { ModalFooter, ModalBody, Input, useDisclosure, Button, Box } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 import { useToast } from './useToast';
+import { useTranslation } from 'next-i18next';
 
 export const useEditTitle = ({
   title,
@@ -16,6 +17,7 @@ export const useEditTitle = ({
   canEmpty?: boolean;
   valueRule?: (val: string) => string | void;
 }) => {
+  const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -74,10 +76,12 @@ export const useEditTitle = ({
   const EditModal = useCallback(
     ({
       maxLength = 30,
-      iconSrc = '/imgs/modal/edit.svg'
+      iconSrc = 'modal/edit',
+      closeBtnText = t('common.Close')
     }: {
       maxLength?: number;
       iconSrc?: string;
+      closeBtnText?: string;
     }) => (
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc={iconSrc} title={title} maxW={'500px'}>
         <ModalBody>
@@ -96,10 +100,12 @@ export const useEditTitle = ({
           />
         </ModalBody>
         <ModalFooter>
-          <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-            取消
-          </Button>
-          <Button onClick={onclickConfirm}>确认</Button>
+          {!!closeBtnText && (
+            <Button mr={3} variant={'whiteBase'} onClick={onClose}>
+              {closeBtnText}
+            </Button>
+          )}
+          <Button onClick={onclickConfirm}>{t('common.Confirm')}</Button>
         </ModalFooter>
       </MyModal>
     ),

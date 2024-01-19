@@ -44,3 +44,5 @@ export const delLeaveTeam = (teamId: string) =>
 export const checkTeamExportDatasetLimit = (datasetId: string) =>
   GET(`/support/user/team/limit/exportDatasetLimit`, { datasetId });
 export const checkTeamWebSyncLimit = () => GET(`/support/user/team/limit/webSyncLimit`);
+export const checkTeamDatasetSizeLimit = (size: number) =>
+  GET(`/support/user/team/limit/datasetSizeLimit`, { size });

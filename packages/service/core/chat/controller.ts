@@ -3,10 +3,12 @@ import { MongoChatItem } from './chatItemSchema';
 import { addLog } from '../../common/system/log';
 
 export async function getChatItems({
+  appId,
   chatId,
   limit = 30,
   field
 }: {
+  appId: string;
   chatId?: string;
   limit?: number;
   field: string;
@@ -15,7 +17,10 @@ export async function getChatItems({
     return { history: [] };
   }
 
-  const history = await MongoChatItem.find({ chatId }, field).sort({ _id: -1 }).limit(limit).lean();
+  const history = await MongoChatItem.find({ appId, chatId }, field)
+    .sort({ _id: -1 })
+    .limit(limit)
+    .lean();
 
   history.reverse();
 
@@ -23,10 +28,12 @@ export async function getChatItems({
 }
 
 export const addCustomFeedbacks = async ({
+  appId,
   chatId,
   chatItemId,
   feedbacks
 }: {
+  appId: string;
   chatId?: string;
   chatItemId?: string;
   feedbacks: string[];

@@ -16,7 +16,7 @@ import {
   Image,
   ModalBody
 } from '@chakra-ui/react';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
@@ -128,7 +128,7 @@ const SelectCollections = ({
                   {title
                     ? title
                     : type === 'folder'
-                    ? t('common.Select One Folder')
+                    ? t('common.Root folder')
                     : t('dataset.collections.Select Collection')}
                 </Box>
                 {!!tip && (
@@ -150,7 +150,6 @@ const SelectCollections = ({
           gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
           gridGap={3}
           userSelect={'none'}
-          overflowY={'auto'}
           mt={2}
         >
           {collections.map((item) =>
@@ -164,7 +163,8 @@ const SelectCollections = ({
                   boxShadow={'sm'}
                   cursor={'pointer'}
                   _hover={{
-                    boxShadow: 'md'
+                    bg: 'primary.50',
+                    borderColor: 'primary.300'
                   }}
                   {...(selected
                     ? {
@@ -189,7 +189,7 @@ const SelectCollections = ({
                   }}
                 >
                   <Flex alignItems={'center'} h={'38px'}>
-                    <Image src={item.icon} w={'18px'} alt={''} />
+                    <MyIcon name={item.icon as any} w={'18px'} />
                     <Box ml={3} fontSize={'sm'} className="textEllipsis">
                       {item.name}
                     </Box>
@@ -218,7 +218,7 @@ const SelectCollections = ({
             isDisabled={type === 'collection' && selectedDatasetCollectionIds.length === 0}
             onClick={mutate}
           >
-            {type === 'folder' ? t('common.Confirm Move') : t('Confirm')}
+            {type === 'folder' ? t('common.Confirm Move') : t('common.Confirm')}
           </Button>
         </ModalFooter>
       )}

@@ -5,7 +5,6 @@ import {
   Button,
   Flex,
   useTheme,
-  Grid,
   useDisclosure,
   Table,
   Thead,
@@ -28,7 +27,10 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { SearchTestResponse } from '@/global/core/dataset/api';
-import { DatasetSearchModeEnum, DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
+import {
+  DatasetSearchModeEnum,
+  DatasetSearchModeMap
+} from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import MySelect from '@/components/Select';
@@ -97,6 +99,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           title: t('dataset.test.noResult')
         });
       }
+
       const testItem: SearchTestStoreItemType = {
         id: nanoid(),
         datasetId,
@@ -389,7 +392,7 @@ const TestHistories = React.memo(function TestHistories({
             })}
             onClick={() => setDatasetTestItem(item)}
           >
-            <Box flex={'0 0 80px'}>
+            <Box flex={'0 0 auto'} mr={2}>
               {DatasetSearchModeMap[item.searchMode] ? (
                 <Flex alignItems={'center'} fontWeight={'500'} color={'myGray.500'}>
                   <MyIcon
@@ -406,7 +409,11 @@ const TestHistories = React.memo(function TestHistories({
             <Box flex={1} mr={2} wordBreak={'break-all'} fontWeight={'400'}>
               {item.text}
             </Box>
-            <Box flex={'0 0 70px'}>{formatTimeToChatTime(item.time)}</Box>
+            <Box flex={'0 0 70px'}>
+              {formatTimeToChatTime(item.time).includes('.')
+                ? t(formatTimeToChatTime(item.time))
+                : formatTimeToChatTime(item.time)}
+            </Box>
             <MyTooltip label={t('core.dataset.test.delete test history')}>
               <Box w={'14px'} h={'14px'}>
                 <MyIcon

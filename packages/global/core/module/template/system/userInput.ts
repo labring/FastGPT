@@ -16,14 +16,14 @@ export const UserInputModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.systemInput,
   flowType: FlowNodeTypeEnum.questionInput,
   avatar: '/imgs/module/userChatInput.png',
-  name: '用户问题(入口)',
-  intro: '用户输入的内容。该模块通常作为应用的入口，用户在发送消息后会首先执行该模块。',
+  name: 'core.module.template.Chat entrance',
+  intro: 'core.module.template.Chat entrance intro',
   inputs: [
     {
       key: ModuleInputKeyEnum.userChatInput,
       type: FlowNodeInputTypeEnum.systemInput,
       valueType: ModuleIOValueTypeEnum.string,
-      label: '用户问题',
+      label: 'core.module.input.label.user question',
       showTargetInApp: false,
       showTargetInPlugin: false
     }
@@ -31,7 +31,7 @@ export const UserInputModule: FlowModuleTemplateType = {
   outputs: [
     {
       key: ModuleOutputKeyEnum.userChatInput,
-      label: '用户问题',
+      label: 'core.module.input.label.user question',
       type: FlowNodeOutputTypeEnum.source,
       valueType: ModuleIOValueTypeEnum.string,
       targets: []

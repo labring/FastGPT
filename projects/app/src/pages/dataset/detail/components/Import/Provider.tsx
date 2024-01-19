@@ -1,502 +1,207 @@
-import React, {
-  type SetStateAction,
-  type Dispatch,
-  useContext,
-  useCallback,
-  createContext,
-  useState,
-  useMemo,
-  useEffect
-} from 'react';
-import FileSelect, { FileItemType, Props as FileSelectProps } from './FileSelect';
-import { useRequest } from '@/web/common/hooks/useRequest';
-import { postDatasetCollection } from '@/web/core/dataset/api';
+import React, { useContext, useCallback, createContext, useState, useMemo, useEffect } from 'react';
+
 import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { hashStr } from '@fastgpt/global/common/string/tools';
-import { useToast } from '@/web/common/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
-import { Box, Flex, Image, useTheme } from '@chakra-ui/react';
-import { CloseIcon } from '@chakra-ui/icons';
-import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import { chunksUpload } from '@/web/core/dataset/utils';
-import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { ImportTypeEnum } from './ImportModal';
+import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { Prompt_AgentQA } from '@/global/core/prompt/agent';
+import { UseFormReturn, useForm } from 'react-hook-form';
+import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
+import { ImportSourceItemType } from '@/web/core/dataset/type';
 
-const filenameStyles = {
-  className: 'textEllipsis',
-  maxW: '400px'
+type ChunkSizeFieldType = 'embeddingChunkSize';
+export type FormType = {
+  mode: `${TrainingModeEnum}`;
+  way: `${ImportProcessWayEnum}`;
+  embeddingChunkSize: number;
+  customSplitChar: string;
+  qaPrompt: string;
+  webSelector: string;
 };
 
 type useImportStoreType = {
-  files: FileItemType[];
-  setFiles: Dispatch<SetStateAction<FileItemType[]>>;
-  previewFile: FileItemType | undefined;
-  setPreviewFile: Dispatch<SetStateAction<FileItemType | undefined>>;
-  successChunks: number;
-  setSuccessChunks: Dispatch<SetStateAction<number>>;
-  isUnselectedFile: boolean;
-  totalChunks: number;
-  totalTokens: number;
-  onclickUpload: (e?: { prompt?: string }) => void;
-  onReSplitChunks: () => void;
-  price: number;
-  uploading: boolean;
-  chunkLen: number;
-  chunkOverlapRatio: number;
-  setChunkLen: Dispatch<number>;
-  customSplitChar?: string;
-  setCustomSplitChar: Dispatch<string>;
+  parentId?: string;
+  processParamsForm: UseFormReturn<FormType, any>;
+  chunkSizeField?: ChunkSizeFieldType;
+  maxChunkSize: number;
+  minChunkSize: number;
+  showChunkInput: boolean;
+  showPromptInput: boolean;
+  sources: ImportSourceItemType[];
+  setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
   showRePreview: boolean;
-  setReShowRePreview: Dispatch<SetStateAction<boolean>>;
+  totalChunkChars: number;
+  totalChunks: number;
+  chunkSize: number;
+  predictPrice: number;
+  priceTip: string;
+  uploadRate: number;
+  splitSources2Chunks: () => void;
 };
 const StateContext = createContext<useImportStoreType>({
-  onclickUpload: function (e?: { prompt?: string }): void {
+  processParamsForm: {} as any,
+  sources: [],
+  setSources: function (value: React.SetStateAction<ImportSourceItemType[]>): void {
     throw new Error('Function not implemented.');
   },
-  uploading: false,
-  files: [],
-
-  previewFile: undefined,
-
-  successChunks: 0,
-
-  isUnselectedFile: false,
-  totalChunks: 0,
-  totalTokens: 0,
-  onReSplitChunks: function (): void {
-    throw new Error('Function not implemented.');
-  },
-  price: 0,
-  chunkLen: 0,
-  chunkOverlapRatio: 0,
-  customSplitChar: undefined,
-  setCustomSplitChar: function (value: string): void {
-    throw new Error('Function not implemented.');
-  },
-  setChunkLen: function (value: number): void {
-    throw new Error('Function not implemented.');
-  },
-  setFiles: function (value: React.SetStateAction<FileItemType[]>): void {
-    throw new Error('Function not implemented.');
-  },
-  setPreviewFile: function (value: React.SetStateAction<FileItemType | undefined>): void {
-    throw new Error('Function not implemented.');
-  },
-  setSuccessChunks: function (value: React.SetStateAction<number>): void {
-    throw new Error('Function not implemented.');
-  },
+  maxChunkSize: 0,
+  minChunkSize: 0,
+  showChunkInput: false,
+  showPromptInput: false,
+  chunkSizeField: 'embeddingChunkSize',
   showRePreview: false,
-  setReShowRePreview: function (value: React.SetStateAction<boolean>): void {
-    throw new Error('Function not implemented.');
-  }
+  totalChunkChars: 0,
+  totalChunks: 0,
+  chunkSize: 0,
+  predictPrice: 0,
+  priceTip: '',
+  uploadRate: 50,
+  splitSources2Chunks: () => {}
 });
+
 export const useImportStore = () => useContext(StateContext);
 
 const Provider = ({
-  datasetId,
+  dataset,
   parentId,
-  inputPrice,
-  outputPrice,
-  collectionTrainingType,
-  vectorModel,
-  agentModel,
-  defaultChunkLen = 500,
-  chunkOverlapRatio = 0.2,
-  importType,
-  onUploadSuccess,
   children
 }: {
-  datasetId: string;
-  parentId: string;
-  inputPrice: number;
-  outputPrice: number;
-  collectionTrainingType: `${TrainingModeEnum}`;
-  vectorModel: string;
-  agentModel: string;
-  defaultChunkLen: number;
-  chunkOverlapRatio: number;
-  importType: `${ImportTypeEnum}`;
-  onUploadSuccess: () => void;
+  dataset: DatasetItemType;
+  parentId?: string;
   children: React.ReactNode;
 }) => {
+  const vectorModel = dataset.vectorModel;
+  const agentModel = dataset.agentModel;
+
+  const processParamsForm = useForm<FormType>({
+    defaultValues: {
+      mode: TrainingModeEnum.chunk,
+      way: ImportProcessWayEnum.auto,
+      embeddingChunkSize: vectorModel?.defaultToken || 512,
+      customSplitChar: '',
+      qaPrompt: Prompt_AgentQA.description,
+      webSelector: ''
+    }
+  });
+
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const [files, setFiles] = useState<FileItemType[]>([]);
-  const [successChunks, setSuccessChunks] = useState(0);
-  const [chunkLen, setChunkLen] = useState(defaultChunkLen);
-  const [customSplitChar, setCustomSplitChar] = useState<string>();
-  const [previewFile, setPreviewFile] = useState<FileItemType>();
-  const [showRePreview, setReShowRePreview] = useState(false);
+  const [sources, setSources] = useState<ImportSourceItemType[]>([]);
+  const [showRePreview, setShowRePreview] = useState(false);
 
-  const isUnselectedFile = useMemo(() => files.length === 0, [files]);
+  // watch form
+  const mode = processParamsForm.watch('mode');
+  const way = processParamsForm.watch('way');
+  const embeddingChunkSize = processParamsForm.watch('embeddingChunkSize');
+  const customSplitChar = processParamsForm.watch('customSplitChar');
 
-  const totalChunks = useMemo(
-    () => files.reduce((sum, file) => sum + file.chunks.length, 0),
-    [files]
+  const modeStaticParams = {
+    [TrainingModeEnum.chunk]: {
+      chunkSizeField: 'embeddingChunkSize' as ChunkSizeFieldType,
+      chunkOverlapRatio: 0.2,
+      maxChunkSize: vectorModel?.maxToken || 512,
+      minChunkSize: 100,
+      autoChunkSize: vectorModel?.defaultToken || 512,
+      chunkSize: embeddingChunkSize,
+      showChunkInput: true,
+      showPromptInput: false,
+      inputPrice: vectorModel.inputPrice,
+      outputPrice: 0,
+      priceTip: t('core.dataset.import.Embedding Estimated Price Tips', {
+        price: vectorModel.inputPrice
+      }),
+      uploadRate: 150
+    },
+    [TrainingModeEnum.qa]: {
+      chunkOverlapRatio: 0,
+      maxChunkSize: 8000,
+      minChunkSize: 3000,
+      autoChunkSize: agentModel.maxContext * 0.55 || 6000,
+      chunkSize: agentModel.maxContext * 0.55 || 6000,
+      showChunkInput: false,
+      showPromptInput: true,
+      inputPrice: agentModel.inputPrice,
+      outputPrice: agentModel.outputPrice,
+      priceTip: t('core.dataset.import.QA Estimated Price Tips', {
+        price: agentModel?.inputPrice
+      }),
+      uploadRate: 30
+    }
+  };
+  const selectModelStaticParam = useMemo(() => modeStaticParams[mode], [mode]);
+
+  const wayStaticPrams = {
+    [ImportProcessWayEnum.auto]: {
+      chunkSize: selectModelStaticParam.autoChunkSize,
+      customSplitChar: ''
+    },
+    [ImportProcessWayEnum.custom]: {
+      chunkSize: modeStaticParams[mode].chunkSize,
+      customSplitChar
+    }
+  };
+
+  const chunkSize = wayStaticPrams[way].chunkSize;
+
+  useEffect(() => {
+    setShowRePreview(true);
+  }, [mode, way, chunkSize, customSplitChar]);
+
+  const totalChunkChars = useMemo(
+    () => sources.reduce((sum, file) => sum + file.chunkChars, 0),
+    [sources]
   );
-
-  const totalTokens = useMemo(() => files.reduce((sum, file) => sum + file.tokens, 0), [files]);
-
-  const price = useMemo(() => {
-    if (collectionTrainingType === TrainingModeEnum.qa) {
-      const inputTotal = totalTokens * inputPrice;
-      const outputTotal = totalTokens * 0.5 * outputPrice;
+  const predictPrice = useMemo(() => {
+    if (mode === TrainingModeEnum.qa) {
+      const inputTotal = totalChunkChars * selectModelStaticParam.inputPrice;
+      const outputTotal = totalChunkChars * 0.5 * selectModelStaticParam.inputPrice;
 
       return formatModelPrice2Read(inputTotal + outputTotal);
     }
-    return formatModelPrice2Read(totalTokens * inputPrice);
-  }, [collectionTrainingType, inputPrice, outputPrice, totalTokens]);
+    return formatModelPrice2Read(totalChunkChars * selectModelStaticParam.inputPrice);
+  }, [mode, selectModelStaticParam.inputPrice, totalChunkChars]);
+  const totalChunks = useMemo(
+    () => sources.reduce((sum, file) => sum + file.chunks.length, 0),
+    [sources]
+  );
 
-  /* 
-    start upload data 
-    1. create training bill
-    2. create collection
-    3. upload chunks
-  */
-  const { mutate: onclickUpload, isLoading: uploading } = useRequest({
-    mutationFn: async (props?: { prompt?: string }) => {
-      const { prompt } = props || {};
-      let totalInsertion = 0;
-      for await (const file of files) {
-        // create training bill
-        const billId = await postCreateTrainingBill({
-          name: file.filename,
-          vectorModel,
-          agentModel
+  const splitSources2Chunks = useCallback(() => {
+    setSources((state) =>
+      state.map((file) => {
+        const { chunks, chars } = splitText2Chunks({
+          text: file.rawText,
+          chunkLen: chunkSize,
+          overlapRatio: selectModelStaticParam.chunkOverlapRatio,
+          customReg: customSplitChar ? [customSplitChar] : []
         });
 
-        // create a file collection and training bill
-        const collectionId = await postDatasetCollection({
-          datasetId,
-          parentId,
-          name: file.filename,
-          type: file.type,
-
-          trainingType: collectionTrainingType,
-          chunkSize: chunkLen,
-          chunkSplitter: customSplitChar,
-          qaPrompt: collectionTrainingType === TrainingModeEnum.qa ? prompt : '',
-
-          fileId: file.fileId,
-          rawLink: file.rawLink,
-
-          rawTextLength: file.rawText.length,
-          hashRawText: hashStr(file.rawText),
-          metadata: file.metadata
-        });
-
-        // upload chunks
-        const chunks = file.chunks;
-        const { insertLen } = await chunksUpload({
-          collectionId,
-          billId,
-          trainingMode: collectionTrainingType,
-          chunks,
-          onUploading: (insertLen) => {
-            setSuccessChunks((state) => state + insertLen);
-          },
-          prompt
-        });
-        totalInsertion += insertLen;
-      }
-      return totalInsertion;
-    },
-    onSuccess(num) {
-      toast({
-        title: t('core.dataset.import.Import Success Tip', { num }),
-        status: 'success'
-      });
-      onUploadSuccess();
-    },
-    errorToast: t('core.dataset.import.Import Failed')
-  });
-
-  const onReSplitChunks = useCallback(async () => {
-    try {
-      setPreviewFile(undefined);
-
-      setFiles((state) =>
-        state.map((file) => {
-          const { chunks, tokens } = splitText2Chunks({
-            text: file.rawText,
-            chunkLen,
-            overlapRatio: chunkOverlapRatio,
-            customReg: customSplitChar ? [customSplitChar] : []
-          });
-
-          return {
-            ...file,
-            tokens,
-            chunks: chunks.map((chunk) => ({
-              q: chunk,
-              a: ''
-            }))
-          };
-        })
-      );
-      setReShowRePreview(false);
-    } catch (error) {
-      toast({
-        status: 'warning',
-        title: getErrText(error, t('core.dataset.import.Set Chunk Error'))
-      });
-    }
-  }, [chunkLen, chunkOverlapRatio, customSplitChar, t, toast]);
-
-  const reset = useCallback(() => {
-    setFiles([]);
-    setSuccessChunks(0);
-    setChunkLen(defaultChunkLen);
-    setPreviewFile(undefined);
-    setReShowRePreview(false);
-  }, [defaultChunkLen]);
-
-  useEffect(() => {
-    reset();
-  }, [importType, reset]);
+        return {
+          ...file,
+          chunkChars: chars,
+          chunks: chunks.map((chunk) => ({
+            q: chunk,
+            a: ''
+          }))
+        };
+      })
+    );
+    setShowRePreview(false);
+  }, [chunkSize, customSplitChar, selectModelStaticParam.chunkOverlapRatio]);
 
   const value = {
-    files,
-    setFiles,
-    previewFile,
-    setPreviewFile,
-    successChunks,
-    setSuccessChunks,
-    isUnselectedFile,
-    totalChunks,
-    totalTokens,
-    price,
-    onReSplitChunks,
-    onclickUpload,
-    uploading,
-    chunkLen,
-    customSplitChar,
-    setCustomSplitChar,
-    chunkOverlapRatio,
-    setChunkLen,
+    parentId,
+    processParamsForm,
+    ...selectModelStaticParam,
+    sources,
+    setSources,
     showRePreview,
-    setReShowRePreview
+    totalChunkChars,
+    totalChunks,
+    chunkSize,
+    predictPrice,
+    splitSources2Chunks
   };
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;
 };
 
 export default React.memo(Provider);
-
-export const PreviewFileOrChunk = () => {
-  const theme = useTheme();
-  const { t } = useTranslation();
-  const { setFiles, previewFile, setPreviewFile, setReShowRePreview, totalChunks, files } =
-    useImportStore();
-
-  return (
-    <Box h={'100%'} w={'100%'}>
-      {!!previewFile ? (
-        <Box
-          position={'relative'}
-          display={['block', 'flex']}
-          h={'100%'}
-          flexDirection={'column'}
-          pt={[3, 6]}
-          bg={'myWhite.400'}
-        >
-          <Box px={[4, 8]} fontSize={['lg', 'xl']} fontWeight={'bold'} {...filenameStyles}>
-            {previewFile.filename}
-          </Box>
-          <CloseIcon
-            position={'absolute'}
-            right={[4, 8]}
-            top={4}
-            cursor={'pointer'}
-            onClick={() => setPreviewFile(undefined)}
-          />
-          <Box
-            flex={'1 0 0'}
-            h={['auto', 0]}
-            overflow={'overlay'}
-            px={[4, 8]}
-            my={4}
-            // contentEditable
-            // dangerouslySetInnerHTML={{ __html: previewFile.rawText }}
-            fontSize={'sm'}
-            whiteSpace={'pre-wrap'}
-            wordBreak={'break-all'}
-            // onBlur={(e) => {
-            //   // @ts-ignore
-            //   const val = e.target.innerText;
-            //   setReShowRePreview(true);
-
-            //   setFiles((state) =>
-            //     state.map((file) =>
-            //       file.id === previewFile.id
-            //         ? {
-            //             ...file,
-            //             text: val
-            //           }
-            //         : file
-            //     )
-            //   );
-            // }}
-          >
-            {previewFile.rawText}
-          </Box>
-        </Box>
-      ) : (
-        <Box pt={[3, 6]}>
-          <Flex px={[4, 8]} alignItems={'center'}>
-            <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
-              {t('core.dataset.import.Total Chunk Preview', { totalChunks })}
-            </Box>
-            {totalChunks > 50 && (
-              <Box ml={2} fontSize={'sm'} color={'myhGray.500'}>
-                {t('core.dataset.import.Only Show First 50 Chunk')}
-              </Box>
-            )}
-          </Flex>
-          <Box px={[4, 8]} overflow={'overlay'}>
-            {files.map((file) =>
-              file.chunks.slice(0, 50).map((chunk, i) => (
-                <Box
-                  key={i}
-                  py={4}
-                  bg={'myWhite.500'}
-                  my={2}
-                  borderRadius={'md'}
-                  fontSize={'sm'}
-                  _hover={{ ...hoverDeleteStyles }}
-                >
-                  <Flex mb={1} px={4} userSelect={'none'}>
-                    <Box
-                      flexShrink={0}
-                      px={3}
-                      py={'1px'}
-                      border={theme.borders.base}
-                      borderRadius={'md'}
-                    >
-                      # {i + 1}
-                    </Box>
-                    <Box ml={2} fontSize={'sm'} color={'myhGray.500'} {...filenameStyles}>
-                      {file.filename}
-                    </Box>
-                    <Box flex={1} />
-                    <DeleteIcon
-                      onClick={() => {
-                        setFiles((state) =>
-                          state.map((stateFile) =>
-                            stateFile.id === file.id
-                              ? {
-                                  ...file,
-                                  chunks: [...file.chunks.slice(0, i), ...file.chunks.slice(i + 1)]
-                                }
-                              : stateFile
-                          )
-                        );
-                      }}
-                    />
-                  </Flex>
-                  <Box px={4} fontSize={'sm'} whiteSpace={'pre-wrap'} wordBreak={'break-all'}>
-                    {chunk.a ? `q:${chunk.q}\na:${chunk.a}` : chunk.q}
-                  </Box>
-                </Box>
-              ))
-            )}
-          </Box>
-        </Box>
-      )}
-    </Box>
-  );
-};
-
-export const SelectorContainer = ({
-  fileExtension,
-  showUrlFetch,
-  showCreateFile,
-  fileTemplate,
-  tip,
-  children
-}: {
-  fileExtension: string;
-  showUrlFetch?: boolean;
-  showCreateFile?: boolean;
-  fileTemplate?: FileSelectProps['fileTemplate'];
-  tip?: string;
-  children: React.ReactNode;
-}) => {
-  const { files, setPreviewFile, isUnselectedFile, setFiles, chunkLen, chunkOverlapRatio } =
-    useImportStore();
-  return (
-    <Box
-      h={'100%'}
-      overflowY={'auto'}
-      flex={['auto', '1 0 400px']}
-      {...(isUnselectedFile
-        ? {}
-        : {
-            maxW: ['auto', '450px']
-          })}
-      p={[4, 8]}
-    >
-      <FileSelect
-        fileExtension={fileExtension}
-        onPushFiles={(files) => {
-          setFiles((state) => files.concat(state));
-        }}
-        chunkLen={chunkLen}
-        overlapRatio={chunkOverlapRatio}
-        showUrlFetch={showUrlFetch}
-        showCreateFile={showCreateFile}
-        fileTemplate={fileTemplate}
-        tip={tip}
-        py={isUnselectedFile ? '100px' : 5}
-      />
-      {!isUnselectedFile && (
-        <Box py={4} px={2} maxH={'400px'} overflowY={'auto'}>
-          {files.map((item) => (
-            <Flex
-              key={item.id}
-              w={'100%'}
-              _notLast={{ mb: 5 }}
-              px={5}
-              py={2}
-              boxShadow={'1px 1px 5px rgba(0,0,0,0.15)'}
-              borderRadius={'md'}
-              cursor={'pointer'}
-              position={'relative'}
-              alignItems={'center'}
-              _hover={{
-                bg: 'primary.50',
-                '& .delete': {
-                  display: 'block'
-                }
-              }}
-              onClick={() => setPreviewFile(item)}
-            >
-              <Image src={item.icon} w={'16px'} alt={''} />
-              <Box ml={2} flex={'1 0 0'} pr={3} {...filenameStyles}>
-                {item.filename}
-              </Box>
-              <MyIcon
-                position={'absolute'}
-                right={3}
-                className="delete"
-                name={'delete'}
-                w={'16px'}
-                _hover={{ color: 'red.600' }}
-                display={['block', 'none']}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setPreviewFile(undefined);
-                  setFiles((state) => state.filter((file) => file.id !== item.id));
-                }}
-              />
-            </Flex>
-          ))}
-        </Box>
-      )}
-      {!isUnselectedFile && <>{children}</>}
-    </Box>
-  );
-};

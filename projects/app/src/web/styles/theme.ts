@@ -6,7 +6,7 @@ import {
   numberInputAnatomy,
   checkboxAnatomy
 } from '@chakra-ui/anatomy';
-import { createMultiStyleConfigHelpers } from '@chakra-ui/styled-system';
+import { createMultiStyleConfigHelpers, defineStyle } from '@chakra-ui/styled-system';
 
 const { definePartsStyle, defineMultiStyleConfig } = createMultiStyleConfigHelpers(
   modalAnatomy.keys
@@ -195,13 +195,24 @@ const Input: ComponentStyleConfig = {
   baseStyle: {
     fontsize: '14px'
   },
-  sizes: {},
+  sizes: {
+    sm: defineStyle({
+      field: {
+        h: '32px',
+        borderRadius: 'md'
+      }
+    }),
+    md: defineStyle({
+      field: {
+        h: '40px',
+        borderRadius: 'md'
+      }
+    })
+  },
   variants: {
     outline: {
       field: {
-        h: '40px',
         border: '1px solid',
-        borderRadius: 'md',
         borderColor: 'borderColor.low',
         _focus: {
           borderColor: 'primary.500',
@@ -222,12 +233,25 @@ const Input: ComponentStyleConfig = {
 };
 
 const NumberInput = numInputMultiStyle({
+  sizes: {
+    sm: defineStyle({
+      field: {
+        h: '32px',
+        borderRadius: 'md'
+      }
+    }),
+    md: defineStyle({
+      field: {
+        h: '40px',
+        borderRadius: 'md'
+      }
+    })
+  },
   variants: {
     outline: numInputPart({
       field: {
         bg: 'myWhite.300',
         border: '1px solid',
-        borderRadius: 'base',
         borderColor: 'myGray.200',
         _focus: {
           borderColor: 'primary.500 !important',
@@ -361,6 +385,7 @@ export const theme = extendTheme({
     },
     primary: {
       1: 'rgba(51, 112, 255, 0.1)',
+      '015': 'rgba(51, 112, 255, 0.15)',
       3: 'rgba(51, 112, 255, 0.3)',
       5: 'rgba(51, 112, 255, 0.5)',
       7: 'rgba(51, 112, 255, 0.7)',
@@ -429,12 +454,6 @@ export const theme = extendTheme({
     '5xl': '32px',
     '6xl': '36px'
   },
-  borderColor: {
-    low: 'myGray.200',
-    common: 'myGray.250',
-    high: 'myGray.300',
-    highest: 'myGray.400'
-  },
   borders: {
     sm: '1px solid #E8EBF0',
     base: '1px solid #DFE2EA',
@@ -457,7 +476,8 @@ export const theme = extendTheme({
     4: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)',
     5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 20px 24px -8px rgba(19, 51, 107, 0.15)',
     6: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 24px 48px -12px rgba(19, 51, 107, 0.20)',
-    7: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)'
+    7: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)',
+    focus: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
   },
   breakpoints: {
     sm: '900px',

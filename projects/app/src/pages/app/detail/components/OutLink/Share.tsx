@@ -67,11 +67,8 @@ const Share = ({ appId }: { appId: string }) => {
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'} fontSize={['md', 'xl']}>
-          免登录窗口
-          <MyTooltip
-            forceShow
-            label="可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的余额，请保管好链接！"
-          >
+          {t('core.app.Share link')}
+          <MyTooltip forceShow label={t('core.app.Share link desc detail')}>
             <QuestionOutlineIcon ml={1} />
           </MyTooltip>
         </Box>
@@ -82,29 +79,29 @@ const Share = ({ appId }: { appId: string }) => {
           {...(shareChatList.length >= 10
             ? {
                 isDisabled: true,
-                title: '最多创建10组'
+                title: t('core.app.share.Amount limit tip')
               }
             : {})}
           onClick={() => setEditLinkData(defaultOutLinkForm)}
         >
-          创建新链接
+          {t('core.app.share.Create link')}
         </Button>
       </Flex>
       <TableContainer mt={3}>
         <Table variant={'simple'} w={'100%'} overflowX={'auto'} fontSize={'sm'}>
           <Thead>
             <Tr>
-              <Th>名称</Th>
-              <Th>金额消耗</Th>
-              <Th>返回引用</Th>
+              <Th>{t('common.Name')}</Th>
+              <Th>{t('common.Price used')}</Th>
+              <Th>{t('core.app.share.Is response quote')}</Th>
               {feConfigs?.isPlus && (
                 <>
-                  <Th>IP限流（人/分钟）</Th>
-                  <Th>过期时间</Th>
-                  <Th>身份校验</Th>
+                  <Th>{t('core.app.share.Ip limit title')}</Th>
+                  <Th>{t('common.Expired Time')}</Th>
+                  <Th>{t('core.app.share.Role check')}</Th>
                 </>
               )}
-              <Th>最后使用时间</Th>
+              <Th>{t('common.Last use time')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -117,8 +114,8 @@ const Share = ({ appId }: { appId: string }) => {
                   {feConfigs?.isPlus
                     ? `${
                         item.limit && item.limit.credit > -1
-                          ? ` / ${item.limit.credit}元`
-                          : ' / 无限制'
+                          ? ` / ￥${item.limit.credit}`
+                          : ` / ${t('common.Unlimited')}`
                       }`
                     : ''}
                 </Td>
@@ -134,7 +131,9 @@ const Share = ({ appId }: { appId: string }) => {
                     <Th>{item?.limit?.hookUrl ? '✔' : '✖'}</Th>
                   </>
                 )}
-                <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : '未使用'}</Td>
+                <Td>
+                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common.Un used')}
+                </Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Menu autoSelect={false} isLazy>
                     <MenuButton
@@ -197,7 +196,7 @@ const Share = ({ appId }: { appId: string }) => {
         <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
-            没有创建分享链接
+            {t('core.app.share.Not share link')}
           </Box>
         </Flex>
       )}
@@ -208,7 +207,7 @@ const Share = ({ appId }: { appId: string }) => {
           defaultData={editLinkData}
           onCreate={(id) => {
             const url = `${location.origin}/chat/share?shareId=${id}`;
-            copyData(url, '创建成功。已复制分享地址，可直接分享使用');
+            copyData(url, t('core.app.share.Create link tip'));
             refetchShareChatList();
             setEditLinkData(undefined);
           }}
@@ -268,14 +267,14 @@ function EditLinkModal({
         appId,
         type
       }),
-    errorToast: '创建链接异常',
+    errorToast: t('common.Create Failed'),
     onSuccess: onCreate
   });
   const { mutate: onclickUpdate, isLoading: updating } = useRequest({
     mutationFn: (e: OutLinkEditType) => {
       return putShareChat(e);
     },
-    errorToast: '更新链接异常',
+    errorToast: t('common.Update Failed'),
     onSuccess: onEdit
   });
 
@@ -384,14 +383,13 @@ function EditLinkModal({
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          取消
+          {t('common.Close')}
         </Button>
-
         <Button
           isLoading={creating || updating}
           onClick={submitShareChat((data) => (isEdit ? onclickUpdate(data) : onclickCreate(data)))}
         >
-          确认
+          {t('common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

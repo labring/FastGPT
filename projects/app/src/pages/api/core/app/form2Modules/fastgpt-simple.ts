@@ -7,7 +7,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getExtractModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -37,7 +37,7 @@ function simpleChatTemplate({ formData, maxToken }: Props): ModuleItemType[] {
   return [
     {
       moduleId: 'userChatInput',
-      name: '用户问题(对话入口)',
+      name: 'core.module.template.Chat entrance',
       avatar: '/imgs/module/userChatInput.png',
       flowType: 'questionInput',
       position: {
@@ -49,7 +49,7 @@ function simpleChatTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           key: 'userChatInput',
           type: 'systemInput',
           valueType: 'string',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false
@@ -58,7 +58,7 @@ function simpleChatTemplate({ formData, maxToken }: Props): ModuleItemType[] {
       outputs: [
         {
           key: 'userChatInput',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           type: 'source',
           valueType: 'string',
           targets: [
@@ -93,7 +93,7 @@ function simpleChatTemplate({ formData, maxToken }: Props): ModuleItemType[] {
         {
           key: 'model',
           type: 'selectChatModel',
-          label: '对话模型',
+          label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
           showTargetInApp: false,
@@ -189,7 +189,7 @@ function simpleChatTemplate({ formData, maxToken }: Props): ModuleItemType[] {
         {
           key: 'systemPrompt',
           type: 'textarea',
-          label: '系统提示词',
+          label: 'core.ai.Prompt',
           max: 300,
           valueType: 'string',
           description:
@@ -268,7 +268,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
   const modules: ModuleItemType[] = [
     {
       moduleId: 'userChatInput',
-      name: '用户问题(对话入口)',
+      name: 'core.module.template.Chat entrance',
       avatar: '/imgs/module/userChatInput.png',
       flowType: 'questionInput',
       position: {
@@ -280,7 +280,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           key: 'userChatInput',
           type: 'systemInput',
           valueType: 'string',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false
@@ -289,16 +289,12 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
       outputs: [
         {
           key: 'userChatInput',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           type: 'source',
           valueType: 'string',
           targets: [
             {
               moduleId: 'vuc92c',
-              key: 'userChatInput'
-            },
-            {
-              moduleId: 'chatModule',
               key: 'userChatInput'
             }
           ]
@@ -307,7 +303,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
     },
     {
       moduleId: 'datasetSearch',
-      name: '知识库搜索',
+      name: 'core.module.template.Dataset search',
       avatar: '/imgs/module/db.png',
       flowType: 'datasetSearchNode',
       showStatus: true,
@@ -447,6 +443,18 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           valueType: 'boolean',
           type: 'source',
           targets: []
+        },
+        {
+          key: 'userChatInput',
+          label: 'core.module.input.label.user question',
+          type: 'hidden',
+          valueType: 'string',
+          targets: [
+            {
+              moduleId: 'chatModule',
+              key: 'userChatInput'
+            }
+          ]
         }
       ]
     },
@@ -473,7 +481,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
         {
           key: 'model',
           type: 'selectChatModel',
-          label: '对话模型',
+          label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
           showTargetInApp: false,
@@ -569,7 +577,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
         {
           key: 'systemPrompt',
           type: 'textarea',
-          label: '系统提示词',
+          label: 'core.ai.Prompt',
           max: 300,
           valueType: 'string',
           description:

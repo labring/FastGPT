@@ -26,7 +26,8 @@ import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d'
 import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type.d';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
-import PromptTextarea from '@/components/common/Textarea/PromptTextarea';
+import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { PickerMenuItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -35,13 +36,15 @@ const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  simpleModeTemplate = SimpleModeTemplate_FastGPT_Universal
+  simpleModeTemplate = SimpleModeTemplate_FastGPT_Universal,
+  pickerMenu = []
 }: {
   isAdEdit?: boolean;
   onClose: () => void;
   onSuccess: (e: AIChatModuleProps) => void;
   defaultData: AIChatModuleProps;
   simpleModeTemplate?: AppSimpleEditConfigTemplateType;
+  pickerMenu?: PickerMenuItemType[];
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
@@ -60,7 +63,44 @@ const AIChatSettingsModal = ({
       chatModelList.find((item) => item.model === getValues(ModuleInputKeyEnum.aiModel))
         ?.maxResponse || 4000
     );
-  }, [getValues, refresh]);
+  }, [getValues]);
+
+  const quoteTemplateVariables = (() => [
+    ...pickerMenu,
+    {
+      key: 'q',
+      label: 'q',
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'a',
+      label: 'a',
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'source',
+      label: t('core.dataset.search.Source name'),
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'sourceId',
+      label: t('core.dataset.search.Source id'),
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'index',
+      label: t('core.dataset.search.Quote index'),
+      icon: 'core/app/simpleMode/variable'
+    }
+  ])();
+  const quotePromptVariables = (() => [
+    ...pickerMenu,
+    {
+      key: 'quote',
+      label: t('core.app.Quote templates'),
+      icon: 'core/app/simpleMode/variable'
+    }
+  ])();
 
   const LabelStyles: BoxProps = {
     fontSize: ['sm', 'md']
@@ -76,7 +116,7 @@ const AIChatSettingsModal = ({
       iconSrc="/imgs/module/AI.png"
       title={
         <>
-          {t('app.AI Advanced Settings')}
+          {t('common.More settings')}
           {feConfigs?.docUrl && (
             <Link
               href={getDocPath('/docs/use-cases/ai_settings/')}
@@ -86,7 +126,7 @@ const AIChatSettingsModal = ({
               fontWeight={'normal'}
               fontSize={'md'}
             >
-              查看说明
+              {t('common.Read intro')}
             </Link>
           )}
         </>
@@ -99,7 +139,7 @@ const AIChatSettingsModal = ({
         {isAdEdit && (
           <Flex alignItems={'center'}>
             <Box {...LabelStyles} w={'80px'}>
-              返回AI内容
+              {t('core.app.Ai response')}
             </Box>
             <Box flex={1} ml={'10px'}>
               <Switch
@@ -117,13 +157,13 @@ const AIChatSettingsModal = ({
         {simpleModeTemplate?.systemForm?.aiSettings?.temperature && (
           <Flex alignItems={'center'} mb={10} mt={isAdEdit ? 8 : 5}>
             <Box {...LabelStyles} mr={2} w={'80px'}>
-              温度
+              {t('core.app.Temperature')}
             </Box>
             <Box flex={1} ml={'10px'}>
               <MySlider
                 markList={[
-                  { label: '严谨', value: 0 },
-                  { label: '发散', value: 10 }
+                  { label: t('core.app.deterministic'), value: 0 },
+                  { label: t('core.app.Random'), value: 10 }
                 ]}
                 width={'95%'}
                 min={0}
@@ -140,7 +180,7 @@ const AIChatSettingsModal = ({
         {simpleModeTemplate?.systemForm?.aiSettings?.maxToken && (
           <Flex alignItems={'center'} mt={12} mb={10}>
             <Box {...LabelStyles} mr={2} w={'80px'}>
-              回复上限
+              {t('core.app.Max tokens')}
             </Box>
             <Box flex={1} ml={'10px'}>
               <MySlider
@@ -165,7 +205,7 @@ const AIChatSettingsModal = ({
         {simpleModeTemplate?.systemForm?.aiSettings?.quoteTemplate && (
           <Box>
             <Flex {...LabelStyles} mb={1}>
-              引用内容模板
+              {t('core.app.Quote templates')}
               <MyTooltip
                 label={t('template.Quote Content Tip', {
                   default: Prompt_QuoteTemplateList[0].value
@@ -179,24 +219,24 @@ const AIChatSettingsModal = ({
                 {...selectTemplateBtn}
                 onClick={() =>
                   setSelectTemplateData({
-                    title: '选择知识库提示词模板',
+                    title: t('core.app.Select quote template'),
                     templates: Prompt_QuoteTemplateList
                   })
                 }
               >
-                选择模板
+                {t('common.Select template')}
               </Box>
             </Flex>
 
-            <PromptTextarea
-              bg={'myWhite.400'}
-              rows={8}
+            <PromptEditor
+              variables={quoteTemplateVariables}
+              title={t('core.app.Quote templates')}
               placeholder={t('template.Quote Content Tip', {
                 default: Prompt_QuoteTemplateList[0].value
               })}
               defaultValue={getValues(ModuleInputKeyEnum.aiChatQuoteTemplate)}
-              onBlur={(e) => {
-                setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e.target.value);
+              onChange={(e) => {
+                setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e);
                 setRefresh(!refresh);
               }}
             />
@@ -205,7 +245,7 @@ const AIChatSettingsModal = ({
         {simpleModeTemplate?.systemForm?.aiSettings?.quotePrompt && (
           <Box mt={4}>
             <Flex {...LabelStyles} mb={1}>
-              引用内容提示词
+              {t('core.app.Quote prompt')}
               <MyTooltip
                 label={t('template.Quote Prompt Tip', { default: Prompt_QuotePromptList[0].value })}
                 forceShow
@@ -213,16 +253,16 @@ const AIChatSettingsModal = ({
                 <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
               </MyTooltip>
             </Flex>
-            <PromptTextarea
-              bg={'myWhite.400'}
-              rows={11}
+            <PromptEditor
+              variables={quotePromptVariables}
+              title={t('core.app.Quote prompt')}
+              h={220}
               placeholder={t('template.Quote Prompt Tip', {
                 default: Prompt_QuotePromptList[0].value
               })}
               defaultValue={getValues(ModuleInputKeyEnum.aiChatQuotePrompt)}
-              onBlur={(e) => {
-                setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e.target.value);
-                setRefresh(!refresh);
+              onChange={(e) => {
+                setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e);
               }}
             />
           </Box>
@@ -230,10 +270,10 @@ const AIChatSettingsModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('Cancel')}
+          {t('common.Close')}
         </Button>
         <Button ml={4} onClick={handleSubmit(onSuccess)}>
-          {t('Confirm')}
+          {t('common.Confirm')}
         </Button>
       </ModalFooter>
       {!!selectTemplateData && (

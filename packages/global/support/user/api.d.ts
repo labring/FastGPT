@@ -3,7 +3,6 @@ import { OAuthEnum } from './constant';
 export type PostLoginProps = {
   username: string;
   password: string;
-  tmbId?: string;
 };
 
 export type OauthLoginProps = {

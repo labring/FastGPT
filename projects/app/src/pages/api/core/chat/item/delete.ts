@@ -25,8 +25,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     await MongoChatItem.deleteOne({
-      dataId: contentId,
-      chatId
+      appId,
+      chatId,
+      dataId: contentId
     });
 
     jsonRes(res);
