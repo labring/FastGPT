@@ -193,6 +193,11 @@ export async function updateData2Dataset({
             text: qaStr
           }
         });
+      } else {
+        patchResult.push({
+          type: 'unChange',
+          index: item
+        });
       }
     } else {
       // not in database, create
@@ -231,6 +236,7 @@ export async function updateData2Dataset({
           model
         });
         item.index.dataId = result.insertId;
+
         return result;
       }
       if (item.type === 'delete' && item.index.dataId) {
@@ -249,13 +255,14 @@ export async function updateData2Dataset({
   );
 
   const charsLength = result.reduce((acc, cur) => acc + cur.charsLength, 0);
+  const newIndexes = patchResult.filter((item) => item.type !== 'delete').map((item) => item.index);
 
   // update mongo other data
   mongoData.q = q || mongoData.q;
   mongoData.a = a ?? mongoData.a;
   mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
   // @ts-ignore
-  mongoData.indexes = indexes;
+  mongoData.indexes = newIndexes;
   await mongoData.save();
 
   return {

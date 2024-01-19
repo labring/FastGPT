@@ -193,7 +193,10 @@ const InputDataModal = ({
       // not exactly same
       await putDatasetDataById({
         id: dataId,
-        ...e
+        ...e,
+        indexes: e.indexes.map((index) =>
+          index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a }) : index
+        )
       });
 
       return {
