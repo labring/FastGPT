@@ -42,7 +42,7 @@ const EditFolderModal = ({
   });
 
   return (
-    <MyModal isOpen onClose={onClose} iconSrc="/imgs/modal/folder.svg" title={typeMap.title}>
+    <MyModal isOpen onClose={onClose} iconSrc="common/folderFill" title={typeMap.title}>
       <ModalBody>
         <Input
           ref={inputRef}
@@ -53,11 +53,8 @@ const EditFolderModal = ({
         />
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
-          {t('Cancel')}
-        </Button>
         <Button isLoading={isLoading} onClick={onSave}>
-          {t('Confirm')}
+          {t('common.Confirm')}
         </Button>
       </ModalFooter>
     </MyModal>

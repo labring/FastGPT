@@ -1,6 +1,20 @@
-import { TrainingModeEnum, DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import {
+  TrainingModeEnum,
+  DatasetCollectionTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type { CreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api.d';
 import { MongoDatasetCollection } from './schema';
+import {
+  CollectionWithDatasetType,
+  DatasetCollectionSchemaType
+} from '@fastgpt/global/core/dataset/type';
+import { MongoDatasetTraining } from '../training/schema';
+import { delay } from '@fastgpt/global/common/system/utils';
+import { MongoDatasetData } from '../data/schema';
+import { delImgByRelatedId } from '../../../common/file/image/controller';
+import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';
+import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
 export async function createOneCollection({
   teamId,
@@ -85,20 +99,50 @@ export function createDefaultCollection({
   });
 }
 
-// check same collection
-export const getSameRawTextCollection = async ({
-  datasetId,
-  hashRawText
+/**
+ * delete collection and it related data
+ */
+export async function delCollectionAndRelatedSources({
+  collections
 }: {
-  datasetId: string;
-  hashRawText?: string;
-}) => {
-  if (!hashRawText) return undefined;
+  collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
+}) {
+  if (collections.length === 0) return;
 
-  const collection = await MongoDatasetCollection.findOne({
-    datasetId,
-    hashRawText
+  const teamId = collections[0].teamId;
+
+  if (!teamId) return Promise.reject('teamId is not exist');
+
+  const collectionIds = collections.map((item) => String(item._id));
+  const fileIdList = collections.map((item) => item?.fileId || '').filter(Boolean);
+  const relatedImageIds = collections
+    .map((item) => item?.metadata?.relatedImgId || '')
+    .filter(Boolean);
+
+  // delete training data
+  await MongoDatasetTraining.deleteMany({
+    teamId,
+    collectionId: { $in: collectionIds }
   });
 
-  return collection;
-};
+  await delay(2000);
+
+  // delete dataset.datas
+  await MongoDatasetData.deleteMany({ teamId, collectionId: { $in: collectionIds } });
+  // delete pg data
+  await deleteDatasetDataVector({ teamId, collectionIds });
+
+  // delete file and imgs
+  await Promise.all([
+    delImgByRelatedId(relatedImageIds),
+    delFileByFileIdList({
+      bucketName: BucketNameEnum.dataset,
+      fileIdList
+    })
+  ]);
+
+  // delete collections
+  await MongoDatasetCollection.deleteMany({
+    _id: { $in: collectionIds }
+  });
+}

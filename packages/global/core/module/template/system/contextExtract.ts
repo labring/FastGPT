@@ -17,8 +17,8 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.contentExtract,
   avatar: '/imgs/module/extract.png',
-  name: '文本内容提取',
-  intro: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
+  name: 'core.module.template.Extract field',
+  intro: 'core.module.template.Extract field intro',
   showStatus: true,
   inputs: [
     Input_Template_Switch,
@@ -26,7 +26,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.aiModel,
       type: FlowNodeInputTypeEnum.selectExtractModel,
       valueType: ModuleIOValueTypeEnum.string,
-      label: '提取模型',
+      label: 'core.module.input.label.LLM',
       required: true,
       showTargetInApp: false,
       showTargetInPlugin: false

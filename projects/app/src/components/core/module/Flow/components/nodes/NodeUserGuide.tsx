@@ -1,23 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
-import {
-  Box,
-  Flex,
-  Textarea,
-  useTheme,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Switch
-} from '@chakra-ui/react';
+import { Box, Flex, Textarea, useTheme } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { FlowModuleItemType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { welcomeTextTip, variableTip } from '@fastgpt/global/core/module/template/tip';
+import { welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { onChangeNode } from '../../FlowProvider';
 
 import VariableEdit from '../modules/VariableEdit';
@@ -29,6 +16,7 @@ import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
 import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
+import { useTranslation } from 'next-i18next';
 
 const NodeUserGuide = React.memo(function NodeUserGuide({ data }: { data: FlowModuleItemType }) {
   const theme = useTheme();
@@ -56,19 +44,18 @@ export default function Node({ data }: NodeProps<FlowModuleItemType>) {
   return <NodeUserGuide data={data} />;
 }
 export function WelcomeText({ data }: { data: FlowModuleItemType }) {
+  const { t } = useTranslation();
   const { inputs, moduleId } = data;
+  const [, startTst] = useTransition();
 
-  const welcomeText = useMemo(
-    () => inputs.find((item) => item.key === ModuleInputKeyEnum.welcomeText),
-    [inputs]
-  );
+  const welcomeText = inputs.find((item) => item.key === ModuleInputKeyEnum.welcomeText);
 
   return (
     <>
       <Flex mb={1} alignItems={'center'}>
         <MyIcon name={'core/modules/welcomeText'} mr={2} w={'16px'} color={'#E74694'} />
-        <Box>开场白</Box>
-        <MyTooltip label={welcomeTextTip} forceShow>
+        <Box>{t('core.app.Welcome Text')}</Box>
+        <MyTooltip label={t(welcomeTextTip)} forceShow>
           <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
         </MyTooltip>
       </Flex>
@@ -79,16 +66,18 @@ export function WelcomeText({ data }: { data: FlowModuleItemType }) {
           resize={'both'}
           defaultValue={welcomeText.value}
           bg={'myWhite.500'}
-          placeholder={welcomeTextTip}
+          placeholder={t(welcomeTextTip)}
           onChange={(e) => {
-            onChangeNode({
-              moduleId,
-              key: ModuleInputKeyEnum.welcomeText,
-              type: 'updateInput',
-              value: {
-                ...welcomeText,
-                value: e.target.value
-              }
+            startTst(() => {
+              onChangeNode({
+                moduleId,
+                key: ModuleInputKeyEnum.welcomeText,
+                type: 'updateInput',
+                value: {
+                  ...welcomeText,
+                  value: e.target.value
+                }
+              });
             });
           }}
         />

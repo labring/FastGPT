@@ -5,7 +5,7 @@ import {
   DatasetStatusEnum,
   DatasetStatusMap,
   DatasetTypeMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName

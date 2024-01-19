@@ -3,7 +3,7 @@ import { AuthModeType } from '../type';
 import { TeamItemType } from '@fastgpt/global/support/user/team/type';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { parseHeaderCert } from '../controller';
-import { getTeamInfoByTmbId } from '../../user/team/controller';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { UserErrEnum } from '../../../../global/common/error/code/user';
 
 export async function authUserNotVisitor(props: AuthModeType): Promise<
@@ -13,7 +13,7 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
   }
 > {
   const { userId, teamId, tmbId } = await parseHeaderCert(props);
-  const team = await getTeamInfoByTmbId({ tmbId });
+  const team = await getTmbInfoByTmbId({ tmbId });
 
   if (team.role === TeamMemberRoleEnum.visitor) {
     return Promise.reject(UserErrEnum.binVisitor);
@@ -38,7 +38,7 @@ export async function authUserRole(props: AuthModeType): Promise<
   }
 > {
   const result = await parseHeaderCert(props);
-  const { role: userRole, canWrite } = await getTeamInfoByTmbId({ tmbId: result.tmbId });
+  const { role: userRole, canWrite } = await getTmbInfoByTmbId({ tmbId: result.tmbId });
 
   return {
     ...result,

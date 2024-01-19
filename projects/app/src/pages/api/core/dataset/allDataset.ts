@@ -6,7 +6,7 @@ import { getVectorModel } from '@/service/core/ai/model';
 import type { DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 /* get all dataset by teamId or tmbId */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

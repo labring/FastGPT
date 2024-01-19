@@ -13,7 +13,7 @@ export async function postForm2Modules(
   function userGuideTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
     return [
       {
-        name: '用户引导',
+        name: 'core.module.template.User guide',
         flowType: FlowNodeTypeEnum.userGuide,
         inputs: [
           {

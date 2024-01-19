@@ -6,7 +6,7 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { parseHeaderCert } from '../controller';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
-import { getTeamInfoByTmbId } from '../../user/team/controller';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
 
 // 模型使用权校验
 export async function authApp({
@@ -24,7 +24,7 @@ export async function authApp({
 > {
   const result = await parseHeaderCert(props);
   const { teamId, tmbId } = result;
-  const { role } = await getTeamInfoByTmbId({ tmbId });
+  const { role } = await getTmbInfoByTmbId({ tmbId });
 
   const { app, isOwner, canWrite } = await (async () => {
     // get app

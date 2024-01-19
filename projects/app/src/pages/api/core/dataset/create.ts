@@ -5,7 +5,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { createDefaultCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

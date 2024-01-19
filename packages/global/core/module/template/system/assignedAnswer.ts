@@ -9,19 +9,17 @@ export const AssignedAnswerModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.textAnswer,
   flowType: FlowNodeTypeEnum.answerNode,
   avatar: '/imgs/module/reply.png',
-  name: '指定回复',
-  intro: '该模块可以直接回复一段指定的内容。常用于引导、提示',
+  name: 'core.module.template.Assigned reply',
+  intro: 'core.module.template.Assigned reply intro',
   inputs: [
     Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.answerText,
       type: FlowNodeInputTypeEnum.textarea,
       valueType: ModuleIOValueTypeEnum.any,
-      label: '回复的内容',
-      description:
-        '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
-      placeholder:
-        '可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串',
+      label: 'core.module.input.label.Response content',
+      description: 'core.module.input.description.Response content',
+      placeholder: 'core.module.input.description.Response content',
       showTargetInApp: true,
       showTargetInPlugin: true
     }

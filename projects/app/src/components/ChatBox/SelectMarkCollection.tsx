@@ -3,7 +3,7 @@ import { ModalBody, useTheme, ModalFooter, Button, Box, Card, Flex, Grid } from 
 import { useTranslation } from 'next-i18next';
 import Avatar from '../Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
 import dynamic from 'next/dynamic';
 import { AdminFbkType } from '@fastgpt/global/core/chat/type.d';
@@ -46,7 +46,7 @@ const SelectMarkCollection = ({
           paths={paths}
           onClose={onClose}
           setParentId={setParentId}
-          tips={t('core.chat.Select Mark Kb Desc')}
+          tips={t('core.chat.Select dataset Desc')}
         >
           <ModalBody flex={'1 0 0'} overflowY={'auto'}>
             <Grid

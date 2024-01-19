@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
-import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
+import { delCollectionAndRelatedSources } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('CollectionIdId is required');
     }
 
-    await authDatasetCollection({
+    const { teamId, collection } = await authDatasetCollection({
       req,
       authToken: true,
       authApiKey: true,
@@ -24,13 +24,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // find all delete id
-    const collections = await findCollectionAndChild(collectionId, '_id fileId');
-    const delIdList = collections.map((item) => item._id);
+    const collections = await findCollectionAndChild({
+      teamId,
+      datasetId: collection.datasetId._id,
+      collectionId,
+      fields: '_id teamId fileId metadata'
+    });
 
     // delete
-    await delCollectionRelevantData({
-      collectionIds: delIdList,
-      fileIds: collections.map((item) => item?.fileId || '').filter(Boolean)
+    await delCollectionAndRelatedSources({
+      collections
     });
 
     jsonRes(res);

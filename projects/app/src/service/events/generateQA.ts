@@ -1,6 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushQABill } from '@/service/support/wallet/bill/push';
-import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
@@ -13,7 +13,7 @@ import { authTeamBalance } from '../support/permission/auth/bill';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
-import { pushDataToDatasetCollection } from '@/service/core/dataset/data/controller';
+import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -135,7 +135,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 
     // get vector and insert
-    const { insertLen } = await pushDataToDatasetCollection({
+    const { insertLen } = await pushDataToTrainingQueue({
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
@@ -161,8 +161,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQABill({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        inputTokens: chatResponse.usage?.prompt_tokens || 0,
-        outputTokens: chatResponse.usage?.completion_tokens || 0,
+        charsLength: `${prompt}${answer}`.length,
         billId: data.billId,
         model
       });
@@ -238,7 +237,7 @@ function formatSplitText(text: string, rawText: string) {
 
   // empty result. direct split chunk
   if (result.length === 0) {
-    const { chunks } = splitText2Chunks({ text: rawText, chunkLen: 512, countTokens: false });
+    const { chunks } = splitText2Chunks({ text: rawText, chunkLen: 512 });
     chunks.forEach((chunk) => {
       result.push({
         q: chunk,

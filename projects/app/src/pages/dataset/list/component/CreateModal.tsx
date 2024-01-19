@@ -17,7 +17,7 @@ import MySelect from '@/components/Select';
 import { vectorModelList, qaModelList } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
-import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { feConfigs } from '@/web/common/system/staticData';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
@@ -149,40 +149,44 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             />
           </Flex>
         </Box>
-        <Flex mt={6} alignItems={'center'}>
-          <Box flex={'0 0 100px'}>{t('core.ai.model.Vector Model')}</Box>
-          <Box flex={1}>
-            <MySelect
-              w={'100%'}
-              value={getValues('vectorModel')}
-              list={vectorModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onchange={(e) => {
-                setValue('vectorModel', e);
-                setRefresh((state) => !state);
-              }}
-            />
-          </Box>
-        </Flex>
-        <Flex mt={6} alignItems={'center'}>
-          <Box flex={'0 0 100px'}>{t('core.ai.model.Dataset Agent Model')}</Box>
-          <Box flex={1}>
-            <MySelect
-              w={'100%'}
-              value={getValues('agentModel')}
-              list={qaModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onchange={(e) => {
-                setValue('agentModel', e);
-                setRefresh((state) => !state);
-              }}
-            />
-          </Box>
-        </Flex>
+        {vectorModelList.length > 1 && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box flex={'0 0 100px'}>{t('core.ai.model.Vector Model')}</Box>
+            <Box flex={1}>
+              <MySelect
+                w={'100%'}
+                value={getValues('vectorModel')}
+                list={vectorModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onchange={(e) => {
+                  setValue('vectorModel', e);
+                  setRefresh((state) => !state);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
+        {qaModelList.length > 1 && (
+          <Flex mt={6} alignItems={'center'}>
+            <Box flex={'0 0 100px'}>{t('core.ai.model.Dataset Agent Model')}</Box>
+            <Box flex={1}>
+              <MySelect
+                w={'100%'}
+                value={getValues('agentModel')}
+                list={qaModelList.map((item) => ({
+                  label: item.name,
+                  value: item.model
+                }))}
+                onchange={(e) => {
+                  setValue('agentModel', e);
+                  setRefresh((state) => !state);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
       </ModalBody>
 
       <ModalFooter>

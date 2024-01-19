@@ -53,27 +53,27 @@ export const formatTimeToChatTime = (time: Date) => {
 
   // 如果传入时间小于60秒，返回刚刚
   if (now.diff(target, 'second') < 60) {
-    return '刚刚';
+    return 'common.time.Just now';
   }
 
-  // 如果时间是今天，展示几时:几秒
+  // 如果时间是今天，展示几时:几分
   if (now.isSame(target, 'day')) {
     return target.format('HH:mm');
   }
 
   // 如果是昨天，展示昨天
   if (now.subtract(1, 'day').isSame(target, 'day')) {
-    return '昨天';
+    return 'common.time.Yesterday';
   }
 
   // 如果是前天，展示前天
   if (now.subtract(2, 'day').isSame(target, 'day')) {
-    return '前天';
+    return 'common.time.The day before yesterday';
   }
 
   // 如果是今年，展示某月某日
   if (now.isSame(target, 'year')) {
-    return target.format('M月D日');
+    return target.format('MM/DD');
   }
 
   // 如果是更久之前，展示某年某月某日

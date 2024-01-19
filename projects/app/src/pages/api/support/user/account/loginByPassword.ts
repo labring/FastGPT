@@ -10,7 +10,7 @@ import { UserStatusEnum } from '@fastgpt/global/support/user/constant';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { username, password, tmbId = '' } = req.body as PostLoginProps;
+    const { username, password } = req.body as PostLoginProps;
 
     if (!username || !password) {
       throw new Error('缺少参数');
@@ -40,7 +40,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('密码错误');
     }
 
-    const userDetail = await getUserDetail({ tmbId, userId: user._id });
+    const userDetail = await getUserDetail({
+      tmbId: user?.lastLoginTmbId,
+      userId: user._id
+    });
+
+    MongoUser.findByIdAndUpdate(user._id, {
+      lastLoginTmbId: userDetail.team.tmbId
+    });
 
     const token = createJWT(userDetail);
     setCookie(res, token);

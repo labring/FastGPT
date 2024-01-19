@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { Box, Flex, Button, Textarea, useTheme, Grid } from '@chakra-ui/react';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { UseFormRegister, useFieldArray, useForm } from 'react-hook-form';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
@@ -20,7 +20,7 @@ import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { vectorModelList } from '@/web/common/system/staticData';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import SideTabs from '@/components/SideTabs';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
@@ -29,6 +29,8 @@ import { getDocPath } from '@/web/common/system/doc';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import MyBox from '@/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export type InputDataType = {
   q: string;
@@ -124,7 +126,7 @@ const InputDataModal = ({
       onError(err) {
         toast({
           status: 'error',
-          title: getErrText(err)
+          title: t(getErrText(err))
         });
         onClose();
       }
@@ -261,51 +263,7 @@ const InputDataModal = ({
             {currentTab === TabEnum.index && <> {t('dataset.data.Index Edit')}</>}
           </Box>
           <Box flex={1} px={5} overflow={'auto'}>
-            {currentTab === TabEnum.content && (
-              <>
-                <Box>
-                  <Flex alignItems={'center'}>
-                    <Box>
-                      <Box as="span" color={'red.600'}>
-                        *
-                      </Box>
-                      {t('core.dataset.data.Data Content')}
-                    </Box>
-                    <MyTooltip label={t('core.dataset.data.Data Content Tip')}>
-                      <QuestionOutlineIcon ml={1} />
-                    </MyTooltip>
-                  </Flex>
-                  <Textarea
-                    mt={1}
-                    placeholder={t('core.dataset.data.Data Content Placeholder', { maxToken })}
-                    maxLength={maxToken}
-                    rows={12}
-                    bg={'myWhite.400'}
-                    {...register(`q`, {
-                      required: true
-                    })}
-                  />
-                </Box>
-                <Box mt={5}>
-                  <Flex>
-                    <Box>{t('core.dataset.data.Auxiliary Data')}</Box>
-                    <MyTooltip label={t('core.dataset.data.Auxiliary Data Tip')}>
-                      <QuestionOutlineIcon ml={1} />
-                    </MyTooltip>
-                  </Flex>
-                  <Textarea
-                    mt={1}
-                    placeholder={t('core.dataset.data.Auxiliary Data Placeholder', {
-                      maxToken: maxToken * 1.5
-                    })}
-                    bg={'myWhite.400'}
-                    rows={12}
-                    maxLength={maxToken * 1.5}
-                    {...register('a')}
-                  />
-                </Box>
-              </>
-            )}
+            {currentTab === TabEnum.content && <InputTab maxToken={maxToken} register={register} />}
             {currentTab === TabEnum.index && (
               <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={4}>
                 {indexes.map((index, i) => (
@@ -382,6 +340,7 @@ const InputDataModal = ({
               </Grid>
             )}
           </Box>
+          {/* footer */}
           <Flex justifyContent={'flex-end'} px={5} mt={4}>
             <Button variant={'whiteBase'} mr={3} onClick={onClose}>
               {t('common.Close')}
@@ -404,3 +363,80 @@ const InputDataModal = ({
 };
 
 export default React.memo(InputDataModal);
+
+enum InputTypeEnum {
+  q = 'q',
+  a = 'a'
+}
+const InputTab = ({
+  maxToken,
+  register
+}: {
+  maxToken: number;
+  register: UseFormRegister<InputDataType>;
+}) => {
+  const { t } = useTranslation();
+  const { isPc } = useSystemStore();
+  const [inputType, setInputType] = useState(InputTypeEnum.q);
+
+  return (
+    <Box>
+      <RowTabs
+        list={[
+          {
+            label: (
+              <Flex alignItems={'center'}>
+                <Box as="span" color={'red.600'}>
+                  *
+                </Box>
+                {t('core.dataset.data.Main Content')}
+                <MyTooltip label={t('core.dataset.data.Data Content Tip')}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Flex>
+            ),
+            value: InputTypeEnum.q
+          },
+          {
+            label: (
+              <Flex alignItems={'center'}>
+                {t('core.dataset.data.Auxiliary Data')}
+                <MyTooltip label={t('core.dataset.data.Auxiliary Data Tip')}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Flex>
+            ),
+            value: InputTypeEnum.a
+          }
+        ]}
+        value={inputType}
+        onChange={(e) => setInputType(e as InputTypeEnum)}
+      />
+
+      <Box mt={3}>
+        {inputType === InputTypeEnum.q && (
+          <Textarea
+            placeholder={t('core.dataset.data.Data Content Placeholder', { maxToken })}
+            maxLength={maxToken}
+            rows={isPc ? 24 : 12}
+            bg={'myWhite.400'}
+            {...register(`q`, {
+              required: true
+            })}
+          />
+        )}
+        {inputType === InputTypeEnum.a && (
+          <Textarea
+            placeholder={t('core.dataset.data.Auxiliary Data Placeholder', {
+              maxToken: maxToken * 1.5
+            })}
+            bg={'myWhite.400'}
+            rows={isPc ? 24 : 12}
+            maxLength={maxToken * 1.5}
+            {...register('a')}
+          />
+        )}
+      </Box>
+    </Box>
+  );
+};

@@ -33,7 +33,7 @@ export const uploadFiles = ({
 };
 
 export const getUploadBase64ImgController = (props: CompressImgProps & UploadImgProps) =>
-  compressBase64Img({
+  compressBase64ImgAndUpload({
     maxW: 4000,
     maxH: 4000,
     maxSize: 1024 * 1024 * 5,
