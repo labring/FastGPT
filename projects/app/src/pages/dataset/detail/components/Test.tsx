@@ -35,7 +35,8 @@ import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
 import MySelect from '@/components/Select';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { fileDownload, readCsvContent } from '@/web/common/file/utils';
+import { fileDownload } from '@/web/common/file/utils';
+import { readCsvContent } from '@fastgpt/web/common/file/read/csv';
 import { delay } from '@fastgpt/global/common/system/utils';
 import QuoteItem from '@/components/core/dataset/QuoteItem';
 
@@ -125,7 +126,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const { mutate: onFileTest, isLoading: fileTestIsLoading } = useRequest({
     mutationFn: async ({ searchParams }: FormType) => {
       if (!selectFile) return Promise.reject('File is not selected');
-      const { data } = await readCsvContent(selectFile);
+      const { data } = await readCsvContent({ file: selectFile });
       const testList = data.slice(0, 100);
       const results: SearchTestResponse[] = [];
 

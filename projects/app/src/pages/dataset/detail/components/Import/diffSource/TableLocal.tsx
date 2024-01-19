@@ -14,7 +14,8 @@ import { useImportStore } from '../Provider';
 import { feConfigs } from '@/web/common/system/staticData';
 
 import dynamic from 'next/dynamic';
-import { fileDownload, readCsvContent } from '@/web/common/file/utils';
+import { fileDownload } from '@/web/common/file/utils';
+import { readCsvContent } from '@fastgpt/web/common/file/read/csv';
 
 const PreviewData = dynamic(() => import('../commonProgress/PreviewData'));
 const Upload = dynamic(() => import('../commonProgress/Upload'));
@@ -56,7 +57,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
       {
         for await (const selectFile of files) {
           const { file, folderPath } = selectFile;
-          const { header, data } = await readCsvContent(file);
+          const { header, data } = await readCsvContent({ file });
 
           const filterData: FileItemType['chunks'] = data
             .filter((item) => item[0])

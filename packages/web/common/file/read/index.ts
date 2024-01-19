@@ -1,4 +1,5 @@
 import { loadFile2Buffer } from '../utils';
+import { readCsvContent } from './csv';
 import { readHtmlFile } from './html';
 import { readMdFile } from './md';
 import { readPdfFile } from './pdf';
@@ -29,6 +30,8 @@ export const readFileRawContent = async ({
         file,
         uploadImgController: uploadBase64Controller
       });
+    case 'csv':
+      return readCsvContent({ file });
     case 'pdf':
       const pdf = await loadFile2Buffer({ file });
       return readPdfFile({ pdf });

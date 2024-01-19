@@ -3,7 +3,9 @@ export const fileImgs = [
   { suffix: 'csv', src: 'file/fill/csv' },
   { suffix: '(doc|docs)', src: 'file/fill/doc' },
   { suffix: 'txt', src: 'file/fill/txt' },
-  { suffix: 'md', src: 'file/fill/markdown' }
+  { suffix: 'md', src: 'file/fill/markdown' },
+  { suffix: 'html', src: 'file/fill/html' }
+
   // { suffix: '.', src: '/imgs/files/file.svg' }
 ];
 
