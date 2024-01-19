@@ -1,5 +1,8 @@
 name: FastGPT GitHub Actions Workflow
 
+env:
+  FASTGPT_TOKEN: ${{ secrets.FASTGPT_TOKEN }}
+
 on:
   push:
     branches:
