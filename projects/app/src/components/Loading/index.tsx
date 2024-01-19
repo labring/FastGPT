@@ -17,6 +17,7 @@ const Loading = ({
       position={fixed ? 'fixed' : 'absolute'}
       zIndex={zIndex}
       bg={bg}
+      borderRadius={'md'}
       top={0}
       left={0}
       right={0}

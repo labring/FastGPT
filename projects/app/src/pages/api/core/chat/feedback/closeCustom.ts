@@ -2,14 +2,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import type {
-  AdminUpdateFeedbackParams,
-  CloseCustomFeedbackParams
-} from '@/global/core/chat/api.d';
+import type { CloseCustomFeedbackParams } from '@/global/core/chat/api.d';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
 
-/* 初始化我的聊天框，需要身份验证 */
+/* remove custom feedback */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
@@ -29,12 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await authCert({ req, authToken: true });
 
     await MongoChatItem.findOneAndUpdate(
-      { dataId: chatItemId },
+      { appId, chatId, dataId: chatItemId },
       { $unset: { [`customFeedbacks.${index}`]: 1 } }
-    );
-    await MongoChatItem.findOneAndUpdate(
-      { dataId: chatItemId },
-      { $pull: { customFeedbacks: null } }
     );
 
     jsonRes(res);

@@ -98,4 +98,4 @@ function embedChatbot() {
   ChatBtn.appendChild(ChatBtnDiv);
   document.body.appendChild(ChatBtn);
 }
-document.body.onload = embedChatbot;
+window.addEventListener('load', embedChatbot);

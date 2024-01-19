@@ -23,9 +23,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     await MongoChatItem.deleteMany({
+      appId,
       chatId
     });
     await MongoChat.findOneAndRemove({
+      appId,
       chatId
     });
 

@@ -62,7 +62,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       });
 
       if (unconnected) {
-        const msg = `【${t(item.name)}】存在未填或未连接参数`;
+        const msg = t('core.module.Unlink tip', { name: t(item.name) });
 
         toast({
           status: 'warning',
@@ -82,8 +82,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         permission: undefined
       });
     },
-    successToast: '保存配置成功',
-    errorToast: '保存配置异常',
+    successToast: t('common.Save Success'),
+    errorToast: t('common.Save Failed'),
     onSuccess() {
       ChatTestRef.current?.resetChatTest();
     }
@@ -98,22 +98,23 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         alignItems={'center'}
         userSelect={'none'}
       >
-        <MyTooltip label={t('common.Back')} offset={[10, 10]}>
-          <IconButton
-            size={'smSquare'}
-            icon={<MyIcon name={'common/backLight'} w={'14px'} />}
-            borderColor={'myGray.300'}
-            variant={'whiteBase'}
-            aria-label={''}
-            onClick={openConfirmOut(async () => {
-              const modules = await flow2ModulesAndCheck();
-              if (modules) {
-                await onclickSave(modules);
-              }
-              onClose();
-            }, onClose)}
-          />
-        </MyTooltip>
+        <IconButton
+          size={'smSquare'}
+          icon={<MyIcon name={'common/backFill'} w={'14px'} />}
+          borderRadius={'50%'}
+          w={'26px'}
+          h={'26px'}
+          borderColor={'myGray.300'}
+          variant={'whiteBase'}
+          aria-label={''}
+          onClick={openConfirmOut(async () => {
+            const modules = await flow2ModulesAndCheck();
+            if (modules) {
+              await onclickSave(modules);
+            }
+            onClose();
+          }, onClose)}
+        />
         <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
           {app.name}
         </Box>
@@ -154,7 +155,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             onClick={() => setTestModules(undefined)}
           />
         ) : (
-          <MyTooltip label={'测试对话'}>
+          <MyTooltip label={t('core.Chat test')}>
             <IconButton
               mr={[3, 6]}
               icon={<MyIcon name={'core/chat/chatLight'} w={['14px', '16px']} />}
@@ -171,9 +172,9 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           </MyTooltip>
         )}
 
-        <MyTooltip label={'保存配置'}>
+        <MyTooltip label={t('common.Save')}>
           <IconButton
-            icon={<MyIcon name={'save'} w={['14px', '16px']} />}
+            icon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
             size={'smSquare'}
             isLoading={isLoading}
             aria-label={'save'}

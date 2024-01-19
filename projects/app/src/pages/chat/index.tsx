@@ -348,7 +348,6 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
-                onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
                 onDelMessage={(e) => delOneHistoryItem({ ...e, appId, chatId })}
                 appId={appId}

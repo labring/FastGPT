@@ -6,11 +6,11 @@ import {
   getCollectionAndRawText,
   reloadCollectionChunks
 } from '@fastgpt/service/core/dataset/collection/utils';
-import { delCollectionRelevantData } from '@fastgpt/service/core/dataset/data/controller';
+import { delCollectionAndRelatedSources } from '@fastgpt/service/core/dataset/collection/controller';
 import {
   DatasetCollectionSyncResultEnum,
   DatasetCollectionTypeEnum
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('CollectionIdId is required');
     }
 
-    const { collection, tmbId } = await authDatasetCollection({
+    const { collection, teamId, tmbId } = await authDatasetCollection({
       req,
       authToken: true,
       collectionId,
@@ -87,9 +87,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // delete old collection
-    await delCollectionRelevantData({
-      collectionIds: [collection._id],
-      fileIds: collection.fileId ? [collection.fileId] : []
+    await delCollectionAndRelatedSources({
+      collections: [collection]
     });
 
     jsonRes(res, {

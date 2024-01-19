@@ -1,5 +1,5 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from './node/constant';
-import { ModuleIOValueTypeEnum, ModuleInputKeyEnum } from './constants';
+import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, variableMap } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
 import { Input_Template_Switch } from './template/input';
@@ -94,3 +94,12 @@ export function plugin2ModuleIO(
       : []
   };
 }
+
+export const formatVariablesIcon = (
+  variables: VariableItemType[]
+): (VariableItemType & { icon: string })[] => {
+  return variables.map((item) => ({
+    ...item,
+    icon: variableMap[item.type]?.icon
+  }));
+};

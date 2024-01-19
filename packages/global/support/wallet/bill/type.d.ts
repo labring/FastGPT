@@ -4,9 +4,8 @@ import { BillSourceEnum } from './constants';
 export type BillListItemCountType = {
   inputTokens?: number;
   outputTokens?: number;
-  textLen?: number;
+  charsLength?: number;
   duration?: number;
-  dataLen?: number;
 
   // abandon
   tokenLen?: number;

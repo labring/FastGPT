@@ -36,7 +36,8 @@ export const pushChatBill = ({
       amount: item.price || 0,
       model: item.model,
       inputTokens: item.inputTokens,
-      outputTokens: item.outputTokens
+      outputTokens: item.outputTokens,
+      charsLength: item.charsLength
     }))
   });
   addLog.info(`finish completions`, {
@@ -52,22 +53,19 @@ export const pushQABill = async ({
   teamId,
   tmbId,
   model,
-  inputTokens,
-  outputTokens,
+  charsLength,
   billId
 }: {
   teamId: string;
   tmbId: string;
   model: string;
-  inputTokens: number;
-  outputTokens: number;
+  charsLength: number;
   billId: string;
 }) => {
   // 计算价格
   const { total } = formatModelPrice2Store({
     model,
-    inputLen: inputTokens,
-    outputLen: outputTokens,
+    inputLen: charsLength,
     type: ModelTypeEnum.qa
   });
 
@@ -76,8 +74,7 @@ export const pushQABill = async ({
     teamId,
     tmbId,
     total,
-    inputTokens,
-    outputTokens,
+    charsLength,
     listIndex: 1
   });
 
@@ -88,24 +85,22 @@ export const pushGenerateVectorBill = ({
   billId,
   teamId,
   tmbId,
-  tokens,
+  charsLength,
   model,
   source = BillSourceEnum.fastgpt
 }: {
   billId?: string;
   teamId: string;
   tmbId: string;
-  tokens: number;
+  charsLength: number;
   model: string;
   source?: `${BillSourceEnum}`;
 }) => {
   let { total, modelName } = formatModelPrice2Store({
     model,
-    inputLen: tokens,
+    inputLen: charsLength,
     type: ModelTypeEnum.vector
   });
-
-  total = total < 1 ? 1 : total;
 
   // 插入 Bill 记录
   if (billId) {
@@ -114,7 +109,7 @@ export const pushGenerateVectorBill = ({
       tmbId,
       total,
       billId,
-      inputTokens: tokens,
+      charsLength,
       listIndex: 0
     });
   } else {
@@ -129,7 +124,7 @@ export const pushGenerateVectorBill = ({
           moduleName: 'wallet.moduleName.index',
           amount: total,
           model: modelName,
-          inputTokens: tokens
+          charsLength
         }
       ]
     });
@@ -177,21 +172,21 @@ export const pushQuestionGuideBill = ({
 export function pushAudioSpeechBill({
   appName = 'wallet.bill.Audio Speech',
   model,
-  textLen,
+  charsLength,
   teamId,
   tmbId,
   source = BillSourceEnum.fastgpt
 }: {
   appName?: string;
   model: string;
-  textLen: number;
+  charsLength: number;
   teamId: string;
   tmbId: string;
   source: `${BillSourceEnum}`;
 }) {
   const { total, modelName } = formatModelPrice2Store({
     model,
-    inputLen: textLen,
+    inputLen: charsLength,
     type: ModelTypeEnum.audioSpeech
   });
 
@@ -206,7 +201,7 @@ export function pushAudioSpeechBill({
         moduleName: appName,
         amount: total,
         model: modelName,
-        textLen
+        charsLength
       }
     ]
   });
@@ -265,11 +260,11 @@ export function pushReRankBill({
   const reRankModel = global.reRankModels[0];
   if (!reRankModel) return { total: 0 };
 
-  const textLen = inputs.reduce((sum, item) => sum + item.text.length, 0);
+  const charsLength = inputs.reduce((sum, item) => sum + item.text.length, 0);
 
   const { total, modelName } = formatModelPrice2Store({
     model: reRankModel.model,
-    inputLen: textLen,
+    inputLen: charsLength,
     type: ModelTypeEnum.rerank
   });
   const name = 'wallet.bill.ReRank';
@@ -285,7 +280,7 @@ export function pushReRankBill({
         moduleName: name,
         amount: total,
         model: modelName,
-        textLen
+        charsLength
       }
     ]
   });

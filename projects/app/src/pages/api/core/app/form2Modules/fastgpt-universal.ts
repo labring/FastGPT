@@ -33,7 +33,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
   return [
     {
       moduleId: 'userChatInput',
-      name: '用户问题(对话入口)',
+      name: 'core.module.template.Chat entrance',
       avatar: '/imgs/module/userChatInput.png',
       flowType: 'questionInput',
       position: {
@@ -45,7 +45,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           key: 'userChatInput',
           type: 'systemInput',
           valueType: 'string',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false
@@ -54,7 +54,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
       outputs: [
         {
           key: 'userChatInput',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           type: 'source',
           valueType: 'string',
           targets: [
@@ -89,7 +89,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         {
           key: 'model',
           type: 'selectChatModel',
-          label: '对话模型',
+          label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
           showTargetInApp: false,
@@ -185,7 +185,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         {
           key: 'systemPrompt',
           type: 'textarea',
-          label: '系统提示词',
+          label: 'core.ai.Prompt',
           max: 300,
           valueType: 'string',
           description:
@@ -264,7 +264,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
   const modules: ModuleItemType[] = [
     {
       moduleId: 'userChatInput',
-      name: '用户问题(对话入口)',
+      name: 'core.module.template.Chat entrance',
       avatar: '/imgs/module/userChatInput.png',
       flowType: 'questionInput',
       position: {
@@ -276,7 +276,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           key: 'userChatInput',
           type: 'systemInput',
           valueType: 'string',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false
@@ -285,16 +285,12 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
       outputs: [
         {
           key: 'userChatInput',
-          label: '用户问题',
+          label: 'core.module.input.label.user question',
           type: 'source',
           valueType: 'string',
           targets: [
             {
               moduleId: 'vuc92c',
-              key: 'userChatInput'
-            },
-            {
-              moduleId: 'chatModule',
               key: 'userChatInput'
             }
           ]
@@ -303,7 +299,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
     },
     {
       moduleId: 'datasetSearch',
-      name: '知识库搜索',
+      name: 'core.module.template.Dataset search',
       avatar: '/imgs/module/db.png',
       flowType: 'datasetSearchNode',
       showStatus: true,
@@ -457,6 +453,18 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           valueType: 'boolean',
           type: 'source',
           targets: []
+        },
+        {
+          key: 'userChatInput',
+          label: 'core.module.input.label.user question',
+          type: 'hidden',
+          valueType: 'string',
+          targets: [
+            {
+              moduleId: 'chatModule',
+              key: 'userChatInput'
+            }
+          ]
         }
       ]
     },
@@ -483,7 +491,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         {
           key: 'model',
           type: 'selectChatModel',
-          label: '对话模型',
+          label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
           showTargetInApp: false,
@@ -579,7 +587,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         {
           key: 'systemPrompt',
           type: 'textarea',
-          label: '系统提示词',
+          label: 'core.ai.Prompt',
           max: 300,
           valueType: 'string',
           description:

@@ -1,7 +1,7 @@
 import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetCollectionSchemaType } from '@fastgpt/global/core/dataset/type.d';
-import { TrainingTypeMap, DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constant';
+import { TrainingTypeMap, DatasetCollectionTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { DatasetCollectionName } from '../schema';
 import {
   TeamCollectionName,
@@ -91,11 +91,19 @@ const DatasetCollectionSchema = new Schema({
 });
 
 try {
-  DatasetCollectionSchema.index({ teamId: 1 });
-  DatasetCollectionSchema.index({ datasetId: 1 });
-  DatasetCollectionSchema.index({ teamId: 1, datasetId: 1, parentId: 1 });
-  DatasetCollectionSchema.index({ updateTime: -1 });
-  DatasetCollectionSchema.index({ hashRawText: -1 });
+  // auth file
+  DatasetCollectionSchema.index({ teamId: 1, fileId: 1 }, { background: true });
+
+  // list collection; deep find collections
+  DatasetCollectionSchema.index(
+    {
+      teamId: 1,
+      datasetId: 1,
+      parentId: 1,
+      updateTime: -1
+    },
+    { background: true }
+  );
 } catch (error) {
   console.log(error);
 }
