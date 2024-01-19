@@ -1,5 +1,13 @@
 name: FastGPT GitHub Actions Workflow
 
+  
+  pull_request_target:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+
 env:
   FASTGPT_TOKEN: ${{ secrets.FASTGPT_TOKEN }}
 
@@ -29,6 +37,9 @@ jobs:
 
       - name: Run tests and coverage
         run: pytest --cov
+      - name: Build and deploy
+        run: |
+          echo Deploying FastGPT application
         run: pytest -v --cov
 
       - name: Deploy FastGPT application
