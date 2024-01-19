@@ -96,9 +96,6 @@ importers:
       jsonwebtoken:
         specifier: ^9.0.2
         version: registry.npmmirror.com/jsonwebtoken@9.0.2
-      mammoth:
-        specifier: ^1.6.0
-        version: registry.npmmirror.com/mammoth@1.6.0
       mongoose:
         specifier: ^7.0.2
         version: registry.npmmirror.com/mongoose@7.0.2
@@ -114,9 +111,6 @@ importers:
       node-cron:
         specifier: ^3.0.3
         version: registry.npmmirror.com/node-cron@3.0.3
-      pdfjs-dist:
-        specifier: ^4.0.269
-        version: registry.npmmirror.com/pdfjs-dist@4.0.269(encoding@0.1.13)
       pg:
         specifier: ^8.10.0
         version: registry.npmmirror.com/pg@8.10.0
@@ -204,7 +198,7 @@ importers:
         version: registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.5.2)(react-i18next@12.3.1)(react@18.2.0)
       pdfjs-dist:
         specifier: ^4.0.269
-        version: registry.npmmirror.com/pdfjs-dist@4.0.269(encoding@0.1.13)
+        version: registry.npmmirror.com/pdfjs-dist@4.0.269
       react:
         specifier: 18.2.0
         version: registry.npmmirror.com/react@18.2.0
@@ -4218,9 +4212,8 @@ packages:
       yjs: registry.npmmirror.com/yjs@13.6.10
     dev: false
 
-  registry.npmmirror.com/@mapbox/node-pre-gyp@1.0.11(encoding@0.1.13):
+  registry.npmmirror.com/@mapbox/node-pre-gyp@1.0.11:
     resolution: {integrity: sha512-Yhlar6v9WQgUp/He7BdgzOz8lqMQ8sU+jkCq7Wx8Myc5YFJLbEe7lgui/V7G1qB1DJykHSGwreceSaD60Y0PUQ==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/@mapbox/node-pre-gyp/-/node-pre-gyp-1.0.11.tgz}
-    id: registry.npmmirror.com/@mapbox/node-pre-gyp/1.0.11
     name: '@mapbox/node-pre-gyp'
     version: 1.0.11
     hasBin: true
@@ -6416,15 +6409,14 @@ packages:
     name: caniuse-lite
     version: 1.0.30001574
 
-  registry.npmmirror.com/canvas@2.11.2(encoding@0.1.13):
+  registry.npmmirror.com/canvas@2.11.2:
     resolution: {integrity: sha512-ItanGBMrmRV7Py2Z+Xhs7cT+FNt5K0vPL4p9EZ/UX/Mu7hFbkxSjKF2KVtPwX7UYWp7dRKnrTvReflgrItJbdw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/canvas/-/canvas-2.11.2.tgz}
-    id: registry.npmmirror.com/canvas/2.11.2
     name: canvas
     version: 2.11.2
     engines: {node: '>=6'}
     requiresBuild: true
     dependencies:
-      '@mapbox/node-pre-gyp': registry.npmmirror.com/@mapbox/node-pre-gyp@1.0.11(encoding@0.1.13)
+      '@mapbox/node-pre-gyp': registry.npmmirror.com/@mapbox/node-pre-gyp@1.0.11
       nan: registry.npmmirror.com/nan@2.18.0
       simple-get: registry.npmmirror.com/simple-get@3.1.1
     transitivePeerDependencies:
@@ -11962,14 +11954,13 @@ packages:
       sha.js: registry.npmmirror.com/sha.js@2.4.11
     dev: true
 
-  registry.npmmirror.com/pdfjs-dist@4.0.269(encoding@0.1.13):
+  registry.npmmirror.com/pdfjs-dist@4.0.269:
     resolution: {integrity: sha512-jjWO56tcOjnmPqDf8PmXDeZ781AGvpHMYI3HhNtaFKTRXXPaD1ArSrhVe38/XsrIQJ0onISCND/vuXaWJkiDWw==, registry: https://registry.npm.taobao.org/, tarball: https://registry.npmmirror.com/pdfjs-dist/-/pdfjs-dist-4.0.269.tgz}
-    id: registry.npmmirror.com/pdfjs-dist/4.0.269
     name: pdfjs-dist
     version: 4.0.269
     engines: {node: '>=18'}
     optionalDependencies:
-      canvas: registry.npmmirror.com/canvas@2.11.2(encoding@0.1.13)
+      canvas: registry.npmmirror.com/canvas@2.11.2
       path2d-polyfill: registry.npmmirror.com/path2d-polyfill@2.0.1
     transitivePeerDependencies:
       - encoding

@@ -78,7 +78,7 @@ export default function VariablePickerPlugin({ variables }: { variables: PickerM
       onQueryChange={setQueryString}
       onSelectOption={onSelectOption}
       triggerFn={checkForTriggerMatch}
-      options={variables}
+      options={variables as any[]}
       menuRenderFn={(
         anchorElementRef,
         { selectedIndex, selectOptionAndCleanUp, setHighlightedIndex }
