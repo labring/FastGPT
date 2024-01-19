@@ -3,13 +3,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { TrainingModeEnum, TrainingTypeMap } from '@fastgpt/global/core/dataset/constant';
 import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
 import type { PushDatasetDataProps } from '@/global/core/dataset/api.d';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { pushDataToDatasetCollection } from '@/service/core/dataset/data/controller';
+import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -41,7 +40,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     jsonRes<PushDataResponse>(res, {
-      data: await pushDataToDatasetCollection({
+      data: await pushDataToTrainingQueue({
         ...req.body,
         teamId,
         tmbId

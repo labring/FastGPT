@@ -1,8 +1,45 @@
 import { getFileViewUrl, postChunks2Dataset } from '@/web/core/dataset/api';
-import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
-import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
+import type {
+  FileCreateDatasetCollectionParams,
+  PushDatasetDataChunkProps
+} from '@fastgpt/global/core/dataset/api.d';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { POST } from '@/web/common/api/request';
+
+/* upload a file to create collection */
+export const fileCollectionCreate = ({
+  file,
+  metadata = {},
+  data,
+  percentListen
+}: {
+  file: File;
+  metadata?: Record<string, any>;
+  data: FileCreateDatasetCollectionParams;
+  percentListen: (percent: number) => void;
+}) => {
+  const form = new FormData();
+  form.append('data', JSON.stringify(data));
+  form.append('metadata', JSON.stringify(metadata));
+  form.append('bucketName', BucketNameEnum.dataset);
+  form.append('file', file, encodeURIComponent(file.name));
+
+  return POST<string>(`/core/dataset/collection/create/file?datasetId=${data.datasetId}`, form, {
+    timeout: 480000,
+    onUploadProgress: (e) => {
+      if (!e.total) return;
+
+      const percent = Math.round((e.loaded / e.total) * 100);
+      percentListen && percentListen(percent);
+    },
+    headers: {
+      'Content-Type': 'multipart/form-data; charset=utf-8'
+    }
+  });
+};
 
 export async function chunksUpload({
   billId,
@@ -10,7 +47,7 @@ export async function chunksUpload({
   trainingMode,
   chunks,
   prompt,
-  rate = 150,
+  rate = 50,
   onUploading
 }: {
   billId: string;
@@ -19,7 +56,7 @@ export async function chunksUpload({
   chunks: PushDatasetDataChunkProps[];
   prompt?: string;
   rate?: number;
-  onUploading?: (insertLen: number, total: number) => void;
+  onUploading?: (rate: number) => void;
 }) {
   async function upload(data: PushDatasetDataChunkProps[]) {
     return postChunks2Dataset({
@@ -41,8 +78,11 @@ export async function chunksUpload({
   let retryTimes = 10;
   for (let i = 0; i < chunks.length; i += rate) {
     try {
-      const { insertLen } = await upload(chunks.slice(i, i + rate));
-      onUploading && onUploading(insertLen, chunks.length);
+      const uploadChunks = chunks.slice(i, i + rate);
+      const { insertLen } = await upload(uploadChunks);
+      if (onUploading) {
+        onUploading(Math.round(((i + uploadChunks.length) / chunks.length) * 100));
+      }
       successInsert += insertLen;
     } catch (error) {
       if (retryTimes === 0) {

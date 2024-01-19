@@ -1,7 +1,7 @@
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { AuthModeType } from '../type';
 import { parseHeaderCert } from '../controller';
-import { getTeamInfoByTmbId } from '../../user/team/controller';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { MongoPlugin } from '../../../core/plugin/schema';
 import { PluginErrEnum } from '@fastgpt/global/common/error/code/plugin';
@@ -23,7 +23,7 @@ export async function authPluginCrud({
   const result = await parseHeaderCert(props);
   const { tmbId, teamId } = result;
 
-  const { role } = await getTeamInfoByTmbId({ tmbId });
+  const { role } = await getTmbInfoByTmbId({ tmbId });
 
   const { plugin, isOwner, canWrite } = await (async () => {
     const plugin = await MongoPlugin.findOne({ _id: id, teamId });
@@ -73,7 +73,7 @@ export async function authPluginCanUse({
   }
 
   if (source === PluginSourceEnum.personal) {
-    const { role } = await getTeamInfoByTmbId({ tmbId });
+    const { role } = await getTmbInfoByTmbId({ tmbId });
     const plugin = await MongoPlugin.findOne({ _id: pluginId, teamId });
     if (!plugin) {
       return Promise.reject(PluginErrEnum.unExist);

@@ -9,7 +9,7 @@ const QGSwitch = (props: SwitchProps) => {
   const { t } = useTranslation();
   return (
     <Flex alignItems={'center'}>
-      <MyIcon name={'core/app/questionGuide'} mr={2} w={'16px'} />
+      <MyIcon name={'core/app/questionGuide'} mr={2} w={'20px'} />
       <Box>{t('core.app.Next Step Guide')}</Box>
       <MyTooltip label={t('core.app.Question Guide Tip')} forceShow>
         <QuestionOutlineIcon display={['none', 'inline']} ml={1} />

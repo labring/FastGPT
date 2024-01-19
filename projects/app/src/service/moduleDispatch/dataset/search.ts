@@ -6,7 +6,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
+import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -27,6 +27,7 @@ export async function dispatchDatasetSearch(
   props: DatasetSearchProps
 ): Promise<DatasetSearchResponse> {
   const {
+    teamId,
     inputs: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
@@ -39,7 +40,7 @@ export async function dispatchDatasetSearch(
   }
 
   if (!userChatInput) {
-    return Promise.reject('core.chat.error.User question empty');
+    return Promise.reject('core.chat.error.User input empty');
   }
 
   // get vector
@@ -54,10 +55,11 @@ export async function dispatchDatasetSearch(
   // start search
   const {
     searchRes,
-    tokens,
+    charsLength,
     usingSimilarityFilter,
     usingReRank: searchUsingReRank
   } = await searchDatasetData({
+    teamId,
     rawQuery: `${userChatInput}`,
     queries: concatQueries,
     model: vectorModel.model,
@@ -70,7 +72,7 @@ export async function dispatchDatasetSearch(
 
   const { total, modelName } = formatModelPrice2Store({
     model: vectorModel.model,
-    inputLen: tokens,
+    inputLen: charsLength,
     type: ModelTypeEnum.vector
   });
 
@@ -82,7 +84,7 @@ export async function dispatchDatasetSearch(
       price: total,
       query: concatQueries.join('\n'),
       model: modelName,
-      inputTokens: tokens,
+      charsLength,
       similarity: usingSimilarityFilter ? similarity : undefined,
       limit,
       searchMode,

@@ -1,0 +1,24 @@
+.contentEditable {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  border: 1px solid var(--chakra-colors-borderColor-base);
+  border-radius: var(--chakra-radii-md);
+  padding: 8px 12px;
+  background: var(--chakra-colors-gray-50);
+  font-size: 13px;
+  overflow-y: auto;
+}
+
+.contentEditable:focus {
+  outline: none;
+  border: 1px solid;
+  border-color: var(--chakra-colors-primary-600);
+  background: #fff;
+  box-shadow: 0px 0px 0px 2.4px rgba(51, 112, 255, 0.15);
+}
+
+.variable {
+  color: var(--chakra-colors-primary-600);
+  padding: 0 2px;
+}

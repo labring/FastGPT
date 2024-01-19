@@ -1,13 +1,12 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { ChatSchema as ChatType } from '@fastgpt/global/core/chat/type.d';
-import { ChatRoleMap, ChatSourceMap } from '@fastgpt/global/core/chat/constants';
+import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { appCollectionName } from '../app/schema';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export const chatCollectionName = 'chat';
 
@@ -48,7 +47,8 @@ const ChatSchema = new Schema({
     default: ''
   },
   top: {
-    type: Boolean
+    type: Boolean,
+    default: false
   },
   source: {
     type: String,
@@ -73,10 +73,16 @@ const ChatSchema = new Schema({
 });
 
 try {
-  ChatSchema.index({ appId: 1 });
-  ChatSchema.index({ tmbId: 1 });
-  ChatSchema.index({ shareId: 1 });
-  ChatSchema.index({ updateTime: -1 });
+  ChatSchema.index({ chatId: 1 }, { background: true });
+  // get user history
+  ChatSchema.index({ tmbId: 1, appId: 1, top: -1, updateTime: -1 }, { background: true });
+  // delete by appid; clear history; init chat; update chat; auth chat;
+  ChatSchema.index({ appId: 1, chatId: 1 }, { background: true });
+
+  // get chat logs;
+  ChatSchema.index({ teamId: 1, appId: 1, updateTime: -1 }, { background: true });
+  // get share chat history
+  ChatSchema.index({ shareId: 1, outLinkUid: 1 }, { background: true });
 } catch (error) {
   console.log(error);
 }

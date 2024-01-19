@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     await MongoChat.findOneAndUpdate(
-      { chatId },
+      { appId, chatId },
       {
         ...(customTitle !== undefined && { customTitle }),
         ...(top !== undefined && { top })

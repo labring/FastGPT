@@ -41,14 +41,13 @@ import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import EmptyTip from '@/components/EmptyTip';
 import {
-  FolderAvatarSrc,
   DatasetCollectionTypeEnum,
   TrainingModeEnum,
   DatasetTypeEnum,
   DatasetTypeMap,
   DatasetStatusEnum,
   DatasetCollectionSyncResultMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import EditFolderModal, { useEditFolder } from '../../component/EditFolderModal';
 import { TabEnum } from '..';
@@ -62,11 +61,12 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
-import { DatasetCollectionSyncResultEnum } from '../../../../../../../packages/global/core/dataset/constant';
+import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@/components/common/MyBox';
+import { ImportDataSourceEnum } from './Import';
 
-const FileImportModal = dynamic(() => import('./Import/ImportModal'), {});
 const WebSiteConfigModal = dynamic(() => import('./Import/WebsiteConfig'), {});
+const FileSourceSelector = dynamic(() => import('./Import/sourceSelector/FileSourceSelector'), {});
 
 const CollectionCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -90,9 +90,9 @@ const CollectionCard = () => {
   });
 
   const {
-    isOpen: isOpenFileImportModal,
-    onOpen: onOpenFileImportModal,
-    onClose: onCloseFileImportModal
+    isOpen: isOpenFileSourceSelector,
+    onOpen: onOpenFileSourceSelector,
+    onClose: onCloseFileSourceSelector
   } = useDisclosure();
   const {
     isOpen: isOpenWebsiteModal,
@@ -159,12 +159,16 @@ const CollectionCard = () => {
               statusText: t('dataset.collections.Collection Embedding', {
                 total: collection.trainingAmount
               }),
-              color: 'myGray.500'
+              color: 'myGray.600',
+              bg: 'myGray.50',
+              borderColor: 'borderColor.low'
             };
           }
           return {
             statusText: t('core.dataset.collection.status.active'),
-            color: 'green.500'
+            color: 'green.600',
+            bg: 'green.50',
+            borderColor: 'green.300'
           };
         })();
 
@@ -299,7 +303,8 @@ const CollectionCard = () => {
   return (
     <MyBox isLoading={isLoading} h={'100%'} py={[2, 4]}>
       <Flex ref={BoxRef} flexDirection={'column'} py={[1, 3]} h={'100%'}>
-        <Flex px={[2, 6]} alignItems={['flex-start', 'center']} h={'35px'}>
+        {/* header */}
+        <Flex px={[2, 6]} alignItems={'flex-start'} h={'35px'}>
           <Box flex={1}>
             <ParentPath
               paths={paths.map((path, i) => ({
@@ -343,7 +348,7 @@ const CollectionCard = () => {
               <MyInput
                 bg={'myGray.50'}
                 w={['100%', '250px']}
-                size={['sm', 'md']}
+                size={'sm'}
                 h={'36px'}
                 placeholder={t('common.Search') || ''}
                 value={searchText}
@@ -376,7 +381,7 @@ const CollectionCard = () => {
             <>
               {userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
                 <MyMenu
-                  offset={[-40, 10]}
+                  offset={[-0, 10]}
                   width={120}
                   Button={
                     <MenuButton
@@ -405,7 +410,7 @@ const CollectionCard = () => {
                     {
                       child: (
                         <Flex>
-                          <Image src={FolderAvatarSrc} alt={''} w={'20px'} mr={2} />
+                          <MyIcon name={'common/folderFill'} w={'20px'} mr={2} />
                           {t('Folder')}
                         </Flex>
                       ),
@@ -414,7 +419,7 @@ const CollectionCard = () => {
                     {
                       child: (
                         <Flex>
-                          <Image src={'/imgs/files/collection.svg'} alt={''} w={'20px'} mr={2} />
+                          <MyIcon name={'core/dataset/manualCollection'} mr={2} w={'20px'} />
                           {t('core.dataset.Manual collection')}
                         </Flex>
                       ),
@@ -430,11 +435,27 @@ const CollectionCard = () => {
                     {
                       child: (
                         <Flex>
-                          <Image src={'/imgs/files/file.svg'} alt={''} w={'20px'} mr={2} />
-                          {t('core.dataset.File collection')}
+                          <MyIcon name={'core/dataset/fileCollection'} mr={2} w={'20px'} />
+                          {t('core.dataset.Text collection')}
                         </Flex>
                       ),
-                      onClick: onOpenFileImportModal
+                      onClick: onOpenFileSourceSelector
+                    },
+                    {
+                      child: (
+                        <Flex>
+                          <MyIcon name={'core/dataset/tableCollection'} mr={2} w={'20px'} />
+                          {t('core.dataset.Table collection')}
+                        </Flex>
+                      ),
+                      onClick: () =>
+                        router.replace({
+                          query: {
+                            ...router.query,
+                            currentTab: TabEnum.import,
+                            source: ImportDataSourceEnum.tableLocal
+                          }
+                        })
                     }
                   ]}
                 />
@@ -478,6 +499,7 @@ const CollectionCard = () => {
           )}
         </Flex>
 
+        {/* collection table */}
         <TableContainer
           px={[2, 6]}
           mt={[0, 3]}
@@ -545,11 +567,6 @@ const CollectionCard = () => {
                     } catch (error) {}
                     setDragTargetId(undefined);
                   }}
-                  title={
-                    collection.type === DatasetCollectionTypeEnum.folder
-                      ? t('dataset.collections.Click to view folder')
-                      : t('dataset.collections.Click to view file')
-                  }
                   onClick={() => {
                     if (collection.type === DatasetCollectionTypeEnum.folder) {
                       router.replace({
@@ -572,7 +589,7 @@ const CollectionCard = () => {
                   <Td w={'50px'}>{index + 1}</Td>
                   <Td minW={'150px'} maxW={['200px', '300px']} draggable>
                     <Flex alignItems={'center'}>
-                      <Image src={collection.icon} w={'16px'} mr={2} alt={''} />
+                      <MyIcon name={collection.icon as any} w={'16px'} mr={2} />
                       <MyTooltip label={t('common.folder.Drag Tip')} shouldWrapChildren={false}>
                         <Box fontWeight={'bold'} className="textEllipsis">
                           {collection.name}
@@ -583,19 +600,28 @@ const CollectionCard = () => {
                   <Td fontSize={'md'}>{collection.dataAmount || '-'}</Td>
                   <Td>{dayjs(collection.updateTime).format('YYYY/MM/DD HH:mm')}</Td>
                   <Td>
-                    <Flex
+                    <Box
+                      display={'inline-flex'}
                       alignItems={'center'}
+                      w={'auto'}
+                      color={collection.color}
+                      bg={collection.bg}
+                      borderWidth={'1px'}
+                      borderColor={collection.borderColor}
+                      px={3}
+                      py={1}
+                      borderRadius={'md'}
                       _before={{
                         content: '""',
-                        w: '10px',
-                        h: '10px',
+                        w: '6px',
+                        h: '6px',
                         mr: 2,
                         borderRadius: 'lg',
                         bg: collection.color
                       }}
                     >
                       {t(collection.statusText)}
-                    </Flex>
+                    </Box>
                   </Td>
                   <Td onClick={(e) => e.stopPropagation()}>
                     {collection.canWrite && userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
@@ -744,8 +770,8 @@ const CollectionCard = () => {
         <ConfirmDeleteModal />
         <ConfirmSyncModal />
         <EditTitleModal />
-        <EditCreateVirtualFileModal />
-        {isOpenFileImportModal && (
+        <EditCreateVirtualFileModal iconSrc={'modal/manualDataset'} closeBtnText={''} />
+        {/* {isOpenFileImportModal && (
           <FileImportModal
             datasetId={datasetId}
             parentId={parentId}
@@ -755,7 +781,8 @@ const CollectionCard = () => {
             }}
             onClose={onCloseFileImportModal}
           />
-        )}
+        )} */}
+        {isOpenFileSourceSelector && <FileSourceSelector onClose={onCloseFileSourceSelector} />}
         {!!editFolderData && (
           <EditFolderModal
             onClose={() => setEditFolderData(undefined)}

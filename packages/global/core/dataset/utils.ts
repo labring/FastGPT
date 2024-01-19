@@ -1,4 +1,4 @@
-import { TrainingModeEnum, DatasetCollectionTypeEnum, DatasetDataIndexTypeEnum } from './constant';
+import { TrainingModeEnum, DatasetCollectionTypeEnum, DatasetDataIndexTypeEnum } from './constants';
 import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
@@ -7,18 +7,13 @@ export function getCollectionIcon(
   name = ''
 ) {
   if (type === DatasetCollectionTypeEnum.folder) {
-    return '/imgs/files/folder.svg';
+    return 'common/folderFill';
   }
   if (type === DatasetCollectionTypeEnum.link) {
-    return '/imgs/files/link.svg';
+    return 'common/linkBlue';
   }
   if (type === DatasetCollectionTypeEnum.virtual) {
-    if (name === '手动录入') {
-      return '/imgs/files/manual.svg';
-    } else if (name === '手动标注') {
-      return '/imgs/files/mark.svg';
-    }
-    return '/imgs/files/collection.svg';
+    return 'file/fill/manual';
   }
   return getFileIcon(name);
 }
@@ -30,19 +25,14 @@ export function getSourceNameIcon({
   sourceId?: string;
 }) {
   if (strIsLink(sourceId)) {
-    return '/imgs/files/link.svg';
+    return 'common/linkBlue';
   }
   const fileIcon = getFileIcon(sourceName, '');
   if (fileIcon) {
     return fileIcon;
   }
 
-  if (sourceName === '手动录入') {
-    return '/imgs/files/manual.svg';
-  } else if (sourceName === '手动标注') {
-    return '/imgs/files/mark.svg';
-  }
-  return '/imgs/files/collection.svg';
+  return 'file/fill/manual';
 }
 
 export function getDefaultIndex(props?: { q?: string; a?: string; dataId?: string }) {

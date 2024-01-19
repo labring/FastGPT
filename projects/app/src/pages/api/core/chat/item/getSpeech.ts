@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         try {
           pushAudioSpeechBill({
             model: model,
-            textLen: input.length,
+            charsLength: input.length,
             tmbId,
             teamId,
             source: authType2BillSource({ authType })

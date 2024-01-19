@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
 import { onDelConnect } from '../../FlowProvider';
 import { Flex } from '@chakra-ui/react';
@@ -17,7 +17,7 @@ const ButtonEdge = (props: EdgeProps) => {
     style = {}
   } = props;
 
-  const [edgePath, labelX, labelY] = getBezierPath({
+  const [labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
@@ -26,19 +26,8 @@ const ButtonEdge = (props: EdgeProps) => {
     targetPosition
   });
 
-  const edgeStyle: React.CSSProperties = {
-    ...style,
-    ...(selected
-      ? {
-          strokeWidth: 4,
-          stroke: '#3370ff'
-        }
-      : { strokeWidth: 2, stroke: '#BDC1C5' })
-  };
-
-  return (
-    <>
-      <BezierEdge {...props} style={edgeStyle} />
+  const memoEdgeLabel = useMemo(() => {
+    return (
       <EdgeLabelRenderer>
         <Flex
           alignItems={'center'}
@@ -66,6 +55,27 @@ const ButtonEdge = (props: EdgeProps) => {
           ></MyIcon>
         </Flex>
       </EdgeLabelRenderer>
+    );
+  }, [id, labelX, labelY, selected]);
+
+  const memoBezierEdge = useMemo(() => {
+    const edgeStyle: React.CSSProperties = {
+      ...style,
+      ...(selected
+        ? {
+            strokeWidth: 4,
+            stroke: '#3370ff'
+          }
+        : { strokeWidth: 2, stroke: '#BDC1C5' })
+    };
+
+    return <BezierEdge {...props} style={edgeStyle} />;
+  }, [props, selected, style]);
+
+  return (
+    <>
+      {memoBezierEdge}
+      {memoEdgeLabel}
     </>
   );
 };

@@ -10,7 +10,7 @@ import { DatasetColCollectionName } from '../collection/schema';
 import {
   DatasetDataIndexTypeEnum,
   DatasetDataIndexTypeMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 
 export const DatasetDataCollectionName = 'dataset.datas';
 
@@ -71,6 +71,7 @@ const DatasetDataSchema = new Schema({
     ],
     default: []
   },
+
   updateTime: {
     type: Date,
     default: () => new Date()
@@ -85,13 +86,18 @@ const DatasetDataSchema = new Schema({
 });
 
 try {
-  DatasetDataSchema.index({ teamId: 1 });
-  DatasetDataSchema.index({ datasetId: 1 });
-  DatasetDataSchema.index({ collectionId: 1 });
-  DatasetDataSchema.index({ updateTime: -1 });
-  DatasetDataSchema.index({ collectionId: 1, q: 1, a: 1 });
+  // same data check
+  DatasetDataSchema.index({ teamId: 1, collectionId: 1, q: 1, a: 1 }, { background: true });
+  // list collection and count data; list data
+  DatasetDataSchema.index(
+    { teamId: 1, datasetId: 1, collectionId: 1, chunkIndex: 1, updateTime: -1 },
+    { background: true }
+  );
   // full text index
-  DatasetDataSchema.index({ datasetId: 1, fullTextToken: 'text' });
+  DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' }, { background: true });
+  // Recall vectors after data matching
+  DatasetDataSchema.index({ teamId: 1, datasetId: 1, 'indexes.dataId': 1 }, { background: true });
+  DatasetDataSchema.index({ updateTime: 1 }, { background: true });
 } catch (error) {
   console.log(error);
 }

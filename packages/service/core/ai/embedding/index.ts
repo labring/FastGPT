@@ -18,10 +18,9 @@ export async function getVectorsByText({
   }
 
   try {
-    // 获取 chatAPI
     const ai = getAIApi();
 
-    // 把输入的内容转成向量
+    // input text to vector
     const result = await ai.embeddings
       .create({
         model,
@@ -38,7 +37,7 @@ export async function getVectorsByText({
         }
 
         return {
-          tokens: res.usage.total_tokens || 0,
+          charsLength: input.length,
           vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
         };
       });
@@ -53,7 +52,9 @@ export async function getVectorsByText({
 
 function unityDimensional(vector: number[]) {
   if (vector.length > 1536) {
-    console.log(`当前向量维度为: ${vector.length}, 向量维度不能超过 1536, 已自动截取前 1536 维度`);
+    console.log(
+      `The current vector dimension is ${vector.length}, and the vector dimension cannot exceed 1536. The first 1536 dimensions are automatically captured`
+    );
     return vector.slice(0, 1536);
   }
   let resultVector = vector;

@@ -108,12 +108,12 @@ const UserInfo = () => {
         });
       } catch (err: any) {
         toast({
-          title: typeof err === 'string' ? err : '头像选择异常',
+          title: typeof err === 'string' ? err : t('common.error.Select avatar failed'),
           status: 'warning'
         });
       }
     },
-    [onclickSave, toast, userInfo]
+    [onclickSave, t, toast, userInfo]
   );
 
   useQuery(['init'], initUserInfo, {

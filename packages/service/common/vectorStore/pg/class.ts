@@ -1,20 +1,20 @@
 import {
   initPg,
   insertDatasetDataVector,
-  updateDatasetDataVector,
   deleteDatasetDataVector,
   embeddingRecall,
   getVectorDataByTime,
-  getVectorCountByTeamId
+  getVectorCountByTeamId,
+  checkDataExist
 } from './controller';
 
 export class PgVector {
   constructor() {}
   init = initPg;
   insert = insertDatasetDataVector;
-  update = updateDatasetDataVector;
   delete = deleteDatasetDataVector;
   recall = embeddingRecall;
+  checkDataExist = checkDataExist;
   getVectorCountByTeamId = getVectorCountByTeamId;
   getVectorDataByTime = getVectorDataByTime;
 }
