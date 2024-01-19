@@ -28,12 +28,16 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
         // },
         filename: async (req, file, cb) => {
           const { ext } = path.parse(decodeURIComponent(file.originalname));
-          cb(null, `${getNanoid(32)}${ext}`);
+          cb(null, `${getNanoid()}${ext}`);
         }
       })
     }).single('file');
 
-    async doUpload<T = Record<string, any>>(req: NextApiRequest, res: NextApiResponse) {
+    async doUpload<T = Record<string, any>>(
+      req: NextApiRequest,
+      res: NextApiResponse,
+      originBuckerName?: `${BucketNameEnum}`
+    ) {
       return new Promise<{
         file: FileType;
         metadata: Record<string, any>;
@@ -47,7 +51,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
           }
 
           // check bucket name
-          const bucketName = req.body?.bucketName as `${BucketNameEnum}`;
+          const bucketName = (req.body?.bucketName || originBuckerName) as `${BucketNameEnum}`;
           if (bucketName && !bucketNameMap[bucketName]) {
             return reject('BucketName is invalid');
           }

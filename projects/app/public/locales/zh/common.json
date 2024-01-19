@@ -226,7 +226,7 @@
     "Chat test": "测试对话",
     "Max Token": "单条数据上限",
     "Start chat": "立即对话",
-    "Total chars": "总字符数: {{total}}",
+    "Total chars": "总字数: {{total}}",
     "Total tokens": "总 Tokens: {{total}}",
     "ai": {
       "Model": "AI 模型",
@@ -541,8 +541,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",

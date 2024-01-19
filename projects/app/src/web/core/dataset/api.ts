@@ -19,12 +19,14 @@ import type {
   SearchTestResponse
 } from '@/global/core/dataset/api.d';
 import type {
-  PushDatasetDataProps,
   UpdateDatasetDataProps,
   CreateDatasetParams,
   InsertOneDatasetDataProps
 } from '@/global/core/dataset/api.d';
-import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
+import type {
+  PushDatasetDataProps,
+  PushDatasetDataResponse
+} from '@fastgpt/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionSyncResultEnum,
@@ -97,7 +99,7 @@ export const getDatasetDataItemById = (id: string) =>
  * push data to training queue
  */
 export const postChunks2Dataset = (data: PushDatasetDataProps) =>
-  POST<PushDataResponse>(`/core/dataset/data/pushData`, data);
+  POST<PushDatasetDataResponse>(`/core/dataset/data/pushData`, data);
 
 /**
  * insert one data to dataset (immediately insert)

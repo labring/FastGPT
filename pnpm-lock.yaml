@@ -196,6 +196,9 @@ importers:
       next-i18next:
         specifier: ^13.3.0
         version: registry.npmmirror.com/next-i18next@13.3.0(i18next@22.5.1)(next@13.5.2)(react-i18next@12.3.1)(react@18.2.0)
+      papaparse:
+        specifier: ^5.4.1
+        version: registry.npmmirror.com/papaparse@5.4.1
       pdfjs-dist:
         specifier: ^4.0.269
         version: registry.npmmirror.com/pdfjs-dist@4.0.269
@@ -212,6 +215,9 @@ importers:
         specifier: ^7.1.2
         version: registry.npmmirror.com/turndown@7.1.2
     devDependencies:
+      '@types/papaparse':
+        specifier: ^5.3.7
+        version: registry.npmmirror.com/@types/papaparse@5.3.7
       '@types/react':
         specifier: 18.2.0
         version: registry.npmmirror.com/@types/react@18.2.0
@@ -323,9 +329,6 @@ importers:
       nprogress:
         specifier: ^0.2.0
         version: registry.npmmirror.com/nprogress@0.2.0
-      papaparse:
-        specifier: ^5.4.1
-        version: registry.npmmirror.com/papaparse@5.4.1
       react:
         specifier: 18.2.0
         version: registry.npmmirror.com/react@18.2.0
@@ -390,9 +393,6 @@ importers:
       '@types/node':
         specifier: ^20.8.5
         version: registry.npmmirror.com/@types/node@20.8.5
-      '@types/papaparse':
-        specifier: ^5.3.7
-        version: registry.npmmirror.com/@types/papaparse@5.3.7
       '@types/react':
         specifier: 18.2.0
         version: registry.npmmirror.com/@types/react@18.2.0

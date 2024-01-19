@@ -3,6 +3,11 @@ import { generateQA } from '@/service/events/generateQA';
 import { generateVector } from '@/service/events/generateVector';
 import { setCron } from '@fastgpt/service/common/system/cron';
 
+export const startCron = () => {
+  setUpdateSystemConfigCron();
+  setTrainingQueueCron();
+};
+
 export const setUpdateSystemConfigCron = () => {
   setCron('*/5 * * * *', () => {
     initSystemConfig();
@@ -11,7 +16,7 @@ export const setUpdateSystemConfigCron = () => {
 };
 
 export const setTrainingQueueCron = () => {
-  setCron('*/3 * * * *', () => {
+  setCron('*/1 * * * *', () => {
     generateVector();
     generateQA();
   });

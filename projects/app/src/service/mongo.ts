@@ -7,7 +7,7 @@ import { createDefaultTeam } from '@fastgpt/service/support/user/team/controller
 import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
 import { getInitConfig } from '@/pages/api/common/system/getInitData';
-import { setUpdateSystemConfigCron, setTrainingQueueCron } from './common/system/cron';
+import { startCron } from './common/system/cron';
 
 /**
  * connect MongoDB and init data
@@ -23,8 +23,7 @@ export function connectToDatabase(): Promise<void> {
       getInitConfig();
 
       // cron
-      setUpdateSystemConfigCron();
-      setTrainingQueueCron();
+      startCron();
 
       initRootUser();
     }

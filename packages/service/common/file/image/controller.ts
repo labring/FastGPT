@@ -46,8 +46,17 @@ export async function readMongoImg({ id }: { id: string }) {
   return data?.binary;
 }
 
-export async function delImgByRelatedId(relateIds: string[]) {
+export async function delImgByRelatedId({
+  teamId,
+  relateIds
+}: {
+  teamId: string;
+  relateIds: string[];
+}) {
+  if (relateIds.length === 0) return;
+
   return MongoImage.deleteMany({
+    teamId,
     'metadata.relatedId': { $in: relateIds.map((id) => String(id)) }
   });
 }

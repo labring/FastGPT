@@ -21,7 +21,7 @@ export type UpdateDatasetDataProps = {
 };
 
 export type PatchIndexesProps = {
-  type: 'create' | 'update' | 'delete';
+  type: 'create' | 'update' | 'delete' | 'unChange';
   index: Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string;
   };

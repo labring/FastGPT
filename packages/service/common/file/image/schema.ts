@@ -34,9 +34,8 @@ const ImageSchema = new Schema({
 try {
   ImageSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 60 });
   ImageSchema.index({ type: 1 });
-  ImageSchema.index({ teamId: 1 });
   ImageSchema.index({ createTime: 1 });
-  ImageSchema.index({ 'metadata.relatedId': 1 });
+  ImageSchema.index({ teamId: 1, 'metadata.relatedId': 1 });
 } catch (error) {
   console.log(error);
 }

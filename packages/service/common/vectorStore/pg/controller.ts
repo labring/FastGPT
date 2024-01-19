@@ -39,14 +39,15 @@ export const insertDatasetDataVector = async (
   }
 ): Promise<{ insertId: string }> => {
   const { teamId, datasetId, collectionId, vectors, retry = 3 } = props;
+
   try {
     const { rows } = await PgClient.insert(PgDatasetTableName, {
       values: [
         [
           { key: 'vector', value: `[${vectors[0]}]` },
           { key: 'team_id', value: String(teamId) },
-          { key: 'dataset_id', value: datasetId },
-          { key: 'collection_id', value: collectionId }
+          { key: 'dataset_id', value: String(datasetId) },
+          { key: 'collection_id', value: String(collectionId) }
         ]
       ]
     });
@@ -176,8 +177,8 @@ export const getVectorDataByTime = async (start: Date, end: Date) => {
   `);
 
   return rows.map((item) => ({
-    id: item.id,
-    datasetId: item.dataset_id,
-    teamId: item.team_id
+    id: String(item.id),
+    teamId: item.team_id,
+    datasetId: item.dataset_id
   }));
 };
