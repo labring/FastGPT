@@ -51,19 +51,18 @@ export const uploadMarkdownBase64 = async ({
     // match base64, upload and replace it
     const base64Regex = /data:image\/.*;base64,([^\)]+)/g;
     const base64Arr = rawText.match(base64Regex) || [];
-    // upload base64 and replace it
-    await Promise.all(
-      base64Arr.map(async (base64Img) => {
-        try {
-          const str = await uploadImgController(base64Img);
 
-          rawText = rawText.replace(base64Img, str);
-        } catch (error) {
-          rawText = rawText.replace(base64Img, '');
-          rawText = rawText.replace(/!\[.*\]\(\)/g, '');
-        }
-      })
-    );
+    // upload base64 and replace it
+    for await (const base64Img of base64Arr) {
+      try {
+        const str = await uploadImgController(base64Img);
+
+        rawText = rawText.replace(base64Img, str);
+      } catch (error) {
+        rawText = rawText.replace(base64Img, '');
+        rawText = rawText.replace(/!\[.*\]\(\)/g, '');
+      }
+    }
   }
 
   // Remove white space on both sides of the picture

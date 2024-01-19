@@ -32,13 +32,24 @@ export const uploadFiles = ({
   });
 };
 
-export const getUploadBase64ImgController = (props: CompressImgProps & UploadImgProps) =>
-  compressBase64ImgAndUpload({
-    maxW: 4000,
-    maxH: 4000,
-    maxSize: 1024 * 1024 * 5,
-    ...props
-  });
+export const getUploadBase64ImgController = (
+  props: CompressImgProps & UploadImgProps,
+  retry = 3
+): Promise<string> => {
+  try {
+    return compressBase64ImgAndUpload({
+      maxW: 4000,
+      maxH: 4000,
+      maxSize: 1024 * 1024 * 5,
+      ...props
+    });
+  } catch (error) {
+    if (retry > 0) {
+      return getUploadBase64ImgController(props, retry - 1);
+    }
+    return Promise.reject(error);
+  }
+};
 
 /**
  * compress image. response base64

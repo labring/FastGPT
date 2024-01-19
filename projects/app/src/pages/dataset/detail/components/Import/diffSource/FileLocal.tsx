@@ -27,7 +27,7 @@ const Upload = dynamic(() => import('../commonProgress/Upload'));
 const PreviewRawText = dynamic(() => import('../components/PreviewRawText'));
 
 type FileItemType = ImportSourceItemType & { file: File };
-const fileType = '.txt, .docx, .pdf, .md, .html';
+const fileType = '.txt, .docx, .csv, .pdf, .md, .html';
 const maxSelectFileCount = 1000;
 
 const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {

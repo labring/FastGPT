@@ -3,10 +3,12 @@ export const fileImgs = [
   { suffix: 'csv', src: 'file/fill/csv' },
   { suffix: '(doc|docs)', src: 'file/fill/doc' },
   { suffix: 'txt', src: 'file/fill/txt' },
-  { suffix: 'md', src: 'file/fill/markdown' }
+  { suffix: 'md', src: 'file/fill/markdown' },
+  { suffix: 'html', src: 'file/fill/html' }
+
   // { suffix: '.', src: '/imgs/files/file.svg' }
 ];
 
-export function getFileIcon(name = '', defaultImg = '/imgs/files/file.svg') {
+export function getFileIcon(name = '', defaultImg = 'file/fill/file') {
   return fileImgs.find((item) => new RegExp(item.suffix, 'gi').test(name))?.src || defaultImg;
 }

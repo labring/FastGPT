@@ -9,13 +9,11 @@ import {
   recallFromVectorStore,
   updateDatasetDataVector
 } from '@fastgpt/service/common/vectorStore/controller';
-import { Types } from 'mongoose';
 import {
   DatasetDataIndexTypeEnum,
   DatasetSearchModeEnum,
   DatasetSearchModeMap,
-  SearchScoreTypeEnum,
-  TrainingModeEnum
+  SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@/service/common/string/jieba';
@@ -29,172 +27,26 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { reRankRecall } from '../../ai/rerank';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
-import { hashStr, simpleText } from '@fastgpt/global/common/string/tools';
-import type { PushDatasetDataProps } from '@/global/core/dataset/api.d';
-import type { PushDataResponse } from '@/global/core/api/datasetRes';
-import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { startQueue } from '@/service/utils/tools';
-import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
-import { getQAModel, getVectorModel } from '../../ai/model';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import type {
+  PushDatasetDataProps,
+  PushDatasetDataResponse
+} from '@fastgpt/global/core/dataset/api.d';
+import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 
-export async function pushDataToTrainingQueue({
-  teamId,
-  tmbId,
-  collectionId,
-  data,
-  prompt,
-  billId,
-  trainingMode
-}: {
-  teamId: string;
-  tmbId: string;
-} & PushDatasetDataProps): Promise<PushDataResponse> {
-  const checkModelValid = async ({ collectionId }: { collectionId: string }) => {
-    const {
-      datasetId: { _id: datasetId, vectorModel, agentModel }
-    } = await getCollectionWithDataset(collectionId);
-
-    if (trainingMode === TrainingModeEnum.chunk) {
-      if (!collectionId) return Promise.reject(`CollectionId is empty`);
-      const vectorModelData = getVectorModel(vectorModel);
-      if (!vectorModelData) {
-        return Promise.reject(`Model ${vectorModel} is inValid`);
-      }
-
-      return {
-        datasetId,
-        maxToken: vectorModelData.maxToken * 1.5,
-        model: vectorModelData.model,
-        weight: vectorModelData.weight
-      };
-    }
-
-    if (trainingMode === TrainingModeEnum.qa) {
-      const qaModelData = getQAModel(agentModel);
-      if (!qaModelData) {
-        return Promise.reject(`Model ${agentModel} is inValid`);
-      }
-      return {
-        datasetId,
-        maxToken: qaModelData.maxContext * 0.8,
-        model: qaModelData.model,
-        weight: 0
-      };
-    }
-    return Promise.reject(`Mode ${trainingMode} is inValid`);
-  };
-
-  const { datasetId, model, maxToken, weight } = await checkModelValid({
-    collectionId
+export async function pushDataToTrainingQueue(
+  props: {
+    teamId: string;
+    tmbId: string;
+  } & PushDatasetDataProps
+): Promise<PushDatasetDataResponse> {
+  const result = await pushDataListToTrainingQueue({
+    ...props,
+    vectorModelList: global.vectorModels,
+    qaModelList: global.qaModels
   });
 
-  // format q and a, remove empty char
-  data.forEach((item) => {
-    item.q = simpleText(item.q);
-    item.a = simpleText(item.a);
-
-    item.indexes = item.indexes
-      ?.map((index) => {
-        return {
-          ...index,
-          text: simpleText(index.text)
-        };
-      })
-      .filter(Boolean);
-  });
-
-  // filter repeat or equal content
-  const set = new Set();
-  const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
-    success: [],
-    overToken: [],
-    repeat: [],
-    error: []
-  };
-
-  data.forEach((item) => {
-    if (!item.q) {
-      filterResult.error.push(item);
-      return;
-    }
-
-    const text = item.q + item.a;
-
-    // count q token
-    const token = countPromptTokens(item.q);
-
-    if (token > maxToken) {
-      filterResult.overToken.push(item);
-      return;
-    }
-
-    if (set.has(text)) {
-      console.log('repeat', item);
-      filterResult.repeat.push(item);
-    } else {
-      filterResult.success.push(item);
-      set.add(text);
-    }
-  });
-
-  // 插入记录
-  const insertData = async (dataList: PushDatasetDataChunkProps[], retry = 3): Promise<number> => {
-    try {
-      const results = await MongoDatasetTraining.insertMany(
-        dataList.map((item, i) => ({
-          teamId,
-          tmbId,
-          datasetId,
-          collectionId,
-          billId,
-          mode: trainingMode,
-          prompt,
-          model,
-          q: item.q,
-          a: item.a,
-          chunkIndex: item.chunkIndex ?? i,
-          weight: weight ?? 0,
-          indexes: item.indexes
-        }))
-      );
-      await delay(500);
-      return results.length;
-    } catch (error) {
-      if (retry > 0) {
-        await delay(1000);
-        return insertData(dataList, retry - 1);
-      }
-      return Promise.reject(error);
-    }
-  };
-
-  let insertLen = 0;
-  const chunkSize = 50;
-  const chunkList = filterResult.success.reduce(
-    (acc, cur) => {
-      const lastChunk = acc[acc.length - 1];
-      if (lastChunk.length < chunkSize) {
-        lastChunk.push(cur);
-      } else {
-        acc.push([cur]);
-      }
-      return acc;
-    },
-    [[]] as PushDatasetDataChunkProps[][]
-  );
-  for await (const chunks of chunkList) {
-    insertLen += await insertData(chunks);
-  }
-
-  startQueue();
-  delete filterResult.success;
-
-  return {
-    insertLen,
-    ...filterResult
-  };
+  return result;
 }
 
 /* insert data.
@@ -341,6 +193,11 @@ export async function updateData2Dataset({
             text: qaStr
           }
         });
+      } else {
+        patchResult.push({
+          type: 'unChange',
+          index: item
+        });
       }
     } else {
       // not in database, create
@@ -379,6 +236,7 @@ export async function updateData2Dataset({
           model
         });
         item.index.dataId = result.insertId;
+
         return result;
       }
       if (item.type === 'delete' && item.index.dataId) {
@@ -397,13 +255,14 @@ export async function updateData2Dataset({
   );
 
   const charsLength = result.reduce((acc, cur) => acc + cur.charsLength, 0);
+  const newIndexes = patchResult.filter((item) => item.type !== 'delete').map((item) => item.index);
 
   // update mongo other data
   mongoData.q = q || mongoData.q;
   mongoData.a = a ?? mongoData.a;
   mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
   // @ts-ignore
-  mongoData.indexes = indexes;
+  mongoData.indexes = newIndexes;
   await mongoData.save();
 
   return {

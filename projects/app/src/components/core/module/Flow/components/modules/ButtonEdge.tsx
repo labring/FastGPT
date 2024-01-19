@@ -17,7 +17,7 @@ const ButtonEdge = (props: EdgeProps) => {
     style = {}
   } = props;
 
-  const [labelX, labelY] = getBezierPath({
+  const [, labelX, labelY] = getBezierPath({
     sourceX,
     sourceY,
     sourcePosition,
