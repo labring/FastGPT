@@ -55,7 +55,7 @@ export async function pushDataListToTrainingQueue({
     if (!collectionId) return Promise.reject(`CollectionId is empty`);
 
     if (trainingMode === TrainingModeEnum.chunk) {
-      const vectorModelData = vectorModelList.find((item) => item.model === vectorModel);
+      const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
       if (!vectorModelData) {
         return Promise.reject(`Model ${vectorModel} is inValid`);
       }
@@ -68,7 +68,7 @@ export async function pushDataListToTrainingQueue({
     }
 
     if (trainingMode === TrainingModeEnum.qa) {
-      const qaModelData = qaModelList.find((item) => item.model === agentModel);
+      const qaModelData = qaModelList?.find((item) => item.model === agentModel);
       if (!qaModelData) {
         return Promise.reject(`Model ${agentModel} is inValid`);
       }

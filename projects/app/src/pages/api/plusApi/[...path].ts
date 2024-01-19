@@ -12,16 +12,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const method = (req.method || 'POST') as Method;
     const { path = [], ...query } = req.query as any;
 
-    const url = `/${path?.join('/')}`;
+    const url = `/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
 
     if (!url) {
       throw new Error('url is empty');
     }
 
-    const data = {
-      ...req.body,
-      ...query
-    };
+    const data = req.body || query;
 
     const repose = await request(
       url,
@@ -56,3 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    },
+    responseLimit: '10mb'
+  }
+};

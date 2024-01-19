@@ -48,10 +48,6 @@ export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
   name: string;
   rawTextLength: number;
   hashRawText: string;
-  trainingType: `${TrainingModeEnum}`;
-  chunkSize: number;
-  chunkSplitter: string;
-  qaPrompt: string;
 
   fileMetadata?: Record<string, any>;
   collectionMetadata?: Record<string, any>;

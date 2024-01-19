@@ -16,11 +16,15 @@ import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dat
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const {
+      name,
       text,
       trainingType = TrainingModeEnum.chunk,
       chunkSize = 512,
@@ -29,7 +33,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       ...body
     } = req.body as TextCreateDatasetCollectionParams;
 
-    const { teamId, tmbId } = await authDataset({
+    const { teamId, tmbId, dataset } = await authDataset({
       req,
       authToken: true,
       authApiKey: true,
@@ -52,21 +56,32 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       insertLen: predictDataLimitLength(trainingType, chunks)
     });
 
-    // 3. create collection
-    const collectionId = await createOneCollection({
-      ...body,
-      teamId,
-      tmbId,
-      type: DatasetCollectionTypeEnum.virtual,
+    // 3. create collection and training bill
+    const [collectionId, { billId }] = await Promise.all([
+      createOneCollection({
+        ...body,
+        teamId,
+        tmbId,
+        type: DatasetCollectionTypeEnum.virtual,
 
-      trainingType,
-      chunkSize,
-      chunkSplitter,
-      qaPrompt,
+        name,
+        trainingType,
+        chunkSize,
+        chunkSplitter,
+        qaPrompt,
 
-      hashRawText: hashStr(text),
-      rawTextLength: text.length
-    });
+        hashRawText: hashStr(text),
+        rawTextLength: text.length
+      }),
+      createTrainingBill({
+        teamId,
+        tmbId,
+        appName: name,
+        billSource: BillSourceEnum.training,
+        vectorModel: getVectorModel(dataset.vectorModel)?.name,
+        agentModel: getQAModel(dataset.agentModel)?.name
+      })
+    ]);
 
     // 4. push chunks to training queue
     const insertResults = await pushDataToTrainingQueue({
@@ -74,6 +89,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       tmbId,
       collectionId,
       trainingMode: trainingType,
+      prompt: qaPrompt,
+      billId,
       data: chunks.map((text, index) => ({
         q: text,
         chunkIndex: index
@@ -90,3 +107,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
   }
 }
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb'
+    }
+  }
+};

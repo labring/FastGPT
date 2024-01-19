@@ -25,7 +25,7 @@ export async function createOneCollection({
   type,
 
   trainingType = TrainingModeEnum.chunk,
-  chunkSize = 0,
+  chunkSize = 512,
   chunkSplitter,
   qaPrompt,
 
