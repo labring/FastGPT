@@ -650,6 +650,7 @@
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
         "Params Setting": "Params Setting",
+        "Quote index": "Quote index",
         "Rank": "Rank",
         "Rank Tip": "Ranking in all data",
         "ReRank": "ReRank",
@@ -658,6 +659,8 @@
         "Rerank score": "ReRank score",
         "Score": "Score",
         "Search type": "Type",
+        "Source id": "Source ID",
+        "Source name": "Source",
         "Top K": "Top K",
         "mode": {
           "embedding": "Vector recall",

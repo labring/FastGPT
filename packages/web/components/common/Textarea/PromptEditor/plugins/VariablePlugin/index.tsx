@@ -6,11 +6,11 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { getHashtagRegexString } from './utils';
 import { registerLexicalTextEntity } from '../../utils';
 import { $createVariableNode, VariableNode } from './node';
-import { VariableItemType } from '@fastgpt/global/core/module/type';
+import { PickerMenuItemType } from '../../type';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
-export default function VariablePlugin({ variables }: { variables: VariableItemType[] }) {
+export default function VariablePlugin({ variables }: { variables: PickerMenuItemType[] }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     if (!editor.hasNodes([VariableNode]))

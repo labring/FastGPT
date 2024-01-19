@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
+import React, { useMemo, useState, useTransition } from 'react';
 import {
   Box,
   Flex,
@@ -64,7 +64,7 @@ const EditForm = ({
   const [refresh, setRefresh] = useState(false);
   const [, startTst] = useTransition();
 
-  const { register, setValue, getValues, reset, handleSubmit, control, watch } =
+  const { setValue, getValues, reset, handleSubmit, control, watch } =
     useForm<AppSimpleEditFormType>({
       defaultValues: getDefaultAppForm()
     });
@@ -99,24 +99,25 @@ const EditForm = ({
     content: t('core.app.edit.Confirm Save App Tip')
   });
 
-  const chatModelSelectList = useMemo(() => {
-    return chatModelList.map((item) => ({
+  const variables = watch('userGuide.variables');
+  const formatVariables = useMemo(() => formatVariablesIcon(variables), [variables]);
+  const aiSystemPrompt = watch('aiSettings.systemPrompt');
+  const searchMode = watch('dataset.searchMode');
+
+  const chatModelSelectList = (() =>
+    chatModelList.map((item) => ({
       value: item.model,
       label: item.name
-    }));
-  }, [refresh]);
+    })))();
 
   const selectDatasets = useMemo(
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
     [allDatasets, datasets]
   );
 
-  const selectSimpleTemplate = useMemo(
-    () =>
-      simpleModeTemplates?.find((item) => item.id === getValues('templateId')) ||
-      SimpleModeTemplate_FastGPT_Universal,
-    [getValues, refresh]
-  );
+  const selectSimpleTemplate = (() =>
+    simpleModeTemplates?.find((item) => item.id === getValues('templateId')) ||
+    SimpleModeTemplate_FastGPT_Universal)();
 
   const tokenLimit = useMemo(() => {
     return (
@@ -126,13 +127,9 @@ const EditForm = ({
   }, [getValues, refresh]);
 
   const datasetSearchMode = useMemo(() => {
-    const mode = getValues('dataset.searchMode');
-    if (!mode) return '';
-    return t(DatasetSearchModeMap[mode]?.title);
-  }, [getValues, t, refresh]);
-
-  const variables = watch('userGuide.variables');
-  const formatVariables = useMemo(() => formatVariablesIcon(variables), [variables]);
+    if (!searchMode) return '';
+    return t(DatasetSearchModeMap[searchMode]?.title);
+  }, [searchMode, t]);
 
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
@@ -149,21 +146,21 @@ const EditForm = ({
     errorToast: t('common.Save Failed')
   });
 
-  const appModule2Form = useCallback(() => {
-    const formVal = appModules2Form({
-      templateId: appDetail.simpleTemplateId,
-      modules: appDetail.modules
-    });
-
-    reset(formVal);
-    setTimeout(() => {
-      setRefresh((state) => !state);
-    }, 100);
-  }, [appDetail.modules, appDetail.simpleTemplateId, reset]);
-
-  useEffect(() => {
-    appModule2Form();
-  }, [appModule2Form]);
+  const { isSuccess: isInitd } = useQuery(
+    ['init', appDetail],
+    () => {
+      const formatVal = appModules2Form({
+        templateId: appDetail.simpleTemplateId,
+        modules: appDetail.modules
+      });
+      reset(formatVal);
+      setRefresh(!refresh);
+      return formatVal;
+    },
+    {
+      enabled: !!appDetail._id
+    }
+  );
   useQuery(['loadAllDatasets'], loadAllDatasets);
 
   const BoxStyles: BoxProps = {
@@ -302,17 +299,19 @@ const EditForm = ({
                       <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
                     </MyTooltip>
                   </Box>
-                  <PromptEditor
-                    defaultValue={getValues('aiSettings.systemPrompt') || ''}
-                    onChange={(text) => {
-                      startTst(() => {
-                        setValue('aiSettings.systemPrompt', text);
-                      });
-                    }}
-                    variables={formatVariables}
-                    placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
-                    title={t('core.ai.Prompt')}
-                  />
+                  {isInitd && (
+                    <PromptEditor
+                      defaultValue={aiSystemPrompt}
+                      onChange={(text) => {
+                        startTst(() => {
+                          setValue('aiSettings.systemPrompt', text);
+                        });
+                      }}
+                      variables={formatVariables}
+                      placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
+                      title={t('core.ai.Prompt')}
+                    />
+                  )}
                 </Flex>
               )}
             </Box>
@@ -487,6 +486,7 @@ const EditForm = ({
           }}
           defaultData={getValues('aiSettings')}
           simpleModeTemplate={selectSimpleTemplate}
+          pickerMenu={formatVariables}
         />
       )}
       {isOpenDatasetSelect && (

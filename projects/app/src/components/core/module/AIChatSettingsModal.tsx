@@ -27,6 +27,7 @@ import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/t
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
+import { PickerMenuItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -35,13 +36,15 @@ const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  simpleModeTemplate = SimpleModeTemplate_FastGPT_Universal
+  simpleModeTemplate = SimpleModeTemplate_FastGPT_Universal,
+  pickerMenu = []
 }: {
   isAdEdit?: boolean;
   onClose: () => void;
   onSuccess: (e: AIChatModuleProps) => void;
   defaultData: AIChatModuleProps;
   simpleModeTemplate?: AppSimpleEditConfigTemplateType;
+  pickerMenu?: PickerMenuItemType[];
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
@@ -60,7 +63,44 @@ const AIChatSettingsModal = ({
       chatModelList.find((item) => item.model === getValues(ModuleInputKeyEnum.aiModel))
         ?.maxResponse || 4000
     );
-  }, [getValues, refresh]);
+  }, [getValues]);
+
+  const quoteTemplateVariables = (() => [
+    ...pickerMenu,
+    {
+      key: 'q',
+      label: 'q',
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'a',
+      label: 'a',
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'source',
+      label: t('core.dataset.search.Source name'),
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'sourceId',
+      label: t('core.dataset.search.Source id'),
+      icon: 'core/app/simpleMode/variable'
+    },
+    {
+      key: 'index',
+      label: t('core.dataset.search.Quote index'),
+      icon: 'core/app/simpleMode/variable'
+    }
+  ])();
+  const quotePromptVariables = (() => [
+    ...pickerMenu,
+    {
+      key: 'quote',
+      label: t('core.app.Quote templates'),
+      icon: 'core/app/simpleMode/variable'
+    }
+  ])();
 
   const LabelStyles: BoxProps = {
     fontSize: ['sm', 'md']
@@ -189,6 +229,7 @@ const AIChatSettingsModal = ({
             </Flex>
 
             <PromptEditor
+              variables={quoteTemplateVariables}
               title={t('core.app.Quote templates')}
               placeholder={t('template.Quote Content Tip', {
                 default: Prompt_QuoteTemplateList[0].value
@@ -213,6 +254,7 @@ const AIChatSettingsModal = ({
               </MyTooltip>
             </Flex>
             <PromptEditor
+              variables={quotePromptVariables}
               title={t('core.app.Quote prompt')}
               h={220}
               placeholder={t('template.Quote Prompt Tip', {

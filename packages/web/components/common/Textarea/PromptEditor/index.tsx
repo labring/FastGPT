@@ -1,16 +1,17 @@
 import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import React from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
-import { $getRoot } from 'lexical';
+import { $getRoot, EditorState, type LexicalEditor } from 'lexical';
 import { PickerMenuItemType } from './type.d';
+import { useCallback, useTransition } from 'react';
 
 const PromptEditor = ({
   showOpenModal = true,
   variables = [],
-  defaultValue = '',
+  defaultValue,
   onChange,
   onBlur,
   h,
@@ -28,9 +29,21 @@ const PromptEditor = ({
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
 
-  const [newDefaultValue, setNewDefaultValue] = useState(defaultValue.replaceAll('}}{{', '}} {{'));
+  const [, startSts] = useTransition();
 
   const { t } = useTranslation();
+
+  const onChangeInput = useCallback((editorState: EditorState) => {
+    const text = editorState.read(() => $getRoot().getTextContent());
+    const formatValue = text.replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
+    onChange?.(formatValue);
+  }, []);
+  const onBlurInput = useCallback((editor: LexicalEditor) => {
+    startSts(() => {
+      const text = editorStateToText(editor).replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
+      onBlur?.(text);
+    });
+  }, []);
 
   return (
     <>
@@ -40,16 +53,9 @@ const PromptEditor = ({
         onOpenModal={onOpen}
         variables={variables}
         h={h}
-        defaultValue={newDefaultValue}
-        onChange={(editorState) => {
-          const text = editorState.read(() => $getRoot().getTextContent());
-          onChange?.(text.replaceAll('\n\n', '\n'));
-        }}
-        onBlur={(editor) => {
-          const text = editorStateToText(editor);
-          onBlur?.(text);
-          setNewDefaultValue(text.replaceAll('}}{{', '}} {{'));
-        }}
+        defaultValue={defaultValue}
+        onChange={onChangeInput}
+        onBlur={onBlurInput}
         placeholder={placeholder}
       />
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
@@ -59,16 +65,9 @@ const PromptEditor = ({
             showResize
             showOpenModal={false}
             variables={variables}
-            defaultValue={newDefaultValue}
-            onChange={(editorState) => {
-              const text = editorState.read(() => $getRoot().getTextContent());
-              onChange?.(text.replaceAll('\n\n', '\n'));
-            }}
-            onBlur={(editor) => {
-              const text = editorStateToText(editor);
-              onBlur?.(text);
-              setNewDefaultValue(text.replaceAll('}}{{', '}} {{'));
-            }}
+            defaultValue={defaultValue}
+            onChange={onChangeInput}
+            onBlur={onBlurInput}
             placeholder={placeholder}
           />
         </ModalBody>

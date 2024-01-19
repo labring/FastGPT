@@ -12,10 +12,10 @@ import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import { EditorState, LexicalEditor } from 'lexical';
 import { textToEditorState } from './utils';
-import { useMemo } from 'react';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
 import { PickerMenuItemType } from './type.d';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export default function Editor({
   h = 200,
@@ -35,11 +35,19 @@ export default function Editor({
   variables: PickerMenuItemType[];
   onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
-  defaultValue: string;
+  defaultValue?: string;
   placeholder?: string;
 }) {
+  const key = useRef(getNanoid(6));
   const [height, setHeight] = useState(h);
-
+  const [initialConfig, setInitialConfig] = useState({
+    namespace: 'promptEditor',
+    nodes: [VariableNode],
+    editorState: textToEditorState(defaultValue),
+    onError: (error: Error) => {
+      throw error;
+    }
+  });
   const initialY = useRef(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -60,21 +68,9 @@ export default function Editor({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
-  const initialConfig = useMemo(
-    () => ({
-      namespace: 'promptEditor',
-      nodes: [VariableNode],
-      editorState: textToEditorState(defaultValue),
-      onError: (error: Error) => {
-        throw error;
-      }
-    }),
-    [defaultValue]
-  );
-
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
-      <LexicalComposer initialConfig={initialConfig} key={defaultValue}>
+      <LexicalComposer initialConfig={initialConfig} key={key.current}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
           placeholder={
