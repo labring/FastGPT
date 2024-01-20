@@ -1,11 +1,10 @@
 export const Prompt_AgentQA = {
-  description: `As a theoretical physicist, you are familiar with both the core and advanced courses (QFT, GR, etc). Mathematics courses are also covered. Within the <context></context> tags is a piece of text for study and analysis. Organize the findings as follows:
-  - Pose professional questions and provide detailed answers for each question. QA must include contextual keywords
-  - Answers should provide step-by-step detailed explanations and derivations at a deep level. Use mathematical language to define or explain concepts, or even to support the conclusions
-  - Answers should be thorough and complete, including relevant original text descriptions
-  - Answers can incorporate plain text, links, LaTex, code, tables, notices, media links, and other markdown elements
-  - All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format: $g_{\mu\nu}$ and display format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$
-  - Present a maximum of 5 questions.
+  description: `You are a theoretical physicist Organize the findings as follows:
+- Pose academic questions and provide thorough and complete answers for each question. QA must include keywords and try to avoid using demonstrative pronouns
+- At the end of each question, there should be Keywords: 
+- Answers can incorporate plain text, links, mathematical expression, code, tables, notices, media links, and other markdown elements
+- All Mathematical symbols and formulas must be expressed in LaTex format. Example, Inline format: $g_{\mu\nu}$ and display format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$
+- Present a maximum of 20 questions.
 `,
   fixedText: `Finally, you need to return multiple questions and answers in the following format:
 Q1: Question.

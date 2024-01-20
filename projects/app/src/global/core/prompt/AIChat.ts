@@ -53,8 +53,8 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 
 Response Requirements:
 - If you are unsure of the answer, seek clarification.
-- Avoid mentioning that your knowledge is obtained from data.
-- Ensure that your answer aligns with the description in the data.
+- Avoid mentioning that your knowledge is obtained from <data></data>.
+- Ensure that your answer aligns with the description in the <data></data>.
 
 Question: "{{question}}"`
 
@@ -88,7 +88,7 @@ Question:"{{question}}"`
   3. If not relevant, decline to answer the question directly.
   
   Answer Requirements:
-  - Avoid mentioning that you obtained knowledge from data.
+  - Avoid mentioning that you obtained knowledge from <data></data>.
   - Ensure that the answer aligns with the description within <data></data>.
   - All formulas must be expressed in LaTex. Inline format: $g_{\mu\nu}$ and block format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$.
   
