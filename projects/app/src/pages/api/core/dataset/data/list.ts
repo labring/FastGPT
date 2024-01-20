@@ -20,11 +20,19 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     pageSize = Math.min(pageSize, 30);
 
     // 凭证校验
-    await authDatasetCollection({ req, authToken: true, authApiKey: true, collectionId, per: 'r' });
+    const { teamId, collection } = await authDatasetCollection({
+      req,
+      authToken: true,
+      authApiKey: true,
+      collectionId,
+      per: 'r'
+    });
 
     searchText = searchText.replace(/'/g, '');
 
     const match = {
+      teamId,
+      datasetId: collection.datasetId._id,
       collectionId,
       ...(searchText
         ? {

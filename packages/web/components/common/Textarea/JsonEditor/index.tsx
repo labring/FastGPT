@@ -74,7 +74,7 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, ...props }: Props) 
 
       <Box
         borderWidth={'1px'}
-        borderRadius={'base'}
+        borderRadius={'md'}
         borderColor={'myGray.200'}
         py={2}
         {...props}

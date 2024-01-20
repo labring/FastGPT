@@ -17,6 +17,11 @@ weight: 707
 | 500w 组向量 | 8c32g | 16c64g 200GB |
 {{< /table >}}
 
+## 部署架构图
+
+![](/imgs/sealos-fastgpt.webp)
+
+
 ### 1. 准备好代理环境（国外服务器可忽略）
 
 确保可以访问 OpenAI，具体方案可以参考：[代理方案](/docs/development/proxy/)。或直接在 Sealos 上 [部署 OneAPI](/docs/development/one-api)，既解决代理问题也能实现多 Key 轮询、接入其他大模型。

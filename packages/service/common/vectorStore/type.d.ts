@@ -7,6 +7,5 @@ declare global {
 export type EmbeddingRecallItemType = {
   id: string;
   collectionId: string;
-  dataId: string;
   score: number;
 };

@@ -126,7 +126,7 @@ const NodeCQNode = React.memo(function NodeCQNode({ data }: { data: FlowModuleIt
                       });
                     }}
                   >
-                    添加问题类型
+                    {t('core.module.Add question type')}
                   </Button>
                 </Box>
               );

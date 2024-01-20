@@ -19,13 +19,17 @@ images: []
 
 ## 通用问题
 
+### 能否纯本地允许
+
+可以。需要准备好向量模型和LLM模型。
+
 ### insufficient_user_quota user quota is not enough 
 
 OneAPI 账号的余额不足，默认 root 用户只有 200 刀，可以手动修改。
 
 ### xxx渠道找不到
 
-OneAPI 中没有配置该模型渠道。
+OneAPI 中没有配置该模型渠道。或者是修改了配置文件中一部分的模型，但没有全部修改。
 
 ### 页面中可以正常回复，API 报错
 
@@ -34,6 +38,15 @@ OneAPI 中没有配置该模型渠道。
 ### Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
 
 OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 stop 然后 rm 掉，最后再 up -d 运行一次）。可以`exec`进入容器，`env`查看环境变量是否生效。
+
+### 其他模型没法进行问题分类/内容提取
+
+需要给其他模型配置`toolChoice=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试，国内外的商业模型基本都可用。
+   
+### 页面崩溃
+
+1. 关闭翻译
+2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。
 
 ## Docker 部署常见问题
 
@@ -96,7 +109,7 @@ mongo连接失败，检查
 
 ### TypeError: Cannot read properties of null (reading 'useMemo' )
 
-用 Node18 试试，可能最新的 Node 有问题。 本地开发流程：
+删除所有的`node_modules`，用 Node18 重新 install 试试，可能最新的 Node 有问题。 本地开发流程：
 
 1. 根目录: `pnpm i`
 2. 复制 `config.json` -> `config.local.json`

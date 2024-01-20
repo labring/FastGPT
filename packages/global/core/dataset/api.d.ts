@@ -1,5 +1,5 @@
 import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
-import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constant';
+import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
 
 /* ================= dataset ===================== */
@@ -17,27 +17,25 @@ export type DatasetUpdateBody = {
 
 /* ================= collection ===================== */
 export type DatasetCollectionChunkMetadataType = {
+  parentId?: string;
   trainingType?: `${TrainingModeEnum}`;
   chunkSize?: number;
   chunkSplitter?: string;
   qaPrompt?: string;
+  metadata?: Record<string, any>;
 };
 export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
-  parentId?: string;
   name: string;
   type: `${DatasetCollectionTypeEnum}`;
   fileId?: string;
   rawLink?: string;
   rawTextLength?: number;
   hashRawText?: string;
-  metadata?: Record<string, any>;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
-  parentId?: string;
-  metadata?: Record<string, any>;
 };
 export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
@@ -45,16 +43,20 @@ export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 };
 export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   link: string;
-  chunkSplitter?: string;
+};
+export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  name: string;
+  rawTextLength: number;
+  hashRawText: string;
+
+  fileMetadata?: Record<string, any>;
+  collectionMetadata?: Record<string, any>;
 };
 
 /* ================= data ===================== */
 export type PgSearchRawType = {
   id: string;
-  team_id: string;
-  tmb_id: string;
   collection_id: string;
-  data_id: string;
   score: number;
 };
 export type PushDatasetDataChunkProps = {
@@ -67,4 +69,15 @@ export type PushDatasetDataChunkProps = {
 export type PostWebsiteSyncParams = {
   datasetId: string;
   billId: string;
+};
+
+export type PushDatasetDataProps = {
+  collectionId: string;
+  data: PushDatasetDataChunkProps[];
+  trainingMode: `${TrainingModeEnum}`;
+  prompt?: string;
+  billId?: string;
+};
+export type PushDatasetDataResponse = {
+  insertLen: number;
 };

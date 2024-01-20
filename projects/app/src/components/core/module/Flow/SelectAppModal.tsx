@@ -6,7 +6,6 @@ import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
 import { useTranslation } from 'next-i18next';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const SelectAppModal = ({
@@ -84,7 +83,7 @@ const SelectAppModal = ({
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>
-          {t('Cancel')}
+          {t('common.Close')}
         </Button>
         <Button
           ml={2}
@@ -101,7 +100,7 @@ const SelectAppModal = ({
             onClose();
           }}
         >
-          {t('Confirm')}
+          {t('common.Confirm')}
         </Button>
       </ModalFooter>
       <Loading loading={isLoading} fixed={false} />

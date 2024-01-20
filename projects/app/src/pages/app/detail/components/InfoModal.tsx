@@ -52,7 +52,7 @@ const InfoModal = ({
   });
   const [refresh, setRefresh] = useState(false);
 
-  // 提交保存模型修改
+  // submit config
   const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
     mutationFn: async (data: AppSchema) => {
       await updateAppDetail(data._id, {
@@ -66,18 +66,17 @@ const InfoModal = ({
       onSuccess && onSuccess();
       onClose();
       toast({
-        title: '更新成功',
+        title: t('common.Update Success'),
         status: 'success'
       });
     },
-    errorToast: '更新失败'
+    errorToast: t('common.Update Failed')
   });
 
-  // 提交保存表单失败
   const saveSubmitError = useCallback(() => {
     // deep search message
     const deepSearch = (obj: any): string => {
-      if (!obj) return '提交表单错误';
+      if (!obj) return t('common.Submit failed');
       if (!!obj.message) {
         return obj.message;
       }
@@ -89,7 +88,7 @@ const InfoModal = ({
       duration: 4000,
       isClosable: true
     });
-  }, [errors, toast]);
+  }, [errors, t, toast]);
 
   const saveUpdateModel = useCallback(
     () => handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)(),
@@ -111,12 +110,12 @@ const InfoModal = ({
         setRefresh((state) => !state);
       } catch (err: any) {
         toast({
-          title: getErrText(err, '头像选择异常'),
+          title: getErrText(err, t('common.error.Select avatar failed')),
           status: 'warning'
         });
       }
     },
-    [setValue, toast]
+    [setValue, t, toast]
   );
 
   return (
@@ -127,7 +126,7 @@ const InfoModal = ({
       title={t('core.app.setting')}
     >
       <ModalBody>
-        <Box>头像 & 名称</Box>
+        <Box>{t('core.app.Name and avatar')}</Box>
         <Flex mt={2} alignItems={'center'}>
           <Avatar
             src={getValues('avatar')}
@@ -136,21 +135,21 @@ const InfoModal = ({
             cursor={'pointer'}
             borderRadius={'md'}
             mr={4}
-            title={'点击切换头像'}
+            title={t('common.Set Avatar')}
             onClick={() => onOpenSelectFile()}
           />
           <FormControl>
             <Input
               bg={'myWhite.600'}
-              placeholder={'给应用设置一个名称'}
+              placeholder={t('core.app.Set a name for your app')}
               {...register('name', {
-                required: '展示名称不能为空'
+                required: true
               })}
             ></Input>
           </FormControl>
         </Flex>
         <Box mt={4} mb={1}>
-          应用介绍
+          {t('core.app.App intro')}
         </Box>
         {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
             该介绍主要用于记忆和在应用市场展示
@@ -158,7 +157,7 @@ const InfoModal = ({
         <Textarea
           rows={4}
           maxLength={500}
-          placeholder={'给你的 AI 应用一个介绍'}
+          placeholder={t('core.app.Make a brief introduction of your app')}
           bg={'myWhite.600'}
           {...register('intro')}
         />
@@ -176,10 +175,10 @@ const InfoModal = ({
 
       <ModalFooter>
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
-          取消
+          {t('common.Close')}
         </Button>
         <Button isLoading={btnLoading} onClick={saveUpdateModel}>
-          保存
+          {t('common.Save')}
         </Button>
       </ModalFooter>
 

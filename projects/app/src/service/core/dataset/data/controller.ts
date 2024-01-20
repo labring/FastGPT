@@ -9,14 +9,12 @@ import {
   recallFromVectorStore,
   updateDatasetDataVector
 } from '@fastgpt/service/common/vectorStore/controller';
-import { Types } from 'mongoose';
 import {
   DatasetDataIndexTypeEnum,
   DatasetSearchModeEnum,
   DatasetSearchModeMap,
-  SearchScoreTypeEnum,
-  TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+  SearchScoreTypeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@/service/common/string/jieba';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
@@ -24,176 +22,31 @@ import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import {
   DatasetDataSchemaType,
+  DatasetDataWithCollectionType,
   SearchDataResponseItemType
 } from '@fastgpt/global/core/dataset/type';
 import { reRankRecall } from '../../ai/rerank';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
-import { hashStr, simpleText } from '@fastgpt/global/common/string/tools';
-import type { PushDatasetDataProps } from '@/global/core/dataset/api.d';
-import type { PushDataResponse } from '@/global/core/api/datasetRes';
-import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
-import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { startQueue } from '@/service/utils/tools';
-import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
-import { getQAModel, getVectorModel } from '../../ai/model';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { hashStr } from '@fastgpt/global/common/string/tools';
+import type {
+  PushDatasetDataProps,
+  PushDatasetDataResponse
+} from '@fastgpt/global/core/dataset/api.d';
+import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 
-export async function pushDataToDatasetCollection({
-  teamId,
-  tmbId,
-  collectionId,
-  data,
-  prompt,
-  billId,
-  trainingMode
-}: {
-  teamId: string;
-  tmbId: string;
-} & PushDatasetDataProps): Promise<PushDataResponse> {
-  const checkModelValid = async ({ collectionId }: { collectionId: string }) => {
-    const {
-      datasetId: { _id: datasetId, vectorModel, agentModel }
-    } = await getCollectionWithDataset(collectionId);
-
-    if (trainingMode === TrainingModeEnum.chunk) {
-      if (!collectionId) return Promise.reject(`CollectionId is empty`);
-      const vectorModelData = getVectorModel(vectorModel);
-      if (!vectorModelData) {
-        return Promise.reject(`Model ${vectorModel} is inValid`);
-      }
-
-      return {
-        datasetId,
-        maxToken: vectorModelData.maxToken * 1.5,
-        model: vectorModelData.model,
-        weight: vectorModelData.weight
-      };
-    }
-
-    if (trainingMode === TrainingModeEnum.qa) {
-      const qaModelData = getQAModel(agentModel);
-      if (!qaModelData) {
-        return Promise.reject(`Model ${agentModel} is inValid`);
-      }
-      return {
-        datasetId,
-        maxToken: qaModelData.maxContext * 0.8,
-        model: qaModelData.model,
-        weight: 0
-      };
-    }
-    return Promise.reject(`Mode ${trainingMode} is inValid`);
-  };
-
-  const { datasetId, model, maxToken, weight } = await checkModelValid({
-    collectionId
+export async function pushDataToTrainingQueue(
+  props: {
+    teamId: string;
+    tmbId: string;
+  } & PushDatasetDataProps
+): Promise<PushDatasetDataResponse> {
+  const result = await pushDataListToTrainingQueue({
+    ...props,
+    vectorModelList: global.vectorModels,
+    qaModelList: global.qaModels
   });
 
-  // format q and a, remove empty char
-  data.forEach((item) => {
-    item.q = simpleText(item.q);
-    item.a = simpleText(item.a);
-
-    item.indexes = item.indexes
-      ?.map((index) => {
-        return {
-          ...index,
-          text: simpleText(index.text)
-        };
-      })
-      .filter(Boolean);
-  });
-
-  // filter repeat or equal content
-  const set = new Set();
-  const filterResult: Record<string, PushDatasetDataChunkProps[]> = {
-    success: [],
-    overToken: [],
-    repeat: [],
-    error: []
-  };
-
-  data.forEach((item) => {
-    if (!item.q) {
-      filterResult.error.push(item);
-      return;
-    }
-
-    const text = item.q + item.a;
-
-    // count q token
-    const token = countPromptTokens(item.q);
-
-    if (token > maxToken) {
-      filterResult.overToken.push(item);
-      return;
-    }
-
-    if (set.has(text)) {
-      console.log('repeat', item);
-      filterResult.repeat.push(item);
-    } else {
-      filterResult.success.push(item);
-      set.add(text);
-    }
-  });
-
-  // 插入记录
-  const insertData = async (dataList: PushDatasetDataChunkProps[], retry = 3): Promise<number> => {
-    try {
-      const results = await MongoDatasetTraining.insertMany(
-        dataList.map((item, i) => ({
-          teamId,
-          tmbId,
-          datasetId,
-          collectionId,
-          billId,
-          mode: trainingMode,
-          prompt,
-          model,
-          q: item.q,
-          a: item.a,
-          chunkIndex: item.chunkIndex ?? i,
-          weight: weight ?? 0,
-          indexes: item.indexes
-        }))
-      );
-      await delay(500);
-      return results.length;
-    } catch (error) {
-      if (retry > 0) {
-        await delay(1000);
-        return insertData(dataList, retry - 1);
-      }
-      return Promise.reject(error);
-    }
-  };
-
-  let insertLen = 0;
-  const chunkSize = 50;
-  const chunkList = filterResult.success.reduce(
-    (acc, cur) => {
-      const lastChunk = acc[acc.length - 1];
-      if (lastChunk.length < chunkSize) {
-        lastChunk.push(cur);
-      } else {
-        acc.push([cur]);
-      }
-      return acc;
-    },
-    [[]] as PushDatasetDataChunkProps[][]
-  );
-  for await (const chunks of chunkList) {
-    insertLen += await insertData(chunks);
-  }
-
-  startQueue();
-  delete filterResult.success;
-
-  return {
-    insertLen,
-    ...filterResult
-  };
+  return result;
 }
 
 /* insert data.
@@ -222,7 +75,6 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  const id = new Types.ObjectId();
   const qaStr = `${q}\n${a}`.trim();
 
   // empty indexes check, if empty, create default index
@@ -242,17 +94,14 @@ export async function insertData2Dataset({
         query: item.text,
         model,
         teamId,
-        tmbId,
         datasetId,
-        collectionId,
-        dataId: String(id)
+        collectionId
       })
     )
   );
 
-  // create mongo
+  // create mongo data
   const { _id } = await MongoDatasetData.create({
-    _id: id,
     teamId,
     tmbId,
     datasetId,
@@ -269,7 +118,7 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    tokens: result.reduce((acc, cur) => acc + cur.tokens, 0)
+    charsLength: result.reduce((acc, cur) => acc + cur.charsLength, 0)
   };
 }
 
@@ -293,7 +142,7 @@ export async function updateData2Dataset({
 
   // patch index and update pg
   const mongoData = await MongoDatasetData.findById(dataId);
-  if (!mongoData) return Promise.reject('Data not found');
+  if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
   // make sure have one index
   if (indexes.length === 0) {
@@ -344,6 +193,11 @@ export async function updateData2Dataset({
             text: qaStr
           }
         });
+      } else {
+        patchResult.push({
+          type: 'unChange',
+          index: item
+        });
       }
     } else {
       // not in database, create
@@ -354,6 +208,11 @@ export async function updateData2Dataset({
     }
   }
 
+  // update mongo updateTime
+  mongoData.updateTime = new Date();
+  await mongoData.save();
+
+  // update vector
   const result = await Promise.all(
     patchResult.map(async (item) => {
       if (item.type === 'create') {
@@ -361,51 +220,58 @@ export async function updateData2Dataset({
           query: item.index.text,
           model,
           teamId: mongoData.teamId,
-          tmbId: mongoData.tmbId,
           datasetId: mongoData.datasetId,
-          collectionId: mongoData.collectionId,
-          dataId
+          collectionId: mongoData.collectionId
         });
         item.index.dataId = result.insertId;
         return result;
       }
       if (item.type === 'update' && item.index.dataId) {
-        return updateDatasetDataVector({
+        const result = await updateDatasetDataVector({
+          teamId: mongoData.teamId,
+          datasetId: mongoData.datasetId,
+          collectionId: mongoData.collectionId,
           id: item.index.dataId,
           query: item.index.text,
           model
         });
+        item.index.dataId = result.insertId;
+
+        return result;
       }
       if (item.type === 'delete' && item.index.dataId) {
         await deleteDatasetDataVector({
+          teamId: mongoData.teamId,
           id: item.index.dataId
         });
         return {
-          tokens: 0
+          charsLength: 0
         };
       }
       return {
-        tokens: 0
+        charsLength: 0
       };
     })
   );
 
-  const tokens = result.reduce((acc, cur) => acc + cur.tokens, 0);
+  const charsLength = result.reduce((acc, cur) => acc + cur.charsLength, 0);
+  const newIndexes = patchResult.filter((item) => item.type !== 'delete').map((item) => item.index);
 
-  // update mongo
+  // update mongo other data
   mongoData.q = q || mongoData.q;
   mongoData.a = a ?? mongoData.a;
   mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
   // @ts-ignore
-  mongoData.indexes = indexes;
+  mongoData.indexes = newIndexes;
   await mongoData.save();
 
   return {
-    tokens
+    charsLength
   };
 }
 
 export async function searchDatasetData(props: {
+  teamId: string;
   model: string;
   similarity?: number; // min distance
   limit: number; // max Token limit
@@ -416,6 +282,7 @@ export async function searchDatasetData(props: {
   queries: string[];
 }) {
   let {
+    teamId,
     rawQuery,
     queries,
     model,
@@ -460,7 +327,7 @@ export async function searchDatasetData(props: {
     };
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
-    const { vectors, tokens } = await getVectorsByText({
+    const { vectors, charsLength } = await getVectorsByText({
       model,
       input: query
     });
@@ -472,41 +339,45 @@ export async function searchDatasetData(props: {
     });
 
     // get q and a
-    const [collections, dataList] = await Promise.all([
-      MongoDatasetCollection.find(
-        {
-          _id: { $in: results.map((item) => item.collectionId) }
-        },
-        'name fileId rawLink'
-      ).lean(),
-      MongoDatasetData.find(
-        {
-          _id: { $in: results.map((item) => item.dataId?.trim()) }
-        },
-        'datasetId collectionId q a chunkIndex indexes'
-      ).lean()
-    ]);
+    const dataList = (await MongoDatasetData.find(
+      {
+        teamId,
+        datasetId: { $in: datasetIds },
+        'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
+      },
+      'datasetId collectionId q a chunkIndex indexes'
+    )
+      .populate('collectionId', 'name fileId rawLink')
+      .lean()) as DatasetDataWithCollectionType[];
 
-    const formatResult = results
-      .map((item, index) => {
-        const collection = collections.find(
-          (collection) => String(collection._id) === item.collectionId
-        );
-        const data = dataList.find((data) => String(data._id) === item.dataId);
+    // add score to data(It's already sorted. The first one is the one with the most points)
+    const concatResults = dataList.map((data) => {
+      const dataIdList = data.indexes.map((item) => item.dataId);
 
-        // if collection or data UnExist, the relational mongo data already deleted
-        if (!collection || !data) return null;
+      const maxScoreResult = results.find((item) => {
+        return dataIdList.includes(item.id);
+      });
 
+      return {
+        ...data,
+        score: maxScoreResult?.score || 0
+      };
+    });
+
+    concatResults.sort((a, b) => b.score - a.score);
+
+    const formatResult = concatResults
+      .map((data, index) => {
         const result: SearchDataResponseItemType = {
           id: String(data._id),
           q: data.q,
           a: data.a,
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
-          collectionId: String(data.collectionId),
-          sourceName: collection.name || '',
-          sourceId: collection?.fileId || collection?.rawLink,
-          score: [{ type: SearchScoreTypeEnum.embedding, value: item.score, index }]
+          collectionId: String(data.collectionId._id),
+          sourceName: data.collectionId.name || '',
+          sourceId: data.collectionId?.fileId || data.collectionId?.rawLink,
+          score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
         };
 
         return result;
@@ -515,7 +386,7 @@ export async function searchDatasetData(props: {
 
     return {
       embeddingRecallResults: formatResult,
-      tokens
+      charsLength
     };
   };
   const fullTextRecall = async ({
@@ -540,6 +411,7 @@ export async function searchDatasetData(props: {
         datasetIds.map((id) =>
           MongoDatasetData.find(
             {
+              teamId,
               datasetId: id,
               $text: { $search: jiebaSplit({ text: query }) }
             },
@@ -688,26 +560,27 @@ export async function searchDatasetData(props: {
     // multi query recall
     const embeddingRecallResList: SearchDataResponseItemType[][] = [];
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
-    let embTokens = 0;
+    let totalCharsLength = 0;
     for await (const query of queries) {
-      const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
-        embeddingRecall({
-          query,
-          limit: embeddingLimit
-        }),
-        fullTextRecall({
-          query,
-          limit: fullTextLimit
-        })
-      ]);
-      embTokens += tokens;
+      const [{ charsLength, embeddingRecallResults }, { fullTextRecallResults }] =
+        await Promise.all([
+          embeddingRecall({
+            query,
+            limit: embeddingLimit
+          }),
+          fullTextRecall({
+            query,
+            limit: fullTextLimit
+          })
+        ]);
+      totalCharsLength += charsLength;
 
       embeddingRecallResList.push(embeddingRecallResults);
       fullTextRecallResList.push(fullTextRecallResults);
     }
 
     return {
-      tokens: embTokens,
+      charsLength: totalCharsLength,
       embeddingRecallResults: embeddingRecallResList[0],
       fullTextRecallResults: fullTextRecallResList[0]
     };
@@ -778,7 +651,7 @@ export async function searchDatasetData(props: {
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
-  const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
+  const { embeddingRecallResults, fullTextRecallResults, charsLength } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
@@ -851,7 +724,7 @@ export async function searchDatasetData(props: {
 
   return {
     searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
-    tokens,
+    charsLength,
     searchMode,
     limit: maxTokens,
     similarity,

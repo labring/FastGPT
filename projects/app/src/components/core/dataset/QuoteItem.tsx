@@ -8,7 +8,7 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import dynamic from 'next/dynamic';
 import MyBox from '@/components/common/MyBox';
-import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constant';
+import { SearchScoreTypeEnum, SearchScoreTypeMap } from '@fastgpt/global/core/dataset/constants';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
@@ -102,6 +102,7 @@ const QuoteItem = ({
         overflow={'hidden'}
         fontSize={'sm'}
         whiteSpace={'pre-wrap'}
+        wordBreak={'break-all'}
         _hover={{ '& .hover-data': { display: 'flex' } }}
         h={'100%'}
         display={'flex'}
@@ -220,7 +221,6 @@ const QuoteItem = ({
                   display={['flex', 'none']}
                   alignItems={'center'}
                   justifyContent={'center'}
-                  boxShadow={'-10px 0 10px rgba(255,255,255,1)'}
                 >
                   <MyIcon
                     name={'edit'}

@@ -63,37 +63,37 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
 export const moduleTemplatesList: moduleTemplateListType = [
   {
     type: ModuleTemplateTypeEnum.userGuide,
-    label: '引导模块',
+    label: 'core.module.template.Guide module',
     list: []
   },
   {
     type: ModuleTemplateTypeEnum.systemInput,
-    label: '系统输入',
+    label: 'core.module.template.System input module',
     list: []
   },
   {
     type: ModuleTemplateTypeEnum.tools,
-    label: '工具',
+    label: 'core.module.template.Tool module',
     list: []
   },
   {
     type: ModuleTemplateTypeEnum.textAnswer,
-    label: '文本输出',
+    label: 'core.module.template.Response module',
     list: []
   },
   {
     type: ModuleTemplateTypeEnum.functionCall,
-    label: '功能调用',
+    label: 'core.module.template.Function module',
     list: []
   },
   {
     type: ModuleTemplateTypeEnum.externalCall,
-    label: '外部调用',
+    label: 'core.module.template.External module',
     list: []
   },
   {
     type: ModuleTemplateTypeEnum.personalPlugin,
-    label: '个人插件',
+    label: 'core.module.template.My plugin module',
     list: []
   },
   {

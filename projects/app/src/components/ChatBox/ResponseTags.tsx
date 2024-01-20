@@ -12,6 +12,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
@@ -123,7 +124,7 @@ const ResponseTags = ({
                     });
                   }}
                 >
-                  <Image src={item.icon} alt={''} mr={1} flexShrink={0} w={'12px'} />
+                  <MyIcon name={item.icon as any} mr={1} flexShrink={0} w={'12px'} />
                   <Box className="textEllipsis3" wordBreak={'break-all'} flex={'1 0 0'}>
                     {item.sourceName}
                   </Box>

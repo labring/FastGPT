@@ -30,7 +30,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
     hasTokens,
     hasInputTokens,
     hasOutputTokens,
-    hasTextLen,
+    hasCharsLen,
     hasDuration,
     hasDataLen
   } = useMemo(() => {
@@ -38,7 +38,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
     let hasTokens = false;
     let hasInputTokens = false;
     let hasOutputTokens = false;
-    let hasTextLen = false;
+    let hasCharsLen = false;
     let hasDuration = false;
     let hasDataLen = false;
 
@@ -46,23 +46,20 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       if (item.model !== undefined) {
         hasModel = true;
       }
-      if (item.tokenLen !== undefined) {
+      if (typeof item.tokenLen === 'number') {
         hasTokens = true;
       }
-      if (item.inputTokens !== undefined) {
+      if (typeof item.inputTokens === 'number') {
         hasInputTokens = true;
       }
-      if (item.outputTokens !== undefined) {
+      if (typeof item.outputTokens === 'number') {
         hasOutputTokens = true;
       }
-      if (item.textLen !== undefined) {
-        hasTextLen = true;
+      if (typeof item.charsLength === 'number') {
+        hasCharsLen = true;
       }
-      if (item.duration !== undefined) {
+      if (typeof item.duration === 'number') {
         hasDuration = true;
-      }
-      if (item.dataLen !== undefined) {
-        hasDataLen = true;
       }
     });
 
@@ -71,7 +68,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       hasTokens,
       hasInputTokens,
       hasOutputTokens,
-      hasTextLen,
+      hasCharsLen,
       hasDuration,
       hasDataLen
     };
@@ -123,9 +120,8 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                   {hasTokens && <Th>{t('wallet.bill.Token Length')}</Th>}
                   {hasInputTokens && <Th>{t('wallet.bill.Input Token Length')}</Th>}
                   {hasOutputTokens && <Th>{t('wallet.bill.Output Token Length')}</Th>}
-                  {hasTextLen && <Th>{t('wallet.bill.Text Length')}</Th>}
+                  {hasCharsLen && <Th>{t('wallet.bill.Text Length')}</Th>}
                   {hasDuration && <Th>{t('wallet.bill.Duration')}</Th>}
-                  {hasDataLen && <Th>{t('wallet.bill.Data Length')}</Th>}
                   <Th>费用(￥)</Th>
                 </Tr>
               </Thead>
@@ -137,10 +133,8 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                     {hasTokens && <Td>{item.tokenLen ?? '-'}</Td>}
                     {hasInputTokens && <Td>{item.inputTokens ?? '-'}</Td>}
                     {hasOutputTokens && <Td>{item.outputTokens ?? '-'}</Td>}
-                    {hasTextLen && <Td>{item.textLen ?? '-'}</Td>}
+                    {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
-                    {hasDataLen && <Td>{item.dataLen ?? '-'}</Td>}
-
                     <Td>{formatStorePrice2Read(item.amount)}</Td>
                   </Tr>
                 ))}

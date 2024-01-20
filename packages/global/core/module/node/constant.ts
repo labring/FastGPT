@@ -54,10 +54,9 @@ export enum FlowNodeTypeEnum {
   pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
-  cfr = 'cfr',
+  cfr = 'cfr'
 
   // abandon
-  variable = 'variable'
 }
 
 export const EDGE_TYPE = 'default';
