@@ -286,13 +286,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
-                  leftIcon={
-                    <MyIcon
-                      name={'support/account/loginoutLight'}
-                      w={'14px'}
-                      color={'primary.500'}
-                    />
-                  }
+                  leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
                   onClick={() => {
                     openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
                   }}
