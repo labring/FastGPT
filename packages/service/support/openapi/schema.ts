@@ -68,6 +68,13 @@ const OpenApiSchema = new Schema(
   }
 );
 
+try {
+  OpenApiSchema.index({ teamId: 1 });
+  OpenApiSchema.index({ apiKey: 1 });
+} catch (error) {
+  console.log(error);
+}
+
 export const MongoOpenApi: Model<OpenApiSchema> =
   models['openapi'] || model('openapi', OpenApiSchema);
 MongoOpenApi.syncIndexes();

@@ -15,7 +15,11 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import { chatModelList, simpleModeTemplates } from '@/web/common/system/staticData';
+import {
+  chatModelList,
+  reRankModelList,
+  simpleModeTemplates
+} from '@/web/common/system/staticData';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
@@ -349,6 +353,13 @@ const EditForm = ({
               {getValues('dataset.datasets').length > 0 && (
                 <Flex mt={1} color={'myGray.600'} fontSize={'sm'} mb={2}>
                   {t('core.dataset.search.search mode')}: {datasetSearchMode}
+                  {', '}
+                  {reRankModelList.length > 0 && (
+                    <>
+                      {t('core.dataset.search.ReRank')}:{' '}
+                      {getValues('dataset.usingReRank') ? '✅' : '✖'}
+                    </>
+                  )}
                   {', '}
                   {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')}
                   {', '}

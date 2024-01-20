@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra-ui/react';
+import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '@/constants/user';
 import { postRegister } from '@/web/support/user/api';
@@ -9,6 +9,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
 import { appTemplates } from '@/web/core/app/templates';
 import { feConfigs } from '@/web/common/system/staticData';
+import { useTranslation } from 'next-i18next';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
@@ -24,6 +25,7 @@ interface RegisterType {
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
+  const { t } = useTranslation();
   const {
     register,
     handleSubmit,
@@ -68,7 +70,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           appTemplates.forEach((template) => {
             postCreateApp({
               avatar: template.avatar,
-              name: template.name,
+              name: t(template.name),
               modules: template.modules,
               type: template.type
             });

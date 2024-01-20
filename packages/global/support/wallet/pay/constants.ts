@@ -9,13 +9,13 @@ export const payTypeMap = {
     label: 'support.user.team.pay.type.balance'
   },
   [PayTypeEnum.subStandard]: {
-    label: 'support.user.team.subscription.type.standard'
+    label: 'support.wallet.subscription.type.standard'
   },
   [PayTypeEnum.subExtraDatasetSize]: {
-    label: 'support.user.team.subscription.type.extraDatasetSize'
+    label: 'support.wallet.subscription.type.extraDatasetSize'
   },
   [PayTypeEnum.subExtraPoints]: {
-    label: 'support.user.team.subscription.type.extraPoints'
+    label: 'support.wallet.subscription.type.extraPoints'
   }
 };
 

@@ -335,7 +335,8 @@ export async function searchDatasetData(props: {
     const { results } = await recallFromVectorStore({
       vectors,
       limit,
-      datasetIds
+      datasetIds,
+      efSearch: global.systemEnv?.pgHNSWEfSearch
     });
 
     // get q and a
@@ -479,6 +480,7 @@ export async function searchDatasetData(props: {
       });
 
       if (!Array.isArray(results)) {
+        usingReRank = false;
         return [];
       }
 
@@ -498,6 +500,7 @@ export async function searchDatasetData(props: {
 
       return mergeResult;
     } catch (error) {
+      usingReRank = false;
       return [];
     }
   };
@@ -709,9 +712,8 @@ export async function searchDatasetData(props: {
       });
     }
     if (searchMode === DatasetSearchModeEnum.embedding) {
+      usingSimilarityFilter = true;
       return filterSameDataResults.filter((item) => {
-        usingSimilarityFilter = true;
-
         const embeddingScore = item.score.find(
           (item) => item.type === SearchScoreTypeEnum.embedding
         );

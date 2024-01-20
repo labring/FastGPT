@@ -162,7 +162,10 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
     }
   };
 
-  const ai = getAIApi(user.openaiAccount, 480000);
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
 
   const response = await ai.chat.completions.create({
     model: extractModel.model,
@@ -223,7 +226,10 @@ Human: ${content}`
     }
   ];
 
-  const ai = getAIApi(user.openaiAccount, 480000);
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
 
   const data = await ai.chat.completions.create({
     model: extractModel.model,

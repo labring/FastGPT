@@ -17,6 +17,7 @@ import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/control
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
+import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -41,8 +42,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1. check dataset limit
     await checkDatasetLimit({
       teamId,
-      freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize,
-      insertLen: predictDataLimitLength(trainingType, new Array(10))
+      insertLen: predictDataLimitLength(trainingType, new Array(10)),
+      standardPlans: getStandardSubPlan()
     });
 
     // 2. create collection

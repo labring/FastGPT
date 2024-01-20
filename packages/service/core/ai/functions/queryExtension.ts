@@ -17,7 +17,9 @@ OUTPUT:
 `;
 
 export const searchQueryExtension = async ({ query, model }: { query: string; model: string }) => {
-  const ai = getAIApi(undefined, 480000);
+  const ai = getAIApi({
+    timeout: 480000
+  });
 
   const result = await ai.chat.completions.create({
     model,

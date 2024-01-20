@@ -123,7 +123,9 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       }
     ];
 
-    const ai = getAIApi(undefined, 600000);
+    const ai = getAIApi({
+      timeout: 600000
+    });
     const chatResponse = await ai.chat.completions.create({
       model,
       temperature: 0.3,

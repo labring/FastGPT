@@ -1127,6 +1127,7 @@
       "Cancel subscription": "取消订阅"
     },
     "user": {
+      "Need to login": "请先登录",
       "Price": "计费标准",
       "auth": {
         "Sending Code": "正在发送"
@@ -1138,28 +1139,67 @@
       },
       "team": {
         "Dataset usage": "知识库容量",
-        "member": "成员",
-        "subscription": {
-          "type": {
-            "extraDatasetSize": "知识库扩容"
-          }
-        }
+        "member": "成员"
       }
     },
     "wallet": {
+      "Balance not enough tip": "余额不足，请先到账号页充值",
       "Buy more": "扩容",
       "Confirm pay": "支付确认",
       "Pay error": "支付失败",
       "Pay success": "支付成功",
+      "bill": {
+        "AI Model": "AI 模型",
+        "AI Type": "AI 类型",
+        "Price": "价格（￥）"
+      },
       "subscription": {
+        "Ai points": "AI 积分计算标准",
+        "Buy now": "开始使用",
         "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
         "Current dataset store": "当前额外容量",
+        "Current plan": "当前计划",
         "Dataset store": "知识库容量",
         "Dataset store price tip": "每月1号从账号余额里扣除",
         "Expand size": "扩大容量",
         "Extra dataset size": "额外知识库容量",
+        "FAQ": "常见问题",
+        "Next plan": "未来计划",
         "Next sub dataset size": "下次订阅额外容量",
-        "Update extra dataset size": "修改知识库额外容量"
+        "Nonsupport": "无法切换",
+        "Refund plan and pay confirm": "切换该套餐您无需支付额外费用，并将退换 {{amount}} 元至余额中。",
+        "Standard plan pay confirm": "切换该套餐，您本次需要补充支付 {{payPrice}} 元。",
+        "Standard update fail": "修改订阅套餐异常",
+        "Standard update success": "变更订阅套餐成功！",
+        "Sub plan": "订阅套餐",
+        "Sub plan tip": "免费使用 FastGPT 或升级更高的套餐",
+        "Training weight": "训练优先级: {{weight}}",
+        "Update extra dataset size": "修改知识库额外容量",
+        "function": {
+          "History store": "{{amount}} 天对话记录保留",
+          "Max app": "{{amount}} 个应用与插件",
+          "Max dataset": "{{amount}} 个知识库",
+          "Max dataset size": "{{amount}} 组知识库数据",
+          "Max members": "{{amount}} 个团队成员",
+          "Points": "{{amount}}万AI积分"
+        },
+        "mode": {
+          "Month": "按月",
+          "Year": "按年",
+          "Year sale": "赠送两个月"
+        },
+        "standardSubLevel": {
+          "enterprise": "企业版",
+          "experience": "体验版",
+          "experience desc": "可使用 {{title}} 的完整功能",
+          "free": "免费版",
+          "free desc": "每月均可免费使用 {{title}} 的基础功能",
+          "team": "团队版"
+        },
+        "type": {
+          "extraDatasetSize": "知识库扩容",
+          "standard": "套餐订阅"
+        }
       }
     }
   },

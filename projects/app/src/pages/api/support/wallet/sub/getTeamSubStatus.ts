@@ -2,8 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { getTeamDatasetValidSub } from '@fastgpt/service/support/wallet/sub/utils';
-import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorStore/controller';
+import { getTeamSubPlanStatus } from '@fastgpt/service/support/wallet/sub/utils';
+import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
+import { FeTeamSubType } from '@fastgpt/global/support/wallet/sub/type';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -15,20 +16,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       authToken: true
     });
 
-    const [{ sub, maxSize }, usedSize] = await Promise.all([
-      getTeamDatasetValidSub({
+    jsonRes<FeTeamSubType>(res, {
+      data: await getTeamSubPlanStatus({
         teamId,
-        freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize
-      }),
-      getVectorCountByTeamId(teamId)
-    ]);
-
-    jsonRes(res, {
-      data: {
-        sub,
-        maxSize,
-        usedSize
-      }
+        standardPlans: getStandardSubPlan()
+      })
     });
   } catch (err) {
     jsonRes(res, {
