@@ -76,7 +76,7 @@ export const getDatasetCollectionById = (id: string) =>
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
-  POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/link`, data);
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
