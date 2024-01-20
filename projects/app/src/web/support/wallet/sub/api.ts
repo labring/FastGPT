@@ -10,4 +10,4 @@ export const getTeamDatasetValidSub = () =>
   }>(`/support/wallet/sub/getDatasetSub`);
 
 export const postExpandTeamDatasetSub = (data: SubDatasetSizeParams) =>
-  POST('/plusApi/support/wallet/sub/datasetSize/expand', data);
+  POST('/proApi/support/wallet/sub/datasetSize/expand', data);
