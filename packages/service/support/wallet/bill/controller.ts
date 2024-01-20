@@ -25,15 +25,13 @@ export const createTrainingBill = async ({
       {
         moduleName: 'wallet.moduleName.index',
         model: vectorModel,
-        inputTokens: 0,
-        outputTokens: 0,
+        charsLength: 0,
         amount: 0
       },
       {
         moduleName: 'wallet.moduleName.qa',
         model: agentModel,
-        inputTokens: 0,
-        outputTokens: 0,
+        charsLength: 0,
         amount: 0
       }
     ],

@@ -7,6 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 type Props = BoxProps & {
   sourceName?: string;
@@ -52,7 +53,7 @@ const RawSourceBox = ({ sourceId, sourceName = '', canView = true, ...props }: P
           : {})}
         {...props}
       >
-        <Image src={icon} alt="" w={['14px', '16px']} mr={2} />
+        <MyIcon name={icon as any} w={['14px', '16px']} mr={2} />
         <Box
           maxW={['200px', '300px']}
           className={props.className ?? 'textEllipsis'}

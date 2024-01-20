@@ -17,5 +17,5 @@ export const readHtmlFile = async ({
     uploadImgController
   });
 
-  return { rawText: rawText };
+  return { rawText: simpleMd };
 };

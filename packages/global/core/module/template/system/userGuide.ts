@@ -8,14 +8,14 @@ export const UserGuideModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.userGuide,
   flowType: FlowNodeTypeEnum.userGuide,
   avatar: '/imgs/module/userGuide.png',
-  name: '用户引导',
+  name: 'core.module.template.User guide',
   intro: userGuideTip,
   inputs: [
     {
       key: ModuleInputKeyEnum.welcomeText,
       type: FlowNodeInputTypeEnum.hidden,
       valueType: ModuleIOValueTypeEnum.string,
-      label: '开场白',
+      label: 'core.app.Welcome Text',
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -23,7 +23,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.variables,
       type: FlowNodeInputTypeEnum.hidden,
       valueType: ModuleIOValueTypeEnum.any,
-      label: '对话框变量',
+      label: 'core.module.Variable',
       value: [],
       showTargetInApp: false,
       showTargetInPlugin: false
@@ -32,7 +32,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.questionGuide,
       valueType: ModuleIOValueTypeEnum.boolean,
       type: FlowNodeInputTypeEnum.switch,
-      label: '问题引导',
+      label: '',
       showTargetInApp: false,
       showTargetInPlugin: false
     },
@@ -40,7 +40,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
       key: ModuleInputKeyEnum.tts,
       type: FlowNodeInputTypeEnum.hidden,
       valueType: ModuleIOValueTypeEnum.any,
-      label: '语音播报',
+      label: '',
       showTargetInApp: false,
       showTargetInPlugin: false
     }

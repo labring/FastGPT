@@ -4,7 +4,7 @@ import { PermissionTypeEnum } from '../../support/permission/constant';
 import type { AIChatModuleProps, DatasetModuleProps } from '../module/node/type.d';
 import { VariableInputEnum } from '../module/constants';
 import { SelectedDatasetType } from '../module/api';
-import { DatasetSearchModeEnum } from '../dataset/constant';
+import { DatasetSearchModeEnum } from '../dataset/constants';
 
 export interface AppSchema {
   _id: string;

@@ -35,16 +35,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
       return Promise.reject('Param are error');
     })();
-    console.log(match);
 
     // find chatIds
     const list = await MongoChat.find(match, 'chatId').lean();
     const idList = list.map((item) => item.chatId);
 
     await MongoChatItem.deleteMany({
+      appId,
       chatId: { $in: idList }
     });
     await MongoChat.deleteMany({
+      appId,
       chatId: { $in: idList }
     });
 

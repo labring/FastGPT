@@ -17,19 +17,17 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
   try {
     const {
-      files,
-      metadata: { duration, shareId }
+      file,
+      data: { duration }
     } = await upload.doUpload<{ duration: number; shareId?: string }>(req, res);
 
-    filePaths = files.map((file) => file.path);
+    filePaths = [file.path];
 
     const { teamId, tmbId } = await authCert({ req, authToken: true });
 
     if (!global.whisperModel) {
       throw new Error('whisper model not found');
     }
-
-    const file = files[0];
 
     if (!file) {
       throw new Error('file not found');

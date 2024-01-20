@@ -11,7 +11,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
-import Info from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import { getTrainingQueueLen } from '@/web/core/dataset/api';
@@ -24,23 +23,22 @@ import {
   DatasetStatusEnum,
   DatasetTypeEnum,
   DatasetTypeMap
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 
-const DataCard = dynamic(() => import('./components/DataCard'), {
-  ssr: false
-});
-const Test = dynamic(() => import('./components/Test'), {
-  ssr: false
-});
+const DataCard = dynamic(() => import('./components/DataCard'));
+const Test = dynamic(() => import('./components/Test'));
+const Info = dynamic(() => import('./components/Info'));
+const Import = dynamic(() => import('./components/Import'));
 
 export enum TabEnum {
   dataCard = 'dataCard',
   collectionCard = 'collectionCard',
   test = 'test',
-  info = 'info'
+  info = 'info',
+  import = 'import'
 }
 
 const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${TabEnum}` }) => {
@@ -53,7 +51,11 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   const { userInfo } = useUserStore();
 
   const tabList = [
-    { label: t('core.dataset.Dataset'), id: TabEnum.collectionCard, icon: 'common/overviewLight' },
+    {
+      label: t('core.dataset.Collection'),
+      id: TabEnum.collectionCard,
+      icon: 'common/overviewLight'
+    },
     { label: t('core.dataset.test.Search Test'), id: TabEnum.test, icon: 'kbTest' },
     ...(userInfo?.team.canWrite && datasetDetail.isOwner
       ? [{ label: t('common.Config'), id: TabEnum.info, icon: 'common/settingLight' }]
@@ -264,11 +266,12 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
           )}
 
           {!!datasetDetail._id && (
-            <Box flex={'1 0 0'} pb={[4, 0]}>
+            <Box flex={'1 0 0'} pb={0}>
               {currentTab === TabEnum.collectionCard && <CollectionCard />}
               {currentTab === TabEnum.dataCard && <DataCard />}
               {currentTab === TabEnum.test && <Test datasetId={datasetId} />}
               {currentTab === TabEnum.info && <Info datasetId={datasetId} />}
+              {currentTab === TabEnum.import && <Import />}
             </Box>
           )}
         </Flex>

@@ -15,6 +15,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       {
         label: t('navbar.Chat'),
         icon: 'core/chat/chatLight',
+        activeIcon: 'core/chat/chatFill',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
         activeLink: ['/chat'],
         unread: 0
@@ -22,20 +23,23 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
       {
         label: t('navbar.Apps'),
         icon: 'core/app/aiLight',
+        activeIcon: 'core/app/aiFill',
         link: `/app/list`,
         activeLink: ['/app/list', '/app/detail'],
         unread: 0
       },
       {
         label: t('navbar.Tools'),
-        icon: 'phoneTabbar/more',
+        icon: 'phoneTabbar/tool',
+        activeIcon: 'phoneTabbar/toolFill',
         link: '/tools',
         activeLink: ['/tools'],
         unread: 0
       },
       {
         label: t('navbar.Account'),
-        icon: 'phoneTabbar/me',
+        icon: 'support/user/userLight',
+        activeIcon: 'support/user/userFill',
         link: '/account',
         activeLink: ['/account'],
         unread
@@ -68,35 +72,24 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
             transform={'scale(0.9)'}
             {...(item.activeLink.includes(router.pathname)
               ? {
-                  color: '#7089f1'
+                  color: 'primary.600'
                 }
               : {
                   color: 'myGray.500'
                 })}
-            _after={
-              item.activeLink.includes(router.pathname)
-                ? {
-                    content: '""',
-                    position: 'absolute',
-                    top: '50%',
-                    left: '50%',
-                    transform: 'translate(-50%,-50%)',
-                    borderRadius: '50%',
-                    w: '18px',
-                    h: '18px',
-                    bg: ' #6782f1',
-                    filter: 'blur(10px)',
-                    boxShadow: '0px 2px 4px 0px rgba(0, 0, 0, 0.25)'
-                  }
-                : {}
-            }
             onClick={() => {
               if (item.link === router.asPath) return;
               router.push(item.link);
             }}
           >
             <Badge isDot count={item.unread}>
-              <MyIcon name={item.icon as any} width={'20px'} height={'20px'} />
+              <MyIcon
+                name={
+                  (item.activeLink.includes(router.pathname) ? item.activeIcon : item.icon) as any
+                }
+                width={'20px'}
+                height={'20px'}
+              />
               <Box fontSize={'12px'}>{item.label}</Box>
             </Badge>
           </Flex>

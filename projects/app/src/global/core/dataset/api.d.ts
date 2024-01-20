@@ -3,7 +3,7 @@ import {
   DatasetSearchModeEnum,
   DatasetTypeEnum,
   TrainingModeEnum
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import {
   DatasetDataIndexItemType,
   SearchDataResponseItemType
@@ -27,13 +27,7 @@ export type CreateDatasetParams = {
 export type InsertOneDatasetDataProps = PushDatasetDataChunkProps & {
   collectionId: string;
 };
-export type PushDatasetDataProps = {
-  collectionId: string;
-  data: PushDatasetDataChunkProps[];
-  trainingMode: `${TrainingModeEnum}`;
-  prompt?: string;
-  billId?: string;
-};
+
 export type UpdateDatasetDataProps = {
   id: string;
   q?: string; // embedding content

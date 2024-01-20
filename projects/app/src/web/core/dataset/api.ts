@@ -9,6 +9,7 @@ import type {
 import type {
   CreateDatasetCollectionParams,
   DatasetUpdateBody,
+  LinkCreateDatasetCollectionParams,
   PostWebsiteSyncParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type {
@@ -18,17 +19,19 @@ import type {
   SearchTestResponse
 } from '@/global/core/dataset/api.d';
 import type {
-  PushDatasetDataProps,
   UpdateDatasetDataProps,
   CreateDatasetParams,
   InsertOneDatasetDataProps
 } from '@/global/core/dataset/api.d';
-import type { PushDataResponse } from '@/global/core/api/datasetRes.d';
+import type {
+  PushDatasetDataProps,
+  PushDatasetDataResponse
+} from '@fastgpt/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionSyncResultEnum,
   DatasetTypeEnum
-} from '@fastgpt/global/core/dataset/constant';
+} from '@fastgpt/global/core/dataset/constants';
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
@@ -72,6 +75,9 @@ export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
+export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
+
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
 export const delDatasetCollectionById = (params: { id: string }) =>
@@ -93,7 +99,7 @@ export const getDatasetDataItemById = (id: string) =>
  * push data to training queue
  */
 export const postChunks2Dataset = (data: PushDatasetDataProps) =>
-  POST<PushDataResponse>(`/core/dataset/data/pushData`, data);
+  POST<PushDatasetDataResponse>(`/core/dataset/data/pushData`, data);
 
 /**
  * insert one data to dataset (immediately insert)

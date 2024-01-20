@@ -14,7 +14,7 @@ export async function authDatasetData({
   const datasetData = await MongoDatasetData.findById(dataId);
 
   if (!datasetData) {
-    return Promise.reject('Data not found');
+    return Promise.reject('core.dataset.error.Data not found');
   }
 
   const result = await authDatasetCollection({
