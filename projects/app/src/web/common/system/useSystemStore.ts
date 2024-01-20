@@ -7,6 +7,8 @@ import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
 type State = {
+  initd: boolean;
+  setInitd: () => void;
   lastRoute: string;
   setLastRoute: (e: string) => void;
   loginStore?: LoginStoreType;
@@ -25,6 +27,12 @@ export const useSystemStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
+        initd: false,
+        setInitd() {
+          set((state) => {
+            state.initd = true;
+          });
+        },
         lastRoute: '/app/list',
         setLastRoute(e) {
           set((state) => {

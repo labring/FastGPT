@@ -39,7 +39,7 @@ function App({ Component, pageProps }: AppProps) {
   const router = useRouter();
   const { hiId } = router.query as { hiId?: string };
   const { i18n } = useTranslation();
-  const { loadGitStar } = useSystemStore();
+  const { loadGitStar, setInitd } = useSystemStore();
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
 
@@ -65,6 +65,7 @@ function App({ Component, pageProps }: AppProps) {
       }
 
       setScripts(scripts || []);
+      setInitd();
     })();
 
     // add window error track

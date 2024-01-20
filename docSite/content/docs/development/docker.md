@@ -105,7 +105,29 @@ docker-compose pull
 docker-compose up -d
 ```
 
-## 四、访问 FastGPT
+## 四、初始化 Mongo 副本集
+
+FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。
+
+```bash
+# 查看 mongo 容器是否正常运行
+docker ps 
+# 进入容器
+docker exec -it mongo bash
+# 连接数据库
+mongo
+# 初始化副本集。
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongo:27017" }
+  ]
+})
+# 检查状态。如果提示 rs0 状态，则代表运行成功
+rs.status()
+```
+
+## 五、访问 FastGPT
 
 目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 

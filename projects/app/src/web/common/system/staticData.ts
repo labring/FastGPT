@@ -1,4 +1,3 @@
-import type { InitDateResponse } from '@/global/common/api/systemRes';
 import { getSystemInitData } from '@/web/common/system/api';
 import { delay } from '@fastgpt/global/common/system/utils';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
@@ -12,8 +11,10 @@ import type {
   AudioSpeechModelType,
   WhisperModelType
 } from '@fastgpt/global/core/ai/model.d';
+import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 
 export let feConfigs: FastGPTFeConfigsType = {};
+export let subPlans: SubPlanType | undefined;
 export let systemVersion = '0.0.0';
 
 export let chatModelList: ChatModelItemType[] = [];
@@ -36,6 +37,7 @@ export const clientInitData = async (): Promise<{
   try {
     const res = await getSystemInitData();
     feConfigs = res.feConfigs || {};
+    subPlans = res.subPlans;
 
     chatModelList = res.chatModels ?? chatModelList;
     vectorModelList = res.vectorModels ?? vectorModelList;

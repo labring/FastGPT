@@ -122,12 +122,11 @@ const UserInfo = () => {
     }
   });
 
-  const { data: datasetSub = { maxSize: 0, usedSize: 0 } } = useQuery(
-    ['getTeamDatasetValidSub'],
-    getTeamDatasetValidSub
-  );
+  const {
+    data: teamSubPlan = { totalPoints: 0, usedPoints: 0, datasetMaxSize: 800, usedDatasetSize: 0 }
+  } = useQuery(['getTeamDatasetValidSub'], getTeamDatasetValidSub);
   const datasetUsageMap = useMemo(() => {
-    const rate = datasetSub.usedSize / datasetSub.maxSize;
+    const rate = teamSubPlan.usedDatasetSize / teamSubPlan.datasetMaxSize;
 
     const colorScheme = (() => {
       if (rate < 0.5) return 'green';
@@ -138,10 +137,10 @@ const UserInfo = () => {
     return {
       colorScheme,
       value: rate * 100,
-      maxSize: datasetSub.maxSize,
-      usedSize: datasetSub.usedSize
+      maxSize: teamSubPlan.datasetMaxSize || t('common.Unlimited'),
+      usedSize: teamSubPlan.usedDatasetSize
     };
-  }, [datasetSub.maxSize, datasetSub.usedSize]);
+  }, [teamSubPlan.usedDatasetSize, teamSubPlan.datasetMaxSize, t]);
 
   return (
     <Box
@@ -276,7 +275,7 @@ const UserInfo = () => {
                 <Flex alignItems={'center'}>
                   <Box flex={'1 0 0'} fontSize={'md'}>
                     {t('support.user.team.Dataset usage')}:&nbsp;{datasetUsageMap.usedSize}/
-                    {datasetSub.maxSize}
+                    {datasetUsageMap.maxSize}
                   </Box>
                   {userInfo?.team?.canWrite && (
                     <Button size={'sm'} onClick={onOpenSubDatasetModal}>

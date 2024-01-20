@@ -51,7 +51,9 @@ A: ${systemPrompt}
 
   const concatFewShot = `${systemFewShot}${historyFewShot}`.trim();
 
-  const ai = getAIApi(undefined, 480000);
+  const ai = getAIApi({
+    timeout: 480000
+  });
 
   const result = await ai.chat.completions.create({
     model: extractModel.model,

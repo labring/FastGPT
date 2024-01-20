@@ -458,6 +458,7 @@ const ChatBox = (
     async (index: number) => {
       if (!onDelMessage) return;
       const delHistory = chatHistory.slice(index);
+      console.log(delHistory);
 
       setLoading(true);
 

@@ -1125,6 +1125,7 @@
       "Cancel subscription": "Cancel"
     },
     "user": {
+      "Need to login": "Please log in first",
       "Price": "Price",
       "auth": {
         "Sending Code": "Sending"
@@ -1136,28 +1137,67 @@
       },
       "team": {
         "Dataset usage": "Dataset usage",
-        "member": "Member",
-        "subscription": {
-          "type": {
-            "extraDatasetSize": "Extra dataset size"
-          }
-        }
+        "member": "Member"
       }
     },
     "wallet": {
+      "Balance not enough tip": "The balance is insufficient, please go to the account page first",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",
       "Pay error": "Pay error",
       "Pay success": "Pay success",
+      "bill": {
+        "AI Model": "AI Model",
+        "AI Type": "AI Type",
+        "Price": "Price（￥）"
+      },
       "subscription": {
+        "Ai points": "AI Points Standard",
+        "Buy now": "Buy now",
         "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",
         "Current dataset store": "Current dataset store subscription",
+        "Current plan": "Current plan",
         "Dataset store": "Dataset store size",
         "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
         "Expand size": "Expand size",
         "Extra dataset size": "Extra dataset size",
+        "FAQ": "Pricing FAQs",
+        "Next plan": "Future plan",
         "Next sub dataset size": "",
-        "Update extra dataset size": "Update size"
+        "Nonsupport": "Nonsupport",
+        "Refund plan and pay confirm": "There is no extra cost for you to switch this package and {{amount}} will be refunded to the balance.",
+        "Standard plan pay confirm": "To switch this package, you need to pay {{payPrice}} Yuan.",
+        "Standard update fail": "Update plan failed.",
+        "Standard update success": "Change subscription plan successful!",
+        "Sub plan": "Pricing Plans",
+        "Sub plan tip": "Use FastGPT for free or upgrade to a higher plan",
+        "Training weight": "Training weight: {{weight}}",
+        "Update extra dataset size": "Update size",
+        "function": {
+          "History store": "",
+          "Max app": "",
+          "Max dataset": "",
+          "Max dataset size": "",
+          "Max members": "",
+          "Points": ""
+        },
+        "mode": {
+          "Month": "Monthly",
+          "Year": "Yearly",
+          "Year sale": "2 months free"
+        },
+        "standardSubLevel": {
+          "enterprise": "",
+          "experience": "",
+          "experience desc": "",
+          "free": "",
+          "free desc": "",
+          "team": ""
+        },
+        "type": {
+          "extraDatasetSize": "Extra dataset size",
+          "standard": ""
+        }
       }
     }
   },

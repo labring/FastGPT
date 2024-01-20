@@ -26,7 +26,8 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/chat/share': true,
   '/app/edit': true,
   '/chat': true,
-  '/tools/price': true
+  '/tools/price': true,
+  '/price': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -34,7 +35,8 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/login/provider': true,
   '/login/fastlogin': true,
   '/chat/share': true,
-  '/tools/price': true
+  '/tools/price': true,
+  '/price': true
 };
 
 const Layout = ({ children }: { children: JSX.Element }) => {
@@ -74,12 +76,14 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     refetchInterval: 10000
   });
 
+  const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
+
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
         {isPc === true && (
           <>
-            {pcUnShowLayoutRoute[router.pathname] ? (
+            {isHideNavbar ? (
               <Auth>{children}</Auth>
             ) : (
               <>

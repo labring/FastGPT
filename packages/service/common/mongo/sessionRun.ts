@@ -1,21 +1,21 @@
-import mongoose, { connectionMongo } from './index';
+import { connectionMongo, ClientSession } from './index';
 
-export async function mongoSessionTask(
-  fn: (session: mongoose.mongo.ClientSession) => Promise<any>
-) {
+export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) => Promise<T>) => {
   const session = await connectionMongo.startSession();
+  session.startTransaction();
 
   try {
-    session.startTransaction();
-
-    await fn(session);
+    const result = await fn(session);
 
     await session.commitTransaction();
-    await session.endSession();
+    session.endSession();
+
+    return result as T;
   } catch (error) {
+    console.log(error);
+
     await session.abortTransaction();
-    await session.endSession();
-    console.error(error);
+    session.endSession();
     return Promise.reject(error);
   }
-}
+};

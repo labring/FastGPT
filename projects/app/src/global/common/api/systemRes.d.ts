@@ -10,6 +10,7 @@ import type {
 
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
+import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 
 export type InitDateResponse = {
   chatModels: ChatModelItemType[];
@@ -22,6 +23,7 @@ export type InitDateResponse = {
   qgModes: LLMModelItemType[];
   whisperModel: WhisperModelType;
   feConfigs: FastGPTFeConfigsType;
+  subPlans?: SubPlanType;
   systemVersion: string;
   simpleModeTemplates: AppSimpleEditConfigTemplateType[];
 };
