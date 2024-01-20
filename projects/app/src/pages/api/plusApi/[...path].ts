@@ -1,50 +1,45 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { request } from '@fastgpt/service/common/api/plusRequest';
-import type { Method } from 'axios';
-import { setCookie } from '@fastgpt/service/support/permission/controller';
 import { connectToDatabase } from '@/service/mongo';
+import { request } from 'http';
+import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
+import url from 'url';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-
-    const method = (req.method || 'POST') as Method;
     const { path = [], ...query } = req.query as any;
+    const requestPath = `/api/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
 
-    const url = `/${path?.join('/')}?${new URLSearchParams(query).toString()}`;
-
-    if (!url) {
+    if (!requestPath) {
       throw new Error('url is empty');
     }
 
-    const data = req.body || query;
+    const parsedUrl = url.parse(FastGPTProUrl);
 
-    const repose = await request(
-      url,
-      data,
-      {
-        headers: {
-          ...req.headers,
-          // @ts-ignore
-          rootkey: undefined
-        }
-      },
-      method
-    );
+    delete req.headers?.rootkey;
 
-    /* special response */
-    // response cookie
-    if (repose?.cookie) {
-      setCookie(res, repose.cookie);
+    const requestResult = request({
+      protocol: parsedUrl.protocol,
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port,
+      path: requestPath,
+      method: req.method,
+      headers: req.headers
+    });
+    req.pipe(requestResult);
 
-      return jsonRes(res, {
-        data: repose?.cookie
+    requestResult.on('response', (response) => {
+      Object.keys(response.headers).forEach((key) => {
+        // @ts-ignore
+        res.setHeader(key, response.headers[key]);
       });
-    }
-
-    jsonRes(res, {
-      data: repose
+      response.statusCode && res.writeHead(response.statusCode);
+      response.pipe(res);
+    });
+    requestResult.on('error', (e) => {
+      res.send(e);
+      res.end();
     });
   } catch (error) {
     jsonRes(res, {
@@ -56,9 +51,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
 export const config = {
   api: {
-    bodyParser: {
-      sizeLimit: '10mb'
-    },
-    responseLimit: '10mb'
+    bodyParser: false
   }
 };
