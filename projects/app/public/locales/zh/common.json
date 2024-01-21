@@ -95,7 +95,7 @@
     "Last Step": "上一步",
     "Last use time": "最后使用时间",
     "Load Failed": "加载失败",
-    "Loading": "加载中",
+    "Loading": "加载中...",
     "Max credit": "最大金额",
     "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
     "More settings": "更多设置",
@@ -541,7 +541,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
