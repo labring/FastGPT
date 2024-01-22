@@ -105,7 +105,13 @@ const BillTable = () => {
             <Box mr={2} flexShrink={0}>
               {t('support.user.team.member')}
             </Box>
-            <MySelect size={'sm'} list={tmbList} value={selectTmbId} onchange={setSelectTmbId} />
+            <MySelect
+              size={'sm'}
+              minW={'100px'}
+              list={tmbList}
+              value={selectTmbId}
+              onchange={setSelectTmbId}
+            />
           </Flex>
         )}
         <Box flex={'1'} />
