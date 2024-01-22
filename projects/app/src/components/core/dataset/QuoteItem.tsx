@@ -45,10 +45,12 @@ const scoreTheme: Record<
 const QuoteItem = ({
   quoteItem,
   canViewSource,
+  canEditSource,
   linkToDataset
 }: {
   quoteItem: SearchDataResponseItemType;
   canViewSource?: boolean;
+  canEditSource?: boolean;
   linkToDataset?: boolean;
 }) => {
   const { t } = useTranslation();
@@ -111,7 +113,7 @@ const QuoteItem = ({
         <Flex alignItems={'center'} mb={3} flexWrap={'wrap'} gap={3}>
           {score?.primaryScore && (
             <>
-              {canViewSource ? (
+              {canEditSource ? (
                 <MyTooltip label={t(SearchScoreTypeMap[score.primaryScore.type]?.desc)}>
                   <Flex
                     px={'12px'}
@@ -157,7 +159,7 @@ const QuoteItem = ({
               )}
             </>
           )}
-          {canViewSource &&
+          {canEditSource &&
             score.secondaryScore.map((item, i) => (
               <MyTooltip key={item.type} label={t(SearchScoreTypeMap[item.type]?.desc)}>
                 <Box fontSize={'xs'}>
@@ -214,7 +216,7 @@ const QuoteItem = ({
               canView={canViewSource}
             />
             <Box flex={1} />
-            {quoteItem.id && (
+            {quoteItem.id && canEditSource && (
               <MyTooltip label={t('core.dataset.data.Edit')}>
                 <Box
                   className="hover-data"
@@ -258,7 +260,7 @@ const QuoteItem = ({
         )}
       </MyBox>
 
-      {editInputData && (
+      {editInputData && editInputData.id && (
         <InputDataModal
           onClose={() => setEditInputData(undefined)}
           onSuccess={() => {

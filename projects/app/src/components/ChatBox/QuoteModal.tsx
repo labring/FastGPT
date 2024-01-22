@@ -11,11 +11,13 @@ const QuoteModal = ({
   rawSearch = [],
   onClose,
   isShare,
+  canViewSource,
   metadata
 }: {
   rawSearch: SearchDataResponseItemType[];
   onClose: () => void;
   isShare: boolean;
+  canViewSource: boolean;
   metadata?: {
     collectionId: string;
     sourceId?: string;
@@ -57,7 +59,7 @@ const QuoteModal = ({
         }
       >
         <ModalBody>
-          <QuoteList rawSearch={filterResults} isShare={isShare} />
+          <QuoteList rawSearch={filterResults} isShare={isShare} canViewSource={canViewSource} />
         </ModalBody>
       </MyModal>
     </>
@@ -68,10 +70,12 @@ export default QuoteModal;
 
 export const QuoteList = React.memo(function QuoteList({
   rawSearch = [],
-  isShare
+  isShare,
+  canViewSource
 }: {
   rawSearch: SearchDataResponseItemType[];
   isShare: boolean;
+  canViewSource: boolean;
 }) {
   const theme = useTheme();
 
@@ -88,7 +92,12 @@ export const QuoteList = React.memo(function QuoteList({
           _hover={{ '& .hover-data': { display: 'flex' } }}
           bg={i % 2 === 0 ? 'white' : 'myWhite.500'}
         >
-          <QuoteItem quoteItem={item} canViewSource={!isShare} linkToDataset={!isShare} />
+          <QuoteItem
+            quoteItem={item}
+            canViewSource={canViewSource}
+            canEditSource={!isShare}
+            linkToDataset={!isShare}
+          />
         </Box>
       ))}
     </>

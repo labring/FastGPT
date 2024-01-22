@@ -11,6 +11,7 @@ export type OutLinkSchema = {
   lastTime: Date;
   type: `${OutLinkTypeEnum}`;
   responseDetail: boolean;
+  responseSource: boolean;
   limit?: {
     expiredTime?: Date;
     QPM: number;
@@ -23,5 +24,6 @@ export type OutLinkEditType = {
   _id?: string;
   name: string;
   responseDetail: OutLinkSchema['responseDetail'];
+  responseSource: OutLinkSchema['responseSource'];
   limit: OutLinkSchema['limit'];
 };

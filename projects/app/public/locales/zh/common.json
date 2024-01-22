@@ -315,6 +315,7 @@
         "Create link tip": "创建成功。已复制分享地址，可直接分享使用",
         "Ip limit title": "IP限流（人/分钟）",
         "Is response quote": "返回引用",
+        "Is response source": "返回原始文档",
         "Not share link": "没有创建分享链接",
         "Role check": "身份校验"
       },
@@ -1119,7 +1120,9 @@
     "outlink": {
       "share": {
         "Response Quote": "返回引用",
-        "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"
+        "Response Source": "返回原始文档",
+        "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档",
+        "Response Source tips": "选中返回引用的情况下，在分享链接中允许用户下载原文档"
       }
     },
     "subscription": {

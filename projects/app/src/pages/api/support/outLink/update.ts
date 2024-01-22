@@ -9,7 +9,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
 
-    const { _id, name, responseDetail, limit } = req.body as OutLinkEditType & {};
+    const { _id, name, responseDetail, responseSource, limit } = req.body as OutLinkEditType & {};
 
     if (!_id) {
       throw new Error('_id is required');
@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await MongoOutLink.findByIdAndUpdate(_id, {
       name,
       responseDetail,
+      responseSource,
       limit
     });
 

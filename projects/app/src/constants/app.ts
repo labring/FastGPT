@@ -21,6 +21,7 @@ export const defaultApp: AppDetailType = {
 export const defaultOutLinkForm: OutLinkEditType = {
   name: '',
   responseDetail: false,
+  responseSource: false,
   limit: {
     QPM: 100,
     credit: -1

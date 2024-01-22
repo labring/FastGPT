@@ -181,7 +181,13 @@ const ResponseBox = React.memo(function ResponseBox({
         {activeModule.quoteList && activeModule.quoteList.length > 0 && (
           <Row
             label={t('core.chat.response.module quoteList')}
-            rawDom={<QuoteList isShare={isShare} rawSearch={activeModule.quoteList} />}
+            rawDom={
+              <QuoteList
+                isShare={isShare}
+                canViewSource={!isShare}
+                rawSearch={activeModule.quoteList}
+              />
+            }
           />
         )}
 

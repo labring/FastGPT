@@ -94,6 +94,7 @@ const Share = ({ appId }: { appId: string }) => {
               <Th>{t('common.Name')}</Th>
               <Th>{t('common.Price used')}</Th>
               <Th>{t('core.app.share.Is response quote')}</Th>
+              <Th>{t('core.app.share.Is response source')}</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>{t('core.app.share.Ip limit title')}</Th>
@@ -120,6 +121,7 @@ const Share = ({ appId }: { appId: string }) => {
                     : ''}
                 </Td>
                 <Td>{item.responseDetail ? '✔' : '✖'}</Td>
+                <Td>{item.responseSource ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
                   <>
                     <Td>{item?.limit?.QPM || '-'}</Td>
@@ -159,6 +161,7 @@ const Share = ({ appId }: { appId: string }) => {
                             _id: item._id,
                             name: item.name,
                             responseDetail: item.responseDetail,
+                            responseSource: item.responseSource,
                             limit: item.limit
                           })
                         }
@@ -378,6 +381,14 @@ function EditLinkModal({
             </MyTooltip>
           </Flex>
           <Switch {...register('responseDetail')} size={'lg'} />
+          <Flex flex={'0 0 30px'} alignItems={'center'}></Flex>
+          <Flex flex={'0 0 120px'} alignItems={'center'}>
+            {t('support.outlink.share.Response Source')}
+            <MyTooltip label={t('support.outlink.share.Response Source tips' || '')}>
+              <QuestionOutlineIcon ml={1} />
+            </MyTooltip>
+          </Flex>
+          <Switch {...register('responseSource')} size={'lg'} />
         </Flex>
       </ModalBody>
 

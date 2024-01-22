@@ -315,6 +315,7 @@
         "Create link tip": "The creation is successful. The share address has been copied and can be shared directly",
         "Ip limit title": "IP limiting (person/minute)",
         "Is response quote": "Response quote",
+        "Is response source": "Response source",
         "Not share link": "No share link created",
         "Role check": "Custom role check"
       },
@@ -1117,7 +1118,9 @@
     "outlink": {
       "share": {
         "Response Quote": "Show Quote",
-        "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document."
+        "Response Source": "Show Resource",
+        "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document.",
+        "Response Source tips": "The user is allowed to download the original document."
       }
     },
     "subscription": {

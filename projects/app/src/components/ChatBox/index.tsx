@@ -113,6 +113,7 @@ type Props = {
   appId?: string;
   chatId?: string;
   shareId?: string;
+  canViewSource?: boolean;
   outLinkUid?: string;
 
   onUpdateVariable?: (e: Record<string, any>) => void;
@@ -138,6 +139,7 @@ const ChatBox = (
     appId,
     chatId,
     shareId,
+    canViewSource = !shareId,
     outLinkUid,
     onUpdateVariable,
     onStartChat,
@@ -863,7 +865,11 @@ const ChatBox = (
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
 
-                        <ResponseTags responseData={item.responseData} isShare={!!shareId} />
+                        <ResponseTags
+                          responseData={item.responseData}
+                          isShare={!!shareId}
+                          canViewSource={canViewSource}
+                        />
 
                         {/* custom feedback */}
                         {item.customFeedbacks && item.customFeedbacks.length > 0 && (

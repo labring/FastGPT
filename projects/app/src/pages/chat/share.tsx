@@ -28,16 +28,20 @@ import { useChatStore } from '@/web/core/chat/storeChat';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import MyBox from '@/components/common/MyBox';
 
+import getOutLink from '@/pages/api/support/outLink/get';
+
 const OutLink = ({
   shareId,
   chatId,
   showHistory,
-  authToken
+  authToken,
+  canViewSource
 }: {
   shareId: string;
   chatId: string;
   showHistory: '0' | '1';
   authToken?: string;
+  canViewSource?: boolean;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -382,6 +386,7 @@ const OutLink = ({
               appId={chatData.appId}
               chatId={chatId}
               shareId={shareId}
+              canViewSource={canViewSource}
               outLinkUid={outLinkUid}
             />
           </Box>
@@ -397,12 +402,16 @@ export async function getServerSideProps(context: any) {
   const showHistory = context?.query?.showHistory || '1';
   const authToken = context?.query?.authToken || '';
 
+  const outLinks = await getOutLink(shareId);
+  const canViewSource = outLinks ? outLinks[0].responseSource : false;
+
   return {
     props: {
       shareId,
       chatId,
       showHistory,
       authToken,
+      canViewSource,
       ...(await serviceSideProps(context))
     }
   };

@@ -20,10 +20,12 @@ const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: 
 
 const ResponseTags = ({
   responseData = [],
-  isShare
+  isShare,
+  canViewSource
 }: {
   responseData?: ChatHistoryItemResType[];
   isShare: boolean;
+  canViewSource: boolean;
 }) => {
   const theme = useTheme();
   const { isPc } = useSystemStore();
@@ -188,6 +190,7 @@ const ResponseTags = ({
         <QuoteModal
           {...quoteModalData}
           isShare={isShare}
+          canViewSource={canViewSource}
           onClose={() => setQuoteModalData(undefined)}
         />
       )}
