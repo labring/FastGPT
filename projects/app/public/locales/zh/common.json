@@ -57,6 +57,7 @@
   "common": {
     "Add": "添加",
     "Add New": "新增",
+    "All": "全部",
     "Back": "返回",
     "Beta": "实验版",
     "Business edition features": "这是商业版功能~",
@@ -1137,6 +1138,7 @@
       },
       "team": {
         "Dataset usage": "知识库容量",
+        "member": "成员",
         "subscription": {
           "type": {
             "extraDatasetSize": "知识库扩容"

@@ -107,7 +107,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Source')}:</Box>
-          <Box>{BillSourceMap[bill.source]}</Box>
+          <Box>{BillSourceMap[bill.source]?.label}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Total')}:</Box>

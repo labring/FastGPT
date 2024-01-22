@@ -1,6 +1,7 @@
 import { StandardSubLevelEnum, SubModeEnum, SubStatusEnum, SubTypeEnum } from './constants';
 
 export type TeamSubSchema = {
+  _id: string;
   teamId: string;
   type: `${SubTypeEnum}`;
   status: `${SubStatusEnum}`;

@@ -1,6 +1,6 @@
 import React, { useRef, forwardRef, useMemo } from 'react';
 import { Menu, MenuList, MenuItem, Button, useDisclosure, MenuButton } from '@chakra-ui/react';
-import type { ButtonProps } from '@chakra-ui/react';
+import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 
 export type SelectProps = ButtonProps & {
@@ -19,13 +19,16 @@ const MySelect = (
   selectRef: any
 ) => {
   const ref = useRef<HTMLButtonElement>(null);
-  const menuItemStyles = {
+  const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
     py: 2,
     display: 'flex',
     alignItems: 'center',
     _hover: {
       backgroundColor: 'myWhite.600'
+    },
+    _notLast: {
+      mb: 2
     }
   };
   const { isOpen, onOpen, onClose } = useDisclosure();

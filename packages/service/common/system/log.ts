@@ -49,7 +49,7 @@ export const addLog = {
   },
   error(msg: string, error?: any) {
     this.log('error', msg, {
-      message: error?.message,
+      message: error?.message || error,
       stack: error?.stack,
       ...(error?.config && {
         config: {

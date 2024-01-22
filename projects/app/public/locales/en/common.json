@@ -57,6 +57,7 @@
   "common": {
     "Add": "Add",
     "Add New": "Add",
+    "All": "All",
     "Back": "Back",
     "Beta": "Beta",
     "Business edition features": "This is the commercial version function ~",
@@ -1135,6 +1136,7 @@
       },
       "team": {
         "Dataset usage": "Dataset usage",
+        "member": "Member",
         "subscription": {
           "type": {
             "extraDatasetSize": "Extra dataset size"
