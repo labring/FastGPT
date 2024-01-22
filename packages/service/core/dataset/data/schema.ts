@@ -86,13 +86,13 @@ const DatasetDataSchema = new Schema({
 });
 
 try {
-  // same data check
-  DatasetDataSchema.index({ teamId: 1, collectionId: 1, q: 1, a: 1 }, { background: true });
   // list collection and count data; list data
   DatasetDataSchema.index(
     { teamId: 1, datasetId: 1, collectionId: 1, chunkIndex: 1, updateTime: -1 },
     { background: true }
   );
+  // same data check
+  DatasetDataSchema.index({ teamId: 1, collectionId: 1, q: 1, a: 1 }, { background: true });
   // full text index
   DatasetDataSchema.index({ teamId: 1, datasetId: 1, fullTextToken: 'text' }, { background: true });
   // Recall vectors after data matching
