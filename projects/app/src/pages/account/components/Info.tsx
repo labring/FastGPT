@@ -271,28 +271,32 @@ const UserInfo = () => {
                 )}
               </Flex>
             </Box>
-            <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
-              <Flex alignItems={'center'}>
-                <Box flex={'1 0 0'} fontSize={'md'}>
-                  {t('support.user.team.Dataset usage')}:&nbsp;{datasetUsageMap.usedSize}/
-                  {datasetSub.maxSize}
+            {feConfigs?.show_pay && (
+              <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
+                <Flex alignItems={'center'}>
+                  <Box flex={'1 0 0'} fontSize={'md'}>
+                    {t('support.user.team.Dataset usage')}:&nbsp;{datasetUsageMap.usedSize}/
+                    {datasetSub.maxSize}
+                  </Box>
+                  {userInfo?.team?.canWrite && (
+                    <Button size={'sm'} onClick={onOpenSubDatasetModal}>
+                      {t('support.wallet.Buy more')}
+                    </Button>
+                  )}
+                </Flex>
+                <Box mt={1}>
+                  <Progress
+                    value={datasetUsageMap.value}
+                    colorScheme={datasetUsageMap.colorScheme}
+                    borderRadius={'md'}
+                    isAnimated
+                    hasStripe
+                    borderWidth={'1px'}
+                    borderColor={'borderColor.base'}
+                  />
                 </Box>
-                <Button size={'sm'} onClick={onOpenSubDatasetModal}>
-                  {t('support.wallet.Buy more')}
-                </Button>
-              </Flex>
-              <Box mt={1}>
-                <Progress
-                  value={datasetUsageMap.value}
-                  colorScheme={datasetUsageMap.colorScheme}
-                  borderRadius={'md'}
-                  isAnimated
-                  hasStripe
-                  borderWidth={'1px'}
-                  borderColor={'borderColor.base'}
-                />
               </Box>
-            </Box>
+            )}
           </>
         )}
 

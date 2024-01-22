@@ -87,7 +87,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
     onError(err: any) {
       router.replace(`/dataset/list`);
       toast({
-        title: getErrText(err, t('common.Load Failed')),
+        title: t(getErrText(err, t('common.Load Failed'))),
         status: 'error'
       });
     }

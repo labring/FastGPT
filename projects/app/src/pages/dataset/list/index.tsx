@@ -46,13 +46,15 @@ import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant'
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import ParentPaths from '@/components/common/ParentPaths';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
+import { useToast } from '@/web/common/hooks/useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
 
 const Kb = () => {
   const { t } = useTranslation();
-  const theme = useTheme();
+  const { toast } = useToast();
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
   const { setLoading } = useSystemStore();
@@ -115,9 +117,20 @@ const Kb = () => {
     errorToast: t('dataset.Export Dataset Limit Error')
   });
 
-  const { data, refetch, isFetching } = useQuery(['loadDataset', parentId], () => {
-    return Promise.all([loadDatasets(parentId), getDatasetPaths(parentId)]);
-  });
+  const { data, refetch, isFetching } = useQuery(
+    ['loadDataset', parentId],
+    () => {
+      return Promise.all([loadDatasets(parentId), getDatasetPaths(parentId)]);
+    },
+    {
+      onError(err) {
+        toast({
+          status: 'error',
+          title: t(getErrText(err))
+        });
+      }
+    }
+  );
 
   const paths = data?.[1] || [];
 

@@ -7,8 +7,8 @@ export const getPromotionInitData = () =>
   GET<{
     invitedAmount: number;
     earningsAmount: number;
-  }>('/plusApi/support/activity/promotion/getPromotionData');
+  }>('/proApi/support/activity/promotion/getPromotionData');
 
 /* promotion records */
 export const getPromotionRecords = (data: RequestPaging) =>
-  POST<PromotionRecordType>(`/plusApi/support/activity/promotion/getPromotions`, data);
+  POST<PromotionRecordType>(`/proApi/support/activity/promotion/getPromotions`, data);

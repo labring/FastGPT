@@ -168,6 +168,10 @@ export async function parseHeaderCert({
     return Promise.reject(ERROR_ENUM.unAuthorization);
   })();
 
+  if (!authRoot && (!teamId || !tmbId)) {
+    return Promise.reject(ERROR_ENUM.unAuthorization);
+  }
+
   return {
     userId: String(uid),
     teamId: String(teamId),

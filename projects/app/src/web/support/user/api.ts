@@ -14,14 +14,14 @@ export const sendAuthCode = (data: {
   username: string;
   type: `${UserAuthTypeEnum}`;
   googleToken: string;
-}) => POST(`/plusApi/support/user/inform/sendAuthCode`, data);
+}) => POST(`/proApi/support/user/inform/sendAuthCode`, data);
 
 export const getTokenLogin = () =>
   GET<UserType>('/support/user/account/tokenLogin', {}, { maxQuantity: 1 });
 export const oauthLogin = (params: OauthLoginProps) =>
-  POST<ResLogin>('/plusApi/support/user/account/login/oauth', params);
+  POST<ResLogin>('/proApi/support/user/account/login/oauth', params);
 export const postFastLogin = (params: FastLoginProps) =>
-  POST<ResLogin>('/plusApi/support/user/account/login/fastLogin', params);
+  POST<ResLogin>('/proApi/support/user/account/login/fastLogin', params);
 
 export const postRegister = ({
   username,
@@ -34,7 +34,7 @@ export const postRegister = ({
   password: string;
   inviterId?: string;
 }) =>
-  POST<ResLogin>(`/plusApi/support/user/account/register/emailAndPhone`, {
+  POST<ResLogin>(`/proApi/support/user/account/register/emailAndPhone`, {
     username,
     code,
     inviterId,
@@ -50,7 +50,7 @@ export const postFindPassword = ({
   code: string;
   password: string;
 }) =>
-  POST<ResLogin>(`/plusApi/support/user/account/password/updateByCode`, {
+  POST<ResLogin>(`/proApi/support/user/account/password/updateByCode`, {
     username,
     code,
     password: hashStr(password)

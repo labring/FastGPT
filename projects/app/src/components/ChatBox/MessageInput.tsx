@@ -1,7 +1,7 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback, useState } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useTransition } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -37,7 +37,7 @@ const MessageInput = ({
   showFileSelector = false,
   resetInputVal
 }: {
-  onChange: (e: string) => void;
+  onChange?: (e: string) => void;
   onSendMessage: (e: string) => void;
   onStop: () => void;
   isChatting: boolean;
@@ -45,6 +45,8 @@ const MessageInput = ({
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: string) => void;
 }) => {
+  const [, startSts] = useTransition();
+
   const { shareId } = useRouter().query as { shareId?: string };
   const {
     isSpeaking,
@@ -330,17 +332,29 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
               const textarea = e.target;
               textarea.style.height = textareaMinH;
               textarea.style.height = `${textarea.scrollHeight}px`;
-              onChange(textarea.value);
+
+              startSts(() => {
+                onChange?.(textarea.value);
+              });
             }}
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)
+              const isEnter = e.keyCode === 13;
+              if (isEnter && TextareaDom.current && (e.ctrlKey || e.altKey)) {
+                TextareaDom.current.value += '\n';
+                TextareaDom.current.style.height = textareaMinH;
+                TextareaDom.current.style.height = `${TextareaDom.current.scrollHeight}px`;
+                return;
+              }
+
+              // 全选内容
+              // @ts-ignore
+              e.key === 'a' && e.ctrlKey && e.target?.select();
+
               if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
                 handleSend();
                 e.preventDefault();
               }
-              // 全选内容
-              // @ts-ignore
-              e.key === 'a' && e.ctrlKey && e.target?.select();
             }}
             onPaste={(e) => {
               const clipboardData = e.clipboardData;
