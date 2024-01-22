@@ -89,10 +89,10 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       maxW={['90vw', '700px']}
     >
       <ModalBody>
-        <Flex alignItems={'center'} pb={4}>
+        {/* <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.bill username')}:</Box>
           <Box>{t(bill.memberName)}</Box>
-        </Flex>
+        </Flex> */}
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Number')}:</Box>
           <Box>{bill.id}</Box>
