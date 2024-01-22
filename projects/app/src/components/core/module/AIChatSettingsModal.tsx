@@ -66,7 +66,6 @@ const AIChatSettingsModal = ({
   }, [getValues]);
 
   const quoteTemplateVariables = (() => [
-    ...pickerMenu,
     {
       key: 'q',
       label: 'q',
@@ -91,15 +90,21 @@ const AIChatSettingsModal = ({
       key: 'index',
       label: t('core.dataset.search.Quote index'),
       icon: 'core/app/simpleMode/variable'
-    }
+    },
+    ...pickerMenu
   ])();
   const quotePromptVariables = (() => [
-    ...pickerMenu,
     {
       key: 'quote',
       label: t('core.app.Quote templates'),
       icon: 'core/app/simpleMode/variable'
-    }
+    },
+    {
+      key: 'question',
+      label: t('core.module.input.label.user question'),
+      icon: 'core/app/simpleMode/variable'
+    },
+    ...pickerMenu
   ])();
 
   const LabelStyles: BoxProps = {

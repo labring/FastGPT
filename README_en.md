@@ -49,48 +49,52 @@ Cloud: [fastgpt.in](https://fastgpt.in/)
 
 ## 💡 Features
 
-1. Powerful visual workflows: Effortlessly craft AI applications
+`1` Application Orchestration Features
 
-   - [x] Simple mode on deck - no need for manual arrangement
-   - [x] User dialogue pre-guidance
-   - [x] Global variables
-   - [x] Knowledge base search
-   - [x] Dialogue via multiple LLM models
-   - [x] Text magic - convert to structured data
-   - [x] Extend with HTTP
-   - [ ] Embed Laf for on-the-fly HTTP module crafting
-   - [x] Directions for the next dialogue steps
-   - [x] Tracking source file references
-   - [ ] Custom file reader
-   - [ ] Modules are packaged into plug-ins to achieve reuse
+   - [x] Offers a straightforward mode, eliminating the need for complex orchestration
+   - [x] Provides clear next-step instructions in dialogues
+   - [x] Facilitates workflow orchestration
+   - [x] Tracks references in source files
+   - [x] Encapsulates modules for enhanced reuse at multiple levels
+   - [x] Combines search and reordering functions
+   - [ ] Includes a tool module
+   - [ ] Integrates [Laf](https://github.com/labring/laf) for online HTTP module creation
+   - [ ] Plugin encapsulation capabilities
 
-2. Extensive knowledge base preprocessing
+`2` Knowledge Base Features
 
-   - [x] Reuse and mix multiple knowledge bases
-   - [x] Track chunk modifications and deletions
-   - [x] Supports manual entries, direct segmentation, and QA split imports
-   - [x] Supports URL fetching and batch CSV imports
-   - [x] Supports Set unique vector models for knowledge bases
-   - [x] Store original files
-   - [ ] File learning Agent
+   - [x] Allows for the mixed use of multiple databases
+   - [x] Keeps track of modifications and deletions in data chunks
+   - [x] Enables specific vector models for each knowledge base
+   - [x] Stores original source files
+   - [x] Supports direct input and segment-based QA import
+   - [x] Compatible with a variety of file formats: pdf, docx, txt, html, md, csv
+   - [x] Facilitates URL reading and bulk CSV importing
+   - [ ] Supports PPT and Excel file import
+   - [ ] Features a file reader
+   - [ ] Offers diverse data preprocessing options
 
-3. Multiple effect testing channels
+`3` Application Debugging Features
 
-   - [x] Single-point knowledge base search test
-   - [x] Feedback references and ability to modify and delete during dialogue
-   - [x] Complete context presentation
-   - [ ] Complete module intermediate value presentation
+   - [x] Enables targeted search testing within the knowledge base
+   - [x] Allows feedback, editing, and deletion during conversations
+   - [x] Presents the full context of interactions
+   - [x] Displays all intermediate values within modules
+   - [ ] Advanced DeBug mode for orchestration
 
-4. OpenAPI
+`4` OpenAPI Interface
 
-   - [x] completions interface (aligned with GPT interface)
-   - [ ] Knowledge base CRUD
+   - [x] The completions interface (aligned with GPT's chat mode interface)
+   - [x] CRUD operations for the knowledge base
+   - [ ] CRUD operations for conversations
 
-5. Operational functions
+`5` Operational Features
 
-   - [x] Login-free sharing window
-   - [x] One-click embedding with Iframe
-   - [ ] Unified access to dialogue records
+   - [x] Share without requiring login
+   - [x] Easy embedding with Iframe
+   - [x] Customizable chat window embedding with features like default open, drag-and-drop
+   - [x] Centralizes conversation records for review and annotation
+
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">

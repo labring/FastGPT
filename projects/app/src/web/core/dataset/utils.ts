@@ -27,18 +27,22 @@ export const fileCollectionCreate = ({
   form.append('bucketName', BucketNameEnum.dataset);
   form.append('file', file, encodeURIComponent(file.name));
 
-  return POST<string>(`/core/dataset/collection/create/file?datasetId=${data.datasetId}`, form, {
-    timeout: 480000,
-    onUploadProgress: (e) => {
-      if (!e.total) return;
+  return POST<string>(
+    `/proApi/core/dataset/collection/create/emptyFile?datasetId=${data.datasetId}`,
+    form,
+    {
+      timeout: 480000,
+      onUploadProgress: (e) => {
+        if (!e.total) return;
 
-      const percent = Math.round((e.loaded / e.total) * 100);
-      percentListen && percentListen(percent);
-    },
-    headers: {
-      'Content-Type': 'multipart/form-data; charset=utf-8'
+        const percent = Math.round((e.loaded / e.total) * 100);
+        percentListen && percentListen(percent);
+      },
+      headers: {
+        'Content-Type': 'multipart/form-data; charset=utf-8'
+      }
     }
-  });
+  );
 };
 
 export async function chunksUpload({

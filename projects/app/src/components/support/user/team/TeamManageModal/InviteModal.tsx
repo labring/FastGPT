@@ -55,11 +55,13 @@ const InviteModal = ({
       openConfirm(
         () => onClose(),
         undefined,
-        t('user.team.Invite Member Success Tip', {
-          success: res.invite.length,
-          inValid: res.inValid.map((item) => item.username).join(', '),
-          inTeam: res.inTeam.map((item) => item.username).join(', ')
-        })
+        <Box whiteSpace={'pre-wrap'}>
+          {t('user.team.Invite Member Success Tip', {
+            success: res.invite.length,
+            inValid: res.inValid.map((item) => item.username).join(', '),
+            inTeam: res.inTeam.map((item) => item.username).join(', ')
+          })}
+        </Box>
       )();
     },
     errorToast: t('user.team.Invite Member Failed Tip')

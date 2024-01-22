@@ -36,7 +36,7 @@ import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
-import { useForm } from 'react-hook-form';
+import { UseFormReturn, useForm } from 'react-hook-form';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
@@ -65,7 +65,7 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
-import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
+import type { AppTTSConfigType, VariableItemType } from '@fastgpt/global/core/module/type.d';
 import MessageInput from './MessageInput';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import ChatBoxDivider from '../core/chat/Divider';
@@ -97,6 +97,15 @@ enum FeedbackTypeEnum {
   admin = 'admin',
   hidden = 'hidden'
 }
+
+const MessageCardStyle: BoxProps = {
+  px: 4,
+  py: 3,
+  borderRadius: '0 8px 8px 8px',
+  boxShadow: '0 0 8px rgba(0,0,0,0.15)',
+  display: 'inline-block',
+  maxW: ['calc(100% - 25px)', 'calc(100% - 40px)']
+};
 
 type Props = {
   feedbackType?: `${FeedbackTypeEnum}`;
@@ -157,7 +166,6 @@ const ChatBox = (
   const isNewChatReplace = useRef(false);
 
   const [refresh, setRefresh] = useState(false);
-  const [variables, setVariables] = useState<Record<string, any>>({}); // settings variable
   const [chatHistory, setChatHistory] = useState<ChatSiteItemType[]>([]);
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
@@ -180,7 +188,17 @@ const ChatBox = (
   );
 
   // compute variable input is finish.
-  const [variableInputFinish, setVariableInputFinish] = useState(false);
+  const chatForm = useForm<{
+    variables: Record<string, any>;
+  }>({
+    defaultValues: {
+      variables: {}
+    }
+  });
+  const { setValue, watch, handleSubmit } = chatForm;
+  const variables = watch('variables');
+
+  const [variableInputFinish, setVariableInputFinish] = useState(false); // clicked start chat button
   const variableIsFinish = useMemo(() => {
     if (!variableModules || variableModules.length === 0 || chatHistory.length > 0) return true;
 
@@ -194,21 +212,15 @@ const ChatBox = (
     return variableInputFinish;
   }, [chatHistory.length, variableInputFinish, variableModules, variables]);
 
-  const { register, reset, getValues, setValue, handleSubmit } = useForm<Record<string, any>>({
-    defaultValues: variables
-  });
-
   // 滚动到底部
-  const scrollToBottom = useCallback(
-    (behavior: 'smooth' | 'auto' = 'smooth') => {
-      if (!ChatBoxRef.current) return;
-      ChatBoxRef.current.scrollTo({
-        top: ChatBoxRef.current.scrollHeight,
-        behavior
-      });
-    },
-    [ChatBoxRef]
-  );
+  const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
+    if (!ChatBoxRef.current) return;
+    ChatBoxRef.current.scrollTo({
+      top: ChatBoxRef.current.scrollHeight,
+      behavior
+    });
+  };
+
   // 聊天信息生成中……获取当前滚动条位置，判断是否需要滚动到底部
   const generatingScroll = useCallback(
     throttle(() => {
@@ -222,28 +234,31 @@ const ChatBox = (
     []
   );
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const generatingMessage = ({ text = '', status, name }: generatingMessageProps) => {
-    setChatHistory((state) =>
-      state.map((item, index) => {
-        if (index !== state.length - 1) return item;
-        return {
-          ...item,
-          ...(text
-            ? {
-                value: item.value + text
-              }
-            : {}),
-          ...(status && name
-            ? {
-                status,
-                moduleName: name
-              }
-            : {})
-        };
-      })
-    );
-    generatingScroll();
-  };
+  const generatingMessage = useCallback(
+    ({ text = '', status, name }: generatingMessageProps) => {
+      setChatHistory((state) =>
+        state.map((item, index) => {
+          if (index !== state.length - 1) return item;
+          return {
+            ...item,
+            ...(text
+              ? {
+                  value: item.value + text
+                }
+              : {}),
+            ...(status && name
+              ? {
+                  status,
+                  moduleName: name
+                }
+              : {})
+          };
+        })
+      );
+      generatingScroll();
+    },
+    [generatingScroll]
+  );
 
   // 重置输入内容
   const resetInputVal = useCallback((val: string) => {
@@ -284,149 +299,157 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, scrollToBottom, shareId]
+    [questionGuide, shareId]
   );
 
   /**
    * user confirm send prompt
    */
   const sendPrompt = useCallback(
-    async (variables: Record<string, any> = {}, inputVal = '', history = chatHistory) => {
-      if (!onStartChat) return;
-      if (isChatting) {
-        toast({
-          title: '正在聊天中...请等待结束',
-          status: 'warning'
-        });
-        return;
-      }
-      questionGuideController.current?.abort('stop');
-      // get input value
-      const val = inputVal.trim();
-
-      if (!val) {
-        toast({
-          title: '内容为空',
-          status: 'warning'
-        });
-        return;
-      }
-
-      const newChatList: ChatSiteItemType[] = [
-        ...history,
-        {
-          dataId: nanoid(),
-          obj: 'Human',
-          value: val,
-          status: 'finish'
-        },
-        {
-          dataId: nanoid(),
-          obj: 'AI',
-          value: '',
-          status: 'loading'
-        }
-      ];
-
-      // 插入内容
-      setChatHistory(newChatList);
-
-      // 清空输入内容
-      resetInputVal('');
-      setQuestionGuide([]);
-      setTimeout(() => {
-        scrollToBottom();
-      }, 100);
-      try {
-        // create abort obj
-        const abortSignal = new AbortController();
-        chatController.current = abortSignal;
-
-        const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
-
-        const {
-          responseData,
-          responseText,
-          isNewChat = false
-        } = await onStartChat({
-          chatList: newChatList.map((item) => ({
-            dataId: item.dataId,
-            obj: item.obj,
-            value: item.value,
-            status: item.status,
-            moduleName: item.moduleName
-          })),
-          messages,
-          controller: abortSignal,
-          generatingMessage,
-          variables
-        });
-
-        isNewChatReplace.current = isNewChat;
-
-        // set finish status
-        setChatHistory((state) =>
-          state.map((item, index) => {
-            if (index !== state.length - 1) return item;
-            return {
-              ...item,
-              status: 'finish',
-              responseData
-            };
-          })
-        );
-
-        setTimeout(() => {
-          createQuestionGuide({
-            history: newChatList.map((item, i) =>
-              i === newChatList.length - 1
-                ? {
-                    ...item,
-                    value: responseText
-                  }
-                : item
-            )
+    ({
+      inputVal = '',
+      history = chatHistory
+    }: {
+      inputVal?: string;
+      history?: ChatSiteItemType[];
+    }) => {
+      handleSubmit(async ({ variables }) => {
+        if (!onStartChat) return;
+        if (isChatting) {
+          toast({
+            title: '正在聊天中...请等待结束',
+            status: 'warning'
           });
-          generatingScroll();
-          isPc && TextareaDom.current?.focus();
-        }, 100);
-      } catch (err: any) {
-        toast({
-          title: t(getErrText(err, 'core.chat.error.Chat error')),
-          status: 'error',
-          duration: 5000,
-          isClosable: true
-        });
+          return;
+        }
+        questionGuideController.current?.abort('stop');
+        // get input value
+        const val = inputVal.trim();
 
-        if (!err?.responseText) {
-          resetInputVal(inputVal);
-          setChatHistory(newChatList.slice(0, newChatList.length - 2));
+        if (!val) {
+          toast({
+            title: '内容为空',
+            status: 'warning'
+          });
+          return;
         }
 
-        // set finish status
-        setChatHistory((state) =>
-          state.map((item, index) => {
-            if (index !== state.length - 1) return item;
-            return {
-              ...item,
-              status: 'finish'
-            };
-          })
-        );
-      }
+        const newChatList: ChatSiteItemType[] = [
+          ...history,
+          {
+            dataId: nanoid(),
+            obj: 'Human',
+            value: val,
+            status: 'finish'
+          },
+          {
+            dataId: nanoid(),
+            obj: 'AI',
+            value: '',
+            status: 'loading'
+          }
+        ];
+
+        // 插入内容
+        setChatHistory(newChatList);
+
+        // 清空输入内容
+        resetInputVal('');
+        setQuestionGuide([]);
+        setTimeout(() => {
+          scrollToBottom();
+        }, 100);
+        try {
+          // create abort obj
+          const abortSignal = new AbortController();
+          chatController.current = abortSignal;
+
+          const messages = adaptChat2GptMessages({ messages: newChatList, reserveId: true });
+
+          const {
+            responseData,
+            responseText,
+            isNewChat = false
+          } = await onStartChat({
+            chatList: newChatList.map((item) => ({
+              dataId: item.dataId,
+              obj: item.obj,
+              value: item.value,
+              status: item.status,
+              moduleName: item.moduleName
+            })),
+            messages,
+            controller: abortSignal,
+            generatingMessage,
+            variables
+          });
+
+          isNewChatReplace.current = isNewChat;
+
+          // set finish status
+          setChatHistory((state) =>
+            state.map((item, index) => {
+              if (index !== state.length - 1) return item;
+              return {
+                ...item,
+                status: 'finish',
+                responseData
+              };
+            })
+          );
+
+          setTimeout(() => {
+            createQuestionGuide({
+              history: newChatList.map((item, i) =>
+                i === newChatList.length - 1
+                  ? {
+                      ...item,
+                      value: responseText
+                    }
+                  : item
+              )
+            });
+            generatingScroll();
+            isPc && TextareaDom.current?.focus();
+          }, 100);
+        } catch (err: any) {
+          toast({
+            title: t(getErrText(err, 'core.chat.error.Chat error')),
+            status: 'error',
+            duration: 5000,
+            isClosable: true
+          });
+
+          if (!err?.responseText) {
+            resetInputVal(inputVal);
+            setChatHistory(newChatList.slice(0, newChatList.length - 2));
+          }
+
+          // set finish status
+          setChatHistory((state) =>
+            state.map((item, index) => {
+              if (index !== state.length - 1) return item;
+              return {
+                ...item,
+                status: 'finish'
+              };
+            })
+          );
+        }
+      })();
     },
     [
       chatHistory,
-      onStartChat,
-      isChatting,
-      resetInputVal,
-      toast,
-      scrollToBottom,
-      generatingMessage,
       createQuestionGuide,
+      generatingMessage,
       generatingScroll,
+      handleSubmit,
+      isChatting,
       isPc,
-      t
+      onStartChat,
+      resetInputVal,
+      t,
+      toast
     ]
   );
 
@@ -444,11 +467,14 @@ const ChatBox = (
         );
         setChatHistory((state) => (index === 0 ? [] : state.slice(0, index)));
 
-        sendPrompt(variables, delHistory[0].value, chatHistory.slice(0, index));
+        sendPrompt({
+          inputVal: delHistory[0].value,
+          history: chatHistory.slice(0, index)
+        });
       } catch (error) {}
       setLoading(false);
     },
-    [chatHistory, onDelMessage, sendPrompt, setLoading, variables]
+    [chatHistory, onDelMessage, sendPrompt, setLoading]
   );
   // delete one message
   const delOneMessage = useCallback(
@@ -471,27 +497,21 @@ const ChatBox = (
         defaultVal[item.key] = '';
       });
 
-      reset(e || defaultVal);
-      setVariables(e || defaultVal);
+      setValue('variables', e || defaultVal);
     },
     resetHistory(e) {
       setVariableInputFinish(!!e.length);
       setChatHistory(e);
     },
     scrollToBottom,
-    sendPrompt: (question: string) => handleSubmit((item) => sendPrompt(item, question))()
+    sendPrompt: (question: string) => {
+      sendPrompt({
+        inputVal: question
+      });
+    }
   }));
 
   /* style start */
-  const MessageCardStyle: BoxProps = {
-    px: 4,
-    py: 3,
-    borderRadius: '0 8px 8px 8px',
-    boxShadow: '0 0 8px rgba(0,0,0,0.15)',
-    display: 'inline-block',
-    maxW: ['calc(100% - 25px)', 'calc(100% - 40px)']
-  };
-
   const showEmpty = useMemo(
     () =>
       feConfigs?.show_emptyChat &&
@@ -534,14 +554,18 @@ const ChatBox = (
   useEffect(() => {
     const windowMessage = ({ data }: MessageEvent<{ type: 'sendPrompt'; text: string }>) => {
       if (data?.type === 'sendPrompt' && data?.text) {
-        handleSubmit((item) => sendPrompt(item, data.text))();
+        sendPrompt({
+          inputVal: data.text
+        });
       }
     };
     window.addEventListener('message', windowMessage);
 
     eventBus.on(EventNameEnum.sendQuestion, ({ text }: { text: string }) => {
       if (!text) return;
-      handleSubmit((data) => sendPrompt(data, text))();
+      sendPrompt({
+        inputVal: text
+      });
     });
     eventBus.on(EventNameEnum.editQuestion, ({ text }: { text: string }) => {
       if (!text) return;
@@ -553,140 +577,81 @@ const ChatBox = (
       eventBus.off(EventNameEnum.sendQuestion);
       eventBus.off(EventNameEnum.editQuestion);
     };
-  }, [handleSubmit, resetInputVal, sendPrompt]);
+  }, [resetInputVal, sendPrompt]);
+
+  const onSubmitVariables = useCallback(
+    (data: Record<string, any>) => {
+      setVariableInputFinish(true);
+      onUpdateVariable?.(data);
+    },
+    [onUpdateVariable]
+  );
+  const HumanChatCard = useCallback(
+    ({ item, index }: { item: ChatSiteItemType; index: number }) => {
+      return (
+        <>
+          {/* control icon */}
+          <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
+            <ChatControllerComponent
+              chat={item}
+              onDelete={
+                onDelMessage
+                  ? () => {
+                      delOneMessage({ dataId: item.dataId, index });
+                    }
+                  : undefined
+              }
+              onRetry={useCallback(() => retryInput(index), [index])}
+            />
+            <ChatAvatar src={userAvatar} type={'Human'} />
+          </Flex>
+          {/* content */}
+          <Box mt={['6px', 2]} textAlign={'right'}>
+            <Card
+              className="markdown"
+              {...MessageCardStyle}
+              bg={'primary.200'}
+              borderRadius={'8px 0 8px 8px'}
+              textAlign={'left'}
+            >
+              <Markdown source={item.value} isChatting={false} />
+            </Card>
+          </Box>
+        </>
+      );
+    },
+    []
+  );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
-
       {/* chat box container */}
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
         <Box id="chat-container" maxW={['100%', '92%']} h={'100%'} mx={'auto'}>
           {showEmpty && <Empty />}
-
-          {!!welcomeText && (
-            <Box py={3}>
-              {/* avatar */}
-              <ChatAvatar src={appAvatar} type={'AI'} />
-              {/* message */}
-              <Box textAlign={'left'}>
-                <Card order={2} mt={2} {...MessageCardStyle} bg={'white'}>
-                  <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
-                </Card>
-              </Box>
-            </Box>
-          )}
+          {!!welcomeText && <WelcomeText appAvatar={appAvatar} welcomeText={welcomeText} />}
           {/* variable input */}
           {!!variableModules?.length && (
-            <Box py={3}>
-              {/* avatar */}
-              <ChatAvatar src={appAvatar} type={'AI'} />
-              {/* message */}
-              <Box textAlign={'left'}>
-                <Card order={2} mt={2} bg={'white'} w={'400px'} {...MessageCardStyle}>
-                  {variableModules.map((item) => (
-                    <Box key={item.id} mb={4}>
-                      <VariableLabel required={item.required}>{item.label}</VariableLabel>
-                      {item.type === VariableInputEnum.input && (
-                        <Input
-                          isDisabled={variableIsFinish}
-                          bg={'myWhite.400'}
-                          {...register(item.key, {
-                            required: item.required
-                          })}
-                        />
-                      )}
-                      {item.type === VariableInputEnum.textarea && (
-                        <Textarea
-                          isDisabled={variableIsFinish}
-                          bg={'myWhite.400'}
-                          {...register(item.key, {
-                            required: item.required
-                          })}
-                          rows={5}
-                          maxLength={4000}
-                        />
-                      )}
-                      {item.type === VariableInputEnum.select && (
-                        <MySelect
-                          width={'100%'}
-                          isDisabled={variableIsFinish}
-                          list={(item.enums || []).map((item) => ({
-                            label: item.value,
-                            value: item.value
-                          }))}
-                          {...register(item.key, {
-                            required: item.required
-                          })}
-                          value={getValues(item.key)}
-                          onchange={(e) => {
-                            setValue(item.key, e);
-                            setRefresh(!refresh);
-                          }}
-                        />
-                      )}
-                    </Box>
-                  ))}
-                  {!variableIsFinish && (
-                    <Button
-                      leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
-                      size={'sm'}
-                      maxW={'100px'}
-                      onClick={handleSubmit((data) => {
-                        onUpdateVariable?.(data);
-                        setVariables(data);
-                        setVariableInputFinish(true);
-                      })}
-                    >
-                      {t('core.chat.Start Chat')}
-                    </Button>
-                  )}
-                </Card>
-              </Box>
-            </Box>
+            <VariableInput
+              appAvatar={appAvatar}
+              variableModules={variableModules}
+              variableIsFinish={variableIsFinish}
+              chatForm={chatForm}
+              onSubmitVariables={onSubmitVariables}
+            />
           )}
-
           {/* chat history */}
           <Box id={'history'}>
             {chatHistory.map((item, index) => (
               <Box key={item.dataId} py={5}>
-                {item.obj === 'Human' && (
-                  <>
-                    {/* control icon */}
-                    <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
-                      <ChatController
-                        chat={item}
-                        onDelete={
-                          onDelMessage
-                            ? () => {
-                                delOneMessage({ dataId: item.dataId, index });
-                              }
-                            : undefined
-                        }
-                        onRetry={() => retryInput(index)}
-                      />
-                      <ChatAvatar src={userAvatar} type={'Human'} />
-                    </Flex>
-                    {/* content */}
-                    <Box mt={['6px', 2]} textAlign={'right'}>
-                      <Card
-                        className="markdown"
-                        {...MessageCardStyle}
-                        bg={'primary.200'}
-                        borderRadius={'8px 0 8px 8px'}
-                        textAlign={'left'}
-                      >
-                        <Markdown source={item.value} isChatting={false} />
-                      </Card>
-                    </Box>
-                  </>
-                )}
+                {item.obj === 'Human' && <HumanChatCard item={item} index={index} />}
                 {item.obj === 'AI' && (
                   <>
-                    {/* control icon */}
                     <Flex w={'100%'} alignItems={'center'}>
                       <ChatAvatar src={appAvatar} type={'AI'} />
-                      <ChatController
+                      {/* control icon */}
+                      <ChatControllerComponent
                         ml={2}
                         chat={item}
                         setChatHistory={setChatHistory}
@@ -723,36 +688,35 @@ const ChatBox = (
                               }
                             : undefined
                         }
-                        onAddUserLike={(() => {
-                          if (feedbackType !== FeedbackTypeEnum.user || item.userBadFeedback) {
-                            return;
-                          }
-                          return () => {
-                            if (!item.dataId || !chatId || !appId) return;
+                        onAddUserLike={
+                          feedbackType !== FeedbackTypeEnum.user || item.userBadFeedback
+                            ? undefined
+                            : () => {
+                                if (!item.dataId || !chatId || !appId) return;
 
-                            const isGoodFeedback = !!item.userGoodFeedback;
-                            setChatHistory((state) =>
-                              state.map((chatItem) =>
-                                chatItem.dataId === item.dataId
-                                  ? {
-                                      ...chatItem,
-                                      userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-                                    }
-                                  : chatItem
-                              )
-                            );
-                            try {
-                              updateChatUserFeedback({
-                                appId,
-                                chatId,
-                                chatItemId: item.dataId,
-                                shareId,
-                                outLinkUid,
-                                userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-                              });
-                            } catch (error) {}
-                          };
-                        })()}
+                                const isGoodFeedback = !!item.userGoodFeedback;
+                                setChatHistory((state) =>
+                                  state.map((chatItem) =>
+                                    chatItem.dataId === item.dataId
+                                      ? {
+                                          ...chatItem,
+                                          userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                                        }
+                                      : chatItem
+                                  )
+                                );
+                                try {
+                                  updateChatUserFeedback({
+                                    appId,
+                                    chatId,
+                                    chatItemId: item.dataId,
+                                    shareId,
+                                    outLinkUid,
+                                    userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                                  });
+                                } catch (error) {}
+                              }
+                        }
                         onCloseUserLike={
                           feedbackType === FeedbackTypeEnum.admin
                             ? () => {
@@ -931,13 +895,12 @@ const ChatBox = (
         </Box>
       </Box>
       {/* message input */}
-      {onStartChat && variableIsFinish && active ? (
+      {onStartChat && variableIsFinish && active && (
         <MessageInput
-          onChange={(e) => {
-            setRefresh(!refresh);
-          }}
-          onSendMessage={(e) => {
-            handleSubmit((data) => sendPrompt(data, e))();
+          onSendMessage={(inputVal) => {
+            sendPrompt({
+              inputVal
+            });
           }}
           onStop={() => chatController.current?.abort('stop')}
           isChatting={isChatting}
@@ -945,7 +908,7 @@ const ChatBox = (
           resetInputVal={resetInputVal}
           showFileSelector={showFileSelector}
         />
-      ) : null}
+      )}
       {/* user feedback modal */}
       {!!feedbackId && chatId && appId && (
         <FeedbackModal
@@ -1115,30 +1078,125 @@ export const useChatBox = () => {
   };
 };
 
-function VariableLabel({
-  required = false,
-  children
+const WelcomeText = React.memo(function Welcome({
+  appAvatar,
+  welcomeText
 }: {
-  required?: boolean;
-  children: React.ReactNode | string;
+  appAvatar?: string;
+  welcomeText: string;
 }) {
   return (
-    <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>
-      {children}
-      {required && (
-        <Box
-          position={'absolute'}
-          top={'-2px'}
-          right={'-10px'}
-          color={'red.500'}
-          fontWeight={'bold'}
-        >
-          *
-        </Box>
-      )}
+    <Box py={3}>
+      {/* avatar */}
+      <ChatAvatar src={appAvatar} type={'AI'} />
+      {/* message */}
+      <Box textAlign={'left'}>
+        <Card order={2} mt={2} {...MessageCardStyle} bg={'white'}>
+          <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
+        </Card>
+      </Box>
     </Box>
   );
-}
+});
+const VariableInput = React.memo(function VariableInput({
+  appAvatar,
+  variableModules,
+  variableIsFinish,
+  chatForm,
+  onSubmitVariables
+}: {
+  appAvatar?: string;
+  variableModules: VariableItemType[];
+  variableIsFinish: boolean;
+  onSubmitVariables: (e: Record<string, any>) => void;
+  chatForm: UseFormReturn<{
+    variables: Record<string, any>;
+  }>;
+}) {
+  const { t } = useTranslation();
+  const { register, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
+  const variables = watch('variables');
+
+  return (
+    <Box py={3}>
+      {/* avatar */}
+      <ChatAvatar src={appAvatar} type={'AI'} />
+      {/* message */}
+      <Box textAlign={'left'}>
+        <Card order={2} mt={2} bg={'white'} w={'400px'} {...MessageCardStyle}>
+          {variableModules.map((item) => (
+            <Box key={item.id} mb={4}>
+              <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>
+                {item.label}
+                {item.required && (
+                  <Box
+                    position={'absolute'}
+                    top={'-2px'}
+                    right={'-10px'}
+                    color={'red.500'}
+                    fontWeight={'bold'}
+                  >
+                    *
+                  </Box>
+                )}
+              </Box>
+              {item.type === VariableInputEnum.input && (
+                <Input
+                  isDisabled={variableIsFinish}
+                  bg={'myWhite.400'}
+                  {...register(`variables.${item.key}`, {
+                    required: item.required
+                  })}
+                />
+              )}
+              {item.type === VariableInputEnum.textarea && (
+                <Textarea
+                  isDisabled={variableIsFinish}
+                  bg={'myWhite.400'}
+                  {...register(`variables.${item.key}`, {
+                    required: item.required
+                  })}
+                  rows={5}
+                  maxLength={4000}
+                />
+              )}
+              {item.type === VariableInputEnum.select && (
+                <MySelect
+                  width={'100%'}
+                  isDisabled={variableIsFinish}
+                  list={(item.enums || []).map((item) => ({
+                    label: item.value,
+                    value: item.value
+                  }))}
+                  {...register(`variables.${item.key}`, {
+                    required: item.required
+                  })}
+                  value={variables[item.key]}
+                  onchange={(e) => {
+                    setValue(`variables.${item.key}`, e);
+                  }}
+                />
+              )}
+            </Box>
+          ))}
+          {!variableIsFinish && (
+            <Button
+              leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
+              size={'sm'}
+              maxW={'100px'}
+              onClick={handleSubmitChat((data) => {
+                onSubmitVariables(data);
+              })}
+            >
+              {t('core.chat.Start Chat')}
+            </Button>
+          )}
+        </Card>
+      </Box>
+    </Box>
+  );
+});
+
 function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
   const theme = useTheme();
   return (
@@ -1173,7 +1231,7 @@ function Empty() {
   );
 }
 
-function ChatController({
+const ChatControllerComponent = React.memo(function ChatControllerComponent({
   chat,
   setChatHistory,
   display,
@@ -1226,7 +1284,7 @@ function ChatController({
 
   return (
     <Flex {...controlContainerStyle} ml={ml} mr={mr} display={display}>
-      <MyTooltip label={'复制'}>
+      <MyTooltip label={t('common.Copy')}>
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
@@ -1246,7 +1304,7 @@ function ChatController({
               />
             </MyTooltip>
           )}
-          <MyTooltip label={'删除'}>
+          <MyTooltip label={t('common.Delete')}>
             <MyIcon
               {...controlIconStyle}
               name={'delete'}
@@ -1259,7 +1317,7 @@ function ChatController({
       {showVoiceIcon &&
         hasAudio &&
         (audioLoading ? (
-          <MyTooltip label={'加载中...'}>
+          <MyTooltip label={t('common.Loading')}>
             <MyIcon {...controlIconStyle} name={'common/loading'} />
           </MyTooltip>
         ) : audioPlaying ? (
@@ -1372,4 +1430,4 @@ function ChatController({
       )}
     </Flex>
   );
-}
+});

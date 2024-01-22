@@ -75,7 +75,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const { mutate: onSwitchTeam, isLoading: isSwitchTeam } = useRequest({
     mutationFn: async (teamId: string) => {
       const token = await putSwitchTeam(teamId);
-      setToken(token);
+      token && setToken(token);
       return initUserInfo();
     },
     errorToast: t('user.team.Switch Team Failed')
@@ -286,13 +286,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
-                  leftIcon={
-                    <MyIcon
-                      name={'support/account/loginoutLight'}
-                      w={'14px'}
-                      color={'primary.500'}
-                    />
-                  }
+                  leftIcon={<MyIcon name={'support/account/loginoutLight'} w={'14px'} />}
                   onClick={() => {
                     openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
                   }}

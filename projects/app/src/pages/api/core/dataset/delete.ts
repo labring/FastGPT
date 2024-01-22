@@ -18,7 +18,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // auth owner
-    const { teamId } = await authDataset({ req, authToken: true, datasetId, per: 'owner' });
+    const { teamId } = await authDataset({
+      req,
+      authToken: true,
+      authApiKey: true,
+      datasetId,
+      per: 'owner'
+    });
 
     const datasets = await findDatasetAndAllChildren({
       teamId,

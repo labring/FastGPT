@@ -58,7 +58,7 @@ export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/data
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
 export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
-  POST(`/plusApi/core/dataset/websiteSync`, data, {
+  POST(`/proApi/core/dataset/websiteSync`, data, {
     timeout: 600000
   }).catch();
 
@@ -76,7 +76,7 @@ export const getDatasetCollectionById = (id: string) =>
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
+  POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/link`, data);
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);

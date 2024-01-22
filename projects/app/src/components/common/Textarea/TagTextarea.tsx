@@ -79,6 +79,8 @@ const TagTextarea = ({ defaultValues, onUpdate, ...props }: Props) => {
           ref={InputRef}
           variant={'unstyled'}
           display={'inline-block'}
+          h={'24px'}
+          borderRadius={'none'}
           w="auto"
           onBlur={(e) => {
             const value = e.target.value;

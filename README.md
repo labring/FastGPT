@@ -57,7 +57,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 源文件引用追踪
    - [x] 模块封装，实现多级复用
    - [x] 混合检索 & 重排
-   - [ ] 自查询规划
+   - [ ] Tool 模块
    - [ ] 嵌入 [Laf](https://github.com/labring/laf)，实现在线编写 HTTP 模块
    - [ ] 插件封装功能
 
@@ -67,10 +67,10 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 支持知识库单独设置向量模型
    - [x] 源文件存储
    - [x] 支持手动输入，直接分段，QA 拆分导入
-   - [x] 支持 pdf、word、txt、md 等常用文件，支持 url 读取、CSV 批量导入
-   - [ ] 支持 HTML、csv、PPT、Excel 导入
+   - [x] 支持 pdf，docx，txt，html，md，csv
+   - [x] 支持 url 读取、CSV 批量导入
+   - [ ] 支持 PPT、Excel 导入
    - [ ] 支持文件阅读器
-   - [ ] 支持差异性文件同步
    - [ ] 更多的数据预处理方案
   
 `3` 应用调试能力
@@ -81,8 +81,8 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [ ] 高级编排 DeBug 模式
   
 `4` OpenAPI 接口
-   - [x] completions 接口 (对齐 GPT 接口)
-   - [ ] 知识库 CRUD
+   - [x] completions 接口 (chat 模式对齐 GPT 接口)
+   - [x] 知识库 CRUD
    - [ ] 对话 CRUD
   
 `5` 运营能力
