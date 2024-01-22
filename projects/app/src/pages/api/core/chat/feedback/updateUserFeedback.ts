@@ -13,16 +13,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
 
-    await autChatCrud({
-      req,
-      authToken: true,
-      appId,
-      chatId,
-      shareId,
-      outLinkUid,
-      per: 'r'
-    });
-
     if (!chatItemId) {
       throw new Error('chatItemId is required');
     }
