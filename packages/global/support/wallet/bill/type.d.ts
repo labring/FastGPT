@@ -7,6 +7,9 @@ export type BillListItemCountType = {
   charsLength?: number;
   duration?: number;
 
+  // sub
+  datasetSize?: number;
+
   // abandon
   tokenLen?: number;
 };

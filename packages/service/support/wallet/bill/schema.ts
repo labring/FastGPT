@@ -8,10 +8,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 
 const BillSchema = new Schema({
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -28,7 +24,7 @@ const BillSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: 'model',
+    ref: 'apps',
     required: false
   },
   time: {
