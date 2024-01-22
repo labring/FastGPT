@@ -49,46 +49,52 @@ Cloud: [fastgpt.in](https://fastgpt.in/)
 
 ## 💡 Features
 
-`1` Apply orchestration capabilities
-    - [x] Provides a simple mode without the need for orchestration
-    - [x] Indicates the next step of the dialog
-    - [x] Workflow orchestration
-    - [x] Trace source file references
-    - [x] module encapsulation, multi-level multiplexing
-    - [x] Hybrid search & rearrangement
-    - [] Tool module
-    Embedded [fans] - [] (https://github.com/labring/laf), realize the online writing HTTP module
-    - [] The plug-in encapsulates functions
+`1` Application Orchestration Features
 
-`2` Knowledge base capability
-    - [x] Multi-library multiplexing, mixed use
-    - [x] chunk records are modified or deleted
-    - [x] Supports the vector model of the knowledge base
-    - [x] Source file storage
-    - [x] Supports manual input, direct segmentation, and QA split import
-    - [x] Supports pdf, docx, txt, html, md, csv
-    - [x] Supports url reading and CSV batch import
-    - [] Supports PPT and Excel import
-    - [] Supports file readers
-    - [] More data preprocessing schemes
+   - [x] Offers a straightforward mode, eliminating the need for complex orchestration
+   - [x] Provides clear next-step instructions in dialogues
+   - [x] Facilitates workflow orchestration
+   - [x] Tracks references in source files
+   - [x] Encapsulates modules for enhanced reuse at multiple levels
+   - [x] Combines search and reordering functions
+   - [ ] Includes a tool module
+   - [ ] Integrates [Laf](https://github.com/labring/laf) for online HTTP module creation
+   - [ ] Plugin encapsulation capabilities
 
-`3` Application debugging capability
-    - [x] Knowledge base single point search test
-    - [x] Feedback references during the session and modify or delete them
-    - [x] Full context rendering
-    - [x] The complete module intermediate value is displayed
-    - [] Advanced debugging mode
+`2` Knowledge Base Features
 
-`4` OpenAPI interface
-    - [x] completions interface (chat mode aligned with GPT interface)
-    - [x] Knowledge base CRUD
-    - [] Dialog CRUD
+   - [x] Allows for the mixed use of multiple databases
+   - [x] Keeps track of modifications and deletions in data chunks
+   - [x] Enables specific vector models for each knowledge base
+   - [x] Stores original source files
+   - [x] Supports direct input and segment-based QA import
+   - [x] Compatible with a variety of file formats: pdf, docx, txt, html, md, csv
+   - [x] Facilitates URL reading and bulk CSV importing
+   - [ ] Supports PPT and Excel file import
+   - [ ] Features a file reader
+   - [ ] Offers diverse data preprocessing options
 
-`5` Operation capability
-    - [x] Do not log in to the share window
-    - [x] Iframe One-click embedding
-    - [x] Chat window embed support custom Icon, default open, drag and drop functions
-    - [x] View session records in a unified manner and annotate data
+`3` Application Debugging Features
+
+   - [x] Enables targeted search testing within the knowledge base
+   - [x] Allows feedback, editing, and deletion during conversations
+   - [x] Presents the full context of interactions
+   - [x] Displays all intermediate values within modules
+   - [ ] Advanced DeBug mode for orchestration
+
+`4` OpenAPI Interface
+
+   - [x] The completions interface (aligned with GPT's chat mode interface)
+   - [x] CRUD operations for the knowledge base
+   - [ ] CRUD operations for conversations
+
+`5` Operational Features
+
+   - [x] Share without requiring login
+   - [x] Easy embedding with Iframe
+   - [x] Customizable chat window embedding with features like default open, drag-and-drop
+   - [x] Centralizes conversation records for review and annotation
+
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">
