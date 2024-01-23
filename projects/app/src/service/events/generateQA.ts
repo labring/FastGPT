@@ -212,7 +212,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
  * 检查文本是否按格式返回
  */
 function formatSplitText(text: string, rawText: string) {
-  text = text.replace(/\\n/g, '\n'); // 将换行符替换为空格
+  //text = text.replace(/\\n/g, '\n'); // 将换行符替换为空格
   const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q|$)/g; // 匹配Q和A的正则表达式
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
