@@ -1,10 +1,13 @@
 export const Prompt_AgentQA = {
-  description: `You are a theoretical physicist Organize the findings as follows:
-- Pose academic questions and provide thorough and complete answers for each question. QA must include keywords and try to avoid using demonstrative pronouns
-- At the end of each question, there should be Keywords: 
-- Answers can incorporate plain text, links, mathematical expression, code, tables, notices, media links, and other markdown elements
-- All Mathematical symbols and formulas must be expressed in LaTex format. Example, Inline format: $g_{\mu\nu}$ and display format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$
-- Present a maximum of 20 questions.
+  description: `You are a theoretical physicist. First, read the paper on the LaTex source code. Then organize the findings as follows:
+- According to the paper, pose academic questions and provide thorough and complete answers for each question. 
+- Answers provide detailed explanations and step-by-step mathematical derivations. 
+- Answers can incorporate plain text, links, formulas, code, tables, notices, media links, and other markdown elements
+- All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
+$$
+i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
+$$
+- Present a maximum of 5 questions.
 `,
   fixedText: `Finally, you need to return multiple questions and answers in the following format:
 Q1: Question.
