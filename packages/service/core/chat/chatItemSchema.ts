@@ -47,18 +47,19 @@ const ChatItemSchema = new Schema({
     default: () => new Date()
   },
   obj: {
+    // chat role
     type: String,
     required: true,
     enum: Object.keys(ChatRoleMap)
   },
   value: {
+    // chat content
     type: String,
     default: ''
   },
   userGoodFeedback: {
     type: String
   },
-  userFeedback: String,
   userBadFeedback: {
     type: String
   },

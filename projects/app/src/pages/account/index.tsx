@@ -51,7 +51,16 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           }
         ]
       : []),
-    ...(feConfigs?.isPlus && feConfigs?.show_pay
+    ...(feConfigs?.show_pay && userInfo?.team.canWrite
+      ? [
+          {
+            icon: 'support/pay/payRecordLight',
+            label: t('user.Recharge Record'),
+            id: TabEnum.pay
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_pay
       ? [
           {
             icon: 'support/pay/priceLight',
@@ -60,21 +69,13 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           }
         ]
       : []),
+
     ...(feConfigs?.show_promotion
       ? [
           {
             icon: 'support/account/promotionLight',
             label: t('user.Promotion Record'),
             id: TabEnum.promotion
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_pay && userInfo?.team.canWrite
-      ? [
-          {
-            icon: 'support/pay/payRecordLight',
-            label: t('user.Recharge Record'),
-            id: TabEnum.pay
           }
         ]
       : []),

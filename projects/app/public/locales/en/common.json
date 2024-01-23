@@ -57,6 +57,7 @@
   "common": {
     "Add": "Add",
     "Add New": "Add",
+    "All": "All",
     "Back": "Back",
     "Beta": "Beta",
     "Business edition features": "This is the commercial version function ~",
@@ -1134,7 +1135,13 @@
         "Provider error": "Login exception, please try again"
       },
       "team": {
-        "Dataset usage": "Dataset usage"
+        "Dataset usage": "Dataset usage",
+        "member": "Member",
+        "subscription": {
+          "type": {
+            "extraDatasetSize": "Extra dataset size"
+          }
+        }
       }
     },
     "wallet": {
@@ -1143,10 +1150,14 @@
       "Pay error": "Pay error",
       "Pay success": "Pay success",
       "subscription": {
+        "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",
         "Current dataset store": "Current dataset store subscription",
         "Dataset store": "Dataset store size",
         "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
-        "Expand size": "Expand size"
+        "Expand size": "Expand size",
+        "Extra dataset size": "Extra dataset size",
+        "Next sub dataset size": "",
+        "Update extra dataset size": "Update size"
       }
     }
   },

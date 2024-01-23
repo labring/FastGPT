@@ -1,8 +1,12 @@
 import React from 'react';
-import Editor from '@monaco-editor/react';
+import Editor, { loader } from '@monaco-editor/react';
 import { useCallback, useRef, useState } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
+
+loader.config({
+  paths: { vs: "/js/monaco-editor.0.43.0" },
+});
 
 type Props = Omit<BoxProps, 'onChange' | 'resize' | 'height'> & {
   height?: number;

@@ -5,6 +5,7 @@ import { type DateRange, DayPicker } from 'react-day-picker';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import 'react-day-picker/dist/style.css';
 import zhCN from 'date-fns/locale/zh-CN';
+import { useTranslation } from 'next-i18next';
 
 const DateRangePicker = ({
   onChange,
@@ -20,6 +21,7 @@ const DateRangePicker = ({
   position?: 'bottom' | 'top';
   defaultDate?: DateRange;
 }) => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const OutRangeRef = useRef(null);
   const [range, setRange] = useState<DateRange | undefined>(defaultDate);
@@ -99,7 +101,7 @@ const DateRangePicker = ({
                   mr={2}
                   onClick={() => setShowSelected(false)}
                 >
-                  取消
+                  {t('common.Close')}
                 </Button>
                 <Button
                   size={'sm'}
@@ -108,7 +110,7 @@ const DateRangePicker = ({
                     setShowSelected(false);
                   }}
                 >
-                  确认
+                  {t('common.Confirm')}
                 </Button>
               </Flex>
             }
