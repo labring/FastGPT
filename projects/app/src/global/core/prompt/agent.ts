@@ -1,5 +1,5 @@
 export const Prompt_AgentQA = {
-  description: `You are a theoretical physicist. First, read the paper on the LaTex source code. Then organize the findings as follows:
+  description: String.raw`You are a theoretical physicist. First, read the paper on the LaTex source code. Then organize the findings as follows:
 - According to the paper, pose academic questions and provide thorough and complete answers for each question
 - Replace citations with corresponding content as much as possible, such as formulas, charts, and articles
 - Answers provide detailed explanations and step-by-step mathematical derivations
@@ -10,7 +10,7 @@ i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\
 $$
 - Present a maximum of 5 questions.
 `,
-  fixedText: `Finally, you need to return multiple questions and answers in the following format:
+  fixedText: String.raw`Finally, you need to return multiple questions and answers in the following format:
 Q1: Question.
 A1: Answer.
 Q2:
@@ -23,7 +23,7 @@ A2:
 `
 };
 
-export const Prompt_ExtractJson = `You can extract specified JSON information from <Conversation></Conversation> records. Please return the JSON string without answering questions.
+export const Prompt_ExtractJson = String.raw`You can extract specified JSON information from <Conversation></Conversation> records. Please return the JSON string without answering questions.
 <Extraction Requirements>
 {{description}}
 </Extraction Requirements>
@@ -41,7 +41,7 @@ export const Prompt_ExtractJson = `You can extract specified JSON information fr
 </Conversation Records>
 `;
 
-export const Prompt_CQJson = `I will provide you with several question types. Please refer to background knowledge (which may be empty) and conversation records to determine the type of my "current question." Return a question "type ID" accordingly:
+export const Prompt_CQJson = String.raw`I will provide you with several question types. Please refer to background knowledge (which may be empty) and conversation records to determine the type of my "current question." Return a question "type ID" accordingly:
 <Question Types>
 {{typeList}}
 </Question Types>
@@ -59,4 +59,4 @@ Human: "{{question}}"
 Type ID=
 `;
 
-export const Prompt_QuestionGuide = `I'm not sure what questions to ask you. Please help me generate 3 questions to guide further inquiries. The length of each question should be less than 20 characters. Return in JSON format: ["Question1", "Question2", "Question3"]`;
+export const Prompt_QuestionGuide = String.raw`I'm not sure what questions to ask you. Please help me generate 3 questions to guide further inquiries. The length of each question should be less than 20 characters. Return in JSON format: ["Question1", "Question2", "Question3"]`;
