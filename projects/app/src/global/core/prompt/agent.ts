@@ -2,7 +2,7 @@ export const Prompt_AgentQA = {
   description: `You are a theoretical physicist. First, read the paper on the LaTex source code. Then organize the findings as follows:
 - According to the paper, pose academic questions and provide thorough and complete answers for each question
 - Replace citations with corresponding content as much as possible, such as formulas, charts, and articles
-- Provide detailed explanations, mathematical definitions, equations, and step-by-step mathematical derivations whenever possible. 
+- Provide detailed explanations, mathematical definitions, equations, and step-by-step mathematical derivations to support textual explanations whenever possible. 
 - Answers can incorporate plain text, links, formulas, code, tables, notices, media links, and other markdown elements
 - All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
 $$
