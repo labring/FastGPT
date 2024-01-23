@@ -57,6 +57,7 @@
   "common": {
     "Add": "添加",
     "Add New": "新增",
+    "All": "全部",
     "Back": "返回",
     "Beta": "实验版",
     "Business edition features": "这是商业版功能~",
@@ -1136,7 +1137,13 @@
         "Provider error": "登录异常，请重试"
       },
       "team": {
-        "Dataset usage": "知识库容量"
+        "Dataset usage": "知识库容量",
+        "member": "成员",
+        "subscription": {
+          "type": {
+            "extraDatasetSize": "知识库扩容"
+          }
+        }
       }
     },
     "wallet": {
@@ -1145,10 +1152,14 @@
       "Pay error": "支付失败",
       "Pay success": "支付成功",
       "subscription": {
+        "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
         "Current dataset store": "当前额外容量",
         "Dataset store": "知识库容量",
         "Dataset store price tip": "每月1号从账号余额里扣除",
-        "Expand size": "扩大容量"
+        "Expand size": "扩大容量",
+        "Extra dataset size": "额外知识库容量",
+        "Next sub dataset size": "下次订阅额外容量",
+        "Update extra dataset size": "修改知识库额外容量"
       }
     }
   },
@@ -1163,7 +1174,7 @@
     "Account": "账号",
     "Amount of earnings": "收益（￥）",
     "Amount of inviter": "累计邀请人数",
-    "Application Name": "应用名",
+    "Application Name": "项目名",
     "Avatar": "头像",
     "Balance": "余额",
     "Bill Detail": "账单详情",
@@ -1185,7 +1196,7 @@
     "Promotion Rate": "返现比例",
     "Promotion Record": "推广记录",
     "Promotion rate tip": "好友充值时你将获得一定比例的余额奖励",
-    "Recharge Record": "充值记录",
+    "Recharge Record": "支付记录",
     "Replace": "更换",
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Sign Out": "登出",

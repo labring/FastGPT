@@ -35,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // auth chat permission
-    if (!app.canWrite && String(tmbId) !== String(chat?.tmbId)) {
+    if (chat && !app.canWrite && String(tmbId) !== String(chat?.tmbId)) {
       throw new Error(ChatErrEnum.unAuthChat);
     }
 

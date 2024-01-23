@@ -10,8 +10,10 @@ export const checkDatasetLimit = async ({
   freeSize?: number;
   insertLen?: number;
 }) => {
-  const { maxSize } = await getTeamDatasetValidSub({ teamId, freeSize });
-  const usedSize = await getVectorCountByTeamId(teamId);
+  const [{ maxSize }, usedSize] = await Promise.all([
+    getTeamDatasetValidSub({ teamId, freeSize }),
+    getVectorCountByTeamId(teamId)
+  ]);
 
   if (usedSize + insertLen >= maxSize) {
     return Promise.reject(`数据库容量不足，无法继续添加。可以在账号页面进行扩容。`);

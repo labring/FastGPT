@@ -8,10 +8,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 
 const BillSchema = new Schema({
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -28,7 +24,7 @@ const BillSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: 'model',
+    ref: 'apps',
     required: false
   },
   time: {
@@ -52,7 +48,7 @@ const BillSchema = new Schema({
 });
 
 try {
-  BillSchema.index({ teamId: 1, time: -1 });
+  BillSchema.index({ teamId: 1, tmbId: 1, source: 1, time: -1 }, { background: true });
   BillSchema.index({ time: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
 } catch (error) {
   console.log(error);

@@ -78,16 +78,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         {
           $match: match
         },
+        {
+          $sort: { updateTime: -1 }
+        },
+        {
+          $skip: (pageNum - 1) * pageSize
+        },
+        {
+          $limit: pageSize
+        },
         // count training data
         {
           $lookup: {
             from: DatasetTrainingCollectionName,
-            let: { id: '$_id' },
+            let: { id: '$_id', team_id: match.teamId, dataset_id: match.datasetId },
             pipeline: [
               {
                 $match: {
                   $expr: {
-                    $and: [{ $eq: ['$teamId', match.teamId] }, { $eq: ['$collectionId', '$$id'] }]
+                    $and: [{ $eq: ['$teamId', '$$team_id'] }, { $eq: ['$collectionId', '$$id'] }]
                   }
                 }
               },
@@ -100,14 +109,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         {
           $lookup: {
             from: DatasetDataCollectionName,
-            let: { id: '$_id' },
+            let: { id: '$_id', team_id: match.teamId, dataset_id: match.datasetId },
             pipeline: [
               {
                 $match: {
                   $expr: {
                     $and: [
-                      { $eq: ['$teamId', match.teamId] },
-                      { $eq: ['$datasetId', match.datasetId] },
+                      { $eq: ['$teamId', '$$team_id'] },
+                      { $eq: ['$datasetId', '$$dataset_id'] },
                       { $eq: ['$collectionId', '$$id'] }
                     ]
                   }
@@ -136,15 +145,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               $ifNull: [{ $arrayElemAt: ['$trainingCount.count', 0] }, 0]
             }
           }
-        },
-        {
-          $sort: { updateTime: -1 }
-        },
-        {
-          $skip: (pageNum - 1) * pageSize
-        },
-        {
-          $limit: pageSize
         }
       ]),
       MongoDatasetCollection.countDocuments(match)

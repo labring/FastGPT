@@ -1,4 +1,4 @@
-import { SubStatusEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
 
 /* get team dataset size */
@@ -11,17 +11,14 @@ export const getTeamDatasetValidSub = async ({
 }) => {
   const sub = await MongoTeamSub.findOne({
     teamId,
-    status: SubStatusEnum.active
-  })
-    .sort({
-      expiredTime: -1
-    })
-    .lean();
+    type: SubTypeEnum.extraDatasetSize,
+    expiredTime: { $gte: new Date() }
+  }).lean();
 
   const maxSize = (() => {
-    if (!sub || !sub.datasetStoreAmount) return freeSize;
+    if (!sub || !sub.currentExtraDatasetSize) return freeSize;
 
-    return sub.datasetStoreAmount + freeSize;
+    return sub.currentExtraDatasetSize + freeSize;
   })();
 
   return {

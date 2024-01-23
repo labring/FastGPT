@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import {
@@ -15,18 +14,30 @@ import {
   Button
 } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import { getTeamDatasetValidSub, postExpandTeamDatasetSub } from '@/web/support/wallet/sub/api';
+import {
+  getTeamDatasetValidSub,
+  posCheckTeamDatasetSizeSub,
+  postUpdateTeamDatasetSizeSub,
+  putTeamDatasetSubStatus
+} from '@/web/support/wallet/sub/api';
 import Markdown from '@/components/Markdown';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { getMonthRemainingDays } from '@fastgpt/global/common/math/date';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useRouter } from 'next/router';
 import { feConfigs } from '@/web/common/system/staticData';
 import { useToast } from '@/web/common/hooks/useToast';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MySelect from '@/components/Select';
+import {
+  SubStatusEnum,
+  SubTypeEnum,
+  subSelectMap
+} from '@fastgpt/global/support/wallet/sub/constants';
+import { SubDatasetSizePreviewCheckResponse } from '@fastgpt/global/support/wallet/sub/api.d';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
   const datasetStoreFreeSize = feConfigs?.subscription?.datasetStoreFreeSize || 0;
@@ -36,29 +47,93 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
   const { toast } = useToast();
   const router = useRouter();
   const { ConfirmModal, openConfirm } = useConfirm({});
+  const { userInfo } = useUserStore();
   const [datasetSize, setDatasetSize] = useState(0);
   const [isRenew, setIsRenew] = useState('false');
 
-  const isExpand = datasetSize > 0;
-
   const { data: datasetSub } = useQuery(['getTeamDatasetValidSub'], getTeamDatasetValidSub, {
     onSuccess(res) {
-      setIsRenew(`${res?.sub?.renew}`);
+      setIsRenew(res?.sub?.status === SubStatusEnum.active ? 'true' : 'false');
+      setDatasetSize((res?.sub?.nextExtraDatasetSize || 0) / 1000);
     }
   });
 
-  const { mutate, isLoading } = useRequest({
-    mutationFn: () => postExpandTeamDatasetSub({ size: datasetSize, renew: isRenew === 'true' }),
-    onSuccess(res) {
-      if (isExpand) {
+  const { mutate: onClickUpdateSub, isLoading: isPaying } = useRequest({
+    mutationFn: () => postUpdateTeamDatasetSizeSub({ size: datasetSize }),
+    onSuccess() {
+      setTimeout(() => {
         router.reload();
+      }, 100);
+    },
+    successToast: t('common.Update success'),
+    errorToast: t('common.error.Update error')
+  });
+
+  const { mutate: onClickPreviewCheck, isLoading: isFetchingPreviewCheck } = useRequest({
+    mutationFn: () =>
+      posCheckTeamDatasetSizeSub({
+        size: datasetSize
+      }),
+    onSuccess(res: SubDatasetSizePreviewCheckResponse) {
+      if (!res.payForNewSub) {
+        onClickUpdateSub('');
+        return;
       } else {
-        onClose();
+        openConfirm(
+          () => {
+            if (!res.balanceEnough) return;
+            onClickUpdateSub('');
+          },
+          undefined,
+          <Box>
+            <Flex>
+              <Box flex={'0 0 100px'}>当前额外容量:</Box>
+              <Box>{datasetSub?.sub?.currentExtraDatasetSize || 0}条</Box>
+            </Flex>
+            <Flex>
+              <Box flex={'0 0 100px'}>新的额外容量:</Box>
+              <Box>{res.newSubSize}条</Box>
+            </Flex>
+            <Flex>
+              <Box flex={'0 0 100px'}>新套餐价格:</Box>
+              <Box>{formatStorePrice2Read(res.newPrice)}元</Box>
+            </Flex>
+            <Flex>
+              <Box flex={'0 0 100px'}>本次需支付:</Box>
+              <Box>{formatStorePrice2Read(res.payPrice)}元</Box>
+            </Flex>
+            <Flex>
+              <Box flex={'0 0 100px'}>有效时长:</Box>
+              <Box>30天</Box>
+            </Flex>
+            <Flex>
+              <Box flex={'0 0 100px'}>账号余额:</Box>
+              <Box>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}元</Box>
+            </Flex>
+            {!res.balanceEnough && (
+              <Box mt={1} color={'red.600'}>
+                账号余额不足，请先充值余额再购买额外容量。
+              </Box>
+            )}
+          </Box>
+        )();
       }
     },
-    successToast: isExpand ? t('support.wallet.Pay success') : t('common.Update success'),
-    errorToast: isExpand ? t('support.wallet.Pay error') : t('common.error.Update error')
+    errorToast: t('common.error.Update error')
   });
+  const { mutate: onUpdateStatus } = useRequest({
+    mutationFn: (e: 'true' | 'false') => {
+      setIsRenew(e);
+      return putTeamDatasetSubStatus({
+        status: subSelectMap[e],
+        type: SubTypeEnum.extraDatasetSize
+      });
+    },
+    successToast: t('common.Update success'),
+    errorToast: t('common.error.Update error')
+  });
+
+  const isLoading = isPaying || isFetchingPreviewCheck;
 
   return (
     <MyModal
@@ -83,21 +158,35 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
           />
         </>
         <Flex mt={4}>
-          <Box w={'100px'}>{t('support.wallet.subscription.Current dataset store')}: </Box>
+          <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Current dataset store')}: </Box>
           <Box ml={2} fontWeight={'bold'} flex={1}>
-            {datasetSub?.sub?.datasetStoreAmount || 0}
+            {datasetSub?.sub?.currentExtraDatasetSize || 0}
             {t('core.dataset.data.unit')}
           </Box>
         </Flex>
-        {datasetSub?.sub?.expiredTime && (
+        {datasetSub?.sub?.nextExtraDatasetSize !== undefined && (
+          <Flex mt={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Next sub dataset size')}: </Box>
+            <Box ml={2} fontWeight={'bold'} flex={1}>
+              {datasetSub?.sub?.nextExtraDatasetSize || 0}
+              {t('core.dataset.data.unit')}
+            </Box>
+          </Flex>
+        )}
+        {!!datasetSub?.sub?.startTime && (
           <Flex mt={3}>
-            <Box w={'100px'}>到期时间: </Box>
+            <Box flex={'0 0 120px'}>订阅开始时间: </Box>
+            <Box ml={2}>{formatTime2YMDHM(datasetSub?.sub?.startTime)}</Box>
+          </Flex>
+        )}
+        {!!datasetSub?.sub?.expiredTime && (
+          <Flex mt={3}>
+            <Box flex={'0 0 120px'}>订阅到期时间: </Box>
             <Box ml={2}>{formatTime2YMDHM(datasetSub?.sub?.expiredTime)}</Box>
           </Flex>
         )}
-
         <Flex mt={3} alignItems={'center'}>
-          <Box w={'100px'}>是否续订: </Box>
+          <Box flex={'0 0 120px'}>是否自动续费: </Box>
           <MySelect
             ml={2}
             value={isRenew}
@@ -107,15 +196,16 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
               { label: '自动续费', value: 'true' },
               { label: '不自动续费', value: 'false' }
             ]}
-            onchange={setIsRenew}
+            onchange={onUpdateStatus}
           />
         </Flex>
         <Box mt={4}>
-          <Box>{t('support.wallet.subscription.Expand size')}</Box>
+          <Box>{t('support.wallet.subscription.Update extra dataset size')}</Box>
           <Flex alignItems={'center'} mt={1}>
             <NumberInput
               flex={1}
               min={0}
+              max={1000}
               step={1}
               value={datasetSize}
               position={'relative'}
@@ -123,7 +213,7 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
                 setDatasetSize(Number(e));
               }}
             >
-              <NumberInputField value={datasetSize} step={1} min={0} />
+              <NumberInputField value={datasetSize} step={1} min={0} max={1000} />
               <NumberInputStepper>
                 <NumberIncrementStepper />
                 <NumberDecrementStepper />
@@ -134,33 +224,14 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
         </Box>
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           {t('common.Close')}
         </Button>
-        <Button
-          isLoading={isLoading}
-          onClick={() => {
-            if (isExpand) {
-              const currentMonthPrice = (
-                datasetSize *
-                datasetStorePrice *
-                (getMonthRemainingDays() / 30)
-              ).toFixed(2);
-              const totalSize = (datasetSub?.sub?.datasetStoreAmount || 0) / 1000 + datasetSize;
-              openConfirm(
-                mutate,
-                undefined,
-                `本次扩容预估扣除 ${currentMonthPrice} 元。次月起，每月 1 号将会扣除 ${
-                  totalSize * datasetStorePrice
-                } 元(共${totalSize * 1000}条)。请确保账号余额充足。`
-              )();
-            } else {
-              mutate('');
-            }
-          }}
-        >
-          {t('common.Confirm')}
-        </Button>
+        {datasetSize * 1000 !== datasetSub?.sub?.nextExtraDatasetSize && (
+          <Button ml={3} isLoading={isLoading} onClick={onClickPreviewCheck}>
+            {t('common.Confirm')}
+          </Button>
+        )}
       </ModalFooter>
 
       <ConfirmModal />
