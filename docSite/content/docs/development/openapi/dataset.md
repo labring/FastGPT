@@ -342,7 +342,7 @@ data 为集合的 ID。
 {{< /tabs >}}
 
 
-### 创建一个纯文本集合(商业版)
+### 创建一个纯文本集合
 
 传入一段文字，创建一个集合，会根据传入的文字进行分割。
 
@@ -351,7 +351,7 @@ data 为集合的 ID。
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/collection/create/text' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/text' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
@@ -418,7 +418,7 @@ data 为集合的 ID。
 {{< /tab >}}
 {{< /tabs >}}
 
-### 创建一个链接集合(商业版)
+### 创建一个链接集合
 
 传入一个网络链接，创建一个集合，会先去对应网页抓取内容，再抓取的文字进行分割。
 
@@ -427,7 +427,7 @@ data 为集合的 ID。
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/collection/create/link' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/link' \
 --header 'Authorization: Bearer {{authorization}}' \
 --header 'Content-Type: application/json' \
 --data-raw '{
