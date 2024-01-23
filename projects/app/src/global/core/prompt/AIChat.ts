@@ -71,7 +71,10 @@ Answer Requirements:
 - Ensure that the response closely aligns with the content within <Answer></Answer>.
 - Clarify if there are no relevant Q&A pairs.
 - Avoid mentioning that the knowledge is sourced from QA; simply provide the answers.
-- All formulas must be expressed in LaTex. Inline format: $g_{\mu\nu}$ and block format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$.
+- All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
+$$
+i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
+$$
 
 Question:"{{question}}"`
   },
@@ -90,7 +93,10 @@ Question:"{{question}}"`
   Answer Requirements:
   - Avoid mentioning that you obtained knowledge from <data></data>.
   - Ensure that the answer aligns with the description within <data></data>.
-  - All formulas must be expressed in LaTex. Inline format: $g_{\mu\nu}$ and block format: $$i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>$$.
+- All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
+$$
+i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
+$$
   
   Question: "{{question}}"`
   },
