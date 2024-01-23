@@ -32,7 +32,8 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
     hasOutputTokens,
     hasCharsLen,
     hasDuration,
-    hasDataLen
+    hasDataLen,
+    hasDatasetSize
   } = useMemo(() => {
     let hasModel = false;
     let hasTokens = false;
@@ -41,6 +42,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
     let hasCharsLen = false;
     let hasDuration = false;
     let hasDataLen = false;
+    let hasDatasetSize = false;
 
     bill.list.forEach((item) => {
       if (item.model !== undefined) {
@@ -61,6 +63,9 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       if (typeof item.duration === 'number') {
         hasDuration = true;
       }
+      if (typeof item.datasetSize === 'number') {
+        hasDatasetSize = true;
+      }
     });
 
     return {
@@ -70,7 +75,8 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       hasOutputTokens,
       hasCharsLen,
       hasDuration,
-      hasDataLen
+      hasDataLen,
+      hasDatasetSize
     };
   }, [bill.list]);
 
@@ -83,10 +89,10 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
       maxW={['90vw', '700px']}
     >
       <ModalBody>
-        <Flex alignItems={'center'} pb={4}>
+        {/* <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.bill username')}:</Box>
           <Box>{t(bill.memberName)}</Box>
-        </Flex>
+        </Flex> */}
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Number')}:</Box>
           <Box>{bill.id}</Box>
@@ -101,7 +107,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Source')}:</Box>
-          <Box>{BillSourceMap[bill.source]}</Box>
+          <Box>{BillSourceMap[bill.source]?.label}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Total')}:</Box>
@@ -122,6 +128,9 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                   {hasOutputTokens && <Th>{t('wallet.bill.Output Token Length')}</Th>}
                   {hasCharsLen && <Th>{t('wallet.bill.Text Length')}</Th>}
                   {hasDuration && <Th>{t('wallet.bill.Duration')}</Th>}
+                  {hasDatasetSize && (
+                    <Th>{t('support.user.team.subscription.type.extraDatasetSize')}</Th>
+                  )}
                   <Th>费用(￥)</Th>
                 </Tr>
               </Thead>
@@ -135,6 +144,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                     {hasOutputTokens && <Td>{item.outputTokens ?? '-'}</Td>}
                     {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
+                    {hasDatasetSize && <Td>{item.datasetSize ?? '-'}</Td>}
                     <Td>{formatStorePrice2Read(item.amount)}</Td>
                   </Tr>
                 ))}

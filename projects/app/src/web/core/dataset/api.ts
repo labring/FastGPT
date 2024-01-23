@@ -58,7 +58,7 @@ export const putDatasetById = (data: DatasetUpdateBody) => PUT<void>(`/core/data
 export const delDatasetById = (id: string) => DELETE(`/core/dataset/delete?id=${id}`);
 
 export const postWebsiteSync = (data: PostWebsiteSyncParams) =>
-  POST(`/plusApi/core/dataset/websiteSync`, data, {
+  POST(`/proApi/core/dataset/websiteSync`, data, {
     timeout: 600000
   }).catch();
 

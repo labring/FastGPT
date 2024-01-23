@@ -106,9 +106,9 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      code: content?.query?.code,
-      state: content?.query?.state,
-      error: content?.query?.error,
+      code: content?.query?.code || '',
+      state: content?.query?.state || '',
+      error: content?.query?.error || '',
       ...(await serviceSideProps(content))
     }
   };

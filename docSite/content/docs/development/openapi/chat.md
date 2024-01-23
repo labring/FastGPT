@@ -48,7 +48,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 {{< /markdownify >}}
 {{< /tab >}}
 
-{{< tab tabName="detail=true 响应" >}}
+{{< tab tabName="参数说明" >}}
 {{< markdownify >}}
 
 {{% alert context="info" %}}
@@ -56,7 +56,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' 
 - chatId: string | undefined 。
   - 为 `undefined` 时（不传入），不使用 FastGpt 提供的上下文功能，完全通过传入的 messages 构建上下文。 不会将你的记录存储到数据库中，你也无法在记录汇总中查阅到。
   - 为`非空字符串`时，意味着使用 chatId 进行对话，自动从 FastGpt 数据库取历史记录，并使用 messages 数组最后一个内容作为用户问题。请自行确保 chatId 唯一，长度小于250，通常可以是自己系统的对话框ID。
-- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) 完全一致。
+- messages: 结构与 [GPT接口](https://platform.openai.com/docs/api-reference/chat/object) chat模式一致。
 - detail: 是否返回中间值（模块状态，响应的完整结果等），`stream模式`下会通过`event`进行区分，`非stream模式`结果保存在`responseData`中。
 - variables: 模块变量，一个对象，会替换模块中，输入框内容里的`{{key}}`
 {{% /alert %}}

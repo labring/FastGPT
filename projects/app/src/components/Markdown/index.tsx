@@ -35,36 +35,79 @@ export enum CodeClassName {
   img = 'img'
 }
 
-function Code({ inline, className, children }: any) {
+const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
+  const components = useMemo<any>(
+    () => ({
+      img: Image,
+      pre: 'div',
+      p: (pProps: any) => <p {...pProps} dir="auto" />,
+      code: Code,
+      a: A
+    }),
+    []
+  );
+
+  const formatSource = source
+    .replace(/\\n/g, '\n&nbsp;')
+    .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
+    .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
+
+  return (
+    <ReactMarkdown
+      className={`markdown ${styles.markdown}
+      ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+    `}
+      remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
+      rehypePlugins={[RehypeKatex]}
+      components={components}
+      linkTarget={'_blank'}
+    >
+      {formatSource}
+    </ReactMarkdown>
+  );
+};
+
+export default React.memo(Markdown);
+
+const Code = React.memo(function Code(e: any) {
+  const { inline, className, children } = e;
+
   const match = /language-(\w+)/.exec(className || '');
   const codeType = match?.[1];
 
-  if (codeType === CodeClassName.mermaid) {
-    return <MermaidCodeBlock code={String(children)} />;
-  }
+  const strChildren = String(children);
 
-  if (codeType === CodeClassName.guide) {
-    return <ChatGuide text={String(children)} />;
-  }
-  if (codeType === CodeClassName.questionGuide) {
-    return <QuestionGuide text={String(children)} />;
-  }
-  if (codeType === CodeClassName.echarts) {
-    return <EChartsCodeBlock code={String(children)} />;
-  }
-  if (codeType === CodeClassName.img) {
-    return <ImageBlock images={String(children)} />;
-  }
-  return (
-    <CodeLight className={className} inline={inline} match={match}>
-      {children}
-    </CodeLight>
-  );
-}
-function Image({ src }: { src?: string }) {
+  const Component = useMemo(() => {
+    if (codeType === CodeClassName.mermaid) {
+      return <MermaidCodeBlock code={strChildren} />;
+    }
+
+    if (codeType === CodeClassName.guide) {
+      return <ChatGuide text={strChildren} />;
+    }
+    if (codeType === CodeClassName.questionGuide) {
+      return <QuestionGuide text={strChildren} />;
+    }
+    if (codeType === CodeClassName.echarts) {
+      return <EChartsCodeBlock code={strChildren} />;
+    }
+    if (codeType === CodeClassName.img) {
+      return <ImageBlock images={strChildren} />;
+    }
+    return (
+      <CodeLight className={className} inline={inline} match={match}>
+        {children}
+      </CodeLight>
+    );
+  }, [codeType, className, inline, match, strChildren]);
+
+  return Component;
+});
+
+const Image = React.memo(function Image({ src }: { src?: string }) {
   return <MdImage src={src} />;
-}
-function A({ children, ...props }: any) {
+});
+const A = React.memo(function A({ children, ...props }: any) {
   const { t } = useTranslation();
 
   // empty href link
@@ -109,38 +152,4 @@ function A({ children, ...props }: any) {
   }
 
   return <Link {...props}>{children}</Link>;
-}
-
-const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
-  const components = useMemo<any>(
-    () => ({
-      img: Image,
-      pre: 'div',
-      p: (pProps: any) => <p {...pProps} dir="auto" />,
-      code: Code,
-      a: A
-    }),
-    []
-  );
-
-  const formatSource = source
-    .replace(/\\n/g, '\n&nbsp;')
-    .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
-    .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
-
-  return (
-    <ReactMarkdown
-      className={`markdown ${styles.markdown}
-      ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
-    `}
-      remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
-      rehypePlugins={[RehypeKatex]}
-      components={components}
-      linkTarget={'_blank'}
-    >
-      {formatSource}
-    </ReactMarkdown>
-  );
-};
-
-export default React.memo(Markdown);
+});

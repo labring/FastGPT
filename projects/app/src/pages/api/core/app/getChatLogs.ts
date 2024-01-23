@@ -41,6 +41,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       MongoChat.aggregate([
         { $match: where },
         {
+          $sort: {
+            userBadFeedbackCount: -1,
+            userGoodFeedbackCount: -1,
+            customFeedbacksCount: -1,
+            updateTime: -1
+          }
+        },
+        { $skip: (pageNum - 1) * pageSize },
+        { $limit: pageSize },
+        {
           $lookup: {
             from: ChatItemCollectionName,
             let: { chatId: '$chatId' },
@@ -107,16 +117,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             }
           }
         },
-        {
-          $sort: {
-            userBadFeedbackCount: -1,
-            userGoodFeedbackCount: -1,
-            customFeedbacksCount: -1,
-            updateTime: -1
-          }
-        },
-        { $skip: (pageNum - 1) * pageSize },
-        { $limit: pageSize },
         {
           $project: {
             _id: 1,

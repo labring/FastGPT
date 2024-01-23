@@ -3,7 +3,7 @@ import type { PagingData, RequestPaging } from '@/types';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 
 export const getInforms = (data: RequestPaging) =>
-  POST<PagingData<UserInformSchema>>(`/plusApi/support/user/inform/list`, data);
+  POST<PagingData<UserInformSchema>>(`/proApi/support/user/inform/list`, data);
 
-export const getUnreadCount = () => GET<number>(`/plusApi/support/user/inform/countUnread`);
-export const readInform = (id: string) => GET(`/plusApi/support/user/inform/read`, { id });
+export const getUnreadCount = () => GET<number>(`/proApi/support/user/inform/countUnread`);
+export const readInform = (id: string) => GET(`/proApi/support/user/inform/read`, { id });

@@ -6,6 +6,7 @@ import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { createDefaultCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -13,18 +14,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const {
       parentId,
       name,
-      type,
+      type = DatasetTypeEnum.dataset,
       avatar,
       vectorModel = global.vectorModels[0].model,
       agentModel = global.qaModels[0].model
     } = req.body as CreateDatasetParams;
 
     // auth
-    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
+    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true, authApiKey: true });
 
     // check model valid
-    const vectorModelStore = global.vectorModels.find((item) => item.model === vectorModel);
-    const agentModelStore = global.qaModels.find((item) => item.model === agentModel);
+    const vectorModelStore = getVectorModel(vectorModel);
+    const agentModelStore = getQAModel(agentModel);
     if (!vectorModelStore || !agentModelStore) {
       throw new Error('vectorModel or qaModel is invalid');
     }

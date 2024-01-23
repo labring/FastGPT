@@ -17,7 +17,6 @@ import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/control
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getQAModel, getVectorModel } from '@/service/core/ai/model';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
-import { startQueue } from '@/service/utils/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -76,8 +75,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       tmbId,
       billId
     });
-
-    startQueue();
 
     jsonRes(res, {
       data: { collectionId }
