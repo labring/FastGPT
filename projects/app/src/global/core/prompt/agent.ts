@@ -4,9 +4,9 @@ export const Prompt_AgentQA = {
 - Replace citations with corresponding content as much as possible, such as formulas, charts, and articles
 - Answers provide detailed explanations and step-by-step mathematical derivations
 - Answers can incorporate plain text, links, formulas, code, tables, notices, media links, and other markdown elements
-- All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\mu\nu}$ and display format: 
+- All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
 $$
-i\hbar \frac{\partial}{\partial t}\left|\Psi(t)\right>=H\left|\Psi(t)\right>
+i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
 $$
 - Present a maximum of 5 questions.
 `,

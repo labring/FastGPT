@@ -37,7 +37,7 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
     buffer?: Uint8Array;
   }) =>
     new Promise<{ buffer?: Uint8Array }>(async (resolve, reject) => {
-      text = text.replace(/\\n/g, '\n');
+      text = text.replace(/\\n\W/g, '\n');
       try {
         // tts play
         if (audio && ttsConfig && ttsConfig?.type === TTSTypeEnum.model) {

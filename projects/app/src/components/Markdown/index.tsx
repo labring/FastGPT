@@ -48,7 +48,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
   );
 
   const formatSource = source
-    .replace(/\\n/g, '\n&nbsp;')
+    .replace(/\\n\W/g, '\n&nbsp;')
     .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
     .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
 
