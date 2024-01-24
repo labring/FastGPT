@@ -9,7 +9,7 @@ import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { getSystemTime } from '@fastgpt/global/common/time/timezone';
+import { getLocalTime, getSystemTime } from '@fastgpt/global/common/time/timezone';
 import { initRunningModuleType } from '../core/modules/constant';
 
 import { dispatchHistory } from './init/history';
@@ -342,6 +342,7 @@ export function responseStatus({
 /* get system variable */
 export function getSystemVariable({ timezone }: { timezone: string }) {
   return {
-    cTime: getSystemTime(timezone)
+    cTime: getSystemTime(timezone), // 当前时间
+    lTime: getLocalTime() // 客户端时间
   };
 }
