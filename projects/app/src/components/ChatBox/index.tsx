@@ -586,42 +586,6 @@ const ChatBox = (
     },
     [onUpdateVariable]
   );
-  const HumanChatCard = useCallback(
-    ({ item, index }: { item: ChatSiteItemType; index: number }) => {
-      return (
-        <>
-          {/* control icon */}
-          <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
-            <ChatControllerComponent
-              chat={item}
-              onDelete={
-                onDelMessage
-                  ? () => {
-                      delOneMessage({ dataId: item.dataId, index });
-                    }
-                  : undefined
-              }
-              onRetry={useCallback(() => retryInput(index), [index])}
-            />
-            <ChatAvatar src={userAvatar} type={'Human'} />
-          </Flex>
-          {/* content */}
-          <Box mt={['6px', 2]} textAlign={'right'}>
-            <Card
-              className="markdown"
-              {...MessageCardStyle}
-              bg={'primary.200'}
-              borderRadius={'8px 0 8px 8px'}
-              textAlign={'left'}
-            >
-              <Markdown source={item.value} isChatting={false} />
-            </Card>
-          </Box>
-        </>
-      );
-    },
-    []
-  );
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -645,7 +609,37 @@ const ChatBox = (
           <Box id={'history'}>
             {chatHistory.map((item, index) => (
               <Box key={item.dataId} py={5}>
-                {item.obj === 'Human' && <HumanChatCard item={item} index={index} />}
+                {item.obj === 'Human' && (
+                  <>
+                    {/* control icon */}
+                    <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
+                      <ChatControllerComponent
+                        chat={item}
+                        onDelete={
+                          onDelMessage
+                            ? () => {
+                                delOneMessage({ dataId: item.dataId, index });
+                              }
+                            : undefined
+                        }
+                        onRetry={() => retryInput(index)}
+                      />
+                      <ChatAvatar src={userAvatar} type={'Human'} />
+                    </Flex>
+                    {/* content */}
+                    <Box mt={['6px', 2]} textAlign={'right'}>
+                      <Card
+                        className="markdown"
+                        {...MessageCardStyle}
+                        bg={'primary.200'}
+                        borderRadius={'8px 0 8px 8px'}
+                        textAlign={'left'}
+                      >
+                        <Markdown source={item.value} isChatting={false} />
+                      </Card>
+                    </Box>
+                  </>
+                )}
                 {item.obj === 'AI' && (
                   <>
                     <Flex w={'100%'} alignItems={'center'}>
