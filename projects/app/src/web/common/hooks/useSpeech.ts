@@ -78,7 +78,7 @@ export const useSpeech = (props?: { shareId?: string }) => {
 
         const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
 
-        formData.append('files', blob, 'recording.webm');
+        formData.append('file', blob, 'recording.webm');
         formData.append('metadata', JSON.stringify({ duration, shareId }));
 
         setIsTransCription(true);
