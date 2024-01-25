@@ -8,7 +8,7 @@ export const Prompt_AgentQA = {
 $$
 i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
 $$
-- Generates up to 5 QA pairs.
+- Generates up to 10 QA pairs.
 `,
   fixedText: `Finally, you need to return multiple questions and answers in the following format:
 Q1: Question.
