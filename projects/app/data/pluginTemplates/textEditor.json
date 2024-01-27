@@ -8,7 +8,7 @@
   "modules": [
     {
       "moduleId": "w90mfp",
-      "name": "定义插件输入",
+      "name": "定义工具输入",
       "avatar": "/imgs/module/input.png",
       "flowType": "pluginInput",
       "showStatus": false,

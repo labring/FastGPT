@@ -5,17 +5,19 @@ export const defaultApp: AppDetailType = {
   _id: '',
   userId: 'userId',
   name: '应用加载中',
-  type: 'simple',
-  simpleTemplateId: 'fastgpt-universal',
   avatar: '/icon/logo.svg',
   intro: '',
   updateTime: Date.now(),
-  modules: [],
   teamId: '',
   tmbId: '',
   permission: 'private',
+  tools: [],
   isOwner: false,
-  canWrite: false
+  canWrite: false,
+
+  modules: [],
+  type: 'simple',
+  simpleTemplateId: 'fastgpt-universal'
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {

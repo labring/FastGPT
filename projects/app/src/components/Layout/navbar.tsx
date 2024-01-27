@@ -42,11 +42,11 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/app/list', '/app/detail']
       },
       {
-        label: t('navbar.Plugin'),
+        label: t('navbar.Tool'),
         icon: 'common/navbar/pluginLight',
         activeIcon: 'common/navbar/pluginFill',
-        link: `/plugin/list`,
-        activeLink: ['/plugin/list', '/plugin/edit']
+        link: `/tool/list`,
+        activeLink: ['/tool/list', '/tool/edit']
       },
       {
         label: t('navbar.Datasets'),

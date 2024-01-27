@@ -7,8 +7,8 @@ export const PluginInputModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.systemInput,
   flowType: FlowNodeTypeEnum.pluginInput,
   avatar: '/imgs/module/input.png',
-  name: '定义插件输入',
-  intro: '自定义配置外部输入，使用插件时，仅暴露自定义配置的输入',
+  name: '定义工具输入',
+  intro: '自定义配置外部输入，使用工具时，仅暴露自定义配置的输入',
   showStatus: false,
   inputs: [],
   outputs: []

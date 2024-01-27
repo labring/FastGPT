@@ -8,7 +8,7 @@ import { pushChatBill } from '@/service/support/wallet/bill/push';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { dispatchModules } from '@/service/moduleDispatch';
+import { dispatchModules } from '@/service/core/tool/runtime';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserAndAuthBalance } from '@fastgpt/service/support/user/controller';
 

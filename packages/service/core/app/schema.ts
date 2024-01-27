@@ -29,15 +29,6 @@ const AppSchema = new Schema({
     type: String,
     required: true
   },
-  type: {
-    type: String,
-    default: 'advanced',
-    enum: Object.keys(AppTypeMap)
-  },
-  simpleTemplateId: {
-    type: String,
-    required: true
-  },
   avatar: {
     type: String,
     default: '/icon/logo.svg'
@@ -50,17 +41,44 @@ const AppSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  modules: {
-    type: Array,
-    default: []
-  },
-  inited: {
-    type: Boolean
-  },
   permission: {
     type: String,
     enum: Object.keys(PermissionTypeMap),
     default: PermissionTypeEnum.private
+  },
+  tools: {
+    type: [
+      {
+        id: {
+          // relate tools collections or system tools
+          type: String,
+          required: true
+        },
+        config: {
+          // save tool static config
+          type: Object,
+          default: {}
+        }
+      }
+    ],
+    default: []
+  },
+
+  inited: {
+    type: Boolean
+  },
+
+  // abandon
+  type: {
+    type: String,
+    enum: Object.keys(AppTypeMap)
+  },
+  simpleTemplateId: {
+    type: String,
+    required: true
+  },
+  modules: {
+    type: Array
   }
 });
 

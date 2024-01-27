@@ -8,10 +8,10 @@ import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
-import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { ToolSourceEnum } from '@fastgpt/global/core/tool/constants';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { connectToDatabase } from '@/service/mongo';
-import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
+import { ToolTemplateType } from '@fastgpt/global/core/tool/type';
 import { readConfigData } from '@/service/common/system';
 import { exit } from 'process';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
@@ -225,12 +225,12 @@ function getSystemPlugin() {
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
   // read json file
-  const fileTemplates: PluginTemplateType[] = filterFiles.map((filename) => {
+  const fileTemplates: ToolTemplateType[] = filterFiles.map((filename) => {
     const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
       ...JSON.parse(content),
-      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
-      source: PluginSourceEnum.community
+      id: `${ToolSourceEnum.community}-${filename.replace('.json', '')}`,
+      source: ToolSourceEnum.community
     };
   });
 

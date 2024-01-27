@@ -12,7 +12,7 @@ import { onChangeNode, onCopyNode, onResetNode, onDelNode } from '../../FlowProv
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getPreviewPluginModule } from '@/web/core/plugin/api';
+import { getPreviewPluginModule } from '@/web/core/tool/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
@@ -47,7 +47,7 @@ const NodeCard = (props: Props) => {
     placeholder: t('app.module.Custom Title Tip') || ''
   });
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('module.Confirm Sync Plugin')
+    content: t('module.Confirm Sync Tool')
   });
 
   const menuList = useMemo(
@@ -72,7 +72,7 @@ const NodeCard = (props: Props) => {
                   } catch (e) {
                     return toast({
                       status: 'error',
-                      title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
+                      title: getErrText(e, t('plugin.Get Tool Module Detail Failed'))
                     });
                   }
                   setLoading(false);

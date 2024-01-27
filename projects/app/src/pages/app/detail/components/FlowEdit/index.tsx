@@ -6,7 +6,7 @@ import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flo
 import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
 import { appSystemModuleTemplates } from '@/web/core/modules/template/system';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { usePluginStore } from '@/web/core/plugin/store/plugin';
+import { usePluginStore } from '@/web/core/tool/store/plugin';
 import { useQuery } from '@tanstack/react-query';
 
 type Props = { app: AppSchema; onClose: () => void };

@@ -14,7 +14,7 @@ import { useTranslation } from 'next-i18next';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import EmptyTip from '@/components/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { getPreviewPluginModule } from '@/web/core/plugin/api';
+import { getPreviewPluginModule } from '@/web/core/tool/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@/web/core/modules/template/system';
@@ -107,7 +107,7 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
         } catch (e) {
           toast({
             status: 'error',
-            title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
+            title: getErrText(e, t('plugin.Get Tool Module Detail Failed'))
           });
           setLoading(false);
           return Promise.reject(e);
@@ -152,7 +152,7 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
                   onClick={() => router.push('/plugin/list')}
                 >
                   <Box fontSize={'sm'} transform={'translateY(-1px)'}>
-                    {t('plugin.To Edit Plugin')}
+                    {t('plugin.To Edit Tool')}
                   </Box>
                   <MyIcon name={'common/rightArrowLight'} w={'12px'} />
                 </Flex>

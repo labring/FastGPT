@@ -29,11 +29,11 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('navbar.Tools'),
+        label: t('navbar.Box'),
         icon: 'phoneTabbar/tool',
         activeIcon: 'phoneTabbar/toolFill',
-        link: '/tools',
-        activeLink: ['/tools'],
+        link: '/box',
+        activeLink: ['/box'],
         unread: 0
       },
       {

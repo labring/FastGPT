@@ -426,9 +426,9 @@
       },
       "response": {
         "Complete Response": "Complete Response",
-        "Plugin Resonse Detail": "Plugin Detail",
         "Read complete response": "Read Detail",
         "Read complete response tips": "Click to see the detailed process",
+        "Tool Response Detail": "Tool Detail",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",
@@ -453,7 +453,7 @@
         "module temperature": "Temperature",
         "module time": "Running Time",
         "module tokens": "Tokens",
-        "plugin output": "Plugin Output",
+        "plugin output": "Tool Output",
         "search using reRank": "ReRank",
         "text output": "Text Output"
       },
@@ -738,7 +738,7 @@
       "Field Type": "Type",
       "Field key": "Key",
       "Input Type": "Input Type",
-      "Plugin output must connect": "Custom outputs must all be connected",
+      "Tool output must connect": "Custom outputs must all be connected",
       "Unlink tip": "[{{name}}] An unfilled or unconnected parameter exists",
       "Variable": "Variables",
       "Variable Setting": "Variable Setting",
@@ -1038,25 +1038,26 @@
   },
   "module": {
     "Confirm Delete Module": "Confirm to delete the custom module?",
-    "Confirm Sync Plugin": "Confirm the latest sync plugin information? The plug-in connection and input content will be cleared, please confirm!",
+    "Confirm Sync Tool": "Confirm the latest sync plugin information? The plug-in connection and input content will be cleared, please confirm!",
     "Create Your Module": "Create You Module",
     "Intro": "Module Intro",
     "Load Module Failed": "Load Module Failed",
-    "Plugin input is not value": "User-defined input parameters cannot be null",
-    "Plugin input is required": "The plug setting must contain an input module",
-    "Plugin input must connect": "Custom input modules must all be connected",
-    "Preview Plugin": "Preview Plugin",
+    "Preview Tool": "Preview Tool",
     "Save Config": "Save",
+    "Tool input is not value": "User-defined input parameters cannot be null",
+    "Tool input is required": "The plug setting must contain an input module",
+    "Tool input must connect": "Custom input modules must all be connected",
     "Update Your Module": "Update Module"
   },
   "navbar": {
     "Account": "Account",
     "Apps": "App",
+    "Box": "Box",
     "Chat": "Chat",
     "Datasets": "DataSet",
     "Module": "Module",
-    "Plugin": "Plugin",
     "Store": "Store",
+    "Tool": "Tool",
     "Tools": "Tools"
   },
   "openapi": {
@@ -1093,17 +1094,17 @@
   },
   "plugin": {
     "Confirm Delete": "Confirm to delete the plugin?",
-    "Create Your Plugin": "Create Plugin",
-    "Get Plugin Module Detail Failed": "Get plugin detail failed",
-    "Intro": "Plugin Intro",
-    "Load Plugin Failed": "Load Plugin Failed",
+    "Create Your Tool": "Create Tool",
+    "Get Tool Module Detail Failed": "Get plugin detail failed",
+    "Intro": "Tool Intro",
+    "Load Tool Failed": "Load Tool Failed",
     "My Plugins": "My Plugins",
     "No Intro": "This plugin is not introduced",
-    "Plugin Module": "Plugin",
-    "Set Name": "Plugin Name",
+    "Set Name": "Tool Name",
     "Synchronous version": "Sync Version",
-    "To Edit Plugin": "To Edit",
-    "Update Your Plugin": "Update Plugin"
+    "To Edit Tool": "To Edit",
+    "Tool Module": "Tool",
+    "Update Your Tool": "Update Tool"
   },
   "support": {
     "openapi": {

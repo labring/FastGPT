@@ -239,7 +239,7 @@ const ResponseBox = React.memo(function ResponseBox({
         {/* plugin */}
         {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
           <Row
-            label={t('core.chat.response.Plugin Resonse Detail')}
+            label={t('core.chat.response.Tool Response Detail')}
             rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
           />
         )}

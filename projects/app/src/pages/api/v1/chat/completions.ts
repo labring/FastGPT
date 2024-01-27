@@ -6,7 +6,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { dispatchModules } from '@/service/moduleDispatch';
+import { dispatchModules } from '@/service/core/tool/runtime';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';

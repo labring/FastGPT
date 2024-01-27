@@ -12,14 +12,18 @@ export interface AppSchema {
   teamId: string;
   tmbId: string;
   name: string;
-  type: `${AppTypeEnum}`;
-  simpleTemplateId: string;
   avatar: string;
   intro: string;
   updateTime: number;
-  modules: ModuleItemType[];
   permission: `${PermissionTypeEnum}`;
+  tools: { id: string; config: Record<string, any> }[];
+
   inited?: boolean;
+
+  // abandon
+  type: `${AppTypeEnum}`;
+  simpleTemplateId: string;
+  modules: ModuleItemType[];
 }
 
 export type AppListItemType = {
