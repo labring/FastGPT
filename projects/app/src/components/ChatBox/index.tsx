@@ -458,7 +458,6 @@ const ChatBox = (
     async (index: number) => {
       if (!onDelMessage) return;
       const delHistory = chatHistory.slice(index);
-      console.log(delHistory);
 
       setLoading(true);
 
@@ -955,7 +954,6 @@ const ChatBox = (
           setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
           onClose={() => setAdminMarkData(undefined)}
           onSuccess={(adminFeedback) => {
-            console.log(adminMarkData);
             if (!appId || !chatId || !adminMarkData.chatItemId) return;
             updateChatAdminFeedback({
               appId,
@@ -1109,6 +1107,7 @@ const VariableInput = React.memo(function VariableInput({
   }>;
 }) {
   const { t } = useTranslation();
+  const [refresh, setRefresh] = useState(false);
   const { register, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
   const variables = watch('variables');
 
@@ -1169,6 +1168,7 @@ const VariableInput = React.memo(function VariableInput({
                   value={variables[item.key]}
                   onchange={(e) => {
                     setValue(`variables.${item.key}`, e);
+                    setRefresh((state) => !state);
                   }}
                 />
               )}
