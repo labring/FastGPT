@@ -150,6 +150,7 @@ export async function initSystemConfig() {
   console.log({
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
+    subPlans: global.subPlans,
     chatModels: global.chatModels,
     qaModels: global.qaModels,
     cqModels: global.cqModels,
