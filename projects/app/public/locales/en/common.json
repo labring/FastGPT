@@ -564,6 +564,7 @@
         "id": "Data ID",
         "unit": "pieces"
       },
+      "embedding model tip": "The index model can transform the natural language into vectors for semantic retrieval. Note that different index models cannot be used together and cannot be modified after selecting the index model.",
       "error": {
         "Data not found": "The data does not exist or has been deleted",
         "Start Sync Failed": "Start Sync Failed",

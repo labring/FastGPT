@@ -14,6 +14,7 @@ const ButtonEdge = (props: EdgeProps) => {
     sourcePosition,
     targetPosition,
     selected,
+
     style = {}
   } = props;
 
@@ -54,9 +55,26 @@ const ButtonEdge = (props: EdgeProps) => {
             color={selected ? 'primary.700' : 'myGray.500'}
           ></MyIcon>
         </Flex>
+        <Flex
+          alignItems={'center'}
+          justifyContent={'center'}
+          position={'absolute'}
+          transform={`translate(-78%, -50%) translate(${targetX}px,${targetY}px)`}
+          pointerEvents={'all'}
+          w={'16px'}
+          h={'16px'}
+          bg={'white'}
+          zIndex={selected ? 1000 : 0}
+        >
+          <MyIcon
+            name={'common/rightArrowLight'}
+            w={'100%'}
+            color={selected ? 'primary.700' : 'myGray.400'}
+          ></MyIcon>
+        </Flex>
       </EdgeLabelRenderer>
     );
-  }, [id, labelX, labelY, selected]);
+  }, [id, labelX, labelY, selected, targetX, targetY]);
 
   const memoBezierEdge = useMemo(() => {
     const edgeStyle: React.CSSProperties = {
@@ -66,7 +84,7 @@ const ButtonEdge = (props: EdgeProps) => {
             strokeWidth: 4,
             stroke: '#3370ff'
           }
-        : { strokeWidth: 2, stroke: '#BDC1C5' })
+        : { strokeWidth: 2, zIndex: 2, stroke: 'myGray.400' })
     };
 
     return <BezierEdge {...props} style={edgeStyle} />;

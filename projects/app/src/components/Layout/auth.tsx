@@ -24,7 +24,7 @@ const Auth = ({ children }: { children: JSX.Element }) => {
   useQuery(
     [router.pathname],
     () => {
-      if (userInfo) {
+      if (unAuthPage[router.pathname] === true || userInfo) {
         return null;
       } else {
         return initUserInfo();
@@ -32,15 +32,14 @@ const Auth = ({ children }: { children: JSX.Element }) => {
     },
     {
       onError(error) {
-        if (unAuthPage[router.pathname] !== true) {
-          router.replace(
-            `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
-          );
-          toast({
-            status: 'warning',
-            title: t('support.user.Need to login')
-          });
-        }
+        console.log('error->', error);
+        router.replace(
+          `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
+        );
+        toast({
+          status: 'warning',
+          title: t('support.user.Need to login')
+        });
       }
     }
   );

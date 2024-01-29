@@ -20,6 +20,7 @@ import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { feConfigs } from '@/web/common/system/staticData';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -145,13 +146,20 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
               bg={'myWhite.600'}
               placeholder={t('common.Name')}
               maxLength={30}
-              {...register('name')}
+              {...register('name', {
+                required: true
+              })}
             />
           </Flex>
         </Box>
         {vectorModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
-            <Box flex={'0 0 100px'}>{t('core.ai.model.Vector Model')}</Box>
+            <Flex alignItems={'center'} flex={'0 0 100px'}>
+              {t('core.ai.model.Vector Model')}
+              <MyTooltip label={t('core.dataset.embedding model tip')}>
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
+            </Flex>
             <Box flex={1}>
               <MySelect
                 w={'100%'}
