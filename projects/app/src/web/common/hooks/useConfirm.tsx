@@ -9,6 +9,7 @@ export const useConfirm = (props?: {
   content?: string;
   showCancel?: boolean;
   type?: 'common' | 'delete';
+  hideFooter?: boolean;
 }) => {
   const { t } = useTranslation();
 
@@ -33,7 +34,8 @@ export const useConfirm = (props?: {
     title = map?.title || t('Warning'),
     iconSrc = map?.iconSrc,
     content,
-    showCancel = true
+    showCancel = true,
+    hideFooter = false
   } = props || {};
   const [customContent, setCustomContent] = useState<string | React.ReactNode>(content);
 
@@ -54,6 +56,7 @@ export const useConfirm = (props?: {
       },
       [onOpen]
     ),
+    onClose,
     ConfirmModal: useCallback(
       ({
         closeText = t('common.Close'),
@@ -91,36 +94,38 @@ export const useConfirm = (props?: {
             maxW={['90vw', '500px']}
           >
             <ModalBody pt={5}>{customContent}</ModalBody>
-            <ModalFooter>
-              {showCancel && (
+            {!hideFooter && (
+              <ModalFooter>
+                {showCancel && (
+                  <Button
+                    variant={'whiteBase'}
+                    onClick={() => {
+                      onClose();
+                      typeof cancelCb.current === 'function' && cancelCb.current();
+                    }}
+                  >
+                    {closeText}
+                  </Button>
+                )}
+
                 <Button
-                  variant={'whiteBase'}
+                  bg={bg ? bg : map.bg}
+                  isDisabled={countDownAmount > 0}
+                  ml={4}
+                  isLoading={isLoading}
                   onClick={() => {
                     onClose();
-                    typeof cancelCb.current === 'function' && cancelCb.current();
+                    typeof confirmCb.current === 'function' && confirmCb.current();
                   }}
                 >
-                  {closeText}
+                  {countDownAmount > 0 ? `${countDownAmount}s` : confirmText}
                 </Button>
-              )}
-
-              <Button
-                bg={bg ? bg : map.bg}
-                isDisabled={countDownAmount > 0}
-                ml={4}
-                isLoading={isLoading}
-                onClick={() => {
-                  onClose();
-                  typeof confirmCb.current === 'function' && confirmCb.current();
-                }}
-              >
-                {countDownAmount > 0 ? `${countDownAmount}s` : confirmText}
-              </Button>
-            </ModalFooter>
+              </ModalFooter>
+            )}
           </MyModal>
         );
       },
-      [customContent, iconSrc, isOpen, map.bg, onClose, showCancel, t, title]
+      [customContent, hideFooter, iconSrc, isOpen, map.bg, onClose, showCancel, t, title]
     )
   };
 };

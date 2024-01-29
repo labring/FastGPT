@@ -315,7 +315,7 @@ const UserInfo = () => {
             userSelect={'none'}
             textDecoration={'none !important'}
           >
-            <MyIcon name={'common/courseLight'} w={'18px'} />
+            <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
               {t('system.Help Document')}
             </Box>
@@ -365,7 +365,7 @@ const UserInfo = () => {
                 userSelect={'none'}
                 onClick={onOpenOpenai}
               >
-                <Avatar src={'/imgs/openai.png'} w={'18px'} />
+                <MyIcon name={'common/openai'} w={'18px'} color={'myGray.600'} />
                 <Box ml={2} flex={1}>
                   OpenAI/OneAPI 账号
                 </Box>

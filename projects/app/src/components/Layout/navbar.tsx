@@ -159,7 +159,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             color={'myGray.500'}
           >
             <Badge count={unread}>
-              <MyIcon name={'inform'} width={'22px'} height={'22px'} />
+              <MyIcon name={'support/user/informLight'} width={'22px'} height={'22px'} />
             </Badge>
           </Link>
         </Box>

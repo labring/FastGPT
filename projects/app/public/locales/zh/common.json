@@ -155,6 +155,7 @@
       "Select Avatar": "点击选择头像",
       "Select Failed": "选择头像异常"
     },
+    "change": "变更",
     "choosable": "可选",
     "confirm": {
       "Common Tip": "操作确认"
@@ -201,6 +202,7 @@
     "link": {
       "UnValid": "无效的链接"
     },
+    "month": "月",
     "price": {
       "Amount": "{{amount}}{{unit}}"
     },
@@ -1163,6 +1165,8 @@
         "Dataset store price tip": "每月1号从账号余额里扣除",
         "Expand size": "扩大容量",
         "Extra dataset size": "额外知识库容量",
+        "Extra plan": "额外套餐",
+        "Extra plan tip": "标准套餐不够时，您可以购买额外套餐继续使用",
         "FAQ": "常见问题",
         "Next plan": "未来计划",
         "Next sub dataset size": "下次订阅额外容量",
@@ -1174,7 +1178,7 @@
         "Sub plan": "订阅套餐",
         "Sub plan tip": "免费使用 FastGPT 或升级更高的套餐",
         "Training weight": "训练优先级: {{weight}}",
-        "Update extra dataset size": "修改知识库额外容量",
+        "Update extra dataset size": "调整知识库额外容量",
         "function": {
           "History store": "{{amount}} 天对话记录保留",
           "Max app": "{{amount}} 个应用与插件",

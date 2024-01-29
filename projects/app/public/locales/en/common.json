@@ -155,6 +155,7 @@
       "Select Avatar": "Select Avatar",
       "Select Failed": "Select Failed"
     },
+    "change": "Change",
     "choosable": "choosable",
     "confirm": {
       "Common Tip": "Operational Confirm"
@@ -201,6 +202,7 @@
     "link": {
       "UnValid": "UnValid Link"
     },
+    "month": "Month",
     "price": {
       "Amount": "{{amount}}{{unit}}"
     },
@@ -1161,6 +1163,8 @@
         "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
         "Expand size": "Expand size",
         "Extra dataset size": "Extra dataset size",
+        "Extra plan": "Extra Plan",
+        "Extra plan tip": "When the standard plan is not enough, you can purchase an additional plan to continue using",
         "FAQ": "Pricing FAQs",
         "Next plan": "Future plan",
         "Next sub dataset size": "",

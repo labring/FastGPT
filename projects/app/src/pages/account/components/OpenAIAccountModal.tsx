@@ -32,7 +32,7 @@ const OpenAIAccountModal = ({
     <MyModal
       isOpen
       onClose={onClose}
-      iconSrc="/imgs/modal/openai.svg"
+      iconSrc="common/openai"
       title={t('user.OpenAI Account Setting')}
     >
       <ModalBody>

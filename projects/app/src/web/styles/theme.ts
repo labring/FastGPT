@@ -274,7 +274,7 @@ const NumberInput = numInputMultiStyle({
   variants: {
     outline: numInputPart({
       field: {
-        bg: 'myWhite.300',
+        bg: 'myGray.50',
         border: '1px solid',
         borderColor: 'myGray.200',
         _focus: {
