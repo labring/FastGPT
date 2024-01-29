@@ -5,6 +5,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { StartChatFnProps } from '@/components/ChatBox';
 import { getToken } from '@/web/support/user/auth';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import dayjs from 'dayjs';
 
 type StreamFetchProps = {
   url?: string;
@@ -24,6 +25,10 @@ export const streamFetch = ({
 }: StreamFetchProps) =>
   new Promise<StreamResponseType>(async (resolve, reject) => {
     try {
+      // auto complete
+      const variables = data?.variables || {};
+      variables.cTime = dayjs().format('YYYY-MM-DD HH:mm:ss');
+
       const response = await window.fetch(url, {
         method: 'POST',
         headers: {
@@ -33,6 +38,7 @@ export const streamFetch = ({
         signal: abortSignal.signal,
         body: JSON.stringify({
           ...data,
+          variables,
           detail: true,
           stream: true
         })
