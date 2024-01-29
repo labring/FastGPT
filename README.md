@@ -210,7 +210,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## Translations
 
-[![inlang status badge](https://badge.inlang.com/?url=github.com/NilsJacobsen/FastGPT)](https://fink.inlang.com/github.com/NilsJacobsen/FastGPT?ref=badge)
+[![inlang status badge](https://badge.inlang.com/?url=github.com/labring/FastGPT)](https://fink.inlang.com/github.com/labring/FastGPT?ref=badge)
 
 ## 使用协议
 
