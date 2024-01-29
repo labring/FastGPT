@@ -15,7 +15,7 @@ import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dat
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
 import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       appName: 'core.dataset.collection.Sync Collection',
       billSource: BillSourceEnum.training,
       vectorModel: getVectorModel(dataset.vectorModel).name,
-      agentModel: getQAModel(dataset.agentModel).name
+      agentModel: getLLMModel(dataset.agentModel).name
     });
     await reloadCollectionChunks({
       collectionId,

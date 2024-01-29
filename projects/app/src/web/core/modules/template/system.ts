@@ -1,6 +1,5 @@
 import { UserGuideModule } from '@fastgpt/global/core/module/template/system/userGuide';
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
-import { HistoryModule } from '@fastgpt/global/core/module/template/system/abandon/history';
 import { AiChatModule } from '@fastgpt/global/core/module/template/system/aiChat';
 import { DatasetSearchModule } from '@fastgpt/global/core/module/template/system/datasetSearch';
 import { AssignedAnswerModule } from '@fastgpt/global/core/module/template/system/assignedAnswer';
@@ -46,7 +45,6 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   UserGuideModule,
   UserInputModule,
-  HistoryModule,
   AiChatModule,
   DatasetSearchModule,
   AssignedAnswerModule,

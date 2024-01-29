@@ -7,7 +7,7 @@ import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
-import type { ChatModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -18,7 +18,7 @@ import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d'
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
-import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
+import { getLLMModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
@@ -68,7 +68,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const chatHistories = getHistories(history, histories);
 
   // temperature adapt
-  const modelConstantsData = getChatModel(model);
+  const modelConstantsData = getLLMModel(model);
 
   if (!modelConstantsData) {
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
@@ -137,13 +137,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const response = await ai.chat.completions.create(
     {
-      model,
+      presence_penalty: 0,
+      frequency_penalty: 0,
+      ...modelConstantsData?.defaultConfig,
+      model: modelConstantsData.model,
       temperature,
       max_tokens,
       stream,
-      presence_penalty: 0,
-      frequency_penalty: 0,
-      // seed: temperature < 0.3 ? 1 : undefined,
       messages: concatMessages
     },
     {
@@ -206,7 +206,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     model,
     inputLen: inputTokens,
     outputLen: outputTokens,
-    type: ModelTypeEnum.chat
+    type: ModelTypeEnum.llm
   });
 
   return {
@@ -232,7 +232,7 @@ function filterQuote({
   quoteTemplate
 }: {
   quoteQA: ChatProps['inputs']['quoteQA'];
-  model: ChatModelItemType;
+  model: LLMModelItemType;
   quoteTemplate?: string;
 }) {
   function getValue(item: SearchDataResponseItemType, index: number) {
@@ -296,7 +296,7 @@ function getChatMessages({
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
-  model: ChatModelItemType;
+  model: LLMModelItemType;
 }) {
   const question = quoteText
     ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
@@ -339,9 +339,10 @@ function getMaxTokens({
   filterMessages = []
 }: {
   maxToken: number;
-  model: ChatModelItemType;
+  model: LLMModelItemType;
   filterMessages: ChatItemType[];
 }) {
+  maxToken = Math.min(maxToken, model.maxResponse);
   const tokensLimit = model.maxContext;
 
   /* count response max token */

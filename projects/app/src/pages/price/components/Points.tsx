@@ -3,9 +3,7 @@ import { Box, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import {
   audioSpeechModelList,
-  chatModelList,
-  qaModelList,
-  qgModelList,
+  llmModelList,
   vectorModelList,
   whisperModel
 } from '@/web/common/system/staticData';
@@ -43,10 +41,10 @@ const Points = () => {
             fontSize={'lg'}
             fontWeight={'bold'}
           >
-            对话模型
+            AI语言模型
           </Box>
           <Box flex={4} textAlign={'center'}>
-            {chatModelList?.map((item, i) => (
+            {llmModelList?.map((item, i) => (
               <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
                 <Box flex={'1 0 0'}>{item.name}</Box>
                 <Box flex={'1 0 0'}>5积分 / 1000字符</Box>
@@ -72,53 +70,6 @@ const Points = () => {
           </Box>
           <Box flex={4} textAlign={'center'}>
             {vectorModelList?.map((item, i) => (
-              <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
-                <Box flex={'1 0 0'}>{item.name}</Box>
-                <Box flex={'1 0 0'}>5积分 / 1000字符</Box>
-              </Flex>
-            ))}
-          </Box>
-        </Box>
-        <Box
-          display={['block', 'flex']}
-          borderRadius={'xl'}
-          borderWidth={'1px'}
-          borderColor={'myGray.150'}
-          bg={'rgba(255,255,255,0.9)'}
-          overflow={'hidden'}
-        >
-          <Box flex={1} borderRightWidth={'1px'} borderRightColor={'myGray.150'} py={4} px={6}>
-            <Box fontSize={'lg'} fontWeight={'bold'}>
-              文件预处理模型
-            </Box>
-            <Box fontSize={'sm'} mt={1} color={'myGray.500'}>
-              QA拆分
-            </Box>
-          </Box>
-          <Box flex={4} textAlign={'center'}>
-            {qaModelList?.map((item, i) => (
-              <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
-                <Box flex={'1 0 0'}>{item.name}</Box>
-                <Box flex={'1 0 0'}>5积分 / 1000字符</Box>
-              </Flex>
-            ))}
-          </Box>
-        </Box>
-        <Box
-          display={['block', 'flex']}
-          borderRadius={'xl'}
-          borderWidth={'1px'}
-          borderColor={'myGray.150'}
-          bg={'rgba(255,255,255,0.9)'}
-          overflow={'hidden'}
-        >
-          <Box flex={1} borderRightWidth={'1px'} borderRightColor={'myGray.150'} py={4} px={6}>
-            <Box fontSize={'lg'} fontWeight={'bold'}>
-              下一步指引
-            </Box>
-          </Box>
-          <Box flex={4} textAlign={'center'}>
-            {qgModelList?.map((item, i) => (
               <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
                 <Box flex={'1 0 0'}>{item.name}</Box>
                 <Box flex={'1 0 0'}>5积分 / 1000字符</Box>

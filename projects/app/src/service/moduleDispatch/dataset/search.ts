@@ -48,7 +48,7 @@ export async function dispatchDatasetSearch(
 
   // const { queries: extensionQueries } = await searchQueryExtension({
   //   query: userChatInput,
-  //   model: global.chatModels[0].model
+  //   model: global.llmModels[0].model
   // });
   const concatQueries = [userChatInput];
 

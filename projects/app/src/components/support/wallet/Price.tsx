@@ -1,14 +1,9 @@
 import React from 'react';
 import { Box, CloseButton } from '@chakra-ui/react';
 import {
-  chatModelList,
+  llmModelList,
   vectorModelList,
-  qaModelList,
-  cqModelList,
-  extractModelList,
-  qgModelList,
   audioSpeechModelList,
-  reRankModelList,
   whisperModel
 } from '@/web/common/system/staticData';
 import ReactDOM from 'react-dom';
@@ -18,12 +13,12 @@ import Markdown from '@/components/Markdown';
 const Price = ({ onClose }: { onClose: () => void }) => {
   const list = [
     {
-      title: '对话模型',
+      title: 'AI语言模型',
       describe: '',
       md: `
 | 模型 | 输入价格(￥) | 输出价格(￥) |
 | --- | --- | --- |
-${chatModelList
+${llmModelList
   ?.map((item) => `| ${item.name} | ${item.inputPrice}/1k tokens | ${item.outputPrice}/1k tokens |`)
   .join('\n')}`
     },
@@ -35,51 +30,6 @@ ${chatModelList
 | --- | --- |
 ${vectorModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 |`).join('\n')}
       `
-    },
-    {
-      title: '文件预处理模型(QA 拆分)',
-      describe: '',
-      md: `
-| 模型 | 价格(￥)  |
-| --- | --- | 
-${qaModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 |`).join('\n')}
-      `
-    },
-    {
-      title: '问题分类',
-      describe: '',
-      md: `
-| 模型 | 输入价格(￥) | 输出价格(￥) |
-| --- | --- | --- |
-${cqModelList
-  ?.map(
-    (item) => `| ${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}`
-    },
-    {
-      title: '内容提取',
-      describe: '',
-      md: `
-| 模型 | 输入价格(￥) | 输出价格(￥) |
-| --- | --- | --- |
-${extractModelList
-  ?.map(
-    (item) => `| ${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}`
-    },
-    {
-      title: '下一步指引',
-      describe: '',
-      md: `
-| 模型 | 输入价格(￥) | 输出价格(￥) |
-| --- | --- | --- |
-${qgModelList
-  ?.map(
-    (item) => `| ${item.name} | ${item.inputPrice}/1k tokens |  ${item.outputPrice}/1k tokens |`
-  )
-  .join('\n')}`
     },
     {
       title: '语音播放',

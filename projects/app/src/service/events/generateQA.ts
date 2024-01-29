@@ -14,6 +14,7 @@ import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
+import { getLLMModel } from '../core/ai/model';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -111,7 +112,7 @@ export async function generateQA(): Promise<any> {
 
   try {
     const startTime = Date.now();
-    const model = data.model ?? global.qaModels[0].model;
+    const model = getLLMModel(data.model)?.model;
     const prompt = `${data.prompt || Prompt_AgentQA.description}
 ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 

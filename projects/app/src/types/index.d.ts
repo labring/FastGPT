@@ -30,12 +30,8 @@ declare global {
   var qaQueueLen: number;
   var vectorQueueLen: number;
 
-  var chatModels: ChatModelItemType[];
+  var llmModels: LLMModelItemType[];
   var vectorModels: VectorModelItemType[];
-  var qaModels: LLMModelItemType[];
-  var cqModels: FunctionModelItemType[];
-  var extractModels: FunctionModelItemType[];
-  var qgModels: LLMModelItemType[];
   var audioSpeechModels: AudioSpeechModelType[];
   var whisperModel: WhisperModelType;
   var reRankModels: ReRankModelItemType[];

@@ -43,7 +43,7 @@ export async function pushDataToTrainingQueue(
   const result = await pushDataListToTrainingQueue({
     ...props,
     vectorModelList: global.vectorModels,
-    qaModelList: global.qaModels
+    datasetModelList: global.llmModels
   });
 
   return result;

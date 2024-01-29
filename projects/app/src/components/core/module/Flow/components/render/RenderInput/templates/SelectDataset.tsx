@@ -10,7 +10,7 @@ import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { chatModelList } from '@/web/common/system/staticData';
+import { llmModelList } from '@/web/common/system/staticData';
 
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -49,7 +49,7 @@ const SelectDatasetRender = ({ inputs = [], item, moduleId }: RenderInputProps) 
         const model =
           item.data.inputs.find((item) => item.key === ModuleInputKeyEnum.aiModel)?.value || '';
         const quoteMaxToken =
-          chatModelList.find((item) => item.model === model)?.quoteMaxToken || 3000;
+          llmModelList.find((item) => item.model === model)?.quoteMaxToken || 3000;
 
         maxTokens = Math.max(maxTokens, quoteMaxToken);
       }

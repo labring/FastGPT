@@ -4,7 +4,7 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import { getHistories } from '../utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
 import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
@@ -34,7 +34,7 @@ export const dispatchCFR = async ({
     };
   }
 
-  const extractModel = getExtractModel(model);
+  const extractModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
   const systemFewShot = systemPrompt
@@ -87,7 +87,7 @@ A: ${systemPrompt}
     model: extractModel.model,
     inputLen: inputTokens,
     outputLen: outputTokens,
-    type: ModelTypeEnum.extract
+    type: ModelTypeEnum.llm
   });
 
   return {

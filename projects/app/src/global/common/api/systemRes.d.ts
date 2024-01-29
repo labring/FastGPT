@@ -1,6 +1,4 @@
 import type {
-  ChatModelItemType,
-  FunctionModelItemType,
   LLMModelItemType,
   VectorModelItemType,
   AudioSpeechModels,
@@ -13,14 +11,10 @@ import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 
 export type InitDateResponse = {
-  chatModels: ChatModelItemType[];
-  qaModels: LLMModelItemType[];
-  cqModels: FunctionModelItemType[];
-  extractModels: FunctionModelItemType[];
+  llmModels: LLMModelItemType[];
   vectorModels: VectorModelItemType[];
   audioSpeechModels: AudioSpeechModels[];
   reRankModels: ReRankModelItemType[];
-  qgModes: LLMModelItemType[];
   whisperModel: WhisperModelType;
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;

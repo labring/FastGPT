@@ -6,7 +6,7 @@ import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { getChatModel } from '@/service/core/ai/model';
+import { getLLMModel } from '@/service/core/ai/model';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         if (item.flowType === FlowNodeTypeEnum.chatNode) {
           const model =
             item.inputs.find((item) => item.key === ModuleInputKeyEnum.aiModel)?.value || '';
-          const chatModel = getChatModel(model);
+          const chatModel = getLLMModel(model);
           const quoteMaxToken = chatModel.quoteMaxToken || 3000;
 
           maxTokens = Math.max(maxTokens, quoteMaxToken);

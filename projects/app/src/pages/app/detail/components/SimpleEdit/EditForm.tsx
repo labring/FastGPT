@@ -15,11 +15,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import {
-  chatModelList,
-  reRankModelList,
-  simpleModeTemplates
-} from '@/web/common/system/staticData';
+import { llmModelList, reRankModelList, simpleModeTemplates } from '@/web/common/system/staticData';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
@@ -109,7 +105,7 @@ const EditForm = ({
   const searchMode = watch('dataset.searchMode');
 
   const chatModelSelectList = (() =>
-    chatModelList.map((item) => ({
+    llmModelList.map((item) => ({
       value: item.model,
       label: item.name
     })))();
@@ -125,7 +121,7 @@ const EditForm = ({
 
   const tokenLimit = useMemo(() => {
     return (
-      chatModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
+      llmModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
       3000
     );
   }, [getValues, refresh]);
@@ -284,7 +280,7 @@ const EditForm = ({
                       onchange={(val: any) => {
                         setValue('aiSettings.model', val);
                         const maxToken =
-                          chatModelList.find((item) => item.model === getValues('aiSettings.model'))
+                          llmModelList.find((item) => item.model === getValues('aiSettings.model'))
                             ?.maxResponse || 4000;
                         const token = maxToken / 2;
                         setValue('aiSettings.maxToken', token);

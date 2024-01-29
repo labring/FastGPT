@@ -14,7 +14,7 @@ import MyModal from '@/components/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import MySelect from '@/components/Select';
-import { vectorModelList, qaModelList } from '@/web/common/system/staticData';
+import { vectorModelList, datasetModelList } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -35,7 +35,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       name: '',
       intro: '',
       vectorModel: vectorModelList[0].model,
-      agentModel: qaModelList[0].model
+      agentModel: datasetModelList[0].model
     }
   });
 
@@ -168,14 +168,14 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             </Box>
           </Flex>
         )}
-        {qaModelList.length > 1 && (
+        {datasetModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
             <Box flex={'0 0 100px'}>{t('core.ai.model.Dataset Agent Model')}</Box>
             <Box flex={1}>
               <MySelect
                 w={'100%'}
                 value={getValues('agentModel')}
-                list={qaModelList.map((item) => ({
+                list={datasetModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}

@@ -107,15 +107,17 @@ docker-compose up -d
 
 ## 四、初始化 Mongo 副本集
 
-FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。
+FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。副本集没法自动化初始化，需手动操作。
 
 ```bash
 # 查看 mongo 容器是否正常运行
 docker ps 
 # 进入容器
 docker exec -it mongo bash
+
 # 连接数据库
 mongo
+
 # 初始化副本集。
 rs.initiate({
   _id: "rs0",
@@ -125,6 +127,14 @@ rs.initiate({
 })
 # 检查状态。如果提示 rs0 状态，则代表运行成功
 rs.status()
+
+# 初始化用户
+use admin
+db.createUser({
+  user: "admin",
+  pwd: "password",
+  roles: [{ role: "root", db: "admin" }]
+});
 ```
 
 ## 五、访问 FastGPT

@@ -17,7 +17,7 @@ import {
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
-import { chatModelList, feConfigs } from '@/web/common/system/staticData';
+import { llmModelList, feConfigs } from '@/web/common/system/staticData';
 import MySlider from '@/components/Slider';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import dynamic from 'next/dynamic';
@@ -60,7 +60,7 @@ const AIChatSettingsModal = ({
 
   const tokenLimit = useMemo(() => {
     return (
-      chatModelList.find((item) => item.model === getValues(ModuleInputKeyEnum.aiModel))
+      llmModelList.find((item) => item.model === getValues(ModuleInputKeyEnum.aiModel))
         ?.maxResponse || 4000
     );
   }, [getValues]);

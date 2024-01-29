@@ -14,7 +14,7 @@ import {
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -51,7 +51,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     /* Not the same original text, create and reload */
 
     const vectorModelData = getVectorModel(collection.datasetId.vectorModel);
-    const agentModelData = getQAModel(collection.datasetId.agentModel);
+    const agentModelData = getLLMModel(collection.datasetId.agentModel);
     // create training bill
     const { billId } = await createTrainingBill({
       teamId: collection.teamId,

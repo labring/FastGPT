@@ -8,9 +8,9 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
-import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
 import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
@@ -40,7 +40,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     return Promise.reject('Input is empty');
   }
 
-  const extractModel = getExtractModel(model);
+  const extractModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
   const { arg, inputTokens, outputTokens } = await (async () => {
@@ -84,7 +84,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     model: extractModel.model,
     inputLen: inputTokens,
     outputLen: outputTokens,
-    type: ModelTypeEnum.extract
+    type: ModelTypeEnum.llm
   });
 
   return {
@@ -110,7 +110,7 @@ async function toolChoice({
   user,
   histories,
   inputs: { content, extractKeys, description }
-}: Props & { extractModel: FunctionModelItemType }) {
+}: Props & { extractModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     ...histories,
     {
@@ -206,11 +206,11 @@ async function completions({
   user,
   histories,
   inputs: { content, extractKeys, description }
-}: Props & { extractModel: FunctionModelItemType }) {
+}: Props & { extractModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(extractModel.functionPrompt || Prompt_ExtractJson, {
+      value: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
         description,
         json: extractKeys
           .map(

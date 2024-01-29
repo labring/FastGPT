@@ -15,11 +15,7 @@ export type FastGPTConfigFileType = {
   feConfigs: FastGPTFeConfigsType;
   systemEnv: SystemEnvType;
   subPlans?: SubPlanType;
-  chatModels: ChatModelItemType[];
-  qaModels: LLMModelItemType[];
-  cqModels: FunctionModelItemType[];
-  extractModels: FunctionModelItemType[];
-  qgModels: LLMModelItemType[];
+  llmModels: ChatModelItemType[];
   vectorModels: VectorModelItemType[];
   reRankModels: ReRankModelItemType[];
   audioSpeechModels: AudioSpeechModelType[];

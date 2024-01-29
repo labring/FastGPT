@@ -23,10 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     data: {
       feConfigs: global.feConfigs,
       subPlans: global.subPlans,
-      chatModels: global.chatModels,
-      qaModels: global.qaModels,
-      cqModels: global.cqModels,
-      extractModels: global.extractModels,
+      llmModels: global.llmModels,
       vectorModels: global.vectorModels,
       reRankModels:
         global.reRankModels?.map((item) => ({
@@ -34,7 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           requestUrl: undefined,
           requestAuth: undefined
         })) || [],
-      qgModes: global.qgModels,
       whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
       systemVersion: global.systemVersion || '0.0.0',
@@ -121,11 +117,7 @@ export async function initSystemConfig() {
       ...(dbConfig.systemEnv || {})
     },
     subPlans: dbConfig.subPlans || fileRes.subPlans,
-    chatModels: dbConfig.chatModels || fileRes.chatModels || [],
-    qaModels: dbConfig.qaModels || fileRes.qaModels || [],
-    cqModels: dbConfig.cqModels || fileRes.cqModels || [],
-    extractModels: dbConfig.extractModels || fileRes.extractModels || [],
-    qgModels: dbConfig.qgModels || fileRes.qgModels || [],
+    llmModels: dbConfig.llmModels || fileRes.llmModels || [],
     vectorModels: dbConfig.vectorModels || fileRes.vectorModels || [],
     reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
     audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
@@ -137,11 +129,7 @@ export async function initSystemConfig() {
   global.systemEnv = config.systemEnv;
   global.subPlans = config.subPlans;
 
-  global.chatModels = config.chatModels;
-  global.qaModels = config.qaModels;
-  global.cqModels = config.cqModels;
-  global.extractModels = config.extractModels;
-  global.qgModels = config.qgModels;
+  global.llmModels = config.llmModels;
   global.vectorModels = config.vectorModels;
   global.reRankModels = config.reRankModels;
   global.audioSpeechModels = config.audioSpeechModels;
@@ -151,11 +139,7 @@ export async function initSystemConfig() {
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
     subPlans: global.subPlans,
-    chatModels: global.chatModels,
-    qaModels: global.qaModels,
-    cqModels: global.cqModels,
-    extractModels: global.extractModels,
-    qgModels: global.qgModels,
+    llmModels: global.llmModels,
     vectorModels: global.vectorModels,
     reRankModels: global.reRankModels,
     audioSpeechModels: global.audioSpeechModels,
