@@ -69,7 +69,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   }
 
   // auth fields
-  let success = !extractKeys.find((item) => !arg[item.key]);
+  let success = !extractKeys.find((item) => !(item.key in arg));
   // auth empty value
   if (success) {
     for (const key in arg) {
