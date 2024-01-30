@@ -40,6 +40,7 @@ import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 import { getDocPath } from '@/web/common/system/doc';
+import MyMenu from '@/components/MyMenu';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -178,35 +179,37 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                     : t('common.Un used')}
                 </Td>
                 <Td>
-                  <Menu autoSelect={false} isLazy>
-                    <MenuButton
-                      _hover={{ bg: 'myWhite.600  ' }}
-                      cursor={'pointer'}
-                      borderRadius={'md'}
-                    >
-                      <MyIcon name={'more'} w={'14px'} p={2} />
-                    </MenuButton>
-                    <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
-                      <MenuItem
-                        onClick={() =>
+                  <MyMenu
+                    offset={[-50, 5]}
+                    Button={
+                      <MyIcon
+                        name={'more'}
+                        w={'14px'}
+                        p={2}
+                        _hover={{ bg: 'myWhite.600  ' }}
+                        cursor={'pointer'}
+                        borderRadius={'md'}
+                      />
+                    }
+                    menuList={[
+                      {
+                        label: t('common.Edit'),
+                        icon: 'edit',
+                        onClick: () =>
                           setEditData({
                             _id,
                             name,
                             limit,
                             appId
                           })
-                        }
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'edit'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('common.Edit')}</Box>
-                      </MenuItem>
-                      <MenuItem onClick={() => onclickRemove(_id)} py={[2, 3]}>
-                        <MyIcon name={'delete'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('common.Delete')}</Box>
-                      </MenuItem>
-                    </MenuList>
-                  </Menu>
+                      },
+                      {
+                        label: t('common.Delete'),
+                        icon: 'delete',
+                        onClick: () => onclickRemove(_id)
+                      }
+                    ]}
+                  />
                 </Td>
               </Tr>
             ))}

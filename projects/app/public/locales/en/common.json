@@ -295,6 +295,8 @@
       "navbar": {
         "External": "External",
         "Flow mode": "Flow mode",
+        "Publish": "Publish",
+        "Publish app": "Publish App",
         "Simple mode": "Simple mode"
       },
       "outLink": {

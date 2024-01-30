@@ -295,6 +295,8 @@
       "navbar": {
         "External": "外部使用",
         "Flow mode": "高级编排",
+        "Publish": "发布",
+        "Publish app": "发布应用",
         "Simple mode": "简易配置"
       },
       "outLink": {

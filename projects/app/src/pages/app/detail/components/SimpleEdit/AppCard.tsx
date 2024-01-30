@@ -116,12 +116,12 @@ const AppCard = ({ appId }: { appId: string }) => {
                 router.replace({
                   query: {
                     appId,
-                    currentTab: 'outLink'
+                    currentTab: 'publish'
                   }
                 });
               }}
             >
-              {t('core.app.navbar.External')}
+              {t('core.app.navbar.Publish')}
             </Button>
             {appDetail.isOwner && (
               <Button

@@ -46,6 +46,7 @@ import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
+import MyMenu from '@/components/MyMenu';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -136,40 +137,40 @@ const Share = ({ appId }: { appId: string }) => {
                   {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
-                  <Menu autoSelect={false} isLazy>
-                    <MenuButton
-                      _hover={{ bg: 'myWhite.600  ' }}
-                      cursor={'pointer'}
-                      borderRadius={'md'}
-                    >
-                      <MyIcon name={'more'} w={'14px'} p={2} />
-                    </MenuButton>
-                    <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
-                      <MenuItem
-                        onClick={() => {
+                  <MyMenu
+                    Button={
+                      <MyIcon
+                        name={'more'}
+                        _hover={{ bg: 'myGray.100  ' }}
+                        cursor={'pointer'}
+                        borderRadius={'md'}
+                        w={'14px'}
+                        p={2}
+                      />
+                    }
+                    menuList={[
+                      {
+                        label: t('core.app.outLink.Select Mode'),
+                        icon: 'copy',
+                        onClick: () => {
                           setSelectedLinkData(item);
-                        }}
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'copy'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('core.app.outLink.Select Mode')}</Box>
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() =>
+                        }
+                      },
+                      {
+                        label: t('common.Edit'),
+                        icon: 'edit',
+                        onClick: () =>
                           setEditLinkData({
                             _id: item._id,
                             name: item.name,
                             responseDetail: item.responseDetail,
                             limit: item.limit
                           })
-                        }
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'edit'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('common.Edit')}</Box>
-                      </MenuItem>
-                      <MenuItem
-                        onClick={async () => {
+                      },
+                      {
+                        label: t('common.Delete'),
+                        icon: 'delete',
+                        onClick: async () => {
                           setIsLoading(true);
                           try {
                             await delShareChatById(item._id);
@@ -178,14 +179,10 @@ const Share = ({ appId }: { appId: string }) => {
                             console.log(error);
                           }
                           setIsLoading(false);
-                        }}
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'delete'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('common.Delete')}</Box>
-                      </MenuItem>
-                    </MenuList>
-                  </Menu>
+                        }
+                      }
+                    ]}
+                  />
                 </Td>
               </Tr>
             ))}
