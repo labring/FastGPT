@@ -25,7 +25,7 @@ import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/t
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { PickerMenuItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -42,7 +42,7 @@ const AIChatSettingsModal = ({
   onSuccess: (e: AIChatModuleProps) => void;
   defaultData: AIChatModuleProps;
   simpleModeTemplate?: AppSimpleEditConfigTemplateType;
-  pickerMenu?: PickerMenuItemType[];
+  pickerMenu?: EditorVariablePickerType[];
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);

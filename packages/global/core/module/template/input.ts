@@ -27,8 +27,8 @@ export const Input_Template_History: FlowNodeInputItemType = {
 
 export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.userChatInput,
-  type: FlowNodeInputTypeEnum.hidden,
-  label: 'core.module.input.label.user question',
+  type: FlowNodeInputTypeEnum.custom,
+  label: '',
   required: true,
   valueType: ModuleIOValueTypeEnum.string,
   showTargetInApp: true,

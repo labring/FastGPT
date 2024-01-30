@@ -14,7 +14,7 @@ import { EditorState, LexicalEditor } from 'lexical';
 import { textToEditorState } from './utils';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
-import { PickerMenuItemType } from './type.d';
+import { EditorVariablePickerType } from './type.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export default function Editor({
@@ -32,7 +32,7 @@ export default function Editor({
   showResize?: boolean;
   showOpenModal?: boolean;
   onOpenModal?: () => void;
-  variables: PickerMenuItemType[];
+  variables: EditorVariablePickerType[];
   onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
   defaultValue?: string;

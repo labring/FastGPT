@@ -33,7 +33,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
     histories,
-    inputs: { content, history = 6, model, description, extractKeys }
+    params: { content, history = 6, model, description, extractKeys }
   } = props;
 
   if (!content) {
@@ -109,7 +109,7 @@ async function toolChoice({
   extractModel,
   user,
   histories,
-  inputs: { content, extractKeys, description }
+  params: { content, extractKeys, description }
 }: Props & { extractModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     ...histories,
@@ -205,7 +205,7 @@ async function completions({
   extractModel,
   user,
   histories,
-  inputs: { content, extractKeys, description }
+  params: { content, extractKeys, description }
 }: Props & { extractModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     {

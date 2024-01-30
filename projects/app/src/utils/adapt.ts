@@ -58,9 +58,7 @@ export const appModule2FlowNode = ({
     moduleTemplatesFlat.find((template) => template.flowType === item.flowType) || UserInputModule;
 
   const concatInputs = template.inputs.concat(
-    item.inputs.filter(
-      (input) => input.label && !template.inputs.find((item) => item.key === input.key)
-    )
+    item.inputs.filter((input) => !template.inputs.find((item) => item.key === input.key))
   );
   const concatOutputs = item.outputs.concat(
     template.outputs.filter(

@@ -15,7 +15,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
     res,
     detail,
     stream,
-    inputs: { text = '' }
+    params: { text = '' }
   } = props as AnswerProps;
 
   const formatText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);

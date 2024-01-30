@@ -6,11 +6,11 @@ import { useCallback, useEffect, useMemo } from 'react';
 import { getHashtagRegexString } from './utils';
 import { registerLexicalTextEntity } from '../../utils';
 import { $createVariableNode, VariableNode } from './node';
-import { PickerMenuItemType } from '../../type';
+import { EditorVariablePickerType } from '../../type';
 
 const REGEX = new RegExp(getHashtagRegexString(), 'i');
 
-export default function VariablePlugin({ variables }: { variables: PickerMenuItemType[] }) {
+export default function VariablePlugin({ variables }: { variables: EditorVariablePickerType[] }) {
   const [editor] = useLexicalComposerContext();
   useEffect(() => {
     if (!editor.hasNodes([VariableNode]))

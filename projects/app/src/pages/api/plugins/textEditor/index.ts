@@ -17,6 +17,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await authRequestFromLocal({ req });
 
+    // string all value
+    Object.keys(obj).forEach((key) => {
+      obj[key] = JSON.stringify(obj[key]);
+    });
+
     const textResult = replaceVariable(text, obj);
 
     res.json({

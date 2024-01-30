@@ -85,12 +85,14 @@ export type RunningModuleItemType = {
   inputs: {
     key: string;
     value?: any;
+    valueType?: `${ModuleIOValueTypeEnum}`;
   }[];
   outputs: {
     key: string;
     answer?: boolean;
     response?: boolean;
     value?: any;
+    valueType?: `${ModuleIOValueTypeEnum}`;
     targets: {
       moduleId: string;
       key: string;
@@ -115,5 +117,6 @@ export type ChatDispatchProps = {
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
   outputs: RunningModuleItemType['outputs'];
-  inputs: T;
+  inputs: RunningModuleItemType['inputs'];
+  params: T;
 };

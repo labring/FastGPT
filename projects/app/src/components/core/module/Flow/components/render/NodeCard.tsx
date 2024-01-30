@@ -22,6 +22,7 @@ type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
   forbidMenu?: boolean;
+  selected?: boolean;
 };
 
 const NodeCard = (props: Props) => {
@@ -35,6 +36,7 @@ const NodeCard = (props: Props) => {
     moduleId,
     flowType,
     inputs,
+    selected,
     forbidMenu
   } = props;
 
@@ -124,7 +126,8 @@ const NodeCard = (props: Props) => {
       minW={minW}
       maxW={'500px'}
       bg={'white'}
-      border={theme.borders.md}
+      borderWidth={'1px'}
+      borderColor={selected ? 'primary.500' : 'borderColor.base'}
       borderRadius={'md'}
       boxShadow={'sm'}
     >

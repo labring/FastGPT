@@ -225,6 +225,7 @@
     }
   },
   "core": {
+    "Chat API is error or undefined": "The session interface reported an error or returned null",
     "Chat": "Chat",
     "Chat test": "Chat test",
     "Max Token": "MaxTokens",
@@ -892,6 +893,9 @@
         "variable options": "Options"
       },
       "variable add option": "Add Option"
+    },
+    "plugin": {
+      "Get Plugin Module Detail Failed": "Load plugin failed"
     },
     "shareChat": {
       "Init Error": "Init Chat Error",

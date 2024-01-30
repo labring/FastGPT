@@ -38,7 +38,7 @@ import { variableTip } from '@fastgpt/global/core/module/template/tip';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
 import MyRadio from '@/components/common/MyRadio';
-import { formatVariablesIcon } from '@fastgpt/global/core/module/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
 
 const VariableEdit = ({
   variables,
@@ -102,7 +102,14 @@ const VariableEdit = ({
   };
 
   const formatVariables = useMemo(() => {
-    return formatVariablesIcon(variables);
+    const results = formatEditorVariablePickerIcon(variables);
+    return results.map((item) => {
+      const variable = variables.find((variable) => variable.key === item.key);
+      return {
+        ...variable,
+        icon: item.icon
+      };
+    });
   }, [variables]);
 
   return (

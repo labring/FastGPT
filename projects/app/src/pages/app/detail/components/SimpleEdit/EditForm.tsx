@@ -36,7 +36,7 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import SelectAiModel from '@/components/Select/SelectAiModel';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatVariablesIcon } from '@fastgpt/global/core/module/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
@@ -99,7 +99,7 @@ const EditForm = ({
   });
 
   const variables = watch('userGuide.variables');
-  const formatVariables = useMemo(() => formatVariablesIcon(variables), [variables]);
+  const formatVariables = useMemo(() => formatEditorVariablePickerIcon(variables), [variables]);
   const aiSystemPrompt = watch('aiSettings.systemPrompt');
   const searchMode = watch('dataset.searchMode');
 

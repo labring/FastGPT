@@ -32,7 +32,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const {
     user,
     histories,
-    inputs: { model, history = 6, agents, userChatInput }
+    params: { model, history = 6, agents, userChatInput }
   } = props as Props;
 
   if (!userChatInput) {
@@ -86,7 +86,7 @@ async function toolChoice({
   user,
   cqModel,
   histories,
-  inputs: { agents, systemPrompt, userChatInput }
+  params: { agents, systemPrompt, userChatInput }
 }: Props & { cqModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     ...histories,
@@ -173,7 +173,7 @@ async function completions({
   cqModel,
   user,
   histories,
-  inputs: { agents, systemPrompt = '', userChatInput }
+  params: { agents, systemPrompt = '', userChatInput }
 }: Props & { cqModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     {

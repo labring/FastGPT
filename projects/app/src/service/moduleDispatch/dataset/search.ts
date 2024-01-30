@@ -28,7 +28,7 @@ export async function dispatchDatasetSearch(
 ): Promise<DatasetSearchResponse> {
   const {
     teamId,
-    inputs: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
+    params: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
   if (!Array.isArray(datasets)) {

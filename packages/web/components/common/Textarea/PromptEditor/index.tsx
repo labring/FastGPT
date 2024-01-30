@@ -5,7 +5,7 @@ import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
 import { $getRoot, EditorState, type LexicalEditor } from 'lexical';
-import { PickerMenuItemType } from './type.d';
+import { EditorVariablePickerType } from './type.d';
 import { useCallback, useTransition } from 'react';
 
 const PromptEditor = ({
@@ -19,7 +19,7 @@ const PromptEditor = ({
   title
 }: {
   showOpenModal?: boolean;
-  variables?: PickerMenuItemType[];
+  variables?: EditorVariablePickerType[];
   defaultValue?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;

@@ -18,7 +18,7 @@ import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelec
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import { useTranslation } from 'next-i18next';
 
-const NodeUserGuide = React.memo(function NodeUserGuide({ data }: { data: FlowModuleItemType }) {
+const NodeUserGuide = ({ data }: NodeProps<FlowModuleItemType>) => {
   const theme = useTheme();
   return (
     <>
@@ -38,12 +38,11 @@ const NodeUserGuide = React.memo(function NodeUserGuide({ data }: { data: FlowMo
       </NodeCard>
     </>
   );
-});
+};
 
-export default function Node({ data }: NodeProps<FlowModuleItemType>) {
-  return <NodeUserGuide data={data} />;
-}
-export function WelcomeText({ data }: { data: FlowModuleItemType }) {
+export default React.memo(NodeUserGuide);
+
+function WelcomeText({ data }: { data: FlowModuleItemType }) {
   const { t } = useTranslation();
   const { inputs, moduleId } = data;
   const [, startTst] = useTransition();

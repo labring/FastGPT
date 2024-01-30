@@ -15,7 +15,7 @@ export async function createQuestionGuide({
   });
   const data = await ai.chat.completions.create({
     model: model,
-    temperature: 0,
+    temperature: 0.1,
     max_tokens: 200,
     messages: [
       ...messages,

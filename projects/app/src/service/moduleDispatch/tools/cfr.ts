@@ -20,7 +20,7 @@ type Response = {
 
 export const dispatchCFR = async ({
   histories,
-  inputs: { model, systemPrompt, history, userChatInput }
+  params: { model, systemPrompt, history, userChatInput }
 }: Props): Promise<Response> => {
   if (!userChatInput) {
     return Promise.reject('Question is empty');

@@ -14,7 +14,6 @@ const ButtonEdge = (props: EdgeProps) => {
     sourcePosition,
     targetPosition,
     selected,
-
     style = {}
   } = props;
 

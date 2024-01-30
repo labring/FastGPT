@@ -7,12 +7,11 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeSimple = (props: NodeProps<FlowModuleItemType>) => {
-  const { moduleId, inputs, outputs } = props.data;
-  console.log(props);
+const NodeSimple = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
+  const { moduleId, inputs, outputs } = data;
 
   return (
-    <NodeCard minW={'350px'} {...props.data}>
+    <NodeCard minW={'350px'} selected={selected} {...data}>
       {inputs.length > 0 && (
         <>
           <Divider text="Input" />

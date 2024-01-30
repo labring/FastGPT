@@ -46,7 +46,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     user,
     histories,
     outputs,
-    inputs: {
+    params: {
       model,
       temperature = 0,
       maxToken = 4000,
@@ -231,7 +231,7 @@ function filterQuote({
   model,
   quoteTemplate
 }: {
-  quoteQA: ChatProps['inputs']['quoteQA'];
+  quoteQA: ChatProps['params']['quoteQA'];
   model: LLMModelItemType;
   quoteTemplate?: string;
 }) {
@@ -410,7 +410,7 @@ async function streamResponse({
   }
 
   if (!answer) {
-    return Promise.reject('core.chat API is error or undefined');
+    return Promise.reject('core.chat.Chat API is error or undefined');
   }
 
   return { answer };

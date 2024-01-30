@@ -17,7 +17,7 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constan
 import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { onChangeNode } from '../../../FlowProvider';
 
-const NodeExtract = React.memo(function NodeExtract({ data }: { data: FlowModuleItemType }) {
+const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { inputs, outputs, moduleId } = data;
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
@@ -183,8 +183,6 @@ const NodeExtract = React.memo(function NodeExtract({ data }: { data: FlowModule
       )}
     </NodeCard>
   );
-});
+};
 
-export default function Node({ data }: NodeProps<FlowModuleItemType>) {
-  return <NodeExtract data={data} />;
-}
+export default React.memo(NodeExtract);
