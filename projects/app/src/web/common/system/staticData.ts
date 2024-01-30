@@ -4,9 +4,9 @@ import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/i
 
 import { useSystemStore } from './useSystemStore';
 
-let retryTimes = 3;
-
-export const clientInitData = async (): Promise<{
+export const clientInitData = async (
+  retry = 3
+): Promise<{
   feConfigs: FastGPTFeConfigsType;
 }> => {
   try {
@@ -14,11 +14,13 @@ export const clientInitData = async (): Promise<{
     useSystemStore.getState().initStaticData(res);
 
     return {
-      feConfigs
+      feConfigs: res.feConfigs
     };
   } catch (error) {
-    retryTimes--;
-    await delay(500);
-    return clientInitData();
+    if (retry > 0) {
+      await delay(500);
+      return clientInitData(retry - 1);
+    }
+    return Promise.reject(error);
   }
 };
