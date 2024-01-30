@@ -90,7 +90,7 @@ try {
      close custom feedback; 
   */
   ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { background: true });
-  ChatItemSchema.index({ time: -1 }, { background: true });
+  ChatItemSchema.index({ time: -1, obj: 1 }, { background: true });
   ChatItemSchema.index({ userGoodFeedback: 1 }, { background: true });
   ChatItemSchema.index({ userBadFeedback: 1 }, { background: true });
   ChatItemSchema.index({ customFeedbacks: 1 }, { background: true });

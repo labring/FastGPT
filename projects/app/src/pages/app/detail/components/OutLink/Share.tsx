@@ -40,7 +40,7 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';
@@ -52,6 +52,7 @@ const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 const Share = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
+  const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
   const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema>();
@@ -249,6 +250,7 @@ function EditLinkModal({
   onCreate: (id: string) => void;
   onEdit: () => void;
 }) {
+  const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const {
     register,

@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
-import { feConfigs, systemVersion } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@fastgpt/global/common/time/timezone';
 import Avatar from '@/components/Avatar';
@@ -44,6 +44,7 @@ const SubDatasetModal = dynamic(() => import('@/components/support/wallet/SubDat
 const UserInfo = () => {
   const theme = useTheme();
   const router = useRouter();
+  const { feConfigs, systemVersion } = useSystemStore();
   const { t, i18n } = useTranslation();
   const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
   const timezones = useRef(timezoneList());

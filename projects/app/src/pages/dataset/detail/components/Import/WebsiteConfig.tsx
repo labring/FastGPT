@@ -7,7 +7,7 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getDocPath } from '@/web/common/system/doc';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type FormType = {
   url?: string | undefined;
@@ -27,6 +27,7 @@ const WebsiteConfigModal = ({
   defaultValue?: FormType;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { register, handleSubmit } = useForm({
     defaultValues: defaultValue

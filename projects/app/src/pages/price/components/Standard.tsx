@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { postCheckStandardSub, postUpdateStandardSub } from '@/web/support/wallet/sub/api';
-import { subPlans, feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { StandardSubPlanParams } from '@fastgpt/global/support/wallet/sub/api';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -14,7 +14,6 @@ import { useToast } from '@/web/common/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const Standard = ({
   standardPlan,
@@ -24,7 +23,7 @@ const Standard = ({
   refetchTeamSubPlan: () => void;
 }) => {
   const { t } = useTranslation();
-  const { initd } = useSystemStore();
+  const { subPlans, feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { ConfirmModal, openConfirm } = useConfirm({});
 
@@ -51,7 +50,7 @@ const Standard = ({
           };
         })
       : [];
-  }, [selectSubMode, initd]);
+  }, [subPlans?.standard, selectSubMode]);
 
   const { mutate: onclickUpdateStandardPlan, isLoading: isUpdatingStandardPlan } = useRequest({
     mutationFn: (data: StandardSubPlanParams) => postUpdateStandardSub(data),

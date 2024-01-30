@@ -4,7 +4,7 @@ import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
@@ -36,6 +36,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const theme = useTheme();
+  const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { appId } = router.query as { appId: string };
   const { appDetail, loadAppDetail, clearAppModules } = useAppStore();

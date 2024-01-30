@@ -9,7 +9,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileToBase64 } from '@/web/common/file/utils';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 enum UsingWayEnum {
   link = 'link',
@@ -25,6 +25,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
     multiple: false,
     fileType: 'image/*'
   });
+  const { feConfigs } = useSystemStore();
 
   const VariableTypeList = [
     {

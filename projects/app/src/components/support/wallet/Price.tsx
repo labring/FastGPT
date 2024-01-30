@@ -1,16 +1,13 @@
 import React from 'react';
 import { Box, CloseButton } from '@chakra-ui/react';
-import {
-  llmModelList,
-  vectorModelList,
-  audioSpeechModelList,
-  whisperModel
-} from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import ReactDOM from 'react-dom';
 
 import Markdown from '@/components/Markdown';
 
 const Price = ({ onClose }: { onClose: () => void }) => {
+  const { llmModelList, vectorModelList, audioSpeechModelList, whisperModel } = useSystemStore();
+
   const list = [
     {
       title: 'AI语言模型',

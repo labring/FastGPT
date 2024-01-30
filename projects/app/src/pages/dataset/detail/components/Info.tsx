@@ -14,7 +14,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
 import MySelect from '@/components/Select';
-import { datasetModelList, vectorModelList } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
@@ -24,6 +24,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { getValues, setValue, register, handleSubmit } = useForm<DatasetItemType>({
     defaultValues: datasetDetail
   });
+  const { datasetModelList, vectorModelList } = useSystemStore();
 
   const router = useRouter();
 

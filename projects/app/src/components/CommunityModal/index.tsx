@@ -3,10 +3,12 @@ import { Button, ModalFooter, ModalBody } from '@chakra-ui/react';
 import MyModal from '../MyModal';
 import { useTranslation } from 'next-i18next';
 import Markdown from '../Markdown';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const CommunityModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
+
   return (
     <MyModal
       isOpen={true}

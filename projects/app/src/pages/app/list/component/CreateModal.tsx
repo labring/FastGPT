@@ -20,7 +20,6 @@ import { useRouter } from 'next/router';
 import { appTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { feConfigs } from '@/web/common/system/staticData';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
@@ -39,7 +38,7 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
   const { toast } = useToast();
   const router = useRouter();
   const theme = useTheme();
-  const { isPc } = useSystemStore();
+  const { isPc, feConfigs } = useSystemStore();
   const { register, setValue, getValues, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: '/icon/logo.svg',

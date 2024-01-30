@@ -7,17 +7,15 @@ import {
   BoxProps,
   Button,
   Flex,
-  Image,
   Link,
   ModalBody,
   ModalFooter,
-  Switch,
-  Textarea
+  Switch
 } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
-import { llmModelList, feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import dynamic from 'next/dynamic';
@@ -48,6 +46,7 @@ const AIChatSettingsModal = ({
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
+  const { feConfigs, llmModelList } = useSystemStore();
 
   const { register, handleSubmit, getValues, setValue } = useForm({
     defaultValues: defaultData
@@ -63,7 +62,7 @@ const AIChatSettingsModal = ({
       llmModelList.find((item) => item.model === getValues(ModuleInputKeyEnum.aiModel))
         ?.maxResponse || 4000
     );
-  }, [getValues]);
+  }, [getValues, llmModelList]);
 
   const quoteTemplateVariables = (() => [
     {

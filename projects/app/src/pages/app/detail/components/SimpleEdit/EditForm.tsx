@@ -15,7 +15,6 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import { llmModelList, reRankModelList, simpleModeTemplates } from '@/web/common/system/staticData';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
@@ -60,7 +59,7 @@ const EditForm = ({
   const { t } = useTranslation();
   const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
-  const { isPc } = useSystemStore();
+  const { isPc, llmModelList, reRankModelList, simpleModeTemplates } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [, startTst] = useTransition();
 
@@ -124,7 +123,7 @@ const EditForm = ({
       llmModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
       3000
     );
-  }, [getValues, refresh]);
+  }, [getValues, llmModelList]);
 
   const datasetSearchMode = useMemo(() => {
     if (!searchMode) return '';

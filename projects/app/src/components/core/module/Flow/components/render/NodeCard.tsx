@@ -21,7 +21,7 @@ import MyMenu from '@/components/MyMenu';
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
-  isPreview?: boolean;
+  forbidMenu?: boolean;
 };
 
 const NodeCard = (props: Props) => {
@@ -35,7 +35,7 @@ const NodeCard = (props: Props) => {
     moduleId,
     flowType,
     inputs,
-    isPreview
+    forbidMenu
   } = props;
 
   const theme = useTheme();
@@ -127,7 +127,6 @@ const NodeCard = (props: Props) => {
       border={theme.borders.md}
       borderRadius={'md'}
       boxShadow={'sm'}
-      className={isPreview ? 'nodrag' : ''}
     >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
         <Avatar src={avatar} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
@@ -140,7 +139,7 @@ const NodeCard = (props: Props) => {
           </MyTooltip>
         )}
         <Box flex={1} />
-        {!isPreview && (
+        {!forbidMenu && (
           <MyMenu
             offset={[-60, 5]}
             width={120}

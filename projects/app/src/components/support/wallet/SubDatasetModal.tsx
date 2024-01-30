@@ -26,8 +26,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useRouter } from 'next/router';
-import { subPlans } from '@/web/common/system/staticData';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MySelect from '@/components/Select';
 import {
@@ -40,10 +39,10 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
+  const { subPlans } = useSystemStore();
   const datasetStorePrice = subPlans?.extraDatasetSize?.price || 0;
 
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
   const { ConfirmModal, openConfirm } = useConfirm({});
   const { userInfo } = useUserStore();

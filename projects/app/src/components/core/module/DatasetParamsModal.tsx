@@ -17,7 +17,7 @@ import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { reRankModelList } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
@@ -45,6 +45,7 @@ const DatasetParamsModal = ({
 }: DatasetParamsProps & { onClose: () => void; onSuccess: (e: DatasetParamsProps) => void }) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { reRankModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const { register, setValue, getValues, handleSubmit } = useForm<DatasetParamsProps>({
     defaultValues: {

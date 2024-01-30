@@ -8,7 +8,7 @@ import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@/web/common/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
 import { appTemplates } from '@/web/core/app/templates';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 
 interface Props {
@@ -26,6 +26,7 @@ interface RegisterType {
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const {
     register,
     handleSubmit,

@@ -1,17 +1,12 @@
-import React, { useMemo, useState } from 'react';
+import React from 'react';
 import { Box, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import {
-  audioSpeechModelList,
-  llmModelList,
-  vectorModelList,
-  whisperModel
-} from '@/web/common/system/staticData';
+
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const Points = () => {
   const { t } = useTranslation();
-  const { initd } = useSystemStore();
+  const { llmModelList, audioSpeechModelList, vectorModelList, whisperModel } = useSystemStore();
 
   return (
     <Flex

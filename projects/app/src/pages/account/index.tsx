@@ -10,7 +10,6 @@ import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { feConfigs } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 
@@ -35,6 +34,7 @@ enum TabEnum {
 const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
+  const { feConfigs, isPc } = useSystemStore();
 
   const tabList = [
     {
@@ -116,7 +116,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const router = useRouter();
   const theme = useTheme();
-  const { isPc } = useSystemStore();
 
   const setCurrentTab = useCallback(
     (tab: string) => {

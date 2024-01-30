@@ -6,7 +6,7 @@ import { postFindPassword } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 interface Props {
   setPageType: Dispatch<`${PageTypeEnum}`>;
@@ -22,6 +22,7 @@ interface RegisterType {
 
 const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
   const {
     register,
     handleSubmit,

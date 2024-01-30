@@ -17,13 +17,14 @@ import Avatar from '@/components/Avatar';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const UpdateInviteModal = () => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
   const { ConfirmModal, openConfirm } = useConfirm({});
+  const { feConfigs } = useSystemStore();
 
   const { data: inviteList = [], refetch } = useQuery(['getInviteList'], () =>
     feConfigs.isPlus ? getTeamList(TeamMemberStatusEnum.waiting) : []

@@ -10,7 +10,7 @@ import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { llmModelList } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -21,6 +21,7 @@ const DatasetParamsModal = dynamic(() => import('@/components/core/module/Datase
 const SelectDatasetRender = ({ inputs = [], item, moduleId }: RenderInputProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { llmModelList } = useSystemStore();
   const [nodes, setNodes] = useState<useFlowProviderStoreType['nodes']>([]);
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,

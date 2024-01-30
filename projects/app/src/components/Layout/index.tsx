@@ -7,7 +7,6 @@ import { throttle } from 'lodash';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
-import { feConfigs } from '@/web/common/system/staticData';
 import dynamic from 'next/dynamic';
 
 import Auth from './auth';
@@ -43,7 +42,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
-  const { loading, setScreenWidth, isPc } = useSystemStore();
+  const { loading, setScreenWidth, isPc, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(

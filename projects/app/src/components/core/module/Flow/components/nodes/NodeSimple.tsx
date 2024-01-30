@@ -7,11 +7,12 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeSimple = React.memo(function NodeSimple({ data }: { data: FlowModuleItemType }) {
-  const { moduleId, inputs, outputs } = data;
+const NodeSimple = (props: NodeProps<FlowModuleItemType>) => {
+  const { moduleId, inputs, outputs } = props.data;
+  console.log(props);
 
   return (
-    <NodeCard minW={'350px'} {...data}>
+    <NodeCard minW={'350px'} {...props.data}>
       {inputs.length > 0 && (
         <>
           <Divider text="Input" />
@@ -30,7 +31,5 @@ const NodeSimple = React.memo(function NodeSimple({ data }: { data: FlowModuleIt
       )}
     </NodeCard>
   );
-});
-export default function Node({ data }: NodeProps<FlowModuleItemType>) {
-  return <NodeSimple data={data} />;
-}
+};
+export default React.memo(NodeSimple);

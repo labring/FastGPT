@@ -53,7 +53,7 @@ const NodePluginOutput = React.memo(function NodePluginOutput({
   const [editField, setEditField] = useState<EditNodeFieldType>();
 
   return (
-    <NodeCard minW={'300px'} {...data}>
+    <NodeCard minW={'300px'} forbidMenu {...data}>
       <Container mt={1} borderTop={'2px solid'} borderTopColor={'myGray.300'}>
         {inputs.map((item) => (
           <Flex

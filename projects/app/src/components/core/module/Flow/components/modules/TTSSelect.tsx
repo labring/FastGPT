@@ -8,7 +8,7 @@ import MySelect from '@/components/Select';
 import { TTSTypeEnum } from '@/constants/app';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { audioSpeechModelList } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@/components/MyModal';
 import MySlider from '@/components/Slider';
 
@@ -20,6 +20,7 @@ const TTSSelect = ({
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t } = useTranslation();
+  const { audioSpeechModelList } = useSystemStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
 
   const list = useMemo(
@@ -28,7 +29,7 @@ const TTSSelect = ({
       { label: t('core.app.tts.Web'), value: TTSTypeEnum.web },
       ...audioSpeechModelList.map((item) => item?.voices || []).flat()
     ],
-    [t]
+    [audioSpeechModelList, t]
   );
 
   const formatValue = useMemo(() => {

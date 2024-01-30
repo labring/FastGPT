@@ -15,7 +15,7 @@ import {
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { useTranslation } from 'next-i18next';
 import React, { useEffect, useMemo, useState } from 'react';
-import { subPlans } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MySelect from '@/components/Select';
@@ -39,7 +39,7 @@ import MyModal from '@/components/MyModal';
 
 const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) => {
   const { t } = useTranslation();
-
+  const { subPlans } = useSystemStore();
   const extraDatasetPrice = subPlans?.extraDatasetSize?.price || 0;
   const [datasetSize, setDatasetSize] = useState(0);
   const [isRenew, setIsRenew] = useState('false');

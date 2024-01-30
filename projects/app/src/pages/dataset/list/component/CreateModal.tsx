@@ -14,11 +14,9 @@ import MyModal from '@/components/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import MySelect from '@/components/Select';
-import { vectorModelList, datasetModelList } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { feConfigs } from '@/web/common/system/staticData';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
@@ -27,7 +25,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc } = useSystemStore();
+  const { isPc, feConfigs, vectorModelList, datasetModelList } = useSystemStore();
   const { register, setValue, getValues, handleSubmit } = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,

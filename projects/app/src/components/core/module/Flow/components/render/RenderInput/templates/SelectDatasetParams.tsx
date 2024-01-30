@@ -6,14 +6,15 @@ import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { llmModelList } from '@/web/common/system/staticData';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/module/DatasetParamsModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
   const { nodes } = useFlowProviderStore();
 
   const { t } = useTranslation();
+  const { llmModelList } = useSystemStore();
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,

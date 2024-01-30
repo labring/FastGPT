@@ -10,7 +10,6 @@ import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';
-import { feConfigs } from '@/web/common/system/staticData';
 import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
@@ -19,7 +18,7 @@ const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm
 const Login = () => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
-  const { isPc } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
   const { setUserInfo } = useUserStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
