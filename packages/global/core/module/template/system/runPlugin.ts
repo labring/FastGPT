@@ -6,7 +6,7 @@ export const RunPluginModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.pluginModule,
   templateType: ModuleTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.pluginModule,
-  avatar: '/imgs/module/custom.png',
+  avatar: '',
   intro: '',
   name: '',
   showStatus: false,

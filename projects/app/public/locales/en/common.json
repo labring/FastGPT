@@ -225,8 +225,8 @@
     }
   },
   "core": {
-    "Chat API is error or undefined": "The session interface reported an error or returned null",
     "Chat": "Chat",
+    "Chat API is error or undefined": "The session interface reported an error or returned null",
     "Chat test": "Chat test",
     "Max Token": "MaxTokens",
     "Start chat": "Start chat",
@@ -362,6 +362,7 @@
     "chat": {
       "Admin Mark Content": "Corrected response",
       "Audio Speech Error": "Audio Speech Error",
+      "Chat API is error or undefined": "",
       "Confirm to clear history": "Confirm to clear history?",
       "Confirm to clear share chat history": " Are you sure to delete all chats?",
       "Converting to text": "Converting to text...",
@@ -768,6 +769,7 @@
           "Quote": "Object array format, structure:\n[{q:' question ',a:' answer '}]",
           "Response content": "You can use \\n to achieve continuous line wrapping.\nReplies can be achieved by external module input, which overwrites the content currently filled in.\nIf passed non-string type data will be automatically converted to a string",
           "TFSwitch textarea": "Allows you to define a number of strings to achieve false matching, one per line, and supports regular expressions.",
+          "Trigger": "Most of the time, you don't need to concatenate this property. You can connect this property when you need to delay execution, or precisely control the timing of execution.",
           "anyInput": "Can pass anything ",
           "cfr background": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. If\nis empty, the question completion function is not used in the first conversation. ",
           "dynamic input": "Receives parameters dynamically added by the user and will be tiled in at run time ",

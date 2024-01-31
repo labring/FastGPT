@@ -70,6 +70,7 @@ export const appModule2FlowNode = ({
   const moduleItem: FlowModuleItemType = {
     ...template,
     ...item,
+    avatar: template?.avatar || item.avatar,
     inputs: concatInputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;

@@ -226,6 +226,7 @@
   },
   "core": {
     "Chat": "对话",
+    "Chat API is error or undefined": "",
     "Chat test": "测试对话",
     "Max Token": "单条数据上限",
     "Start chat": "立即对话",
@@ -359,9 +360,9 @@
       }
     },
     "chat": {
-      "Chat API is error or undefined": "对话接口报错或返回为空",
       "Admin Mark Content": "纠正后的回复",
       "Audio Speech Error": "语音播报异常",
+      "Chat API is error or undefined": "对话接口报错或返回为空",
       "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
       "Confirm to clear share chat history": "确认删除所有聊天记录？",
       "Converting to text": "正在转换为文本...",
@@ -547,7 +548,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -769,6 +771,7 @@
           "Quote": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
           "Response content": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
+          "Trigger": "大部分时候，你不需要连接该属性。\n当你需要延迟执行，或精确控制执行时机时，可以连接该属性。",
           "anyInput": "可传入任意内容",
           "cfr background": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示【首次对话】不使用问题补全功能。",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
