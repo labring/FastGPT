@@ -18,6 +18,7 @@ import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
 import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -46,35 +47,47 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       standardPlans: getStandardSubPlan()
     });
 
-    // 2. create collection
-    const collectionId = await createOneCollection({
-      ...body,
-      name: link,
-      teamId,
-      tmbId,
-      type: DatasetCollectionTypeEnum.link,
+    const { _id: collectionId } = await mongoSessionRun(async (session) => {
+      // 2. create collection
+      const collection = await createOneCollection({
+        ...body,
+        name: link,
+        teamId,
+        tmbId,
+        type: DatasetCollectionTypeEnum.link,
 
-      trainingType,
-      chunkSize,
-      chunkSplitter,
-      qaPrompt,
+        trainingType,
+        chunkSize,
+        chunkSplitter,
+        qaPrompt,
 
-      rawLink: link
-    });
+        rawLink: link,
+        session
+      });
 
-    // 3. create bill and start sync
-    const { billId } = await createTrainingBill({
-      teamId,
-      tmbId,
-      appName: 'core.dataset.collection.Sync Collection',
-      billSource: BillSourceEnum.training,
-      vectorModel: getVectorModel(dataset.vectorModel).name,
-      agentModel: getLLMModel(dataset.agentModel).name
-    });
-    await reloadCollectionChunks({
-      collectionId,
-      tmbId,
-      billId
+      // 3. create bill and start sync
+      const { billId } = await createTrainingBill({
+        teamId,
+        tmbId,
+        appName: 'core.dataset.collection.Sync Collection',
+        billSource: BillSourceEnum.training,
+        vectorModel: getVectorModel(dataset.vectorModel).name,
+        agentModel: getLLMModel(dataset.agentModel).name,
+        session
+      });
+
+      // load
+      await reloadCollectionChunks({
+        collection: {
+          ...collection.toObject(),
+          datasetId: dataset
+        },
+        tmbId,
+        billId,
+        session
+      });
+
+      return collection;
     });
 
     jsonRes(res, {

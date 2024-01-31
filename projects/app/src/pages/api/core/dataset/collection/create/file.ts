@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // create collection
-    const collectionId = await createOneCollection({
+    const { _id: collectionId } = await createOneCollection({
       ...collectionData,
       metadata: collectionMetadata,
       teamId,

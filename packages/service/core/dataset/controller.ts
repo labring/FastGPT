@@ -2,6 +2,7 @@ import { CollectionWithDatasetType, DatasetSchemaType } from '@fastgpt/global/co
 import { MongoDatasetCollection } from './collection/schema';
 import { MongoDataset } from './schema';
 import { delCollectionAndRelatedSources } from './collection/controller';
+import { ClientSession } from '../../common/mongo';
 
 /* ============= dataset ========== */
 /* find all datasetId by top datasetId */
@@ -55,7 +56,13 @@ export async function getCollectionWithDataset(collectionId: string) {
 }
 
 /* delete all data by datasetIds */
-export async function delDatasetRelevantData({ datasets }: { datasets: DatasetSchemaType[] }) {
+export async function delDatasetRelevantData({
+  datasets,
+  session
+}: {
+  datasets: DatasetSchemaType[];
+  session: ClientSession;
+}) {
   if (!datasets.length) return;
 
   const teamId = datasets[0].teamId;
@@ -70,5 +77,5 @@ export async function delDatasetRelevantData({ datasets }: { datasets: DatasetSc
     '_id teamId fileId metadata'
   ).lean();
 
-  await delCollectionAndRelatedSources({ collections });
+  await delCollectionAndRelatedSources({ collections, session });
 }
