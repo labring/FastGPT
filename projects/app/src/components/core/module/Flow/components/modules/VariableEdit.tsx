@@ -118,7 +118,7 @@ const VariableEdit = ({
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
         <Box ml={2} flex={1}>
           {t('core.module.Variable')}
-          <MyTooltip label={variableTip} forceShow>
+          <MyTooltip label={t(variableTip)} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
         </Box>

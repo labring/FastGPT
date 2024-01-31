@@ -99,10 +99,11 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
 
     // format output value type
     const results: Record<string, any> = {};
-    outputs.forEach((item) => {
-      const val = response[item.key];
-      results[item.key] = valueTypeFormat(val, item.valueType);
-    });
+    for (const key in response) {
+      const output = outputs.find((item) => item.key === key);
+      if (!output) continue;
+      results[key] = valueTypeFormat(response[key], output.valueType);
+    }
 
     return {
       responseData: {

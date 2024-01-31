@@ -306,7 +306,7 @@ const Textarea: ComponentStyleConfig = {
   variants: {
     outline: {
       border: '1px solid',
-      borderRadius: 'base',
+      borderRadius: 'md',
       borderColor: 'myGray.200',
       _hover: {
         borderColor: ''

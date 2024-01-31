@@ -21,11 +21,14 @@ export const flatDynamicParams = (params: Record<string, any>) => {
 
 /* value type format */
 export const valueTypeFormat = (value: any, type?: `${ModuleIOValueTypeEnum}`) => {
+  if (value === undefined) return;
+
   if (type === 'string') {
     if (typeof value !== 'object') return String(value);
     return JSON.stringify(value);
   }
   if (type === 'number') return Number(value);
   if (type === 'boolean') return Boolean(value);
+
   return value;
 };

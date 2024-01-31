@@ -127,9 +127,12 @@ const NodeCard = (props: Props) => {
       maxW={'500px'}
       bg={'white'}
       borderWidth={'1px'}
-      borderColor={selected ? 'primary.500' : 'borderColor.base'}
+      borderColor={selected ? 'primary.600' : 'borderColor.base'}
       borderRadius={'md'}
-      boxShadow={'sm'}
+      boxShadow={'1'}
+      _hover={{
+        boxShadow: '4'
+      }}
     >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
         <Avatar src={avatar} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />

@@ -127,7 +127,6 @@ export async function dispatchModules({
   ): Promise<any> {
     pushStore(module, result);
 
-    //
     const nextRunModules: RunningModuleItemType[] = [];
 
     // Assign the output value to the next module
@@ -163,6 +162,8 @@ export async function dispatchModules({
   function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
     return Promise.all(
       modules.map((module) => {
+        // console.log(module, '===');
+
         if (!module.inputs.find((item: any) => item.value === undefined)) {
           moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
           return moduleRun(module);
