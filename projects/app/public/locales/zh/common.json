@@ -747,7 +747,7 @@
       "Input Type": "输入类型",
       "Plugin output must connect": "自定义输出必须全部连接",
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
-      "Variable": "参数变量",
+      "Variable": "全局变量",
       "Variable Setting": "变量设置",
       "edit": {
         "Field Already Exist": "key 重复",
