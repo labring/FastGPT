@@ -13,7 +13,7 @@ import { throttle } from 'lodash';
 import type { ExportChatType } from '@/types/chat.d';
 import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@/web/common/hooks/useCopyData';

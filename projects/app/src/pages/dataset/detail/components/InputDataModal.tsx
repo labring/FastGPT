@@ -8,7 +8,7 @@ import {
   getDatasetCollectionById,
   getDatasetDataItemById
 } from '@/web/core/dataset/api';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';

@@ -21,7 +21,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { chunksUpload, fileCollectionCreate } from '@/web/core/dataset/utils';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { TabEnum } from '../../../index';
 import { postCreateDatasetLinkCollection, postDatasetCollection } from '@/web/core/dataset/api';

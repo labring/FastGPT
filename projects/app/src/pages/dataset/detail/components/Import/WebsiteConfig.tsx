@@ -3,7 +3,7 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Input, Link, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getDocPath } from '@/web/common/system/doc';

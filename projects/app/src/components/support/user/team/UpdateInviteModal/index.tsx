@@ -15,7 +15,7 @@ import { getTeamList, updateInviteResult } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import Avatar from '@/components/Avatar';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 

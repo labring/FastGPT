@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const TeamManageModal = dynamic(() => import('../TeamManageModal'));
 

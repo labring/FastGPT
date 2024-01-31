@@ -15,7 +15,7 @@ import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Fl
 import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
 import { flowNode2Modules, filterExportModules } from '@/components/core/module/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));

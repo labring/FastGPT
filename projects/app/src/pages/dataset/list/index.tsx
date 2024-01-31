@@ -46,7 +46,7 @@ import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant'
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import ParentPaths from '@/components/common/ParentPaths';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });

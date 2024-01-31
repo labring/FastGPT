@@ -39,7 +39,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';

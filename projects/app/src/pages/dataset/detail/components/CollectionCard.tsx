@@ -55,7 +55,7 @@ import ParentPath from '@/components/common/ParentPaths';
 import dynamic from 'next/dynamic';
 import { useDrag } from '@/web/common/hooks/useDrag';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';

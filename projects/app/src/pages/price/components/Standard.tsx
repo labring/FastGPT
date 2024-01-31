@@ -10,7 +10,7 @@ import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constant
 import { StandardSubPlanParams } from '@fastgpt/global/support/wallet/sub/api';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { StandardSubPlanUpdateResponse } from '@fastgpt/global/support/wallet/sub/api.d';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
