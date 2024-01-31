@@ -8,7 +8,7 @@ import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
 import { getInitConfig } from '@/pages/api/common/system/getInitData';
 import { startCron } from './common/system/cron';
-import { mongoSessionRun } from '../../../../packages/service/common/mongo/sessionRun';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 /**
  * connect MongoDB and init data
