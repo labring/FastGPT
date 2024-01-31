@@ -381,7 +381,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           key: 'usingReRank',
           type: 'hidden',
           label: '',
-          valueType: 'string',
+          valueType: 'boolean',
           showTargetInApp: false,
           showTargetInPlugin: false,
           value: true,

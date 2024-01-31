@@ -187,6 +187,7 @@ export async function dispatchModules({
     module.inputs.forEach((item) => {
       params[item.key] = valueTypeFormat(item.value, item.valueType);
     });
+
     const dispatchData: ModuleDispatchProps<Record<string, any>> = {
       ...props,
       res,

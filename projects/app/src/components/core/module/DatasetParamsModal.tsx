@@ -73,7 +73,7 @@ const DatasetParamsModal = ({
       return false;
 
     return true;
-  }, [getValues, similarity, refresh]);
+  }, [getValues, similarity]);
 
   return (
     <MyModal
