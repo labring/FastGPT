@@ -112,7 +112,7 @@ ${systemPrompt}
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: '根据对话记录及补充的背景知识，对问题进行分类，并返回对应的类型字段',
+    description: '根据对话记录及背景知识，对问题进行分类，并返回对应的类型字段',
     parameters: {
       type: 'object',
       properties: {
