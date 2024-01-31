@@ -269,6 +269,9 @@ importers:
       '@fastgpt/web':
         specifier: workspace:*
         version: link:../../packages/web
+      '@fortaine/fetch-event-source':
+        specifier: ^3.0.6
+        version: 3.0.6
       '@node-rs/jieba':
         specifier: ^1.7.2
         version: 1.7.2
@@ -3196,6 +3199,11 @@ packages:
     resolution: {integrity: sha512-uW+GVUNTgCXbVPEbgnbf5Aor22e1dyYR0JRwdUiZBaikfxr7KlhV9y0aahA1FB99fEeQVvhCEvTcPIFSYTy9Pw==}
     dependencies:
       tslib: 2.6.2
+    dev: false
+
+  /@fortaine/fetch-event-source@3.0.6:
+    resolution: {integrity: sha512-621GAuLMvKtyZQ3IA6nlDWhV1V/7PGOTNIGLUifxt0KzM+dZIweJ6F3XvQF3QnqeNfS1N7WQ0Kil1Di/lhChEw==}
+    engines: {node: '>=16.15'}
     dev: false
 
   /@humanwhocodes/config-array@0.11.13:

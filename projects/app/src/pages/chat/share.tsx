@@ -82,7 +82,7 @@ const OutLink = ({
           outLinkUid
         },
         onMessage: generatingMessage,
-        abortSignal: controller
+        abortCtrl: controller
       });
 
       const newTitle =
