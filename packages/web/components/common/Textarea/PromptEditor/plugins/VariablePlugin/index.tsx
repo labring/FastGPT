@@ -28,7 +28,6 @@ export default function VariablePlugin({ variables }: { variables: EditorVariabl
   const getVariableMatch = useCallback((text: string) => {
     const matches = REGEX.exec(text);
     if (!matches) return null;
-
     if (variableKeys.indexOf(matches[3]) === -1) return null;
     const hashtagLength = matches[3].length + 4;
     const startOffset = matches.index;

@@ -11,11 +11,11 @@ import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import { EditorState, LexicalEditor } from 'lexical';
-import { textToEditorState } from './utils';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
 import { EditorVariablePickerType } from './type.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import InitValuePlutin from './plugins/InitValuePlugin';
 
 export default function Editor({
   h = 200,
@@ -40,14 +40,16 @@ export default function Editor({
 }) {
   const key = useRef(getNanoid(6));
   const [height, setHeight] = useState(h);
-  const [initialConfig, setInitialConfig] = useState({
+
+  const initialConfig = {
     namespace: 'promptEditor',
     nodes: [VariableNode],
-    editorState: textToEditorState(defaultValue),
+    editorState: null,
     onError: (error: Error) => {
       throw error;
     }
-  });
+  };
+
   const initialY = useRef(0);
 
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -70,7 +72,7 @@ export default function Editor({
 
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
-      <LexicalComposer initialConfig={initialConfig} key={key.current}>
+      <LexicalComposer initialConfig={initialConfig} key={key.current + variables.length}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
           placeholder={
@@ -100,6 +102,7 @@ export default function Editor({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
+        <InitValuePlutin defaultValue={defaultValue} />
         <OnChangePlugin onChange={(e) => onChange?.(e)} />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin variables={variables} />
