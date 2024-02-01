@@ -1,5 +1,5 @@
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
-
+import { isIPv6 } from 'net';
 interface ConfigType {
   headers?: { [key: string]: string };
   hold?: boolean;
@@ -78,7 +78,12 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
 
   return instance
     .request({
-      baseURL: `http://${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`,
+      baseURL: `http://${
+        process.env.HOSTNAME && isIPv6(process.env.HOSTNAME)
+          ? `[${process.env.HOSTNAME}]:${process.env.PORT || 3000}`
+          : `${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`
+      }`,
+
       url,
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,
