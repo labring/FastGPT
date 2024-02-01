@@ -162,8 +162,6 @@ export async function dispatchModules({
   function checkModulesCanRun(modules: RunningModuleItemType[] = []) {
     return Promise.all(
       modules.map((module) => {
-        // console.log(module, '===');
-
         if (!module.inputs.find((item: any) => item.value === undefined)) {
           moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
           return moduleRun(module);

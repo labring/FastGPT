@@ -108,6 +108,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       showTargetInPlugin: true
     },
     Input_Template_History,
+    Input_Template_UserChatInput,
     {
       key: ModuleInputKeyEnum.aiChatDatasetQuote,
       type: FlowNodeInputTypeEnum.target,
@@ -116,8 +117,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       valueType: ModuleIOValueTypeEnum.datasetQuote,
       showTargetInApp: true,
       showTargetInPlugin: true
-    },
-    Input_Template_UserChatInput
+    }
   ],
   outputs: [
     Output_Template_UserChatInput,

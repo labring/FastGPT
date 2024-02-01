@@ -39,8 +39,14 @@ export const streamFetch = ({
     let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
 
-    const successFinish = () => {
-      finished = true;
+    const finish = () => {
+      if (errMsg) {
+        return failedFinish();
+      }
+      return resolve({
+        responseText,
+        responseData
+      });
     };
     const failedFinish = (err?: any) => {
       finished = true;
@@ -56,10 +62,7 @@ export const streamFetch = ({
       if (abortCtrl.signal.aborted) {
         onMessage({ text: remainText });
         responseText += remainText;
-        return resolve({
-          responseText,
-          responseData
-        });
+        return finish();
       }
 
       if (remainText) {
@@ -73,10 +76,7 @@ export const streamFetch = ({
       }
 
       if (finished && !remainText) {
-        return resolve({
-          responseText,
-          responseData
-        });
+        return finish();
       }
 
       requestAnimationFrame(animateResponseText);
@@ -159,7 +159,7 @@ export const streamFetch = ({
           }
         },
         onclose() {
-          successFinish();
+          finished = true;
         },
         onerror(e) {
           clearTimeout(timeoutId);
@@ -171,7 +171,9 @@ export const streamFetch = ({
       clearTimeout(timeoutId);
 
       if (abortCtrl.signal.aborted) {
-        return successFinish();
+        finished = true;
+
+        return;
       }
       console.log(err, 'fetch error');
 
