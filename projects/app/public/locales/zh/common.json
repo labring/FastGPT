@@ -548,8 +548,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -751,6 +750,10 @@
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
       "Variable": "全局变量",
       "Variable Setting": "变量设置",
+      "Dataset quote": {
+        "label": "知识库引用",
+        "Input description": "可接收知识库搜索的结果。"
+      },
       "edit": {
         "Field Already Exist": "key 重复",
         "Field Edit": "字段编辑"

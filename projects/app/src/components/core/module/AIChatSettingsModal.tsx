@@ -159,7 +159,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {simpleModeTemplate?.systemForm?.aiSettings?.temperature && (
-          <Flex alignItems={'center'} mb={10} mt={isAdEdit ? 8 : 5}>
+          <Flex mb={10} mt={isAdEdit ? 8 : 6}>
             <Box {...LabelStyles} mr={2} w={'80px'}>
               {t('core.app.Temperature')}
             </Box>
@@ -182,7 +182,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {simpleModeTemplate?.systemForm?.aiSettings?.maxToken && (
-          <Flex alignItems={'center'} mt={12} mb={10}>
+          <Flex mt={5} mb={5}>
             <Box {...LabelStyles} mr={2} w={'80px'}>
               {t('core.app.Max tokens')}
             </Box>

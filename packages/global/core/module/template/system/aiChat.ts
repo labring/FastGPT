@@ -111,8 +111,8 @@ export const AiChatModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.aiChatDatasetQuote,
       type: FlowNodeInputTypeEnum.target,
-      label: 'core.module.input.label.Quote',
-      description: 'core.module.input.description.Quote',
+      label: 'core.module.Dataset quote.label',
+      description: 'core.module.Dataset quote.Input description',
       valueType: ModuleIOValueTypeEnum.datasetQuote,
       showTargetInApp: true,
       showTargetInPlugin: true

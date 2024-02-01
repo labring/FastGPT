@@ -107,7 +107,7 @@ const TTSSelect = ({
             {t('core.app.tts.Speech model')}
             <MySelect w={'220px'} value={formatValue} list={list} onchange={onclickChange} />
           </Flex>
-          <Flex mt={8} justifyContent={'space-between'} alignItems={'center'}>
+          <Flex mt={8} justifyContent={'space-between'}>
             {t('core.app.tts.Speech speed')}
             <MySlider
               markList={[

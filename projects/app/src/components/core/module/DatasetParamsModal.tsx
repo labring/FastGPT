@@ -136,7 +136,7 @@ const DatasetParamsModal = ({
         )}
 
         {limit !== undefined && (
-          <Box display={['block', 'flex']} py={8} mt={3}>
+          <Box display={['block', 'flex']} mt={5}>
             <Box flex={'0 0 120px'} mb={[8, 0]}>
               {t('core.dataset.search.Max Tokens')}
               <MyTooltip label={t('core.dataset.search.Max Tokens Tips')} forceShow>
@@ -162,7 +162,7 @@ const DatasetParamsModal = ({
           </Box>
         )}
         {showSimilarity && (
-          <Box display={['block', 'flex']} py={8}>
+          <Box display={['block', 'flex']} mt={5}>
             <Box flex={'0 0 120px'} mb={[8, 0]}>
               {t('core.dataset.search.Min Similarity')}
               <MyTooltip label={t('core.dataset.search.Min Similarity Tips')} forceShow>
