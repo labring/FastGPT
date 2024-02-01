@@ -2,8 +2,8 @@ import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import axios from 'axios';
-import { isIPv6 } from 'net';
 import { flatDynamicParams, valueTypeFormat } from '../utils';
+import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
 
 export type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
@@ -142,12 +142,7 @@ async function fetchData({
 }): Promise<Record<string, any>> {
   const { data: response } = await axios<Record<string, any>>({
     method,
-    baseURL: `http://${
-      process.env.HOSTNAME && isIPv6(process.env.HOSTNAME)
-        ? `[${process.env.HOSTNAME}]:${process.env.PORT || 3000}`
-        : `${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`
-    }`,
-
+    baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {
       'Content-Type': 'application/json',

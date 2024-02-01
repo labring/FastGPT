@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, useTheme, Menu, MenuButton, MenuList, MenuItem } from '@chakra-ui/react';
+import { Box, Flex, useTheme, MenuButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -135,7 +135,7 @@ const NodeCard = (props: Props) => {
       }}
     >
       <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
-        <Avatar src={avatar} borderRadius={'md'} objectFit={'contain'} w={'30px'} h={'30px'} />
+        <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
         <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
           {t(name)}
         </Box>
