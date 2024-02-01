@@ -110,9 +110,9 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, ...props }: Props) 
           value={value}
           onChange={(e) => onChange?.(e || '')}
           wrapperProps={{
-            onBlur: (e: React.FocusEvent<HTMLInputElement>) => {
+            onBlur: () => {
               try {
-                JSON.parse(e.target.value);
+                JSON.parse(value as string);
               } catch (error: any) {
                 toast({
                   title: 'Invalid JSON',
