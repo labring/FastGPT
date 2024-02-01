@@ -94,10 +94,14 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/files/deploy/fast
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 ```
 
+## 三、修改 docker-compose.yml 的环境变量
 
-## 三、启动容器
+修改`docker-compose.yml`中的`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）和`CHAT_API_KEY`（API 接口的凭证）。
 
-修改`docker-compose.yml`中的`OPENAI_BASE_URL`和`CHAT_API_KEY`即可，对应为 API 的地址(别忘记加/v1)和 key。
+使用 OneAPI 的话，OPENAI_BASE_URL=OneAPI访问地址/v1；CHAT_API_KEY=令牌
+
+
+## 四、启动容器
 
 ```bash
 # 在 docker-compose.yml 同级目录下执行
@@ -105,7 +109,7 @@ docker-compose pull
 docker-compose up -d
 ```
 
-## 四、初始化 Mongo 副本集
+## 四、初始化 Mongo 副本集(4.6.8以前可忽略)
 
 FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。副本集没法自动化初始化，需手动操作。
 

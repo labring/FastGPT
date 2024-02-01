@@ -11,6 +11,10 @@ weight: 708
 * [One API](https://github.com/songquanpeng/one-api) 是一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
 * FastGPT 可以通过接入 OneAPI 来实现对不同大模型的支持。OneAPI 的部署方法也很简单。
 
+## FastGPT 与 OneAPI 关系
+
+![](/imgs/sealos-fastgpt.webp)
+
 ## MySQL 版本
 
 MySQL 版本支持多实例，高并发。
@@ -50,7 +54,14 @@ BATCH_UPDATE_ENABLED=true
 BATCH_UPDATE_INTERVAL=60
 ```
 
-## One API使用步骤
+## One API使用教程
+
+### 概念
+
+1. 渠道：
+   1. OneApi 中一个渠道对应一个 `Api Key`，这个 `Api Key` 可以是GPT、微软、ChatGLM、文心一言的。一个`Api Key`通常可以调用同一个厂商的多个模型。
+   2. OneAPI 会根据请求传入的`模型`来决定使用哪一个`Key`，如果一个模型对应了多个`Key`，则会随机调用。
+2. 令牌：访问 OneAPI 所需的凭证，只需要这`1`个凭证即可访问`OneAPI`上配置的模型。因此`FastGPT`中，只需要配置`OneAPI`的`baseurl`和`令牌`即可。
 
 ### 1. 登录 One API
 
@@ -68,7 +79,11 @@ BATCH_UPDATE_INTERVAL=60
 创建一个令牌
 ![step7](/imgs/oneapi-step7.png)
 
-### 3. 修改 FastGPT 的环境变量
+### 3. 修改账号余额
+
+OneAPI 默认 root 用户只有 200刀，可以自行修改编辑。
+
+### 4. 修改 FastGPT 的环境变量
 
 有了 One API 令牌后，FastGPT 可以通过修改 `baseurl` 和 `key` 去请求到 One API，再由 One API 去请求不同的模型。修改下面两个环境变量：
 
@@ -92,21 +107,29 @@ CHAT_API_KEY=sk-xxxxxx
 可以在 `/projects/app/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是对话模型配置：
 
 ```json
-"ChatModels": [
+"llmModels": [
     ...
     {
       "model": "ERNIE-Bot", // 这里的模型需要对应 One API 的模型
       "name": "文心一言", // 对外展示的名称
-      "maxContext": 8000, // 最大长下文 token，无论什么模型都按 GPT35 的计算。GPT 外的模型需要自行大致计算下这个值。可以调用官方接口去比对 Token 的倍率，然后在这里粗略计算。
-      "maxResponse": 4000, // 最大回复 token
-      // 例如：文心一言的中英文 token 基本是 1:1，而 GPT 的中文 Token 是 2:1，如果文心一言官方最大 Token 是 4000，那么这里就可以填 8000，保险点就填 7000.
-      "quoteMaxToken": 2000, // 引用知识库的最大 Token
-      "maxTemperature": 1, // 最大温度
-      "vision": false, // 是否开启图片识别
-      "defaultSystemChatPrompt": "" // 默认的系统提示词
+      "maxContext": 16000, // 最大上下文
+      "maxResponse": 4000, // 最大回复
+      "quoteMaxToken": 13000, // 最大引用内容
+      "maxTemperature": 1.2, // 最大温度
+      "inputPrice": 0, 
+      "outputPrice": 0,
+      "censor": false,
+      "vision": false, // 是否支持图片输入
+      "datasetProcess": false, // 是否设置为知识库处理模型
+      "toolChoice": true, // 是否支持工具选择
+      "functionCall": false, // 是否支持函数调用
+      "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
+      "customExtractPrompt": "", // 自定义内容提取提示词
+      "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
+      "defaultConfig":{}  // 对话默认配置（比如 GLM4 的 top_p
     }
     ...
 ],
 ```
 
-添加完后，重启 FastGPT 即可在选择文心一言模型进行对话。
+添加完后，重启 FastGPT 即可在选择文心一言模型进行对话。**添加向量模型也是类似操作，增加到 `vectorModels`里。**

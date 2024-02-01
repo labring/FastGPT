@@ -1,15 +1,5 @@
-import React, { useCallback, useEffect } from 'react';
-import {
-  Box,
-  Grid,
-  Card,
-  useTheme,
-  Flex,
-  IconButton,
-  Button,
-  useDisclosure,
-  Image
-} from '@chakra-ui/react';
+import React, { useCallback } from 'react';
+import { Box, Grid, Flex, IconButton, Button, useDisclosure } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
@@ -31,7 +21,6 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 const MyApps = () => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const theme = useTheme();
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { myApps, loadMyApps } = useAppStore();
@@ -76,9 +65,11 @@ const MyApps = () => {
         <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
           {t('app.My Apps')}
         </Box>
-        <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
-          {t('common.New Create')}
-        </Button>
+        {userInfo?.team?.canWrite && (
+          <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
+            {t('common.New Create')}
+          </Button>
+        )}
       </Flex>
       <Grid
         py={[4, 6]}
