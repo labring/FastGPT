@@ -48,9 +48,11 @@ const AIChatSettingsModal = ({
   const [refresh, setRefresh] = useState(false);
   const { feConfigs, llmModelList } = useSystemStore();
 
-  const { register, handleSubmit, getValues, setValue } = useForm({
+  const { handleSubmit, getValues, setValue, watch } = useForm({
     defaultValues: defaultData
   });
+  const aiChatQuoteTemplate = watch(ModuleInputKeyEnum.aiChatQuoteTemplate);
+  const aiChatQuotePrompt = watch(ModuleInputKeyEnum.aiChatQuotePrompt);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;
@@ -238,10 +240,10 @@ const AIChatSettingsModal = ({
               placeholder={t('template.Quote Content Tip', {
                 default: Prompt_QuoteTemplateList[0].value
               })}
-              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuoteTemplate)}
+              value={aiChatQuoteTemplate}
               onChange={(e) => {
                 setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e);
-                setRefresh(!refresh);
+                // setRefresh(!refresh);
               }}
             />
           </Box>
@@ -264,7 +266,7 @@ const AIChatSettingsModal = ({
               placeholder={t('template.Quote Prompt Tip', {
                 default: Prompt_QuotePromptList[0].value
               })}
-              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuotePrompt)}
+              value={aiChatQuotePrompt}
               onChange={(e) => {
                 setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e);
               }}

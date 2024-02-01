@@ -11,7 +11,7 @@ import { useCallback, useTransition } from 'react';
 const PromptEditor = ({
   showOpenModal = true,
   variables = [],
-  defaultValue,
+  value,
   onChange,
   onBlur,
   h,
@@ -20,7 +20,7 @@ const PromptEditor = ({
 }: {
   showOpenModal?: boolean;
   variables?: EditorVariablePickerType[];
-  defaultValue?: string;
+  value?: string;
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
   h?: number;
@@ -53,7 +53,7 @@ const PromptEditor = ({
         onOpenModal={onOpen}
         variables={variables}
         h={h}
-        defaultValue={defaultValue}
+        value={value}
         onChange={onChangeInput}
         onBlur={onBlurInput}
         placeholder={placeholder}
@@ -65,7 +65,7 @@ const PromptEditor = ({
             showResize
             showOpenModal={false}
             variables={variables}
-            defaultValue={defaultValue}
+            value={value}
             onChange={onChangeInput}
             onBlur={onBlurInput}
             placeholder={placeholder}

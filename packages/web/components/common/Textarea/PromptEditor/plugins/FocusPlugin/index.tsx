@@ -31,11 +31,11 @@ export default function FocusPlugin({ focus, setFocus }: { focus: Boolean; setFo
     []
   );
 
-  useEffect(() => {
-    if (focus) {
-      editor.focus();
-    }
-  }, [focus]);
+  // useEffect(() => {
+  //   if (focus) {
+  //     editor.focus();
+  //   }
+  // }, [focus]);
 
   return null;
 }

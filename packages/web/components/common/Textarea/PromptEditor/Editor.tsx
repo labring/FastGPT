@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useTransition, useEffect } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -26,7 +26,7 @@ export default function Editor({
   variables,
   onChange,
   onBlur,
-  defaultValue,
+  value,
   placeholder = ''
 }: {
   h?: number;
@@ -36,24 +36,24 @@ export default function Editor({
   variables: EditorVariablePickerType[];
   onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
-  defaultValue?: string;
+  value?: string;
   placeholder?: string;
 }) {
-  const key = useRef(getNanoid(6));
+  const [key, setKey] = useState(getNanoid(6));
+  const [_, startSts] = useTransition();
   const [height, setHeight] = useState(h);
   const [focus, setFocus] = useState(false);
 
   const initialConfig = {
     namespace: 'promptEditor',
     nodes: [VariableNode],
-    editorState: textToEditorState(defaultValue),
+    editorState: textToEditorState(value),
     onError: (error: Error) => {
       throw error;
     }
   };
 
   const initialY = useRef(0);
-
   const handleMouseDown = (e: React.MouseEvent) => {
     initialY.current = e.clientY;
 
@@ -72,16 +72,14 @@ export default function Editor({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  useEffect(() => {
+    if (focus) return;
+    setKey(getNanoid(6));
+  }, [value, variables, focus]);
+
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
-      <LexicalComposer
-        initialConfig={initialConfig}
-        key={
-          focus
-            ? key.current + variables.length
-            : key.current + variables.length && defaultValue?.length
-        }
-      >
+      <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
           placeholder={
@@ -112,7 +110,13 @@ export default function Editor({
         />
         <HistoryPlugin />
         <FocusPlugin focus={focus} setFocus={setFocus} />
-        <OnChangePlugin onChange={(e) => onChange?.(e)} />
+        <OnChangePlugin
+          onChange={(e) => {
+            startSts(() => {
+              onChange?.(e);
+            });
+          }}
+        />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />

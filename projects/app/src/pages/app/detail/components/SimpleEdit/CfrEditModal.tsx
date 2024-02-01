@@ -18,7 +18,6 @@ const CfrEditModal = ({
 }) => {
   const { t } = useTranslation();
   const [value, setValue] = useState(defaultValue);
-  const [, startTst] = useTransition();
 
   return (
     <MyModal
@@ -38,12 +37,10 @@ const CfrEditModal = ({
             h={200}
             showOpenModal={false}
             placeholder={t('core.module.input.placeholder.cfr background')}
-            defaultValue={value}
-            onChange={useCallback((e: string) => {
-              startTst(() => {
-                setValue(e);
-              });
-            }, [])}
+            value={value}
+            onChange={(e) => {
+              setValue(e);
+            }}
           />
         </Box>
       </ModalBody>

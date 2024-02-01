@@ -300,7 +300,7 @@ const EditForm = ({
                   </Box>
                   {isInitd && (
                     <PromptEditor
-                      defaultValue={aiSystemPrompt}
+                      value={aiSystemPrompt}
                       onChange={(text) => {
                         startTst(() => {
                           setValue('aiSettings.systemPrompt', text);
