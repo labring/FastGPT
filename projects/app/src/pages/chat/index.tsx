@@ -126,7 +126,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [appId, chatId, histories, pushHistory, router, setChatData, updateHistory]
+    [appId, chatId, histories, pushHistory, router, setChatData, t, updateHistory]
   );
 
   // get chat app info
@@ -183,7 +183,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       setIsLoading(false);
       return null;
     },
-    [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId, toast]
+    [setIsLoading, setChatData, setLastChatAppId, setLastChatId, toast, t, router]
   );
   // 初始化聊天框
   useQuery(['init', { appId, chatId }], () => {

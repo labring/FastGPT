@@ -25,7 +25,7 @@ export const DatasetConcatModule: FlowModuleTemplateType = {
   flowType: FlowNodeTypeEnum.datasetConcatNode,
   templateType: ModuleTemplateTypeEnum.tools,
   avatar: '/imgs/module/concat.svg',
-  name: '知识库搜索结果合并',
+  name: '知识库搜索引用合并',
   intro: 'core.module.template.Dataset search result concat intro',
   showStatus: false,
   inputs: [
