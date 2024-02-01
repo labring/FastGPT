@@ -740,6 +740,12 @@
     "module": {
       "Add question type": "Add type",
       "Data Type": "Data Type",
+      "Dataset quote": {
+        "Add quote": "Add quote",
+        "Concat result": "Concat result",
+        "Input description": "",
+        "label": "Dataset quote"
+      },
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",
@@ -843,6 +849,7 @@
         "Classify question intro": "Determine the type of question based on the user's history and current issue. Multiple sets of question types can be added, here is a template example: \n type 1: Hello\ntype 2: Questions about 'use'\ntype 3: Questions about 'purchase'\ntype 4: Other questions",
         "Dataset search": "Dataset search",
         "Dataset search intro": "Invoke the Dataset search capability to find content that may be relevant to the problem",
+        "Dataset search result concat intro": "Multiple knowledge base search results can be combined and output",
         "External module": "External call",
         "Extract field": "Text content extraction ",
         "Extract field intro": "Can extract specified data from the text, such as: sql statements, search keywords, code, etc.",

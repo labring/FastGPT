@@ -3,7 +3,7 @@ import { ModuleIOValueTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
-  id: string;
+  id?: string;
   templateType: `${ModuleTemplateTypeEnum}`;
   flowType: `${FlowNodeTypeEnum}`; // unique
   avatar?: string;

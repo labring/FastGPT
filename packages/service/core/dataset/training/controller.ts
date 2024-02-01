@@ -150,7 +150,7 @@ export async function pushDataListToTrainingQueue({
           model,
           q: item.q,
           a: item.a,
-          chunkIndex: item.chunkIndex ?? i,
+          chunkIndex: item.chunkIndex ?? 0,
           weight: weight ?? 0,
           indexes: item.indexes
         }))

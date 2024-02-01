@@ -23,6 +23,7 @@ import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/ty
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { getHistories } from '../utils';
+import { filterSearchResultsByMaxChars } from '@fastgpt/global/core/dataset/search/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatModuleProps & {
@@ -245,16 +246,8 @@ function filterQuote({
     });
   }
 
-  const sliceResult = sliceMessagesTB({
-    maxTokens: model.quoteMaxToken,
-    messages: quoteQA.map((item, index) => ({
-      obj: ChatRoleEnum.System,
-      value: getValue(item, index).trim()
-    }))
-  });
-
   // slice filterSearch
-  const filterQuoteQA = quoteQA.slice(0, sliceResult.length);
+  const filterQuoteQA = filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
   // filterQuoteQA按collectionId聚合在一起后，再按chunkIndex从小到大排序
   const sortQuoteQAMap: Record<string, SearchDataResponseItemType[]> = {};
@@ -265,21 +258,21 @@ function filterQuote({
       sortQuoteQAMap[item.collectionId] = [item];
     }
   });
-  const sortQuoteQAList = Object.values(sortQuoteQAMap).flat();
-  sortQuoteQAList.sort((a, b) => {
-    if (a.collectionId === b.collectionId) {
-      return a.chunkIndex - b.chunkIndex;
-    }
-    return 0;
+  const sortQuoteQAList = Object.values(sortQuoteQAMap);
+
+  sortQuoteQAList.forEach((qaList) => {
+    qaList.sort((a, b) => a.chunkIndex - b.chunkIndex);
   });
 
+  const flatQuoteList = sortQuoteQAList.flat();
+
   const quoteText =
-    sortQuoteQAList.length > 0
-      ? `${sortQuoteQAList.map((item, index) => getValue(item, index)).join('\n')}`
+    flatQuoteList.length > 0
+      ? `${flatQuoteList.map((item, index) => getValue(item, index)).join('\n')}`
       : '';
 
   return {
-    filterQuoteQA: sortQuoteQAList,
+    filterQuoteQA: flatQuoteList,
     quoteText
   };
 }

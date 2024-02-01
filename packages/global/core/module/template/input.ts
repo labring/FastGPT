@@ -57,3 +57,13 @@ export const Input_Template_DynamicInput: FlowNodeInputItemType = {
   showTargetInPlugin: true,
   hideInApp: true
 };
+
+export const Input_Template_Dataset_Quote: FlowNodeInputItemType = {
+  key: ModuleInputKeyEnum.aiChatDatasetQuote,
+  type: FlowNodeInputTypeEnum.target,
+  label: '知识库引用',
+  description: 'core.module.Dataset quote.Input description',
+  valueType: ModuleIOValueTypeEnum.datasetQuote,
+  showTargetInApp: true,
+  showTargetInPlugin: true
+};

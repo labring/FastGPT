@@ -37,7 +37,7 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
     });
 
     return maxTokens;
-  }, [nodes]);
+  }, [llmModelList, nodes]);
 
   const { isOpen, onOpen, onClose } = useDisclosure();
 

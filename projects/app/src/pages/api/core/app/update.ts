@@ -42,7 +42,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       modules.forEach((item) => {
         if (item.flowType === FlowNodeTypeEnum.datasetSearchNode) {
           item.inputs.forEach((input) => {
-            if (input.key === ModuleInputKeyEnum.datasetLimit) {
+            if (input.key === ModuleInputKeyEnum.datasetMaxTokens) {
               const val = input.value as number;
               if (val > maxTokens) {
                 input.value = maxTokens;

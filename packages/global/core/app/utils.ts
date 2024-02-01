@@ -91,7 +91,7 @@ export const appModules2Form = ({
       );
       defaultAppForm.dataset.limit = findInputValueByKey(
         module.inputs,
-        ModuleInputKeyEnum.datasetLimit
+        ModuleInputKeyEnum.datasetMaxTokens
       );
       defaultAppForm.dataset.searchMode =
         findInputValueByKey(module.inputs, ModuleInputKeyEnum.datasetSearchMode) ||

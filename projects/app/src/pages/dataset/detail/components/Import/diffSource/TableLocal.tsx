@@ -62,10 +62,10 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
 
           const filterData: FileItemType['chunks'] = data
             .filter((item) => item[0])
-            .map((item, i) => ({
+            .map((item) => ({
               q: item[0] || '',
               a: item[1] || '',
-              chunkIndex: i
+              chunkIndex: 0
             }));
 
           const item: FileItemType = {

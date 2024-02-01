@@ -11,6 +11,7 @@ import {
   ModuleTemplateTypeEnum
 } from '../../constants';
 import {
+  Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_Switch,
   Input_Template_UserChatInput
@@ -109,15 +110,7 @@ export const AiChatModule: FlowModuleTemplateType = {
     },
     Input_Template_History,
     Input_Template_UserChatInput,
-    {
-      key: ModuleInputKeyEnum.aiChatDatasetQuote,
-      type: FlowNodeInputTypeEnum.target,
-      label: 'core.module.Dataset quote.label',
-      description: 'core.module.Dataset quote.Input description',
-      valueType: ModuleIOValueTypeEnum.datasetQuote,
-      showTargetInApp: true,
-      showTargetInPlugin: true
-    }
+    Input_Template_Dataset_Quote
   ],
   outputs: [
     Output_Template_UserChatInput,

@@ -152,9 +152,9 @@ const DatasetParamsModal = ({
                 min={100}
                 max={maxTokens}
                 step={50}
-                value={getValues(ModuleInputKeyEnum.datasetLimit) ?? 1000}
+                value={getValues(ModuleInputKeyEnum.datasetMaxTokens) ?? 1000}
                 onChange={(val) => {
-                  setValue(ModuleInputKeyEnum.datasetLimit, val);
+                  setValue(ModuleInputKeyEnum.datasetMaxTokens, val);
                   setRefresh(!refresh);
                 }}
               />

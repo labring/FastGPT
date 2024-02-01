@@ -19,6 +19,9 @@ const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
   [FlowNodeTypeEnum.historyNode]: NodeSimple,
   [FlowNodeTypeEnum.chatNode]: NodeSimple,
   [FlowNodeTypeEnum.datasetSearchNode]: NodeSimple,
+  [FlowNodeTypeEnum.datasetConcatNode]: dynamic(
+    () => import('./components/nodes/NodeDatasetConcat')
+  ),
   [FlowNodeTypeEnum.answerNode]: dynamic(() => import('./components/nodes/NodeAnswer')),
   [FlowNodeTypeEnum.classifyQuestion]: dynamic(() => import('./components/nodes/NodeCQNode')),
   [FlowNodeTypeEnum.contentExtract]: dynamic(() => import('./components/nodes/NodeExtract')),

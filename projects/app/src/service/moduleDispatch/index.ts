@@ -16,6 +16,7 @@ import { dispatchHistory } from './init/history';
 import { dispatchChatInput } from './init/userChatInput';
 import { dispatchChatCompletion } from './chat/oneapi';
 import { dispatchDatasetSearch } from './dataset/search';
+import { dispatchDatasetConcat } from './dataset/concat';
 import { dispatchAnswer } from './tools/answer';
 import { dispatchClassifyQuestion } from './agent/classifyQuestion';
 import { dispatchContentExtract } from './agent/extract';
@@ -33,6 +34,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
   [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,
   [FlowNodeTypeEnum.datasetSearchNode]: dispatchDatasetSearch,
+  [FlowNodeTypeEnum.datasetConcatNode]: dispatchDatasetConcat,
   [FlowNodeTypeEnum.classifyQuestion]: dispatchClassifyQuestion,
   [FlowNodeTypeEnum.contentExtract]: dispatchContentExtract,
   [FlowNodeTypeEnum.httpRequest]: dispatchHttpRequest,
@@ -163,6 +165,7 @@ export async function dispatchModules({
     return Promise.all(
       modules.map((module) => {
         if (!module.inputs.find((item: any) => item.value === undefined)) {
+          // remove switch
           moduleInput(module, { [ModuleInputKeyEnum.switch]: undefined });
           return moduleRun(module);
         }
