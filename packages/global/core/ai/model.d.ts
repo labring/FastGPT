@@ -31,6 +31,8 @@ export type VectorModelItemType = {
   outputPrice: number;
   maxToken: number;
   weight: number;
+  hidden?: boolean;
+  defaultConfig?: Record<string, any>;
 };
 
 export type ReRankModelItemType = {

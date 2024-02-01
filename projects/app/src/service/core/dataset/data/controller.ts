@@ -34,6 +34,7 @@ import type {
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { getVectorModel } from '../../ai/model';
 
 export async function pushDataToTrainingQueue(
   props: {
@@ -93,7 +94,7 @@ export async function insertData2Dataset({
     indexes.map((item) =>
       insertDatasetDataVector({
         query: item.text,
-        model,
+        model: getVectorModel(model),
         teamId,
         datasetId,
         collectionId
@@ -219,7 +220,7 @@ export async function updateData2Dataset({
       if (item.type === 'create') {
         const result = await insertDatasetDataVector({
           query: item.index.text,
-          model,
+          model: getVectorModel(model),
           teamId: mongoData.teamId,
           datasetId: mongoData.datasetId,
           collectionId: mongoData.collectionId
@@ -234,7 +235,7 @@ export async function updateData2Dataset({
           collectionId: mongoData.collectionId,
           id: item.index.dataId,
           query: item.index.text,
-          model
+          model: getVectorModel(model)
         });
         item.index.dataId = result.insertId;
 
@@ -329,7 +330,7 @@ export async function searchDatasetData(props: {
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, charsLength } = await getVectorsByText({
-      model,
+      model: getVectorModel(model),
       input: query
     });
 

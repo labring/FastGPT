@@ -26,6 +26,9 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
   const { toast } = useToast();
   const router = useRouter();
   const { isPc, feConfigs, vectorModelList, datasetModelList } = useSystemStore();
+
+  const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
+
   const { register, setValue, getValues, handleSubmit } = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,
@@ -33,7 +36,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       avatar: '/icon/logo.svg',
       name: '',
       intro: '',
-      vectorModel: vectorModelList[0].model,
+      vectorModel: filterNotHiddenVectorModelList[0].model,
       agentModel: datasetModelList[0].model
     }
   });
@@ -150,7 +153,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             />
           </Flex>
         </Box>
-        {vectorModelList.length > 1 && (
+        {filterNotHiddenVectorModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
             <Flex alignItems={'center'} flex={'0 0 100px'}>
               {t('core.ai.model.Vector Model')}
@@ -162,7 +165,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
               <MySelect
                 w={'100%'}
                 value={getValues('vectorModel')}
-                list={vectorModelList.map((item) => ({
+                list={filterNotHiddenVectorModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}

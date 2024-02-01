@@ -78,7 +78,7 @@ COPY --from=builder /app/projects/$name/package.json ./package.json
 COPY --from=workerDeps /app/worker /app/worker
 # copy config
 COPY ./projects/$name/data /app/data
-
+RUN chown -R nextjs:nodejs /app/data
 
 ENV NODE_ENV production
 ENV NEXT_TELEMETRY_DISABLED 1

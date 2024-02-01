@@ -267,7 +267,8 @@ llm模型全部合并
       "outputPrice": 0,
       "defaultToken": 700,
       "maxToken": 3000,
-      "weight": 100
+      "weight": 100,
+      "defaultConfig":{}  // 默认配置。例如，如果希望使用 embedding3-large 的话，可以传入 dimensions:1024，来返回1024维度的向量。（目前必须小于1536维度）
     }
   ],
   "reRankModels": [],
