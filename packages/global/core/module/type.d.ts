@@ -3,9 +3,9 @@ import { ModuleIOValueTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
-  id?: string;
+  id: string; // module id, unique
   templateType: `${ModuleTemplateTypeEnum}`;
-  flowType: `${FlowNodeTypeEnum}`; // unique
+  flowType: `${FlowNodeTypeEnum}`; // render node card
   avatar?: string;
   name: string;
   intro: string; // template list intro

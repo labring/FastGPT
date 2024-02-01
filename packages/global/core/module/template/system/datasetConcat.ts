@@ -21,6 +21,7 @@ export const getOneQuoteInputTemplate = (key = getNanoid()) => ({
 });
 
 export const DatasetConcatModule: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.datasetConcatNode,
   flowType: FlowNodeTypeEnum.datasetConcatNode,
   templateType: ModuleTemplateTypeEnum.tools,
   avatar: '/imgs/module/concat.svg',
