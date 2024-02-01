@@ -15,7 +15,8 @@ import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
 import { EditorVariablePickerType } from './type.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import InitValuePlutin from './plugins/InitValuePlugin';
+import FocusPlugin from './plugins/FocusPlugin';
+import { textToEditorState } from './utils';
 
 export default function Editor({
   h = 200,
@@ -40,11 +41,12 @@ export default function Editor({
 }) {
   const key = useRef(getNanoid(6));
   const [height, setHeight] = useState(h);
+  const [focus, setFocus] = useState(false);
 
   const initialConfig = {
     namespace: 'promptEditor',
     nodes: [VariableNode],
-    editorState: null,
+    editorState: textToEditorState(defaultValue),
     onError: (error: Error) => {
       throw error;
     }
@@ -72,7 +74,14 @@ export default function Editor({
 
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
-      <LexicalComposer initialConfig={initialConfig} key={key.current + variables.length}>
+      <LexicalComposer
+        initialConfig={initialConfig}
+        key={
+          focus
+            ? key.current + variables.length
+            : key.current + variables.length && defaultValue?.length
+        }
+      >
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
           placeholder={
@@ -102,7 +111,7 @@ export default function Editor({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
-        <InitValuePlutin defaultValue={defaultValue} />
+        <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin onChange={(e) => onChange?.(e)} />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin variables={variables} />
