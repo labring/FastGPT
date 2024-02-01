@@ -38,10 +38,10 @@
         {
           "key": "DYNAMIC_INPUT_KEY",
           "valueType": "any",
-          "label": "字符串变量",
+          "label": "需要加工的输入",
           "type": "addInputParam",
           "required": false,
-          "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。",
+          "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。非字符串类型，会自动转成字符串类型。",
           "edit": true,
           "editField": {
             "key": true,
@@ -79,7 +79,7 @@
         {
           "key": "DYNAMIC_INPUT_KEY",
           "valueType": "any",
-          "label": "字符串变量",
+          "label": "需要加工的输入",
           "type": "source",
           "edit": true,
           "targets": [

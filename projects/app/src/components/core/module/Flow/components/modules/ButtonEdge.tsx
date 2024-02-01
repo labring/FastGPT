@@ -49,7 +49,8 @@ const ButtonEdge = (props: EdgeProps) => {
           borderRadius={'20px'}
           color={'black'}
           cursor={'pointer'}
-          border={'1px solid #fff'}
+          borderWidth={'1px'}
+          borderColor={'borderColor.low'}
           zIndex={active ? 1000 : 0}
           _hover={{
             boxShadow: '0 0 6px 2px rgba(0, 0, 0, 0.08)'
@@ -59,7 +60,7 @@ const ButtonEdge = (props: EdgeProps) => {
           <MyIcon
             name="closeSolid"
             w={'100%'}
-            color={active ? 'primary.700' : 'myGray.500'}
+            color={active ? 'primary.800' : 'myGray.400'}
           ></MyIcon>
         </Flex>
         <Flex
@@ -76,7 +77,7 @@ const ButtonEdge = (props: EdgeProps) => {
           <MyIcon
             name={'common/rightArrowLight'}
             w={'100%'}
-            color={active ? 'primary.700' : 'myGray.400'}
+            color={active ? 'primary.800' : 'myGray.400'}
           ></MyIcon>
         </Flex>
       </EdgeLabelRenderer>
@@ -88,10 +89,10 @@ const ButtonEdge = (props: EdgeProps) => {
       ...style,
       ...(active
         ? {
-            strokeWidth: 4,
+            strokeWidth: 5,
             stroke: '#3370ff'
           }
-        : { strokeWidth: 2, zIndex: 2, stroke: 'myGray.400' })
+        : { strokeWidth: 2, zIndex: 2, stroke: 'myGray.300' })
     };
 
     return <BezierEdge {...props} style={edgeStyle} />;

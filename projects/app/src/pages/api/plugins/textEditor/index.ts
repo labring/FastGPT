@@ -19,7 +19,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     // string all value
     Object.keys(obj).forEach((key) => {
-      obj[key] = JSON.stringify(obj[key]);
+      let val = obj[key];
+
+      if (typeof val === 'object') {
+        val = JSON.stringify(val);
+      } else if (typeof val === 'number') {
+        val = String(val);
+      } else if (typeof val === 'boolean') {
+        val = val ? 'true' : 'false';
+      }
+
+      obj[key] = val;
     });
 
     const textResult = replaceVariable(text, obj);
