@@ -24,11 +24,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     mode,
     teamId,
     tmbId,
-    inputs: { pluginId, ...data }
+    params: { pluginId, ...data }
   } = props;
 
   if (!pluginId) {
-    return Promise.reject('Input is empty');
+    return Promise.reject('pluginId can not find');
   }
 
   await authPluginCanUse({ id: pluginId, teamId, tmbId });
@@ -72,7 +72,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   if (output) {
     output.moduleLogo = plugin.avatar;
   }
-  console.log(responseData.length);
 
   return {
     answerText,

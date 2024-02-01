@@ -208,10 +208,6 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
-## Translations
-
-[![inlang status badge](https://badge.inlang.com/?url=github.com/labring/FastGPT)](https://fink.inlang.com/github.com/labring/FastGPT?ref=badge)
-
 ## 使用协议
 
 本仓库遵循 [FastGPT Open Source License](./LICENSE) 开源协议。

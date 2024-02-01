@@ -15,7 +15,7 @@ export const UserInputModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.questionInput,
   templateType: ModuleTemplateTypeEnum.systemInput,
   flowType: FlowNodeTypeEnum.questionInput,
-  avatar: '/imgs/module/userChatInput.png',
+  avatar: '/imgs/module/userChatInput.svg',
   name: 'core.module.template.Chat entrance',
   intro: 'core.module.template.Chat entrance intro',
   inputs: [

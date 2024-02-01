@@ -16,7 +16,7 @@ import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
@@ -80,7 +80,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
           chatId: completionChatId
         },
         onMessage: generatingMessage,
-        abortSignal: controller
+        abortCtrl: controller
       });
 
       const newTitle =
@@ -126,7 +126,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [appId, chatId, histories, pushHistory, router, setChatData, updateHistory]
+    [appId, chatId, histories, pushHistory, router, setChatData, t, updateHistory]
   );
 
   // get chat app info
@@ -183,7 +183,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       setIsLoading(false);
       return null;
     },
-    [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId, toast]
+    [setIsLoading, setChatData, setLastChatAppId, setLastChatId, toast, t, router]
   );
   // 初始化聊天框
   useQuery(['init', { appId, chatId }], () => {

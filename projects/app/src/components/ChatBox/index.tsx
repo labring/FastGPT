@@ -13,7 +13,7 @@ import { throttle } from 'lodash';
 import type { ExportChatType } from '@/types/chat.d';
 import type { ChatItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
@@ -30,7 +30,6 @@ import {
   Textarea,
   Checkbox
 } from '@chakra-ui/react';
-import { feConfigs } from '@/web/common/system/staticData';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
@@ -159,7 +158,7 @@ const ChatBox = (
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { isPc, setLoading } = useSystemStore();
+  const { isPc, setLoading, feConfigs } = useSystemStore();
   const TextareaDom = useRef<HTMLTextAreaElement>(null);
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
@@ -519,7 +518,13 @@ const ChatBox = (
       chatHistory.length === 0 &&
       !variableModules?.length &&
       !welcomeText,
-    [chatHistory.length, showEmptyIntro, variableModules, welcomeText]
+    [
+      chatHistory.length,
+      feConfigs?.show_emptyChat,
+      showEmptyIntro,
+      variableModules?.length,
+      welcomeText
+    ]
   );
   const statusBoxData = useMemo(() => {
     const colorMap = {
@@ -954,7 +959,6 @@ const ChatBox = (
           setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
           onClose={() => setAdminMarkData(undefined)}
           onSuccess={(adminFeedback) => {
-            console.log(adminMarkData);
             if (!appId || !chatId || !adminMarkData.chatItemId) return;
             updateChatAdminFeedback({
               appId,
@@ -1108,6 +1112,7 @@ const VariableInput = React.memo(function VariableInput({
   }>;
 }) {
   const { t } = useTranslation();
+  const [refresh, setRefresh] = useState(false);
   const { register, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
   const variables = watch('variables');
 
@@ -1168,6 +1173,7 @@ const VariableInput = React.memo(function VariableInput({
                   value={variables[item.key]}
                   onchange={(e) => {
                     setValue(`variables.${item.key}`, e);
+                    setRefresh((state) => !state);
                   }}
                 />
               )}

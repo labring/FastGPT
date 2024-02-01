@@ -8,6 +8,7 @@ import { exit } from 'process';
 import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller';
 import { getInitConfig } from '@/pages/api/common/system/getInitData';
 import { startCron } from './common/system/cron';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 /**
  * connect MongoDB and init data
@@ -39,23 +40,30 @@ async function initRootUser() {
 
     let rootId = rootUser?._id || '';
 
-    // init root user
-    if (rootUser) {
-      await MongoUser.findOneAndUpdate(
-        { username: 'root' },
-        {
-          password: hashStr(psw)
-        }
-      );
-    } else {
-      const { _id } = await MongoUser.create({
-        username: 'root',
-        password: hashStr(psw)
-      });
-      rootId = _id;
-    }
-    // init root team
-    await createDefaultTeam({ userId: rootId, maxSize: 1, balance: 9999 * PRICE_SCALE });
+    await mongoSessionRun(async (session) => {
+      // init root user
+      if (rootUser) {
+        await MongoUser.findOneAndUpdate(
+          { username: 'root' },
+          {
+            password: hashStr(psw)
+          }
+        );
+      } else {
+        const [{ _id }] = await MongoUser.create(
+          [
+            {
+              username: 'root',
+              password: hashStr(psw)
+            }
+          ],
+          { session }
+        );
+        rootId = _id;
+      }
+      // init root team
+      await createDefaultTeam({ userId: rootId, maxSize: 1, balance: 9999 * PRICE_SCALE, session });
+    });
 
     console.log(`root user init:`, {
       username: 'root',

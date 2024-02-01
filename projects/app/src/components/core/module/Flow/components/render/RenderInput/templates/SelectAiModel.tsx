@@ -2,17 +2,11 @@ import React, { useCallback, useEffect } from 'react';
 import type { RenderInputProps } from '../type';
 import { onChangeNode } from '../../../../FlowProvider';
 import SelectAiModel from '@/components/Select/SelectAiModel';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { chatModelList, cqModelList, extractModelList } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) => {
-  const modelList = (() => {
-    if (item.type === FlowNodeInputTypeEnum.selectChatModel) return chatModelList;
-    if (item.type === FlowNodeInputTypeEnum.selectCQModel) return cqModelList;
-    if (item.type === FlowNodeInputTypeEnum.selectExtractModel) return extractModelList;
-
-    return [];
-  })().map((item) => ({
+  const { llmModelList } = useSystemStore();
+  const modelList = llmModelList.map((item) => ({
     model: item.model,
     name: item.name,
     maxResponse: item.maxResponse

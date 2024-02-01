@@ -44,7 +44,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // query extension
     // const { queries } = await searchQueryExtension({
     //   query: text,
-    //   model: global.chatModels[0].model
+    //   model: global.llmModel[0].model
     // });
 
     const { searchRes, charsLength, ...result } = await searchDatasetData({

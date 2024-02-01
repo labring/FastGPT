@@ -1,13 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
+import { delFileByFileIdList, uploadFile } from '@fastgpt/service/common/file/gridfs/controller';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { FileCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
+import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
 /**
  * Creates the multer uploader
@@ -18,7 +19,7 @@ const upload = getUploadModel({
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let filePaths: string[] = [];
-
+  let fileId: string = '';
   const { datasetId } = req.query as { datasetId: string };
 
   try {
@@ -45,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { fileMetadata, collectionMetadata, ...collectionData } = data;
 
     // upload file and create collection
-    const fileId = await uploadFile({
+    fileId = await uploadFile({
       teamId,
       tmbId,
       bucketName,
@@ -56,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // create collection
-    const collectionId = await createOneCollection({
+    const { _id: collectionId } = await createOneCollection({
       ...collectionData,
       metadata: collectionMetadata,
       teamId,
@@ -69,6 +70,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       data: collectionId
     });
   } catch (error) {
+    if (fileId) {
+      try {
+        await delFileByFileIdList({
+          fileIdList: [fileId],
+          bucketName: BucketNameEnum.dataset
+        });
+      } catch (error) {}
+    }
     jsonRes(res, {
       code: 500,
       error

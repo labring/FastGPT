@@ -21,8 +21,8 @@ import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
 import MyTooltip from '@/components/MyTooltip';
 import { useImportStore } from '../Provider';
-import { feConfigs } from '@/web/common/system/staticData';
 import Tag from '@/components/Tag';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@/components/MyModal';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import Preview from '../components/Preview';
@@ -35,6 +35,7 @@ function DataProcess({
   goToNext: () => void;
 }) {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const {
     processParamsForm,
     sources,

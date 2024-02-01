@@ -106,6 +106,6 @@ export type AIChatModuleProps = {
 export type DatasetModuleProps = {
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
   [ModuleInputKeyEnum.datasetSimilarity]: number;
-  [ModuleInputKeyEnum.datasetLimit]: number;
+  [ModuleInputKeyEnum.datasetMaxTokens]: number;
   [ModuleInputKeyEnum.datasetStartReRank]: boolean;
 };

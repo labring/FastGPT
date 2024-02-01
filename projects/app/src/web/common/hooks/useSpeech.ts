@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { POST } from '../api/request';
-import { useToast } from './useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 

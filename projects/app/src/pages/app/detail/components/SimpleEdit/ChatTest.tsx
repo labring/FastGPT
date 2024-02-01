@@ -49,7 +49,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
           appName: `调试-${appDetail.name}`
         },
         onMessage: generatingMessage,
-        abortSignal: controller
+        abortCtrl: controller
       });
 
       return { responseText, responseData };

@@ -2,9 +2,9 @@ import React, { useEffect, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
@@ -27,7 +27,7 @@ const Logs = dynamic(() => import('./components/Logs'), {});
 enum TabEnum {
   'simpleEdit' = 'simpleEdit',
   'adEdit' = 'adEdit',
-  'outLink' = 'outLink',
+  'publish' = 'publish',
   'logs' = 'logs',
   'startChat' = 'startChat'
 }
@@ -36,6 +36,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const theme = useTheme();
+  const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { appId } = router.query as { appId: string };
   const { appDetail, loadAppDetail, clearAppModules } = useAppStore();
@@ -69,14 +70,14 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             }
           ]),
       {
-        label: t('core.app.navbar.External'),
-        id: TabEnum.outLink,
+        label: t('core.app.navbar.Publish app'),
+        id: TabEnum.publish,
         icon: 'support/outlink/shareLight'
       },
       { label: t('app.Chat logs'), id: TabEnum.logs, icon: 'core/app/logsLight' },
       { label: t('core.Start chat'), id: TabEnum.startChat, icon: 'core/chat/chatLight' }
     ],
-    [t]
+    [feConfigs?.hide_app_flow, t]
   );
 
   const onCloseFlowEdit = useCallback(() => setCurrentTab(TabEnum.simpleEdit), [setCurrentTab]);
@@ -194,7 +195,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
               <FlowEdit app={appDetail} onClose={onCloseFlowEdit} />
             )}
             {currentTab === TabEnum.logs && <Logs appId={appId} />}
-            {currentTab === TabEnum.outLink && <OutLink appId={appId} />}
+            {currentTab === TabEnum.publish && <OutLink appId={appId} />}
           </Box>
         </Flex>
       </PageContainer>

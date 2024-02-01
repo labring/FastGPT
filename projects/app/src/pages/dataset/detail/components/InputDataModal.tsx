@@ -8,7 +8,7 @@ import {
   getDatasetCollectionById,
   getDatasetDataItemById
 } from '@/web/core/dataset/api';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
@@ -19,7 +19,6 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
-import { vectorModelList } from '@/web/common/system/staticData';
 import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import SideTabs from '@/components/SideTabs';
@@ -66,6 +65,7 @@ const InputDataModal = ({
   const theme = useTheme();
   const { toast } = useToast();
   const [currentTab, setCurrentTab] = useState(TabEnum.content);
+  const { vectorModelList } = useSystemStore();
 
   const { register, handleSubmit, reset, control } = useForm<InputDataType>();
   const {
@@ -139,7 +139,7 @@ const InputDataModal = ({
       vectorModelList[0];
 
     return vectorModel?.maxToken || 3000;
-  }, [collection.datasetId.vectorModel]);
+  }, [collection.datasetId.vectorModel, vectorModelList]);
 
   // import new data
   const { mutate: sureImportData, isLoading: isImporting } = useRequest({

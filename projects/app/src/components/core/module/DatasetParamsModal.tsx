@@ -17,7 +17,7 @@ import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
-import { reRankModelList } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
@@ -45,6 +45,7 @@ const DatasetParamsModal = ({
 }: DatasetParamsProps & { onClose: () => void; onSuccess: (e: DatasetParamsProps) => void }) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { reRankModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const { register, setValue, getValues, handleSubmit } = useForm<DatasetParamsProps>({
     defaultValues: {
@@ -72,7 +73,7 @@ const DatasetParamsModal = ({
       return false;
 
     return true;
-  }, [getValues, similarity, refresh]);
+  }, [getValues, similarity]);
 
   return (
     <MyModal
@@ -135,7 +136,7 @@ const DatasetParamsModal = ({
         )}
 
         {limit !== undefined && (
-          <Box display={['block', 'flex']} py={8} mt={3}>
+          <Box display={['block', 'flex']} mt={5}>
             <Box flex={'0 0 120px'} mb={[8, 0]}>
               {t('core.dataset.search.Max Tokens')}
               <MyTooltip label={t('core.dataset.search.Max Tokens Tips')} forceShow>
@@ -151,9 +152,9 @@ const DatasetParamsModal = ({
                 min={100}
                 max={maxTokens}
                 step={50}
-                value={getValues(ModuleInputKeyEnum.datasetLimit) ?? 1000}
+                value={getValues(ModuleInputKeyEnum.datasetMaxTokens) ?? 1000}
                 onChange={(val) => {
-                  setValue(ModuleInputKeyEnum.datasetLimit, val);
+                  setValue(ModuleInputKeyEnum.datasetMaxTokens, val);
                   setRefresh(!refresh);
                 }}
               />
@@ -161,7 +162,7 @@ const DatasetParamsModal = ({
           </Box>
         )}
         {showSimilarity && (
-          <Box display={['block', 'flex']} py={8}>
+          <Box display={['block', 'flex']} mt={5}>
             <Box flex={'0 0 120px'} mb={[8, 0]}>
               {t('core.dataset.search.Min Similarity')}
               <MyTooltip label={t('core.dataset.search.Min Similarity Tips')} forceShow>

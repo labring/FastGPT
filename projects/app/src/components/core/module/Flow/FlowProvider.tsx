@@ -24,7 +24,7 @@ import React, {
 } from 'react';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';

@@ -35,6 +35,7 @@ export function getSourceNameIcon({
   return 'file/fill/manual';
 }
 
+/* get dataset data default index */
 export function getDefaultIndex(props?: { q?: string; a?: string; dataId?: string }) {
   const { q = '', a, dataId } = props || {};
   const qaStr = `${q}\n${a}`.trim();

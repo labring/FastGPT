@@ -36,9 +36,9 @@ import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { variableTip } from '@fastgpt/global/core/module/template/tip';
 import { useTranslation } from 'next-i18next';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyRadio from '@/components/common/MyRadio';
-import { formatVariablesIcon } from '@fastgpt/global/core/module/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
 
 const VariableEdit = ({
   variables,
@@ -102,7 +102,14 @@ const VariableEdit = ({
   };
 
   const formatVariables = useMemo(() => {
-    return formatVariablesIcon(variables);
+    const results = formatEditorVariablePickerIcon(variables);
+    return results.map((item) => {
+      const variable = variables.find((variable) => variable.key === item.key);
+      return {
+        ...variable,
+        icon: item.icon
+      };
+    });
   }, [variables]);
 
   return (
@@ -111,7 +118,7 @@ const VariableEdit = ({
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
         <Box ml={2} flex={1}>
           {t('core.module.Variable')}
-          <MyTooltip label={variableTip} forceShow>
+          <MyTooltip label={t(variableTip)} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
         </Box>

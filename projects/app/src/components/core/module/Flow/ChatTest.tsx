@@ -66,7 +66,7 @@ const ChatTest = (
           appName: `调试-${app.name}`
         },
         onMessage: generatingMessage,
-        abortSignal: controller
+        abortCtrl: controller
       });
 
       return { responseText, responseData };

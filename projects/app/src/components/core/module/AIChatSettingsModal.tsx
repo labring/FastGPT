@@ -7,17 +7,15 @@ import {
   BoxProps,
   Button,
   Flex,
-  Image,
   Link,
   ModalBody,
   ModalFooter,
-  Switch,
-  Textarea
+  Switch
 } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
-import { chatModelList, feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import dynamic from 'next/dynamic';
@@ -27,7 +25,7 @@ import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/t
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { PickerMenuItemType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 
 const PromptTemplate = dynamic(() => import('@/components/PromptTemplate'));
 
@@ -44,14 +42,17 @@ const AIChatSettingsModal = ({
   onSuccess: (e: AIChatModuleProps) => void;
   defaultData: AIChatModuleProps;
   simpleModeTemplate?: AppSimpleEditConfigTemplateType;
-  pickerMenu?: PickerMenuItemType[];
+  pickerMenu?: EditorVariablePickerType[];
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
+  const { feConfigs, llmModelList } = useSystemStore();
 
-  const { register, handleSubmit, getValues, setValue } = useForm({
+  const { handleSubmit, getValues, setValue, watch } = useForm({
     defaultValues: defaultData
   });
+  const aiChatQuoteTemplate = watch(ModuleInputKeyEnum.aiChatQuoteTemplate);
+  const aiChatQuotePrompt = watch(ModuleInputKeyEnum.aiChatQuotePrompt);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{
     title: string;
@@ -60,10 +61,10 @@ const AIChatSettingsModal = ({
 
   const tokenLimit = useMemo(() => {
     return (
-      chatModelList.find((item) => item.model === getValues(ModuleInputKeyEnum.aiModel))
+      llmModelList.find((item) => item.model === getValues(ModuleInputKeyEnum.aiModel))
         ?.maxResponse || 4000
     );
-  }, [getValues]);
+  }, [getValues, llmModelList]);
 
   const quoteTemplateVariables = (() => [
     {
@@ -160,7 +161,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {simpleModeTemplate?.systemForm?.aiSettings?.temperature && (
-          <Flex alignItems={'center'} mb={10} mt={isAdEdit ? 8 : 5}>
+          <Flex mb={10} mt={isAdEdit ? 8 : 6}>
             <Box {...LabelStyles} mr={2} w={'80px'}>
               {t('core.app.Temperature')}
             </Box>
@@ -183,7 +184,7 @@ const AIChatSettingsModal = ({
           </Flex>
         )}
         {simpleModeTemplate?.systemForm?.aiSettings?.maxToken && (
-          <Flex alignItems={'center'} mt={12} mb={10}>
+          <Flex mt={5} mb={5}>
             <Box {...LabelStyles} mr={2} w={'80px'}>
               {t('core.app.Max tokens')}
             </Box>
@@ -239,10 +240,10 @@ const AIChatSettingsModal = ({
               placeholder={t('template.Quote Content Tip', {
                 default: Prompt_QuoteTemplateList[0].value
               })}
-              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuoteTemplate)}
+              value={aiChatQuoteTemplate}
               onChange={(e) => {
                 setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e);
-                setRefresh(!refresh);
+                // setRefresh(!refresh);
               }}
             />
           </Box>
@@ -265,7 +266,7 @@ const AIChatSettingsModal = ({
               placeholder={t('template.Quote Prompt Tip', {
                 default: Prompt_QuotePromptList[0].value
               })}
-              defaultValue={getValues(ModuleInputKeyEnum.aiChatQuotePrompt)}
+              value={aiChatQuotePrompt}
               onChange={(e) => {
                 setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e);
               }}

@@ -66,7 +66,7 @@ export const pushQABill = async ({
   const { total } = formatModelPrice2Store({
     model,
     inputLen: charsLength,
-    type: ModelTypeEnum.qa
+    type: ModelTypeEnum.llm
   });
 
   concatBill({
@@ -143,12 +143,12 @@ export const pushQuestionGuideBill = ({
   teamId: string;
   tmbId: string;
 }) => {
-  const qgModel = global.qgModels[0];
+  const qgModel = global.llmModels[0];
   const { total, modelName } = formatModelPrice2Store({
     inputLen: inputTokens,
     outputLen: outputTokens,
     model: qgModel.model,
-    type: ModelTypeEnum.qg
+    type: ModelTypeEnum.llm
   });
 
   createBill({

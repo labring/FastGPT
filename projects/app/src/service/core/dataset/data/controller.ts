@@ -15,6 +15,7 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@/service/common/string/jieba';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
@@ -33,6 +34,7 @@ import type {
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { getVectorModel } from '../../ai/model';
 
 export async function pushDataToTrainingQueue(
   props: {
@@ -43,7 +45,7 @@ export async function pushDataToTrainingQueue(
   const result = await pushDataListToTrainingQueue({
     ...props,
     vectorModelList: global.vectorModels,
-    qaModelList: global.qaModels
+    datasetModelList: global.llmModels
   });
 
   return result;
@@ -92,7 +94,7 @@ export async function insertData2Dataset({
     indexes.map((item) =>
       insertDatasetDataVector({
         query: item.text,
-        model,
+        model: getVectorModel(model),
         teamId,
         datasetId,
         collectionId
@@ -218,7 +220,7 @@ export async function updateData2Dataset({
       if (item.type === 'create') {
         const result = await insertDatasetDataVector({
           query: item.index.text,
-          model,
+          model: getVectorModel(model),
           teamId: mongoData.teamId,
           datasetId: mongoData.datasetId,
           collectionId: mongoData.collectionId
@@ -233,7 +235,7 @@ export async function updateData2Dataset({
           collectionId: mongoData.collectionId,
           id: item.index.dataId,
           query: item.index.text,
-          model
+          model: getVectorModel(model)
         });
         item.index.dataId = result.insertId;
 
@@ -328,14 +330,15 @@ export async function searchDatasetData(props: {
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, charsLength } = await getVectorsByText({
-      model,
+      model: getVectorModel(model),
       input: query
     });
 
     const { results } = await recallFromVectorStore({
       vectors,
       limit,
-      datasetIds
+      datasetIds,
+      efSearch: global.systemEnv?.pgHNSWEfSearch
     });
 
     // get q and a
@@ -479,6 +482,7 @@ export async function searchDatasetData(props: {
       });
 
       if (!Array.isArray(results)) {
+        usingReRank = false;
         return [];
       }
 
@@ -498,6 +502,7 @@ export async function searchDatasetData(props: {
 
       return mergeResult;
     } catch (error) {
+      usingReRank = false;
       return [];
     }
   };
@@ -585,66 +590,6 @@ export async function searchDatasetData(props: {
       fullTextRecallResults: fullTextRecallResList[0]
     };
   };
-  const rrfConcat = (
-    arr: { k: number; list: SearchDataResponseItemType[] }[]
-  ): SearchDataResponseItemType[] => {
-    arr = arr.filter((item) => item.list.length > 0);
-
-    if (arr.length === 0) return [];
-    if (arr.length === 1) return arr[0].list;
-
-    const map = new Map<string, SearchDataResponseItemType & { rrfScore: number }>();
-
-    // rrf
-    arr.forEach((item) => {
-      const k = item.k;
-
-      item.list.forEach((data, index) => {
-        const rank = index + 1;
-        const score = 1 / (k + rank);
-
-        const record = map.get(data.id);
-        if (record) {
-          // 合并两个score,有相同type的score,取最大值
-          const concatScore = [...record.score];
-          for (const dataItem of data.score) {
-            const sameScore = concatScore.find((item) => item.type === dataItem.type);
-            if (sameScore) {
-              sameScore.value = Math.max(sameScore.value, dataItem.value);
-            } else {
-              concatScore.push(dataItem);
-            }
-          }
-
-          map.set(data.id, {
-            ...record,
-            score: concatScore,
-            rrfScore: record.rrfScore + score
-          });
-        } else {
-          map.set(data.id, {
-            ...data,
-            rrfScore: score
-          });
-        }
-      });
-    });
-
-    // sort
-    const mapArray = Array.from(map.values());
-    const results = mapArray.sort((a, b) => b.rrfScore - a.rrfScore);
-
-    return results.map((item, index) => {
-      item.score.push({
-        type: SearchScoreTypeEnum.rrf,
-        value: item.rrfScore,
-        index
-      });
-      // @ts-ignore
-      delete item.rrfScore;
-      return item;
-    });
-  };
 
   /* main step */
   // count limit
@@ -681,7 +626,7 @@ export async function searchDatasetData(props: {
   })();
 
   // embedding recall and fullText recall rrf concat
-  const rrfConcatResults = rrfConcat([
+  const rrfConcatResults = datasetSearchResultConcat([
     { k: 60, list: embeddingRecallResults },
     { k: 64, list: fullTextRecallResults },
     { k: 60, list: reRankResults }
@@ -709,9 +654,8 @@ export async function searchDatasetData(props: {
       });
     }
     if (searchMode === DatasetSearchModeEnum.embedding) {
+      usingSimilarityFilter = true;
       return filterSameDataResults.filter((item) => {
-        usingSimilarityFilter = true;
-
         const embeddingScore = item.score.find(
           (item) => item.type === SearchScoreTypeEnum.embedding
         );

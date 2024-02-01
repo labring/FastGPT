@@ -15,7 +15,7 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import EmptyTip from '@/components/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@/web/core/modules/template/system';
 
@@ -100,6 +100,7 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
           if (template.flowType === FlowNodeTypeEnum.pluginModule) {
             setLoading(true);
             const res = await getPreviewPluginModule(template.id);
+
             setLoading(false);
             return res;
           }
@@ -107,7 +108,7 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
         } catch (e) {
           toast({
             status: 'error',
-            title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
+            title: getErrText(e, t('core.plugin.Get Plugin Module Detail Failed'))
           });
           setLoading(false);
           return Promise.reject(e);

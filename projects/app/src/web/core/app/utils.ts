@@ -1,15 +1,16 @@
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { POST } from '@/web/common/api/request';
-import { chatModelList } from '@/web/common/system/staticData';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api.d';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export async function postForm2Modules(
   data: AppSimpleEditFormType,
   templateId = 'fastgpt-universal'
 ) {
+  const llmModelList = useSystemStore.getState().llmModelList;
   function userGuideTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
     return [
       {
@@ -51,12 +52,12 @@ export async function postForm2Modules(
     ];
   }
   const maxToken =
-    chatModelList.find((item) => item.model === data.aiSettings.model)?.maxResponse || 4000;
+    llmModelList.find((item) => item.model === data.aiSettings.model)?.maxResponse || 4000;
 
   const props: FormatForm2ModulesProps = {
     formData: data,
     chatModelMaxToken: maxToken,
-    chatModelList
+    llmModelList
   };
 
   const modules = await POST<ModuleItemType[]>(`/core/app/form2Modules/${templateId}`, props);

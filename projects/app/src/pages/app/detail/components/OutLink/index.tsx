@@ -18,7 +18,7 @@ const OutLink = ({ appId }: { appId: string }) => {
   return (
     <Box pt={[1, 5]}>
       <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2} px={[4, 8]}>
-        {t('core.app.External using')}
+        {t('core.app.navbar.Publish app')}
       </Box>
       <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
         <MyRadio

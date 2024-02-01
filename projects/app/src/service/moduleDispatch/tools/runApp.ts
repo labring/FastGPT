@@ -28,7 +28,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     stream,
     detail,
     histories,
-    inputs: { userChatInput, history, app }
+    params: { userChatInput, history, app }
   } = props;
 
   if (!userChatInput) {

@@ -1,17 +1,18 @@
+import { StandSubPlanLevelMapType } from '@fastgpt/global/support/wallet/sub/type';
 import { getVectorCountByTeamId } from '../../../common/vectorStore/controller';
-import { getTeamDatasetValidSub } from '../../wallet/sub/utils';
+import { getTeamDatasetMaxSize } from '../../wallet/sub/utils';
 
 export const checkDatasetLimit = async ({
   teamId,
-  freeSize = Infinity,
-  insertLen = 0
+  insertLen = 0,
+  standardPlans
 }: {
   teamId: string;
-  freeSize?: number;
   insertLen?: number;
+  standardPlans?: StandSubPlanLevelMapType;
 }) => {
   const [{ maxSize }, usedSize] = await Promise.all([
-    getTeamDatasetValidSub({ teamId, freeSize }),
+    getTeamDatasetMaxSize({ teamId, standardPlans }),
     getVectorCountByTeamId(teamId)
   ]);
 

@@ -9,7 +9,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { getOnePlugin } from '@/web/core/plugin/api';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@/components/Loading';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';

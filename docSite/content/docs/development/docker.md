@@ -94,10 +94,14 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/files/deploy/fast
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 ```
 
+## 三、修改 docker-compose.yml 的环境变量
 
-## 三、启动容器
+修改`docker-compose.yml`中的`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）和`CHAT_API_KEY`（API 接口的凭证）。
 
-修改`docker-compose.yml`中的`OPENAI_BASE_URL`和`CHAT_API_KEY`即可，对应为 API 的地址(别忘记加/v1)和 key。
+使用 OneAPI 的话，OPENAI_BASE_URL=OneAPI访问地址/v1；CHAT_API_KEY=令牌
+
+
+## 四、启动容器
 
 ```bash
 # 在 docker-compose.yml 同级目录下执行
@@ -105,7 +109,39 @@ docker-compose pull
 docker-compose up -d
 ```
 
-## 四、访问 FastGPT
+## 四、初始化 Mongo 副本集(4.6.8以前可忽略)
+
+FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。副本集没法自动化初始化，需手动操作。
+
+```bash
+# 查看 mongo 容器是否正常运行
+docker ps 
+# 进入容器
+docker exec -it mongo bash
+
+# 连接数据库
+mongo
+
+# 初始化副本集。
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongo:27017" }
+  ]
+})
+# 检查状态。如果提示 rs0 状态，则代表运行成功
+rs.status()
+
+# 初始化用户
+use admin
+db.createUser({
+  user: "admin",
+  pwd: "password",
+  roles: [{ role: "root", db: "admin" }]
+});
+```
+
+## 五、访问 FastGPT
 
 目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 

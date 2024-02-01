@@ -17,7 +17,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       shareId
     });
 
-    const qgModel = global.qgModels[0];
+    const qgModel = global.llmModels[0];
 
     const { result, inputTokens, outputTokens } = await createQuestionGuide({
       messages,

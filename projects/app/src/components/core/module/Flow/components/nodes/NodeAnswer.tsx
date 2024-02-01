@@ -6,17 +6,16 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeAnswer = React.memo(function NodeAnswer({ data }: { data: FlowModuleItemType }) {
+const NodeAnswer = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
+
   return (
-    <NodeCard minW={'400px'} {...data}>
+    <NodeCard minW={'400px'} selected={selected} {...data}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
         <RenderInput moduleId={moduleId} flowInputList={inputs} />
         <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>
     </NodeCard>
   );
-});
-export default function Node({ data }: NodeProps<FlowModuleItemType>) {
-  return <NodeAnswer data={data} />;
-}
+};
+export default React.memo(NodeAnswer);

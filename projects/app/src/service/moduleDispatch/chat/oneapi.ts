@@ -7,7 +7,7 @@ import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
 import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
-import type { ChatModelItemType } from '@fastgpt/global/core/ai/model.d';
+import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -18,11 +18,12 @@ import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d'
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
-import { getChatModel, ModelTypeEnum } from '@/service/core/ai/model';
+import { getLLMModel, ModelTypeEnum } from '@/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { getHistories } from '../utils';
+import { filterSearchResultsByMaxChars } from '@fastgpt/global/core/dataset/search/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatModuleProps & {
@@ -46,7 +47,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     user,
     histories,
     outputs,
-    inputs: {
+    params: {
       model,
       temperature = 0,
       maxToken = 4000,
@@ -68,7 +69,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const chatHistories = getHistories(history, histories);
 
   // temperature adapt
-  const modelConstantsData = getChatModel(model);
+  const modelConstantsData = getLLMModel(model);
 
   if (!modelConstantsData) {
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
@@ -107,7 +108,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   // FastGPT temperature range: 1~10
   temperature = +(modelConstantsData.maxTemperature * (temperature / 10)).toFixed(2);
   temperature = Math.max(temperature, 0.01);
-  const ai = getAIApi(user.openaiAccount, 480000);
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
 
   const concatMessages = [
     ...(modelConstantsData.defaultSystemChatPrompt
@@ -134,14 +138,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const response = await ai.chat.completions.create(
     {
-      model,
+      presence_penalty: 0,
+      frequency_penalty: 0,
+      ...modelConstantsData?.defaultConfig,
+      model: modelConstantsData.model,
       temperature,
       max_tokens,
       stream,
-      presence_penalty: 0,
-      frequency_penalty: 0,
-      top_p: 1,
-      // seed: temperature < 0.3 ? 1 : undefined,
       messages: concatMessages
     },
     {
@@ -204,7 +207,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     model,
     inputLen: inputTokens,
     outputLen: outputTokens,
-    type: ModelTypeEnum.chat
+    type: ModelTypeEnum.llm
   });
 
   return {
@@ -229,8 +232,8 @@ function filterQuote({
   model,
   quoteTemplate
 }: {
-  quoteQA: ChatProps['inputs']['quoteQA'];
-  model: ChatModelItemType;
+  quoteQA: ChatProps['params']['quoteQA'];
+  model: LLMModelItemType;
   quoteTemplate?: string;
 }) {
   function getValue(item: SearchDataResponseItemType, index: number) {
@@ -243,16 +246,8 @@ function filterQuote({
     });
   }
 
-  const sliceResult = sliceMessagesTB({
-    maxTokens: model.quoteMaxToken,
-    messages: quoteQA.map((item, index) => ({
-      obj: ChatRoleEnum.System,
-      value: getValue(item, index).trim()
-    }))
-  });
-
   // slice filterSearch
-  const filterQuoteQA = quoteQA.slice(0, sliceResult.length);
+  const filterQuoteQA = filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
   // filterQuoteQA按collectionId聚合在一起后，再按chunkIndex从小到大排序
   const sortQuoteQAMap: Record<string, SearchDataResponseItemType[]> = {};
@@ -263,21 +258,21 @@ function filterQuote({
       sortQuoteQAMap[item.collectionId] = [item];
     }
   });
-  const sortQuoteQAList = Object.values(sortQuoteQAMap).flat();
-  sortQuoteQAList.sort((a, b) => {
-    if (a.collectionId === b.collectionId) {
-      return a.chunkIndex - b.chunkIndex;
-    }
-    return 0;
+  const sortQuoteQAList = Object.values(sortQuoteQAMap);
+
+  sortQuoteQAList.forEach((qaList) => {
+    qaList.sort((a, b) => a.chunkIndex - b.chunkIndex);
   });
 
+  const flatQuoteList = sortQuoteQAList.flat();
+
   const quoteText =
-    sortQuoteQAList.length > 0
-      ? `${sortQuoteQAList.map((item, index) => getValue(item, index)).join('\n')}`
+    flatQuoteList.length > 0
+      ? `${flatQuoteList.map((item, index) => getValue(item, index)).join('\n')}`
       : '';
 
   return {
-    filterQuoteQA: sortQuoteQAList,
+    filterQuoteQA: flatQuoteList,
     quoteText
   };
 }
@@ -294,7 +289,7 @@ function getChatMessages({
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
-  model: ChatModelItemType;
+  model: LLMModelItemType;
 }) {
   const question = quoteText
     ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
@@ -337,9 +332,10 @@ function getMaxTokens({
   filterMessages = []
 }: {
   maxToken: number;
-  model: ChatModelItemType;
+  model: LLMModelItemType;
   filterMessages: ChatItemType[];
 }) {
+  maxToken = Math.min(maxToken, model.maxResponse);
   const tokensLimit = model.maxContext;
 
   /* count response max token */
@@ -407,7 +403,7 @@ async function streamResponse({
   }
 
   if (!answer) {
-    return Promise.reject('core.chat API is error or undefined');
+    return Promise.reject('core.chat.Chat API is error or undefined');
   }
 
   return { answer };

@@ -1,6 +1,6 @@
 import React, { useRef, useCallback } from 'react';
 import { Box } from '@chakra-ui/react';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
 export const useSelectFile = (props?: {

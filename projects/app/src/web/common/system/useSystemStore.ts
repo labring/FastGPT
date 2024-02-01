@@ -3,10 +3,23 @@ import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import axios from 'axios';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
+import type {
+  AudioSpeechModelType,
+  LLMModelItemType,
+  ReRankModelItemType,
+  VectorModelItemType,
+  WhisperModelType
+} from '@fastgpt/global/core/ai/model.d';
+import { InitDateResponse } from '@/global/common/api/systemRes';
+import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
+import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
+import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
 type State = {
+  initd: boolean;
+  setInitd: () => void;
   lastRoute: string;
   setLastRoute: (e: string) => void;
   loginStore?: LoginStoreType;
@@ -19,12 +32,30 @@ type State = {
   initIsPc(val: boolean): void;
   gitStar: number;
   loadGitStar: () => Promise<void>;
+
+  feConfigs: FastGPTFeConfigsType;
+  subPlans?: SubPlanType;
+  systemVersion: string;
+  llmModelList: LLMModelItemType[];
+  datasetModelList: LLMModelItemType[];
+  vectorModelList: VectorModelItemType[];
+  audioSpeechModelList: AudioSpeechModelType[];
+  reRankModelList: ReRankModelItemType[];
+  whisperModel?: WhisperModelType;
+  simpleModeTemplates: AppSimpleEditConfigTemplateType[];
+  initStaticData: (e: InitDateResponse) => void;
 };
 
 export const useSystemStore = create<State>()(
   devtools(
     persist(
       immer((set, get) => ({
+        initd: false,
+        setInitd() {
+          set((state) => {
+            state.initd = true;
+          });
+        },
         lastRoute: '/app/list',
         setLastRoute(e) {
           set((state) => {
@@ -59,7 +90,7 @@ export const useSystemStore = create<State>()(
             state.isPc = val;
           });
         },
-        gitStar: 6100,
+        gitStar: 9300,
         async loadGitStar() {
           try {
             const { data: git } = await axios.get('https://api.github.com/repos/labring/FastGPT');
@@ -68,6 +99,33 @@ export const useSystemStore = create<State>()(
               state.gitStar = git.stargazers_count;
             });
           } catch (error) {}
+        },
+
+        feConfigs: {},
+        subPlans: undefined,
+        systemVersion: '0.0.0',
+        llmModelList: [],
+        datasetModelList: [],
+        vectorModelList: [],
+        audioSpeechModelList: [],
+        reRankModelList: [],
+        whisperModel: undefined,
+        simpleModeTemplates: [],
+        initStaticData(res) {
+          set((state) => {
+            state.feConfigs = res.feConfigs || {};
+            state.subPlans = res.subPlans;
+            state.systemVersion = res.systemVersion;
+
+            state.llmModelList = res.llmModels ?? state.llmModelList;
+            state.datasetModelList = state.llmModelList.filter((item) => item.datasetProcess);
+            state.vectorModelList = res.vectorModels ?? state.vectorModelList;
+            state.audioSpeechModelList = res.audioSpeechModels ?? state.audioSpeechModelList;
+            state.reRankModelList = res.reRankModels ?? state.reRankModelList;
+            state.whisperModel = res.whisperModel;
+
+            state.simpleModeTemplates = res.simpleModeTemplates;
+          });
         }
       })),
       {

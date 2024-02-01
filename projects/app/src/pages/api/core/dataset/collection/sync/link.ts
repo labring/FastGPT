@@ -14,8 +14,9 @@ import {
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -27,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('CollectionIdId is required');
     }
 
-    const { collection, teamId, tmbId } = await authDatasetCollection({
+    const { collection, tmbId } = await authDatasetCollection({
       req,
       authToken: true,
       collectionId,
@@ -51,44 +52,54 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     /* Not the same original text, create and reload */
 
     const vectorModelData = getVectorModel(collection.datasetId.vectorModel);
-    const agentModelData = getQAModel(collection.datasetId.agentModel);
-    // create training bill
-    const { billId } = await createTrainingBill({
-      teamId: collection.teamId,
-      tmbId,
-      appName: 'core.dataset.collection.Sync Collection',
-      billSource: BillSourceEnum.training,
-      vectorModel: vectorModelData.name,
-      agentModel: agentModelData.name
-    });
+    const agentModelData = getLLMModel(collection.datasetId.agentModel);
 
-    // create a collection and delete old
-    const _id = await createOneCollection({
-      teamId: collection.teamId,
-      tmbId: collection.tmbId,
-      parentId: collection.parentId,
-      datasetId: collection.datasetId._id,
-      name: title || collection.name,
-      type: collection.type,
-      trainingType: collection.trainingType,
-      chunkSize: collection.chunkSize,
-      fileId: collection.fileId,
-      rawLink: collection.rawLink,
-      metadata: collection.metadata,
-      createTime: collection.createTime
-    });
+    await mongoSessionRun(async (session) => {
+      // create training bill
+      const { billId } = await createTrainingBill({
+        teamId: collection.teamId,
+        tmbId,
+        appName: 'core.dataset.collection.Sync Collection',
+        billSource: BillSourceEnum.training,
+        vectorModel: vectorModelData.name,
+        agentModel: agentModelData.name,
+        session
+      });
 
-    // start load
-    await reloadCollectionChunks({
-      collectionId: _id,
-      tmbId,
-      billId,
-      rawText
-    });
+      // create a collection and delete old
+      const newCol = await createOneCollection({
+        teamId: collection.teamId,
+        tmbId: collection.tmbId,
+        parentId: collection.parentId,
+        datasetId: collection.datasetId._id,
+        name: title || collection.name,
+        type: collection.type,
+        trainingType: collection.trainingType,
+        chunkSize: collection.chunkSize,
+        fileId: collection.fileId,
+        rawLink: collection.rawLink,
+        metadata: collection.metadata,
+        createTime: collection.createTime,
+        session
+      });
 
-    // delete old collection
-    await delCollectionAndRelatedSources({
-      collections: [collection]
+      // start load
+      await reloadCollectionChunks({
+        collection: {
+          ...newCol.toObject(),
+          datasetId: collection.datasetId
+        },
+        tmbId,
+        billId,
+        rawText,
+        session
+      });
+
+      // delete old collection
+      await delCollectionAndRelatedSources({
+        collections: [collection],
+        session
+      });
     });
 
     jsonRes(res, {

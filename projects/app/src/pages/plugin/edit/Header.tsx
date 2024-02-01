@@ -12,7 +12,7 @@ import { filterExportModules, flowNode2Modules } from '@/components/core/module/
 import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 const PreviewPlugin = dynamic(() => import('./Preview'));

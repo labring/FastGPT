@@ -8,11 +8,11 @@ import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getExtractModel } from '@/service/core/ai/model';
+import { getLLMModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { formData, chatModelMaxToken, chatModelList } = req.body as FormatForm2ModulesProps;
+    const { formData, chatModelMaxToken } = req.body as FormatForm2ModulesProps;
 
     const modules = [
       ...(formData.dataset.datasets.length > 0
@@ -381,7 +381,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           key: 'usingReRank',
           type: 'hidden',
           label: '',
-          valueType: 'string',
+          valueType: 'boolean',
           showTargetInApp: false,
           showTargetInPlugin: false,
           value: true,
@@ -676,7 +676,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
-          value: getExtractModel().model,
+          value: getLLMModel().model,
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false

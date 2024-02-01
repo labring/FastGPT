@@ -30,6 +30,15 @@ const SubSchema = new Schema({
   },
   mode: {
     type: String,
+    enum: Object.keys(subModeMap)
+  },
+  currentMode: {
+    type: String,
+    enum: Object.keys(subModeMap),
+    required: true
+  },
+  nextMode: {
+    type: String,
     enum: Object.keys(subModeMap),
     required: true
   },
@@ -46,6 +55,10 @@ const SubSchema = new Schema({
     type: Number,
     required: true
   },
+  pointPrice: {
+    // stand level point total price
+    type: Number
+  },
 
   // sub content
   currentSubLevel: {
@@ -55,6 +68,9 @@ const SubSchema = new Schema({
   nextSubLevel: {
     type: String,
     enum: Object.keys(standardSubLevelMap)
+  },
+  totalPoints: {
+    type: Number
   },
 
   currentExtraDatasetSize: {
@@ -72,48 +88,44 @@ const SubSchema = new Schema({
   },
 
   // standard sub limit
-  maxTeamMember: {
-    type: Number
-  },
-  maxAppAmount: {
-    type: Number
-  },
-  maxDatasetAmount: {
-    type: Number
-  },
-  chatHistoryStoreDuration: {
-    // n day
-    type: Number
-  },
-  maxDatasetSize: {
-    type: Number
-  },
-  trainingWeight: {
-    // 0 1 2 3
-    type: Number
-  },
-  customApiKey: {
-    type: Boolean
-  },
-  customCopyright: {
-    type: Boolean
-  },
-  exportDatasetInterval: {
-    // hours
-    type: Number
-  },
-  websiteSyncInterval: {
-    // hours
-    type: Number
-  },
-  reRankWeight: {
-    // 0 1 2 3
-    type: Number
-  },
-  totalPoints: {
-    // record standard sub points
-    type: Number
-  },
+  // maxTeamMember: {
+  //   type: Number
+  // },
+  // maxAppAmount: {
+  //   type: Number
+  // },
+  // maxDatasetAmount: {
+  //   type: Number
+  // },
+  // chatHistoryStoreDuration: {
+  //   // n day
+  //   type: Number
+  // },
+  // maxDatasetSize: {
+  //   type: Number
+  // },
+  // trainingWeight: {
+  //   // 0 1 2 3
+  //   type: Number
+  // },
+  // customApiKey: {
+  //   type: Boolean
+  // },
+  // customCopyright: {
+  //   type: Boolean
+  // },
+  // websiteSyncInterval: {
+  //   // hours
+  //   type: Number
+  // },
+  // reRankWeight: {
+  //   // 0 1 2 3
+  //   type: Number
+  // },
+  // totalPoints: {
+  //   // record standard sub points
+  //   type: Number
+  // },
 
   surplusPoints: {
     // standard sub / extra points sub

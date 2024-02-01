@@ -39,19 +39,21 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
-import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
+import MyMenu from '@/components/MyMenu';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
 const Share = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
+  const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
   const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema>();
@@ -135,40 +137,40 @@ const Share = ({ appId }: { appId: string }) => {
                   {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common.Un used')}
                 </Td>
                 <Td display={'flex'} alignItems={'center'}>
-                  <Menu autoSelect={false} isLazy>
-                    <MenuButton
-                      _hover={{ bg: 'myWhite.600  ' }}
-                      cursor={'pointer'}
-                      borderRadius={'md'}
-                    >
-                      <MyIcon name={'more'} w={'14px'} p={2} />
-                    </MenuButton>
-                    <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
-                      <MenuItem
-                        onClick={() => {
+                  <MyMenu
+                    Button={
+                      <MyIcon
+                        name={'more'}
+                        _hover={{ bg: 'myGray.100  ' }}
+                        cursor={'pointer'}
+                        borderRadius={'md'}
+                        w={'14px'}
+                        p={2}
+                      />
+                    }
+                    menuList={[
+                      {
+                        label: t('core.app.outLink.Select Mode'),
+                        icon: 'copy',
+                        onClick: () => {
                           setSelectedLinkData(item);
-                        }}
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'copy'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('core.app.outLink.Select Mode')}</Box>
-                      </MenuItem>
-                      <MenuItem
-                        onClick={() =>
+                        }
+                      },
+                      {
+                        label: t('common.Edit'),
+                        icon: 'edit',
+                        onClick: () =>
                           setEditLinkData({
                             _id: item._id,
                             name: item.name,
                             responseDetail: item.responseDetail,
                             limit: item.limit
                           })
-                        }
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'edit'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('common.Edit')}</Box>
-                      </MenuItem>
-                      <MenuItem
-                        onClick={async () => {
+                      },
+                      {
+                        label: t('common.Delete'),
+                        icon: 'delete',
+                        onClick: async () => {
                           setIsLoading(true);
                           try {
                             await delShareChatById(item._id);
@@ -177,14 +179,10 @@ const Share = ({ appId }: { appId: string }) => {
                             console.log(error);
                           }
                           setIsLoading(false);
-                        }}
-                        py={[2, 3]}
-                      >
-                        <MyIcon name={'delete'} w={['14px', '16px']} />
-                        <Box ml={[1, 2]}>{t('common.Delete')}</Box>
-                      </MenuItem>
-                    </MenuList>
-                  </Menu>
+                        }
+                      }
+                    ]}
+                  />
                 </Td>
               </Tr>
             ))}
@@ -249,6 +247,7 @@ function EditLinkModal({
   onCreate: (id: string) => void;
   onEdit: () => void;
 }) {
+  const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const {
     register,

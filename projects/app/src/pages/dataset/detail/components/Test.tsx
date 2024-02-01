@@ -21,7 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
