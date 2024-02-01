@@ -11,7 +11,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 import { useImportStore } from '../Provider';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import dynamic from 'next/dynamic';
 import { fileDownload } from '@/web/common/file/utils';
@@ -43,6 +43,7 @@ const csvTemplate = `index,content
 
 const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () => void }) {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { sources, setSources } = useImportStore();
   // @ts-ignore
   const [selectFiles, setSelectFiles] = useState<FileItemType[]>(sources);
@@ -61,10 +62,10 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
 
           const filterData: FileItemType['chunks'] = data
             .filter((item) => item[0])
-            .map((item, i) => ({
+            .map((item) => ({
               q: item[0] || '',
               a: item[1] || '',
-              chunkIndex: i
+              chunkIndex: 0
             }));
 
           const item: FileItemType = {

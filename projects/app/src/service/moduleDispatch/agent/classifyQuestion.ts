@@ -8,8 +8,8 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
-import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { ModelTypeEnum, getCQModel } from '@/service/core/ai/model';
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
 import { getHistories } from '../utils';
 import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
@@ -32,14 +32,14 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const {
     user,
     histories,
-    inputs: { model, history = 6, agents, userChatInput }
+    params: { model, history = 6, agents, userChatInput }
   } = props as Props;
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
 
-  const cqModel = getCQModel(model);
+  const cqModel = getLLMModel(model);
 
   const chatHistories = getHistories(history, histories);
 
@@ -64,7 +64,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     model: cqModel.model,
     inputLen: inputTokens,
     outputLen: outputTokens,
-    type: ModelTypeEnum.cq
+    type: ModelTypeEnum.llm
   });
 
   return {
@@ -86,8 +86,8 @@ async function toolChoice({
   user,
   cqModel,
   histories,
-  inputs: { agents, systemPrompt, userChatInput }
-}: Props & { cqModel: FunctionModelItemType }) {
+  params: { agents, systemPrompt, userChatInput }
+}: Props & { cqModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     ...histories,
     {
@@ -112,7 +112,7 @@ ${systemPrompt}
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: '根据对话记录及补充的背景知识，对问题进行分类，并返回对应的类型字段',
+    description: '根据对话记录及背景知识，对问题进行分类，并返回对应的类型字段',
     parameters: {
       type: 'object',
       properties: {
@@ -127,7 +127,10 @@ ${systemPrompt}
       required: ['type']
     }
   };
-  const ai = getAIApi(user.openaiAccount, 480000);
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
 
   const response = await ai.chat.completions.create({
     model: cqModel.model,
@@ -170,12 +173,12 @@ async function completions({
   cqModel,
   user,
   histories,
-  inputs: { agents, systemPrompt = '', userChatInput }
-}: Props & { cqModel: FunctionModelItemType }) {
+  params: { agents, systemPrompt = '', userChatInput }
+}: Props & { cqModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(cqModel.functionPrompt || Prompt_CQJson, {
+      value: replaceVariable(cqModel.customCQPrompt || Prompt_CQJson, {
         systemPrompt: systemPrompt || 'null',
         typeList: agents
           .map((item) => `{"questionType": "${item.value}", "typeId": "${item.key}"}`)
@@ -186,7 +189,10 @@ async function completions({
     }
   ];
 
-  const ai = getAIApi(user.openaiAccount, 480000);
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
 
   const data = await ai.chat.completions.create({
     model: cqModel.model,

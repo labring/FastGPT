@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { TTSTypeEnum } from '@/constants/app';

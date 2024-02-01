@@ -5,7 +5,7 @@ export type PluginInputProps = ModuleDispatchProps<{
 }>;
 
 export const dispatchPluginInput = (props: PluginInputProps) => {
-  const { inputs } = props;
+  const { params } = props;
 
-  return inputs;
+  return params;
 };

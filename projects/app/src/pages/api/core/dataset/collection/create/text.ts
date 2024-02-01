@@ -18,7 +18,8 @@ import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller'
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getQAModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -52,12 +53,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 2. check dataset limit
     await checkDatasetLimit({
       teamId,
-      freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize,
-      insertLen: predictDataLimitLength(trainingType, chunks)
+      insertLen: predictDataLimitLength(trainingType, chunks),
+      standardPlans: getStandardSubPlan()
     });
 
     // 3. create collection and training bill
-    const [collectionId, { billId }] = await Promise.all([
+    const [{ _id: collectionId }, { billId }] = await Promise.all([
       createOneCollection({
         ...body,
         teamId,
@@ -79,7 +80,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         appName: name,
         billSource: BillSourceEnum.training,
         vectorModel: getVectorModel(dataset.vectorModel)?.name,
-        agentModel: getQAModel(dataset.agentModel)?.name
+        agentModel: getLLMModel(dataset.agentModel)?.name
       })
     ]);
 

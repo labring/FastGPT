@@ -45,7 +45,10 @@ export enum FlowNodeTypeEnum {
   questionInput = 'questionInput',
   historyNode = 'historyNode',
   chatNode = 'chatNode',
+
   datasetSearchNode = 'datasetSearchNode',
+  datasetConcatNode = 'datasetConcatNode',
+
   answerNode = 'answerNode',
   classifyQuestion = 'classifyQuestion',
   contentExtract = 'contentExtract',

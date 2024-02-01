@@ -15,7 +15,6 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import { chatModelList, simpleModeTemplates } from '@/web/common/system/staticData';
 import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
@@ -37,7 +36,7 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import SelectAiModel from '@/components/Select/SelectAiModel';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatVariablesIcon } from '@fastgpt/global/core/module/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
@@ -60,7 +59,7 @@ const EditForm = ({
   const { t } = useTranslation();
   const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
-  const { isPc } = useSystemStore();
+  const { isPc, llmModelList, reRankModelList, simpleModeTemplates } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [, startTst] = useTransition();
 
@@ -100,12 +99,12 @@ const EditForm = ({
   });
 
   const variables = watch('userGuide.variables');
-  const formatVariables = useMemo(() => formatVariablesIcon(variables), [variables]);
+  const formatVariables = useMemo(() => formatEditorVariablePickerIcon(variables), [variables]);
   const aiSystemPrompt = watch('aiSettings.systemPrompt');
   const searchMode = watch('dataset.searchMode');
 
   const chatModelSelectList = (() =>
-    chatModelList.map((item) => ({
+    llmModelList.map((item) => ({
       value: item.model,
       label: item.name
     })))();
@@ -121,10 +120,10 @@ const EditForm = ({
 
   const tokenLimit = useMemo(() => {
     return (
-      chatModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
+      llmModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
       3000
     );
-  }, [getValues, refresh]);
+  }, [getValues, llmModelList]);
 
   const datasetSearchMode = useMemo(() => {
     if (!searchMode) return '';
@@ -280,7 +279,7 @@ const EditForm = ({
                       onchange={(val: any) => {
                         setValue('aiSettings.model', val);
                         const maxToken =
-                          chatModelList.find((item) => item.model === getValues('aiSettings.model'))
+                          llmModelList.find((item) => item.model === getValues('aiSettings.model'))
                             ?.maxResponse || 4000;
                         const token = maxToken / 2;
                         setValue('aiSettings.maxToken', token);
@@ -301,7 +300,7 @@ const EditForm = ({
                   </Box>
                   {isInitd && (
                     <PromptEditor
-                      defaultValue={aiSystemPrompt}
+                      value={aiSystemPrompt}
                       onChange={(text) => {
                         startTst(() => {
                           setValue('aiSettings.systemPrompt', text);
@@ -349,6 +348,13 @@ const EditForm = ({
               {getValues('dataset.datasets').length > 0 && (
                 <Flex mt={1} color={'myGray.600'} fontSize={'sm'} mb={2}>
                   {t('core.dataset.search.search mode')}: {datasetSearchMode}
+                  {', '}
+                  {reRankModelList.length > 0 && (
+                    <>
+                      {t('core.dataset.search.ReRank')}:{' '}
+                      {getValues('dataset.usingReRank') ? '✅' : '✖'}
+                    </>
+                  )}
                   {', '}
                   {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')}
                   {', '}

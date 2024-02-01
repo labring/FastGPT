@@ -7,6 +7,8 @@ export enum BillSourceEnum {
   api = 'api',
   shareLink = 'shareLink',
   training = 'training',
+
+  standSubPlan = 'standSubPlan',
   extraDatasetSub = 'extraDatasetSub'
 }
 
@@ -21,9 +23,12 @@ export const BillSourceMap = {
     label: '免登录链接'
   },
   [BillSourceEnum.training]: {
-    label: '数据训练'
+    label: 'dataset.Training Name'
+  },
+  [BillSourceEnum.standSubPlan]: {
+    label: 'support.wallet.subscription.type.standard'
   },
   [BillSourceEnum.extraDatasetSub]: {
-    label: '知识库扩容'
+    label: 'support.wallet.subscription.type.extraDatasetSize'
   }
 };

@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
-import { feConfigs } from '@/web/common/system/staticData';
 import NextLink from 'next/link';
 import Badge from '../Badge';
 import Avatar from '../Avatar';
@@ -23,7 +22,7 @@ const Navbar = ({ unread }: { unread: number }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { userInfo } = useUserStore();
-  const { gitStar } = useSystemStore();
+  const { gitStar, feConfigs } = useSystemStore();
   const { lastChatAppId, lastChatId } = useChatStore();
   const navbarList = useMemo(
     () => [
@@ -159,7 +158,7 @@ const Navbar = ({ unread }: { unread: number }) => {
             color={'myGray.500'}
           >
             <Badge count={unread}>
-              <MyIcon name={'inform'} width={'22px'} height={'22px'} />
+              <MyIcon name={'support/user/informLight'} width={'22px'} height={'22px'} />
             </Badge>
           </Link>
         </Box>

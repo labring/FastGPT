@@ -2,8 +2,8 @@ import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import axios from 'axios';
-import { flatDynamicParams } from '../utils';
-import { isIPv6 } from 'net';
+import { flatDynamicParams, valueTypeFormat } from '../utils';
+import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
 
 export type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
@@ -24,7 +24,8 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     chatId,
     responseChatItemId,
     variables,
-    inputs: {
+    outputs,
+    params: {
       system_httpMethod: httpMethod,
       url: abandonUrl,
       system_httpReqUrl: httpReqUrl,
@@ -96,13 +97,21 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
       query: requestQuery
     });
 
+    // format output value type
+    const results: Record<string, any> = {};
+    for (const key in response) {
+      const output = outputs.find((item) => item.key === key);
+      if (!output) continue;
+      results[key] = valueTypeFormat(response[key], output.valueType);
+    }
+
     return {
       responseData: {
         price: 0,
         body: formatBody,
         httpResult: response
       },
-      ...response
+      ...results
     };
   } catch (error) {
     console.log(error);
@@ -133,12 +142,7 @@ async function fetchData({
 }): Promise<Record<string, any>> {
   const { data: response } = await axios<Record<string, any>>({
     method,
-    baseURL: `http://${
-      process.env.HOSTNAME && isIPv6(process.env.HOSTNAME)
-        ? `[${process.env.HOSTNAME}]:${process.env.PORT || 3000}`
-        : `${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`
-    }`,
-
+    baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {
       'Content-Type': 'application/json',
@@ -154,33 +158,68 @@ async function fetchData({
       user: {
         name: 'xxx',
         age: 12
-      }
+      },
+      list: [
+        {
+          name: 'xxx',
+          age: 50
+        },
+        [{ test: 22 }]
+      ],
       psw: 'xxx'
     }
 
     result: {
-      'user': {
-        name: 'xxx',
-        age: 12
-      },
+      'user': { name: 'xxx', age: 12 },
       'user.name': 'xxx',
       'user.age': 12,
+      'list': [ { name: 'xxx', age: 50 }, [ [Object] ] ],
+      'list[0]': { name: 'xxx', age: 50 },
+      'list[0].name': 'xxx',
+      'list[0].age': 50,
+      'list[1]': [ { test: 22 } ],
+      'list[1][0]': { test: 22 },
+      'list[1][0].test': 22,
       'psw': 'xxx'
     }
   */
   const parseJson = (obj: Record<string, any>, prefix = '') => {
     let result: Record<string, any> = {};
-    for (const key in obj) {
-      if (typeof obj[key] === 'object') {
-        result[key] = obj[key];
-        result = {
-          ...result,
-          ...parseJson(obj[key], `${prefix}${key}.`)
-        };
-      } else {
+
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        result[`${prefix}[${i}]`] = obj[i];
+
+        if (Array.isArray(obj[i])) {
+          result = {
+            ...result,
+            ...parseJson(obj[i], `${prefix}[${i}]`)
+          };
+        } else if (typeof obj[i] === 'object') {
+          result = {
+            ...result,
+            ...parseJson(obj[i], `${prefix}[${i}].`)
+          };
+        }
+      }
+    } else if (typeof obj == 'object') {
+      for (const key in obj) {
         result[`${prefix}${key}`] = obj[key];
+
+        if (Array.isArray(obj[key])) {
+          result = {
+            ...result,
+            ...parseJson(obj[key], `${prefix}${key}`)
+          };
+        } else if (typeof obj[key] === 'object') {
+          result = {
+            ...result,
+            ...parseJson(obj[key], `${prefix}${key}.`)
+          };
+        }
       }
     }
+
     return result;
   };
 

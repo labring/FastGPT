@@ -3,7 +3,7 @@ import type { PagingData } from '@/types/index.d';
 import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
-import { useToast } from './useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { throttle } from 'lodash';
 
 const thresholdVal = 100;

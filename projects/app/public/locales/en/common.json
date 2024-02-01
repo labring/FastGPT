@@ -155,6 +155,7 @@
       "Select Avatar": "Select Avatar",
       "Select Failed": "Select Failed"
     },
+    "change": "Change",
     "choosable": "choosable",
     "confirm": {
       "Common Tip": "Operational Confirm"
@@ -201,6 +202,7 @@
     "link": {
       "UnValid": "UnValid Link"
     },
+    "month": "Month",
     "price": {
       "Amount": "{{amount}}{{unit}}"
     },
@@ -224,6 +226,7 @@
   },
   "core": {
     "Chat": "Chat",
+    "Chat API is error or undefined": "The session interface reported an error or returned null",
     "Chat test": "Chat test",
     "Max Token": "MaxTokens",
     "Start chat": "Start chat",
@@ -293,6 +296,8 @@
       "navbar": {
         "External": "External",
         "Flow mode": "Flow mode",
+        "Publish": "Publish",
+        "Publish app": "Publish App",
         "Simple mode": "Simple mode"
       },
       "outLink": {
@@ -357,6 +362,7 @@
     "chat": {
       "Admin Mark Content": "Corrected response",
       "Audio Speech Error": "Audio Speech Error",
+      "Chat API is error or undefined": "",
       "Confirm to clear history": "Confirm to clear history?",
       "Confirm to clear share chat history": " Are you sure to delete all chats?",
       "Converting to text": "Converting to text...",
@@ -562,6 +568,7 @@
         "id": "Data ID",
         "unit": "pieces"
       },
+      "embedding model tip": "The index model can transform the natural language into vectors for semantic retrieval. Note that different index models cannot be used together and cannot be modified after selecting the index model.",
       "error": {
         "Data not found": "The data does not exist or has been deleted",
         "Start Sync Failed": "Start Sync Failed",
@@ -733,6 +740,12 @@
     "module": {
       "Add question type": "Add type",
       "Data Type": "Data Type",
+      "Dataset quote": {
+        "Add quote": "Add quote",
+        "Concat result": "Concat result",
+        "Input description": "",
+        "label": "Dataset quote"
+      },
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",
@@ -762,6 +775,7 @@
           "Quote": "Object array format, structure:\n[{q:' question ',a:' answer '}]",
           "Response content": "You can use \\n to achieve continuous line wrapping.\nReplies can be achieved by external module input, which overwrites the content currently filled in.\nIf passed non-string type data will be automatically converted to a string",
           "TFSwitch textarea": "Allows you to define a number of strings to achieve false matching, one per line, and supports regular expressions.",
+          "Trigger": "Most of the time, you don't need to concatenate this property. You can connect this property when you need to delay execution, or precisely control the timing of execution.",
           "anyInput": "Can pass anything ",
           "cfr background": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. If\nis empty, the question completion function is not used in the first conversation. ",
           "dynamic input": "Receives parameters dynamically added by the user and will be tiled in at run time ",
@@ -835,6 +849,7 @@
         "Classify question intro": "Determine the type of question based on the user's history and current issue. Multiple sets of question types can be added, here is a template example: \n type 1: Hello\ntype 2: Questions about 'use'\ntype 3: Questions about 'purchase'\ntype 4: Other questions",
         "Dataset search": "Dataset search",
         "Dataset search intro": "Invoke the Dataset search capability to find content that may be relevant to the problem",
+        "Dataset search result concat intro": "Multiple knowledge base search results can be combined and output",
         "External module": "External call",
         "Extract field": "Text content extraction ",
         "Extract field intro": "Can extract specified data from the text, such as: sql statements, search keywords, code, etc.",
@@ -887,6 +902,9 @@
         "variable options": "Options"
       },
       "variable add option": "Add Option"
+    },
+    "plugin": {
+      "Get Plugin Module Detail Failed": "Load plugin failed"
     },
     "shareChat": {
       "Init Error": "Init Chat Error",
@@ -1125,6 +1143,7 @@
       "Cancel subscription": "Cancel"
     },
     "user": {
+      "Need to login": "Please log in first",
       "Price": "Price",
       "auth": {
         "Sending Code": "Sending"
@@ -1136,28 +1155,69 @@
       },
       "team": {
         "Dataset usage": "Dataset usage",
-        "member": "Member",
-        "subscription": {
-          "type": {
-            "extraDatasetSize": "Extra dataset size"
-          }
-        }
+        "member": "Member"
       }
     },
     "wallet": {
+      "Balance not enough tip": "The balance is insufficient, please go to the account page first",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",
       "Pay error": "Pay error",
       "Pay success": "Pay success",
+      "bill": {
+        "AI Model": "AI Model",
+        "AI Type": "AI Type",
+        "Price": "Price（￥）"
+      },
       "subscription": {
+        "Ai points": "AI Points Standard",
+        "Buy now": "Buy now",
         "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",
         "Current dataset store": "Current dataset store subscription",
+        "Current plan": "Current plan",
         "Dataset store": "Dataset store size",
         "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
         "Expand size": "Expand size",
         "Extra dataset size": "Extra dataset size",
+        "Extra plan": "Extra Plan",
+        "Extra plan tip": "When the standard plan is not enough, you can purchase an additional plan to continue using",
+        "FAQ": "Pricing FAQs",
+        "Next plan": "Future plan",
         "Next sub dataset size": "",
-        "Update extra dataset size": "Update size"
+        "Nonsupport": "Nonsupport",
+        "Refund plan and pay confirm": "There is no extra cost for you to switch this package and {{amount}} will be refunded to the balance.",
+        "Standard plan pay confirm": "To switch this package, you need to pay {{payPrice}} Yuan.",
+        "Standard update fail": "Update plan failed.",
+        "Standard update success": "Change subscription plan successful!",
+        "Sub plan": "Pricing Plans",
+        "Sub plan tip": "Use FastGPT for free or upgrade to a higher plan",
+        "Training weight": "Training weight: {{weight}}",
+        "Update extra dataset size": "Update size",
+        "function": {
+          "History store": "",
+          "Max app": "",
+          "Max dataset": "",
+          "Max dataset size": "",
+          "Max members": "",
+          "Points": ""
+        },
+        "mode": {
+          "Month": "Monthly",
+          "Year": "Yearly",
+          "Year sale": "2 months free"
+        },
+        "standardSubLevel": {
+          "enterprise": "",
+          "experience": "",
+          "experience desc": "",
+          "free": "",
+          "free desc": "",
+          "team": ""
+        },
+        "type": {
+          "extraDatasetSize": "Extra dataset size",
+          "standard": ""
+        }
       }
     }
   },

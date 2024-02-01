@@ -10,7 +10,7 @@ export type HistoryProps = ModuleDispatchProps<{
 export const dispatchHistory = (props: Record<string, any>) => {
   const {
     histories,
-    inputs: { maxContext }
+    params: { maxContext }
   } = props as HistoryProps;
 
   return {

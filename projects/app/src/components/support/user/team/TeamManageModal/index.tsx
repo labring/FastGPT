@@ -42,7 +42,7 @@ import { useLoading } from '@/web/common/hooks/useLoading';
 import { FormDataType, defaultForm } from './EditModal';
 import MyMenu from '@/components/MyMenu';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const EditModal = dynamic(() => import('./EditModal'));
 const InviteModal = dynamic(() => import('./InviteModal'));
@@ -324,11 +324,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                             item.role !== TeamMemberRoleEnum.owner && (
                               <MyMenu
                                 width={20}
+                                trigger="click"
                                 Button={
                                   <MenuButton
                                     _hover={{
                                       bg: 'myWhite.600'
                                     }}
+                                    borderRadius={'md'}
                                     px={2}
                                     py={1}
                                     lineHeight={1}
@@ -344,7 +346,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                 menuList={[
                                   {
                                     isActive: item.role === TeamMemberRoleEnum.visitor,
-                                    child: t('user.team.Invite Role Visitor Tip'),
+                                    label: t('user.team.Invite Role Visitor Tip'),
                                     onClick: () => {
                                       onUpdateMember({
                                         teamId: item.teamId,
@@ -355,7 +357,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                   },
                                   {
                                     isActive: item.role === TeamMemberRoleEnum.admin,
-                                    child: t('user.team.Invite Role Admin Tip'),
+                                    label: t('user.team.Invite Role Admin Tip'),
                                     onClick: () => {
                                       onUpdateMember({
                                         teamId: item.teamId,
@@ -367,7 +369,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                   ...(item.status === TeamMemberStatusEnum.reject
                                     ? [
                                         {
-                                          child: t('user.team.Reinvite'),
+                                          label: t('user.team.Reinvite'),
                                           onClick: () => {
                                             onUpdateMember({
                                               teamId: item.teamId,
@@ -379,7 +381,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                       ]
                                     : []),
                                   {
-                                    child: t('user.team.Remove Member Tip'),
+                                    label: t('user.team.Remove Member Tip'),
                                     onClick: () =>
                                       openRemoveMember(
                                         () =>

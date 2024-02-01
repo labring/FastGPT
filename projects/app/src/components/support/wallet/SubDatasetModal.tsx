@@ -26,8 +26,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useRouter } from 'next/router';
-import { feConfigs } from '@/web/common/system/staticData';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import MySelect from '@/components/Select';
 import {
@@ -40,21 +39,20 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
-  const datasetStoreFreeSize = feConfigs?.subscription?.datasetStoreFreeSize || 0;
-  const datasetStorePrice = feConfigs?.subscription?.datasetStorePrice || 0;
+  const { subPlans } = useSystemStore();
+  const datasetStorePrice = subPlans?.extraDatasetSize?.price || 0;
 
   const { t } = useTranslation();
-  const { toast } = useToast();
   const router = useRouter();
   const { ConfirmModal, openConfirm } = useConfirm({});
   const { userInfo } = useUserStore();
   const [datasetSize, setDatasetSize] = useState(0);
   const [isRenew, setIsRenew] = useState('false');
 
-  const { data: datasetSub } = useQuery(['getTeamDatasetValidSub'], getTeamDatasetValidSub, {
+  const { data: teamSubPlan } = useQuery(['getTeamDatasetValidSub'], getTeamDatasetValidSub, {
     onSuccess(res) {
-      setIsRenew(res?.sub?.status === SubStatusEnum.active ? 'true' : 'false');
-      setDatasetSize((res?.sub?.nextExtraDatasetSize || 0) / 1000);
+      setIsRenew(res?.extraDatasetSize?.status === SubStatusEnum.active ? 'true' : 'false');
+      setDatasetSize((res?.extraDatasetSize?.nextExtraDatasetSize || 0) / 1000);
     }
   });
 
@@ -88,7 +86,7 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
           <Box>
             <Flex>
               <Box flex={'0 0 100px'}>当前额外容量:</Box>
-              <Box>{datasetSub?.sub?.currentExtraDatasetSize || 0}条</Box>
+              <Box>{teamSubPlan?.extraDatasetSize?.currentExtraDatasetSize || 0}条</Box>
             </Flex>
             <Flex>
               <Box flex={'0 0 100px'}>新的额外容量:</Box>
@@ -96,7 +94,7 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
             </Flex>
             <Flex>
               <Box flex={'0 0 100px'}>新套餐价格:</Box>
-              <Box>{formatStorePrice2Read(res.newPrice)}元</Box>
+              <Box>{formatStorePrice2Read(res.newPlanPrice)}元</Box>
             </Flex>
             <Flex>
               <Box flex={'0 0 100px'}>本次需支付:</Box>
@@ -151,7 +149,7 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
           </Flex>
           <Markdown
             source={`
-| 免费知识库 | ${datasetStoreFreeSize}条 |
+| 套餐知识库容量 | ${teamSubPlan?.standardMaxDatasetSize || Infinity}条 |
 | --- | --- |
 | 额外知识库 | ${datasetStorePrice}元/1000条/月 |
 `}
@@ -160,29 +158,29 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
         <Flex mt={4}>
           <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Current dataset store')}: </Box>
           <Box ml={2} fontWeight={'bold'} flex={1}>
-            {datasetSub?.sub?.currentExtraDatasetSize || 0}
+            {teamSubPlan?.extraDatasetSize?.currentExtraDatasetSize || 0}
             {t('core.dataset.data.unit')}
           </Box>
         </Flex>
-        {datasetSub?.sub?.nextExtraDatasetSize !== undefined && (
+        {teamSubPlan?.extraDatasetSize?.nextExtraDatasetSize !== undefined && (
           <Flex mt={4}>
             <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Next sub dataset size')}: </Box>
             <Box ml={2} fontWeight={'bold'} flex={1}>
-              {datasetSub?.sub?.nextExtraDatasetSize || 0}
+              {teamSubPlan?.extraDatasetSize?.nextExtraDatasetSize || 0}
               {t('core.dataset.data.unit')}
             </Box>
           </Flex>
         )}
-        {!!datasetSub?.sub?.startTime && (
+        {!!teamSubPlan?.extraDatasetSize?.startTime && (
           <Flex mt={3}>
             <Box flex={'0 0 120px'}>订阅开始时间: </Box>
-            <Box ml={2}>{formatTime2YMDHM(datasetSub?.sub?.startTime)}</Box>
+            <Box ml={2}>{formatTime2YMDHM(teamSubPlan?.extraDatasetSize?.startTime)}</Box>
           </Flex>
         )}
-        {!!datasetSub?.sub?.expiredTime && (
+        {!!teamSubPlan?.extraDatasetSize?.expiredTime && (
           <Flex mt={3}>
             <Box flex={'0 0 120px'}>订阅到期时间: </Box>
-            <Box ml={2}>{formatTime2YMDHM(datasetSub?.sub?.expiredTime)}</Box>
+            <Box ml={2}>{formatTime2YMDHM(teamSubPlan?.extraDatasetSize?.expiredTime)}</Box>
           </Flex>
         )}
         <Flex mt={3} alignItems={'center'}>
@@ -205,7 +203,7 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
             <NumberInput
               flex={1}
               min={0}
-              max={1000}
+              max={10000}
               step={1}
               value={datasetSize}
               position={'relative'}
@@ -213,7 +211,7 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
                 setDatasetSize(Number(e));
               }}
             >
-              <NumberInputField value={datasetSize} step={1} min={0} max={1000} />
+              <NumberInputField value={datasetSize} step={1} min={0} max={10000} />
               <NumberInputStepper>
                 <NumberIncrementStepper />
                 <NumberDecrementStepper />
@@ -227,7 +225,7 @@ const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {
         <Button variant={'whiteBase'} onClick={onClose}>
           {t('common.Close')}
         </Button>
-        {datasetSize * 1000 !== datasetSub?.sub?.nextExtraDatasetSize && (
+        {datasetSize * 1000 !== teamSubPlan?.extraDatasetSize?.nextExtraDatasetSize && (
           <Button ml={3} isLoading={isLoading} onClick={onClickPreviewCheck}>
             {t('common.Confirm')}
           </Button>

@@ -155,6 +155,7 @@
       "Select Avatar": "点击选择头像",
       "Select Failed": "选择头像异常"
     },
+    "change": "变更",
     "choosable": "可选",
     "confirm": {
       "Common Tip": "操作确认"
@@ -201,6 +202,7 @@
     "link": {
       "UnValid": "无效的链接"
     },
+    "month": "月",
     "price": {
       "Amount": "{{amount}}{{unit}}"
     },
@@ -224,6 +226,7 @@
   },
   "core": {
     "Chat": "对话",
+    "Chat API is error or undefined": "",
     "Chat test": "测试对话",
     "Max Token": "单条数据上限",
     "Start chat": "立即对话",
@@ -293,6 +296,8 @@
       "navbar": {
         "External": "外部使用",
         "Flow mode": "高级编排",
+        "Publish": "发布",
+        "Publish app": "发布应用",
         "Simple mode": "简易配置"
       },
       "outLink": {
@@ -357,6 +362,7 @@
     "chat": {
       "Admin Mark Content": "纠正后的回复",
       "Audio Speech Error": "语音播报异常",
+      "Chat API is error or undefined": "对话接口报错或返回为空",
       "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
       "Confirm to clear share chat history": "确认删除所有聊天记录？",
       "Converting to text": "正在转换为文本...",
@@ -542,8 +548,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -564,6 +569,7 @@
         "id": "数据ID",
         "unit": "条"
       },
+      "embedding model tip": "索引模型可以将自然语言转成向量，用于进行语义检索。\n注意，不同索引模型无法一起使用，选择完索引模型后将无法修改。",
       "error": {
         "Data not found": "数据不存在或已被删除",
         "Start Sync Failed": "开始同步失败",
@@ -735,6 +741,12 @@
     "module": {
       "Add question type": "添加问题类型",
       "Data Type": "数据类型",
+      "Dataset quote": {
+        "Add quote": "添加引用",
+        "Concat result": "合并结果",
+        "Input description": "可接收知识库搜索的结果。",
+        "label": "知识库引用"
+      },
       "Field Description": "字段描述",
       "Field Name": "字段名",
       "Field Type": "字段类型",
@@ -742,7 +754,7 @@
       "Input Type": "输入类型",
       "Plugin output must connect": "自定义输出必须全部连接",
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
-      "Variable": "参数变量",
+      "Variable": "全局变量",
       "Variable Setting": "变量设置",
       "edit": {
         "Field Already Exist": "key 重复",
@@ -764,6 +776,7 @@
           "Quote": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
           "Response content": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
+          "Trigger": "大部分时候，你不需要连接该属性。\n当你需要延迟执行，或精确控制执行时机时，可以连接该属性。",
           "anyInput": "可传入任意内容",
           "cfr background": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示【首次对话】不使用问题补全功能。",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
@@ -837,6 +850,7 @@
         "Classify question intro": "根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于商品“使用”问题\n类型3: 关于商品“购买”问题\n类型4: 其他问题",
         "Dataset search": "知识库搜索",
         "Dataset search intro": "调用知识库搜索能力，查找有可能与问题相关的内容",
+        "Dataset search result concat intro": "可以将多个知识库搜索结果进行合并输出。使用 RRF 的合并方式进行最终排序输出。",
         "External module": "外部调用",
         "Extract field": "文本内容提取",
         "Extract field intro": "可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等",
@@ -889,6 +903,9 @@
         "variable options": "选项"
       },
       "variable add option": "添加选项"
+    },
+    "plugin": {
+      "Get Plugin Module Detail Failed": "加载插件异常"
     },
     "shareChat": {
       "Init Error": "初始化对话框失败",
@@ -1127,6 +1144,7 @@
       "Cancel subscription": "取消订阅"
     },
     "user": {
+      "Need to login": "请先登录",
       "Price": "计费标准",
       "auth": {
         "Sending Code": "正在发送"
@@ -1138,28 +1156,69 @@
       },
       "team": {
         "Dataset usage": "知识库容量",
-        "member": "成员",
-        "subscription": {
-          "type": {
-            "extraDatasetSize": "知识库扩容"
-          }
-        }
+        "member": "成员"
       }
     },
     "wallet": {
+      "Balance not enough tip": "余额不足，请先到账号页充值",
       "Buy more": "扩容",
       "Confirm pay": "支付确认",
       "Pay error": "支付失败",
       "Pay success": "支付成功",
+      "bill": {
+        "AI Model": "AI 模型",
+        "AI Type": "AI 类型",
+        "Price": "价格（￥）"
+      },
       "subscription": {
+        "Ai points": "AI 积分计算标准",
+        "Buy now": "开始使用",
         "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
         "Current dataset store": "当前额外容量",
+        "Current plan": "当前计划",
         "Dataset store": "知识库容量",
         "Dataset store price tip": "每月1号从账号余额里扣除",
         "Expand size": "扩大容量",
         "Extra dataset size": "额外知识库容量",
+        "Extra plan": "额外套餐",
+        "Extra plan tip": "标准套餐不够时，您可以购买额外套餐继续使用",
+        "FAQ": "常见问题",
+        "Next plan": "未来计划",
         "Next sub dataset size": "下次订阅额外容量",
-        "Update extra dataset size": "修改知识库额外容量"
+        "Nonsupport": "无法切换",
+        "Refund plan and pay confirm": "切换该套餐您无需支付额外费用，并将退换 {{amount}} 元至余额中。",
+        "Standard plan pay confirm": "切换该套餐，您本次需要补充支付 {{payPrice}} 元。",
+        "Standard update fail": "修改订阅套餐异常",
+        "Standard update success": "变更订阅套餐成功！",
+        "Sub plan": "订阅套餐",
+        "Sub plan tip": "免费使用 FastGPT 或升级更高的套餐",
+        "Training weight": "训练优先级: {{weight}}",
+        "Update extra dataset size": "调整知识库额外容量",
+        "function": {
+          "History store": "{{amount}} 天对话记录保留",
+          "Max app": "{{amount}} 个应用与插件",
+          "Max dataset": "{{amount}} 个知识库",
+          "Max dataset size": "{{amount}} 组知识库数据",
+          "Max members": "{{amount}} 个团队成员",
+          "Points": "{{amount}}万AI积分"
+        },
+        "mode": {
+          "Month": "按月",
+          "Year": "按年",
+          "Year sale": "赠送两个月"
+        },
+        "standardSubLevel": {
+          "enterprise": "企业版",
+          "experience": "体验版",
+          "experience desc": "可使用 {{title}} 的完整功能",
+          "free": "免费版",
+          "free desc": "每月均可免费使用 {{title}} 的基础功能",
+          "team": "团队版"
+        },
+        "type": {
+          "extraDatasetSize": "知识库扩容",
+          "standard": "套餐订阅"
+        }
       }
     }
   },

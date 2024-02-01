@@ -127,6 +127,24 @@ const Button = defineStyleConfig({
         bg: 'white !important'
       }
     },
+    primaryGhost: {
+      color: 'primary.600',
+      border: '1px solid',
+      borderColor: 'primary.300',
+      bg: 'primary.50',
+      transition: 'background 0.1s',
+      boxShadow: '1',
+      _hover: {
+        bg: 'primary.600',
+        color: 'white',
+        borderColor: 'primary.600'
+      },
+      _disabled: {
+        color: 'primary.600 !important',
+        bg: 'primary.50 !important',
+        borderColor: 'primary.300 !important'
+      }
+    },
     whiteBase: {
       color: 'myGray.600',
       border: '1px solid',
@@ -139,6 +157,9 @@ const Button = defineStyleConfig({
       },
       _active: {
         color: 'primary.600'
+      },
+      _disabled: {
+        color: 'myGray.600 !important'
       }
     },
     whitePrimary: {
@@ -155,6 +176,9 @@ const Button = defineStyleConfig({
       },
       _active: {
         color: 'primary.600'
+      },
+      _disabled: {
+        color: 'myGray.600 !important'
       }
     },
     whiteDanger: {
@@ -250,7 +274,7 @@ const NumberInput = numInputMultiStyle({
   variants: {
     outline: numInputPart({
       field: {
-        bg: 'myWhite.300',
+        bg: 'myGray.50',
         border: '1px solid',
         borderColor: 'myGray.200',
         _focus: {
@@ -282,7 +306,7 @@ const Textarea: ComponentStyleConfig = {
   variants: {
     outline: {
       border: '1px solid',
-      borderRadius: 'base',
+      borderRadius: 'md',
       borderColor: 'myGray.200',
       _hover: {
         borderColor: ''

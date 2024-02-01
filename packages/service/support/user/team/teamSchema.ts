@@ -3,7 +3,6 @@ const { Schema, model, models } = connectionMongo;
 import { TeamSchema as TeamType } from '@fastgpt/global/support/user/team/type.d';
 import { userCollectionName } from '../../user/schema';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
 
 const TeamSchema = new Schema({
   name: {

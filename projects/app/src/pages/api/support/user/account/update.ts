@@ -20,7 +20,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const baseUrl = openaiAccount?.baseUrl || openaiBaseUrl;
       openaiAccount.baseUrl = baseUrl;
 
-      const ai = getAIApi(openaiAccount);
+      const ai = getAIApi({
+        userKey: openaiAccount
+      });
 
       const response = await ai.chat.completions.create({
         model: 'gpt-3.5-turbo',

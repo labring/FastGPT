@@ -28,4 +28,4 @@ const MyIcon = ({ name, w = 'auto', h = 'auto', ...props }: { name: IconNameType
   ) : null;
 };
 
-export default MyIcon;
+export default React.memo(MyIcon);

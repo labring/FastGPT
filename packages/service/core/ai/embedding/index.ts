@@ -1,15 +1,13 @@
+import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../config';
 
-export type GetVectorProps = {
-  model: string;
+type GetVectorProps = {
+  model: VectorModelItemType;
   input: string;
 };
 
 // text to vector
-export async function getVectorsByText({
-  model = 'text-embedding-ada-002',
-  input
-}: GetVectorProps) {
+export async function getVectorsByText({ model, input }: GetVectorProps) {
   if (!input) {
     return Promise.reject({
       code: 500,
@@ -23,7 +21,8 @@ export async function getVectorsByText({
     // input text to vector
     const result = await ai.embeddings
       .create({
-        model,
+        ...model.defaultConfig,
+        model: model.model,
         input: [input]
       })
       .then(async (res) => {

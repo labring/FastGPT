@@ -5,112 +5,82 @@
     "qaMaxProcess": 15,
     "pgHNSWEfSearch": 100
   },
-  "chatModels": [
+  "llmModels": [
     {
-      "model": "gpt-3.5-turbo",
-      "name": "GPT35",
+      "model": "gpt-3.5-turbo-1106",
+      "name": "gpt-3.5-turbo",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
       "inputPrice": 0,
       "outputPrice": 0,
-      "maxContext": 4000,
-      "maxResponse": 4000,
-      "quoteMaxToken": 2000,
-      "maxTemperature": 1.2,
       "censor": false,
       "vision": false,
-      "defaultSystemChatPrompt": ""
+      "datasetProcess": false,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
     },
     {
       "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
+      "name": "gpt-3.5-turbo-16k",
       "maxContext": 16000,
       "maxResponse": 16000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
       "inputPrice": 0,
       "outputPrice": 0,
-      "quoteMaxToken": 8000,
-      "maxTemperature": 1.2,
       "censor": false,
       "vision": false,
-      "defaultSystemChatPrompt": ""
+      "datasetProcess": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
     },
     {
-      "model": "gpt-4",
-      "name": "GPT4-8k",
-      "maxContext": 8000,
-      "maxResponse": 8000,
+      "model": "gpt-4-0125-preview",
+      "name": "gpt-4-turbo",
+      "maxContext": 125000,
+      "maxResponse": 125000,
+      "quoteMaxToken": 100000,
+      "maxTemperature": 1.2,
       "inputPrice": 0,
       "outputPrice": 0,
-      "quoteMaxToken": 4000,
-      "maxTemperature": 1.2,
       "censor": false,
       "vision": false,
-      "defaultSystemChatPrompt": ""
+      "datasetProcess": false,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
     },
     {
       "model": "gpt-4-vision-preview",
-      "name": "GPT4-Vision",
+      "name": "gpt-4-vision",
       "maxContext": 128000,
       "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "censor": false,
-      "vision": true,
-      "defaultSystemChatPrompt": ""
-    }
-  ],
-  "qaModels": [
-    {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
-      "maxContext": 16000,
-      "maxResponse": 16000,
-      "inputPrice": 0,
-      "outputPrice": 0
-    }
-  ],
-  "cqModels": [
-    {
-      "model": "gpt-3.5-turbo",
-      "name": "GPT35",
-      "maxContext": 4000,
-      "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "vision": false,
+      "datasetProcess": false,
       "toolChoice": true,
-      "functionPrompt": ""
-    },
-    {
-      "model": "gpt-4",
-      "name": "GPT4-8k",
-      "maxContext": 8000,
-      "maxResponse": 8000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "toolChoice": true,
-      "functionPrompt": ""
-    }
-  ],
-  "extractModels": [
-    {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "maxContext": 16000,
-      "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "toolChoice": true,
-      "functionPrompt": ""
-    }
-  ],
-  "qgModels": [
-    {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "maxContext": 1600,
-      "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
     }
   ],
   "vectorModels": [

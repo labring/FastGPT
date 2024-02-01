@@ -3,7 +3,7 @@ import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import { ModelTypeEnum } from '@/service/core/ai/model';
+import { ModelTypeEnum, getVectorModel } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -11,7 +11,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
   [ModuleInputKeyEnum.datasetSimilarity]: number;
-  [ModuleInputKeyEnum.datasetLimit]: number;
+  [ModuleInputKeyEnum.datasetMaxTokens]: number;
   [ModuleInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.datasetSearchUsingReRank]: boolean;
@@ -28,7 +28,7 @@ export async function dispatchDatasetSearch(
 ): Promise<DatasetSearchResponse> {
   const {
     teamId,
-    inputs: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
+    params: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
   } = props as DatasetSearchProps;
 
   if (!Array.isArray(datasets)) {
@@ -44,11 +44,11 @@ export async function dispatchDatasetSearch(
   }
 
   // get vector
-  const vectorModel = datasets[0]?.vectorModel || global.vectorModels[0];
+  const vectorModel = getVectorModel(datasets[0]?.vectorModel?.model);
 
   // const { queries: extensionQueries } = await searchQueryExtension({
   //   query: userChatInput,
-  //   model: global.chatModels[0].model
+  //   model: global.llmModels[0].model
   // });
   const concatQueries = [userChatInput];
 

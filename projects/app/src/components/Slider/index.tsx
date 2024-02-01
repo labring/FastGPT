@@ -42,63 +42,76 @@ const MySlider = ({
   };
 
   return (
-    <Slider
-      max={max}
-      min={min}
-      step={step}
-      size={'lg'}
-      value={value}
-      width={width}
-      onChange={onChange}
-    >
-      {markList?.map((item, i) => (
-        <SliderMark
-          key={item.value}
-          value={item.value}
-          fontSize={'sm'}
-          mt={3}
-          whiteSpace={'nowrap'}
-          transform={'translateX(-50%)'}
-          color={'myGray.600'}
-        >
-          <Box px={3} cursor={'pointer'}>
-            {item.label}
-          </Box>
-        </SliderMark>
-      ))}
-      <SliderMark
+    <Box pb={4} zIndex={10}>
+      <Slider
+        max={max}
+        min={min}
+        step={step}
+        size={'lg'}
         value={value}
-        textAlign="center"
-        bg="primary.500"
-        color="white"
-        px={1}
-        minW={'18px'}
-        w={'auto'}
-        h={'18px'}
-        lineHeight={'18px'}
-        borderRadius={'18px'}
-        transform={'translate(-50%, -155%)'}
-        fontSize={'11px'}
-      >
-        <Box transform={'scale(0.9)'}>{value}</Box>
-      </SliderMark>
-      <SliderTrack
-        bg={'#EAEDF3'}
-        overflow={'visible'}
-        h={'4px'}
-        _before={{
-          ...startEndPointStyle,
-          left: '-3px'
+        width={width}
+        onChange={onChange}
+        _hover={{
+          '& .marker': {
+            display: 'block'
+          }
         }}
-        _after={{
-          ...startEndPointStyle,
-          right: '-3px'
+        _active={{
+          '& .marker': {
+            display: 'block'
+          }
         }}
       >
-        <SliderFilledTrack bg={'primary.500'} />
-      </SliderTrack>
-      <SliderThumb border={'3px solid'} borderColor={'primary.500'}></SliderThumb>
-    </Slider>
+        {markList?.map((item, i) => (
+          <SliderMark
+            key={item.value}
+            value={item.value}
+            fontSize={'sm'}
+            mt={2}
+            whiteSpace={'nowrap'}
+            transform={'translateX(-50%)'}
+            color={'myGray.600'}
+          >
+            <Box px={3} cursor={'pointer'}>
+              {item.label}
+            </Box>
+          </SliderMark>
+        ))}
+        <SliderMark
+          className="marker"
+          value={value}
+          textAlign="center"
+          bg="primary.500"
+          color="white"
+          px={1}
+          minW={'20px'}
+          w={'auto'}
+          py={'1px'}
+          borderRadius={'md'}
+          transform={'translate(-50%, -155%)'}
+          fontSize={'11px'}
+          display={'none'}
+        >
+          <Box transform={'scale(0.9)'}>{value}</Box>
+        </SliderMark>
+        <SliderTrack
+          bg={'#EAEDF3'}
+          overflow={'visible'}
+          h={'4px'}
+          _before={{
+            ...startEndPointStyle,
+            left: '-3px'
+          }}
+          _after={{
+            ...startEndPointStyle,
+            right: '-3px'
+          }}
+        >
+          <SliderFilledTrack bg={'primary.500'} />
+        </SliderTrack>
+        <SliderThumb border={'3px solid'} borderColor={'primary.500'}></SliderThumb>
+      </Slider>
+    </Box>
   );
 };
 

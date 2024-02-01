@@ -1,7 +1,8 @@
 import { useRouter } from 'next/router';
-import { useToast } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
+import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const unAuthPage: { [key: string]: boolean } = {
   '/': true,
@@ -10,16 +11,14 @@ const unAuthPage: { [key: string]: boolean } = {
   '/login/fastlogin': true,
   '/appStore': true,
   '/chat/share': true,
-  '/tools/price': true
+  '/tools/price': true,
+  '/price': true
 };
 
 const Auth = ({ children }: { children: JSX.Element }) => {
+  const { t } = useTranslation();
   const router = useRouter();
-  const toast = useToast({
-    title: '请先登录',
-    position: 'top',
-    status: 'warning'
-  });
+  const { toast } = useToast();
   const { userInfo, initUserInfo } = useUserStore();
 
   useQuery(
@@ -37,12 +36,15 @@ const Auth = ({ children }: { children: JSX.Element }) => {
         router.replace(
           `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
         );
-        toast();
+        toast({
+          status: 'warning',
+          title: t('support.user.Need to login')
+        });
       }
     }
   );
 
-  return userInfo || unAuthPage[router.pathname] === true ? children : null;
+  return !!userInfo || unAuthPage[router.pathname] === true ? children : null;
 };
 
 export default Auth;

@@ -52,7 +52,7 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       showTargetInPlugin: false
     },
     {
-      key: ModuleInputKeyEnum.datasetLimit,
+      key: ModuleInputKeyEnum.datasetMaxTokens,
       type: FlowNodeInputTypeEnum.hidden,
       label: '',
       value: 1500,
@@ -106,8 +106,7 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleOutputKeyEnum.datasetQuoteQA,
-      label: 'core.module.output.label.Quote',
-      description: 'core.module.output.label.Quote intro',
+      label: 'core.module.Dataset quote.label',
       type: FlowNodeOutputTypeEnum.source,
       valueType: ModuleIOValueTypeEnum.datasetQuote,
       targets: []

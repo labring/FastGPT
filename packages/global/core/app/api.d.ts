@@ -1,4 +1,4 @@
-import type { ChatModelItemType } from '../ai/model.d';
+import type { LLMModelItemType } from '../ai/model.d';
 import { AppTypeEnum } from './constants';
 import { AppSchema, AppSimpleEditFormType } from './type';
 
@@ -22,5 +22,5 @@ export interface AppUpdateParams {
 export type FormatForm2ModulesProps = {
   formData: AppSimpleEditFormType;
   chatModelMaxToken: number;
-  chatModelList: ChatModelItemType[];
+  llmModelList: LLMModelItemType[];
 };

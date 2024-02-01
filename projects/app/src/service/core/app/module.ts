@@ -6,7 +6,7 @@ export const getChatModelNameListByModules = (modules: ModuleItemType[]): string
   return chatModules
     .map((item) => {
       const model = item.inputs.find((input) => input.key === 'model')?.value;
-      return global.chatModels.find((item) => item.model === model)?.name || '';
+      return global.llmModels.find((item) => item.model === model)?.name || '';
     })
     .filter(Boolean);
 };

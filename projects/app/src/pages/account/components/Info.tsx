@@ -13,14 +13,14 @@ import {
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
-import { feConfigs, systemVersion } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import { timezoneList } from '@fastgpt/global/common/time/timezone';
 import Avatar from '@/components/Avatar';
@@ -44,6 +44,7 @@ const SubDatasetModal = dynamic(() => import('@/components/support/wallet/SubDat
 const UserInfo = () => {
   const theme = useTheme();
   const router = useRouter();
+  const { feConfigs, systemVersion } = useSystemStore();
   const { t, i18n } = useTranslation();
   const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
   const timezones = useRef(timezoneList());
@@ -122,12 +123,11 @@ const UserInfo = () => {
     }
   });
 
-  const { data: datasetSub = { maxSize: 0, usedSize: 0 } } = useQuery(
-    ['getTeamDatasetValidSub'],
-    getTeamDatasetValidSub
-  );
+  const {
+    data: teamSubPlan = { totalPoints: 0, usedPoints: 0, datasetMaxSize: 800, usedDatasetSize: 0 }
+  } = useQuery(['getTeamDatasetValidSub'], getTeamDatasetValidSub);
   const datasetUsageMap = useMemo(() => {
-    const rate = datasetSub.usedSize / datasetSub.maxSize;
+    const rate = teamSubPlan.usedDatasetSize / teamSubPlan.datasetMaxSize;
 
     const colorScheme = (() => {
       if (rate < 0.5) return 'green';
@@ -138,10 +138,10 @@ const UserInfo = () => {
     return {
       colorScheme,
       value: rate * 100,
-      maxSize: datasetSub.maxSize,
-      usedSize: datasetSub.usedSize
+      maxSize: teamSubPlan.datasetMaxSize || t('common.Unlimited'),
+      usedSize: teamSubPlan.usedDatasetSize
     };
-  }, [datasetSub.maxSize, datasetSub.usedSize]);
+  }, [teamSubPlan.usedDatasetSize, teamSubPlan.datasetMaxSize, t]);
 
   return (
     <Box
@@ -276,7 +276,7 @@ const UserInfo = () => {
                 <Flex alignItems={'center'}>
                   <Box flex={'1 0 0'} fontSize={'md'}>
                     {t('support.user.team.Dataset usage')}:&nbsp;{datasetUsageMap.usedSize}/
-                    {datasetSub.maxSize}
+                    {datasetUsageMap.maxSize}
                   </Box>
                   {userInfo?.team?.canWrite && (
                     <Button size={'sm'} onClick={onOpenSubDatasetModal}>
@@ -316,7 +316,7 @@ const UserInfo = () => {
             userSelect={'none'}
             textDecoration={'none !important'}
           >
-            <MyIcon name={'common/courseLight'} w={'18px'} />
+            <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
               {t('system.Help Document')}
             </Box>
@@ -366,7 +366,7 @@ const UserInfo = () => {
                 userSelect={'none'}
                 onClick={onOpenOpenai}
               >
-                <Avatar src={'/imgs/openai.png'} w={'18px'} />
+                <MyIcon name={'common/openai'} w={'18px'} color={'myGray.600'} />
                 <Box ml={2} flex={1}>
                   OpenAI/OneAPI 账号
                 </Box>

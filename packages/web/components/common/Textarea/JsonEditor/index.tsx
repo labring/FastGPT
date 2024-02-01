@@ -1,11 +1,11 @@
 import React from 'react';
 import Editor, { loader } from '@monaco-editor/react';
 import { useCallback, useRef, useState } from 'react';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { Box, BoxProps, useToast } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 
 loader.config({
-  paths: { vs: "/js/monaco-editor.0.43.0" },
+  paths: { vs: '/js/monaco-editor.0.43.0' }
 });
 
 type Props = Omit<BoxProps, 'onChange' | 'resize' | 'height'> & {
@@ -39,6 +39,7 @@ const options = {
 };
 
 const JSONEditor = ({ defaultValue, value, onChange, resize, ...props }: Props) => {
+  const toast = useToast();
   const [height, setHeight] = useState(props.height || 100);
   const initialY = useRef(0);
 
@@ -108,6 +109,22 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, ...props }: Props) 
           defaultValue={defaultValue}
           value={value}
           onChange={(e) => onChange?.(e || '')}
+          wrapperProps={{
+            onBlur: () => {
+              try {
+                JSON.parse(value as string);
+              } catch (error: any) {
+                toast({
+                  title: 'Invalid JSON',
+                  description: error.message,
+                  position: 'top',
+                  status: 'error',
+                  duration: 3000,
+                  isClosable: true
+                });
+              }
+            }
+          }}
         />
       </Box>
     </Box>

@@ -11,6 +11,13 @@ weight: 706
 
 ![](/imgs/sealos-fastgpt.webp)
 
+## 多模型支持
+
+FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、Azure 、国内主流模型和本地模型等。
+
+可参考：[Sealos 快速部署 OneAPI](/docs/development/one-api)
+
+
 ## 一键部署
 Sealos 的服务器在国外，不需要额外处理网络问题，无需服务器、无需魔法、无需域名，支持高并发 & 动态伸缩。点击以下按钮即可一键部署 👇
 
