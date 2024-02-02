@@ -224,7 +224,7 @@ llm模型全部合并
       "model": "gpt-4-0125-preview",
       "name": "gpt-4-turbo",
       "maxContext": 125000,
-      "maxResponse": 125000,
+      "maxResponse": 4000,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
       "inputPrice": 0,
