@@ -28,10 +28,11 @@ const JsonEditor = ({ item, moduleId }: RenderInputProps) => {
       bg={'myWhite.400'}
       placeholder={t(item.placeholder || '')}
       resize
-      defaultValue={item.value}
+      value={item.value}
       onChange={(e) => {
         update(e);
       }}
+      variables={[]}
     />
   );
 };
