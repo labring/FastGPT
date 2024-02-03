@@ -64,7 +64,7 @@ export async function dispatchDatasetSearch(
 
   // query extension
   const extensionResult = await (async () => {
-    if (!datasetSearchUsingExtensionQuery) return;
+    if (!datasetSearchUsingExtensionQuery || !datasetSearchExtensionModel) return;
     const extensionModel = getLLMModel(datasetSearchExtensionModel);
     const result = await queryExtension({
       chatBg: datasetSearchExtensionBg,

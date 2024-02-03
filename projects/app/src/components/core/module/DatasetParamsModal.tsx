@@ -73,7 +73,7 @@ const DatasetParamsModal = ({
       searchMode,
       usingReRank,
       datasetSearchUsingExtensionQuery,
-      datasetSearchExtensionModel,
+      datasetSearchExtensionModel: datasetSearchExtensionModel ?? llmModelList[0]?.model,
       datasetSearchExtensionBg
     }
   });

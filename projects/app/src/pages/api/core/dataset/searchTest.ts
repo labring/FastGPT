@@ -48,7 +48,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // query extension
     const extensionResult = await (async () => {
-      if (!datasetSearchUsingExtensionQuery) return;
+      if (!datasetSearchUsingExtensionQuery || !datasetSearchExtensionModel) return;
       const result = await queryExtension({
         chatBg: datasetSearchExtensionBg,
         query: text,
