@@ -9,7 +9,8 @@ import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { searchQueryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
+import { getLLMModel } from '@/service/core/ai/model';
+import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -20,13 +21,16 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       limit = 1500,
       similarity,
       searchMode,
-      usingReRank
+      usingReRank,
+
+      datasetSearchUsingExtensionQuery = false,
+      datasetSearchExtensionModel,
+      datasetSearchExtensionBg = ''
     } = req.body as SearchTestProps;
 
     if (!datasetId || !text) {
       throw new Error('缺少参数');
     }
-
     const start = Date.now();
 
     // auth dataset role
@@ -37,20 +41,43 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       datasetId,
       per: 'r'
     });
-
     // auth balance
     await authTeamBalance(teamId);
 
+    const extensionModel = getLLMModel(datasetSearchExtensionModel);
+
     // query extension
-    // const { queries } = await searchQueryExtension({
-    //   query: text,
-    //   model: global.llmModel[0].model
-    // });
+    const extensionResult = await (async () => {
+      if (!datasetSearchUsingExtensionQuery) return;
+      const result = await queryExtension({
+        chatBg: datasetSearchExtensionBg,
+        query: text,
+        histories: [],
+        model: extensionModel.model
+      });
+      if (result.extensionQueries?.length === 0) return;
+      return result;
+    })();
+
+    const { concatQueries, rewriteQuery } = (() => {
+      let queries = [text];
+      let rewriteQuery = text;
+
+      if (extensionResult) {
+        queries = queries.concat(extensionResult.extensionQueries);
+        rewriteQuery = queries.join('\n');
+      }
+
+      return {
+        concatQueries: queries,
+        rewriteQuery
+      };
+    })();
 
     const { searchRes, charsLength, ...result } = await searchDatasetData({
       teamId,
-      rawQuery: text,
-      queries: [text],
+      reRankQuery: rewriteQuery,
+      queries: concatQueries,
       model: dataset.vectorModel,
       limit: Math.min(limit, 20000),
       similarity,
@@ -65,7 +92,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       tmbId,
       charsLength,
       model: dataset.vectorModel,
-      source: apikey ? BillSourceEnum.api : BillSourceEnum.fastgpt
+      source: apikey ? BillSourceEnum.api : BillSourceEnum.fastgpt,
+
+      ...(extensionResult && {
+        extensionModel: extensionModel.name,
+        extensionInputTokens: extensionResult.inputTokens,
+        extensionOutputTokens: extensionResult.outputTokens
+      })
     });
     if (apikey) {
       updateApiKeyUsage({

@@ -280,7 +280,7 @@
         "Save and out": "保存并退出",
         "UnSave": "不保存",
         "cfr background prompt": "对话背景描述",
-        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n值为空时，表示【首个问题】不使用问题补全功能。\n值为 none 时，表示不使用问题补全功能。"
+        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n值为空时，表示【首个问题】不使用问题补全功能。"
       },
       "error": {
         "App name can not be empty": "应用名不能为空",
@@ -432,9 +432,11 @@
       },
       "response": {
         "Complete Response": "完整响应",
+        "Extension model": "问题补全模型",
         "Plugin Resonse Detail": "插件详情",
         "Read complete response": "查看详情",
         "Read complete response tips": "点击查看详细流程",
+        "cfr model": "问题补全模型",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",
@@ -650,10 +652,13 @@
       },
       "link": "链接",
       "search": {
-        "Dataset Search Params": "搜索参数",
+        "Basic params": "基础参数",
+        "Dataset Search Params": "知识库搜索配置",
         "Embedding score": "语意检索得分",
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
+        "Filter": "搜索过滤",
+        "Limit": "",
         "Max Tokens": "引用上限",
         "Max Tokens Tips": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
         "Min Similarity": "最低相关度",
@@ -671,6 +676,7 @@
         "Source id": "来源ID",
         "Source name": "引用来源名",
         "Top K": "单次搜索上限",
+        "Using cfr": "使用问题补全",
         "mode": {
           "embedding": "语义检索",
           "embedding desc": "使用向量进行文本相关性查询",
@@ -694,6 +700,9 @@
           "rrf desc": "通过倒排计算的方式，合并多个检索结果。"
         },
         "search mode": "搜索模式"
+      },
+      "settings": {
+        "Search basic params": "检索参数"
       },
       "status": {
         "active": "已就绪",
@@ -869,7 +878,8 @@
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
         "cfr": "问题补全",
-        "cfr intro": "根据历史记录，完善当前问题，使其更利于知识库搜索，同时提高连续对话能力。",
+        "Query extension": "问题补全",
+        "Query extension intro": "开启问题补全功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出"
       },
@@ -1339,6 +1349,9 @@
       "App name": "应用名",
       "Audio Speech": "语音播报",
       "Bill Module": "扣费模块",
+      "Extension Input Token Length": "问题补全输入Tokens",
+      "Extension Output Token Length": "问题补全输出Tokens",
+      "Extension result": "问题补全结果",
       "Chars length": "文本长度",
       "Data Length": "数据长度",
       "Dataset store": "知识库存储",

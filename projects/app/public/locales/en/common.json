@@ -280,7 +280,7 @@
         "Save and out": "Save out",
         "UnSave": "UnSave",
         "cfr background prompt": "Chat background description",
-        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.\nIf the value is empty, the problem completion function is not used for the \"first problem\".\nIf the value is none, the problem completion function is not used."
+        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.\nIf the value is empty, the question completion function is not used for [first question]."
       },
       "error": {
         "App name can not be empty": "App name can not be empty",
@@ -432,9 +432,11 @@
       },
       "response": {
         "Complete Response": "Complete Response",
+        "Extension model": "Extension model",
         "Plugin Resonse Detail": "Plugin Detail",
         "Read complete response": "Read Detail",
         "Read complete response tips": "Click to see the detailed process",
+        "cfr model": "Cfr model",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",
@@ -649,10 +651,13 @@
       },
       "link": "Link",
       "search": {
-        "Dataset Search Params": "Dataset Search Params",
+        "Basic params": "Basic settings",
+        "Dataset Search Params": "Dataset search configuration",
         "Embedding score": "Embedding score",
         "Empty result response": "Empty Response",
         "Empty result response Tips": "If you fill in the content, if no suitable content is found, you will directly reply to the content.",
+        "Filter": "Search filter",
+        "Limit": "Search limit",
         "Max Tokens": "Max Tokens",
         "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
@@ -670,6 +675,7 @@
         "Source id": "Source ID",
         "Source name": "Source",
         "Top K": "Top K",
+        "Using cfr": "Open coreference resolution",
         "mode": {
           "embedding": "Vector recall",
           "embedding desc": "Use vectors for text correlation queries",
@@ -693,6 +699,9 @@
           "rrf desc": "Multiple search results are combined by inverting calculation."
         },
         "search mode": "Search Mode"
+      },
+      "settings": {
+        "Search basic params": ""
       },
       "status": {
         "active": "Ready",
@@ -868,7 +877,8 @@
         "UnKnow Module": "UnKnow Module",
         "User guide": "User guide",
         "cfr": "Coreference resolution",
-        "cfr intro": "Refine the current issue based on history, making it more conducive to knowledge base search, while improving continuous conversation capabilities.",
+        "Query extension": "Query extension",
+        "Query extension intro": "If the problem completion function is enabled, the accuracy of knowledge base search can be improved in continuous conversations. After this function is enabled, when searching the knowledge base, AI will be used to complete the missing information of the problem according to the conversation records.",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"
       },
@@ -1338,6 +1348,9 @@
       "App name": "App name",
       "Audio Speech": "Audio Speech",
       "Bill Module": "Bill Detail",
+      "Extension Input Token Length": "Extension input tokens",
+      "Extension Output Token Length": "Extension output tokens",
+      "Extension result": "Extension result",
       "Chars length": "Chars length",
       "Data Length": "Data length",
       "Dataset store": "",

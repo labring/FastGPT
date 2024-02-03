@@ -64,7 +64,9 @@ export enum ModuleInputKeyEnum {
   datasetMaxTokens = 'limit',
   datasetSearchMode = 'searchMode',
   datasetSearchUsingReRank = 'usingReRank',
-  datasetParamsModal = 'datasetParamsModal',
+  datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
+  datasetSearchExtensionModel = 'datasetSearchExtensionModel',
+  datasetSearchExtensionBg = 'datasetSearchExtensionBg',
 
   // context extract
   contextExtractInput = 'content',

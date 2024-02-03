@@ -34,14 +34,12 @@ const AIChatSettingsModal = ({
   onClose,
   onSuccess,
   defaultData,
-  simpleModeTemplate = SimpleModeTemplate_FastGPT_Universal,
   pickerMenu = []
 }: {
   isAdEdit?: boolean;
   onClose: () => void;
   onSuccess: (e: AIChatModuleProps) => void;
   defaultData: AIChatModuleProps;
-  simpleModeTemplate?: AppSimpleEditConfigTemplateType;
   pickerMenu?: EditorVariablePickerType[];
 }) => {
   const { t } = useTranslation();
@@ -160,119 +158,112 @@ const AIChatSettingsModal = ({
             </Box>
           </Flex>
         )}
-        {simpleModeTemplate?.systemForm?.aiSettings?.temperature && (
-          <Flex mb={10} mt={isAdEdit ? 8 : 6}>
-            <Box {...LabelStyles} mr={2} w={'80px'}>
-              {t('core.app.Temperature')}
-            </Box>
-            <Box flex={1} ml={'10px'}>
-              <MySlider
-                markList={[
-                  { label: t('core.app.deterministic'), value: 0 },
-                  { label: t('core.app.Random'), value: 10 }
-                ]}
-                width={'95%'}
-                min={0}
-                max={10}
-                value={getValues(ModuleInputKeyEnum.aiChatTemperature)}
-                onChange={(e) => {
-                  setValue(ModuleInputKeyEnum.aiChatTemperature, e);
-                  setRefresh(!refresh);
-                }}
-              />
-            </Box>
-          </Flex>
-        )}
-        {simpleModeTemplate?.systemForm?.aiSettings?.maxToken && (
-          <Flex mt={5} mb={5}>
-            <Box {...LabelStyles} mr={2} w={'80px'}>
-              {t('core.app.Max tokens')}
-            </Box>
-            <Box flex={1} ml={'10px'}>
-              <MySlider
-                markList={[
-                  { label: '100', value: 100 },
-                  { label: `${tokenLimit}`, value: tokenLimit }
-                ]}
-                width={'95%'}
-                min={100}
-                max={tokenLimit}
-                step={50}
-                value={getValues(ModuleInputKeyEnum.aiChatMaxToken)}
-                onChange={(val) => {
-                  setValue(ModuleInputKeyEnum.aiChatMaxToken, val);
-                  setRefresh(!refresh);
-                }}
-              />
-            </Box>
-          </Flex>
-        )}
+        <Flex mb={10} mt={isAdEdit ? 8 : 6}>
+          <Box {...LabelStyles} mr={2} w={'80px'}>
+            {t('core.app.Temperature')}
+          </Box>
+          <Box flex={1} ml={'10px'}>
+            <MySlider
+              markList={[
+                { label: t('core.app.deterministic'), value: 0 },
+                { label: t('core.app.Random'), value: 10 }
+              ]}
+              width={'95%'}
+              min={0}
+              max={10}
+              value={getValues(ModuleInputKeyEnum.aiChatTemperature)}
+              onChange={(e) => {
+                setValue(ModuleInputKeyEnum.aiChatTemperature, e);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
+        </Flex>
+        <Flex mt={5} mb={5}>
+          <Box {...LabelStyles} mr={2} w={'80px'}>
+            {t('core.app.Max tokens')}
+          </Box>
+          <Box flex={1} ml={'10px'}>
+            <MySlider
+              markList={[
+                { label: '100', value: 100 },
+                { label: `${tokenLimit}`, value: tokenLimit }
+              ]}
+              width={'95%'}
+              min={100}
+              max={tokenLimit}
+              step={50}
+              value={getValues(ModuleInputKeyEnum.aiChatMaxToken)}
+              onChange={(val) => {
+                setValue(ModuleInputKeyEnum.aiChatMaxToken, val);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
+        </Flex>
 
-        {simpleModeTemplate?.systemForm?.aiSettings?.quoteTemplate && (
-          <Box>
-            <Flex {...LabelStyles} mb={1}>
-              {t('core.app.Quote templates')}
-              <MyTooltip
-                label={t('template.Quote Content Tip', {
-                  default: Prompt_QuoteTemplateList[0].value
-                })}
-                forceShow
-              >
-                <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-              </MyTooltip>
-              <Box flex={1} />
-              <Box
-                {...selectTemplateBtn}
-                onClick={() =>
-                  setSelectTemplateData({
-                    title: t('core.app.Select quote template'),
-                    templates: Prompt_QuoteTemplateList
-                  })
-                }
-              >
-                {t('common.Select template')}
-              </Box>
-            </Flex>
-
-            <PromptEditor
-              variables={quoteTemplateVariables}
-              title={t('core.app.Quote templates')}
-              placeholder={t('template.Quote Content Tip', {
+        <Box>
+          <Flex {...LabelStyles} mb={1}>
+            {t('core.app.Quote templates')}
+            <MyTooltip
+              label={t('template.Quote Content Tip', {
                 default: Prompt_QuoteTemplateList[0].value
               })}
-              value={aiChatQuoteTemplate}
-              onChange={(e) => {
-                setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e);
-                // setRefresh(!refresh);
-              }}
-            />
-          </Box>
-        )}
-        {simpleModeTemplate?.systemForm?.aiSettings?.quotePrompt && (
-          <Box mt={4}>
-            <Flex {...LabelStyles} mb={1}>
-              {t('core.app.Quote prompt')}
-              <MyTooltip
-                label={t('template.Quote Prompt Tip', { default: Prompt_QuotePromptList[0].value })}
-                forceShow
-              >
-                <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-              </MyTooltip>
-            </Flex>
-            <PromptEditor
-              variables={quotePromptVariables}
-              title={t('core.app.Quote prompt')}
-              h={220}
-              placeholder={t('template.Quote Prompt Tip', {
-                default: Prompt_QuotePromptList[0].value
-              })}
-              value={aiChatQuotePrompt}
-              onChange={(e) => {
-                setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e);
-              }}
-            />
-          </Box>
-        )}
+              forceShow
+            >
+              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+            </MyTooltip>
+            <Box flex={1} />
+            <Box
+              {...selectTemplateBtn}
+              onClick={() =>
+                setSelectTemplateData({
+                  title: t('core.app.Select quote template'),
+                  templates: Prompt_QuoteTemplateList
+                })
+              }
+            >
+              {t('common.Select template')}
+            </Box>
+          </Flex>
+
+          <PromptEditor
+            variables={quoteTemplateVariables}
+            h={160}
+            title={t('core.app.Quote templates')}
+            placeholder={t('template.Quote Content Tip', {
+              default: Prompt_QuoteTemplateList[0].value
+            })}
+            value={aiChatQuoteTemplate}
+            onChange={(e) => {
+              setValue(ModuleInputKeyEnum.aiChatQuoteTemplate, e);
+              // setRefresh(!refresh);
+            }}
+          />
+        </Box>
+        <Box mt={4}>
+          <Flex {...LabelStyles} mb={1}>
+            {t('core.app.Quote prompt')}
+            <MyTooltip
+              label={t('template.Quote Prompt Tip', { default: Prompt_QuotePromptList[0].value })}
+              forceShow
+            >
+              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+            </MyTooltip>
+          </Flex>
+          <PromptEditor
+            variables={quotePromptVariables}
+            title={t('core.app.Quote prompt')}
+            h={230}
+            placeholder={t('template.Quote Prompt Tip', {
+              default: Prompt_QuotePromptList[0].value
+            })}
+            value={aiChatQuotePrompt}
+            onChange={(e) => {
+              setValue(ModuleInputKeyEnum.aiChatQuotePrompt, e);
+            }}
+          />
+        </Box>
       </ModalBody>
       <ModalFooter>
         <Button variant={'whiteBase'} onClick={onClose}>

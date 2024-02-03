@@ -35,6 +35,7 @@ import type {
 } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { getVectorModel } from '../../ai/model';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export async function pushDataToTrainingQueue(
   props: {
@@ -272,7 +273,7 @@ export async function updateData2Dataset({
   };
 }
 
-export async function searchDatasetData(props: {
+type SearchDatasetDataProps = {
   teamId: string;
   model: string;
   similarity?: number; // min distance
@@ -280,12 +281,14 @@ export async function searchDatasetData(props: {
   datasetIds: string[];
   searchMode?: `${DatasetSearchModeEnum}`;
   usingReRank?: boolean;
-  rawQuery: string;
+  reRankQuery: string;
   queries: string[];
-}) {
+};
+
+export async function searchDatasetData(props: SearchDatasetDataProps) {
   let {
     teamId,
-    rawQuery,
+    reRankQuery,
     queries,
     model,
     similarity = 0,
@@ -307,27 +310,6 @@ export async function searchDatasetData(props: {
   let usingSimilarityFilter = false;
 
   /* function */
-  const countRecallLimit = () => {
-    const oneChunkToken = 50;
-    const estimatedLen = Math.max(20, Math.ceil(maxTokens / oneChunkToken));
-
-    if (searchMode === DatasetSearchModeEnum.embedding) {
-      return {
-        embeddingLimit: Math.min(estimatedLen, 80),
-        fullTextLimit: 0
-      };
-    }
-    if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
-      return {
-        embeddingLimit: 0,
-        fullTextLimit: Math.min(estimatedLen, 50)
-      };
-    }
-    return {
-      embeddingLimit: Math.min(estimatedLen, 60),
-      fullTextLimit: Math.min(estimatedLen, 40)
-    };
-  };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, charsLength } = await getVectorsByText({
       model: getVectorModel(model),
@@ -531,69 +513,50 @@ export async function searchDatasetData(props: {
     embeddingLimit: number;
     fullTextLimit: number;
   }) => {
-    // In a group n recall, as long as one of the data appears minAmount of times, it is retained
-    const getIntersection = (resultList: SearchDataResponseItemType[][], minAmount = 1) => {
-      minAmount = Math.min(resultList.length, minAmount);
-
-      const map: Record<
-        string,
-        {
-          amount: number;
-          data: SearchDataResponseItemType;
-        }
-      > = {};
-
-      for (const list of resultList) {
-        for (const item of list) {
-          map[item.id] = map[item.id]
-            ? {
-                amount: map[item.id].amount + 1,
-                data: item
-              }
-            : {
-                amount: 1,
-                data: item
-              };
-        }
-      }
-
-      return Object.values(map)
-        .filter((item) => item.amount >= minAmount)
-        .map((item) => item.data);
-    };
-
     // multi query recall
     const embeddingRecallResList: SearchDataResponseItemType[][] = [];
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
     let totalCharsLength = 0;
-    for await (const query of queries) {
-      const [{ charsLength, embeddingRecallResults }, { fullTextRecallResults }] =
-        await Promise.all([
-          embeddingRecall({
-            query,
-            limit: embeddingLimit
-          }),
-          fullTextRecall({
-            query,
-            limit: fullTextLimit
-          })
-        ]);
-      totalCharsLength += charsLength;
 
-      embeddingRecallResList.push(embeddingRecallResults);
-      fullTextRecallResList.push(fullTextRecallResults);
-    }
+    await Promise.all(
+      queries.map(async (query) => {
+        const [{ charsLength, embeddingRecallResults }, { fullTextRecallResults }] =
+          await Promise.all([
+            embeddingRecall({
+              query,
+              limit: embeddingLimit
+            }),
+            fullTextRecall({
+              query,
+              limit: fullTextLimit
+            })
+          ]);
+        totalCharsLength += charsLength;
+
+        embeddingRecallResList.push(embeddingRecallResults);
+        fullTextRecallResList.push(fullTextRecallResults);
+      })
+    );
+
+    // rrf concat
+    const rrfEmbRecall = datasetSearchResultConcat(
+      embeddingRecallResList.map((list) => ({ k: 60, list }))
+    ).slice(0, embeddingLimit);
+    const rrfFTRecall = datasetSearchResultConcat(
+      fullTextRecallResList.map((list) => ({ k: 60, list }))
+    ).slice(0, fullTextLimit);
 
     return {
       charsLength: totalCharsLength,
-      embeddingRecallResults: embeddingRecallResList[0],
-      fullTextRecallResults: fullTextRecallResList[0]
+      embeddingRecallResults: rrfEmbRecall,
+      fullTextRecallResults: rrfFTRecall
     };
   };
 
   /* main step */
   // count limit
-  const { embeddingLimit, fullTextLimit } = countRecallLimit();
+  const embeddingLimit = 60;
+  const fullTextLimit = 40;
 
   // recall
   const { embeddingRecallResults, fullTextRecallResults, charsLength } = await multiQueryRecall({
@@ -620,7 +583,7 @@ export async function searchDatasetData(props: {
       return true;
     });
     return reRankSearchResult({
-      query: rawQuery,
+      query: reRankQuery,
       data: filterSameDataResults
     });
   })();

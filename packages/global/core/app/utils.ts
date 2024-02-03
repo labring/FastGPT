@@ -6,9 +6,8 @@ import { getGuideModule, splitGuideModule } from '../module/utils';
 import { ModuleItemType } from '../module/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 
-export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEditFormType => {
+export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
-    templateId,
     aiSettings: {
       model: 'gpt-3.5-turbo',
       systemPrompt: '',
@@ -18,16 +17,15 @@ export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEd
       quoteTemplate: '',
       maxToken: 4000
     },
-    cfr: {
-      background: ''
-    },
     dataset: {
       datasets: [],
       similarity: 0.4,
       limit: 1500,
       searchEmptyText: '',
       searchMode: DatasetSearchModeEnum.embedding,
-      usingReRank: false
+      usingReRank: false,
+      datasetSearchUsingExtensionQuery: true,
+      datasetSearchExtensionBg: ''
     },
     userGuide: {
       welcomeText: '',
@@ -41,14 +39,8 @@ export const getDefaultAppForm = (templateId = 'fastgpt-universal'): AppSimpleEd
 };
 
 /* format app modules to edit form */
-export const appModules2Form = ({
-  templateId,
-  modules
-}: {
-  modules: ModuleItemType[];
-  templateId: string;
-}) => {
-  const defaultAppForm = getDefaultAppForm(templateId);
+export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
+  const defaultAppForm = getDefaultAppForm();
 
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
@@ -100,6 +92,18 @@ export const appModules2Form = ({
         module.inputs,
         ModuleInputKeyEnum.datasetSearchUsingReRank
       );
+      defaultAppForm.dataset.datasetSearchUsingExtensionQuery = findInputValueByKey(
+        module.inputs,
+        ModuleInputKeyEnum.datasetSearchUsingExtensionQuery
+      );
+      defaultAppForm.dataset.datasetSearchExtensionModel = findInputValueByKey(
+        module.inputs,
+        ModuleInputKeyEnum.datasetSearchExtensionModel
+      );
+      defaultAppForm.dataset.datasetSearchExtensionBg = findInputValueByKey(
+        module.inputs,
+        ModuleInputKeyEnum.datasetSearchExtensionBg
+      );
 
       // empty text
       const emptyOutputs =
@@ -121,11 +125,6 @@ export const appModules2Form = ({
         questionGuide: questionGuide,
         tts: ttsConfig
       };
-    } else if (module.flowType === FlowNodeTypeEnum.cfr) {
-      const value = module.inputs.find((item) => item.key === ModuleInputKeyEnum.aiSystemPrompt);
-      if (value) {
-        defaultAppForm.cfr.background = value.value;
-      }
     }
   });
 

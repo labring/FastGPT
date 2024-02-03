@@ -22,8 +22,8 @@ export const AiCFR: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.tools,
   flowType: FlowNodeTypeEnum.cfr,
   avatar: '/imgs/module/cfr.svg',
-  name: 'core.module.template.cfr',
-  intro: 'core.module.template.cfr intro',
+  name: 'core.module.template.Query extension',
+  intro: 'core.module.template.Query extension intro',
   showStatus: true,
   inputs: [
     Input_Template_Switch,

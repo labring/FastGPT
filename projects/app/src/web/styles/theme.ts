@@ -329,11 +329,16 @@ const Switch = switchMultiStyle({
   baseStyle: switchPart({
     track: {
       bg: 'myGray.100',
+      borderWidth: '1px',
+      borderColor: 'borders.base',
       _checked: {
         bg: 'primary.600'
       }
     }
-  })
+  }),
+  defaultProps: {
+    size: 'md'
+  }
 });
 
 const Select = selectMultiStyle({
