@@ -92,6 +92,7 @@ const EditForm = ({
   });
 
   const aiSystemPrompt = watch('aiSettings.systemPrompt');
+  const selectLLMModel = watch('aiSettings.model');
   const datasetSearchSetting = watch('dataset');
   const variables = watch('userGuide.variables');
   const formatVariables = useMemo(() => formatEditorVariablePickerIcon(variables), [variables]);
@@ -109,11 +110,8 @@ const EditForm = ({
   );
 
   const tokenLimit = useMemo(() => {
-    return (
-      llmModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
-      3000
-    );
-  }, [getValues, llmModelList]);
+    return llmModelList.find((item) => item.model === selectLLMModel)?.quoteMaxToken || 3000;
+  }, [selectLLMModel, llmModelList]);
 
   const datasetSearchMode = useMemo(() => {
     if (!searchMode) return '';
