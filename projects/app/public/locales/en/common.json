@@ -274,13 +274,12 @@
       "deterministic": "Deterministic",
       "edit": {
         "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
-        "Open cfr": "Open Cfr",
         "Out Ad Edit": "You are about to exit the Advanced orchestration page, please confirm",
         "Prompt Editor": "Prompt Editor",
         "Save and out": "Save out",
         "UnSave": "UnSave",
-        "cfr background prompt": "Chat background description",
-        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.\nIf the value is empty, the question completion function is not used for [first question]."
+        "Query extension background prompt": "Chat background description",
+        "Query extension background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.\nIf the value is empty, the question completion function is not used for [first question]."
       },
       "error": {
         "App name can not be empty": "App name can not be empty",
@@ -436,7 +435,6 @@
         "Plugin Resonse Detail": "Plugin Detail",
         "Read complete response": "Read Detail",
         "Read complete response tips": "Click to see the detailed process",
-        "cfr model": "Cfr model",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",
@@ -675,7 +673,7 @@
         "Source id": "Source ID",
         "Source name": "Source",
         "Top K": "Top K",
-        "Using cfr": "Open coreference resolution",
+        "Using cfr": "Open query extension",
         "mode": {
           "embedding": "Vector recall",
           "embedding desc": "Use vectors for text correlation queries",
@@ -755,6 +753,10 @@
         "Input description": "",
         "label": "Dataset quote"
       },
+      "QueryExtension": {
+        "tip": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.If \n is empty, the question completion function is not used in the first conversation. ",
+        "placeholder": "Questions about python introduction and usage, etc. The current conversation is related to the game GTA5."
+      },
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",
@@ -786,7 +788,6 @@
           "TFSwitch textarea": "Allows you to define a number of strings to achieve false matching, one per line, and supports regular expressions.",
           "Trigger": "Most of the time, you don't need to concatenate this property. You can connect this property when you need to delay execution, or precisely control the timing of execution.",
           "anyInput": "Can pass anything ",
-          "cfr background": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. If\nis empty, the question completion function is not used in the first conversation. ",
           "dynamic input": "Receives parameters dynamically added by the user and will be tiled in at run time ",
           "textEditor textarea": "The passed variable can be referenced by {{key}}. Variables support only strings or numbers."
         },
@@ -803,15 +804,13 @@
           "TFSwitch textarea": "Custom False matching rule ",
           "aiModel": "AI model ",
           "anyInput": "Any input ",
-          "cfr background": "Background",
           "chat history": "chat history",
           "switch": "Trigger",
           "textEditor textarea": "Text edit",
           "user question": "User question"
         },
         "placeholder": {
-          "Classify background": "For example:\n1.AIGC (Artificial Intelligence Generates content) refers to the automatic or semi-automatic generation of digital content, such as text, images, music, videos, and so on, using artificial intelligence technologies. AIGC technologies include, but are not limited to, natural language processing, computer vision, machine learning, and deep learning. These technologies can create new content or modify existing content to meet specific creative, educational, entertainment or information needs.",
-          "cfr background": "Questions about the introduction and use of python. \nThe current dialogue is related to the game GTA5."
+          "Classify background": "For example:\n1.AIGC (Artificial Intelligence Generates content) refers to the automatic or semi-automatic generation of digital content, such as text, images, music, videos, and so on, using artificial intelligence technologies. AIGC technologies include, but are not limited to, natural language processing, computer vision, machine learning, and deep learning. These technologies can create new content or modify existing content to meet specific creative, educational, entertainment or information needs."
         }
       },
       "inputType": {
@@ -876,7 +875,6 @@
         "Tool module": "Tools",
         "UnKnow Module": "UnKnow Module",
         "User guide": "User guide",
-        "cfr": "Coreference resolution",
         "Query extension": "Query extension",
         "Query extension intro": "If the problem completion function is enabled, the accuracy of knowledge base search can be improved in continuous conversations. After this function is enabled, when searching the knowledge base, AI will be used to complete the missing information of the problem according to the conversation records.",
         "textEditor": "Text Editor",

@@ -39,11 +39,11 @@ export const AiCFR: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.aiSystemPrompt,
       type: FlowNodeInputTypeEnum.textarea,
-      label: 'core.module.input.label.cfr background',
+      label: 'core.module.input.label.Background',
       max: 300,
       valueType: ModuleIOValueTypeEnum.string,
-      description: 'core.app.edit.cfr background tip',
-      placeholder: 'core.module.input.placeholder.cfr background',
+      description: 'core.app.edit.Query extension background tip',
+      placeholder: 'core.module.QueryExtension.placeholder',
       showTargetInApp: true,
       showTargetInPlugin: true
     },

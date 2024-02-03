@@ -1,5 +1,5 @@
 ---
-title: "问题补全"
+title: "问题补全（已合并到知识库搜索）"
 description: "问题补全模块介绍和使用"
 icon: "input"
 draft: false

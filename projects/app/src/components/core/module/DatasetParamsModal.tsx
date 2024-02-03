@@ -128,7 +128,7 @@ const DatasetParamsModal = ({
               id: SearchSettingTabEnum.limit
             },
             {
-              label: t('core.module.template.cfr'),
+              label: t('core.module.template.Query extension'),
               id: SearchSettingTabEnum.queryExtension,
               icon: '/imgs/module/cfr.svg'
             }
@@ -276,7 +276,7 @@ const DatasetParamsModal = ({
               {t('core.module.template.Query extension intro')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
-              <Box flex={'1 0 0'}>{t('core.dataset.search.Using cfr')}</Box>
+              <Box flex={'1 0 0'}>{t('core.dataset.search.Using query extension')}</Box>
               <Switch {...register('datasetSearchUsingExtensionQuery')} />
             </Flex>
             {datasetSearchUsingCfrForm === true && (
@@ -296,8 +296,8 @@ const DatasetParamsModal = ({
                 </Flex>
                 <Box mt={3}>
                   <Flex alignItems={'center'}>
-                    {t('core.app.edit.cfr background prompt')}
-                    <MyTooltip label={t('core.app.edit.cfr background tip')} forceShow>
+                    {t('core.app.edit.Query extension background prompt')}
+                    <MyTooltip label={t('core.app.edit.Query extension background tip')} forceShow>
                       <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
                     </MyTooltip>
                   </Flex>
@@ -305,7 +305,7 @@ const DatasetParamsModal = ({
                     <PromptEditor
                       h={200}
                       showOpenModal={false}
-                      placeholder={t('core.module.input.placeholder.cfr background')}
+                      placeholder={t('core.module.QueryExtension.placeholder')}
                       value={cfbBgDesc}
                       onChange={(e) => {
                         setValue('datasetSearchExtensionBg', e);
