@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react';
 import Editor, { loader, useMonaco } from '@monaco-editor/react';
 import { useCallback, useRef, useState } from 'react';
-import { Box, BoxProps, useToast } from '@chakra-ui/react';
+import { Box, BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
 import { EditorVariablePickerType } from '../PromptEditor/type';
+import { useToast } from '../../../../hooks/useToast';
+import { useTranslation } from 'next-i18next';
 
 loader.config({
   paths: { vs: 'https://cdn.staticfile.net/monaco-editor/0.43.0/min/vs' }
@@ -41,15 +43,16 @@ const options = {
 };
 
 const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props }: Props) => {
-  const toast = useToast();
+  const { toast } = useToast();
+  const { t } = useTranslation();
   const [height, setHeight] = useState(props.height || 100);
   const initialY = useRef(0);
   const completionRegisterRef = useRef<any>();
   const monaco = useMonaco();
 
   useEffect(() => {
-    if (!!completionRegisterRef.current) return;
     completionRegisterRef.current = monaco?.languages.registerCompletionItemProvider('json', {
+      triggerCharacters: ['"'],
       provideCompletionItems: function (model, position) {
         var word = model.getWordUntilPosition(position);
         var range = {
@@ -61,15 +64,13 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props
         return {
           suggestions:
             variables?.map((item) => ({
-              label: `$${item.key}`,
+              label: `${item.label}`,
               kind: monaco.languages.CompletionItemKind.Function,
               documentation: item.label,
-              insertText: `${item.key}`,
+              insertText: `{{${item.label}}}`,
               range: range
             })) || [],
-          dispose: () => {
-            completionRegisterRef.current = undefined;
-          }
+          dispose: () => {}
         };
       }
     });
@@ -151,11 +152,9 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props
                 JSON.parse(value as string);
               } catch (error: any) {
                 toast({
-                  title: 'Invalid JSON',
+                  title: t('common.Invalid Json'),
                   description: error.message,
-                  position: 'top',
-                  status: 'error',
-                  duration: 3000,
+                  status: 'warning',
                   isClosable: true
                 });
               }

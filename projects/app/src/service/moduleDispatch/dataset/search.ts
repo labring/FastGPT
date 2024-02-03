@@ -99,6 +99,7 @@ export async function dispatchDatasetSearch(
       rewriteQuery
     };
   })();
+  // console.log(concatQueries, rewriteQuery);
 
   // start search
   const {

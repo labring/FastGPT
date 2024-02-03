@@ -1,11 +1,34 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { onChangeNode } from '../../../../FlowProvider';
+import { onChangeNode, useFlowProviderStore } from '../../../../FlowProvider';
 import { useTranslation } from 'next-i18next';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
+import {
+  formatEditorVariablePickerIcon,
+  getGuideModule,
+  splitGuideModule
+} from '@fastgpt/global/core/module/utils';
 
-const JsonEditor = ({ item, moduleId }: RenderInputProps) => {
+const JsonEditor = ({ inputs = [], item, moduleId }: RenderInputProps) => {
   const { t } = useTranslation();
+  const { nodes } = useFlowProviderStore();
+
+  // get variable
+  const variables = useMemo(() => {
+    const globalVariables = formatEditorVariablePickerIcon(
+      splitGuideModule(getGuideModule(nodes.map((node) => node.data)))?.variableModules || []
+    );
+    const moduleVariables = formatEditorVariablePickerIcon(
+      inputs
+        .filter((input) => input.edit)
+        .map((item) => ({
+          key: item.key,
+          label: item.label
+        }))
+    );
+
+    return [...globalVariables, ...moduleVariables];
+  }, [inputs, nodes]);
 
   const update = useCallback(
     (value: string) => {
@@ -32,7 +55,7 @@ const JsonEditor = ({ item, moduleId }: RenderInputProps) => {
       onChange={(e) => {
         update(e);
       }}
-      variables={[]}
+      variables={variables}
     />
   );
 };
