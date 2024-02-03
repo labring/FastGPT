@@ -19,11 +19,11 @@ import { Output_Template_UserChatInput } from '../output';
 
 export const AiCFR: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
-  templateType: ModuleTemplateTypeEnum.tools,
+  templateType: ModuleTemplateTypeEnum.other,
   flowType: FlowNodeTypeEnum.cfr,
   avatar: '/imgs/module/cfr.svg',
   name: 'core.module.template.Query extension',
-  intro: 'core.module.template.Query extension intro',
+  intro: '该模块已合并到知识库搜索参数中，无需单独使用。',
   showStatus: true,
   inputs: [
     Input_Template_Switch,

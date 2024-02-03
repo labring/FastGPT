@@ -103,13 +103,21 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 
 ## 四、启动容器
 
+在 docker-compose.yml 同级目录下执行
+
 ```bash
-# 在 docker-compose.yml 同级目录下执行
+# 进入项目目录
+cd 项目目录
+# 创建 mongo 密钥
+openssl rand -base64 756 > ./mongodb.key
+chmod 600 ./mongodb.key
+
+# 启动容器
 docker-compose pull
 docker-compose up -d
 ```
 
-## 四、初始化 Mongo 副本集(4.6.8以前可忽略)
+## 五、初始化 Mongo 副本集(4.6.8以前可忽略)
 
 FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。副本集没法自动化初始化，需手动操作。
 
@@ -120,9 +128,9 @@ docker ps
 docker exec -it mongo bash
 
 # 连接数据库
-mongo
+mongo -u myname -p mypassword --authenticationDatabase admin
 
-# 初始化副本集。
+# 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin => MONGODB_URI=mongodb://myname:mypassword@ip:27017/fastgpt?authSource=admin）
 rs.initiate({
   _id: "rs0",
   members: [
@@ -131,14 +139,6 @@ rs.initiate({
 })
 # 检查状态。如果提示 rs0 状态，则代表运行成功
 rs.status()
-
-# 初始化用户
-use admin
-db.createUser({
-  user: "admin",
-  pwd: "password",
-  roles: [{ role: "root", db: "admin" }]
-});
 ```
 
 ## 五、访问 FastGPT
