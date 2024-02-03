@@ -8,7 +8,7 @@ ARG proxy
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 RUN apk add --no-cache libc6-compat && npm install -g pnpm@8.6.0
 # if proxy exists, set proxy
-RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npm.taobao.org
+RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npmmirror.com
 
 # copy packages and one project
 COPY pnpm-lock.yaml pnpm-workspace.yaml ./
@@ -28,7 +28,7 @@ ARG proxy
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 RUN apk add --no-cache libc6-compat && npm install -g pnpm@8.6.0
 # if proxy exists, set proxy
-RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npm.taobao.org
+RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npmmirror.com
 
 COPY ./worker /app/worker
 RUN cd /app/worker && pnpm i --production --ignore-workspace
