@@ -153,9 +153,10 @@ A: ${chatBg}
   }
 
   try {
+    const queries = JSON.parse(answer) as string[];
     return {
       rawQuery: query,
-      extensionQueries: JSON.parse(answer),
+      extensionQueries: queries,
       model,
       inputTokens: result.usage?.prompt_tokens || 0,
       outputTokens: result.usage?.completion_tokens || 0

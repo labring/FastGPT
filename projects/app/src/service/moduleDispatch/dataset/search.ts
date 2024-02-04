@@ -9,6 +9,7 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
+import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -60,46 +61,20 @@ export async function dispatchDatasetSearch(
     return Promise.reject('core.chat.error.User input empty');
   }
 
-  const chatHistories = getHistories(6, histories);
-
   // query extension
-  const extensionResult = await (async () => {
-    if (!datasetSearchUsingExtensionQuery || !datasetSearchExtensionModel) return;
-    const extensionModel = getLLMModel(datasetSearchExtensionModel);
-    const result = await queryExtension({
-      chatBg: datasetSearchExtensionBg,
-      query: userChatInput,
-      histories: chatHistories,
-      model: extensionModel.model
-    });
-    if (result.extensionQueries?.length === 0) return;
-    return result;
-  })();
+  const extensionModel =
+    datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
+      ? getLLMModel(datasetSearchExtensionModel)
+      : undefined;
+  const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
+    query: userChatInput,
+    extensionModel,
+    extensionBg: datasetSearchExtensionBg,
+    histories: getHistories(6, histories)
+  });
 
   // get vector
   const vectorModel = getVectorModel(datasets[0]?.vectorModel?.model);
-
-  const { concatQueries, rewriteQuery } = (() => {
-    let queries = [userChatInput];
-    let rewriteQuery = `${histories
-      .map((item) => {
-        return `${item.obj}: ${item.value}`;
-      })
-      .join('\n')}
-  Human: ${userChatInput}
-  `;
-
-    if (extensionResult) {
-      queries = queries.concat(extensionResult.extensionQueries);
-      rewriteQuery = queries.join('\n');
-    }
-
-    return {
-      concatQueries: queries,
-      rewriteQuery
-    };
-  })();
-  // console.log(concatQueries, rewriteQuery);
 
   // start search
   const {
@@ -137,21 +112,21 @@ export async function dispatchDatasetSearch(
     searchUsingReRank: searchUsingReRank
   };
 
-  if (extensionResult) {
+  if (aiExtensionResult) {
     const { total, modelName } = formatModelPrice2Store({
-      model: extensionResult.model,
-      inputLen: extensionResult.inputTokens,
-      outputLen: extensionResult.outputTokens,
+      model: aiExtensionResult.model,
+      inputLen: aiExtensionResult.inputTokens,
+      outputLen: aiExtensionResult.outputTokens,
       type: ModelTypeEnum.llm
     });
 
     responseData.price += total;
-    responseData.inputTokens = extensionResult.inputTokens;
-    responseData.outputTokens = extensionResult.outputTokens;
+    responseData.inputTokens = aiExtensionResult.inputTokens;
+    responseData.outputTokens = aiExtensionResult.outputTokens;
     responseData.extensionModel = modelName;
     responseData.extensionResult =
-      extensionResult.extensionQueries?.join('\n') ||
-      JSON.stringify(extensionResult.extensionQueries);
+      aiExtensionResult.extensionQueries?.join('\n') ||
+      JSON.stringify(aiExtensionResult.extensionQueries);
   }
 
   return {

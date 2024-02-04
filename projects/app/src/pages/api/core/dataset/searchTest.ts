@@ -11,6 +11,7 @@ import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getLLMModel } from '@/service/core/ai/model';
 import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
+import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -44,35 +45,16 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // auth balance
     await authTeamBalance(teamId);
 
-    const extensionModel = getLLMModel(datasetSearchExtensionModel);
-
     // query extension
-    const extensionResult = await (async () => {
-      if (!datasetSearchUsingExtensionQuery || !datasetSearchExtensionModel) return;
-      const result = await queryExtension({
-        chatBg: datasetSearchExtensionBg,
-        query: text,
-        histories: [],
-        model: extensionModel.model
-      });
-      if (result.extensionQueries?.length === 0) return;
-      return result;
-    })();
-
-    const { concatQueries, rewriteQuery } = (() => {
-      let queries = [text];
-      let rewriteQuery = text;
-
-      if (extensionResult) {
-        queries = queries.concat(extensionResult.extensionQueries);
-        rewriteQuery = queries.join('\n');
-      }
-
-      return {
-        concatQueries: queries,
-        rewriteQuery
-      };
-    })();
+    const extensionModel =
+      datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
+        ? getLLMModel(datasetSearchExtensionModel)
+        : undefined;
+    const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
+      query: text,
+      extensionModel,
+      extensionBg: datasetSearchExtensionBg
+    });
 
     const { searchRes, charsLength, ...result } = await searchDatasetData({
       teamId,
@@ -94,11 +76,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       model: dataset.vectorModel,
       source: apikey ? BillSourceEnum.api : BillSourceEnum.fastgpt,
 
-      ...(extensionResult && {
-        extensionModel: extensionModel.name,
-        extensionInputTokens: extensionResult.inputTokens,
-        extensionOutputTokens: extensionResult.outputTokens
-      })
+      ...(aiExtensionResult &&
+        extensionModel && {
+          extensionModel: extensionModel.name,
+          extensionInputTokens: aiExtensionResult.inputTokens,
+          extensionOutputTokens: aiExtensionResult.outputTokens
+        })
     });
     if (apikey) {
       updateApiKeyUsage({
