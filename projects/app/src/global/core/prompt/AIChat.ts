@@ -58,7 +58,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
 
-问题:"{{question}}"`
+问题:"""{{question}}"""`
   },
   {
     title: '问答模板',
@@ -73,7 +73,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 - 如果没有相关的问答对，你需要澄清。
 - 避免提及你是从 QA 获取的知识，只需要回复答案。
 
-问题:"{{question}}"`
+问题:"""{{question}}"""`
   },
   {
     title: '标准严格模板',
@@ -93,7 +93,7 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 - 使用 Markdown 语法优化回答格式。
 - 使用与问题相同的语言回答。
 
-问题:"{{question}}"`
+问题:"""{{question}}"""`
   },
   {
     title: '严格问答模板',
@@ -111,6 +111,6 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
 
 最后，避免提及你是从 QA 获取的知识，只需要回复答案。
 
-问题:"{{question}}"`
+问题:"""{{question}}"""`
   }
 ];

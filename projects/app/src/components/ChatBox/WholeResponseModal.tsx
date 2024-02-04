@@ -39,8 +39,8 @@ function Row({
         {...(isCodeBlock
           ? { transform: 'translateY(-3px)' }
           : value
-          ? { px: 3, py: 1, border: theme.borders.base }
-          : {})}
+            ? { px: 3, py: 1, border: theme.borders.base }
+            : {})}
       >
         {value && <Markdown source={strValue} />}
         {rawDom}
@@ -129,126 +129,154 @@ const ResponseBox = React.memo(function ResponseBox({
         <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
       </Box>
       <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
-        <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
-        {activeModule?.price !== undefined && (
+        <>
+          <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
+          {activeModule?.price !== undefined && (
+            <Row
+              label={t('core.chat.response.module price')}
+              value={`￥${formatStorePrice2Read(activeModule?.price)}`}
+            />
+          )}
           <Row
-            label={t('core.chat.response.module price')}
-            value={`￥${formatStorePrice2Read(activeModule?.price)}`}
+            label={t('core.chat.response.module time')}
+            value={`${activeModule?.runningTime || 0}s`}
           />
-        )}
-        <Row
-          label={t('core.chat.response.module time')}
-          value={`${activeModule?.runningTime || 0}s`}
-        />
-        <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
-        <Row label={t('wallet.bill.Chars length')} value={`${activeModule?.charsLength}`} />
-        <Row label={t('wallet.bill.Input Token Length')} value={`${activeModule?.inputTokens}`} />
-        <Row label={t('wallet.bill.Output Token Length')} value={`${activeModule?.outputTokens}`} />
-        <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
-        <Row
-          label={t('core.chat.response.context total length')}
-          value={activeModule?.contextTotalLen}
-        />
+          <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
+          <Row label={t('wallet.bill.Chars length')} value={`${activeModule?.charsLength}`} />
+          <Row label={t('wallet.bill.Input Token Length')} value={`${activeModule?.inputTokens}`} />
+          <Row
+            label={t('wallet.bill.Output Token Length')}
+            value={`${activeModule?.outputTokens}`}
+          />
+          <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
+          <Row
+            label={t('core.chat.response.context total length')}
+            value={activeModule?.contextTotalLen}
+          />
+        </>
 
         {/* ai chat */}
-        <Row label={t('core.chat.response.module temperature')} value={activeModule?.temperature} />
-        <Row label={t('core.chat.response.module maxToken')} value={activeModule?.maxToken} />
-        <Row
-          label={t('core.chat.response.module historyPreview')}
-          rawDom={
-            activeModule.historyPreview ? (
-              <Box px={3} py={2} border={theme.borders.base} borderRadius={'md'}>
-                {activeModule.historyPreview?.map((item, i) => (
-                  <Box
-                    key={i}
-                    _notLast={{
-                      borderBottom: '1px solid',
-                      borderBottomColor: 'myWhite.700',
-                      mb: 2
-                    }}
-                    pb={2}
-                  >
-                    <Box fontWeight={'bold'}>{item.obj}</Box>
-                    <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
-                  </Box>
-                ))}
-              </Box>
-            ) : (
-              ''
-            )
-          }
-        />
-        {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+        <>
           <Row
-            label={t('core.chat.response.module quoteList')}
-            rawDom={<QuoteList isShare={isShare} rawSearch={activeModule.quoteList} />}
+            label={t('core.chat.response.module temperature')}
+            value={activeModule?.temperature}
           />
-        )}
+          <Row label={t('core.chat.response.module maxToken')} value={activeModule?.maxToken} />
+          <Row
+            label={t('core.chat.response.module historyPreview')}
+            rawDom={
+              activeModule.historyPreview ? (
+                <Box px={3} py={2} border={theme.borders.base} borderRadius={'md'}>
+                  {activeModule.historyPreview?.map((item, i) => (
+                    <Box
+                      key={i}
+                      _notLast={{
+                        borderBottom: '1px solid',
+                        borderBottomColor: 'myWhite.700',
+                        mb: 2
+                      }}
+                      pb={2}
+                    >
+                      <Box fontWeight={'bold'}>{item.obj}</Box>
+                      <Box whiteSpace={'pre-wrap'}>{item.value}</Box>
+                    </Box>
+                  ))}
+                </Box>
+              ) : (
+                ''
+              )
+            }
+          />
+          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+            <Row
+              label={t('core.chat.response.module quoteList')}
+              rawDom={<QuoteList isShare={isShare} rawSearch={activeModule.quoteList} />}
+            />
+          )}
+        </>
 
         {/* dataset search */}
-        {activeModule?.searchMode && (
+        <>
+          {activeModule?.searchMode && (
+            <Row
+              label={t('core.dataset.search.search mode')}
+              // @ts-ignore
+              value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+            />
+          )}
+          <Row label={t('core.chat.response.module similarity')} value={activeModule?.similarity} />
+          <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
           <Row
-            label={t('core.dataset.search.search mode')}
-            // @ts-ignore
-            value={t(DatasetSearchModeMap[activeModule.searchMode]?.title)}
+            label={t('core.chat.response.search using reRank')}
+            value={activeModule?.searchUsingReRank}
           />
-        )}
-        <Row label={t('core.chat.response.module similarity')} value={activeModule?.similarity} />
-        <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
-        <Row
-          label={t('core.chat.response.search using reRank')}
-          value={activeModule?.searchUsingReRank}
-        />
+          <Row
+            label={t('core.chat.response.Extension model')}
+            value={activeModule?.extensionModel}
+          />
+          <Row
+            label={t('wallet.bill.Extension result')}
+            value={`${activeModule?.extensionResult}`}
+          />
+        </>
 
         {/* classify question */}
-        <Row
-          label={t('core.chat.response.module cq')}
-          value={(() => {
-            if (!activeModule?.cqList) return '';
-            return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
-          })()}
-        />
-        <Row label={t('core.chat.response.module cq result')} value={activeModule?.cqResult} />
+        <>
+          <Row
+            label={t('core.chat.response.module cq')}
+            value={(() => {
+              if (!activeModule?.cqList) return '';
+              return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
+            })()}
+          />
+          <Row label={t('core.chat.response.module cq result')} value={activeModule?.cqResult} />
+        </>
 
         {/* extract */}
-        <Row
-          label={t('core.chat.response.module extract description')}
-          value={activeModule?.extractDescription}
-        />
-        {activeModule?.extractResult && (
+        <>
           <Row
-            label={t('core.chat.response.module extract result')}
-            value={`~~~json\n${JSON.stringify(activeModule?.extractResult, null, 2)}`}
+            label={t('core.chat.response.module extract description')}
+            value={activeModule?.extractDescription}
           />
-        )}
+          {activeModule?.extractResult && (
+            <Row
+              label={t('core.chat.response.module extract result')}
+              value={`~~~json\n${JSON.stringify(activeModule?.extractResult, null, 2)}`}
+            />
+          )}
+        </>
 
         {/* http */}
-        {activeModule?.body && (
-          <Row
-            label={t('core.chat.response.module http body')}
-            value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`}
-          />
-        )}
-        {activeModule?.httpResult && (
-          <Row
-            label={t('core.chat.response.module http result')}
-            value={`~~~json\n${JSON.stringify(activeModule?.httpResult, null, 2)}`}
-          />
-        )}
+        <>
+          {activeModule?.body && (
+            <Row
+              label={t('core.chat.response.module http body')}
+              value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`}
+            />
+          )}
+          {activeModule?.httpResult && (
+            <Row
+              label={t('core.chat.response.module http result')}
+              value={`~~~json\n${JSON.stringify(activeModule?.httpResult, null, 2)}`}
+            />
+          )}
+        </>
 
         {/* plugin */}
-        {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
-          <Row
-            label={t('core.chat.response.Plugin Resonse Detail')}
-            rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
-          />
-        )}
-        {activeModule?.pluginOutput && (
-          <Row
-            label={t('core.chat.response.plugin output')}
-            value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
-          />
-        )}
+        <>
+          {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
+            <Row
+              label={t('core.chat.response.Plugin Resonse Detail')}
+              rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
+            />
+          )}
+          {activeModule?.pluginOutput && (
+            <Row
+              label={t('core.chat.response.plugin output')}
+              value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
+            />
+          )}
+        </>
 
         {/* text output */}
         <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />

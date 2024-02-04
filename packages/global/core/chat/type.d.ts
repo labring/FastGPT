@@ -109,6 +109,8 @@ export type moduleDispatchResType = {
   limit?: number;
   searchMode?: `${DatasetSearchModeEnum}`;
   searchUsingReRank?: boolean;
+  extensionModel?: string;
+  extensionResult?: string;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];

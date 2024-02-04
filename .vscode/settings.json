@@ -2,7 +2,7 @@
     "editor.formatOnSave": true,
     "editor.mouseWheelZoom": true,
     "typescript.tsdk": "node_modules/typescript/lib",
-    "prettier.prettierPath": "./node_modules/prettier",
+    "prettier.prettierPath": "",
     "i18n-ally.localesPaths": [
         "projects/app/public/locales",
     ],

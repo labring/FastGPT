@@ -29,8 +29,7 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule,
-  AiCFR
+  HttpModule
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -42,8 +41,7 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule,
-  AiCFR
+  HttpModule
 ];
 
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [

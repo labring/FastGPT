@@ -3,10 +3,13 @@ import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import { ModelTypeEnum, getVectorModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
+import { getHistories } from '../utils';
+import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -15,6 +18,9 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.datasetSearchUsingReRank]: boolean;
+  [ModuleInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
+  [ModuleInputKeyEnum.datasetSearchExtensionModel]: string;
+  [ModuleInputKeyEnum.datasetSearchExtensionBg]: string;
 }>;
 export type DatasetSearchResponse = {
   [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
@@ -28,7 +34,19 @@ export async function dispatchDatasetSearch(
 ): Promise<DatasetSearchResponse> {
   const {
     teamId,
-    params: { datasets = [], similarity, limit = 1500, usingReRank, searchMode, userChatInput }
+    histories,
+    params: {
+      datasets = [],
+      similarity,
+      limit = 1500,
+      usingReRank,
+      searchMode,
+      userChatInput,
+
+      datasetSearchUsingExtensionQuery,
+      datasetSearchExtensionModel,
+      datasetSearchExtensionBg
+    }
   } = props as DatasetSearchProps;
 
   if (!Array.isArray(datasets)) {
@@ -43,14 +61,20 @@ export async function dispatchDatasetSearch(
     return Promise.reject('core.chat.error.User input empty');
   }
 
+  // query extension
+  const extensionModel =
+    datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
+      ? getLLMModel(datasetSearchExtensionModel)
+      : undefined;
+  const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
+    query: userChatInput,
+    extensionModel,
+    extensionBg: datasetSearchExtensionBg,
+    histories: getHistories(6, histories)
+  });
+
   // get vector
   const vectorModel = getVectorModel(datasets[0]?.vectorModel?.model);
-
-  // const { queries: extensionQueries } = await searchQueryExtension({
-  //   query: userChatInput,
-  //   model: global.llmModels[0].model
-  // });
-  const concatQueries = [userChatInput];
 
   // start search
   const {
@@ -60,7 +84,7 @@ export async function dispatchDatasetSearch(
     usingReRank: searchUsingReRank
   } = await searchDatasetData({
     teamId,
-    rawQuery: `${userChatInput}`,
+    reRankQuery: `${rewriteQuery}`,
     queries: concatQueries,
     model: vectorModel.model,
     similarity,
@@ -70,25 +94,45 @@ export async function dispatchDatasetSearch(
     usingReRank
   });
 
+  // count bill results
+  // vector
   const { total, modelName } = formatModelPrice2Store({
     model: vectorModel.model,
     inputLen: charsLength,
     type: ModelTypeEnum.vector
   });
+  const responseData: moduleDispatchResType & { price: number } = {
+    price: total,
+    query: concatQueries.join('\n'),
+    model: modelName,
+    charsLength,
+    similarity: usingSimilarityFilter ? similarity : undefined,
+    limit,
+    searchMode,
+    searchUsingReRank: searchUsingReRank
+  };
+
+  if (aiExtensionResult) {
+    const { total, modelName } = formatModelPrice2Store({
+      model: aiExtensionResult.model,
+      inputLen: aiExtensionResult.inputTokens,
+      outputLen: aiExtensionResult.outputTokens,
+      type: ModelTypeEnum.llm
+    });
+
+    responseData.price += total;
+    responseData.inputTokens = aiExtensionResult.inputTokens;
+    responseData.outputTokens = aiExtensionResult.outputTokens;
+    responseData.extensionModel = modelName;
+    responseData.extensionResult =
+      aiExtensionResult.extensionQueries?.join('\n') ||
+      JSON.stringify(aiExtensionResult.extensionQueries);
+  }
 
   return {
     isEmpty: searchRes.length === 0 ? true : undefined,
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
-    responseData: {
-      price: total,
-      query: concatQueries.join('\n'),
-      model: modelName,
-      charsLength,
-      similarity: usingSimilarityFilter ? similarity : undefined,
-      limit,
-      searchMode,
-      searchUsingReRank: searchUsingReRank
-    }
+    responseData
   };
 }

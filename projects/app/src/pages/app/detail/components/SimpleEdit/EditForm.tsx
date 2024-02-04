@@ -30,7 +30,6 @@ import MySelect from '@/components/Select';
 import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
 import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
@@ -45,7 +44,6 @@ const TTSSelect = dynamic(
   () => import('@/components/core/module/Flow/components/modules/TTSSelect')
 );
 const QGSwitch = dynamic(() => import('@/components/core/module/Flow/components/modules/QGSwitch'));
-const CfrEditModal = dynamic(() => import('./CfrEditModal'));
 
 const EditForm = ({
   divRef,
@@ -59,7 +57,7 @@ const EditForm = ({
   const { t } = useTranslation();
   const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
-  const { isPc, llmModelList, reRankModelList, simpleModeTemplates } = useSystemStore();
+  const { isPc, llmModelList, reRankModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [, startTst] = useTransition();
 
@@ -88,19 +86,16 @@ const EditForm = ({
     onOpen: onOpenDatasetParams,
     onClose: onCloseDatasetParams
   } = useDisclosure();
-  const {
-    isOpen: isOpenCfrModal,
-    onOpen: onOpenCfrModal,
-    onClose: onCloseCfrModal
-  } = useDisclosure();
 
   const { openConfirm: openConfirmSave, ConfirmModal: ConfirmSaveModal } = useConfirm({
     content: t('core.app.edit.Confirm Save App Tip')
   });
 
+  const aiSystemPrompt = watch('aiSettings.systemPrompt');
+  const selectLLMModel = watch('aiSettings.model');
+  const datasetSearchSetting = watch('dataset');
   const variables = watch('userGuide.variables');
   const formatVariables = useMemo(() => formatEditorVariablePickerIcon(variables), [variables]);
-  const aiSystemPrompt = watch('aiSettings.systemPrompt');
   const searchMode = watch('dataset.searchMode');
 
   const chatModelSelectList = (() =>
@@ -114,16 +109,9 @@ const EditForm = ({
     [allDatasets, datasets]
   );
 
-  const selectSimpleTemplate = (() =>
-    simpleModeTemplates?.find((item) => item.id === getValues('templateId')) ||
-    SimpleModeTemplate_FastGPT_Universal)();
-
   const tokenLimit = useMemo(() => {
-    return (
-      llmModelList.find((item) => item.model === getValues('aiSettings.model'))?.quoteMaxToken ||
-      3000
-    );
-  }, [getValues, llmModelList]);
+    return llmModelList.find((item) => item.model === selectLLMModel)?.quoteMaxToken || 3000;
+  }, [selectLLMModel, llmModelList]);
 
   const datasetSearchMode = useMemo(() => {
     if (!searchMode) return '';
@@ -132,12 +120,11 @@ const EditForm = ({
 
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
-      const modules = await postForm2Modules(data, data.templateId);
+      const modules = await postForm2Modules(data);
 
       await updateAppDetail(appDetail._id, {
         modules,
         type: AppTypeEnum.simple,
-        simpleTemplateId: data.templateId,
         permission: undefined
       });
     },
@@ -149,7 +136,6 @@ const EditForm = ({
     ['init', appDetail],
     () => {
       const formatVal = appModules2Form({
-        templateId: appDetail.simpleTemplateId,
         modules: appDetail.modules
       });
       reset(formatVal);
@@ -228,7 +214,7 @@ const EditForm = ({
       <Box px={4}>
         <Box bg={'white'} borderRadius={'md'} borderWidth={'1px'} borderColor={'borderColor.base'}>
           {/* simple mode select */}
-          <Flex {...BoxStyles}>
+          {/* <Flex {...BoxStyles}>
             <Flex alignItems={'center'} flex={'1 0 0'}>
               <MyIcon name={'core/app/simpleMode/template'} w={'20px'} />
               <Box mx={2}>{t('core.app.simple.mode template select')}</Box>
@@ -248,237 +234,187 @@ const EditForm = ({
                 setRefresh(!refresh);
               }}
             />
-          </Flex>
+          </Flex> */}
 
           {/* ai */}
-          {selectSimpleTemplate?.systemForm?.aiSettings && (
-            <Box {...BoxStyles}>
-              <Flex alignItems={'center'}>
-                <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
-                <Box ml={2} flex={1}>
-                  {t('app.AI Settings')}
-                </Box>
-                {(selectSimpleTemplate.systemForm.aiSettings.maxToken ||
-                  selectSimpleTemplate.systemForm.aiSettings.temperature ||
-                  selectSimpleTemplate.systemForm.aiSettings.quoteTemplate ||
-                  selectSimpleTemplate.systemForm.aiSettings.quotePrompt) && (
-                  <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
-                    <MyIcon mr={1} name={'common/settingLight'} w={'14px'} />
-                    {t('common.More settings')}
-                  </Flex>
-                )}
-              </Flex>
-              {selectSimpleTemplate.systemForm.aiSettings?.model && (
-                <Flex alignItems={'center'} mt={5}>
-                  <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
-                  <Box flex={'1 0 0'}>
-                    <SelectAiModel
-                      width={'100%'}
-                      value={getValues(`aiSettings.model`)}
-                      list={chatModelSelectList}
-                      onchange={(val: any) => {
-                        setValue('aiSettings.model', val);
-                        const maxToken =
-                          llmModelList.find((item) => item.model === getValues('aiSettings.model'))
-                            ?.maxResponse || 4000;
-                        const token = maxToken / 2;
-                        setValue('aiSettings.maxToken', token);
-                        setRefresh(!refresh);
-                      }}
-                    />
-                  </Box>
-                </Flex>
-              )}
-
-              {selectSimpleTemplate.systemForm.aiSettings?.systemPrompt && (
-                <Flex mt={10} alignItems={'flex-start'}>
-                  <Box {...LabelStyles}>
-                    {t('core.ai.Prompt')}
-                    <MyTooltip label={t(chatNodeSystemPromptTip)} forceShow>
-                      <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-                    </MyTooltip>
-                  </Box>
-                  {isInitd && (
-                    <PromptEditor
-                      value={aiSystemPrompt}
-                      onChange={(text) => {
-                        startTst(() => {
-                          setValue('aiSettings.systemPrompt', text);
-                        });
-                      }}
-                      variables={formatVariables}
-                      placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
-                      title={t('core.ai.Prompt')}
-                    />
-                  )}
-                </Flex>
-              )}
-            </Box>
-          )}
-
-          {/* dataset */}
-          {selectSimpleTemplate?.systemForm?.dataset && (
-            <Box {...BoxStyles}>
-              <Flex alignItems={'center'}>
-                <Flex alignItems={'center'} flex={1}>
-                  <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
-                  <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
-                </Flex>
-                {selectSimpleTemplate.systemForm.dataset.datasets && (
-                  <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbSelect}>
-                    <SmallAddIcon />
-                    {t('common.Choose')}
-                  </Flex>
-                )}
-                {(selectSimpleTemplate.systemForm.dataset.limit ||
-                  selectSimpleTemplate.systemForm.dataset.searchMode ||
-                  selectSimpleTemplate.systemForm.dataset.searchEmptyText ||
-                  selectSimpleTemplate.systemForm.dataset.similarity) && (
-                  <Flex
-                    alignItems={'center'}
-                    ml={3}
-                    {...BoxBtnStyles}
-                    onClick={onOpenDatasetParams}
-                  >
-                    <MyIcon name={'edit'} w={'14px'} mr={1} />
-                    {t('common.Params')}
-                  </Flex>
-                )}
-              </Flex>
-              {getValues('dataset.datasets').length > 0 && (
-                <Flex mt={1} color={'myGray.600'} fontSize={'sm'} mb={2}>
-                  {t('core.dataset.search.search mode')}: {datasetSearchMode}
-                  {', '}
-                  {reRankModelList.length > 0 && (
-                    <>
-                      {t('core.dataset.search.ReRank')}:{' '}
-                      {getValues('dataset.usingReRank') ? '✅' : '✖'}
-                    </>
-                  )}
-                  {', '}
-                  {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')}
-                  {', '}
-                  {t('core.dataset.search.Max Tokens')}: {getValues('dataset.limit')}
-                  {getValues('dataset.searchEmptyText') === ''
-                    ? ''
-                    : t('core.dataset.Set Empty Result Tip')}
-                </Flex>
-              )}
-              <Grid
-                gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
-                gridGap={[2, 4]}
-              >
-                {selectDatasets.map((item) => (
-                  <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
-                    <Flex
-                      overflow={'hidden'}
-                      alignItems={'center'}
-                      p={2}
-                      bg={'white'}
-                      boxShadow={
-                        '0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'
-                      }
-                      borderRadius={'md'}
-                      border={theme.borders.base}
-                      cursor={'pointer'}
-                      onClick={() =>
-                        router.push({
-                          pathname: '/dataset/detail',
-                          query: {
-                            datasetId: item._id
-                          }
-                        })
-                      }
-                    >
-                      <Avatar src={item.avatar} w={'18px'} mr={1} />
-                      <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
-                        {item.name}
-                      </Box>
-                    </Flex>
-                  </MyTooltip>
-                ))}
-              </Grid>
-            </Box>
-          )}
-
-          {/* cfr */}
-          {selectSimpleTemplate?.systemForm?.cfr && getValues('dataset.datasets').length > 0 && (
-            <Flex {...BoxStyles} alignItems={'center'}>
-              <Image src={'/imgs/module/cfr.svg'} alt={''} w={'18px'} />
-              <Box ml={2}>{t('core.module.template.cfr')}</Box>
-              <MyTooltip label={t('core.module.template.cfr intro')} forceShow>
-                <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-              </MyTooltip>
-              <Box flex={1} />
-              <Flex {...BoxBtnStyles} onClick={onOpenCfrModal}>
-                {getValues('cfr.background') === 'none' ? t('common.Not open') : t('common.Opened')}
+          <Box {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
+              <Box ml={2} flex={1}>
+                {t('app.AI Settings')}
+              </Box>
+              <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
+                <MyIcon mr={1} name={'common/settingLight'} w={'14px'} />
+                {t('common.More settings')}
               </Flex>
             </Flex>
-          )}
+            <Flex alignItems={'center'} mt={5}>
+              <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
+              <Box flex={'1 0 0'}>
+                <SelectAiModel
+                  width={'100%'}
+                  value={getValues(`aiSettings.model`)}
+                  list={chatModelSelectList}
+                  onchange={(val: any) => {
+                    setValue('aiSettings.model', val);
+                    const maxToken =
+                      llmModelList.find((item) => item.model === getValues('aiSettings.model'))
+                        ?.maxResponse || 4000;
+                    const token = maxToken / 2;
+                    setValue('aiSettings.maxToken', token);
+                    setRefresh(!refresh);
+                  }}
+                />
+              </Box>
+            </Flex>
+
+            <Flex mt={10} alignItems={'flex-start'}>
+              <Box {...LabelStyles}>
+                {t('core.ai.Prompt')}
+                <MyTooltip label={t(chatNodeSystemPromptTip)} forceShow>
+                  <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+                </MyTooltip>
+              </Box>
+              {isInitd && (
+                <PromptEditor
+                  value={aiSystemPrompt}
+                  onChange={(text) => {
+                    startTst(() => {
+                      setValue('aiSettings.systemPrompt', text);
+                    });
+                  }}
+                  variables={formatVariables}
+                  placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
+                  title={t('core.ai.Prompt')}
+                />
+              )}
+            </Flex>
+          </Box>
+
+          {/* dataset */}
+          <Box {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <Flex alignItems={'center'} flex={1}>
+                <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
+                <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
+              </Flex>
+              <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbSelect}>
+                <SmallAddIcon />
+                {t('common.Choose')}
+              </Flex>
+              <Flex alignItems={'center'} ml={3} {...BoxBtnStyles} onClick={onOpenDatasetParams}>
+                <MyIcon name={'edit'} w={'14px'} mr={1} />
+                {t('common.Params')}
+              </Flex>
+            </Flex>
+            {getValues('dataset.datasets').length > 0 && (
+              <Flex mt={1} color={'myGray.600'} fontSize={'sm'} mb={2}>
+                {t('core.dataset.search.search mode')}: {datasetSearchMode}
+                {', '}
+                {reRankModelList.length > 0 && (
+                  <>
+                    {t('core.dataset.search.ReRank')}:{' '}
+                    {getValues('dataset.usingReRank') ? '✅' : '✖'}
+                  </>
+                )}
+                {', '}
+                {t('core.dataset.search.Min Similarity')}: {getValues('dataset.similarity')}
+                {', '}
+                {t('core.dataset.search.Max Tokens')}: {getValues('dataset.limit')}
+                {getValues('dataset.searchEmptyText') === ''
+                  ? ''
+                  : t('core.dataset.Set Empty Result Tip')}
+              </Flex>
+            )}
+            <Grid
+              gridTemplateColumns={['repeat(2, minmax(0, 1fr))', 'repeat(3, minmax(0, 1fr))']}
+              gridGap={[2, 4]}
+            >
+              {selectDatasets.map((item) => (
+                <MyTooltip key={item._id} label={t('core.dataset.Read Dataset')}>
+                  <Flex
+                    overflow={'hidden'}
+                    alignItems={'center'}
+                    p={2}
+                    bg={'white'}
+                    boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                    borderRadius={'md'}
+                    border={theme.borders.base}
+                    cursor={'pointer'}
+                    onClick={() =>
+                      router.push({
+                        pathname: '/dataset/detail',
+                        query: {
+                          datasetId: item._id
+                        }
+                      })
+                    }
+                  >
+                    <Avatar src={item.avatar} w={'18px'} mr={1} />
+                    <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                      {item.name}
+                    </Box>
+                  </Flex>
+                </MyTooltip>
+              ))}
+            </Grid>
+          </Box>
 
           {/* variable */}
-          {selectSimpleTemplate?.systemForm?.userGuide?.variables && (
-            <Box {...BoxStyles}>
-              <VariableEdit
-                variables={variables}
-                onChange={(e) => {
-                  setValue('userGuide.variables', e);
-                  setRefresh(!refresh);
-                }}
-              />
-            </Box>
-          )}
+          <Box {...BoxStyles}>
+            <VariableEdit
+              variables={variables}
+              onChange={(e) => {
+                setValue('userGuide.variables', e);
+                setRefresh(!refresh);
+              }}
+            />
+          </Box>
 
           {/* welcome */}
-          {selectSimpleTemplate?.systemForm?.userGuide?.welcomeText && (
-            <Box {...BoxStyles}>
-              <Flex alignItems={'center'}>
-                <MyIcon name={'core/app/simpleMode/chat'} w={'20px'} />
-                <Box mx={2}>{t('core.app.Welcome Text')}</Box>
-                <MyTooltip label={t(welcomeTextTip)} forceShow>
-                  <QuestionOutlineIcon />
-                </MyTooltip>
-              </Flex>
-              <MyTextarea
-                mt={2}
-                bg={'myWhite.400'}
-                rows={5}
-                placeholder={t(welcomeTextTip)}
-                defaultValue={getValues('userGuide.welcomeText')}
-                onBlur={(e) => {
-                  setValue('userGuide.welcomeText', e.target.value || '');
-                }}
-              />
-            </Box>
-          )}
+          <Box {...BoxStyles}>
+            <Flex alignItems={'center'}>
+              <MyIcon name={'core/app/simpleMode/chat'} w={'20px'} />
+              <Box mx={2}>{t('core.app.Welcome Text')}</Box>
+              <MyTooltip label={t(welcomeTextTip)} forceShow>
+                <QuestionOutlineIcon />
+              </MyTooltip>
+            </Flex>
+            <MyTextarea
+              mt={2}
+              bg={'myWhite.400'}
+              rows={5}
+              placeholder={t(welcomeTextTip)}
+              defaultValue={getValues('userGuide.welcomeText')}
+              onBlur={(e) => {
+                setValue('userGuide.welcomeText', e.target.value || '');
+              }}
+            />
+          </Box>
 
           {/* tts */}
-          {selectSimpleTemplate?.systemForm?.userGuide?.tts && (
-            <Box {...BoxStyles}>
-              <TTSSelect
-                value={getValues('userGuide.tts')}
-                onChange={(e) => {
-                  setValue('userGuide.tts', e);
-                  setRefresh((state) => !state);
-                }}
-              />
-            </Box>
-          )}
+          <Box {...BoxStyles}>
+            <TTSSelect
+              value={getValues('userGuide.tts')}
+              onChange={(e) => {
+                setValue('userGuide.tts', e);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
 
           {/* question guide */}
-          {selectSimpleTemplate?.systemForm?.userGuide?.questionGuide && (
-            <Box {...BoxStyles} borderBottom={'none'}>
-              <QGSwitch
-                isChecked={getValues('userGuide.questionGuide')}
-                size={'lg'}
-                onChange={(e) => {
-                  const value = e.target.checked;
-                  setValue('userGuide.questionGuide', value);
-                  setRefresh((state) => !state);
-                }}
-              />
-            </Box>
-          )}
+          <Box {...BoxStyles} borderBottom={'none'}>
+            <QGSwitch
+              isChecked={getValues('userGuide.questionGuide')}
+              size={'lg'}
+              onChange={(e) => {
+                const value = e.target.checked;
+                setValue('userGuide.questionGuide', value);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
         </Box>
       </Box>
 
@@ -491,7 +427,6 @@ const EditForm = ({
             onCloseAIChatSetting();
           }}
           defaultData={getValues('aiSettings')}
-          simpleModeTemplate={selectSimpleTemplate}
           pickerMenu={formatVariables}
         />
       )}
@@ -508,28 +443,7 @@ const EditForm = ({
       )}
       {isOpenDatasetParams && (
         <DatasetParamsModal
-          // {...getValues('dataset')}
-          searchMode={getValues('dataset.searchMode')}
-          searchEmptyText={
-            selectSimpleTemplate?.systemForm?.dataset?.searchEmptyText
-              ? getValues('dataset.searchEmptyText')
-              : undefined
-          }
-          limit={
-            selectSimpleTemplate?.systemForm?.dataset?.limit
-              ? getValues('dataset.limit')
-              : undefined
-          }
-          similarity={
-            selectSimpleTemplate?.systemForm?.dataset?.similarity
-              ? getValues('dataset.similarity')
-              : undefined
-          }
-          usingReRank={
-            selectSimpleTemplate?.systemForm?.dataset?.usingReRank
-              ? getValues('dataset.usingReRank')
-              : undefined
-          }
+          {...datasetSearchSetting}
           maxTokens={tokenLimit}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
@@ -539,15 +453,6 @@ const EditForm = ({
             });
 
             setRefresh((state) => !state);
-          }}
-        />
-      )}
-      {isOpenCfrModal && (
-        <CfrEditModal
-          onClose={onCloseCfrModal}
-          defaultValue={getValues('cfr.background')}
-          onFinish={(e) => {
-            setValue('cfr.background', e);
           }}
         />
       )}

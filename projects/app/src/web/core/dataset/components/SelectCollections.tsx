@@ -128,8 +128,8 @@ const SelectCollections = ({
                   {title
                     ? title
                     : type === 'folder'
-                    ? t('common.Root folder')
-                    : t('dataset.collections.Select Collection')}
+                      ? t('common.Root folder')
+                      : t('dataset.collections.Select Collection')}
                 </Box>
                 {!!tip && (
                   <Box fontSize={'sm'} color={'myGray.500'}>

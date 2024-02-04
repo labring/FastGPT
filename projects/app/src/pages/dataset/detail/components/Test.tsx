@@ -39,6 +39,8 @@ import { fileDownload } from '@/web/common/file/utils';
 import { readCsvContent } from '@fastgpt/web/common/file/read/csv';
 import { delay } from '@fastgpt/global/common/system/utils';
 import QuoteItem from '@/components/core/dataset/QuoteItem';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
@@ -48,9 +50,13 @@ type FormType = {
   inputText: string;
   searchParams: {
     searchMode: `${DatasetSearchModeEnum}`;
-    usingReRank: boolean;
-    limit: number;
-    similarity: number;
+    similarity?: number;
+    limit?: number;
+    usingReRank?: boolean;
+    searchEmptyText?: string;
+    datasetSearchUsingExtensionQuery?: boolean;
+    datasetSearchExtensionModel?: string;
+    datasetSearchExtensionBg?: string;
   };
 };
 
@@ -58,6 +64,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const theme = useTheme();
   const { toast } = useToast();
+  const { llmModelList } = useSystemStore();
   const { datasetDetail } = useDatasetStore();
   const { pushDatasetTestItem } = useSearchTestStore();
   const [inputType, setInputType] = useState<'text' | 'file'>('text');
@@ -77,12 +84,15 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         searchMode: DatasetSearchModeEnum.embedding,
         usingReRank: false,
         limit: 5000,
-        similarity: 0
+        similarity: 0,
+        datasetSearchUsingExtensionQuery: false,
+        datasetSearchExtensionModel: llmModelList[0].model,
+        datasetSearchExtensionBg: ''
       }
     }
   });
 
-  const searchModeData = DatasetSearchModeMap[getValues('searchParams.searchMode')];
+  const searchModeData = DatasetSearchModeMap[getValues(`searchParams.searchMode`)];
 
   const {
     isOpen: isOpenSelectMode,
@@ -123,34 +133,34 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       });
     }
   });
-  const { mutate: onFileTest, isLoading: fileTestIsLoading } = useRequest({
-    mutationFn: async ({ searchParams }: FormType) => {
-      if (!selectFile) return Promise.reject('File is not selected');
-      const { data } = await readCsvContent({ file: selectFile });
-      const testList = data.slice(0, 100);
-      const results: SearchTestResponse[] = [];
+  // const { mutate: onFileTest, isLoading: fileTestIsLoading } = useRequest({
+  //   mutationFn: async ({ searchParams }: FormType) => {
+  //     if (!selectFile) return Promise.reject('File is not selected');
+  //     const { data } = await readCsvContent({ file: selectFile });
+  //     const testList = data.slice(0, 100);
+  //     const results: SearchTestResponse[] = [];
 
-      for await (const item of testList) {
-        try {
-          const result = await postSearchText({ datasetId, text: item[0].trim(), ...searchParams });
-          results.push(result);
-        } catch (error) {
-          await delay(500);
-        }
-      }
+  //     for await (const item of testList) {
+  //       try {
+  //         const result = await postSearchText({ datasetId, text: item[0].trim(), ...searchParams });
+  //         results.push(result);
+  //       } catch (error) {
+  //         await delay(500);
+  //       }
+  //     }
 
-      return results;
-    },
-    onSuccess(res: SearchTestResponse[]) {
-      console.log(res);
-    },
-    onError(err) {
-      toast({
-        title: getErrText(err),
-        status: 'error'
-      });
-    }
-  });
+  //     return results;
+  //   },
+  //   onSuccess(res: SearchTestResponse[]) {
+  //     console.log(res);
+  //   },
+  //   onError(err) {
+  //     toast({
+  //       title: getErrText(err),
+  //       status: 'error'
+  //     });
+  //   }
+  // });
 
   const onSelectFile = async (files: File[]) => {
     const file = files[0];
@@ -295,13 +305,13 @@ const Test = ({ datasetId }: { datasetId: string }) => {
           <Flex justifyContent={'flex-end'}>
             <Button
               size={'sm'}
-              isLoading={textTestIsLoading || fileTestIsLoading}
+              isLoading={textTestIsLoading}
               isDisabled={inputType === 'file' && !selectFile}
               onClick={() => {
                 if (inputType === 'text') {
                   handleSubmit((data) => onTextTest(data))();
                 } else {
-                  handleSubmit((data) => onFileTest(data))();
+                  // handleSubmit((data) => onFileTest(data))();
                 }
               }}
             >

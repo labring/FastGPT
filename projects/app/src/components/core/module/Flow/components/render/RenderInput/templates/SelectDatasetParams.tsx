@@ -7,19 +7,24 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import DatasetParamsModal from '@/components/core/module/DatasetParamsModal';
+import DatasetParamsModal, {
+  DatasetParamsProps
+} from '@/components/core/module/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
   const { nodes } = useFlowProviderStore();
-
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
-  const [data, setData] = useState({
+
+  const [data, setData] = useState<DatasetParamsProps>({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,
     similarity: 0.5,
-    usingReRank: false
+    usingReRank: false,
+    datasetSearchUsingExtensionQuery: true,
+    datasetSearchExtensionModel: llmModelList[0]?.model,
+    datasetSearchExtensionBg: ''
   });
 
   const tokenLimit = useMemo(() => {
@@ -69,6 +74,7 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
             maxTokens={tokenLimit}
             onClose={onClose}
             onSuccess={(e) => {
+              setData(e);
               for (let key in e) {
                 const item = inputs.find((input) => input.key === key);
                 if (!item) continue;

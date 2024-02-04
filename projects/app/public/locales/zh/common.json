@@ -93,6 +93,7 @@
     "Finish": "完成",
     "Input": "输入",
     "Intro": "介绍",
+    "Invalid Json": "无效的JSON格式，请注意检查。",
     "Last Step": "上一步",
     "Last use time": "最后使用时间",
     "Load Failed": "加载失败",
@@ -274,13 +275,12 @@
       "deterministic": "严谨",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
-        "Open cfr": "开启自动补全",
         "Out Ad Edit": "您即将退出高级编排页面，请确认",
         "Prompt Editor": "提示词编辑",
+        "Query extension background prompt": "对话背景描述",
+        "Query extension background tip": "描述当前对话的范围，便于AI为当前问题进行补全和扩展。填写的内容，通常为该助手",
         "Save and out": "保存并退出",
-        "UnSave": "不保存",
-        "cfr background prompt": "对话背景描述",
-        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n值为空时，表示【首个问题】不使用问题补全功能。\n值为 none 时，表示不使用问题补全功能。"
+        "UnSave": "不保存"
       },
       "error": {
         "App name can not be empty": "应用名不能为空",
@@ -432,6 +432,7 @@
       },
       "response": {
         "Complete Response": "完整响应",
+        "Extension model": "问题补全模型",
         "Plugin Resonse Detail": "插件详情",
         "Read complete response": "查看详情",
         "Read complete response tips": "点击查看详细流程",
@@ -445,7 +446,7 @@
         "module http result": "响应体",
         "module http url": "请求地址",
         "module limit": "单次搜索上限",
-        "module maxToken": "最大 Tokens",
+        "module maxToken": "最大响应 Tokens",
         "module model": "模型",
         "module name": "模型名",
         "module price": "计费",
@@ -548,7 +549,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -650,10 +652,13 @@
       },
       "link": "链接",
       "search": {
-        "Dataset Search Params": "搜索参数",
+        "Basic params": "基础参数",
+        "Dataset Search Params": "知识库搜索配置",
         "Embedding score": "语意检索得分",
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
+        "Filter": "搜索过滤",
+        "Limit": "",
         "Max Tokens": "引用上限",
         "Max Tokens Tips": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
         "Min Similarity": "最低相关度",
@@ -671,6 +676,8 @@
         "Source id": "来源ID",
         "Source name": "引用来源名",
         "Top K": "单次搜索上限",
+        "Using cfr": "",
+        "Using query extension": "使用问题补全",
         "mode": {
           "embedding": "语义检索",
           "embedding desc": "使用向量进行文本相关性查询",
@@ -694,6 +701,9 @@
           "rrf desc": "通过倒排计算的方式，合并多个检索结果。"
         },
         "search mode": "搜索模式"
+      },
+      "settings": {
+        "Search basic params": "检索参数"
       },
       "status": {
         "active": "已就绪",
@@ -753,6 +763,10 @@
       "Field key": "字段 Key",
       "Input Type": "输入类型",
       "Plugin output must connect": "自定义输出必须全部连接",
+      "QueryExtension": {
+        "placeholder": "例如:\n关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。",
+        "tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。建议开启该功能后，都简单的描述在对话的背景，否则容易造成补全对象不准确。"
+      },
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
       "Variable": "全局变量",
       "Variable Setting": "变量设置",
@@ -778,7 +792,6 @@
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
           "Trigger": "大部分时候，你不需要连接该属性。\n当你需要延迟执行，或精确控制执行时机时，可以连接该属性。",
           "anyInput": "可传入任意内容",
-          "cfr background": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示【首次对话】不使用问题补全功能。",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
           "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
         },
@@ -795,15 +808,13 @@
           "TFSwitch textarea": "自定义 False 匹配规则",
           "aiModel": "AI 模型",
           "anyInput": "任意内容输入",
-          "cfr background": "背景知识",
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
           "user question": "用户问题"
         },
         "placeholder": {
-          "Classify background": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。",
-          "cfr background": "关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。"
+          "Classify background": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。"
         }
       },
       "inputType": {
@@ -859,6 +870,8 @@
         "Http request": "Http 请求",
         "Http request intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "My plugin module": "个人插件",
+        "Query extension": "问题补全",
+        "Query extension intro": "开启问题补全功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
         "Response module": "文本输出",
         "Running app": "应用调用",
         "Running app intro": "可以选择一个其他应用进行调用",
@@ -868,8 +881,6 @@
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
-        "cfr": "问题补全",
-        "cfr intro": "根据历史记录，完善当前问题，使其更利于知识库搜索，同时提高连续对话能力。",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出"
       },
@@ -1343,6 +1354,9 @@
       "Data Length": "数据长度",
       "Dataset store": "知识库存储",
       "Duration": "时长（秒）",
+      "Extension Input Token Length": "问题补全输入Tokens",
+      "Extension Output Token Length": "问题补全输出Tokens",
+      "Extension result": "问题补全结果",
       "Input Token Length": "输入 Tokens",
       "Module name": "模块名",
       "Next Step Guide": "下一步指引",

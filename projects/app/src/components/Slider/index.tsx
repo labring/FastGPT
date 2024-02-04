@@ -90,7 +90,7 @@ const MySlider = ({
           borderRadius={'md'}
           transform={'translate(-50%, -155%)'}
           fontSize={'11px'}
-          display={'none'}
+          display={['block', 'none']}
         >
           <Box transform={'scale(0.9)'}>{value}</Box>
         </SliderMark>
