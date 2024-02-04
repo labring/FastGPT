@@ -19,11 +19,11 @@ import { Output_Template_UserChatInput } from '../output';
 
 export const AiCFR: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
-  templateType: ModuleTemplateTypeEnum.tools,
+  templateType: ModuleTemplateTypeEnum.other,
   flowType: FlowNodeTypeEnum.cfr,
   avatar: '/imgs/module/cfr.svg',
-  name: 'core.module.template.cfr',
-  intro: 'core.module.template.cfr intro',
+  name: 'core.module.template.Query extension',
+  intro: '该模块已合并到知识库搜索参数中，无需单独使用。',
   showStatus: true,
   inputs: [
     Input_Template_Switch,
@@ -39,11 +39,11 @@ export const AiCFR: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.aiSystemPrompt,
       type: FlowNodeInputTypeEnum.textarea,
-      label: 'core.module.input.label.cfr background',
+      label: 'core.module.input.label.Background',
       max: 300,
       valueType: ModuleIOValueTypeEnum.string,
-      description: 'core.app.edit.cfr background tip',
-      placeholder: 'core.module.input.placeholder.cfr background',
+      description: 'core.app.edit.Query extension background tip',
+      placeholder: 'core.module.QueryExtension.placeholder',
       showTargetInApp: true,
       showTargetInPlugin: true
     },

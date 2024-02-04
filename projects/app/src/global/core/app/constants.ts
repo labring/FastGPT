@@ -14,9 +14,6 @@ export const SimpleModeTemplate_FastGPT_Universal: AppSimpleEditConfigTemplateTy
       quoteTemplate: true,
       quotePrompt: true
     },
-    cfr: {
-      background: true
-    },
     dataset: {
       datasets: true,
       similarity: true,

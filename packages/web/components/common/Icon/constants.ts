@@ -131,6 +131,7 @@ export const iconPaths = {
   'modal/edit': () => import('./icons/modal/edit.svg'),
   'modal/manualDataset': () => import('./icons/modal/manualDataset.svg'),
   'modal/selectSource': () => import('./icons/modal/selectSource.svg'),
+  'modal/setting': () => import('./icons/modal/setting.svg'),
   more: () => import('./icons/more.svg'),
   out: () => import('./icons/out.svg'),
   'phoneTabbar/me': () => import('./icons/phoneTabbar/me.svg'),

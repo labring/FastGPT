@@ -22,14 +22,18 @@ services:
     image: mongo:5.0.18
     # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
     container_name: mongo
-    restart: always
-    ports: # 生产环境建议不要暴露
+    ports:
       - 27017:27017
     networks:
       - fastgpt
-    command: --replSet rs0
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      # 默认的用户名和密码，只有首次允许有效
+      - MONGO_INITDB_ROOT_USERNAME=myname
+      - MONGO_INITDB_ROOT_PASSWORD=mypassword
     volumes:
       - ./mongo/data:/data/db
+      - ./mongodb.key:/data/mongodb.key
   fastgpt:
     container_name: fastgpt
     image: ghcr.io/labring/fastgpt:latest # git
@@ -52,8 +56,8 @@ services:
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
       - FILE_TOKEN_KEY=filetoken
-      # mongo 配置，不需要改. 用户名admin,密码password，是执行 db.createUser 时的账号和密码。
-      - MONGODB_URI=mongodb://admin:password@mongo:27017/fastgpt?authSource=admin
+      # mongo 配置，不需要改. 用户名myname,密码mypassword。
+      - MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin
       # pg配置. 不需要改
       - PG_URL=postgresql://username:password@pg:5432/postgres
     volumes:

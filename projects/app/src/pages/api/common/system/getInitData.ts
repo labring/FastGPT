@@ -66,13 +66,13 @@ export async function getInitConfig() {
     await Promise.all([
       initGlobal(),
       initSystemConfig(),
-      getSimpleModeTemplates(),
+      // getSimpleModeTemplates(),
       getSystemVersion(),
       getSystemPlugin()
     ]);
 
     console.log({
-      simpleModeTemplates: global.simpleModeTemplates,
+      // simpleModeTemplates: global.simpleModeTemplates,
       communityPlugins: global.communityPlugins
     });
   } catch (error) {
@@ -165,38 +165,38 @@ export function getSystemVersion() {
   }
 }
 
-async function getSimpleModeTemplates() {
-  if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
+// async function getSimpleModeTemplates() {
+//   if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
 
-  try {
-    const basePath =
-      process.env.NODE_ENV === 'development' ? 'data/simpleTemplates' : '/app/data/simpleTemplates';
-    // read data/simpleTemplates directory, get all json file
-    const files = readdirSync(basePath);
-    // filter json file
-    const filterFiles = files.filter((item) => item.endsWith('.json'));
+//   try {
+//     const basePath =
+//       process.env.NODE_ENV === 'development' ? 'data/simpleTemplates' : '/app/data/simpleTemplates';
+//     // read data/simpleTemplates directory, get all json file
+//     const files = readdirSync(basePath);
+//     // filter json file
+//     const filterFiles = files.filter((item) => item.endsWith('.json'));
 
-    // read json file
-    const fileTemplates = filterFiles.map((item) => {
-      const content = readFileSync(`${basePath}/${item}`, 'utf-8');
-      return {
-        id: item.replace('.json', ''),
-        ...JSON.parse(content)
-      };
-    });
+//     // read json file
+//     const fileTemplates = filterFiles.map((item) => {
+//       const content = readFileSync(`${basePath}/${item}`, 'utf-8');
+//       return {
+//         id: item.replace('.json', ''),
+//         ...JSON.parse(content)
+//       };
+//     });
 
-    // fetch templates from plus
-    const plusTemplates = await getSimpleTemplatesFromPlus();
+//     // fetch templates from plus
+//     const plusTemplates = await getSimpleTemplatesFromPlus();
 
-    global.simpleModeTemplates = [
-      SimpleModeTemplate_FastGPT_Universal,
-      ...plusTemplates,
-      ...fileTemplates
-    ];
-  } catch (error) {
-    global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal];
-  }
-}
+//     global.simpleModeTemplates = [
+//       SimpleModeTemplate_FastGPT_Universal,
+//       ...plusTemplates,
+//       ...fileTemplates
+//     ];
+//   } catch (error) {
+//     global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal];
+//   }
+// }
 
 function getSystemPlugin() {
   if (global.communityPlugins && global.communityPlugins.length > 0) return;

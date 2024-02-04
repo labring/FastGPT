@@ -46,7 +46,9 @@ export function ChatContextFilter({
 
     /* 整体 tokens 超出范围, system必须保留 */
     if (maxTokens <= 0) {
-      chats.shift();
+      if (chats.length > 1) {
+        chats.shift();
+      }
       break;
     }
   }

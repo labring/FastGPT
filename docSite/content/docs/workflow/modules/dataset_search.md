@@ -7,6 +7,8 @@ toc: true
 weight: 357
 ---
 
+知识库搜索具体参数说明，以及内部逻辑请移步：[FastGPT知识库搜索方案](/docs/course/data_search/)
+
 ## 特点
 
 - 可重复添加（复杂编排时防止线太乱，可以更美观）

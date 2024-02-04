@@ -290,7 +290,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           valueType: 'string',
           targets: [
             {
-              moduleId: 'vuc92c',
+              moduleId: 'datasetSearch',
               key: 'userChatInput'
             }
           ]
@@ -335,19 +335,6 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           label: '最低相关性',
           value: formData.dataset.similarity,
           valueType: 'number',
-          min: 0,
-          max: 1,
-          step: 0.01,
-          markList: [
-            {
-              label: '0',
-              value: 0
-            },
-            {
-              label: '1',
-              value: 1
-            }
-          ],
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false
@@ -384,12 +371,33 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           connected: false
         },
         {
-          key: 'datasetParamsModal',
-          type: 'selectDatasetParamsModal',
+          key: 'datasetSearchUsingExtensionQuery',
+          type: 'hidden',
           label: '',
-          valueType: 'any',
+          valueType: 'boolean',
           showTargetInApp: false,
           showTargetInPlugin: false,
+          value: formData.dataset.datasetSearchUsingExtensionQuery,
+          connected: false
+        },
+        {
+          key: 'datasetSearchExtensionBg',
+          type: 'hidden',
+          label: '',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.dataset.datasetSearchExtensionBg,
+          connected: false
+        },
+        {
+          key: 'datasetSearchExtensionModel',
+          type: 'hidden',
+          label: '',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.dataset.datasetSearchExtensionModel,
           connected: false
         },
         {
@@ -657,89 +665,6 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           valueType: 'chatHistory',
           type: 'source',
           targets: []
-        }
-      ]
-    },
-    {
-      moduleId: 'vuc92c',
-      name: 'core.module.template.cfr',
-      avatar: '/imgs/module/cfr.svg',
-      flowType: 'cfr',
-      showStatus: true,
-      position: {
-        x: 758.2985382279098,
-        y: 1124.6527309337314
-      },
-      inputs: [
-        {
-          key: 'switch',
-          type: 'target',
-          label: 'core.module.input.label.switch',
-          valueType: 'any',
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: false
-        },
-        {
-          key: 'model',
-          type: 'selectExtractModel',
-          label: 'core.module.input.label.aiModel',
-          required: true,
-          valueType: 'string',
-          value: getLLMModel().model,
-          showTargetInApp: false,
-          showTargetInPlugin: false,
-          connected: false
-        },
-        {
-          key: 'systemPrompt',
-          type: 'textarea',
-          label: 'core.module.input.label.cfr background',
-          max: 300,
-          value: formData.cfr.background,
-          valueType: 'string',
-          description: 'core.module.input.description.cfr background',
-          placeholder: 'core.module.input.placeholder.cfr background',
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: false
-        },
-        {
-          key: 'history',
-          type: 'numberInput',
-          label: 'core.module.input.label.chat history',
-          required: true,
-          min: 0,
-          max: 30,
-          valueType: 'chatHistory',
-          value: 6,
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: false
-        },
-        {
-          key: 'userChatInput',
-          type: 'target',
-          label: 'core.module.input.label.user question',
-          required: true,
-          valueType: 'string',
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'system_text',
-          label: 'core.module.output.label.cfr result',
-          valueType: 'string',
-          type: 'source',
-          targets: [
-            {
-              moduleId: 'datasetSearch',
-              key: 'userChatInput'
-            }
-          ]
         }
       ]
     }

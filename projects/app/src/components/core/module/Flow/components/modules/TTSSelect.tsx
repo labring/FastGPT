@@ -53,8 +53,8 @@ const TTSSelect = ({
       if (e === TTSTypeEnum.none || e === TTSTypeEnum.web) {
         onChange({ type: e as `${TTSTypeEnum}` });
       } else {
-        const audioModel = audioSpeechModelList.find(
-          (item) => item.voices?.find((voice) => voice.value === e)
+        const audioModel = audioSpeechModelList.find((item) =>
+          item.voices?.find((voice) => voice.value === e)
         );
         if (!audioModel) {
           return;
