@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect } from 'react';
 import type { RenderInputProps } from '../type';
 import { onChangeNode } from '../../../../FlowProvider';
-import MySelect from '@/components/Select';
+import SelectAiModel from '@/components/Select/SelectAiModel';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { chatModelList, cqModelList, extractModelList } from '@/web/common/system/staticData';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
 
 const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) => {
   const modelList = (() => {
@@ -16,8 +15,7 @@ const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) 
   })().map((item) => ({
     model: item.model,
     name: item.name,
-    maxResponse: item.maxResponse,
-    price: item.price
+    maxResponse: item.maxResponse
   }));
 
   const onChangeModel = useCallback(
@@ -55,11 +53,9 @@ const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) 
   );
 
   const list = modelList.map((item) => {
-    const priceStr = `(${formatPrice(item.price, 1000)}元/1k Tokens)`;
-
     return {
       value: item.model,
-      label: `${item.name}${priceStr}`
+      label: item.name
     };
   });
 
@@ -70,7 +66,7 @@ const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) 
   }, [item.value, list, onChangeModel]);
 
   return (
-    <MySelect
+    <SelectAiModel
       minW={'350px'}
       width={'100%'}
       value={item.value}

@@ -367,7 +367,7 @@ export const htmlTemplate = `<!DOCTYPE html>
     }
     .markdown a {
       text-decoration: underline;
-      color: var(--chakra-colors-blue-600);
+      color: var(--chakra-colors-primary-600);
     }
     .markdown table {
       border-collapse: separate;

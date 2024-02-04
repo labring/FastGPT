@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { MongoOutLink } from './schema';
+import { FastGPTProUrl } from '../../common/system/constants';
 
 export const updateOutLinkUsage = async ({
   shareId,
@@ -30,7 +31,7 @@ export const pushResult2Remote = async ({
   shareId?: string;
   responseData?: any[];
 }) => {
-  if (!shareId || !outLinkUid || !global.systemEnv?.pluginBaseUrl) return;
+  if (!shareId || !outLinkUid || !FastGPTProUrl) return;
   try {
     const outLink = await MongoOutLink.findOne({
       shareId

@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const qgModel = global.qgModels[0];
 
-    const { result, tokens } = await createQuestionGuide({
+    const { result, inputTokens, outputTokens } = await createQuestionGuide({
       messages,
       model: qgModel.model
     });
@@ -29,7 +29,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     pushQuestionGuideBill({
-      tokens: tokens,
+      inputTokens,
+      outputTokens,
       teamId,
       tmbId
     });

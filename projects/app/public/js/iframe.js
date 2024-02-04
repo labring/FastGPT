@@ -34,6 +34,7 @@ function embedChatbot() {
 
   const iframe = document.createElement('iframe');
   iframe.allow = 'fullscreen;microphone';
+  iframe.referrerPolicy = 'no-referrer';
   iframe.title = 'FastGPT Chat Window';
   iframe.id = chatWindowId;
   iframe.src = botSrc;

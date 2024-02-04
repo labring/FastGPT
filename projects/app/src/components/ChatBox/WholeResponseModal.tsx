@@ -8,7 +8,7 @@ import Tabs from '../Tabs';
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatPrice } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import Markdown from '../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constant';
@@ -19,7 +19,7 @@ function Row({
   rawDom
 }: {
   label: string;
-  value?: string | number;
+  value?: string | number | boolean;
   rawDom?: React.ReactNode;
 }) {
   const { t } = useTranslation();
@@ -70,7 +70,7 @@ const WholeResponseModal = ({
       iconSrc="/imgs/modal/wholeRecord.svg"
       title={
         <Flex alignItems={'center'}>
-          {t('chat.Complete Response')}
+          {t('core.chat.response.Complete Response')}
           <MyTooltip label={'从左往右，为各个模块的响应顺序'}>
             <QuestionOutlineIcon ml={2} />
           </MyTooltip>
@@ -133,15 +133,16 @@ const ResponseBox = React.memo(function ResponseBox({
         {activeModule?.price !== undefined && (
           <Row
             label={t('core.chat.response.module price')}
-            value={`￥${formatPrice(activeModule?.price)}`}
+            value={`￥${formatStorePrice2Read(activeModule?.price)}`}
           />
         )}
         <Row
           label={t('core.chat.response.module time')}
           value={`${activeModule?.runningTime || 0}s`}
         />
-        <Row label={t('core.chat.response.module tokens')} value={`${activeModule?.tokens}`} />
         <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
+        <Row label={t('wallet.bill.Input Token Length')} value={`${activeModule?.inputTokens}`} />
+        <Row label={t('wallet.bill.Output Token Length')} value={`${activeModule?.outputTokens}`} />
         <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
         <Row
           label={t('core.chat.response.context total length')}
@@ -193,6 +194,10 @@ const ResponseBox = React.memo(function ResponseBox({
         )}
         <Row label={t('core.chat.response.module similarity')} value={activeModule?.similarity} />
         <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
+        <Row
+          label={t('core.chat.response.search using reRank')}
+          value={activeModule?.searchUsingReRank}
+        />
 
         {/* classify question */}
         <Row

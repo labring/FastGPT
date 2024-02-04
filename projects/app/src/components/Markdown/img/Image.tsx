@@ -9,7 +9,6 @@ import {
   Skeleton,
   useDisclosure
 } from '@chakra-ui/react';
-import MyModal from '@/components/MyModal';
 
 const MdImage = ({ src }: { src?: string }) => {
   const [isLoading, setIsLoading] = useState(true);
@@ -34,6 +33,7 @@ const MdImage = ({ src }: { src?: string }) => {
         cursor={succeed ? 'pointer' : 'default'}
         loading="eager"
         objectFit={'contain'}
+        referrerPolicy="no-referrer"
         onLoad={() => {
           setIsLoading(false);
           setSucceed(true);
@@ -53,6 +53,7 @@ const MdImage = ({ src }: { src?: string }) => {
             alt={''}
             w={'100%'}
             maxH={'80vh'}
+            referrerPolicy="no-referrer"
             fallbackSrc={'/imgs/errImg.png'}
             fallbackStrategy={'onError'}
             objectFit={'contain'}

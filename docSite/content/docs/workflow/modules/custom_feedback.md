@@ -18,8 +18,8 @@ weight: 354
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/customfeedback1.png) | ![](/imgs/customfeedback2.png) |
-| ![](/imgs/customfeedback3.png) | ![](/imgs/customfeedback4.png) |
+| ![](/imgs/customfeedback1.jpg) | ![](/imgs/customfeedback2.jpg) |
+| ![](/imgs/customfeedback3.jpg) | ![](/imgs/customfeedback4.jpg) |
 
 
 ## 介绍

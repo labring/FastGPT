@@ -1,4 +1,4 @@
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Box, Button, Flex, ModalBody, useDisclosure, Image } from '@chakra-ui/react';
@@ -8,7 +8,7 @@ import MySelect from '@/components/Select';
 import { TTSTypeEnum } from '@/constants/app';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { audioSpeechModels } from '@/web/common/system/staticData';
+import { audioSpeechModelList } from '@/web/common/system/staticData';
 import MyModal from '@/components/MyModal';
 import MySlider from '@/components/Slider';
 
@@ -26,7 +26,7 @@ const TTSSelect = ({
     () => [
       { label: t('core.app.tts.Close'), value: TTSTypeEnum.none },
       { label: t('core.app.tts.Web'), value: TTSTypeEnum.web },
-      ...audioSpeechModels.map((item) => item?.voices || []).flat()
+      ...audioSpeechModelList.map((item) => item?.voices || []).flat()
     ],
     [t]
   );
@@ -52,7 +52,7 @@ const TTSSelect = ({
       if (e === TTSTypeEnum.none || e === TTSTypeEnum.web) {
         onChange({ type: e as `${TTSTypeEnum}` });
       } else {
-        const audioModel = audioSpeechModels.find(
+        const audioModel = audioSpeechModelList.find(
           (item) => item.voices?.find((voice) => voice.value === e)
         );
         if (!audioModel) {
@@ -133,7 +133,8 @@ const TTSSelect = ({
                   <Image src="/icon/speaking.gif" w={'24px'} alt={''} />
                   <Button
                     ml={2}
-                    variant={'gray'}
+                    variant={'grayBase'}
+                    color={'primary.600'}
                     isLoading={audioLoading}
                     leftIcon={<MyIcon name={'core/chat/stopSpeech'} w={'16px'} />}
                     onClick={() => {

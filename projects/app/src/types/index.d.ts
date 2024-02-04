@@ -33,13 +33,11 @@ declare global {
   var whisperModel: WhisperModelType;
   var reRankModels: ReRankModelItemType[];
 
-  var priceMd: string;
   var systemVersion: string;
 
   var simpleModeTemplates: AppSimpleEditConfigTemplateType[];
 
   interface Window {
-    ['pdfjs-dist/build/pdf']: any;
     grecaptcha: any;
     QRCode: any;
     umami?: {

@@ -1,13 +1,13 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
-import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import { useToast } from '@/web/common/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Tabs from '@/components/Tabs';
 import dynamic from 'next/dynamic';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import SideTabs from '@/components/SideTabs';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
@@ -54,10 +54,10 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
   const { userInfo } = useUserStore();
 
   const tabList = [
-    { label: t('core.dataset.Dataset'), id: TabEnum.collectionCard, icon: 'overviewLight' },
+    { label: t('core.dataset.Dataset'), id: TabEnum.collectionCard, icon: 'common/overviewLight' },
     { label: t('core.dataset.test.Search Test'), id: TabEnum.test, icon: 'kbTest' },
     ...(userInfo?.team.canWrite && datasetDetail.isOwner
-      ? [{ label: t('common.Config'), id: TabEnum.info, icon: 'settingLight' }]
+      ? [{ label: t('common.Config'), id: TabEnum.info, icon: 'common/settingLight' }]
       : [])
   ];
 
@@ -92,9 +92,55 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
     }
   });
 
-  const { data: trainingQueueLen = 0 } = useQuery(['getTrainingQueueLen'], getTrainingQueueLen, {
-    refetchInterval: 10000
-  });
+  const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
+    ['getTrainingQueueLen'],
+    () =>
+      getTrainingQueueLen({
+        vectorModel: datasetDetail.vectorModel.model,
+        agentModel: datasetDetail.agentModel.model
+      }),
+    {
+      refetchInterval: 10000
+    }
+  );
+  const { vectorTrainingMap, agentTrainingMap } = useMemo(() => {
+    const vectorTrainingMap = (() => {
+      if (vectorTrainingCount < 1000)
+        return {
+          colorSchema: 'green',
+          tip: t('core.dataset.training.Leisure')
+        };
+      if (vectorTrainingCount < 10000)
+        return {
+          colorSchema: 'yellow',
+          tip: t('core.dataset.training.Waiting')
+        };
+      return {
+        colorSchema: 'red',
+        tip: t('core.dataset.training.Full')
+      };
+    })();
+    const agentTrainingMap = (() => {
+      if (agentTrainingCount < 100)
+        return {
+          colorSchema: 'green',
+          tip: t('core.dataset.training.Leisure')
+        };
+      if (agentTrainingCount < 1000)
+        return {
+          colorSchema: 'yellow',
+          tip: t('core.dataset.training.Waiting')
+        };
+      return {
+        colorSchema: 'red',
+        tip: t('core.dataset.training.Full')
+      };
+    })();
+    return {
+      vectorTrainingMap,
+      agentTrainingMap
+    };
+  }, [agentTrainingCount, t, vectorTrainingCount]);
 
   return (
     <>
@@ -110,7 +156,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               borderRight={theme.borders.base}
             >
               <Flex mb={4} alignItems={'center'}>
-                <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'lg'} />
+                <Avatar src={datasetDetail.avatar} w={'34px'} borderRadius={'md'} />
                 <Box ml={2}>
                   <Box fontWeight={'bold'}>{datasetDetail.name}</Box>
                 </Box>
@@ -155,19 +201,32 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
                   setCurrentTab(e);
                 }}
               />
-              <Box textAlign={'center'}>
-                <Flex justifyContent={'center'} alignItems={'center'}>
-                  <MyIcon mr={1} name="overviewLight" w={'16px'} color={'green.500'} />
-                  <Box>{t('dataset.System Data Queue')}</Box>
-                  <MyTooltip
-                    label={t('dataset.Queue Desc', { title: feConfigs?.systemTitle })}
-                    placement={'top'}
-                  >
-                    <QuestionOutlineIcon ml={1} w={'16px'} />
-                  </MyTooltip>
-                </Flex>
-                <Box mt={1} fontWeight={'bold'}>
-                  {trainingQueueLen}
+              <Box>
+                <Box mb={3}>
+                  <Box fontSize={'sm'}>
+                    {t('core.dataset.training.Agent queue')}({agentTrainingMap.tip})
+                  </Box>
+                  <Progress
+                    value={100}
+                    size={'xs'}
+                    colorScheme={agentTrainingMap.colorSchema}
+                    borderRadius={'10px'}
+                    isAnimated
+                    hasStripe
+                  />
+                </Box>
+                <Box mb={3}>
+                  <Box fontSize={'sm'}>
+                    {t('core.dataset.training.Vector queue')}({vectorTrainingMap.tip})
+                  </Box>
+                  <Progress
+                    value={100}
+                    size={'xs'}
+                    colorScheme={vectorTrainingMap.colorSchema}
+                    borderRadius={'10px'}
+                    isAnimated
+                    hasStripe
+                  />
                 </Box>
               </Box>
               <Flex
@@ -181,11 +240,10 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               >
                 <IconButton
                   mr={3}
-                  icon={<MyIcon name={'backFill'} w={'18px'} color={'blue.500'} />}
+                  icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
                   bg={'white'}
                   boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-                  h={'28px'}
-                  size={'sm'}
+                  size={'smSquare'}
                   borderRadius={'50%'}
                   aria-label={''}
                 />

@@ -1,11 +1,11 @@
 import type { CollectionWithDatasetType } from '@fastgpt/global/core/dataset/type.d';
 import { MongoDatasetCollection } from './schema';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { MongoDatasetTraining } from '../training/schema';
 import { urlsFetch } from '../../../common/string/cheerio';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constant';
+import { hashStr } from '@fastgpt/global/common/string/tools';
 
 /**
  * get all collection by top collectionId
@@ -65,64 +65,114 @@ export function getCollectionUpdateTime({ name, time }: { time?: Date; name: str
   return new Date();
 }
 
-/* link collection start load data */
-export const loadingOneChunkCollection = async ({
+/**
+ * Get collection raw text by Collection or collectionId
+ */
+export const getCollectionAndRawText = async ({
   collectionId,
-  tmbId,
-  billId,
-  rawText
+  collection,
+  newRawText
 }: {
-  collectionId: string;
-  tmbId: string;
-  billId?: string;
-  rawText?: string;
+  collectionId?: string;
+  collection?: CollectionWithDatasetType;
+  newRawText?: string;
 }) => {
-  const collection = (await MongoDatasetCollection.findById(collectionId).populate(
-    'datasetId'
-  )) as CollectionWithDatasetType;
+  const col = await (async () => {
+    if (collection) return collection;
+    if (collectionId) {
+      return (await MongoDatasetCollection.findById(collectionId).populate(
+        'datasetId'
+      )) as CollectionWithDatasetType;
+    }
 
-  if (!collection) {
-    return Promise.reject(DatasetErrEnum.unCreateCollection);
+    return null;
+  })();
+
+  if (!col) {
+    return Promise.reject('Collection not found');
   }
 
-  const newRawText = await (async () => {
-    if (rawText) return rawText;
+  const rawText = await (async () => {
+    if (newRawText) return newRawText;
     // link
-    if (collection.type === DatasetCollectionTypeEnum.link && collection.rawLink) {
+    if (col.type === DatasetCollectionTypeEnum.link && col.rawLink) {
       // crawl new data
       const result = await urlsFetch({
-        urlList: [collection.rawLink],
-        selector: collection.datasetId?.websiteConfig?.selector
+        urlList: [col.rawLink],
+        selector: col.datasetId?.websiteConfig?.selector || col?.metadata?.webPageSelector
       });
 
       return result[0].content;
     }
+
     // file
 
     return '';
   })();
 
+  const hashRawText = hashStr(rawText);
+  const isSameRawText = col.hashRawText === hashRawText;
+
+  return {
+    collection: col,
+    rawText,
+    isSameRawText
+  };
+};
+
+/* link collection start load data */
+export const reloadCollectionChunks = async ({
+  collectionId,
+  collection,
+  tmbId,
+  billId,
+  rawText
+}: {
+  collectionId?: string;
+  collection?: CollectionWithDatasetType;
+  tmbId: string;
+  billId?: string;
+  rawText?: string;
+}) => {
+  const {
+    rawText: newRawText,
+    collection: col,
+    isSameRawText
+  } = await getCollectionAndRawText({
+    collection,
+    collectionId,
+    newRawText: rawText
+  });
+
+  if (isSameRawText) return;
+
   // split data
   const { chunks } = splitText2Chunks({
     text: newRawText,
-    chunkLen: collection.chunkSize || 512,
+    chunkLen: col.chunkSize || 512,
     countTokens: false
   });
 
   // insert to training queue
   await MongoDatasetTraining.insertMany(
     chunks.map((item, i) => ({
-      teamId: collection.teamId,
+      teamId: col.teamId,
       tmbId,
-      datasetId: collection.datasetId._id,
-      collectionId: collection._id,
+      datasetId: col.datasetId._id,
+      collectionId: col._id,
       billId,
-      mode: collection.trainingType,
+      mode: col.trainingType,
       prompt: '',
-      model: collection.datasetId.vectorModel,
+      model: col.datasetId.vectorModel,
       q: item,
       a: '',
       chunkIndex: i
     }))
   );
+
+  // update raw text
+  await MongoDatasetCollection.findByIdAndUpdate(col._id, {
+    rawTextLength: newRawText.length,
+    hashRawText: hashStr(newRawText)
+  });
 };

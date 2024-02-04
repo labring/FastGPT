@@ -51,7 +51,7 @@ import {
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';
 
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import MySelect from '@/components/Select';
@@ -505,7 +505,7 @@ const ChatBox = (
     const colorMap = {
       loading: 'myGray.700',
       running: '#67c13b',
-      finish: 'blue.500'
+      finish: 'primary.500'
     };
     if (!isChatting) return;
     const chatContent = chatHistory[chatHistory.length - 1];
@@ -629,17 +629,16 @@ const ChatBox = (
                   ))}
                   {!variableIsFinish && (
                     <Button
-                      leftIcon={<MyIcon name={'chatFill'} w={'16px'} />}
+                      leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
                       size={'sm'}
                       maxW={'100px'}
-                      borderRadius={'lg'}
                       onClick={handleSubmit((data) => {
                         onUpdateVariable?.(data);
                         setVariables(data);
                         setVariableInputFinish(true);
                       })}
                     >
-                      {'开始对话'}
+                      {t('core.chat.Start Chat')}
                     </Button>
                   )}
                 </Card>
@@ -673,7 +672,7 @@ const ChatBox = (
                       <Card
                         className="markdown"
                         {...MessageCardStyle}
-                        bg={'blue.200'}
+                        bg={'primary.200'}
                         borderRadius={'8px 0 8px 8px'}
                         textAlign={'left'}
                       >
@@ -952,6 +951,8 @@ const ChatBox = (
           appId={appId}
           chatId={chatId}
           chatItemId={feedbackId}
+          shareId={shareId}
+          outLinkUid={outLinkUid}
           onClose={() => setFeedbackId(undefined)}
           onSuccess={(content: string) => {
             setChatHistory((state) =>
@@ -1142,10 +1143,10 @@ function ChatAvatar({ src, type }: { src?: string; type: 'Human' | 'AI' }) {
       w={['28px', '34px']}
       h={['28px', '34px']}
       p={'2px'}
-      borderRadius={'lg'}
+      borderRadius={'sm'}
       border={theme.borders.base}
       boxShadow={'0 0 5px rgba(0,0,0,0.1)'}
-      bg={type === 'Human' ? 'white' : 'blue.50'}
+      bg={type === 'Human' ? 'white' : 'primary.50'}
     >
       <Avatar src={src} w={'100%'} h={'100%'} />
     </Box>
@@ -1208,7 +1209,7 @@ function ChatController({
     cursor: 'pointer',
     p: 1,
     bg: 'white',
-    borderRadius: 'lg',
+    borderRadius: 'md',
     boxShadow: '0 0 5px rgba(0,0,0,0.1)',
     border: theme.borders.base,
     mr: 3
@@ -1226,7 +1227,7 @@ function ChatController({
         <MyIcon
           {...controlIconStyle}
           name={'copy'}
-          _hover={{ color: 'blue.600' }}
+          _hover={{ color: 'primary.600' }}
           onClick={() => copyData(chat.value)}
         />
       </MyTooltip>
@@ -1275,7 +1276,7 @@ function ChatController({
           <MyTooltip label={t('core.app.TTS')}>
             <MyIcon
               {...controlIconStyle}
-              name={'voice'}
+              name={'common/voiceLight'}
               _hover={{ color: '#E74694' }}
               onClick={async () => {
                 const response = await playAudio({

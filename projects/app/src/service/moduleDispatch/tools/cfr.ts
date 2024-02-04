@@ -4,7 +4,8 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import { getHistories } from '../utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { getExtractModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -25,7 +26,9 @@ export const dispatchCFR = async ({
     return Promise.reject('Question is empty');
   }
 
-  if (histories.length === 0 && !systemPrompt) {
+  // none
+  // first chat and no system prompt
+  if (systemPrompt === 'none' || (histories.length === 0 && !systemPrompt)) {
     return {
       [ModuleOutputKeyEnum.text]: userChatInput
     };
@@ -75,13 +78,22 @@ A: ${systemPrompt}
   // );
   // console.log(answer);
 
-  const tokens = result.usage?.total_tokens || 0;
+  const inputTokens = result.usage?.prompt_tokens || 0;
+  const outputTokens = result.usage?.completion_tokens || 0;
+
+  const { total, modelName } = formatModelPrice2Store({
+    model: extractModel.model,
+    inputLen: inputTokens,
+    outputLen: outputTokens,
+    type: ModelTypeEnum.extract
+  });
 
   return {
     [ModuleOutputKeyEnum.responseData]: {
-      price: extractModel.price * tokens,
-      model: extractModel.name || '',
-      tokens,
+      price: total,
+      model: modelName,
+      inputTokens,
+      outputTokens,
       query: userChatInput,
       textOutput: answer
     },

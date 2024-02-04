@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { jiebaSplit } from '@/service/core/dataset/utils';
+import { jiebaSplit } from '@/service/common/string/jieba';
 
 let success = 0;
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */

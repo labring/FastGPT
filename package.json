@@ -6,16 +6,20 @@
     "prepare": "husky install",
     "format-code": "prettier --config \"./.prettierrc.js\" --write \"./**/src/**/*.{ts,tsx,scss}\"",
     "format-doc": "zhlint --dir ./docSite *.md --fix",
-    "postinstall": "sh ./scripts/postinstall.sh"
+    "gen:theme-typings": "chakra-cli tokens projects/app/src/web/styles/theme.ts --out node_modules/.pnpm/node_modules/@chakra-ui/styled-system/dist/theming.types.d.ts",
+    "postinstall": "sh ./scripts/postinstall.sh",
+    "initIcon": "node ./scripts/icon/init.js",
+    "previewIcon": "node ./scripts/icon/index.js"
   },
   "devDependencies": {
+    "@chakra-ui/cli": "^2.4.1",
     "husky": "^8.0.3",
-    "lint-staged": "^13.2.1",
-    "prettier": "^3.0.3",
-    "zhlint": "^0.7.1",
     "i18next": "^22.5.1",
+    "lint-staged": "^13.2.1",
     "next-i18next": "^13.3.0",
-    "react-i18next": "^12.3.1"
+    "prettier": "^3.0.3",
+    "react-i18next": "^12.3.1",
+    "zhlint": "^0.7.1"
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format-code",

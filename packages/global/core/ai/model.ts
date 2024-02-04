@@ -6,7 +6,8 @@ export const defaultQAModels: LLMModelItemType[] = [
     name: 'GPT35-16k',
     maxContext: 16000,
     maxResponse: 16000,
-    price: 0
+    inputPrice: 0,
+    outputPrice: 0
   }
 ];
 
@@ -14,8 +15,10 @@ export const defaultVectorModels: VectorModelItemType[] = [
   {
     model: 'text-embedding-ada-002',
     name: 'Embedding-2',
-    price: 0,
+    inputPrice: 0,
+    outputPrice: 0,
     defaultToken: 500,
-    maxToken: 3000
+    maxToken: 3000,
+    weight: 100
   }
 ];

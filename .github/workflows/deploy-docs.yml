@@ -45,6 +45,10 @@ jobs:
               - 'docSite/content/docs/**'
           base: main
 
+      - name: Add cdn for images
+        run: |
+          sed -i "s#\](/imgs/#\](https://cdn.jsdelivr.us/gh/yangchuansheng/fastgpt-imgs@main/imgs/#g" $(grep -rl "\](/imgs/" docSite/content/docs)
+
       # Step 3 - Install Hugo (specific version)
       - name: Install Hugo
         uses: peaceiris/actions-hugo@v2
@@ -68,3 +72,8 @@ jobs:
           vercel-args: '--prod --local-config ../vercel.json' # Optional
           working-directory: docSite/public
 
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GH_PAT }}
+          publish_dir: docSite/public

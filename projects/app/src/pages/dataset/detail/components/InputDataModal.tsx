@@ -9,7 +9,7 @@ import {
 } from '@/web/core/dataset/api';
 import { useToast } from '@/web/common/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -26,7 +26,7 @@ import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constant'
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import SideTabs from '@/components/SideTabs';
 import { useLoading } from '@/web/common/hooks/useLoading';
-import DeleteIcon from '@/components/Icon/delete';
+import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
 import { defaultCollectionDetail } from '@/constants/dataset';
 import { getDocPath } from '@/web/common/system/doc';
 
@@ -83,7 +83,7 @@ const InputDataModal = ({
   });
 
   const tabList = [
-    { label: t('dataset.data.edit.Content'), id: TabEnum.content, icon: 'overviewLight' },
+    { label: t('dataset.data.edit.Content'), id: TabEnum.content, icon: 'common/overviewLight' },
     {
       label: t('dataset.data.edit.Index', { amount: indexes.length }),
       id: TabEnum.index,
@@ -313,7 +313,7 @@ const InputDataModal = ({
                         borderColor={'transparent'}
                         px={0}
                         _focus={{
-                          borderColor: 'blue.400',
+                          borderColor: 'primary.400',
                           px: 3
                         }}
                         placeholder={t('dataset.data.Index Placeholder')}
@@ -332,7 +332,7 @@ const InputDataModal = ({
                   border={theme.borders.base}
                   cursor={'pointer'}
                   _hover={{
-                    bg: 'blue.50'
+                    bg: 'primary.50'
                   }}
                   minH={'100px'}
                   onClick={() =>
@@ -351,7 +351,7 @@ const InputDataModal = ({
             )}
           </Box>
           <Flex justifyContent={'flex-end'} px={5} mt={4}>
-            <Button variant={'base'} mr={3} isLoading={loading} onClick={onClose}>
+            <Button variant={'whitePrimary'} mr={3} isLoading={loading} onClick={onClose}>
               {t('common.Close')}
             </Button>
             <MyTooltip label={collection.canWrite ? '' : t('dataset.data.Can not edit')}>

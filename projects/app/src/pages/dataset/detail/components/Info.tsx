@@ -187,12 +187,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             isLoading={btnLoading}
             icon={<DeleteIcon />}
             aria-label={''}
-            variant={'outline'}
-            size={'sm'}
-            _hover={{
-              color: 'red.600',
-              borderColor: 'red.600'
-            }}
+            variant={'whiteDanger'}
+            size={'smSquare'}
             onClick={openConfirm(onclickDelete)}
           />
         )}

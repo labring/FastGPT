@@ -9,7 +9,7 @@ import { feConfigs } from '@/web/common/system/staticData';
 import Tabs from '@/components/Tabs';
 import SideTabs from '@/components/SideTabs';
 import Avatar from '@/components/Avatar';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Loading from '@/components/Loading';
 import SimpleEdit from './components/SimpleEdit';
@@ -17,7 +17,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import Head from 'next/head';
 
-const AdEdit = dynamic(() => import('./components/AdEdit'), {
+const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
 });
 const OutLink = dynamic(() => import('./components/OutLink'), {});
@@ -52,13 +52,13 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const tabList = useMemo(
     () => [
-      { label: '简易配置', id: TabEnum.simpleEdit, icon: 'overviewLight' },
+      { label: '简易配置', id: TabEnum.simpleEdit, icon: 'common/overviewLight' },
       ...(feConfigs?.hide_app_flow
         ? []
-        : [{ label: '高级编排', id: TabEnum.adEdit, icon: 'settingLight' }]),
-      { label: '外部使用', id: TabEnum.outLink, icon: 'shareLight' },
+        : [{ label: '高级编排', id: TabEnum.adEdit, icon: 'common/settingLight' }]),
+      { label: '外部使用', id: TabEnum.outLink, icon: 'support/outlink/shareLight' },
       { label: '对话日志', id: TabEnum.logs, icon: 'core/app/logsLight' },
-      { label: '立即对话', id: TabEnum.startChat, icon: 'chat' }
+      { label: '立即对话', id: TabEnum.startChat, icon: 'core/chat/chatLight' }
     ],
     []
   );
@@ -108,8 +108,8 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             borderRight={theme.borders.base}
           >
             <Flex mb={4} alignItems={'center'}>
-              <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'lg'} />
-              <Box ml={2} fontWeight={'bold'} fontSize={'sm'}>
+              <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'md'} />
+              <Box ml={2} fontWeight={'bold'}>
                 {appDetail.name}
               </Box>
             </Flex>
@@ -139,11 +139,10 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             >
               <IconButton
                 mr={3}
-                icon={<MyIcon name={'backFill'} w={'18px'} color={'blue.500'} />}
+                icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
                 bg={'white'}
                 boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-                h={'28px'}
-                size={'sm'}
+                size={'smSquare'}
                 borderRadius={'50%'}
                 aria-label={''}
               />
@@ -174,7 +173,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
             {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
             {currentTab === TabEnum.adEdit && appDetail && (
-              <AdEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
+              <FlowEdit app={appDetail} onClose={() => setCurrentTab(TabEnum.simpleEdit)} />
             )}
             {currentTab === TabEnum.logs && <Logs appId={appId} />}
             {currentTab === TabEnum.outLink && <OutLink appId={appId} />}

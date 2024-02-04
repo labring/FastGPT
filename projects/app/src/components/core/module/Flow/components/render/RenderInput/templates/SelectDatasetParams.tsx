@@ -1,23 +1,24 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { onChangeNode, useFlowProviderStore } from '../../../../FlowProvider';
+import { getFlowStore, onChangeNode, useFlowProviderStoreType } from '../../../../FlowProvider';
 import { Button, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constant';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { chatModelList } from '@/web/common/system/staticData';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal from '@/components/core/module/DatasetParamsModal';
 
 const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
-  const { nodes } = useFlowProviderStore();
+  const [nodes, setNodes] = useState<useFlowProviderStoreType['nodes']>([]);
 
   const { t } = useTranslation();
   const [data, setData] = useState({
     searchMode: DatasetSearchModeEnum.embedding,
     limit: 5,
-    similarity: 0.5
+    similarity: 0.5,
+    usingReRank: false
   });
 
   const tokenLimit = useMemo(() => {
@@ -51,11 +52,18 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
     });
   }, [inputs]);
 
+  useEffect(() => {
+    async () => {
+      const { nodes } = await getFlowStore();
+      setNodes(nodes);
+    };
+  }, []);
+
   return (
     <>
       <Button
-        variant={'base'}
-        leftIcon={<MyIcon name={'settingLight'} w={'14px'} />}
+        variant={'whitePrimary'}
+        leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
         onClick={onOpen}
       >
         {t('core.dataset.search.Params Setting')}

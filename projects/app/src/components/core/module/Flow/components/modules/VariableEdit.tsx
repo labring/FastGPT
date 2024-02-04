@@ -27,7 +27,7 @@ import {
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
@@ -93,10 +93,10 @@ const VariableEdit = ({
   const BoxBtnStyles: BoxProps = {
     cursor: 'pointer',
     px: 3,
-    py: '2px',
+    py: 1,
     borderRadius: 'md',
     _hover: {
-      bg: 'myGray.200'
+      bg: 'myGray.150'
     }
   };
 
@@ -119,16 +119,18 @@ const VariableEdit = ({
         </Box>
         <Flex
           {...BoxBtnStyles}
+          alignItems={'center'}
           onClick={() => {
             resetEdit({ variable: addVariable() });
             onOpenEdit();
           }}
         >
-          +&ensp;{t('common.Add New')}
+          <SmallAddIcon />
+          {t('common.Add New')}
         </Flex>
       </Flex>
       {formatVariables.length > 0 && (
-        <Box mt={2} borderRadius={'lg'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
+        <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
           <TableContainer>
             <Table bg={'white'}>
               <Thead>
@@ -152,7 +154,7 @@ const VariableEdit = ({
                     <Td>
                       <MyIcon
                         mr={3}
-                        name={'settingLight'}
+                        name={'common/settingLight'}
                         w={'16px'}
                         cursor={'pointer'}
                         onClick={() => {
@@ -266,7 +268,7 @@ const VariableEdit = ({
                         w={'16px'}
                         cursor={'pointer'}
                         p={2}
-                        borderRadius={'lg'}
+                        borderRadius={'md'}
                         _hover={{ bg: 'red.100' }}
                         onClick={() => removeEnums(i)}
                       />
@@ -289,7 +291,7 @@ const VariableEdit = ({
         </ModalBody>
 
         <ModalFooter>
-          <Button variant={'base'} mr={3} onClick={onCloseEdit}>
+          <Button variant={'whiteBase'} mr={3} onClick={onCloseEdit}>
             {t('common.Close')}
           </Button>
           <Button

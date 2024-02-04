@@ -11,7 +11,7 @@ import {
   ModuleTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_Switch, Input_Template_UserChatInput } from '../input';
-import { Output_Template_Finish } from '../output';
+import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
 import { DatasetSearchModeEnum } from '../../../dataset/constant';
 
 export const DatasetSearchModule: FlowModuleTemplateType = {
@@ -64,11 +64,20 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.datasetSearchMode,
       type: FlowNodeInputTypeEnum.hidden,
-      label: 'core.dataset.search.Mode',
+      label: '',
       valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: false,
       showTargetInPlugin: false,
       value: DatasetSearchModeEnum.embedding
+    },
+    {
+      key: ModuleInputKeyEnum.datasetSearchUsingReRank,
+      type: FlowNodeInputTypeEnum.hidden,
+      label: '',
+      valueType: ModuleIOValueTypeEnum.boolean,
+      showTargetInApp: false,
+      showTargetInPlugin: false,
+      value: false
     },
     {
       key: ModuleInputKeyEnum.datasetParamsModal,
@@ -81,6 +90,7 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     Input_Template_UserChatInput
   ],
   outputs: [
+    Output_Template_UserChatInput,
     {
       key: ModuleOutputKeyEnum.datasetIsEmpty,
       label: '搜索结果为空',

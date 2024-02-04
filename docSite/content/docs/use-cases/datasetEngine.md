@@ -49,7 +49,7 @@ FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，�
 
 | 库 | 集合 | 数据 |
 | --- | --- | --- |
-| ![](/imgs/datasetEngine1.png) | ![](/imgs/datasetEngine2.png) | ![](/imgs/datasetEngine3.png) |
+| ![](/imgs/datasetEngine1.jpg) | ![](/imgs/datasetEngine2.jpg) | ![](/imgs/datasetEngine3.jpg) |
 
 ### 导入数据方案1 - 直接分段导入
 
@@ -57,7 +57,7 @@ FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，�
 
 | 交互 | 结果 |
 | --- | --- |
-| ![](/imgs/datasetEngine4.png) | ![](/imgs/datasetEngine5.png) |
+| ![](/imgs/datasetEngine4.jpg) | ![](/imgs/datasetEngine5.jpg) |
 
 
 ### 导入数据方案2 - QA导入
@@ -66,7 +66,7 @@ FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，�
 
 | 交互 | 结果 |
 | --- | --- |
-| ![](/imgs/datasetEngine6.png) | ![](/imgs/datasetEngine7.png) |
+| ![](/imgs/datasetEngine6.jpg) | ![](/imgs/datasetEngine7.jpg) |
 
 ### 导入数据方案3 - 手动录入
 
@@ -74,13 +74,13 @@ FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，�
 
 |  |  |  |
 | --- | --- | --- |
-| ![](/imgs/datasetEngine8.png) | ![](/imgs/datasetEngine9.png) | ![](/imgs/datasetEngine10.png) |
+| ![](/imgs/datasetEngine8.jpg) | ![](/imgs/datasetEngine9.jpg) | ![](/imgs/datasetEngine10.jpg) |
 
 ### 导入数据方案4 - CSV录入
 
 有些数据较为独特，可能需要单独的进行预处理分割后再导入 FastGPT，此时可以选择 csv 导入，可批量的将处理好的数据导入。
 
-![](/imgs/datasetEngine11.png)
+![](/imgs/datasetEngine11.jpg)
 
 ### 导入数据方案5 - API导入
 

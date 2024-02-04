@@ -1,4 +1,5 @@
 <head>
+    <script defer type="text/javascript" src="{{ "js/jsdelivr-auto-fallback.js" | absURL }}"></script>
     <meta charset="utf-8" />
     <title>
         {{- $url := replace .Permalink ( printf "%s" .Site.BaseURL) "" }}
@@ -105,5 +106,6 @@
     {{- end -}}
     {{- end -}}
     <!-- change -->
-    <link rel="stylesheet" href="https://jsdelivr.icloudnative.io/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css" />
+    <link rel="preload" href="https://cdn.jsdelivr.us/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css" as="style" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.us/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css" />
 </head>

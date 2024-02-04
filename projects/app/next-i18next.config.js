@@ -7,7 +7,7 @@ module.exports = {
   i18n: {
     defaultLocale: 'zh',
     locales: ['en', 'zh'],
-    localeDetection: true
+    localeDetection: false
   },
   localePath:
     typeof window === 'undefined' ? require('path').resolve('./public/locales') : '/public/locales',

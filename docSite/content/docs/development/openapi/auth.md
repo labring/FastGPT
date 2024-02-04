@@ -25,14 +25,14 @@ FastGPT 的 API Key **有 2 类**，一类是全局通用的 key (无法直接�
 
 |        通用key               |           应用特定 key            |
 | --------------------- | --------------------- |
-| ![](/imgs/fastgpt-api2.png) | ![](/imgs/fastgpt-api.png) |
+| ![](/imgs/fastgpt-api2.jpg) | ![](/imgs/fastgpt-api.jpg) |
 
 ## 基本配置
 
 OpenAPI 中，所有的接口都通过 Header.Authorization 进行鉴权。
 
 ```
-baseUrl: "https://fastgpt.run/api"
+baseUrl: "https://api.fastgpt.in/api"
 headers: {
     Authorization: "Bearer {{apikey}}"
 }
@@ -41,7 +41,7 @@ headers: {
 **发起应用对话示例**
 
 ```sh
-curl --location --request POST 'https://fastgpt.run/api/v1/chat/completions' \
+curl --location --request POST 'https://api.fastgpt.in/api/v1/chat/completions' \
 --header 'Authorization: Bearer fastgpt-xxxxxx' \
 --header 'Content-Type: application/json' \
 --data-raw '{

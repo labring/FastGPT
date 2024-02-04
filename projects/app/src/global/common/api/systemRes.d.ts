@@ -8,22 +8,9 @@ import type {
   ReRankModelItemType
 } from '@fastgpt/global/core/ai/model.d';
 
-import type { FeConfigsType } from '@fastgpt/global/common/system/types/index.d';
+import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
 
-export type ConfigFileType = {
-  FeConfig: FeConfigsType;
-  SystemParams: SystemEnvType;
-  ChatModels: ChatModelItemType[];
-  QAModels: LLMModelItemType[];
-  CQModels: FunctionModelItemType[];
-  ExtractModels: FunctionModelItemType[];
-  QGModels: LLMModelItemType[];
-  VectorModels: VectorModelItemType[];
-  ReRankModels: ReRankModelItemType[];
-  AudioSpeechModels: AudioSpeechModelType[];
-  WhisperModel: WhisperModelType;
-};
 export type InitDateResponse = {
   chatModels: ChatModelItemType[];
   qaModels: LLMModelItemType[];
@@ -32,8 +19,9 @@ export type InitDateResponse = {
   vectorModels: VectorModelItemType[];
   audioSpeechModels: AudioSpeechModels[];
   reRankModels: ReRankModelItemType[];
-  feConfigs: FeConfigsType;
-  priceMd: string;
+  qgModes: LLMModelItemType[];
+  whisperModel: WhisperModelType;
+  feConfigs: FastGPTFeConfigsType;
   systemVersion: string;
   simpleModeTemplates: AppSimpleEditConfigTemplateType[];
 };

@@ -59,7 +59,6 @@
   },
   "chat": {
     "Admin Mark Content": "纠正后的回复",
-    "Complete Response": "完整响应",
     "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
     "Confirm to clear share chat history": "确认删除所有聊天记录？",
     "Converting to text": "正在转换为文本...",
@@ -134,6 +133,9 @@
     "Name is empty": "名称不能为空",
     "New Create": "新建",
     "Next Step": "下一步",
+    "Not open": "未开启",
+    "OK": "好的",
+    "Opened": "已开启",
     "Output": "输出",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
@@ -231,7 +233,9 @@
     },
     "app": {
       "App params config": "应用配置",
+      "Chat Variable": "对话框变量",
       "Next Step Guide": "下一步指引",
+      "Question Guide": "问题引导",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
       "Save and preview": "保存并预览",
       "Select TTS": "选择语音播放模式",
@@ -239,17 +243,16 @@
       "TTS": "语音播报",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Welcome Text": "对话开场白",
-      "Chat Variable": "对话框变量",
-      "Question Guide": "问题引导",
       "create app": "创建属于你的 AI 应用",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
+        "Open cfr": "开启自动补全",
         "Out Ad Edit": "您即将退出高级编排页面，请确认",
         "Prompt Editor": "提示词编辑",
         "Save and out": "保存并退出",
         "UnSave": "不保存",
-        "cfr background prompt": "问题补全 - 对话背景描述",
-        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示不使用问题补全功能。"
+        "cfr background prompt": "对话背景描述",
+        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n值为空时，表示【首个问题】不使用问题补全功能。\n值为 none 时，表示不使用问题补全功能。"
       },
       "feedback": {
         "Custom feedback": "自定义反馈",
@@ -296,13 +299,14 @@
       "Select Image": "选择图片",
       "Send Message": "发送",
       "Speaking": "我在听，请说...",
+      "Start Chat": "开始对话",
       "Stop Speak": "停止录音",
       "Type a message": "输入问题",
       "error": {
+        "Chat error": "对话出现异常",
         "Messages empty": "接口内容为空，可能文本超长了~",
         "Select dataset empty": "你没有选择知识库",
-        "user input empty": "传入的用户问题为空",
-        "Chat error": "对话出现异常"
+        "user input empty": "传入的用户问题为空"
       },
       "feedback": {
         "Close User Good Feedback": "",
@@ -322,7 +326,10 @@
         "Read Source": "查看来源"
       },
       "response": {
+        "Complete Response": "完整响应",
         "Plugin Resonse Detail": "插件详情",
+        "Read complete response": "查看详情",
+        "Read complete response tips": "点击查看详细流程",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",
@@ -348,6 +355,7 @@
         "module time": "运行时长",
         "module tokens": "Tokens",
         "plugin output": "插件输出值",
+        "search using reRank": "结果重排",
         "text output": "文本输出"
       },
       "tts": {
@@ -375,6 +383,7 @@
       "Name": "知识库名称",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
+      "Search score tip": "{{scoreText}}下面是详细排名和得分情况:\n----\n{{detailScore}}",
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Set Website Config": "开始配置网站信息",
       "Similarity": "相关度",
@@ -397,9 +406,11 @@
         "metadata": {
           "Chunk Size": "分割大小",
           "Createtime": "创建时间",
+          "Raw text length": "原文长度",
           "Read Metadata": "查看元数据",
           "Training Type": "训练模式",
           "Updatetime": "更新时间",
+          "Web page selector": "网站选择器",
           "metadata": "元数据",
           "read source": "查看原始内容",
           "source": "数据来源",
@@ -409,6 +420,12 @@
         "status": {
           "active": "已就绪",
           "syncing": "同步中"
+        },
+        "sync": {
+          "result": {
+            "sameRaw": "内容未变动，无需更新",
+            "success": "开始同步"
+          }
         },
         "training": {
           "type chunk": "直接分段",
@@ -430,6 +447,7 @@
         "Too Long": "总长度超长了",
         "Total Amount": "{{total}} 组",
         "data is deleted": "该数据已被删除",
+        "get data error": "获取数据异常",
         "id": "数据ID"
       },
       "error": {
@@ -449,9 +467,13 @@
         "Chunk Range": "范围: 100~{{max}}",
         "Chunk Split": "直接分段",
         "Chunk Split Tip": "选择文本文件，直接将其按分段进行处理",
+        "Chunk length": "分块总量",
         "Csv format error": "csv 文件格式有误,请确保 index 和 content 两列",
+        "Custom split char": "自定义分隔符",
+        "Custom split char Tips": "允许你根据自定义的分隔符进行分块。通常用于已处理好的数据，使用特定的分隔符来精确分块。",
+        "Embedding Estimated Price Tips": "索引计费: {{price}}/1k tokens",
         "Estimated Price": "预估价格",
-        "Estimated Price Tips": "索引生成计费为: {{price}}/1k tokens",
+        "Estimated Price Tips": "QA计费为\n输入: {{inputPrice}}/1k tokens\n输出: {{outputPrice}}/1k tokens",
         "Fetch Error": "获取链接失败",
         "Fetch Url": "网络链接",
         "Fetch url placeholder": "最多10个链接，每行一个。",
@@ -462,15 +484,18 @@
         "Import Success Tip": "共成功导入 {{num}} 组数据，请耐心等待训练.",
         "Import Tip": "该任务无法终止，需要一定时间生成索引，请确认导入。如果余额不足，未完成的任务会被暂停，充值后可继续进行。",
         "Only Show First 50 Chunk": "仅展示部分",
+        "QA Estimated Price Tips": "QA计费为\n输入: {{inputPrice}}/1k tokens\n输出: {{outputPrice}}/1k tokens",
         "QA Import": "QA拆分",
         "QA Import Tip": "选择文本文件，让大模型自动生成问答对",
         "Re Preview": "重新生成预览",
         "Set Chunk Error": "文本分段异常",
-        "Total Chunk Preview": "分段预览({{totalChunks}}组)"
+        "Total Chunk Preview": "分段预览({{totalChunks}}组)",
+        "Total tokens": "总Tokens"
       },
       "link": "链接",
       "search": {
         "Dataset Search Params": "搜索参数",
+        "Embedding score": "语意检索得分",
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
         "Max Tokens": "引用上限",
@@ -478,14 +503,32 @@
         "Min Similarity": "最低相关度",
         "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
         "Params Setting": "搜索参数设置",
+        "Rank": "排名",
+        "Rank Tip": "在所有数据中的排名",
+        "ReRank": "结果重排",
+        "ReRank desc": "使用重排模型来进行二次排序，可增强综合排名。",
+        "Read score": "查看得分",
+        "Rerank score": "结果重排得分",
+        "Score": "得分",
+        "Search type": "类型",
         "Top K": "单次搜索上限",
         "mode": {
-          "embFullTextReRank": "混合检索",
-          "embFullTextReRank desc": "使用向量检索与全文检索混合结果进行 Rerank 进行重排，相关度通常差异明显，推荐。",
           "embedding": "语义检索",
-          "embedding desc": "直接进行向量 topk 相关性查询",
-          "embeddingReRank": "增强语义检索",
-          "embeddingReRank desc": "超额进行向量 topk 查询后再使用 Rerank 进行排序，相关度通常差异明显。"
+          "embedding desc": "使用向量进行文本相关性查询",
+          "fullTextRecall": "全文检索",
+          "fullTextRecall desc": "使用传统的全文检索，适合查找一些关键词和主谓语特殊的数据",
+          "mixedRecall": "混合检索",
+          "mixedRecall desc": "使用向量检索与全文检索的综合结果返回，使用RRF算法进行排序。"
+        },
+        "score": {
+          "embedding": "语义检索",
+          "embedding desc": "通过计算向量之间的距离获取得分，范围为 0~1。",
+          "fullText": "全文检索",
+          "fullText desc": "计算相同关键词的得分，范围为 0~无穷。",
+          "reRank": "结果重排",
+          "reRank desc": "通过 ReRank 模型计算句子之间的关联度，范围为 0~1。",
+          "rrf": "综合排名",
+          "rrf desc": "通过倒排计算的方式，合并多个检索结果。"
         },
         "search mode": "搜索模式"
       },
@@ -494,17 +537,26 @@
         "syncing": "同步中"
       },
       "test": {
+        "Batch test": "批量测试",
+        "Batch test Placeholder": "选择一个 Csv 文件",
         "Search Test": "搜索测试",
         "Test": "测试",
+        "Test File": "批量测试",
         "Test Result": "测试结果",
-        "Test Text": "测试文本",
+        "Test Text": "单个文本测试",
         "Test Text Placeholder": "输入需要测试的文本",
+        "Test params": "测试参数",
         "delete test history": "删除该测试结果",
         "test history": "测试历史",
         "test result placeholder": "测试结果将在这里展示",
         "test result tip": "根据知识库内容与测试文本的相似度进行排序，你可以根据测试结果调整对应的文本。\n注意：测试记录中的数据可能已经被修改过，点击某条测试数据后将展示最新的数据。"
       },
       "training": {
+        "Agent queue": "QA训练排队",
+        "Full": "预计5分钟以上",
+        "Leisure": "空闲",
+        "Vector queue": "索引排队",
+        "Waiting": "预计5分钟",
         "Website Sync": "Web 站点同步",
         "type chunk": "直接分段",
         "type qa": "问答拆分"
@@ -826,10 +878,8 @@
     "QPM": "",
     "QPM Tips": "每个 IP 每分钟最多提问多少次",
     "QPM is empty": "QPM 不能为空",
-    "Response Detail": "返回详情",
-    "Response Detail tips": "是否需要返回详情（引用内容，调用时间等，不会返回预设提示词和完整上下文）",
     "token auth": "身份验证",
-    "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会想指定服务器发送一个请求，进行身份校验",
+    "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
     "token auth use cases": "查看身份验证使用说明"
   },
   "permission": {
@@ -853,6 +903,25 @@
     "Synchronous version": "同步版本",
     "To Edit Plugin": "去编辑",
     "Update Your Plugin": "更新插件"
+  },
+  "support": {
+    "outlink": {
+      "share": {
+        "Response Quote": "返回引用",
+        "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"
+      }
+    },
+    "user": {
+      "Price": "计费标准",
+      "auth": {
+        "Sending Code": "正在发送"
+      },
+      "login": {
+        "Github": "Github 登录",
+        "Google": "Google 登录",
+        "Provider error": "登录异常，请重试"
+      }
+    }
   },
   "system": {
     "Help Document": "帮助文档"
@@ -967,8 +1036,24 @@
   },
   "wallet": {
     "bill": {
+      "Ai model": "AI模型",
+      "App name": "应用名",
       "Audio Speech": "语音播报",
+      "Bill Module": "扣费模块",
+      "Data Length": "数据长度",
+      "Dataset store": "知识库存储",
+      "Duration": "时长（秒）",
+      "Input Token Length": "输入 Tokens",
+      "Module name": "模块名",
+      "Next Step Guide": "下一步指引",
+      "Number": "订单号",
+      "Output Token Length": "输出 Tokens",
       "ReRank": "结果重排",
+      "Source": "来源",
+      "Text Length": "文本长度",
+      "Time": "生成时间",
+      "Token Length": "Token长度",
+      "Total": "总金额",
       "Whisper": "语音输入",
       "bill username": "用户"
     },

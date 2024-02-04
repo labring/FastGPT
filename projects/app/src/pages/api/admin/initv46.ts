@@ -13,8 +13,8 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { PermissionTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { PgClient } from '@fastgpt/service/common/pg';
-import { PgDatasetTableName } from '@fastgpt/global/core/dataset/constant';
+import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
+import { PgDatasetTableName } from '@fastgpt/global/common/vectorStore/constants';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -24,6 +24,7 @@ import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getGFSCollection } from '@fastgpt/service/common/file/gridfs/controller';
+import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -36,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await initDatasetAndApp();
     await initCollectionFileTeam(limit);
 
-    if (global.systemEnv.pluginBaseUrl) {
+    if (FastGPTProUrl) {
       POST('/admin/init46');
     }
 

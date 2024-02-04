@@ -5,9 +5,9 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
+import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
 import { filterExportModules, flowNode2Modules } from '@/components/core/module/utils';
 import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -25,10 +25,11 @@ const Header = ({ plugin, onClose }: Props) => {
   const { toast } = useToast();
   const { copyData } = useCopyData();
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { nodes, edges, onFixView } = useFlowProviderStore();
   const [previewModules, setPreviewModules] = React.useState<ModuleItemType[]>();
 
-  const flow2ModulesAndCheck = useCallback(() => {
+  const flow2ModulesAndCheck = useCallback(async () => {
+    const { nodes, edges } = await getFlowStore();
+
     const modules = flowNode2Modules({ nodes, edges });
 
     // check required connect
@@ -97,7 +98,7 @@ const Header = ({ plugin, onClose }: Props) => {
     }
 
     return modules;
-  }, [edges, nodes, t, toast]);
+  }, [t, toast]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: (modules: ModuleItemType[]) => {
@@ -121,15 +122,12 @@ const Header = ({ plugin, onClose }: Props) => {
       >
         <MyTooltip label={t('common.Back')} offset={[10, 10]}>
           <IconButton
-            size={'sm'}
-            icon={<MyIcon name={'back'} w={'14px'} />}
-            borderRadius={'md'}
-            borderColor={'myGray.300'}
-            variant={'base'}
+            size={'smSquare'}
+            icon={<MyIcon name={'common/backLight'} w={'14px'} />}
+            variant={'whiteBase'}
             aria-label={''}
             onClick={() => {
               onClose();
-              onFixView();
             }}
           />
         </MyTooltip>
@@ -140,9 +138,9 @@ const Header = ({ plugin, onClose }: Props) => {
         <MyTooltip label={t('app.Import Configs')}>
           <IconButton
             mr={[3, 6]}
-            icon={<MyIcon name={'importLight'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
-            variant={'base'}
+            icon={<MyIcon name={'common/importLight'} w={['14px', '16px']} />}
+            variant={'whitePrimary'}
+            size={'smSquare'}
             aria-label={'save'}
             onClick={onOpenImport}
           />
@@ -151,11 +149,11 @@ const Header = ({ plugin, onClose }: Props) => {
           <IconButton
             mr={[3, 6]}
             icon={<MyIcon name={'export'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
-            variant={'base'}
+            size={'smSquare'}
+            variant={'whitePrimary'}
             aria-label={'save'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 copyData(filterExportModules(modules), t('app.Export Config Successful'));
               }
@@ -165,12 +163,12 @@ const Header = ({ plugin, onClose }: Props) => {
         <MyTooltip label={t('module.Preview Plugin')}>
           <IconButton
             mr={[3, 6]}
-            icon={<MyIcon name={'core/module/previewLight'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
+            icon={<MyIcon name={'core/modules/previewLight'} w={['14px', '16px']} />}
+            size={'smSquare'}
             aria-label={'save'}
-            variant={'base'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            variant={'whitePrimary'}
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 setPreviewModules(modules);
               }
@@ -180,11 +178,11 @@ const Header = ({ plugin, onClose }: Props) => {
         <MyTooltip label={t('module.Save Config')}>
           <IconButton
             icon={<MyIcon name={'save'} w={['14px', '16px']} />}
-            borderRadius={'lg'}
+            size={'smSquare'}
             isLoading={isLoading}
             aria-label={'save'}
-            onClick={() => {
-              const modules = flow2ModulesAndCheck();
+            onClick={async () => {
+              const modules = await flow2ModulesAndCheck();
               if (modules) {
                 onclickSave(modules);
               }

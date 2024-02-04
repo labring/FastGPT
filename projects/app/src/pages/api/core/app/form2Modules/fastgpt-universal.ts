@@ -378,6 +378,16 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
           connected: false
         },
         {
+          key: 'usingReRank',
+          type: 'hidden',
+          label: '',
+          valueType: 'string',
+          showTargetInApp: false,
+          showTargetInPlugin: false,
+          value: formData.dataset.usingReRank,
+          connected: false
+        },
+        {
           key: 'datasetParamsModal',
           type: 'selectDatasetParamsModal',
           label: '',

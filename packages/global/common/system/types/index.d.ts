@@ -1,4 +1,29 @@
-export type FeConfigsType = {
+import type {
+  ChatModelItemType,
+  FunctionModelItemType,
+  LLMModelItemType,
+  VectorModelItemType,
+  AudioSpeechModels,
+  WhisperModelType,
+  ReRankModelItemType
+} from '../../../core/ai/model.d';
+
+/* fastgpt main */
+export type FastGPTConfigFileType = {
+  feConfigs: FastGPTFeConfigsType;
+  systemEnv: SystemEnvType;
+  chatModels: ChatModelItemType[];
+  qaModels: LLMModelItemType[];
+  cqModels: FunctionModelItemType[];
+  extractModels: FunctionModelItemType[];
+  qgModels: LLMModelItemType[];
+  vectorModels: VectorModelItemType[];
+  reRankModels: ReRankModelItemType[];
+  audioSpeechModels: AudioSpeechModelType[];
+  whisperModel: WhisperModelType;
+};
+
+export type FastGPTFeConfigsType = {
   show_emptyChat?: boolean;
   show_register?: boolean;
   show_appStore?: boolean;
@@ -19,14 +44,16 @@ export type FeConfigsType = {
     google?: string;
   };
   limit?: {
-    exportLimitMinutes?: number;
+    exportDatasetLimitMinutes?: number;
+    websiteSyncLimitMinuted?: number;
   };
   scripts?: { [key: string]: string }[];
   favicon?: string;
+  customApiDomain?: string;
+  customSharePageDomain?: string;
 };
 
 export type SystemEnvType = {
-  pluginBaseUrl?: string;
   openapiPrefix?: string;
   vectorMaxProcess: number;
   qaMaxProcess: number;
@@ -34,6 +61,6 @@ export type SystemEnvType = {
 };
 
 declare global {
-  var feConfigs: FeConfigsType;
+  var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;
 }

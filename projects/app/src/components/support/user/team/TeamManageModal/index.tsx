@@ -26,7 +26,7 @@ import {
   useDisclosure,
   MenuButton
 } from '@chakra-ui/react';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import {
@@ -156,7 +156,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                     <MyIcon
                       name={'common/addCircleLight'}
                       w={['16px', '18px']}
-                      color={'blue.500'}
+                      color={'primary.500'}
                       cursor={'pointer'}
                     />
                   }
@@ -177,7 +177,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   gap={3}
                   {...(userInfo?.team?.teamId === team.teamId
                     ? {
-                        bg: 'blue.200'
+                        bg: 'primary.200'
                       }
                     : {
                         _hover: {
@@ -198,9 +198,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                     {team.teamName}
                   </Box>
                   {userInfo?.team?.teamId === team.teamId ? (
-                    <MyIcon name={'common/tickFill'} w={'16px'} color={'blue.500'} />
+                    <MyIcon name={'common/tickFill'} w={'16px'} color={'primary.500'} />
                   ) : (
-                    <Button size={'xs'} variant={'base'} onClick={() => onSwitchTeam(team.teamId)}>
+                    <Button
+                      size={'xs'}
+                      variant={'whitePrimary'}
+                      onClick={() => onSwitchTeam(team.teamId)}
+                    >
                       {t('user.team.Check Team')}
                     </Button>
                   )}
@@ -235,7 +239,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   ml={2}
                   cursor={'pointer'}
                   _hover={{
-                    color: 'blue.500'
+                    color: 'primary.500'
                   }}
                   onClick={() => {
                     if (!userInfo?.team) return;
@@ -256,11 +260,11 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               </Box>
               {userInfo.team.role === TeamMemberRoleEnum.owner && (
                 <Button
-                  variant={'base'}
+                  variant={'whitePrimary'}
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
-                  leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'blue.500'} />}
+                  leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
                   onClick={() => {
                     if (userInfo.team.maxSize <= members.length) {
                       toast({
@@ -278,12 +282,16 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               <Box flex={1} />
               {userInfo.team.role !== TeamMemberRoleEnum.owner && (
                 <Button
-                  variant={'base'}
+                  variant={'whitePrimary'}
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
                   leftIcon={
-                    <MyIcon name={'support/account/loginoutLight'} w={'14px'} color={'blue.500'} />
+                    <MyIcon
+                      name={'support/account/loginoutLight'}
+                      w={'14px'}
+                      color={'primary.500'}
+                    />
                   }
                   onClick={() => {
                     openLeaveConfirm(() => onLeaveTeam(userInfo?.team?.teamId))();
@@ -335,7 +343,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                       name={'edit'}
                                       cursor={'pointer'}
                                       w="14px"
-                                      _hover={{ color: 'blue.500' }}
+                                      _hover={{ color: 'primary.500' }}
                                     />
                                   </MenuButton>
                                 }

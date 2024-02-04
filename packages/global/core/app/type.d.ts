@@ -65,6 +65,7 @@ export type AppSimpleEditFormType = {
     similarity: number;
     limit: number;
     searchMode: `${DatasetSearchModeEnum}`;
+    usingReRank: boolean;
     searchEmptyText: string;
   };
   cfr: {
@@ -112,6 +113,7 @@ export type AppSimpleEditConfigTemplateType = {
       similarity?: boolean;
       limit?: boolean;
       searchMode: `${DatasetSearchModeEnum}`;
+      usingReRank: boolean;
       searchEmptyText?: boolean;
     };
     cfr?: {

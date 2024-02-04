@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
@@ -21,7 +21,7 @@ const Render = ({ pluginId }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
-  const { nodes = [] } = useFlowProviderStore();
+  const { nodes, initData } = useFlowProviderStore();
   const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
 
   const moduleTemplates = useMemo(() => {
@@ -71,10 +71,13 @@ const Render = ({ pluginId }: Props) => {
 
   useQuery(['getPlugTemplates'], () => loadPluginTemplates());
 
+  useEffect(() => {
+    initData(JSON.parse(JSON.stringify(pluginDetail?.modules || [])));
+  }, [pluginDetail?.modules]);
+
   return pluginDetail ? (
     <Flow
       templates={moduleTemplates}
-      modules={pluginDetail?.modules || []}
       Header={<Header plugin={pluginDetail} onClose={() => router.back()} />}
     />
   ) : (
@@ -82,7 +85,7 @@ const Render = ({ pluginId }: Props) => {
   );
 };
 
-export default function AdEdit(props: any) {
+export default function FlowEdit(props: any) {
   return (
     <FlowProvider mode={'plugin'} filterAppIds={[]}>
       <Render {...props} />

@@ -1,5 +1,5 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Box, Input, Button, FormErrorMessage, Flex } from '@chakra-ui/react';
+import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { PageTypeEnum } from '@/constants/user';
 import { postFindPassword } from '@/web/support/user/api';
@@ -76,11 +76,18 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       <Box fontWeight={'bold'} fontSize={'2xl'} textAlign={'center'}>
         找回 {feConfigs?.systemTitle} 账号
       </Box>
-      <form onSubmit={handleSubmit(onclickFindPassword)}>
-        <FormControl mt={5} isInvalid={!!errors.username}>
+      <Box
+        mt={'42px'}
+        onKeyDown={(e) => {
+          if (e.keyCode === 13 && !e.shiftKey && !requesting) {
+            handleSubmit(onclickFindPassword)();
+          }
+        }}
+      >
+        <FormControl isInvalid={!!errors.username}>
           <Input
+            bg={'myGray.50'}
             placeholder="邮箱/手机号"
-            size={['md', 'lg']}
             {...register('username', {
               required: '邮箱/手机号不能为空',
               pattern: {
@@ -90,41 +97,46 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               }
             })}
           ></Input>
-          <FormErrorMessage position={'absolute'} fontSize="xs">
-            {!!errors.username && errors.username.message}
-          </FormErrorMessage>
         </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.username}>
-          <Flex>
-            <Input
-              flex={1}
-              placeholder="验证码"
-              size={['md', 'lg']}
-              {...register('code', {
-                required: '验证码不能为空'
-              })}
-            ></Input>
-            <Button
-              ml={5}
-              w={'145px'}
-              maxW={'50%'}
-              size={['md', 'lg']}
-              onClick={onclickSendCode}
-              isDisabled={codeCountDown > 0}
-              isLoading={codeSending}
-            >
-              {sendCodeText}
-            </Button>
-          </Flex>
-          <FormErrorMessage position={'absolute'} fontSize="xs">
-            {!!errors.code && errors.code.message}
-          </FormErrorMessage>
-        </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.password}>
+        <FormControl
+          mt={6}
+          isInvalid={!!errors.code}
+          display={'flex'}
+          alignItems={'center'}
+          position={'relative'}
+        >
           <Input
+            bg={'myGray.50'}
+            flex={1}
+            maxLength={8}
+            placeholder="验证码"
+            {...register('code', {
+              required: '验证码不能为空'
+            })}
+          ></Input>
+          <Box
+            position={'absolute'}
+            right={3}
+            zIndex={1}
+            fontSize={'sm'}
+            {...(codeCountDown > 0
+              ? {
+                  color: 'myGray.500'
+                }
+              : {
+                  color: 'primary.700',
+                  cursor: 'pointer',
+                  onClick: onclickSendCode
+                })}
+          >
+            {sendCodeText}
+          </Box>
+        </FormControl>
+        <FormControl mt={6} isInvalid={!!errors.password}>
+          <Input
+            bg={'myGray.50'}
             type={'password'}
-            placeholder="新密码"
-            size={['md', 'lg']}
+            placeholder="新密码(4~20位)"
             {...register('password', {
               required: '密码不能为空',
               minLength: {
@@ -137,45 +149,42 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
               }
             })}
           ></Input>
-          <FormErrorMessage position={'absolute'} fontSize="xs">
-            {!!errors.password && errors.password.message}
-          </FormErrorMessage>
         </FormControl>
-        <FormControl mt={8} isInvalid={!!errors.password2}>
+        <FormControl mt={6} isInvalid={!!errors.password2}>
           <Input
+            bg={'myGray.50'}
             type={'password'}
             placeholder="确认密码"
-            size={['md', 'lg']}
             {...register('password2', {
               validate: (val) => (getValues('password') === val ? true : '两次密码不一致')
             })}
           ></Input>
-          <FormErrorMessage position={'absolute'} fontSize="xs">
-            {!!errors.password2 && errors.password2.message}
-          </FormErrorMessage>
         </FormControl>
+
+        <Button
+          type="submit"
+          mt={10}
+          w={'100%'}
+          size={['md', 'lg']}
+          colorScheme="blue"
+          isLoading={requesting}
+          onClick={handleSubmit(onclickFindPassword)}
+        >
+          找回密码
+        </Button>
         <Box
           float={'right'}
           fontSize="sm"
           mt={2}
-          color={'blue.500'}
+          mb={'50px'}
+          color={'primary.700'}
           cursor={'pointer'}
           _hover={{ textDecoration: 'underline' }}
           onClick={() => setPageType('login')}
         >
           去登录
         </Box>
-        <Button
-          type="submit"
-          mt={5}
-          w={'100%'}
-          size={['md', 'lg']}
-          colorScheme="blue"
-          isLoading={requesting}
-        >
-          找回密码
-        </Button>
-      </form>
+      </Box>
     </>
   );
 };

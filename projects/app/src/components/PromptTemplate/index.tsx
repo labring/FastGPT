@@ -32,7 +32,7 @@ const PromptTemplate = ({
               cursor={'pointer'}
               {...(item.title === selectTemplateTitle?.title
                 ? {
-                    bg: 'blue.50'
+                    bg: 'primary.50'
                   }
                 : {})}
               onClick={() => setSelectTemplateTitle(item)}

@@ -136,12 +136,11 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       stream: false
     });
     const answer = chatResponse.choices?.[0].message?.content || '';
-    const totalTokens = chatResponse.usage?.total_tokens || 0;
 
     const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 
     // get vector and insert
-    await pushDataToDatasetCollection({
+    const { insertLen } = await pushDataToDatasetCollection({
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
@@ -163,11 +162,12 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     });
 
     // add bill
-    if (qaArr.length > 0) {
+    if (insertLen > 0) {
       pushQABill({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        totalTokens,
+        inputTokens: chatResponse.usage?.prompt_tokens || 0,
+        outputTokens: chatResponse.usage?.completion_tokens || 0,
         billId: data.billId,
         model
       });

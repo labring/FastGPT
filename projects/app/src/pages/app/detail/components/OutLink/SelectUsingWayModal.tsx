@@ -5,10 +5,11 @@ import { useTranslation } from 'next-i18next';
 import { Box, Flex, FlexProps, Grid, Image, ModalBody, Switch, useTheme } from '@chakra-ui/react';
 import MyRadio from '@/components/common/MyRadio';
 import { useForm } from 'react-hook-form';
-import MyIcon from '@/components/Icon';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileToBase64 } from '@/web/common/file/utils';
+import { feConfigs } from '@/web/common/system/staticData';
 
 enum UsingWayEnum {
   link = 'link',
@@ -70,7 +71,8 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
     setRefresh(!refresh);
   });
 
-  const linkUrl = `${location?.origin}/chat/share?shareId=${share?.shareId}${
+  const baseUrl = feConfigs?.customSharePageDomain || location?.origin;
+  const linkUrl = `${baseUrl}/chat/share?shareId=${share?.shareId}${
     getValues('showHistory') ? '' : '&showHistory=0'
   }`;
 
@@ -91,7 +93,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
     [UsingWayEnum.script]: {
       blockTitle: t('core.app.outLink.Script block title'),
       code: `<script
-  src="${location?.origin}/js/iframe.js"
+  src="${baseUrl}/js/iframe.js"
   id="chatbot-iframe" 
   data-bot-src="${linkUrl}" 
   data-default-open="${getValues('scriptDefaultOpen') ? 'true' : 'false'}"
@@ -189,7 +191,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
               w={'16px'}
               color={'myGray.600'}
               cursor={'pointer'}
-              _hover={{ color: 'blue.500' }}
+              _hover={{ color: 'primary.500' }}
               onClick={() => {
                 copyData(wayMap[getValues('usingWay')].code);
               }}

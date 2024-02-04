@@ -13,7 +13,7 @@ weight: 364
 - 有外部输入
 - 触发执行
 
-![](/imgs/coreferenceResolution1.png)
+![](/imgs/coreferenceResolution1.jpg)
 
 ## 背景
 
@@ -21,11 +21,11 @@ weight: 364
 
 在搜索的过程中，尤其是连续对话的搜索，我们通常会发现后续的问题难以搜索到合适的内容，其中一个原因是知识库搜索只会使用“当前”的问题去执行。看下面的例子：
 
-![](/imgs/coreferenceResolution2.png)
+![](/imgs/coreferenceResolution2.jpg)
 
 用户在提问“第二点是什么”的时候，只会去知识库里查找“第二点是什么”，压根查不到内容。实际上需要查询的是“QA结构是什么”。因此我们需要引入一个【问题补全】模块，来对用户当前的问题进行补全，从而使得知识库搜索能够搜索到合适的内容。使用补全后效果如下：
 
-![](/imgs/coreferenceResolution3.png)
+![](/imgs/coreferenceResolution3.jpg)
 
 
 ## 功能

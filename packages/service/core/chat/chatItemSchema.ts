@@ -80,8 +80,8 @@ const ChatItemSchema = new Schema({
 });
 
 try {
+  ChatItemSchema.index({ dataId: -1 });
   ChatItemSchema.index({ time: -1 });
-  ChatItemSchema.index({ userId: 1 });
   ChatItemSchema.index({ appId: 1 });
   ChatItemSchema.index({ chatId: 1 });
   ChatItemSchema.index({ userGoodFeedback: 1 });

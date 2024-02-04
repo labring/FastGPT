@@ -1,6 +1,6 @@
 <div align="center">
 
-<a href="https://fastgpt.run/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
+<a href="https://fastgpt.in/"><img src="/.github/imgs/logo.svg" width="120" height="120" alt="fastgpt logo"></a>
 
 # FastGPT
 
@@ -15,7 +15,7 @@ FastGPT 是一个基于 LLM 大语言模型的知识库问答系统，提供开�
 </div>
 
 <p align="center">
-  <a href="https://fastgpt.run/">
+  <a href="https://fastgpt.in/">
     <img height="21" src="https://img.shields.io/badge/在线使用-d4eaf7?style=flat-square&logo=spoj&logoColor=7d09f1" alt="cloud">
   </a>
   <a href="https://doc.fastgpt.in/docs/intro">
@@ -36,7 +36,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
 ## 🛸 在线使用
 
-- 🌐 国内版：[ai.fastgpt.in](https://ai.fastgpt.in/)
+- 🌐 国内临时可访问：[fastgpt.in](https://fastgpt.in/)
 - 🌍 海外版：[fastgpt.run](https://fastgpt.run/)
 
 |                                    |                                    |
@@ -48,43 +48,47 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
 </a>
 
-## 💡 功能
+## 💡 RoadMap
 
-`1` 强大的可视化编排，轻松构建 AI 应用
+`1` 应用编排能力
    - [x] 提供简易模式，无需操作编排
-   - [x] 用户对话前引导，全局字符串变量
-   - [x] 知识库搜索
-   - [x] 多 LLM 模型对话
-   - [x] 文本内容提取成结构化数据
-   - [x] HTTP 扩展
-   - [ ] 嵌入 [Laf](https://github.com/labring/laf)，实现在线编写 HTTP 模块
    - [x] 对话下一步指引
-   - [ ] 对话多路线选择
+   - [x] 工作流编排
    - [x] 源文件引用追踪
    - [x] 模块封装，实现多级复用
+   - [x] 混合检索 & 重排
+   - [ ] 自查询规划
+   - [ ] 嵌入 [Laf](https://github.com/labring/laf)，实现在线编写 HTTP 模块
+   - [ ] 插件封装功能
 
-`2` 丰富的知识库预处理
+`2` 知识库能力
    - [x] 多库复用，混用
    - [x] chunk 记录修改和删除
-   - [x] 支持手动输入，直接分段，QA 拆分导入
-   - [x] 支持 url 读取、CSV 批量导入
    - [x] 支持知识库单独设置向量模型
    - [x] 源文件存储
-   - [ ] 文件学习 Agent
+   - [x] 支持手动输入，直接分段，QA 拆分导入
+   - [x] 支持 pdf、word、txt、md 等常用文件，支持 url 读取、CSV 批量导入
+   - [ ] 支持 HTML、csv、PPT、Excel 导入
+   - [ ] 支持文件阅读器
+   - [ ] 支持差异性文件同步
+   - [ ] 更多的数据预处理方案
   
-`3` 多种效果测试渠道
+`3` 应用调试能力
    - [x] 知识库单点搜索测试
    - [x] 对话时反馈引用并可修改与删除
    - [x] 完整上下文呈现
    - [x] 完整模块中间值呈现
+   - [ ] 高级编排 DeBug 模式
   
-`4` OpenAPI
+`4` OpenAPI 接口
    - [x] completions 接口 (对齐 GPT 接口)
    - [ ] 知识库 CRUD
+   - [ ] 对话 CRUD
   
-`5` 运营功能
+`5` 运营能力
    - [x] 免登录分享窗口
    - [x] Iframe 一键嵌入
+   - [x] 聊天窗口嵌入支持自定义 Icon，默认打开，拖拽等功能
    - [x] 统一查阅对话记录，并对数据进行标注
 
 <a href="#readme">
@@ -101,7 +105,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 
   [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
 
-  由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。
+  由于需要部署数据库，部署完后需要等待 2~4 分钟才能正常访问。默认用了最低配置，首次访问时会有些慢。相关使用教程可查看：[Sealos 部署 FastGPT](https://doc.fastgpt.in/docs/development/sealos/)
 
 * [快开始本地开发](https://doc.fastgpt.in/docs/development/intro/)
 * [部署 FastGPT](https://doc.fastgpt.in/docs/development/sealos)
