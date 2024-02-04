@@ -148,6 +148,7 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props
           onChange={(e) => onChange?.(e || '')}
           wrapperProps={{
             onBlur: () => {
+              if (!value) return;
               try {
                 JSON.parse(value as string);
               } catch (error: any) {

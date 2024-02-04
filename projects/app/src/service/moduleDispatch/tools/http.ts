@@ -26,63 +26,40 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     variables,
     outputs,
     params: {
-      system_httpMethod: httpMethod,
-      url: abandonUrl,
+      system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
       system_httpHeader: httpHeader,
       ...body
     }
   } = props;
 
+  if (!httpReqUrl) {
+    return Promise.reject('Http url is empty');
+  }
+
   body = flatDynamicParams(body);
 
-  const { requestMethod, requestUrl, requestHeader, requestBody, requestQuery } = await (() => {
-    // 2024-2-12 clear
-    if (abandonUrl) {
-      return {
-        requestMethod: 'POST',
-        requestUrl: abandonUrl,
-        requestHeader: httpHeader,
-        requestBody: {
-          ...body,
-          appId,
-          chatId,
-          variables
-        },
-        requestQuery: {}
-      };
-    }
-    if (httpReqUrl) {
-      return {
-        requestMethod: httpMethod,
-        requestUrl: httpReqUrl,
-        requestHeader: httpHeader,
-        requestBody: {
-          appId,
-          chatId,
-          responseChatItemId,
-          variables,
-          data: body
-        },
-        requestQuery: {
-          appId,
-          chatId,
-          ...variables,
-          ...body
-        }
-      };
-    }
-
-    return Promise.reject('url is empty');
-  })();
+  const requestBody = {
+    appId,
+    chatId,
+    responseChatItemId,
+    variables,
+    data: body
+  };
+  const requestQuery = {
+    appId,
+    chatId,
+    ...variables,
+    ...body
+  };
 
   const formatBody = transformFlatJson({ ...requestBody });
 
   // parse header
   const headers = await (() => {
     try {
-      if (!requestHeader) return {};
-      return JSON.parse(requestHeader);
+      if (!httpHeader) return {};
+      return JSON.parse(httpHeader);
     } catch (error) {
       return Promise.reject('Header 为非法 JSON 格式');
     }
@@ -90,8 +67,8 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
 
   try {
     const response = await fetchData({
-      method: requestMethod,
-      url: requestUrl,
+      method: httpMethod,
+      url: httpReqUrl,
       headers,
       body: formatBody,
       query: requestQuery

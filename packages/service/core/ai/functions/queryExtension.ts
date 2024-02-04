@@ -140,8 +140,7 @@ A: ${chatBg}
     stream: false
   });
 
-  const answer = result.choices?.[0]?.message?.content || '';
-
+  let answer = result.choices?.[0]?.message?.content || '';
   if (!answer) {
     return {
       rawQuery: query,
@@ -152,8 +151,11 @@ A: ${chatBg}
     };
   }
 
+  answer = answer.replace(/\\"/g, '"');
+
   try {
     const queries = JSON.parse(answer) as string[];
+
     return {
       rawQuery: query,
       extensionQueries: queries,
@@ -162,6 +164,7 @@ A: ${chatBg}
       outputTokens: result.usage?.completion_tokens || 0
     };
   } catch (error) {
+    console.log(error);
     return {
       rawQuery: query,
       extensionQueries: [],
