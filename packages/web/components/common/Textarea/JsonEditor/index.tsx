@@ -8,7 +8,7 @@ import { useToast } from '../../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
 loader.config({
-  paths: { vs: 'https://cdn.staticfile.net/monaco-editor/0.43.0/min/vs' }
+  paths: { vs: '/js/monaco-editor.0.45.0/vs' }
 });
 
 type Props = Omit<BoxProps, 'onChange' | 'resize' | 'height'> & {
