@@ -1,5 +1,5 @@
-import React, { useMemo } from 'react';
-import ReactFlow, { Background, Controls, ReactFlowProvider } from 'reactflow';
+import React, { useCallback, useMemo } from 'react';
+import ReactFlow, { Background, Connection, Controls, ReactFlowProvider } from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -11,6 +11,8 @@ import ModuleTemplateList, { type ModuleTemplateProps } from './ModuleTemplateLi
 import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useTranslation } from 'next-i18next';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
@@ -37,6 +39,8 @@ const edgeTypes = {
 };
 
 const Container = React.memo(function Container() {
+  const { toast } = useToast();
+  const { t } = useTranslation();
   const { reactFlowWrapper, nodes, onNodesChange, edges, onEdgesChange, onConnect } =
     useFlowProviderStore();
 
@@ -48,6 +52,24 @@ const Container = React.memo(function Container() {
       </>
     ),
     []
+  );
+
+  const customOnConnect = useCallback(
+    (connect: Connection) => {
+      if (!connect.sourceHandle || !connect.targetHandle) {
+        return;
+      }
+      if (connect.source === connect.target) {
+        return toast({
+          status: 'warning',
+          title: t('core.module.Can not connect self')
+        });
+      }
+      onConnect({
+        connect
+      });
+    },
+    [onConnect, t, toast]
   );
 
   return (
@@ -68,13 +90,7 @@ const Container = React.memo(function Container() {
       edgeTypes={edgeTypes}
       onNodesChange={onNodesChange}
       onEdgesChange={onEdgesChange}
-      onConnect={(connect) => {
-        connect.sourceHandle &&
-          connect.targetHandle &&
-          onConnect({
-            connect
-          });
-      }}
+      onConnect={customOnConnect}
     >
       {memoRenderTools}
     </ReactFlow>

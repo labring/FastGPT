@@ -4,7 +4,12 @@ import {
   FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type';
-import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
+import {
+  DYNAMIC_INPUT_KEY,
+  ModuleIOValueTypeEnum,
+  ModuleInputKeyEnum,
+  ModuleTemplateTypeEnum
+} from '../../constants';
 import {
   Input_Template_AddInputParam,
   Input_Template_DynamicInput,
@@ -24,9 +29,9 @@ export const HttpModule: FlowModuleTemplateType = {
     Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.httpMethod,
-      type: FlowNodeInputTypeEnum.select,
+      type: FlowNodeInputTypeEnum.custom,
       valueType: ModuleIOValueTypeEnum.string,
-      label: 'core.module.input.label.Http Request Method',
+      label: '',
       value: 'POST',
       list: [
         {
@@ -44,9 +49,9 @@ export const HttpModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleInputKeyEnum.httpReqUrl,
-      type: FlowNodeInputTypeEnum.input,
+      type: FlowNodeInputTypeEnum.hidden,
       valueType: ModuleIOValueTypeEnum.string,
-      label: 'core.module.input.label.Http Request Url',
+      label: '',
       description: 'core.module.input.description.Http Request Url',
       placeholder: 'https://api.ai.com/getInventory',
       required: false,

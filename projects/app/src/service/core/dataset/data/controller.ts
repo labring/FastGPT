@@ -310,6 +310,24 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   let usingSimilarityFilter = false;
 
   /* function */
+  const countRecallLimit = () => {
+    if (searchMode === DatasetSearchModeEnum.embedding) {
+      return {
+        embeddingLimit: 100,
+        fullTextLimit: 0
+      };
+    }
+    if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
+      return {
+        embeddingLimit: 0,
+        fullTextLimit: 100
+      };
+    }
+    return {
+      embeddingLimit: 60,
+      fullTextLimit: 40
+    };
+  };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, charsLength } = await getVectorsByText({
       model: getVectorModel(model),
@@ -555,8 +573,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
   /* main step */
   // count limit
-  const embeddingLimit = 60;
-  const fullTextLimit = 40;
+  const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
   const { embeddingRecallResults, fullTextRecallResults, charsLength } = await multiQueryRecall({

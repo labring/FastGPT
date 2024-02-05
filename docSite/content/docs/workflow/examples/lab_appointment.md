@@ -1297,10 +1297,8 @@ type RequestType = {
   variables: {
     name: string;
   }
-  data: {
-    info: string;
-    action: 'post' | 'delete' | 'put' | 'get'
-  }
+  info: string;
+  action: 'post' | 'delete' | 'put' | 'get'
 }
 type recordType = {
   name?: string;
@@ -1310,7 +1308,7 @@ type recordType = {
 
 export default async function (ctx: FunctionContext) {
   try {
-    const { variables: { name }, data: { info, action } } = ctx.body as RequestType
+    const { variables: { name }, info, action } = ctx.body as RequestType
 
     const parseBody = { name, ...JSON.parse(info) } as recordType
 

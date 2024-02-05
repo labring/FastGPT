@@ -44,7 +44,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     chatId,
     responseChatItemId,
     variables,
-    data: body
+    ...body
   };
   const requestQuery = {
     appId,
@@ -226,7 +226,6 @@ function transformFlatJson(obj: Record<string, any>) {
       } else {
         obj[firstKey] = { [lastKey]: obj[key] };
       }
-
       transformFlatJson(obj[firstKey]);
 
       delete obj[key];

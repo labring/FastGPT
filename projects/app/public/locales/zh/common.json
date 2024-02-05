@@ -750,6 +750,7 @@
     },
     "module": {
       "Add question type": "添加问题类型",
+      "Can not connect self": "不能连接自身",
       "Data Type": "数据类型",
       "Dataset quote": {
         "Add quote": "添加引用",
@@ -761,6 +762,8 @@
       "Field Name": "字段名",
       "Field Type": "字段类型",
       "Field key": "字段 Key",
+      "Http request props": "请求参数",
+      "Http request settings": "请求配置",
       "Input Type": "输入类型",
       "Plugin output must connect": "自定义输出必须全部连接",
       "QueryExtension": {
@@ -779,6 +782,9 @@
         "Enum Value": "枚举值",
         "Field Description Placeholder": "姓名/年龄/sql语句……",
         "Field Setting Title": "提取字段配置"
+      },
+      "http": {
+        "params": "Params"
       },
       "input": {
         "Add Input": "添加入参",

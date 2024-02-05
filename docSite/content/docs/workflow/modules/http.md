@@ -34,7 +34,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 - chatId: 当前对话的ID，测试模式下不存在。
 - responseChatItemId: 当前对话中，响应的消息ID，测试模式下不存在。
 - variables: 当前对话的全局变量。
-- data: 自定义传递的参数。
+- 自定义传递的参数。
 
 ### 嵌套对象使用
 
@@ -137,13 +137,11 @@ curl --location --request POST 'http://xxxx.com' \
   "variables": {
     "cTime": "2023-12-18 13:45:46"
   },
-  "data": {
-    "user": {
-      "name": "",
-      "age": ""
-    },
-    "type": ""
-  }
+  "user": {
+    "name": "",
+    "age": ""
+  },
+  "type": ""
 }'
 ```
 
@@ -226,16 +224,14 @@ const db = cloud.database()
 
 type RequestType = {
   appId: string;
-  data: {
-    appointment: string;
-    action: 'post' | 'delete' | 'put' | 'get'
-  }
+  appointment: string;
+  action: 'post' | 'delete' | 'put' | 'get'
 }
 
 export default async function (ctx: FunctionContext) {
   try {
     // 从 body 中获取参数
-    const { appId, data: { appointment, action } } = ctx.body as RequestType
+    const { appId, appointment, action } = ctx.body as RequestType
 
     const parseBody = JSON.parse(appointment)
     if (action === 'get') {

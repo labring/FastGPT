@@ -32,13 +32,11 @@ const googleCxId = ""
 const baseurl = "https://www.googleapis.com/customsearch/v1"
 
 type RequestType = {
-  data: {
-    searchKey: string
-  }
+  searchKey: string
 }
 
 export default async function (ctx: FunctionContext) {
-  const { data: { searchKey } } = ctx.body as RequestType
+  const { searchKey } = ctx.body as RequestType
 
   if (!searchKey) {
     return {

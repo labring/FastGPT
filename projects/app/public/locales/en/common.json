@@ -748,6 +748,7 @@
     },
     "module": {
       "Add question type": "Add type",
+      "Can not connect self": "Cannot connect itself",
       "Data Type": "Data Type",
       "Dataset quote": {
         "Add quote": "Add quote",
@@ -759,6 +760,8 @@
       "Field Name": "Name",
       "Field Type": "Type",
       "Field key": "Key",
+      "Http request props": "Request props",
+      "Http request settings": "Request settings",
       "Input Type": "Input Type",
       "Plugin output must connect": "Custom outputs must all be connected",
       "QueryExtension": {
@@ -777,6 +780,9 @@
         "Enum Value": "Enum",
         "Field Description Placeholder": "Name/age /sql statement......",
         "Field Setting Title": "Extract field configuration"
+      },
+      "http": {
+        "params": ""
       },
       "input": {
         "Add Input": "Add Input",
