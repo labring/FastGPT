@@ -56,7 +56,7 @@ Response Requirements:
 - Avoid mentioning that your knowledge is obtained from <data></data>.
 - Ensure that your answer aligns with the description in the <data></data>.
 
-Question: "{{question}}"`
+Question: """{{question}}"""`
 
   },
   {
@@ -70,13 +70,13 @@ Answer Requirements:
 - Choose one or more Q&A pairs to respond to.
 - Ensure that the response closely aligns with the content within <Answer></Answer>.
 - Clarify if there are no relevant Q&A pairs.
-- Avoid mentioning that the knowledge is sourced from QA; simply provide the answers.
+- Avoid mentioning that the knowledge is sourced from Q&A pairs; simply provide the answers.
 - All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
 $$
 i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
 $$
 
-Question:"{{question}}"`
+Question:"""{{question}}"""`
   },
   {
     "title": "标准严格模板",
@@ -98,7 +98,7 @@ $$
 i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
 $$
   
-  Question: "{{question}}"`
+  Question: """{{question}}"""`
   },
   {
     "title": "严格问答模板",
@@ -116,6 +116,6 @@ $$
   
   Lastly, avoid mentioning that you obtained knowledge from QA; simply provide the answers.
   
-  Question: "{{question}}"`
+  Question: """{{question}}"""`
   }  
 ];

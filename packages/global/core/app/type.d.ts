@@ -50,7 +50,7 @@ export type AppDetailType = AppSchema & {
 // };
 // Since useform cannot infer enumeration types, all enumeration keys can only be undone manually
 export type AppSimpleEditFormType = {
-  templateId: string;
+  // templateId: string;
   aiSettings: {
     model: string;
     systemPrompt?: string | undefined;
@@ -62,14 +62,14 @@ export type AppSimpleEditFormType = {
   };
   dataset: {
     datasets: SelectedDatasetType;
-    similarity: number;
-    limit: number;
     searchMode: `${DatasetSearchModeEnum}`;
-    usingReRank: boolean;
-    searchEmptyText: string;
-  };
-  cfr: {
-    background: string;
+    similarity?: number;
+    limit?: number;
+    usingReRank?: boolean;
+    searchEmptyText?: string;
+    datasetSearchUsingExtensionQuery?: boolean;
+    datasetSearchExtensionModel?: string;
+    datasetSearchExtensionBg?: string;
   };
   userGuide: {
     welcomeText: string;
@@ -115,9 +115,6 @@ export type AppSimpleEditConfigTemplateType = {
       searchMode: `${DatasetSearchModeEnum}`;
       usingReRank: boolean;
       searchEmptyText?: boolean;
-    };
-    cfr?: {
-      background?: boolean;
     };
     userGuide?: {
       welcomeText?: boolean;

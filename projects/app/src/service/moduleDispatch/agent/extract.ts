@@ -8,9 +8,9 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { FunctionModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
-import { ModelTypeEnum, getExtractModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
 import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
@@ -33,14 +33,14 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
     histories,
-    inputs: { content, history = 6, model, description, extractKeys }
+    params: { content, history = 6, model, description, extractKeys }
   } = props;
 
   if (!content) {
     return Promise.reject('Input is empty');
   }
 
-  const extractModel = getExtractModel(model);
+  const extractModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
   const { arg, inputTokens, outputTokens } = await (async () => {
@@ -69,7 +69,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   }
 
   // auth fields
-  let success = !extractKeys.find((item) => !arg[item.key]);
+  let success = !extractKeys.find((item) => !(item.key in arg));
   // auth empty value
   if (success) {
     for (const key in arg) {
@@ -84,7 +84,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     model: extractModel.model,
     inputLen: inputTokens,
     outputLen: outputTokens,
-    type: ModelTypeEnum.extract
+    type: ModelTypeEnum.llm
   });
 
   return {
@@ -109,8 +109,8 @@ async function toolChoice({
   extractModel,
   user,
   histories,
-  inputs: { content, extractKeys, description }
-}: Props & { extractModel: FunctionModelItemType }) {
+  params: { content, extractKeys, description }
+}: Props & { extractModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     ...histories,
     {
@@ -162,7 +162,10 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
     }
   };
 
-  const ai = getAIApi(user.openaiAccount, 480000);
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
 
   const response = await ai.chat.completions.create({
     model: extractModel.model,
@@ -202,12 +205,12 @@ async function completions({
   extractModel,
   user,
   histories,
-  inputs: { content, extractKeys, description }
-}: Props & { extractModel: FunctionModelItemType }) {
+  params: { content, extractKeys, description }
+}: Props & { extractModel: LLMModelItemType }) {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(extractModel.functionPrompt || Prompt_ExtractJson, {
+      value: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
         description,
         json: extractKeys
           .map(
@@ -223,7 +226,10 @@ Human: ${content}`
     }
   ];
 
-  const ai = getAIApi(user.openaiAccount, 480000);
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
 
   const data = await ai.chat.completions.create({
     model: extractModel.model,

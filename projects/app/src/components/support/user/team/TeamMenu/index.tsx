@@ -4,13 +4,14 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import dynamic from 'next/dynamic';
-import { feConfigs } from '@/web/common/system/staticData';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const TeamManageModal = dynamic(() => import('../TeamManageModal'));
 
 const TeamMenu = () => {
   const theme = useTheme();
+  const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { toast } = useToast();

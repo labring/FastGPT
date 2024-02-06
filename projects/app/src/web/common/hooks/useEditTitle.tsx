@@ -1,7 +1,7 @@
 import React, { useCallback, useRef } from 'react';
 import { ModalFooter, ModalBody, Input, useDisclosure, Button, Box } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
-import { useToast } from './useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
 export const useEditTitle = ({

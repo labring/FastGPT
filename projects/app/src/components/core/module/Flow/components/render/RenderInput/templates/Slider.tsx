@@ -8,7 +8,7 @@ import MySlider from '@/components/Slider';
 const SliderRender = ({ item, moduleId }: RenderInputProps) => {
   const { t } = useTranslation();
   return (
-    <Box pt={5} pb={4} px={2}>
+    <Box px={2}>
       <MySlider
         markList={item.markList}
         width={'100%'}

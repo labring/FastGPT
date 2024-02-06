@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useTransition, useEffect } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -11,11 +11,12 @@ import styles from './index.module.scss';
 import VariablePlugin from './plugins/VariablePlugin';
 import { VariableNode } from './plugins/VariablePlugin/node';
 import { EditorState, LexicalEditor } from 'lexical';
-import { textToEditorState } from './utils';
 import OnBlurPlugin from './plugins/OnBlurPlugin';
 import MyIcon from '../../Icon';
-import { PickerMenuItemType } from './type.d';
+import { EditorVariablePickerType } from './type.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import FocusPlugin from './plugins/FocusPlugin';
+import { textToEditorState } from './utils';
 
 export default function Editor({
   h = 200,
@@ -25,31 +26,34 @@ export default function Editor({
   variables,
   onChange,
   onBlur,
-  defaultValue,
+  value,
   placeholder = ''
 }: {
   h?: number;
   showResize?: boolean;
   showOpenModal?: boolean;
   onOpenModal?: () => void;
-  variables: PickerMenuItemType[];
+  variables: EditorVariablePickerType[];
   onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
-  defaultValue?: string;
+  value?: string;
   placeholder?: string;
 }) {
-  const key = useRef(getNanoid(6));
+  const [key, setKey] = useState(getNanoid(6));
+  const [_, startSts] = useTransition();
   const [height, setHeight] = useState(h);
-  const [initialConfig, setInitialConfig] = useState({
+  const [focus, setFocus] = useState(false);
+
+  const initialConfig = {
     namespace: 'promptEditor',
     nodes: [VariableNode],
-    editorState: textToEditorState(defaultValue),
+    editorState: textToEditorState(value),
     onError: (error: Error) => {
       throw error;
     }
-  });
-  const initialY = useRef(0);
+  };
 
+  const initialY = useRef(0);
   const handleMouseDown = (e: React.MouseEvent) => {
     initialY.current = e.clientY;
 
@@ -68,9 +72,14 @@ export default function Editor({
     document.addEventListener('mouseup', handleMouseUp);
   };
 
+  useEffect(() => {
+    if (focus) return;
+    setKey(getNanoid(6));
+  }, [value, variables, focus]);
+
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
-      <LexicalComposer initialConfig={initialConfig} key={key.current}>
+      <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
           placeholder={
@@ -100,7 +109,14 @@ export default function Editor({
           ErrorBoundary={LexicalErrorBoundary}
         />
         <HistoryPlugin />
-        <OnChangePlugin onChange={(e) => onChange?.(e)} />
+        <FocusPlugin focus={focus} setFocus={setFocus} />
+        <OnChangePlugin
+          onChange={(e) => {
+            startSts(() => {
+              onChange?.(e);
+            });
+          }}
+        />
         <VariablePickerPlugin variables={variables} />
         <VariablePlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />

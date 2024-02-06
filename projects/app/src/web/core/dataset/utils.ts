@@ -69,9 +69,9 @@ export async function chunksUpload({
   }
 
   // add chunk index
-  chunks = chunks.map((chunk, i) => ({
+  chunks = chunks.map((chunk) => ({
     ...chunk,
-    chunkIndex: i
+    chunkIndex: chunk.chunkIndex
   }));
 
   let successInsert = 0;

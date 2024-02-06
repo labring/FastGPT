@@ -93,6 +93,7 @@
     "Finish": "Finish",
     "Input": "Input",
     "Intro": "Intro",
+    "Invalid Json": "Invalid Json",
     "Last Step": "Last",
     "Last use time": "Last use time",
     "Load Failed": "Load Failed",
@@ -155,6 +156,7 @@
       "Select Avatar": "Select Avatar",
       "Select Failed": "Select Failed"
     },
+    "change": "Change",
     "choosable": "choosable",
     "confirm": {
       "Common Tip": "Operational Confirm"
@@ -201,6 +203,7 @@
     "link": {
       "UnValid": "UnValid Link"
     },
+    "month": "Month",
     "price": {
       "Amount": "{{amount}}{{unit}}"
     },
@@ -224,6 +227,7 @@
   },
   "core": {
     "Chat": "Chat",
+    "Chat API is error or undefined": "The session interface reported an error or returned null",
     "Chat test": "Chat test",
     "Max Token": "MaxTokens",
     "Start chat": "Start chat",
@@ -271,13 +275,12 @@
       "deterministic": "Deterministic",
       "edit": {
         "Confirm Save App Tip": "The application may be in advanced orchestration mode, and the advanced orchestration configuration will be overwritten after saving, please confirm!",
-        "Open cfr": "Open Cfr",
         "Out Ad Edit": "You are about to exit the Advanced orchestration page, please confirm",
         "Prompt Editor": "Prompt Editor",
+        "Query extension background prompt": "Chat background description",
+        "Query extension background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.\nIf the value is empty, the question completion function is not used for [first question].",
         "Save and out": "Save out",
-        "UnSave": "UnSave",
-        "cfr background prompt": "Chat background description",
-        "cfr background tip": "Describing the scope of the current conversation makes it easier for AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.\nIf the value is empty, the problem completion function is not used for the \"first problem\".\nIf the value is none, the problem completion function is not used."
+        "UnSave": "UnSave"
       },
       "error": {
         "App name can not be empty": "App name can not be empty",
@@ -293,6 +296,8 @@
       "navbar": {
         "External": "External",
         "Flow mode": "Flow mode",
+        "Publish": "Publish",
+        "Publish app": "Publish App",
         "Simple mode": "Simple mode"
       },
       "outLink": {
@@ -357,6 +362,7 @@
     "chat": {
       "Admin Mark Content": "Corrected response",
       "Audio Speech Error": "Audio Speech Error",
+      "Chat API is error or undefined": "",
       "Confirm to clear history": "Confirm to clear history?",
       "Confirm to clear share chat history": " Are you sure to delete all chats?",
       "Converting to text": "Converting to text...",
@@ -426,6 +432,7 @@
       },
       "response": {
         "Complete Response": "Complete Response",
+        "Extension model": "Extension model",
         "Plugin Resonse Detail": "Plugin Detail",
         "Read complete response": "Read Detail",
         "Read complete response tips": "Click to see the detailed process",
@@ -562,6 +569,7 @@
         "id": "Data ID",
         "unit": "pieces"
       },
+      "embedding model tip": "The index model can transform the natural language into vectors for semantic retrieval. Note that different index models cannot be used together and cannot be modified after selecting the index model.",
       "error": {
         "Data not found": "The data does not exist or has been deleted",
         "Start Sync Failed": "Start Sync Failed",
@@ -642,10 +650,13 @@
       },
       "link": "Link",
       "search": {
-        "Dataset Search Params": "Dataset Search Params",
+        "Basic params": "Basic settings",
+        "Dataset Search Params": "Dataset search configuration",
         "Embedding score": "Embedding score",
         "Empty result response": "Empty Response",
         "Empty result response Tips": "If you fill in the content, if no suitable content is found, you will directly reply to the content.",
+        "Filter": "Search filter",
+        "Limit": "Search limit",
         "Max Tokens": "Max Tokens",
         "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
@@ -663,6 +674,8 @@
         "Source id": "Source ID",
         "Source name": "Source",
         "Top K": "Top K",
+        "Using cfr": "Open query extension",
+        "Using query extension": "",
         "mode": {
           "embedding": "Vector recall",
           "embedding desc": "Use vectors for text correlation queries",
@@ -686,6 +699,9 @@
           "rrf desc": "Multiple search results are combined by inverting calculation."
         },
         "search mode": "Search Mode"
+      },
+      "settings": {
+        "Search basic params": ""
       },
       "status": {
         "active": "Ready",
@@ -733,12 +749,22 @@
     "module": {
       "Add question type": "Add type",
       "Data Type": "Data Type",
+      "Dataset quote": {
+        "Add quote": "Add quote",
+        "Concat result": "Concat result",
+        "Input description": "",
+        "label": "Dataset quote"
+      },
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",
       "Field key": "Key",
       "Input Type": "Input Type",
       "Plugin output must connect": "Custom outputs must all be connected",
+      "QueryExtension": {
+        "placeholder": "Questions about python introduction and usage, etc. The current conversation is related to the game GTA5.",
+        "tip": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.If \n is empty, the question completion function is not used in the first conversation. "
+      },
       "Unlink tip": "[{{name}}] An unfilled or unconnected parameter exists",
       "Variable": "Variables",
       "Variable Setting": "Variable Setting",
@@ -762,8 +788,8 @@
           "Quote": "Object array format, structure:\n[{q:' question ',a:' answer '}]",
           "Response content": "You can use \\n to achieve continuous line wrapping.\nReplies can be achieved by external module input, which overwrites the content currently filled in.\nIf passed non-string type data will be automatically converted to a string",
           "TFSwitch textarea": "Allows you to define a number of strings to achieve false matching, one per line, and supports regular expressions.",
+          "Trigger": "Most of the time, you don't need to concatenate this property. You can connect this property when you need to delay execution, or precisely control the timing of execution.",
           "anyInput": "Can pass anything ",
-          "cfr background": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations. If\nis empty, the question completion function is not used in the first conversation. ",
           "dynamic input": "Receives parameters dynamically added by the user and will be tiled in at run time ",
           "textEditor textarea": "The passed variable can be referenced by {{key}}. Variables support only strings or numbers."
         },
@@ -780,15 +806,13 @@
           "TFSwitch textarea": "Custom False matching rule ",
           "aiModel": "AI model ",
           "anyInput": "Any input ",
-          "cfr background": "Background",
           "chat history": "chat history",
           "switch": "Trigger",
           "textEditor textarea": "Text edit",
           "user question": "User question"
         },
         "placeholder": {
-          "Classify background": "For example:\n1.AIGC (Artificial Intelligence Generates content) refers to the automatic or semi-automatic generation of digital content, such as text, images, music, videos, and so on, using artificial intelligence technologies. AIGC technologies include, but are not limited to, natural language processing, computer vision, machine learning, and deep learning. These technologies can create new content or modify existing content to meet specific creative, educational, entertainment or information needs.",
-          "cfr background": "Questions about the introduction and use of python. \nThe current dialogue is related to the game GTA5."
+          "Classify background": "For example:\n1.AIGC (Artificial Intelligence Generates content) refers to the automatic or semi-automatic generation of digital content, such as text, images, music, videos, and so on, using artificial intelligence technologies. AIGC technologies include, but are not limited to, natural language processing, computer vision, machine learning, and deep learning. These technologies can create new content or modify existing content to meet specific creative, educational, entertainment or information needs."
         }
       },
       "inputType": {
@@ -835,6 +859,7 @@
         "Classify question intro": "Determine the type of question based on the user's history and current issue. Multiple sets of question types can be added, here is a template example: \n type 1: Hello\ntype 2: Questions about 'use'\ntype 3: Questions about 'purchase'\ntype 4: Other questions",
         "Dataset search": "Dataset search",
         "Dataset search intro": "Invoke the Dataset search capability to find content that may be relevant to the problem",
+        "Dataset search result concat intro": "Multiple knowledge base search results can be combined and output",
         "External module": "External call",
         "Extract field": "Text content extraction ",
         "Extract field intro": "Can extract specified data from the text, such as: sql statements, search keywords, code, etc.",
@@ -843,6 +868,8 @@
         "Http request": "Http request",
         "Http request intro": " Can issue an HTTP request to implement more complex operations (Internet search, database query, etc.)",
         "My plugin module": "Personal plugins",
+        "Query extension": "Query extension",
+        "Query extension intro": "If the problem completion function is enabled, the accuracy of knowledge base search can be improved in continuous conversations. After this function is enabled, when searching the knowledge base, AI will be used to complete the missing information of the problem according to the conversation records.",
         "Response module": "Text output",
         "Running app": "Running app",
         "Running app intro": "You can select a different app to run",
@@ -852,8 +879,6 @@
         "Tool module": "Tools",
         "UnKnow Module": "UnKnow Module",
         "User guide": "User guide",
-        "cfr": "Coreference resolution",
-        "cfr intro": "Refine the current issue based on history, making it more conducive to knowledge base search, while improving continuous conversation capabilities.",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"
       },
@@ -887,6 +912,9 @@
         "variable options": "Options"
       },
       "variable add option": "Add Option"
+    },
+    "plugin": {
+      "Get Plugin Module Detail Failed": "Load plugin failed"
     },
     "shareChat": {
       "Init Error": "Init Chat Error",
@@ -1125,6 +1153,7 @@
       "Cancel subscription": "Cancel"
     },
     "user": {
+      "Need to login": "Please log in first",
       "Price": "Price",
       "auth": {
         "Sending Code": "Sending"
@@ -1136,28 +1165,69 @@
       },
       "team": {
         "Dataset usage": "Dataset usage",
-        "member": "Member",
-        "subscription": {
-          "type": {
-            "extraDatasetSize": "Extra dataset size"
-          }
-        }
+        "member": "Member"
       }
     },
     "wallet": {
+      "Balance not enough tip": "The balance is insufficient, please go to the account page first",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",
       "Pay error": "Pay error",
       "Pay success": "Pay success",
+      "bill": {
+        "AI Model": "AI Model",
+        "AI Type": "AI Type",
+        "Price": "Price（￥）"
+      },
       "subscription": {
+        "Ai points": "AI Points Standard",
+        "Buy now": "Buy now",
         "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",
         "Current dataset store": "Current dataset store subscription",
+        "Current plan": "Current plan",
         "Dataset store": "Dataset store size",
         "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
         "Expand size": "Expand size",
         "Extra dataset size": "Extra dataset size",
+        "Extra plan": "Extra Plan",
+        "Extra plan tip": "When the standard plan is not enough, you can purchase an additional plan to continue using",
+        "FAQ": "Pricing FAQs",
+        "Next plan": "Future plan",
         "Next sub dataset size": "",
-        "Update extra dataset size": "Update size"
+        "Nonsupport": "Nonsupport",
+        "Refund plan and pay confirm": "There is no extra cost for you to switch this package and {{amount}} will be refunded to the balance.",
+        "Standard plan pay confirm": "To switch this package, you need to pay {{payPrice}} Yuan.",
+        "Standard update fail": "Update plan failed.",
+        "Standard update success": "Change subscription plan successful!",
+        "Sub plan": "Pricing Plans",
+        "Sub plan tip": "Use FastGPT for free or upgrade to a higher plan",
+        "Training weight": "Training weight: {{weight}}",
+        "Update extra dataset size": "Update size",
+        "function": {
+          "History store": "",
+          "Max app": "",
+          "Max dataset": "",
+          "Max dataset size": "",
+          "Max members": "",
+          "Points": ""
+        },
+        "mode": {
+          "Month": "Monthly",
+          "Year": "Yearly",
+          "Year sale": "2 months free"
+        },
+        "standardSubLevel": {
+          "enterprise": "",
+          "experience": "",
+          "experience desc": "",
+          "free": "",
+          "free desc": "",
+          "team": ""
+        },
+        "type": {
+          "extraDatasetSize": "Extra dataset size",
+          "standard": ""
+        }
       }
     }
   },
@@ -1282,6 +1352,9 @@
       "Data Length": "Data length",
       "Dataset store": "",
       "Duration": "Duration(s)",
+      "Extension Input Token Length": "Extension input tokens",
+      "Extension Output Token Length": "Extension output tokens",
+      "Extension result": "Extension result",
       "Input Token Length": "Input tokens",
       "Module name": "Module name",
       "Next Step Guide": "",

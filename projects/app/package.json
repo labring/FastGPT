@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.6.7",
+  "version": "4.6.8",
   "private": false,
   "scripts": {
     "dev": "next dev",
@@ -21,6 +21,7 @@
     "@fastgpt/plugins": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
+    "@fortaine/fetch-event-source": "^3.0.6",
     "@node-rs/jieba": "^1.7.2",
     "@tanstack/react-query": "^4.24.10",
     "@types/nprogress": "^0.2.0",

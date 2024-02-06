@@ -3,9 +3,9 @@ import { ModuleIOValueTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 
 export type FlowModuleTemplateType = {
-  id: string;
+  id: string; // module id, unique
   templateType: `${ModuleTemplateTypeEnum}`;
-  flowType: `${FlowNodeTypeEnum}`; // unique
+  flowType: `${FlowNodeTypeEnum}`; // render node card
   avatar?: string;
   name: string;
   intro: string; // template list intro
@@ -85,12 +85,14 @@ export type RunningModuleItemType = {
   inputs: {
     key: string;
     value?: any;
+    valueType?: `${ModuleIOValueTypeEnum}`;
   }[];
   outputs: {
     key: string;
     answer?: boolean;
     response?: boolean;
     value?: any;
+    valueType?: `${ModuleIOValueTypeEnum}`;
     targets: {
       moduleId: string;
       key: string;
@@ -115,5 +117,6 @@ export type ChatDispatchProps = {
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
   outputs: RunningModuleItemType['outputs'];
-  inputs: T;
+  inputs: RunningModuleItemType['inputs'];
+  params: T;
 };

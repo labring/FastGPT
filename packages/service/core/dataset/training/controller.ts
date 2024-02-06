@@ -40,12 +40,12 @@ export async function pushDataListToTrainingQueue({
   trainingMode = TrainingModeEnum.chunk,
 
   vectorModelList = [],
-  qaModelList = []
+  datasetModelList = []
 }: {
   teamId: string;
   tmbId: string;
   vectorModelList: VectorModelItemType[];
-  qaModelList: LLMModelItemType[];
+  datasetModelList: LLMModelItemType[];
 } & PushDatasetDataProps): Promise<PushDatasetDataResponse> {
   const {
     datasetId: { _id: datasetId, vectorModel, agentModel }
@@ -68,7 +68,7 @@ export async function pushDataListToTrainingQueue({
     }
 
     if (trainingMode === TrainingModeEnum.qa) {
-      const qaModelData = qaModelList?.find((item) => item.model === agentModel);
+      const qaModelData = datasetModelList?.find((item) => item.model === agentModel);
       if (!qaModelData) {
         return Promise.reject(`Model ${agentModel} is inValid`);
       }
@@ -150,7 +150,7 @@ export async function pushDataListToTrainingQueue({
           model,
           q: item.q,
           a: item.a,
-          chunkIndex: item.chunkIndex ?? i,
+          chunkIndex: item.chunkIndex ?? 0,
           weight: weight ?? 0,
           indexes: item.indexes
         }))

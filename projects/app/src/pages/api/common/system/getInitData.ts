@@ -22,10 +22,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   jsonRes<InitDateResponse>(res, {
     data: {
       feConfigs: global.feConfigs,
-      chatModels: global.chatModels,
-      qaModels: global.qaModels,
-      cqModels: global.cqModels,
-      extractModels: global.extractModels,
+      subPlans: global.subPlans,
+      llmModels: global.llmModels,
       vectorModels: global.vectorModels,
       reRankModels:
         global.reRankModels?.map((item) => ({
@@ -33,7 +31,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           requestUrl: undefined,
           requestAuth: undefined
         })) || [],
-      qgModes: global.qgModels,
       whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
       systemVersion: global.systemVersion || '0.0.0',
@@ -69,13 +66,13 @@ export async function getInitConfig() {
     await Promise.all([
       initGlobal(),
       initSystemConfig(),
-      getSimpleModeTemplates(),
+      // getSimpleModeTemplates(),
       getSystemVersion(),
       getSystemPlugin()
     ]);
 
     console.log({
-      simpleModeTemplates: global.simpleModeTemplates,
+      // simpleModeTemplates: global.simpleModeTemplates,
       communityPlugins: global.communityPlugins
     });
   } catch (error) {
@@ -119,11 +116,8 @@ export async function initSystemConfig() {
       ...fileRes.systemEnv,
       ...(dbConfig.systemEnv || {})
     },
-    chatModels: dbConfig.chatModels || fileRes.chatModels || [],
-    qaModels: dbConfig.qaModels || fileRes.qaModels || [],
-    cqModels: dbConfig.cqModels || fileRes.cqModels || [],
-    extractModels: dbConfig.extractModels || fileRes.extractModels || [],
-    qgModels: dbConfig.qgModels || fileRes.qgModels || [],
+    subPlans: dbConfig.subPlans || fileRes.subPlans,
+    llmModels: dbConfig.llmModels || fileRes.llmModels || [],
     vectorModels: dbConfig.vectorModels || fileRes.vectorModels || [],
     reRankModels: dbConfig.reRankModels || fileRes.reRankModels || [],
     audioSpeechModels: dbConfig.audioSpeechModels || fileRes.audioSpeechModels || [],
@@ -133,12 +127,9 @@ export async function initSystemConfig() {
   // set config
   global.feConfigs = config.feConfigs;
   global.systemEnv = config.systemEnv;
+  global.subPlans = config.subPlans;
 
-  global.chatModels = config.chatModels;
-  global.qaModels = config.qaModels;
-  global.cqModels = config.cqModels;
-  global.extractModels = config.extractModels;
-  global.qgModels = config.qgModels;
+  global.llmModels = config.llmModels;
   global.vectorModels = config.vectorModels;
   global.reRankModels = config.reRankModels;
   global.audioSpeechModels = config.audioSpeechModels;
@@ -147,11 +138,8 @@ export async function initSystemConfig() {
   console.log({
     feConfigs: global.feConfigs,
     systemEnv: global.systemEnv,
-    chatModels: global.chatModels,
-    qaModels: global.qaModels,
-    cqModels: global.cqModels,
-    extractModels: global.extractModels,
-    qgModels: global.qgModels,
+    subPlans: global.subPlans,
+    llmModels: global.llmModels,
     vectorModels: global.vectorModels,
     reRankModels: global.reRankModels,
     audioSpeechModels: global.audioSpeechModels,
@@ -177,38 +165,38 @@ export function getSystemVersion() {
   }
 }
 
-async function getSimpleModeTemplates() {
-  if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
+// async function getSimpleModeTemplates() {
+//   if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
 
-  try {
-    const basePath =
-      process.env.NODE_ENV === 'development' ? 'data/simpleTemplates' : '/app/data/simpleTemplates';
-    // read data/simpleTemplates directory, get all json file
-    const files = readdirSync(basePath);
-    // filter json file
-    const filterFiles = files.filter((item) => item.endsWith('.json'));
+//   try {
+//     const basePath =
+//       process.env.NODE_ENV === 'development' ? 'data/simpleTemplates' : '/app/data/simpleTemplates';
+//     // read data/simpleTemplates directory, get all json file
+//     const files = readdirSync(basePath);
+//     // filter json file
+//     const filterFiles = files.filter((item) => item.endsWith('.json'));
 
-    // read json file
-    const fileTemplates = filterFiles.map((item) => {
-      const content = readFileSync(`${basePath}/${item}`, 'utf-8');
-      return {
-        id: item.replace('.json', ''),
-        ...JSON.parse(content)
-      };
-    });
+//     // read json file
+//     const fileTemplates = filterFiles.map((item) => {
+//       const content = readFileSync(`${basePath}/${item}`, 'utf-8');
+//       return {
+//         id: item.replace('.json', ''),
+//         ...JSON.parse(content)
+//       };
+//     });
 
-    // fetch templates from plus
-    const plusTemplates = await getSimpleTemplatesFromPlus();
+//     // fetch templates from plus
+//     const plusTemplates = await getSimpleTemplatesFromPlus();
 
-    global.simpleModeTemplates = [
-      SimpleModeTemplate_FastGPT_Universal,
-      ...plusTemplates,
-      ...fileTemplates
-    ];
-  } catch (error) {
-    global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal];
-  }
-}
+//     global.simpleModeTemplates = [
+//       SimpleModeTemplate_FastGPT_Universal,
+//       ...plusTemplates,
+//       ...fileTemplates
+//     ];
+//   } catch (error) {
+//     global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal];
+//   }
+// }
 
 function getSystemPlugin() {
   if (global.communityPlugins && global.communityPlugins.length > 0) return;

@@ -1,17 +1,11 @@
-export const getChatModel = (model?: string) => {
-  return global.chatModels.find((item) => item.model === model) ?? global.chatModels[0];
+export const getLLMModel = (model?: string) => {
+  return global.llmModels.find((item) => item.model === model) ?? global.llmModels[0];
 };
-export const getQAModel = (model?: string) => {
-  return global.qaModels.find((item) => item.model === model) || global.qaModels[0];
-};
-export const getCQModel = (model?: string) => {
-  return global.cqModels.find((item) => item.model === model) || global.cqModels[0];
-};
-export const getExtractModel = (model?: string) => {
-  return global.extractModels.find((item) => item.model === model) || global.extractModels[0];
-};
-export const getQGModel = (model?: string) => {
-  return global.qgModels.find((item) => item.model === model) || global.qgModels[0];
+export const getDatasetModel = (model?: string) => {
+  return (
+    global.llmModels?.filter((item) => item.datasetProcess)?.find((item) => item.model === model) ??
+    global.llmModels[0]
+  );
 };
 
 export const getVectorModel = (model?: string) => {
@@ -33,22 +27,14 @@ export function getReRankModel(model?: string) {
 }
 
 export enum ModelTypeEnum {
-  chat = 'chat',
-  qa = 'qa',
-  cq = 'cq',
-  extract = 'extract',
-  qg = 'qg',
+  llm = 'llm',
   vector = 'vector',
   audioSpeech = 'audioSpeech',
   whisper = 'whisper',
   rerank = 'rerank'
 }
 export const getModelMap = {
-  [ModelTypeEnum.chat]: getChatModel,
-  [ModelTypeEnum.qa]: getQAModel,
-  [ModelTypeEnum.cq]: getCQModel,
-  [ModelTypeEnum.extract]: getExtractModel,
-  [ModelTypeEnum.qg]: getQGModel,
+  [ModelTypeEnum.llm]: getLLMModel,
   [ModelTypeEnum.vector]: getVectorModel,
   [ModelTypeEnum.audioSpeech]: getAudioSpeechModel,
   [ModelTypeEnum.whisper]: getWhisperModel,

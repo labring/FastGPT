@@ -7,7 +7,6 @@ import { throttle } from 'lodash';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
-import { feConfigs } from '@/web/common/system/staticData';
 import dynamic from 'next/dynamic';
 
 import Auth from './auth';
@@ -26,7 +25,8 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/chat/share': true,
   '/app/edit': true,
   '/chat': true,
-  '/tools/price': true
+  '/tools/price': true,
+  '/price': true
 };
 const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -34,14 +34,15 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/login/provider': true,
   '/login/fastlogin': true,
   '/chat/share': true,
-  '/tools/price': true
+  '/tools/price': true,
+  '/price': true
 };
 
 const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
-  const { loading, setScreenWidth, isPc } = useSystemStore();
+  const { loading, setScreenWidth, isPc, feConfigs } = useSystemStore();
   const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(
@@ -74,12 +75,14 @@ const Layout = ({ children }: { children: JSX.Element }) => {
     refetchInterval: 10000
   });
 
+  const isHideNavbar = !!pcUnShowLayoutRoute[router.pathname];
+
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
         {isPc === true && (
           <>
-            {pcUnShowLayoutRoute[router.pathname] ? (
+            {isHideNavbar ? (
               <Auth>{children}</Auth>
             ) : (
               <>

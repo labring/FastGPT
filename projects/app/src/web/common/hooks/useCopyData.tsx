@@ -1,5 +1,5 @@
 import { useTranslation } from 'next-i18next';
-import { useToast } from './useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 /**
  * copy text data

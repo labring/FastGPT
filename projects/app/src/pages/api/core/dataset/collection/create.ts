@@ -21,12 +21,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       per: 'w'
     });
 
+    const { _id } = await createOneCollection({
+      ...body,
+      teamId,
+      tmbId
+    });
+
     jsonRes(res, {
-      data: await createOneCollection({
-        ...body,
-        teamId,
-        tmbId
-      })
+      data: _id
     });
   } catch (err) {
     jsonRes(res, {

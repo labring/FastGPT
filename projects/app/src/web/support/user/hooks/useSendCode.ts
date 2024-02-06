@@ -1,16 +1,17 @@
 import { useState, useMemo, useCallback } from 'react';
 import { sendAuthCode } from '@/web/support/user/api';
 import { UserAuthTypeEnum } from '@fastgpt/global/support/user/constant';
-import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 let timer: any;
 
 export const useSendCode = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
   const [codeSending, setCodeSending] = useState(false);
   const [codeCountDown, setCodeCountDown] = useState(0);
   const sendCodeText = useMemo(() => {

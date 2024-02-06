@@ -123,25 +123,21 @@ const RenderInput = ({ flowInputList, moduleId, CustomComponent }: Props) => {
         return <Component inputs={filterInputs} item={input} moduleId={moduleId} />;
       })();
 
-      return (
+      return input.type !== FlowNodeInputTypeEnum.hidden ? (
         <Box key={input.key} _notLast={{ mb: 7 }} position={'relative'}>
           {input.key === ModuleInputKeyEnum.userChatInput && (
             <UserChatInput inputs={filterInputs} item={input} moduleId={moduleId} />
           )}
-          {input.type !== FlowNodeInputTypeEnum.hidden && (
-            <>
-              {!!input.label && (
-                <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
-              )}
-              {!!RenderComponent && (
-                <Box mt={2} className={'nodrag'}>
-                  {RenderComponent}
-                </Box>
-              )}
-            </>
+          {!!input.label && (
+            <InputLabel moduleId={moduleId} inputKey={input.key} mode={mode} {...input} />
+          )}
+          {!!RenderComponent && (
+            <Box mt={2} className={'nodrag'}>
+              {RenderComponent}
+            </Box>
           )}
         </Box>
-      );
+      ) : null;
     });
   }, [memoCustomComponent, filterInputs, mode, moduleId]);
 

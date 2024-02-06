@@ -38,7 +38,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 
 ### 嵌套对象使用
 
-**入参**
+#### 入参
 
 假设我们设计了`3个`输入。
 
@@ -58,7 +58,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 }
 ```
 
-**出参**
+#### 出参
 
 假设接口的输出结构为: 
 
@@ -66,18 +66,46 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 {
   "message": "测试",
   "data":{
-    "name": "name",
-    "age": 10
+      "user": {
+        "name": "xxx",
+        "age": 12
+      },
+      "list": [
+        {
+          "name": "xxx",
+          "age": 50
+        },
+        [{ "test": 22 }]
+      ],
+      "psw": "xxx"
   }
 }
 ```
 
-那么，自定出参的`key`可以设置为: 
+最终得到的解析为: 
 
-- message (string)
-- data.name (string)
-- data.age (number)
+```json
+{
+  "user": { "name": "xxx", "age": 12 },
+  "user.name": "xxx",
+  "user.age": 12,
+  "list": [ { "name": "xxx", "age": 50 }, [{ "test": 22 }] ],
+  "list[0]": { "name": "xxx", "age": 50 },
+  "list[0].name": "xxx",
+  "list[0].age": 50,
+  "list[1]": [ { "test": 22 } ],
+  "list[1][0]": { "test": 22 },
+  "list[1][0].test": 22,
+  "psw": "xxx"
+}
+```
 
+你可以使用`json`里对应的`key`来获取值。
+
+
+### 格式化输出
+
+FastGPT v4.6.8 后，加入了出参格式化功能，主要以`json`格式化成`字符串`为主。如果你的输出类型选择了`字符串`，则会将`HTTP`对应`key`的值，转成`json`字符串进行输出。因此，未来你可以直接从`HTTP`接口输出内容至`文本加工`中，然后拼接适当的提示词，最终输入给`AI对话`。
 
 ## POST 示例
 

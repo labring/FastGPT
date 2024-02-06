@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

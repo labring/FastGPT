@@ -14,7 +14,7 @@ import Container from '../modules/Container';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import TargetHandle from '../render/TargetHandle';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import {
   EditNodeFieldType,
   FlowNodeInputItemType,
@@ -42,18 +42,14 @@ const createEditField = {
   inputType: false
 };
 
-const NodePluginOutput = React.memo(function NodePluginOutput({
-  data
-}: {
-  data: FlowModuleItemType;
-}) {
+const NodePluginOutput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
   const [createField, setCreateField] = useState<EditNodeFieldType>();
   const [editField, setEditField] = useState<EditNodeFieldType>();
 
   return (
-    <NodeCard minW={'300px'} {...data}>
+    <NodeCard minW={'300px'} selected={selected} forbidMenu {...data}>
       <Container mt={1} borderTop={'2px solid'} borderTopColor={'myGray.300'}>
         {inputs.map((item) => (
           <Flex
@@ -237,8 +233,6 @@ const NodePluginOutput = React.memo(function NodePluginOutput({
       )}
     </NodeCard>
   );
-});
+};
 
-export default function Node({ data }: NodeProps<FlowModuleItemType>) {
-  return <NodePluginOutput data={data} />;
-}
+export default React.memo(NodePluginOutput);

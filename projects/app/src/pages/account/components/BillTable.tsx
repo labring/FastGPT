@@ -45,7 +45,10 @@ const BillTable = () => {
   const sourceList = useMemo(
     () => [
       { label: t('common.All'), value: '' },
-      ...Object.entries(BillSourceMap).map(([key, value]) => ({ label: value.label, value: key }))
+      ...Object.entries(BillSourceMap).map(([key, value]) => ({
+        label: t(value.label),
+        value: key
+      }))
     ],
     [t]
   );
@@ -152,7 +155,7 @@ const BillTable = () => {
               <Tr key={item.id}>
                 {/* <Td>{item.memberName}</Td> */}
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                <Td>{BillSourceMap[item.source]?.label}</Td>
+                <Td>{t(BillSourceMap[item.source]?.label)}</Td>
                 <Td>{t(item.appName) || '-'}</Td>
                 <Td>{item.total}元</Td>
                 <Td>

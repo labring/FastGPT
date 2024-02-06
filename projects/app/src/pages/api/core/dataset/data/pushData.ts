@@ -11,6 +11,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
+import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -37,8 +38,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // auth dataset limit
     await checkDatasetLimit({
       teamId,
-      freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize,
-      insertLen: predictDataLimitLength(collection.trainingType, data)
+      insertLen: predictDataLimitLength(collection.trainingType, data),
+      standardPlans: getStandardSubPlan()
     });
 
     jsonRes<PushDatasetDataResponse>(res, {

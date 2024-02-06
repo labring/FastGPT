@@ -9,9 +9,13 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '../../../../Icon';
 import { Box, Flex } from '@chakra-ui/react';
 import { useBasicTypeaheadTriggerMatch } from '../../utils';
-import { PickerMenuItemType } from '../../type.d';
+import { EditorVariablePickerType } from '../../type.d';
 
-export default function VariablePickerPlugin({ variables }: { variables: PickerMenuItemType[] }) {
+export default function VariablePickerPlugin({
+  variables
+}: {
+  variables: EditorVariablePickerType[];
+}) {
   const [editor] = useLexicalComposerContext();
   const [queryString, setQueryString] = useState<string | null>(null);
   const { t } = useTranslation();

@@ -3,7 +3,7 @@ import { Box, Flex, Button, IconButton } from '@chakra-ui/react';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRouter } from 'next/router';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import { delModelById } from '@/web/core/app/api';
 import { useTranslation } from 'next-i18next';
@@ -116,12 +116,12 @@ const AppCard = ({ appId }: { appId: string }) => {
                 router.replace({
                   query: {
                     appId,
-                    currentTab: 'outLink'
+                    currentTab: 'publish'
                   }
                 });
               }}
             >
-              {t('core.app.navbar.External')}
+              {t('core.app.navbar.Publish')}
             </Button>
             {appDetail.isOwner && (
               <Button

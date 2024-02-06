@@ -5,6 +5,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DelHistoryProps } from '@/global/core/chat/api';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 /* clear chat history */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -22,13 +23,21 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       per: 'w'
     });
 
-    await MongoChatItem.deleteMany({
-      appId,
-      chatId
-    });
-    await MongoChat.findOneAndRemove({
-      appId,
-      chatId
+    await mongoSessionRun(async (session) => {
+      await MongoChatItem.deleteMany(
+        {
+          appId,
+          chatId
+        },
+        { session }
+      );
+      await MongoChat.findOneAndRemove(
+        {
+          appId,
+          chatId
+        },
+        { session }
+      );
     });
 
     jsonRes(res);

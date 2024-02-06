@@ -639,15 +639,6 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "connected": false
       },
       {
-        "key": "datasetParamsModal",
-        "type": "selectDatasetParamsModal",
-        "label": "",
-        "valueType": "any",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
         "key": "userChatInput",
         "type": "target",
         "label": "core.module.input.label.user question",

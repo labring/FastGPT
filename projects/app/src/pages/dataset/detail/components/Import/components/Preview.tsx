@@ -29,7 +29,7 @@ const Preview = ({
       .map((source) =>
         source.chunks.slice(0, oneSourceChunkLength).map((chunk, i) => ({
           ...chunk,
-          chunkIndex: i + 1,
+          index: i + 1,
           sourceName: source.sourceName,
           sourceIcon: source.icon
         }))
@@ -86,7 +86,7 @@ const Preview = ({
                     bg={'primary.50'}
                     borderRadius={'sm'}
                   >
-                    # {chunk.chunkIndex}
+                    # {chunk.index}
                   </Box>
                   <Flex ml={2} fontWeight={'bold'} alignItems={'center'} gap={1}>
                     <MyIcon name={chunk.sourceIcon as any} w={'14px'} />

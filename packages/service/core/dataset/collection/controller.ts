@@ -15,6 +15,7 @@ import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';
 import { delFileByFileIdList } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { ClientSession } from '../../../common/mongo';
 
 export async function createOneCollection({
   teamId,
@@ -35,41 +36,53 @@ export async function createOneCollection({
   hashRawText,
   rawTextLength,
   metadata = {},
+  session,
   ...props
-}: CreateDatasetCollectionParams & { teamId: string; tmbId: string; [key: string]: any }) {
-  const { _id } = await MongoDatasetCollection.create({
-    ...props,
-    teamId,
-    tmbId,
-    parentId: parentId || null,
-    datasetId,
-    name,
-    type,
+}: CreateDatasetCollectionParams & {
+  teamId: string;
+  tmbId: string;
+  [key: string]: any;
+  session?: ClientSession;
+}) {
+  const [collection] = await MongoDatasetCollection.create(
+    [
+      {
+        ...props,
+        teamId,
+        tmbId,
+        parentId: parentId || null,
+        datasetId,
+        name,
+        type,
 
-    trainingType,
-    chunkSize,
-    chunkSplitter,
-    qaPrompt,
+        trainingType,
+        chunkSize,
+        chunkSplitter,
+        qaPrompt,
 
-    fileId,
-    rawLink,
+        fileId,
+        rawLink,
 
-    rawTextLength,
-    hashRawText,
-    metadata
-  });
+        rawTextLength,
+        hashRawText,
+        metadata
+      }
+    ],
+    { session }
+  );
 
   // create default collection
   if (type === DatasetCollectionTypeEnum.folder) {
     await createDefaultCollection({
       datasetId,
-      parentId: _id,
+      parentId: collection._id,
       teamId,
-      tmbId
+      tmbId,
+      session
     });
   }
 
-  return _id;
+  return collection;
 }
 
 // create default collection
@@ -78,34 +91,43 @@ export function createDefaultCollection({
   datasetId,
   parentId,
   teamId,
-  tmbId
+  tmbId,
+  session
 }: {
   name?: '手动录入' | '手动标注';
   datasetId: string;
   parentId?: string;
   teamId: string;
   tmbId: string;
+  session?: ClientSession;
 }) {
-  return MongoDatasetCollection.create({
-    name,
-    teamId,
-    tmbId,
-    datasetId,
-    parentId,
-    type: DatasetCollectionTypeEnum.virtual,
-    trainingType: TrainingModeEnum.chunk,
-    chunkSize: 0,
-    updateTime: new Date('2099')
-  });
+  return MongoDatasetCollection.create(
+    [
+      {
+        name,
+        teamId,
+        tmbId,
+        datasetId,
+        parentId,
+        type: DatasetCollectionTypeEnum.virtual,
+        trainingType: TrainingModeEnum.chunk,
+        chunkSize: 0,
+        updateTime: new Date('2099')
+      }
+    ],
+    { session }
+  );
 }
 
 /**
  * delete collection and it related data
  */
 export async function delCollectionAndRelatedSources({
-  collections
+  collections,
+  session
 }: {
   collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
+  session: ClientSession;
 }) {
   if (collections.length === 0) return;
 
@@ -128,24 +150,25 @@ export async function delCollectionAndRelatedSources({
   await delay(2000);
 
   // delete dataset.datas
-  await MongoDatasetData.deleteMany({ teamId, collectionId: { $in: collectionIds } });
-  // delete pg data
-  await deleteDatasetDataVector({ teamId, collectionIds });
-
-  // delete file and imgs
-  await Promise.all([
-    delImgByRelatedId({
-      teamId,
-      relateIds: relatedImageIds
-    }),
-    delFileByFileIdList({
-      bucketName: BucketNameEnum.dataset,
-      fileIdList
-    })
-  ]);
-
+  await MongoDatasetData.deleteMany({ teamId, collectionId: { $in: collectionIds } }, { session });
+  // delete imgs
+  await delImgByRelatedId({
+    teamId,
+    relateIds: relatedImageIds,
+    session
+  });
   // delete collections
-  await MongoDatasetCollection.deleteMany({
-    _id: { $in: collectionIds }
+  await MongoDatasetCollection.deleteMany(
+    {
+      _id: { $in: collectionIds }
+    },
+    { session }
+  );
+
+  // no session delete: delete files, vector data
+  await deleteDatasetDataVector({ teamId, collectionIds });
+  await delFileByFileIdList({
+    bucketName: BucketNameEnum.dataset,
+    fileIdList
   });
 }

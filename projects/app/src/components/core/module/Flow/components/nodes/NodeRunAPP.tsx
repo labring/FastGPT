@@ -7,11 +7,11 @@ import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 
-const NodeRunAPP = React.memo(function NodeRunAPP({ data }: { data: FlowModuleItemType }) {
+const NodeRunAPP = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
 
   return (
-    <NodeCard minW={'350px'} {...data}>
+    <NodeCard minW={'350px'} selected={selected} {...data}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
         <RenderInput moduleId={moduleId} flowInputList={inputs} />
       </Container>
@@ -21,7 +21,5 @@ const NodeRunAPP = React.memo(function NodeRunAPP({ data }: { data: FlowModuleIt
       </Container>
     </NodeCard>
   );
-});
-export default function Node({ data }: NodeProps<FlowModuleItemType>) {
-  return <NodeRunAPP data={data} />;
-}
+};
+export default React.memo(NodeRunAPP);

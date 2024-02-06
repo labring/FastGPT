@@ -1,11 +1,12 @@
 import React, { useMemo } from 'react';
-import { Box, Grid } from '@chakra-ui/react';
+import { Box, Flex, Grid, Image } from '@chakra-ui/react';
 import type { GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 // @ts-ignore
 interface Props extends GridProps {
-  list: { id: string; label: string | React.ReactNode }[];
+  list: { id: string; icon?: string; label: string | React.ReactNode }[];
   activeId: string;
   size?: 'sm' | 'md' | 'lg';
   onChange: (id: string) => void;
@@ -46,10 +47,11 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
       {...props}
     >
       {list.map((item) => (
-        <Box
+        <Flex
           key={item.id}
           py={sizeMap.inlineP}
-          textAlign={'center'}
+          alignItems={'center'}
+          justifyContent={'center'}
           borderBottom={'2px solid transparent'}
           px={3}
           whiteSpace={'nowrap'}
@@ -68,8 +70,17 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
             onChange(item.id);
           }}
         >
+          {item.icon && (
+            <>
+              {item.icon.startsWith('/') ? (
+                <Image mr={1} src={item.icon} alt={''} w={'16px'} />
+              ) : (
+                <MyIcon mr={1} name={item.icon as any} w={'16px'} />
+              )}
+            </>
+          )}
           {typeof item.label === 'string' ? t(item.label) : item.label}
-        </Box>
+        </Flex>
       ))}
     </Grid>
   );
