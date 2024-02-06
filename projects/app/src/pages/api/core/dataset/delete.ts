@@ -5,6 +5,7 @@ import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { delDatasetRelevantData } from '@fastgpt/service/core/dataset/controller';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -32,11 +33,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // delete all dataset.data and pg data
-    await delDatasetRelevantData({ datasets });
-
-    // delete dataset data
-    await MongoDataset.deleteMany({
-      _id: { $in: datasets.map((d) => d._id) }
+    await mongoSessionRun(async (session) => {
+      // delete dataset data
+      await delDatasetRelevantData({ datasets, session });
+      await MongoDataset.deleteMany(
+        {
+          _id: { $in: datasets.map((d) => d._id) }
+        },
+        { session }
+      );
     });
 
     jsonRes(res);

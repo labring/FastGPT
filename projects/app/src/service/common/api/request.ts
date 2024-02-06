@@ -1,3 +1,4 @@
+import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
 import axios, { Method, InternalAxiosRequestConfig, AxiosResponse } from 'axios';
 
 interface ConfigType {
@@ -78,7 +79,7 @@ export function request(url: string, data: any, config: ConfigType, method: Meth
 
   return instance
     .request({
-      baseURL: `http://${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`,
+      baseURL: `http://${SERVICE_LOCAL_HOST}`,
       url,
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,

@@ -61,10 +61,12 @@ export enum ModuleInputKeyEnum {
   // dataset
   datasetSelectList = 'datasets',
   datasetSimilarity = 'similarity',
-  datasetLimit = 'limit',
+  datasetMaxTokens = 'limit',
   datasetSearchMode = 'searchMode',
   datasetSearchUsingReRank = 'usingReRank',
-  datasetParamsModal = 'datasetParamsModal',
+  datasetSearchUsingExtensionQuery = 'datasetSearchUsingExtensionQuery',
+  datasetSearchExtensionModel = 'datasetSearchExtensionModel',
+  datasetSearchExtensionBg = 'datasetSearchExtensionBg',
 
   // context extract
   contextExtractInput = 'content',

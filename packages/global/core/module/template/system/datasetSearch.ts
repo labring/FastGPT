@@ -37,22 +37,15 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleInputKeyEnum.datasetSimilarity,
-      type: FlowNodeInputTypeEnum.hidden,
+      type: FlowNodeInputTypeEnum.selectDatasetParamsModal,
       label: '',
       value: 0.4,
       valueType: ModuleIOValueTypeEnum.number,
-      min: 0,
-      max: 1,
-      step: 0.01,
-      markList: [
-        { label: '0', value: 0 },
-        { label: '1', value: 1 }
-      ],
       showTargetInApp: false,
       showTargetInPlugin: false
     },
     {
-      key: ModuleInputKeyEnum.datasetLimit,
+      key: ModuleInputKeyEnum.datasetMaxTokens,
       type: FlowNodeInputTypeEnum.hidden,
       label: '',
       value: 1500,
@@ -79,12 +72,30 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       value: false
     },
     {
-      key: ModuleInputKeyEnum.datasetParamsModal,
-      type: FlowNodeInputTypeEnum.selectDatasetParamsModal,
+      key: ModuleInputKeyEnum.datasetSearchUsingExtensionQuery,
+      type: FlowNodeInputTypeEnum.hidden,
       label: '',
-      valueType: ModuleIOValueTypeEnum.any,
+      valueType: ModuleIOValueTypeEnum.boolean,
+      showTargetInApp: false,
+      showTargetInPlugin: false,
+      value: true
+    },
+    {
+      key: ModuleInputKeyEnum.datasetSearchExtensionModel,
+      type: FlowNodeInputTypeEnum.hidden,
+      label: '',
+      valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: false,
       showTargetInPlugin: false
+    },
+    {
+      key: ModuleInputKeyEnum.datasetSearchExtensionBg,
+      type: FlowNodeInputTypeEnum.hidden,
+      label: '',
+      valueType: ModuleIOValueTypeEnum.string,
+      showTargetInApp: false,
+      showTargetInPlugin: false,
+      value: ''
     },
     Input_Template_UserChatInput
   ],
@@ -106,8 +117,7 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleOutputKeyEnum.datasetQuoteQA,
-      label: 'core.module.output.label.Quote',
-      description: 'core.module.output.label.Quote intro',
+      label: 'core.module.Dataset quote.label',
       type: FlowNodeOutputTypeEnum.source,
       valueType: ModuleIOValueTypeEnum.datasetQuote,
       targets: []

@@ -66,7 +66,7 @@ export const pushQABill = async ({
   const { total } = formatModelPrice2Store({
     model,
     inputLen: charsLength,
-    type: ModelTypeEnum.qa
+    type: ModelTypeEnum.llm
   });
 
   concatBill({
@@ -87,7 +87,10 @@ export const pushGenerateVectorBill = ({
   tmbId,
   charsLength,
   model,
-  source = BillSourceEnum.fastgpt
+  source = BillSourceEnum.fastgpt,
+  extensionModel,
+  extensionInputTokens,
+  extensionOutputTokens
 }: {
   billId?: string;
   teamId: string;
@@ -95,19 +98,43 @@ export const pushGenerateVectorBill = ({
   charsLength: number;
   model: string;
   source?: `${BillSourceEnum}`;
+
+  extensionModel?: string;
+  extensionInputTokens?: number;
+  extensionOutputTokens?: number;
 }) => {
-  let { total, modelName } = formatModelPrice2Store({
+  const { total: totalVector, modelName: vectorModelName } = formatModelPrice2Store({
     model,
     inputLen: charsLength,
     type: ModelTypeEnum.vector
   });
+
+  const { extensionTotal, extensionModelName } = (() => {
+    if (!extensionModel || !extensionInputTokens || !extensionOutputTokens)
+      return {
+        extensionTotal: 0,
+        extensionModelName: ''
+      };
+    const { total, modelName } = formatModelPrice2Store({
+      model: extensionModel,
+      inputLen: extensionInputTokens,
+      outputLen: extensionOutputTokens,
+      type: ModelTypeEnum.llm
+    });
+    return {
+      extensionTotal: total,
+      extensionModelName: modelName
+    };
+  })();
+
+  const total = totalVector + extensionTotal;
 
   // 插入 Bill 记录
   if (billId) {
     concatBill({
       teamId,
       tmbId,
-      total,
+      total: totalVector,
       billId,
       charsLength,
       listIndex: 0
@@ -123,9 +150,20 @@ export const pushGenerateVectorBill = ({
         {
           moduleName: 'wallet.moduleName.index',
           amount: total,
-          model: modelName,
+          model: vectorModelName,
           charsLength
-        }
+        },
+        ...(extensionModel !== undefined
+          ? [
+              {
+                moduleName: extensionModelName,
+                amount: extensionTotal,
+                model: extensionModelName,
+                inputTokens: extensionInputTokens,
+                outputTokens: extensionOutputTokens
+              }
+            ]
+          : [])
       ]
     });
   }
@@ -143,12 +181,12 @@ export const pushQuestionGuideBill = ({
   teamId: string;
   tmbId: string;
 }) => {
-  const qgModel = global.qgModels[0];
+  const qgModel = global.llmModels[0];
   const { total, modelName } = formatModelPrice2Store({
     inputLen: inputTokens,
     outputLen: outputTokens,
     model: qgModel.model,
-    type: ModelTypeEnum.qg
+    type: ModelTypeEnum.llm
   });
 
   createBill({

@@ -9,6 +9,7 @@ import {
   TrainingModeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { ClientSession } from '../../../common/mongo';
 
 /**
  * get all collection by top collectionId
@@ -149,17 +150,17 @@ export const getCollectionAndRawText = async ({
 
 /* link collection start load data */
 export const reloadCollectionChunks = async ({
-  collectionId,
   collection,
   tmbId,
   billId,
-  rawText
+  rawText,
+  session
 }: {
-  collectionId?: string;
-  collection?: CollectionWithDatasetType;
+  collection: CollectionWithDatasetType;
   tmbId: string;
   billId?: string;
   rawText?: string;
+  session: ClientSession;
 }) => {
   const {
     title,
@@ -168,7 +169,6 @@ export const reloadCollectionChunks = async ({
     isSameRawText
   } = await getCollectionAndRawText({
     collection,
-    collectionId,
     newRawText: rawText
   });
 
@@ -186,6 +186,7 @@ export const reloadCollectionChunks = async ({
     if (col.trainingType === TrainingModeEnum.qa) return col.datasetId.agentModel;
     return Promise.reject('Training model error');
   })();
+
   await MongoDatasetTraining.insertMany(
     chunks.map((item, i) => ({
       teamId: col.teamId,
@@ -199,13 +200,18 @@ export const reloadCollectionChunks = async ({
       q: item,
       a: '',
       chunkIndex: i
-    }))
+    })),
+    { session }
   );
 
   // update raw text
-  await MongoDatasetCollection.findByIdAndUpdate(col._id, {
-    ...(title && { name: title }),
-    rawTextLength: newRawText.length,
-    hashRawText: hashStr(newRawText)
-  });
+  await MongoDatasetCollection.findByIdAndUpdate(
+    col._id,
+    {
+      ...(title && { name: title }),
+      rawTextLength: newRawText.length,
+      hashRawText: hashStr(newRawText)
+    },
+    { session }
+  );
 };

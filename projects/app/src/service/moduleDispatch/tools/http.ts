@@ -2,7 +2,8 @@ import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import axios from 'axios';
-import { flatDynamicParams } from '../utils';
+import { flatDynamicParams, valueTypeFormat } from '../utils';
+import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
 
 export type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
@@ -23,64 +24,42 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     chatId,
     responseChatItemId,
     variables,
-    inputs: {
-      system_httpMethod: httpMethod,
-      url: abandonUrl,
+    outputs,
+    params: {
+      system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
       system_httpHeader: httpHeader,
       ...body
     }
   } = props;
 
+  if (!httpReqUrl) {
+    return Promise.reject('Http url is empty');
+  }
+
   body = flatDynamicParams(body);
 
-  const { requestMethod, requestUrl, requestHeader, requestBody, requestQuery } = await (() => {
-    // 2024-2-12 clear
-    if (abandonUrl) {
-      return {
-        requestMethod: 'POST',
-        requestUrl: abandonUrl,
-        requestHeader: httpHeader,
-        requestBody: {
-          ...body,
-          appId,
-          chatId,
-          variables
-        },
-        requestQuery: {}
-      };
-    }
-    if (httpReqUrl) {
-      return {
-        requestMethod: httpMethod,
-        requestUrl: httpReqUrl,
-        requestHeader: httpHeader,
-        requestBody: {
-          appId,
-          chatId,
-          responseChatItemId,
-          variables,
-          data: body
-        },
-        requestQuery: {
-          appId,
-          chatId,
-          ...variables,
-          ...body
-        }
-      };
-    }
-
-    return Promise.reject('url is empty');
-  })();
+  const requestBody = {
+    appId,
+    chatId,
+    responseChatItemId,
+    variables,
+    data: body
+  };
+  const requestQuery = {
+    appId,
+    chatId,
+    ...variables,
+    ...body
+  };
 
   const formatBody = transformFlatJson({ ...requestBody });
 
   // parse header
   const headers = await (() => {
     try {
-      if (!requestHeader) return {};
-      return JSON.parse(requestHeader);
+      if (!httpHeader) return {};
+      return JSON.parse(httpHeader);
     } catch (error) {
       return Promise.reject('Header 为非法 JSON 格式');
     }
@@ -88,12 +67,20 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
 
   try {
     const response = await fetchData({
-      method: requestMethod,
-      url: requestUrl,
+      method: httpMethod,
+      url: httpReqUrl,
       headers,
       body: formatBody,
       query: requestQuery
     });
+
+    // format output value type
+    const results: Record<string, any> = {};
+    for (const key in response) {
+      const output = outputs.find((item) => item.key === key);
+      if (!output) continue;
+      results[key] = valueTypeFormat(response[key], output.valueType);
+    }
 
     return {
       responseData: {
@@ -101,7 +88,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
         body: formatBody,
         httpResult: response
       },
-      ...response
+      ...results
     };
   } catch (error) {
     console.log(error);
@@ -132,7 +119,7 @@ async function fetchData({
 }): Promise<Record<string, any>> {
   const { data: response } = await axios<Record<string, any>>({
     method,
-    baseURL: `http://${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`,
+    baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
     headers: {
       'Content-Type': 'application/json',
@@ -142,39 +129,74 @@ async function fetchData({
     data: method === 'POST' ? body : {}
   });
 
-  /* 
+  /*
     parse the json:
     {
       user: {
         name: 'xxx',
         age: 12
-      }
+      },
+      list: [
+        {
+          name: 'xxx',
+          age: 50
+        },
+        [{ test: 22 }]
+      ],
       psw: 'xxx'
     }
 
     result: {
-      'user': {
-        name: 'xxx',
-        age: 12
-      },
+      'user': { name: 'xxx', age: 12 },
       'user.name': 'xxx',
       'user.age': 12,
+      'list': [ { name: 'xxx', age: 50 }, [ [Object] ] ],
+      'list[0]': { name: 'xxx', age: 50 },
+      'list[0].name': 'xxx',
+      'list[0].age': 50,
+      'list[1]': [ { test: 22 } ],
+      'list[1][0]': { test: 22 },
+      'list[1][0].test': 22,
       'psw': 'xxx'
     }
   */
   const parseJson = (obj: Record<string, any>, prefix = '') => {
     let result: Record<string, any> = {};
-    for (const key in obj) {
-      if (typeof obj[key] === 'object') {
-        result[key] = obj[key];
-        result = {
-          ...result,
-          ...parseJson(obj[key], `${prefix}${key}.`)
-        };
-      } else {
+
+    if (Array.isArray(obj)) {
+      for (let i = 0; i < obj.length; i++) {
+        result[`${prefix}[${i}]`] = obj[i];
+
+        if (Array.isArray(obj[i])) {
+          result = {
+            ...result,
+            ...parseJson(obj[i], `${prefix}[${i}]`)
+          };
+        } else if (typeof obj[i] === 'object') {
+          result = {
+            ...result,
+            ...parseJson(obj[i], `${prefix}[${i}].`)
+          };
+        }
+      }
+    } else if (typeof obj == 'object') {
+      for (const key in obj) {
         result[`${prefix}${key}`] = obj[key];
+
+        if (Array.isArray(obj[key])) {
+          result = {
+            ...result,
+            ...parseJson(obj[key], `${prefix}${key}`)
+          };
+        } else if (typeof obj[key] === 'object') {
+          result = {
+            ...result,
+            ...parseJson(obj[key], `${prefix}${key}.`)
+          };
+        }
       }
     }
+
     return result;
   };
 

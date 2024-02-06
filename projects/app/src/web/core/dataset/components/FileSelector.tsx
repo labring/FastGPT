@@ -1,6 +1,6 @@
 import MyBox from '@/components/common/MyBox';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { Box, FlexProps } from '@chakra-ui/react';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';

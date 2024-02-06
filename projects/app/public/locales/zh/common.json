@@ -93,6 +93,7 @@
     "Finish": "完成",
     "Input": "输入",
     "Intro": "介绍",
+    "Invalid Json": "无效的JSON格式，请注意检查。",
     "Last Step": "上一步",
     "Last use time": "最后使用时间",
     "Load Failed": "加载失败",
@@ -155,6 +156,7 @@
       "Select Avatar": "点击选择头像",
       "Select Failed": "选择头像异常"
     },
+    "change": "变更",
     "choosable": "可选",
     "confirm": {
       "Common Tip": "操作确认"
@@ -201,6 +203,7 @@
     "link": {
       "UnValid": "无效的链接"
     },
+    "month": "月",
     "price": {
       "Amount": "{{amount}}{{unit}}"
     },
@@ -224,6 +227,7 @@
   },
   "core": {
     "Chat": "对话",
+    "Chat API is error or undefined": "",
     "Chat test": "测试对话",
     "Max Token": "单条数据上限",
     "Start chat": "立即对话",
@@ -271,13 +275,12 @@
       "deterministic": "严谨",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
-        "Open cfr": "开启自动补全",
         "Out Ad Edit": "您即将退出高级编排页面，请确认",
         "Prompt Editor": "提示词编辑",
+        "Query extension background prompt": "对话背景描述",
+        "Query extension background tip": "描述当前对话的范围，便于AI为当前问题进行补全和扩展。填写的内容，通常为该助手",
         "Save and out": "保存并退出",
-        "UnSave": "不保存",
-        "cfr background prompt": "对话背景描述",
-        "cfr background tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n值为空时，表示【首个问题】不使用问题补全功能。\n值为 none 时，表示不使用问题补全功能。"
+        "UnSave": "不保存"
       },
       "error": {
         "App name can not be empty": "应用名不能为空",
@@ -293,6 +296,8 @@
       "navbar": {
         "External": "外部使用",
         "Flow mode": "高级编排",
+        "Publish": "发布",
+        "Publish app": "发布应用",
         "Simple mode": "简易配置"
       },
       "outLink": {
@@ -357,6 +362,7 @@
     "chat": {
       "Admin Mark Content": "纠正后的回复",
       "Audio Speech Error": "语音播报异常",
+      "Chat API is error or undefined": "对话接口报错或返回为空",
       "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
       "Confirm to clear share chat history": "确认删除所有聊天记录？",
       "Converting to text": "正在转换为文本...",
@@ -426,6 +432,7 @@
       },
       "response": {
         "Complete Response": "完整响应",
+        "Extension model": "问题补全模型",
         "Plugin Resonse Detail": "插件详情",
         "Read complete response": "查看详情",
         "Read complete response tips": "点击查看详细流程",
@@ -439,7 +446,7 @@
         "module http result": "响应体",
         "module http url": "请求地址",
         "module limit": "单次搜索上限",
-        "module maxToken": "最大 Tokens",
+        "module maxToken": "最大响应 Tokens",
         "module model": "模型",
         "module name": "模型名",
         "module price": "计费",
@@ -564,6 +571,7 @@
         "id": "数据ID",
         "unit": "条"
       },
+      "embedding model tip": "索引模型可以将自然语言转成向量，用于进行语义检索。\n注意，不同索引模型无法一起使用，选择完索引模型后将无法修改。",
       "error": {
         "Data not found": "数据不存在或已被删除",
         "Start Sync Failed": "开始同步失败",
@@ -644,10 +652,13 @@
       },
       "link": "链接",
       "search": {
-        "Dataset Search Params": "搜索参数",
+        "Basic params": "基础参数",
+        "Dataset Search Params": "知识库搜索配置",
         "Embedding score": "语意检索得分",
         "Empty result response": "空搜索回复",
         "Empty result response Tips": "若填写该内容，没有搜索到合适内容时，将直接回复填写的内容。",
+        "Filter": "搜索过滤",
+        "Limit": "",
         "Max Tokens": "引用上限",
         "Max Tokens Tips": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
         "Min Similarity": "最低相关度",
@@ -665,6 +676,8 @@
         "Source id": "来源ID",
         "Source name": "引用来源名",
         "Top K": "单次搜索上限",
+        "Using cfr": "",
+        "Using query extension": "使用问题补全",
         "mode": {
           "embedding": "语义检索",
           "embedding desc": "使用向量进行文本相关性查询",
@@ -688,6 +701,9 @@
           "rrf desc": "通过倒排计算的方式，合并多个检索结果。"
         },
         "search mode": "搜索模式"
+      },
+      "settings": {
+        "Search basic params": "检索参数"
       },
       "status": {
         "active": "已就绪",
@@ -735,14 +751,24 @@
     "module": {
       "Add question type": "添加问题类型",
       "Data Type": "数据类型",
+      "Dataset quote": {
+        "Add quote": "添加引用",
+        "Concat result": "合并结果",
+        "Input description": "可接收知识库搜索的结果。",
+        "label": "知识库引用"
+      },
       "Field Description": "字段描述",
       "Field Name": "字段名",
       "Field Type": "字段类型",
       "Field key": "字段 Key",
       "Input Type": "输入类型",
       "Plugin output must connect": "自定义输出必须全部连接",
+      "QueryExtension": {
+        "placeholder": "例如:\n关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。",
+        "tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。建议开启该功能后，都简单的描述在对话的背景，否则容易造成补全对象不准确。"
+      },
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
-      "Variable": "参数变量",
+      "Variable": "全局变量",
       "Variable Setting": "变量设置",
       "edit": {
         "Field Already Exist": "key 重复",
@@ -764,8 +790,8 @@
           "Quote": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
           "Response content": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
+          "Trigger": "大部分时候，你不需要连接该属性。\n当你需要延迟执行，或精确控制执行时机时，可以连接该属性。",
           "anyInput": "可传入任意内容",
-          "cfr background": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。\n为空时，表示【首次对话】不使用问题补全功能。",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
           "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
         },
@@ -782,15 +808,13 @@
           "TFSwitch textarea": "自定义 False 匹配规则",
           "aiModel": "AI 模型",
           "anyInput": "任意内容输入",
-          "cfr background": "背景知识",
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
           "user question": "用户问题"
         },
         "placeholder": {
-          "Classify background": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。",
-          "cfr background": "关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。"
+          "Classify background": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。"
         }
       },
       "inputType": {
@@ -837,6 +861,7 @@
         "Classify question intro": "根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于商品“使用”问题\n类型3: 关于商品“购买”问题\n类型4: 其他问题",
         "Dataset search": "知识库搜索",
         "Dataset search intro": "调用知识库搜索能力，查找有可能与问题相关的内容",
+        "Dataset search result concat intro": "可以将多个知识库搜索结果进行合并输出。使用 RRF 的合并方式进行最终排序输出。",
         "External module": "外部调用",
         "Extract field": "文本内容提取",
         "Extract field intro": "可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等",
@@ -845,6 +870,8 @@
         "Http request": "Http 请求",
         "Http request intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "My plugin module": "个人插件",
+        "Query extension": "问题补全",
+        "Query extension intro": "开启问题补全功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
         "Response module": "文本输出",
         "Running app": "应用调用",
         "Running app intro": "可以选择一个其他应用进行调用",
@@ -854,8 +881,6 @@
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
-        "cfr": "问题补全",
-        "cfr intro": "根据历史记录，完善当前问题，使其更利于知识库搜索，同时提高连续对话能力。",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出"
       },
@@ -889,6 +914,9 @@
         "variable options": "选项"
       },
       "variable add option": "添加选项"
+    },
+    "plugin": {
+      "Get Plugin Module Detail Failed": "加载插件异常"
     },
     "shareChat": {
       "Init Error": "初始化对话框失败",
@@ -1127,6 +1155,7 @@
       "Cancel subscription": "取消订阅"
     },
     "user": {
+      "Need to login": "请先登录",
       "Price": "计费标准",
       "auth": {
         "Sending Code": "正在发送"
@@ -1138,28 +1167,69 @@
       },
       "team": {
         "Dataset usage": "知识库容量",
-        "member": "成员",
-        "subscription": {
-          "type": {
-            "extraDatasetSize": "知识库扩容"
-          }
-        }
+        "member": "成员"
       }
     },
     "wallet": {
+      "Balance not enough tip": "余额不足，请先到账号页充值",
       "Buy more": "扩容",
       "Confirm pay": "支付确认",
       "Pay error": "支付失败",
       "Pay success": "支付成功",
+      "bill": {
+        "AI Model": "AI 模型",
+        "AI Type": "AI 类型",
+        "Price": "价格（￥）"
+      },
       "subscription": {
+        "Ai points": "AI 积分计算标准",
+        "Buy now": "开始使用",
         "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
         "Current dataset store": "当前额外容量",
+        "Current plan": "当前计划",
         "Dataset store": "知识库容量",
         "Dataset store price tip": "每月1号从账号余额里扣除",
         "Expand size": "扩大容量",
         "Extra dataset size": "额外知识库容量",
+        "Extra plan": "额外套餐",
+        "Extra plan tip": "标准套餐不够时，您可以购买额外套餐继续使用",
+        "FAQ": "常见问题",
+        "Next plan": "未来计划",
         "Next sub dataset size": "下次订阅额外容量",
-        "Update extra dataset size": "修改知识库额外容量"
+        "Nonsupport": "无法切换",
+        "Refund plan and pay confirm": "切换该套餐您无需支付额外费用，并将退换 {{amount}} 元至余额中。",
+        "Standard plan pay confirm": "切换该套餐，您本次需要补充支付 {{payPrice}} 元。",
+        "Standard update fail": "修改订阅套餐异常",
+        "Standard update success": "变更订阅套餐成功！",
+        "Sub plan": "订阅套餐",
+        "Sub plan tip": "免费使用 FastGPT 或升级更高的套餐",
+        "Training weight": "训练优先级: {{weight}}",
+        "Update extra dataset size": "调整知识库额外容量",
+        "function": {
+          "History store": "{{amount}} 天对话记录保留",
+          "Max app": "{{amount}} 个应用与插件",
+          "Max dataset": "{{amount}} 个知识库",
+          "Max dataset size": "{{amount}} 组知识库数据",
+          "Max members": "{{amount}} 个团队成员",
+          "Points": "{{amount}}万AI积分"
+        },
+        "mode": {
+          "Month": "按月",
+          "Year": "按年",
+          "Year sale": "赠送两个月"
+        },
+        "standardSubLevel": {
+          "enterprise": "企业版",
+          "experience": "体验版",
+          "experience desc": "可使用 {{title}} 的完整功能",
+          "free": "免费版",
+          "free desc": "每月均可免费使用 {{title}} 的基础功能",
+          "team": "团队版"
+        },
+        "type": {
+          "extraDatasetSize": "知识库扩容",
+          "standard": "套餐订阅"
+        }
       }
     }
   },
@@ -1284,6 +1354,9 @@
       "Data Length": "数据长度",
       "Dataset store": "知识库存储",
       "Duration": "时长（秒）",
+      "Extension Input Token Length": "问题补全输入Tokens",
+      "Extension Output Token Length": "问题补全输出Tokens",
+      "Extension result": "问题补全结果",
       "Input Token Length": "输入 Tokens",
       "Module name": "模块名",
       "Next Step Guide": "下一步指引",

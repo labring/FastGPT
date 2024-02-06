@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Textarea, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useFlowProviderStore } from './FlowProvider';
 
 type Props = {

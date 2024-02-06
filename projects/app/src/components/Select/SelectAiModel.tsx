@@ -4,11 +4,13 @@ import MySelect, { type SelectProps } from './index';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
+
 const PriceBox = dynamic(() => import('@/components/support/wallet/Price'));
 
 const SelectAiModel = ({ list, ...props }: SelectProps) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const expandList = useMemo(() => {
     return feConfigs.show_pay
       ? list.concat({
@@ -16,7 +18,7 @@ const SelectAiModel = ({ list, ...props }: SelectProps) => {
           value: 'price'
         })
       : list;
-  }, [list, t]);
+  }, [feConfigs.show_pay, list, t]);
 
   const {
     isOpen: isOpenPriceBox,

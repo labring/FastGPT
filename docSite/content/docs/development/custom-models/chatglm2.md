@@ -99,10 +99,10 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
 
 ## 接入 FastGPT
 
-修改 config.json 配置文件，在 ChatModels 中加入 chatglm2 模型：
+修改 config.json 配置文件，在 llmModels 中加入 chatglm2 模型：
 
 ```json
-"ChatModels": [
+"llmModels": [
   //已有模型
   {
     "model": "chatglm2",

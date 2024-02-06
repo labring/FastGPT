@@ -4,7 +4,7 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -14,19 +14,21 @@ import MyModal from '@/components/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import MySelect from '@/components/Select';
-import { vectorModelList, qaModelList } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { feConfigs } from '@/web/common/system/staticData';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
-  const { isPc } = useSystemStore();
+  const { isPc, feConfigs, vectorModelList, datasetModelList } = useSystemStore();
+
+  const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
+
   const { register, setValue, getValues, handleSubmit } = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,
@@ -34,8 +36,8 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       avatar: '/icon/logo.svg',
       name: '',
       intro: '',
-      vectorModel: vectorModelList[0].model,
-      agentModel: qaModelList[0].model
+      vectorModel: filterNotHiddenVectorModelList[0].model,
+      agentModel: datasetModelList[0].model
     }
   });
 
@@ -145,18 +147,25 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
               bg={'myWhite.600'}
               placeholder={t('common.Name')}
               maxLength={30}
-              {...register('name')}
+              {...register('name', {
+                required: true
+              })}
             />
           </Flex>
         </Box>
-        {vectorModelList.length > 1 && (
+        {filterNotHiddenVectorModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
-            <Box flex={'0 0 100px'}>{t('core.ai.model.Vector Model')}</Box>
+            <Flex alignItems={'center'} flex={'0 0 100px'}>
+              {t('core.ai.model.Vector Model')}
+              <MyTooltip label={t('core.dataset.embedding model tip')}>
+                <QuestionOutlineIcon ml={1} />
+              </MyTooltip>
+            </Flex>
             <Box flex={1}>
               <MySelect
                 w={'100%'}
                 value={getValues('vectorModel')}
-                list={vectorModelList.map((item) => ({
+                list={filterNotHiddenVectorModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}
@@ -168,14 +177,14 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             </Box>
           </Flex>
         )}
-        {qaModelList.length > 1 && (
+        {datasetModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
             <Box flex={'0 0 100px'}>{t('core.ai.model.Dataset Agent Model')}</Box>
             <Box flex={1}>
               <MySelect
                 w={'100%'}
                 value={getValues('agentModel')}
-                list={qaModelList.map((item) => ({
+                list={datasetModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}

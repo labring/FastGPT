@@ -12,10 +12,12 @@ import Avatar from '@/components/Avatar';
 import EditModal, { defaultForm, FormType } from './component/EditModal';
 import { getUserPlugins } from '@/web/core/plugin/api';
 import EmptyTip from '@/components/EmptyTip';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const MyModules = () => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { userInfo } = useUserStore();
   const router = useRouter();
   const [editModalData, setEditModalData] = useState<FormType>();
 
@@ -37,13 +39,15 @@ const MyModules = () => {
             {t('plugin.My Plugins')}({t('common.Beta')})
           </Box>
         </Flex>
-        <Button
-          leftIcon={<AddIcon />}
-          variant={'primaryOutline'}
-          onClick={() => setEditModalData(defaultForm)}
-        >
-          {t('common.New Create')}
-        </Button>
+        {userInfo?.team?.canWrite && (
+          <Button
+            leftIcon={<AddIcon />}
+            variant={'primaryOutline'}
+            onClick={() => setEditModalData(defaultForm)}
+          >
+            {t('common.New Create')}
+          </Button>
+        )}
       </Flex>
       <Grid
         py={5}

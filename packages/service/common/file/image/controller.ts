@@ -1,6 +1,7 @@
 import { UploadImgProps } from '@fastgpt/global/common/file/api';
 import { imageBaseUrl } from '@fastgpt/global/common/file/image/constants';
 import { MongoImage } from './schema';
+import { ClientSession } from '../../../common/mongo';
 
 export function getMongoImgUrl(id: string) {
   return `${imageBaseUrl}${id}`;
@@ -48,15 +49,20 @@ export async function readMongoImg({ id }: { id: string }) {
 
 export async function delImgByRelatedId({
   teamId,
-  relateIds
+  relateIds,
+  session
 }: {
   teamId: string;
   relateIds: string[];
+  session: ClientSession;
 }) {
   if (relateIds.length === 0) return;
 
-  return MongoImage.deleteMany({
-    teamId,
-    'metadata.relatedId': { $in: relateIds.map((id) => String(id)) }
-  });
+  return MongoImage.deleteMany(
+    {
+      teamId,
+      'metadata.relatedId': { $in: relateIds.map((id) => String(id)) }
+    },
+    { session }
+  );
 }

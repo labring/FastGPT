@@ -7,6 +7,7 @@ export const Input_Template_Switch: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.switch,
   type: FlowNodeInputTypeEnum.target,
   label: 'core.module.input.label.switch',
+  description: 'core.module.input.description.Trigger',
   valueType: ModuleIOValueTypeEnum.any,
   showTargetInApp: true,
   showTargetInPlugin: true
@@ -27,8 +28,8 @@ export const Input_Template_History: FlowNodeInputItemType = {
 
 export const Input_Template_UserChatInput: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.userChatInput,
-  type: FlowNodeInputTypeEnum.hidden,
-  label: 'core.module.input.label.user question',
+  type: FlowNodeInputTypeEnum.custom,
+  label: '',
   required: true,
   valueType: ModuleIOValueTypeEnum.string,
   showTargetInApp: true,
@@ -55,4 +56,14 @@ export const Input_Template_DynamicInput: FlowNodeInputItemType = {
   showTargetInApp: false,
   showTargetInPlugin: true,
   hideInApp: true
+};
+
+export const Input_Template_Dataset_Quote: FlowNodeInputItemType = {
+  key: ModuleInputKeyEnum.aiChatDatasetQuote,
+  type: FlowNodeInputTypeEnum.target,
+  label: '知识库引用',
+  description: 'core.module.Dataset quote.Input description',
+  valueType: ModuleIOValueTypeEnum.datasetQuote,
+  showTargetInApp: true,
+  showTargetInPlugin: true
 };

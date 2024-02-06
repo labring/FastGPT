@@ -15,6 +15,7 @@ import {
   DatasetSearchModeMap,
   SearchScoreTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
+import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@/service/common/string/jieba';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
@@ -33,6 +34,8 @@ import type {
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { getVectorModel } from '../../ai/model';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 export async function pushDataToTrainingQueue(
   props: {
@@ -43,7 +46,7 @@ export async function pushDataToTrainingQueue(
   const result = await pushDataListToTrainingQueue({
     ...props,
     vectorModelList: global.vectorModels,
-    qaModelList: global.qaModels
+    datasetModelList: global.llmModels
   });
 
   return result;
@@ -92,7 +95,7 @@ export async function insertData2Dataset({
     indexes.map((item) =>
       insertDatasetDataVector({
         query: item.text,
-        model,
+        model: getVectorModel(model),
         teamId,
         datasetId,
         collectionId
@@ -218,7 +221,7 @@ export async function updateData2Dataset({
       if (item.type === 'create') {
         const result = await insertDatasetDataVector({
           query: item.index.text,
-          model,
+          model: getVectorModel(model),
           teamId: mongoData.teamId,
           datasetId: mongoData.datasetId,
           collectionId: mongoData.collectionId
@@ -233,7 +236,7 @@ export async function updateData2Dataset({
           collectionId: mongoData.collectionId,
           id: item.index.dataId,
           query: item.index.text,
-          model
+          model: getVectorModel(model)
         });
         item.index.dataId = result.insertId;
 
@@ -270,7 +273,7 @@ export async function updateData2Dataset({
   };
 }
 
-export async function searchDatasetData(props: {
+type SearchDatasetDataProps = {
   teamId: string;
   model: string;
   similarity?: number; // min distance
@@ -278,12 +281,14 @@ export async function searchDatasetData(props: {
   datasetIds: string[];
   searchMode?: `${DatasetSearchModeEnum}`;
   usingReRank?: boolean;
-  rawQuery: string;
+  reRankQuery: string;
   queries: string[];
-}) {
+};
+
+export async function searchDatasetData(props: SearchDatasetDataProps) {
   let {
     teamId,
-    rawQuery,
+    reRankQuery,
     queries,
     model,
     similarity = 0,
@@ -305,37 +310,17 @@ export async function searchDatasetData(props: {
   let usingSimilarityFilter = false;
 
   /* function */
-  const countRecallLimit = () => {
-    const oneChunkToken = 50;
-    const estimatedLen = Math.max(20, Math.ceil(maxTokens / oneChunkToken));
-
-    if (searchMode === DatasetSearchModeEnum.embedding) {
-      return {
-        embeddingLimit: Math.min(estimatedLen, 80),
-        fullTextLimit: 0
-      };
-    }
-    if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
-      return {
-        embeddingLimit: 0,
-        fullTextLimit: Math.min(estimatedLen, 50)
-      };
-    }
-    return {
-      embeddingLimit: Math.min(estimatedLen, 60),
-      fullTextLimit: Math.min(estimatedLen, 40)
-    };
-  };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, charsLength } = await getVectorsByText({
-      model,
+      model: getVectorModel(model),
       input: query
     });
 
     const { results } = await recallFromVectorStore({
       vectors,
       limit,
-      datasetIds
+      datasetIds,
+      efSearch: global.systemEnv?.pgHNSWEfSearch
     });
 
     // get q and a
@@ -479,6 +464,7 @@ export async function searchDatasetData(props: {
       });
 
       if (!Array.isArray(results)) {
+        usingReRank = false;
         return [];
       }
 
@@ -498,6 +484,7 @@ export async function searchDatasetData(props: {
 
       return mergeResult;
     } catch (error) {
+      usingReRank = false;
       return [];
     }
   };
@@ -526,129 +513,50 @@ export async function searchDatasetData(props: {
     embeddingLimit: number;
     fullTextLimit: number;
   }) => {
-    // In a group n recall, as long as one of the data appears minAmount of times, it is retained
-    const getIntersection = (resultList: SearchDataResponseItemType[][], minAmount = 1) => {
-      minAmount = Math.min(resultList.length, minAmount);
-
-      const map: Record<
-        string,
-        {
-          amount: number;
-          data: SearchDataResponseItemType;
-        }
-      > = {};
-
-      for (const list of resultList) {
-        for (const item of list) {
-          map[item.id] = map[item.id]
-            ? {
-                amount: map[item.id].amount + 1,
-                data: item
-              }
-            : {
-                amount: 1,
-                data: item
-              };
-        }
-      }
-
-      return Object.values(map)
-        .filter((item) => item.amount >= minAmount)
-        .map((item) => item.data);
-    };
-
     // multi query recall
     const embeddingRecallResList: SearchDataResponseItemType[][] = [];
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
     let totalCharsLength = 0;
-    for await (const query of queries) {
-      const [{ charsLength, embeddingRecallResults }, { fullTextRecallResults }] =
-        await Promise.all([
-          embeddingRecall({
-            query,
-            limit: embeddingLimit
-          }),
-          fullTextRecall({
-            query,
-            limit: fullTextLimit
-          })
-        ]);
-      totalCharsLength += charsLength;
 
-      embeddingRecallResList.push(embeddingRecallResults);
-      fullTextRecallResList.push(fullTextRecallResults);
-    }
+    await Promise.all(
+      queries.map(async (query) => {
+        const [{ charsLength, embeddingRecallResults }, { fullTextRecallResults }] =
+          await Promise.all([
+            embeddingRecall({
+              query,
+              limit: embeddingLimit
+            }),
+            fullTextRecall({
+              query,
+              limit: fullTextLimit
+            })
+          ]);
+        totalCharsLength += charsLength;
+
+        embeddingRecallResList.push(embeddingRecallResults);
+        fullTextRecallResList.push(fullTextRecallResults);
+      })
+    );
+
+    // rrf concat
+    const rrfEmbRecall = datasetSearchResultConcat(
+      embeddingRecallResList.map((list) => ({ k: 60, list }))
+    ).slice(0, embeddingLimit);
+    const rrfFTRecall = datasetSearchResultConcat(
+      fullTextRecallResList.map((list) => ({ k: 60, list }))
+    ).slice(0, fullTextLimit);
 
     return {
       charsLength: totalCharsLength,
-      embeddingRecallResults: embeddingRecallResList[0],
-      fullTextRecallResults: fullTextRecallResList[0]
+      embeddingRecallResults: rrfEmbRecall,
+      fullTextRecallResults: rrfFTRecall
     };
-  };
-  const rrfConcat = (
-    arr: { k: number; list: SearchDataResponseItemType[] }[]
-  ): SearchDataResponseItemType[] => {
-    arr = arr.filter((item) => item.list.length > 0);
-
-    if (arr.length === 0) return [];
-    if (arr.length === 1) return arr[0].list;
-
-    const map = new Map<string, SearchDataResponseItemType & { rrfScore: number }>();
-
-    // rrf
-    arr.forEach((item) => {
-      const k = item.k;
-
-      item.list.forEach((data, index) => {
-        const rank = index + 1;
-        const score = 1 / (k + rank);
-
-        const record = map.get(data.id);
-        if (record) {
-          // 合并两个score,有相同type的score,取最大值
-          const concatScore = [...record.score];
-          for (const dataItem of data.score) {
-            const sameScore = concatScore.find((item) => item.type === dataItem.type);
-            if (sameScore) {
-              sameScore.value = Math.max(sameScore.value, dataItem.value);
-            } else {
-              concatScore.push(dataItem);
-            }
-          }
-
-          map.set(data.id, {
-            ...record,
-            score: concatScore,
-            rrfScore: record.rrfScore + score
-          });
-        } else {
-          map.set(data.id, {
-            ...data,
-            rrfScore: score
-          });
-        }
-      });
-    });
-
-    // sort
-    const mapArray = Array.from(map.values());
-    const results = mapArray.sort((a, b) => b.rrfScore - a.rrfScore);
-
-    return results.map((item, index) => {
-      item.score.push({
-        type: SearchScoreTypeEnum.rrf,
-        value: item.rrfScore,
-        index
-      });
-      // @ts-ignore
-      delete item.rrfScore;
-      return item;
-    });
   };
 
   /* main step */
   // count limit
-  const { embeddingLimit, fullTextLimit } = countRecallLimit();
+  const embeddingLimit = 60;
+  const fullTextLimit = 40;
 
   // recall
   const { embeddingRecallResults, fullTextRecallResults, charsLength } = await multiQueryRecall({
@@ -675,13 +583,13 @@ export async function searchDatasetData(props: {
       return true;
     });
     return reRankSearchResult({
-      query: rawQuery,
+      query: reRankQuery,
       data: filterSameDataResults
     });
   })();
 
   // embedding recall and fullText recall rrf concat
-  const rrfConcatResults = rrfConcat([
+  const rrfConcatResults = datasetSearchResultConcat([
     { k: 60, list: embeddingRecallResults },
     { k: 64, list: fullTextRecallResults },
     { k: 60, list: reRankResults }
@@ -709,9 +617,8 @@ export async function searchDatasetData(props: {
       });
     }
     if (searchMode === DatasetSearchModeEnum.embedding) {
+      usingSimilarityFilter = true;
       return filterSameDataResults.filter((item) => {
-        usingSimilarityFilter = true;
-
         const embeddingScore = item.score.find(
           (item) => item.type === SearchScoreTypeEnum.embedding
         );

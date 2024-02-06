@@ -14,7 +14,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
 import MySelect from '@/components/Select';
-import { qaModelList, vectorModelList } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
@@ -24,6 +24,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const { getValues, setValue, register, handleSubmit } = useForm<DatasetItemType>({
     defaultValues: datasetDetail
   });
+  const { datasetModelList, vectorModelList } = useSystemStore();
 
   const router = useRouter();
 
@@ -133,7 +134,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
         <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
       </Flex>
-      {qaModelList.length > 1 && (
+      {datasetModelList.length > 1 && (
         <Flex mt={6} alignItems={'center'}>
           <Box flex={['0 0 90px', '0 0 160px']} w={0}>
             {t('core.ai.model.Dataset Agent Model')}
@@ -142,12 +143,12 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <MySelect
               w={'100%'}
               value={getValues('agentModel').model}
-              list={qaModelList.map((item) => ({
+              list={datasetModelList.map((item) => ({
                 label: item.name,
                 value: item.model
               }))}
               onchange={(e) => {
-                const agentModel = qaModelList.find((item) => item.model === e);
+                const agentModel = datasetModelList.find((item) => item.model === e);
                 if (!agentModel) return;
                 setValue('agentModel', agentModel);
                 setRefresh((state) => !state);

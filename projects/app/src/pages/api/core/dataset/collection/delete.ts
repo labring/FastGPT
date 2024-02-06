@@ -4,6 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { findCollectionAndChild } from '@fastgpt/service/core/dataset/collection/utils';
 import { delCollectionAndRelatedSources } from '@fastgpt/service/core/dataset/collection/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -32,9 +33,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // delete
-    await delCollectionAndRelatedSources({
-      collections
-    });
+    await mongoSessionRun((session) =>
+      delCollectionAndRelatedSources({
+        collections,
+        session
+      })
+    );
 
     jsonRes(res);
   } catch (err) {

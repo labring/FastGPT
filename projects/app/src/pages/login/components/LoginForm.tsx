@@ -16,8 +16,7 @@ import { PageTypeEnum } from '@/constants/user';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { postLogin } from '@/web/support/user/api';
 import type { ResLogin } from '@/global/support/api/userRes';
-import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
@@ -43,7 +42,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const theme = useTheme();
   const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
   const { toast } = useToast();
-  const { setLoginStore } = useSystemStore();
+  const { setLoginStore, feConfigs } = useSystemStore();
   const {
     register,
     handleSubmit,

@@ -41,18 +41,14 @@ const createEditField = {
   inputType: true
 };
 
-const NodePluginInput = React.memo(function NodePluginInput({
-  data
-}: {
-  data: FlowModuleItemType;
-}) {
+const NodePluginInput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
   const [createField, setCreateField] = useState<EditNodeFieldType>();
   const [editField, setEditField] = useState<EditNodeFieldType>();
 
   return (
-    <NodeCard minW={'300px'} {...data}>
+    <NodeCard minW={'300px'} selected={selected} forbidMenu {...data}>
       <Container mt={1} borderTop={'2px solid'} borderTopColor={'myGray.300'}>
         {inputs.map((item) => (
           <Flex
@@ -257,7 +253,5 @@ const NodePluginInput = React.memo(function NodePluginInput({
       )}
     </NodeCard>
   );
-});
-export default function Node({ data }: NodeProps<FlowModuleItemType>) {
-  return <NodePluginInput data={data} />;
-}
+};
+export default React.memo(NodePluginInput);

@@ -9,7 +9,7 @@ import { Box, Button, Flex, Input, Link, Textarea } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { LinkCollectionIcon } from '@fastgpt/global/core/dataset/constants';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
 import Loading from '@/components/Loading';
 
@@ -32,6 +32,7 @@ export default React.memo(LinkCollection);
 
 const CustomLinkImport = ({ goToNext }: { goToNext: () => void }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
   const { sources, setSources, processParamsForm } = useImportStore();
   const { register, reset, handleSubmit, watch } = useForm({
     defaultValues: {

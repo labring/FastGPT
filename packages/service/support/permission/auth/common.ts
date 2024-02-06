@@ -2,6 +2,7 @@ import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { parseHeaderCert } from '../controller';
 import { AuthModeType } from '../type';
 import { authOutLinkValid } from './outLink';
+import { SERVICE_LOCAL_HOST } from '../../../common/system/tools';
 
 export const authCert = async (props: AuthModeType) => {
   const result = await parseHeaderCert(props);
@@ -34,8 +35,7 @@ export async function authCertOrShareId({
 
 /* auth the request from local service */
 export const authRequestFromLocal = ({ req }: AuthModeType) => {
-  const host = `${process.env.HOSTNAME || 'localhost'}:${process.env.PORT || 3000}`;
-  if (host !== req.headers.host) {
+  if (req.headers.host !== SERVICE_LOCAL_HOST) {
     return Promise.reject('Invalid request');
   }
 };

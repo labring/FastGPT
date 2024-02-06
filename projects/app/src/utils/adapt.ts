@@ -58,9 +58,7 @@ export const appModule2FlowNode = ({
     moduleTemplatesFlat.find((template) => template.flowType === item.flowType) || UserInputModule;
 
   const concatInputs = template.inputs.concat(
-    item.inputs.filter(
-      (input) => input.label && !template.inputs.find((item) => item.key === input.key)
-    )
+    item.inputs.filter((input) => !template.inputs.find((item) => item.key === input.key))
   );
   const concatOutputs = item.outputs.concat(
     template.outputs.filter(
@@ -72,6 +70,7 @@ export const appModule2FlowNode = ({
   const moduleItem: FlowModuleItemType = {
     ...template,
     ...item,
+    avatar: template?.avatar || item.avatar,
     inputs: concatInputs.map((templateInput) => {
       // use latest inputs
       const itemInput = item.inputs.find((item) => item.key === templateInput.key) || templateInput;

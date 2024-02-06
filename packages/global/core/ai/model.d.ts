@@ -3,20 +3,24 @@ export type LLMModelItemType = {
   name: string;
   maxContext: number;
   maxResponse: number;
-  inputPrice: number;
-  outputPrice: number;
-};
-export type ChatModelItemType = LLMModelItemType & {
   quoteMaxToken: number;
   maxTemperature: number;
+
+  inputPrice: number;
+  outputPrice: number;
+
   censor?: boolean;
   vision?: boolean;
-  defaultSystemChatPrompt?: string;
-};
+  datasetProcess?: boolean;
 
-export type FunctionModelItemType = LLMModelItemType & {
+  functionCall: boolean;
   toolChoice: boolean;
-  functionPrompt: string;
+
+  customCQPrompt: string;
+  customExtractPrompt: string;
+
+  defaultSystemChatPrompt?: string;
+  defaultConfig?: Record<string, any>;
 };
 
 export type VectorModelItemType = {
@@ -27,6 +31,8 @@ export type VectorModelItemType = {
   outputPrice: number;
   maxToken: number;
   weight: number;
+  hidden?: boolean;
+  defaultConfig?: Record<string, any>;
 };
 
 export type ReRankModelItemType = {

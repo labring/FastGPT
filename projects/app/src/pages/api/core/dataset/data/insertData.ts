@@ -17,6 +17,7 @@ import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
+import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -42,8 +43,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     await checkDatasetLimit({
       teamId,
-      freeSize: global.feConfigs?.subscription?.datasetStoreFreeSize,
-      insertLen: 1
+      insertLen: 1,
+      standardPlans: getStandardSubPlan()
     });
 
     // auth collection and get dataset

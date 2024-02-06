@@ -107,7 +107,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Source')}:</Box>
-          <Box>{BillSourceMap[bill.source]?.label}</Box>
+          <Box>{t(BillSourceMap[bill.source]?.label)}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 80px'}>{t('wallet.bill.Total')}:</Box>
@@ -129,7 +129,7 @@ const BillDetail = ({ bill, onClose }: { bill: BillItemType; onClose: () => void
                   {hasCharsLen && <Th>{t('wallet.bill.Text Length')}</Th>}
                   {hasDuration && <Th>{t('wallet.bill.Duration')}</Th>}
                   {hasDatasetSize && (
-                    <Th>{t('support.user.team.subscription.type.extraDatasetSize')}</Th>
+                    <Th>{t('support.wallet.subscription.type.extraDatasetSize')}</Th>
                   )}
                   <Th>费用(￥)</Th>
                 </Tr>

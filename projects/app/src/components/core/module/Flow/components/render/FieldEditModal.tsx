@@ -20,7 +20,7 @@ import {
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
 import { EditInputFieldMap, EditNodeFieldType } from '@fastgpt/global/core/module/node/type.d';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 const FieldEditModal = ({
   editField = {

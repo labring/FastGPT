@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { POST } from '../api/request';
-import { useToast } from './useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
@@ -78,7 +78,7 @@ export const useSpeech = (props?: { shareId?: string }) => {
 
         const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
 
-        formData.append('files', blob, 'recording.webm');
+        formData.append('file', blob, 'recording.webm');
         formData.append('metadata', JSON.stringify({ duration, shareId }));
 
         setIsTransCription(true);

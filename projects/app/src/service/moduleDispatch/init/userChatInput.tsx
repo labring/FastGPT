@@ -6,7 +6,7 @@ export type UserChatInputProps = ModuleDispatchProps<{
 
 export const dispatchChatInput = (props: Record<string, any>) => {
   const {
-    inputs: { userChatInput }
+    params: { userChatInput }
   } = props as UserChatInputProps;
   return {
     userChatInput

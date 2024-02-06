@@ -994,7 +994,7 @@ export default async function (ctx: FunctionContext) {
   },
   {
     "moduleId": "p9h459",
-    "name": "core.module.template.cfr",
+    "name": "问题补全",
     "avatar": "/imgs/module/cfr.svg",
     "flowType": "cfr",
     "showStatus": true,

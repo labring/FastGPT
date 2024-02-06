@@ -8,11 +8,11 @@ import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getExtractModel } from '@/service/core/ai/model';
+import { getLLMModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const { formData, chatModelMaxToken, chatModelList } = req.body as FormatForm2ModulesProps;
+    const { formData, chatModelMaxToken } = req.body as FormatForm2ModulesProps;
 
     const modules = [
       ...(formData.dataset.datasets.length > 0
@@ -294,7 +294,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           valueType: 'string',
           targets: [
             {
-              moduleId: 'vuc92c',
+              moduleId: 'datasetSearch',
               key: 'userChatInput'
             }
           ]
@@ -381,19 +381,10 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           key: 'usingReRank',
           type: 'hidden',
           label: '',
-          valueType: 'string',
+          valueType: 'boolean',
           showTargetInApp: false,
           showTargetInPlugin: false,
           value: true,
-          connected: false
-        },
-        {
-          key: 'datasetParamsModal',
-          type: 'selectDatasetParamsModal',
-          label: '',
-          valueType: 'any',
-          showTargetInApp: false,
-          showTargetInPlugin: false,
           connected: false
         },
         {
@@ -495,19 +486,6 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           label: '温度',
           value: 0,
           valueType: 'number',
-          min: 0,
-          max: 10,
-          step: 1,
-          markList: [
-            {
-              label: '严谨',
-              value: 0
-            },
-            {
-              label: '发散',
-              value: 10
-            }
-          ],
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false
@@ -518,19 +496,6 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           label: '回复上限',
           value: maxToken,
           valueType: 'number',
-          min: 100,
-          max: 4000,
-          step: 50,
-          markList: [
-            {
-              label: '100',
-              value: 100
-            },
-            {
-              label: '4000',
-              value: 4000
-            }
-          ],
           showTargetInApp: false,
           showTargetInPlugin: false,
           connected: false
@@ -647,89 +612,6 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
           valueType: 'chatHistory',
           type: 'source',
           targets: []
-        }
-      ]
-    },
-    {
-      moduleId: 'vuc92c',
-      name: 'core.module.template.cfr',
-      avatar: '/imgs/module/cfr.svg',
-      flowType: 'cfr',
-      showStatus: true,
-      position: {
-        x: 758.2985382279098,
-        y: 1124.6527309337314
-      },
-      inputs: [
-        {
-          key: 'switch',
-          type: 'target',
-          label: 'core.module.input.label.switch',
-          valueType: 'any',
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: false
-        },
-        {
-          key: 'model',
-          type: 'selectExtractModel',
-          label: 'core.module.input.label.aiModel',
-          required: true,
-          valueType: 'string',
-          value: getExtractModel().model,
-          showTargetInApp: false,
-          showTargetInPlugin: false,
-          connected: false
-        },
-        {
-          key: 'systemPrompt',
-          type: 'textarea',
-          label: 'core.module.input.label.cfr background',
-          max: 300,
-          value: formData.cfr.background,
-          valueType: 'string',
-          description: 'core.module.input.description.cfr background',
-          placeholder: 'core.module.input.placeholder.cfr background',
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: false
-        },
-        {
-          key: 'history',
-          type: 'numberInput',
-          label: 'core.module.input.label.chat history',
-          required: true,
-          min: 0,
-          max: 30,
-          valueType: 'chatHistory',
-          value: 6,
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: false
-        },
-        {
-          key: 'userChatInput',
-          type: 'target',
-          label: 'core.module.input.label.user question',
-          required: true,
-          valueType: 'string',
-          showTargetInApp: true,
-          showTargetInPlugin: true,
-          connected: true
-        }
-      ],
-      outputs: [
-        {
-          key: 'system_text',
-          label: 'core.module.output.label.cfr result',
-          valueType: 'string',
-          type: 'source',
-          targets: [
-            {
-              moduleId: 'datasetSearch',
-              key: 'userChatInput'
-            }
-          ]
         }
       ]
     }
