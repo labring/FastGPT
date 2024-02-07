@@ -129,7 +129,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowModuleItemType>) =>
         />
         {/* render dataset select */}
         {RenderQuoteList}
-        <Flex position={'absolute'} right={4} top={'50%'} transform={'translate(0,-50%)'}>
+        <Flex position={'absolute'} right={4} top={'60%'}>
           <Box>{t('core.module.Dataset quote.Concat result')}</Box>
           <SourceHandle
             handleKey={ModuleOutputKeyEnum.datasetQuoteQA}

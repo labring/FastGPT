@@ -9,11 +9,19 @@ import axios from 'axios';
 import { valueTypeFormat } from '../utils';
 import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
 
+type PropsArrType = {
+  key: string;
+  type: string;
+  value: string;
+};
 type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
   [ModuleInputKeyEnum.httpMethod]: string;
   [ModuleInputKeyEnum.httpReqUrl]: string;
-  [ModuleInputKeyEnum.httpHeaders]: string;
+  [ModuleInputKeyEnum.httpHeaders]: PropsArrType[];
+  [ModuleInputKeyEnum.httpParams]: PropsArrType[];
+  [ModuleInputKeyEnum.httpJsonBody]: string;
+  [DYNAMIC_INPUT_KEY]: Record<string, any>;
   [key: string]: any;
 }>;
 type HttpResponse = {
@@ -22,27 +30,23 @@ type HttpResponse = {
   [key: string]: any;
 };
 
-const flatDynamicParams = (params: Record<string, any>) => {
-  const dynamicParams = params[DYNAMIC_INPUT_KEY];
-  if (!dynamicParams) return params;
-  return {
-    ...params,
-    ...dynamicParams,
-    [DYNAMIC_INPUT_KEY]: undefined
-  };
-};
+const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
-export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<HttpResponse> => {
+export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<HttpResponse> => {
   let {
     appId,
     chatId,
     responseChatItemId,
     variables,
     outputs,
+    histories,
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
       system_httpHeader: httpHeader,
+      system_httpParams: httpParams = [],
+      system_httpJsonBody: httpJsonBody,
+      [DYNAMIC_INPUT_KEY]: dynamicInput,
       ...body
     }
   } = props;
@@ -51,67 +55,87 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     return Promise.reject('Http url is empty');
   }
 
-  body = flatDynamicParams(body);
-
-  const requestBody = {
+  const concatVariables = {
     appId,
     chatId,
     responseChatItemId,
     variables,
-    data: body
-  };
-  const requestQuery = {
-    appId,
-    chatId,
-    ...variables,
+    histories: histories.slice(0, 10),
     ...body
   };
-
-  const formatBody = transformFlatJson({ ...requestBody });
 
   // parse header
   const headers = await (() => {
     try {
-      if (!httpHeader) return {};
-      return JSON.parse(httpHeader);
+      if (!httpHeader || httpHeader.length === 0) return {};
+      // array
+      return httpHeader.reduce((acc, item) => {
+        item.key = replaceVariable(item.key, concatVariables);
+        item.value = replaceVariable(item.value, concatVariables);
+        // @ts-ignore
+        acc[item.key] = valueTypeFormat(item.value, 'string');
+        return acc;
+      }, {});
     } catch (error) {
       return Promise.reject('Header 为非法 JSON 格式');
     }
   })();
+  const params = httpParams.reduce((acc, item) => {
+    item.key = replaceVariable(item.key, concatVariables);
+    item.value = replaceVariable(item.value, concatVariables);
+    // @ts-ignore
+    acc[item.key] = valueTypeFormat(item.value, 'string');
+    return acc;
+  }, {});
+  const requestBody = await (() => {
+    if (!httpJsonBody) return { [DYNAMIC_INPUT_KEY]: dynamicInput };
+    httpJsonBody = replaceVariable(httpJsonBody, concatVariables);
+    try {
+      const jsonParse = JSON.parse(httpJsonBody);
+      const removeSignJson = removeUndefinedSign(jsonParse);
+      return { [DYNAMIC_INPUT_KEY]: dynamicInput, ...removeSignJson };
+    } catch (error) {
+      console.log(error);
+      return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
+    }
+  })();
+  // console.log(params, requestBody, headers);
 
   try {
-    const response = await fetchData({
+    const { formatResponse, rawResponse } = await fetchData({
       method: httpMethod,
       url: httpReqUrl,
       headers,
-      body: formatBody,
-      query: requestQuery
+      body: requestBody,
+      params
     });
 
     // format output value type
     const results: Record<string, any> = {};
-    for (const key in response) {
+    for (const key in formatResponse) {
       const output = outputs.find((item) => item.key === key);
       if (!output) continue;
-      results[key] = valueTypeFormat(response[key], output.valueType);
+      results[key] = valueTypeFormat(formatResponse[key], output.valueType);
     }
 
     return {
       responseData: {
         price: 0,
-        body: formatBody,
-        httpResult: response
+        params: Object.keys(params).length > 0 ? params : undefined,
+        body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        httpResult: rawResponse
       },
       ...results
     };
   } catch (error) {
-    console.log(error);
-
     return {
       [ModuleOutputKeyEnum.failed]: true,
       responseData: {
         price: 0,
-        body: formatBody,
+        params: Object.keys(params).length > 0 ? params : undefined,
+        body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
         httpResult: { error }
       }
     };
@@ -123,13 +147,13 @@ async function fetchData({
   url,
   headers,
   body,
-  query
+  params
 }: {
   method: string;
   url: string;
   headers: Record<string, any>;
   body: Record<string, any>;
-  query: Record<string, any>;
+  params: Record<string, any>;
 }): Promise<Record<string, any>> {
   const { data: response } = await axios<Record<string, any>>({
     method,
@@ -139,7 +163,7 @@ async function fetchData({
       'Content-Type': 'application/json',
       ...headers
     },
-    params: method === 'GET' ? query : {},
+    params: params,
     data: method === 'POST' ? body : {}
   });
 
@@ -214,36 +238,42 @@ async function fetchData({
     return result;
   };
 
-  return parseJson(response);
+  return {
+    formatResponse: parseJson(response),
+    rawResponse: response
+  };
 }
 
-function transformFlatJson(obj: Record<string, any>) {
-  for (let key in obj) {
-    if (typeof obj[key] === 'object') {
-      transformFlatJson(obj[key]);
+function replaceVariable(text: string, obj: Record<string, any>) {
+  for (const [key, value] of Object.entries(obj)) {
+    if (value === undefined) {
+      text = text.replace(new RegExp(`{{${key}}}`, 'g'), UNDEFINED_SIGN);
+    } else {
+      const replacement = JSON.stringify(value);
+      const unquotedReplacement =
+        replacement.startsWith('"') && replacement.endsWith('"')
+          ? replacement.slice(1, -1)
+          : replacement;
+      text = text.replace(new RegExp(`{{${key}}}`, 'g'), unquotedReplacement);
     }
-    if (key.includes('.')) {
-      let parts = key.split('.');
-      if (parts.length <= 1) continue;
-
-      const firstKey = parts.shift();
-
-      if (!firstKey) continue;
-
-      const lastKey = parts.join('.');
-
-      if (obj[firstKey]) {
-        obj[firstKey] = {
-          ...obj[firstKey],
-          [lastKey]: obj[key]
-        };
-      } else {
-        obj[firstKey] = { [lastKey]: obj[key] };
-      }
-
-      transformFlatJson(obj[firstKey]);
-
-      delete obj[key];
+  }
+  return text || '';
+}
+function removeUndefinedSign(obj: Record<string, any>) {
+  for (const key in obj) {
+    if (obj[key] === UNDEFINED_SIGN) {
+      obj[key] = undefined;
+    } else if (Array.isArray(obj[key])) {
+      obj[key] = obj[key].map((item: any) => {
+        if (item === UNDEFINED_SIGN) {
+          return undefined;
+        } else if (typeof item === 'object') {
+          removeUndefinedSign(item);
+        }
+        return item;
+      });
+    } else if (typeof obj[key] === 'object') {
+      removeUndefinedSign(obj[key]);
     }
   }
   return obj;

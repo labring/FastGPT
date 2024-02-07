@@ -200,6 +200,9 @@
     "input": {
       "Repeat Value": "有重复的值"
     },
+    "jsonEditor": {
+      "Parse error": "Json可能有误，请仔细检查"
+    },
     "link": {
       "UnValid": "无效的链接"
     },
@@ -549,8 +552,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -784,6 +786,19 @@
         "Field Setting Title": "提取字段配置"
       },
       "http": {
+        "Add props": "添加参数",
+        "AppId": "应用的ID",
+        "ChatId": "当前对话ID",
+        "Current time": "当前时间",
+        "Histories": "历史纪录,最多取10条",
+        "Key already exists": "Key 已经存在",
+        "Key cannot be empty": "参数名不能为空",
+        "Props name": "参数名",
+        "Props tip": "可以设置 Http 请求的相关参数\n可通过 {{key}} 来调用全局变了或外部参数输入，当前可使用变量:\n{{variable}}",
+        "Props value": "参数值",
+        "ResponseChatItemId": "AI回复的ID",
+        "Url and params have been split": "路径参数已被自动加入 Params 中",
+        "Variables": "全局变量",
         "params": "Params"
       },
       "input": {
@@ -797,7 +812,6 @@
           "Response content": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
           "Trigger": "大部分时候，你不需要连接该属性。\n当你需要延迟执行，或精确控制执行时机时，可以连接该属性。",
-          "anyInput": "可传入任意内容",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
           "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
         },
@@ -813,7 +827,7 @@
           "Select dataset": "选择知识库",
           "TFSwitch textarea": "自定义 False 匹配规则",
           "aiModel": "AI 模型",
-          "anyInput": "任意内容输入",
+          "TFSwitch input tip": "任意内容输入",
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
@@ -860,7 +874,7 @@
         "Ai chat": "AI 对话",
         "Ai chat intro": "AI 大模型对话",
         "Assigned reply": "指定回复",
-        "Assigned reply intro": "该模块可以直接回复一段指定的内容。常用于引导、提示",
+        "Assigned reply intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
         "Chat entrance": "对话入口",
         "Chat entrance intro": "当用户发送一个内容后，流程将会从这个模块开始执行。",
         "Classify question": "问题分类",
@@ -883,12 +897,12 @@
         "Running app intro": "可以选择一个其他应用进行调用",
         "System input module": "系统输入",
         "TFSwitch": "判断器",
-        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。",
+        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。非字符、非数字、非布尔类型，直接输出 True。",
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
         "textEditor": "文本加工",
-        "textEditor intro": "可对固定或传入的文本进行加工后输出"
+        "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"
       },
       "textEditor": {
         "Text Edit": "文本加工"

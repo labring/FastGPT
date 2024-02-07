@@ -47,8 +47,7 @@ const JsonEditor = ({ inputs = [], item, moduleId }: RenderInputProps) => {
 
   return (
     <JSONEditor
-      title={t(item.label)}
-      bg={'myWhite.400'}
+      bg={'myGray.50'}
       placeholder={t(item.placeholder || '')}
       resize
       value={item.value}

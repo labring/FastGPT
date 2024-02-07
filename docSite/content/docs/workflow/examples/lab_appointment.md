@@ -1093,7 +1093,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     "moduleId": "xznuym",
     "name": "HTTP模块",
     "avatar": "/imgs/module/http.png",
-    "flowType": "httpRequest",
+    "flowType": "httpRequest468",
     "showStatus": true,
     "position": {
       "x": 2751.575624241899,

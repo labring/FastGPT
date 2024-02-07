@@ -17,10 +17,10 @@ import {
 } from '../input';
 import { Output_Template_AddOutput, Output_Template_Finish } from '../output';
 
-export const HttpModule: FlowModuleTemplateType = {
-  id: FlowNodeTypeEnum.httpRequest,
+export const HttpModule468: FlowModuleTemplateType = {
+  id: FlowNodeTypeEnum.httpRequest468,
   templateType: ModuleTemplateTypeEnum.externalCall,
-  flowType: FlowNodeTypeEnum.httpRequest,
+  flowType: FlowNodeTypeEnum.httpRequest468,
   avatar: '/imgs/module/http.png',
   name: 'core.module.template.Http request',
   intro: 'core.module.template.Http request intro',
@@ -59,12 +59,33 @@ export const HttpModule: FlowModuleTemplateType = {
       showTargetInPlugin: false
     },
     {
-      key: ModuleInputKeyEnum.httpHeader,
-      type: FlowNodeInputTypeEnum.JSONEditor,
-      valueType: ModuleIOValueTypeEnum.string,
-      label: 'core.module.input.label.Http Request Header',
+      key: ModuleInputKeyEnum.httpHeaders,
+      type: FlowNodeInputTypeEnum.custom,
+      valueType: ModuleIOValueTypeEnum.any,
+      value: [],
+      label: '',
       description: 'core.module.input.description.Http Request Header',
       placeholder: 'core.module.input.description.Http Request Header',
+      required: false,
+      showTargetInApp: false,
+      showTargetInPlugin: false
+    },
+    {
+      key: ModuleInputKeyEnum.httpParams,
+      type: FlowNodeInputTypeEnum.hidden,
+      valueType: ModuleIOValueTypeEnum.any,
+      value: [],
+      label: '',
+      required: false,
+      showTargetInApp: false,
+      showTargetInPlugin: false
+    },
+    {
+      key: ModuleInputKeyEnum.httpJsonBody,
+      type: FlowNodeInputTypeEnum.hidden,
+      valueType: ModuleIOValueTypeEnum.any,
+      value: '',
+      label: '',
       required: false,
       showTargetInApp: false,
       showTargetInPlugin: false
