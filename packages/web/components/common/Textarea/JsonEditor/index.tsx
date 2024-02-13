@@ -59,11 +59,12 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables = [], ...
 
     // 自定义补全提供者
     completionRegisterRef.current = monaco.languages.registerCompletionItemProvider('json', {
-      triggerCharacters: ['{'], // 添加双引号为触发字符
+      triggerCharacters: ['{'],
       provideCompletionItems: function (model, position, context) {
         const lineContent = model.getLineContent(position.lineNumber);
 
         if (context.triggerCharacter) {
+          console.log(context.triggerCharacter);
           triggerChar.current = context.triggerCharacter;
         }
         const word = model.getWordUntilPosition(position);
@@ -81,6 +82,12 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables = [], ...
         const afterChar = endText[0];
         const after2Char = endText[1];
 
+        if (before2Char !== '{' && beforeChar !== '"') {
+          return {
+            suggestions: []
+          };
+        }
+
         return {
           suggestions:
             variables?.map((item) => {
@@ -94,7 +101,6 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables = [], ...
               if (after2Char !== '}') {
                 insertText = `${insertText}}`;
               }
-              console.log(insertText);
 
               return {
                 label: item.key,

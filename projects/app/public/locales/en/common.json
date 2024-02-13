@@ -230,7 +230,6 @@
   },
   "core": {
     "Chat": "Chat",
-    "Chat API is error or undefined": "The session interface reported an error or returned null",
     "Chat test": "Chat test",
     "Max Token": "MaxTokens",
     "Start chat": "Start chat",
@@ -365,7 +364,7 @@
     "chat": {
       "Admin Mark Content": "Corrected response",
       "Audio Speech Error": "Audio Speech Error",
-      "Chat API is error or undefined": "",
+      "Chat API is error or undefined": "The session interface reported an error or returned null",
       "Confirm to clear history": "Confirm to clear history?",
       "Confirm to clear share chat history": " Are you sure to delete all chats?",
       "Converting to text": "Converting to text...",
