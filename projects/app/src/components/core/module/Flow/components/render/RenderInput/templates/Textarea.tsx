@@ -26,9 +26,15 @@ const TextareaRender = ({ inputs = [], item, moduleId }: RenderInputProps) => {
           label: item.label
         }))
     );
+    const systemVariables = [
+      {
+        key: 'cTime',
+        label: t('core.module.http.Current time')
+      }
+    ];
 
-    return [...globalVariables, ...moduleVariables];
-  }, [inputs, nodes]);
+    return [...globalVariables, ...moduleVariables, ...systemVariables];
+  }, [inputs, nodes, t]);
 
   const onChange = useCallback(
     (e: string) => {
