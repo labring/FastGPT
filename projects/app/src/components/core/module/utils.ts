@@ -14,7 +14,7 @@ export const flowNode2Modules = ({
   const modules: ModuleItemType[] = nodes.map((item) => ({
     moduleId: item.data.moduleId,
     name: item.data.name,
-    // avatar: item.data.avatar,
+    avatar: item.data.avatar,
     flowType: item.data.flowType,
     showStatus: item.data.showStatus,
     position: item.position,
