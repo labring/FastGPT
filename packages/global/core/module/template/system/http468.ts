@@ -33,16 +33,6 @@ export const HttpModule468: FlowModuleTemplateType = {
       valueType: ModuleIOValueTypeEnum.string,
       label: '',
       value: 'POST',
-      list: [
-        {
-          label: 'GET',
-          value: 'GET'
-        },
-        {
-          label: 'POST',
-          value: 'POST'
-        }
-      ],
       required: true,
       showTargetInApp: false,
       showTargetInPlugin: false

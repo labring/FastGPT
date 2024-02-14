@@ -28,6 +28,7 @@ const SearchParamsTip = ({
 
   const hasReRankModel = reRankModelList.length > 0;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
+  const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
 
   return (
     <TableContainer
@@ -63,7 +64,7 @@ const SearchParamsTip = ({
               {limit}
             </Td>
             <Td pt={0} pb={1}>
-              {similarity}
+              {hasSimilarityMode ? similarity : t('core.dataset.search.Nonsupport')}
             </Td>
             {hasReRankModel && (
               <Td pt={0} pb={1}>

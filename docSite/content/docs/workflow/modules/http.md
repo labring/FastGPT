@@ -24,7 +24,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 - Params 为路径请求参数，GET请求中用的居多。
 - Body 为请求体，POST请求中用的居多。
 - Headers 为请求头，用于传递一些特殊的信息。
-- 3 种数据中都可以通过 `{{}}` 来引用变量。
+- 3 种数据中均可以通过 `{{}}` 来引用变量。
 - 变量来自于`全局变量`、`系统变量`、`局部传入`
 
 ## 参数结构
@@ -42,7 +42,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 
 ### Params, Headers
 
-不多描述，使用方法和Postman, ApiFox 基本一致，目前未提供语法提示，后续会加入。
+不多描述，使用方法和Postman, ApiFox 基本一致，目前 Params 和 Headers 未提供语法提示，后续会加入。
 
 可通过 {{key}} 来引入变量。例如：
 
@@ -53,7 +53,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 
 ### Body
 
-只有`Post`模式下会有。
+只有`POST`模式下会生效。
 
 可以写一个`自定义的 Json`，并通过 {{key}} 来引入变量。例如：
 
@@ -79,14 +79,15 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 {{< tab tabName="Http 模块中的Body声明" >}}
 {{< markdownify >}}
 
-注意，你不能像在 Params/Headers 中，常量和变量同时使用，例如：{"token": "Bearer {{token}}"}，这样是不支持的，你可以选择文本加工对字符串进行拼接。
+注意，在 Body 中，你如果引用`字符串`，则需要加上`""`，例如：`"{{string}}"`。
 
 ```json
 {
-  "string": {{string}},
+  "string": "{{string}}",
+  "token": "Bearer {{string}}",
   "number": {{number}},
   "boolean": {{boolean}},
-  "array": [{{number}},{{string}}],
+  "array": [{{number}}, "{{string}}"],
   "array2": {{array}},
   "object": {{obj}}
 }
@@ -100,6 +101,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 ```json
 {
   "string": "字符串",
+  "token": "Bearer 字符串",
   "number": 123,
   "boolean": true,
   "array": [123, "字符串"],
@@ -179,6 +181,12 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 ### 自动格式化输出
 
 FastGPT v4.6.8 后，加入了出参格式化功能，主要以`json`格式化成`字符串`为主。如果你的输出类型选择了`字符串`，则会将`HTTP`对应`key`的值，转成`json`字符串进行输出。因此，未来你可以直接从`HTTP`接口输出内容至`文本加工`中，然后拼接适当的提示词，最终输入给`AI对话`。
+
+### 动态外部数据
+
+在插件中的`HTTP模块`有一个属性叫`动态外部数据`，这个属性是与`插件输入`中，数据类型为`动态外部数据`的值搭配使用。
+
+类似于文本加工模块，会有一个不确定长度，不确定key的用户输入，因此这部分数据会被`动态外部数据`接收，它们是一个对象。在 HTTP 模块中，你可以在`Body`中接收到一个`key`为`DYNAMIC_INPUT_KEY`的对象。
 
 ## laf 对接 HTTP 示例
 

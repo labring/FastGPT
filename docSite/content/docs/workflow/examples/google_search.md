@@ -235,205 +235,10 @@ export default async function (ctx: FunctionContext) {
         "type": "source",
         "targets": [
           {
-            "moduleId": "ee1kxy",
-            "key": "searchKey"
+            "moduleId": "zakgqt",
+            "key": "prompt"
           }
         ]
-      }
-    ]
-  },
-  {
-    "moduleId": "ee1kxy",
-    "name": "HTTP模块",
-    "flowType": "httpRequest468",
-    "showStatus": true,
-    "position": {
-      "x": 1675.8721540336307,
-      "y": 1865.86995269191
-    },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "description": "core.module.input.description.Trigger",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "system_httpMethod",
-        "type": "custom",
-        "valueType": "string",
-        "label": "",
-        "value": "POST",
-        "list": [
-          {
-            "label": "GET",
-            "value": "GET"
-          },
-          {
-            "label": "POST",
-            "value": "POST"
-          }
-        ],
-        "required": true,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "system_httpReqUrl",
-        "type": "hidden",
-        "valueType": "string",
-        "label": "",
-        "description": "core.module.input.description.Http Request Url",
-        "placeholder": "https://api.ai.com/getInventory",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "https://xxx.laf.dev/google_earch",
-        "connected": false
-      },
-      {
-        "key": "system_httpHeader",
-        "type": "custom",
-        "valueType": "any",
-        "value": [],
-        "label": "",
-        "description": "core.module.input.description.Http Request Header",
-        "placeholder": "core.module.input.description.Http Request Header",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "system_httpParams",
-        "type": "hidden",
-        "valueType": "any",
-        "value": [],
-        "label": "",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "system_httpJsonBody",
-        "type": "hidden",
-        "valueType": "any",
-        "value": "{\n  \"searchKey\": {{searchKey}}\n}",
-        "label": "",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "DYNAMIC_INPUT_KEY",
-        "type": "target",
-        "valueType": "any",
-        "label": "core.module.inputType.dynamicTargetInput",
-        "description": "core.module.input.description.dynamic input",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": true,
-        "hideInApp": true,
-        "connected": false
-      },
-      {
-        "key": "searchKey",
-        "valueType": "string",
-        "label": "搜索词",
-        "type": "target",
-        "required": true,
-        "description": "",
-        "edit": true,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true
-        },
-        "connected": true
-      },
-      {
-        "key": "system_addInputParam",
-        "type": "addInputParam",
-        "valueType": "any",
-        "label": "",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true
-        },
-        "defaultEditField": {
-          "label": "",
-          "key": "",
-          "description": "",
-          "inputType": "target",
-          "valueType": "string",
-          "required": true
-        },
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "finish",
-        "label": "core.module.output.label.running done",
-        "description": "core.module.output.description.running done",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "system_addOutputParam",
-        "type": "addOutputParam",
-        "valueType": "any",
-        "label": "",
-        "targets": [],
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "dataType": true
-        },
-        "defaultEditField": {
-          "label": "",
-          "key": "",
-          "description": "",
-          "outputType": "source",
-          "valueType": "string"
-        }
-      },
-      {
-        "type": "source",
-        "valueType": "string",
-        "label": "搜索结果",
-        "description": "",
-        "edit": true,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "dataType": true
-        },
-        "targets": [
-          {
-            "moduleId": "bwhh0x",
-            "key": "response"
-          }
-        ],
-        "key": "prompt"
       }
     ]
   },
@@ -744,8 +549,8 @@ export default async function (ctx: FunctionContext) {
     "name": "用户问题(入口)",
     "flowType": "questionInput",
     "position": {
-      "x": 1767.8096438985006,
-      "y": 2694.0731506366337
+      "x": 1744.5949622106039,
+      "y": 2767.1993979535087
     },
     "inputs": [
       {
@@ -978,6 +783,191 @@ export default async function (ctx: FunctionContext) {
         "type": "hidden",
         "valueType": "string",
         "targets": []
+      }
+    ]
+  },
+  {
+    "moduleId": "zakgqt",
+    "name": "core.module.template.Http request",
+    "flowType": "httpRequest468",
+    "showStatus": true,
+    "position": {
+      "x": 1596.0994578513428,
+      "y": 1862.086836404846
+    },
+    "inputs": [
+      {
+        "key": "switch",
+        "type": "target",
+        "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "system_httpMethod",
+        "type": "custom",
+        "valueType": "string",
+        "label": "",
+        "value": "POST",
+        "required": true,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpReqUrl",
+        "type": "hidden",
+        "valueType": "string",
+        "label": "",
+        "description": "core.module.input.description.Http Request Url",
+        "placeholder": "https://api.ai.com/getInventory",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "https://xxx.laf.dev/google_earch",
+        "connected": false
+      },
+      {
+        "key": "system_httpHeader",
+        "type": "custom",
+        "valueType": "any",
+        "value": [],
+        "label": "",
+        "description": "core.module.input.description.Http Request Header",
+        "placeholder": "core.module.input.description.Http Request Header",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpParams",
+        "type": "hidden",
+        "valueType": "any",
+        "value": [],
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpJsonBody",
+        "type": "hidden",
+        "valueType": "any",
+        "value": "{\r\n  \"searchKey\": \"{{prompt}}\"\r\n}",
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "DYNAMIC_INPUT_KEY",
+        "type": "target",
+        "valueType": "any",
+        "label": "core.module.inputType.dynamicTargetInput",
+        "description": "core.module.input.description.dynamic input",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": true,
+        "hideInApp": true,
+        "connected": false
+      },
+      {
+        "key": "prompt",
+        "valueType": "string",
+        "label": "prompt",
+        "type": "target",
+        "required": true,
+        "description": "",
+        "edit": true,
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "required": true,
+          "dataType": true
+        },
+        "connected": true
+      },
+      {
+        "key": "system_addInputParam",
+        "type": "addInputParam",
+        "valueType": "any",
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "required": true,
+          "dataType": true
+        },
+        "defaultEditField": {
+          "label": "",
+          "key": "",
+          "description": "",
+          "inputType": "target",
+          "valueType": "string",
+          "required": true
+        },
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "finish",
+        "label": "core.module.output.label.running done",
+        "description": "core.module.output.description.running done",
+        "valueType": "boolean",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "system_addOutputParam",
+        "type": "addOutputParam",
+        "valueType": "any",
+        "label": "",
+        "targets": [],
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "dataType": true
+        },
+        "defaultEditField": {
+          "label": "",
+          "key": "",
+          "description": "",
+          "outputType": "source",
+          "valueType": "string"
+        }
+      },
+      {
+        "type": "source",
+        "valueType": "string",
+        "key": "prompt",
+        "label": "prompt",
+        "description": "",
+        "edit": true,
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "dataType": true
+        },
+        "targets": [
+          {
+            "moduleId": "bwhh0x",
+            "key": "response"
+          }
+        ]
       }
     ]
   }
