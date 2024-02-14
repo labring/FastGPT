@@ -61,6 +61,10 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 ## Docker 部署常见问题
 
+### 首次部署，root用户提示未注册
+
+没有启动 Mongo 副本集模式。
+
 ### 如何更新？
 
 1. 查看[更新文档](/docs/development/upgrading/intro/)，确认要升级的版本，避免跨版本升级。
@@ -87,6 +91,7 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 1. 挂载目录不正确
 2. 配置文件不正确，日志中会提示`invalid json`，配置文件需要是标准的 JSON 文件。
+3. 修改后，没有`docker-compose down`再`docker-compose up -d`，restart是不会重新挂载文件的。
 
 ### 为什么无法连接`本地模型`镜像。
 
@@ -113,8 +118,9 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 ### Operation `auth_codes.findOne()` buffering timed out after 10000ms
 
 mongo连接失败，检查
-1. mongo 服务有没有起来(有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以dockerhub找个最新的4.x，修改镜像版本，重新运行）
+1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以dockerhub找个最新的4.x，修改镜像版本，重新运行）
 2. 环境变量（账号密码，注意host和port）
+3. 副本集启动失败，一直在重启：没挂载mongo key；key没有权限；
 
 ## 本地开发问题
 

@@ -27,8 +27,8 @@ weight: 402
 ```ts
 import cloud from '@lafjs/cloud'
 
-const googleSearchKey = "AIzaSyBr3EfNFFsTakq6LqiO6pHUOrDxA0s7WFs"
-const googleCxId = "3740ce5543157445d"
+const googleSearchKey = "xxx"
+const googleCxId = "3740cxxx"
 const baseurl = "https://www.googleapis.com/customsearch/v1"
 
 type RequestType = {
@@ -423,13 +423,13 @@ export default async function (ctx: FunctionContext) {
     "showStatus": false,
     "position": {
       "x": 2323.6602408408294,
-      "y": 2087.150867147365
+      "y": 2087.8175338140313
     },
     "inputs": [
       {
         "key": "pluginId",
         "type": "hidden",
-        "label": "pluginId",
+        "label": "",
         "value": "community-textEditor",
         "valueType": "string",
         "connected": false,
@@ -440,6 +440,7 @@ export default async function (ctx: FunctionContext) {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -463,12 +464,12 @@ export default async function (ctx: FunctionContext) {
         },
         "connected": false,
         "placeholder": "core.module.input.description.textEditor textarea",
-        "value": "谷歌搜索结果:\n\"\"\"\n{{response}}\n\"\"\"\n\n请根据谷歌搜索结果来回答我的问题：“{{q}}”"
+        "value": "请使用下面<data></data>中的数据作为你的知识。请直接输出答案，不要提及你是从<data></data>中获取的知识。\n\n当前时间: {{cTime}}\n\n<data>\n{{response}}\n</data>\n\n我的问题：“{{q}}”"
       },
       {
         "key": "response",
         "valueType": "string",
-        "label": "搜索结果",
+        "label": "response",
         "type": "target",
         "required": true,
         "description": "",
@@ -486,7 +487,7 @@ export default async function (ctx: FunctionContext) {
       {
         "key": "q",
         "valueType": "string",
-        "label": "问题",
+        "label": "q",
         "type": "target",
         "required": true,
         "description": "",
@@ -504,10 +505,10 @@ export default async function (ctx: FunctionContext) {
       {
         "key": "DYNAMIC_INPUT_KEY",
         "valueType": "any",
-        "label": "字符串变量",
+        "label": "需要加工的输入",
         "type": "addInputParam",
         "required": false,
-        "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。",
+        "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。非字符串类型，会自动转成字符串类型。",
         "edit": false,
         "editField": {
           "key": true,
@@ -827,7 +828,7 @@ export default async function (ctx: FunctionContext) {
         "required": false,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
-        "value": "https://xxx.laf.dev/google_earch",
+        "value": "https://d8dns0.laf.dev/google_earch",
         "connected": false
       },
       {

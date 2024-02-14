@@ -235,7 +235,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "source",
         "targets": [
           {
-            "moduleId": "40clf3",
+            "moduleId": "wgwpx2",
             "key": "info"
           }
         ]
@@ -419,7 +419,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "placeholder": "core.module.input.placeholder.Classify background",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
-        "value": "xxx实验室是由浙江工业大学主导的人工智能实验室，请判断用户的问题是属于询问实验室介绍，或是预约实验室。",
+        "value": "xxx实验室是由xxx大学主导的人工智能实验室，请判断用户的问题是属于询问实验室介绍，或是预约实验室。",
         "connected": false
       },
       {
@@ -476,7 +476,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "zltb5l",
+            "moduleId": "l11c2w",
             "key": "switch"
           }
         ]
@@ -536,7 +536,16 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "label": "core.module.input.label.user question",
         "type": "hidden",
         "valueType": "string",
-        "targets": []
+        "targets": [
+          {
+            "moduleId": "98xq69",
+            "key": "content"
+          },
+          {
+            "moduleId": "mhw4md",
+            "key": "content"
+          }
+        ]
       }
     ]
   },
@@ -545,8 +554,8 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     "name": "指定回复",
     "flowType": "answerNode",
     "position": {
-      "x": 869.5417781389024,
-      "y": 2165.7281231343372
+      "x": 1108.6507148112876,
+      "y": 2292.8493299728207
     },
     "inputs": [
       {
@@ -579,171 +588,6 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "description": "core.module.output.description.running done",
         "valueType": "boolean",
         "type": "source",
-        "targets": []
-      }
-    ]
-  },
-  {
-    "moduleId": "zltb5l",
-    "name": "知识库搜索",
-    "flowType": "datasetSearchNode",
-    "showStatus": true,
-    "position": {
-      "x": 1634.995464753433,
-      "y": 108.17018849334033
-    },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "description": "core.module.input.description.Trigger",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      },
-      {
-        "key": "datasets",
-        "type": "selectDataset",
-        "label": "core.module.input.label.Select dataset",
-        "value": [],
-        "valueType": "selectDataset",
-        "list": [],
-        "required": true,
-        "showTargetInApp": false,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "similarity",
-        "type": "selectDatasetParamsModal",
-        "label": "",
-        "value": 0.69,
-        "valueType": "number",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "limit",
-        "type": "hidden",
-        "label": "",
-        "value": 2,
-        "valueType": "number",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "searchMode",
-        "type": "hidden",
-        "label": "",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "embedding",
-        "connected": false
-      },
-      {
-        "key": "usingReRank",
-        "type": "hidden",
-        "label": "",
-        "valueType": "boolean",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": false,
-        "connected": false
-      },
-      {
-        "key": "datasetSearchUsingExtensionQuery",
-        "type": "hidden",
-        "label": "",
-        "valueType": "boolean",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": true,
-        "connected": false
-      },
-      {
-        "key": "datasetSearchExtensionModel",
-        "type": "hidden",
-        "label": "",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "datasetSearchExtensionBg",
-        "type": "hidden",
-        "label": "",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "",
-        "connected": false
-      },
-      {
-        "key": "userChatInput",
-        "type": "custom",
-        "label": "",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      },
-      {
-        "key": "datasetParamsModal",
-        "type": "selectDatasetParamsModal",
-        "label": "",
-        "valueType": "any",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "isEmpty",
-        "label": "core.module.output.label.Search result empty",
-        "type": "source",
-        "valueType": "boolean",
-        "targets": []
-      },
-      {
-        "key": "unEmpty",
-        "label": "core.module.output.label.Search result not empty",
-        "type": "source",
-        "valueType": "boolean",
-        "targets": []
-      },
-      {
-        "key": "quoteQA",
-        "label": "core.module.Dataset quote.label",
-        "type": "source",
-        "valueType": "datasetQuote",
-        "targets": [
-          {
-            "moduleId": "bjfklc",
-            "key": "quoteQA"
-          }
-        ]
-      },
-      {
-        "key": "finish",
-        "label": "core.module.output.label.running done",
-        "description": "core.module.output.description.running done",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "userChatInput",
-        "label": "core.module.input.label.user question",
-        "type": "hidden",
-        "valueType": "string",
         "targets": []
       }
     ]
@@ -962,11 +806,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "zltb5l",
-            "key": "userChatInput"
-          },
-          {
-            "moduleId": "bjfklc",
+            "moduleId": "l11c2w",
             "key": "userChatInput"
           }
         ]
@@ -1090,7 +930,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "source",
         "targets": [
           {
-            "moduleId": "40clf3",
+            "moduleId": "wgwpx2",
             "key": "action"
           }
         ]
@@ -1098,51 +938,13 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "x3ymlc",
-    "name": "用户问题(对话入口)",
-    "flowType": "questionInput",
-    "position": {
-      "x": 1457.4894986450388,
-      "y": 1763.0754750794902
-    },
-    "inputs": [
-      {
-        "key": "userChatInput",
-        "type": "systemInput",
-        "valueType": "string",
-        "label": "core.module.input.label.user question",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "userChatInput",
-        "label": "core.module.input.label.user question",
-        "type": "source",
-        "valueType": "string",
-        "targets": [
-          {
-            "moduleId": "98xq69",
-            "key": "content"
-          },
-          {
-            "moduleId": "mhw4md",
-            "key": "content"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "40clf3",
+    "moduleId": "wgwpx2",
     "name": "core.module.template.Http request",
     "flowType": "httpRequest468",
     "showStatus": true,
     "position": {
-      "x": 2833.0016822916105,
-      "y": 1892.26969804788
+      "x": 2864.4878467558747,
+      "y": 1851.1959050194705
     },
     "inputs": [
       {
@@ -1320,7 +1122,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "string",
         "key": "result",
         "label": "result",
-        "description": "result",
+        "description": "",
         "edit": true,
         "editField": {
           "key": true,
@@ -1334,6 +1136,167 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
             "key": "text"
           }
         ]
+      }
+    ]
+  },
+  {
+    "moduleId": "l11c2w",
+    "name": "core.module.template.Dataset search",
+    "flowType": "datasetSearchNode",
+    "showStatus": true,
+    "position": {
+      "x": 1694.7658061553766,
+      "y": 319.67984613673053
+    },
+    "inputs": [
+      {
+        "key": "switch",
+        "type": "target",
+        "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      },
+      {
+        "key": "datasets",
+        "type": "selectDataset",
+        "label": "core.module.input.label.Select dataset",
+        "value": [],
+        "valueType": "selectDataset",
+        "list": [],
+        "required": true,
+        "showTargetInApp": false,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "similarity",
+        "type": "selectDatasetParamsModal",
+        "label": "",
+        "value": 0.4,
+        "valueType": "number",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "limit",
+        "type": "hidden",
+        "label": "",
+        "value": 1500,
+        "valueType": "number",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "searchMode",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "embedding",
+        "connected": false
+      },
+      {
+        "key": "usingReRank",
+        "type": "hidden",
+        "label": "",
+        "valueType": "boolean",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": false,
+        "connected": false
+      },
+      {
+        "key": "datasetSearchUsingExtensionQuery",
+        "type": "hidden",
+        "label": "",
+        "valueType": "boolean",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": true,
+        "connected": false
+      },
+      {
+        "key": "datasetSearchExtensionModel",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "datasetSearchExtensionBg",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "",
+        "connected": false
+      },
+      {
+        "key": "userChatInput",
+        "type": "custom",
+        "label": "",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      }
+    ],
+    "outputs": [
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "hidden",
+        "valueType": "string",
+        "targets": [
+          {
+            "moduleId": "bjfklc",
+            "key": "userChatInput"
+          }
+        ]
+      },
+      {
+        "key": "isEmpty",
+        "label": "core.module.output.label.Search result empty",
+        "type": "source",
+        "valueType": "boolean",
+        "targets": []
+      },
+      {
+        "key": "unEmpty",
+        "label": "core.module.output.label.Search result not empty",
+        "type": "source",
+        "valueType": "boolean",
+        "targets": []
+      },
+      {
+        "key": "quoteQA",
+        "label": "core.module.Dataset quote.label",
+        "type": "source",
+        "valueType": "datasetQuote",
+        "targets": [
+          {
+            "moduleId": "bjfklc",
+            "key": "quoteQA"
+          }
+        ]
+      },
+      {
+        "key": "finish",
+        "label": "core.module.output.label.running done",
+        "description": "core.module.output.description.running done",
+        "valueType": "boolean",
+        "type": "source",
+        "targets": []
       }
     ]
   }

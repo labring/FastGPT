@@ -7,7 +7,13 @@ toc: true
 weight: 404
 ---
 
+|                       |                       |
+| --------------------- | --------------------- |
+| ![](/imgs/demo-dalle1.png) | ![](/imgs/demo-dalle2.png) |
+
 ## OpenAI Dalle3 接口
+
+先来看下官方接口的参数和响应值：
 
 Body
 
@@ -66,9 +72,11 @@ Response:
 
 响应值需要根据Dalle3接口的返回值进行获取，我们只绘制了1张图片，所以只需要取第一张图片的URL即可。给 HTTP 模块增加一个`key`为`data[0].url`的输出值。
 
-### 2. 构建图片链接
+### 2. 文本加工 - 构建图片链接
 
-在`Markdown`语法中`![图片描述](图片链接)`表示插入图片，图片链接由`HTTP模块`输出，因此可以增加一个输入来接收`HTTP模块`的图片链接输出，并在`文本内容`中通过变量来引用图片链接，从而得到一个完整的`Markdown`图片格式。
+在`Markdown`语法中`![图片描述](图片链接)`表示插入图片，图片链接由`HTTP模块`输出。
+
+因此可以增加一个输入来接收`HTTP模块`的图片链接输出，并在`文本内容`中通过变量来引用图片链接，从而得到一个完整的`Markdown`图片格式。
 
 ### 3. 指定回复
 
@@ -132,8 +140,8 @@ Response:
     "name": "core.module.template.Chat entrance",
     "flowType": "questionInput",
     "position": {
-      "x": 464.32198615344566,
-      "y": 1602.2698463081606
+      "x": 597.8136543694757,
+      "y": 1709.9244174501202
     },
     "inputs": [
       {
@@ -163,7 +171,7 @@ Response:
   },
   {
     "moduleId": "mqgfub",
-    "name": "Dell3绘图",
+    "name": "Dalle3绘图",
     "flowType": "httpRequest468",
     "showStatus": true,
     "position": {
@@ -213,7 +221,7 @@ Response:
           {
             "key": "Authorization",
             "type": "string",
-            "value": "sk-xxxxx"
+            "value": "sk-xxx"
           }
         ],
         "label": "",
@@ -357,8 +365,8 @@ Response:
     "name": "core.module.template.Assigned reply",
     "flowType": "answerNode",
     "position": {
-      "x": 2311.681628410449,
-      "y": 1236.6908252670337
+      "x": 2204.027057268489,
+      "y": 1256.786345213533
     },
     "inputs": [
       {
