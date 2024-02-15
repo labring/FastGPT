@@ -23,7 +23,7 @@ export const AiCFR: FlowModuleTemplateType = {
   flowType: FlowNodeTypeEnum.cfr,
   avatar: '/imgs/module/cfr.svg',
   name: 'core.module.template.Query extension',
-  intro: '该模块已合并到知识库搜索参数中，无需单独使用。',
+  intro: '该模块已合并到知识库搜索参数中，无需单独使用。模块将于2024/3/31弃用，请尽快修改。',
   showStatus: true,
   inputs: [
     Input_Template_Switch,

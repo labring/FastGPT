@@ -94,6 +94,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       data: {
         list: searchRes,
         duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
+        usingQueryExtension: !!aiExtensionResult,
         ...result
       }
     });

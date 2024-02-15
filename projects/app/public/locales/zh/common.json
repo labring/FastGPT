@@ -200,6 +200,9 @@
     "input": {
       "Repeat Value": "有重复的值"
     },
+    "jsonEditor": {
+      "Parse error": "Json可能有误，请仔细检查"
+    },
     "link": {
       "UnValid": "无效的链接"
     },
@@ -227,7 +230,6 @@
   },
   "core": {
     "Chat": "对话",
-    "Chat API is error or undefined": "",
     "Chat test": "测试对话",
     "Max Token": "单条数据上限",
     "Start chat": "立即对话",
@@ -549,8 +551,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -663,6 +664,8 @@
         "Max Tokens Tips": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
         "Min Similarity": "最低相关度",
         "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
+        "Nonsupport": "不支持",
+        "Not similarity": "",
         "Params Setting": "搜索参数设置",
         "Quote index": "第几个引用",
         "Rank": "排名",
@@ -750,6 +753,7 @@
     },
     "module": {
       "Add question type": "添加问题类型",
+      "Can not connect self": "不能连接自身",
       "Data Type": "数据类型",
       "Dataset quote": {
         "Add quote": "添加引用",
@@ -761,6 +765,8 @@
       "Field Name": "字段名",
       "Field Type": "字段类型",
       "Field key": "字段 Key",
+      "Http request props": "请求参数",
+      "Http request settings": "请求配置",
       "Input Type": "输入类型",
       "Plugin output must connect": "自定义输出必须全部连接",
       "QueryExtension": {
@@ -780,6 +786,22 @@
         "Field Description Placeholder": "姓名/年龄/sql语句……",
         "Field Setting Title": "提取字段配置"
       },
+      "http": {
+        "Add props": "添加参数",
+        "AppId": "应用的ID",
+        "ChatId": "当前对话ID",
+        "Current time": "当前时间",
+        "Histories": "历史纪录,最多取10条",
+        "Key already exists": "Key 已经存在",
+        "Key cannot be empty": "参数名不能为空",
+        "Props name": "参数名",
+        "Props tip": "可以设置 Http 请求的相关参数\n可通过 {{key}} 来调用全局变了或外部参数输入，当前可使用变量:\n{{variable}}",
+        "Props value": "参数值",
+        "ResponseChatItemId": "AI回复的ID",
+        "Url and params have been split": "路径参数已被自动加入 Params 中",
+        "Variables": "全局变量",
+        "params": "Params"
+      },
       "input": {
         "Add Input": "添加入参",
         "Input Number": "入参: {{length}}",
@@ -791,7 +813,6 @@
           "Response content": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
           "TFSwitch textarea": "允许定义一些字符串来实现 false 匹配，每行一个，支持正则表达式。",
           "Trigger": "大部分时候，你不需要连接该属性。\n当你需要延迟执行，或精确控制执行时机时，可以连接该属性。",
-          "anyInput": "可传入任意内容",
           "dynamic input": "接收用户动态添加的参数，会在运行时将这些参数平铺传入",
           "textEditor textarea": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。"
         },
@@ -805,9 +826,10 @@
           "Quote": "引用内容",
           "Response content": "回复的内容",
           "Select dataset": "选择知识库",
+          "TFSwitch input tip": "任意内容输入",
           "TFSwitch textarea": "自定义 False 匹配规则",
           "aiModel": "AI 模型",
-          "anyInput": "任意内容输入",
+          "anyInput": "",
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
@@ -854,7 +876,7 @@
         "Ai chat": "AI 对话",
         "Ai chat intro": "AI 大模型对话",
         "Assigned reply": "指定回复",
-        "Assigned reply intro": "该模块可以直接回复一段指定的内容。常用于引导、提示",
+        "Assigned reply intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
         "Chat entrance": "对话入口",
         "Chat entrance intro": "当用户发送一个内容后，流程将会从这个模块开始执行。",
         "Classify question": "问题分类",
@@ -867,7 +889,7 @@
         "Extract field intro": "可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等",
         "Function module": "功能调用",
         "Guide module": "引导模块",
-        "Http request": "Http 请求",
+        "Http request": "HTTP 请求",
         "Http request intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "My plugin module": "个人插件",
         "Query extension": "问题补全",
@@ -877,12 +899,12 @@
         "Running app intro": "可以选择一个其他应用进行调用",
         "System input module": "系统输入",
         "TFSwitch": "判断器",
-        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。",
+        "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。非字符、非数字、非布尔类型，直接输出 True。",
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
         "textEditor": "文本加工",
-        "textEditor intro": "可对固定或传入的文本进行加工后输出"
+        "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"
       },
       "textEditor": {
         "Text Edit": "文本加工"

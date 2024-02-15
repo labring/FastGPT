@@ -10,6 +10,7 @@ import { useCallback, useTransition } from 'react';
 
 const PromptEditor = ({
   showOpenModal = true,
+  showResize = true,
   variables = [],
   value,
   onChange,
@@ -19,6 +20,7 @@ const PromptEditor = ({
   title
 }: {
   showOpenModal?: boolean;
+  showResize?: boolean;
   variables?: EditorVariablePickerType[];
   value?: string;
   onChange?: (text: string) => void;
@@ -48,7 +50,7 @@ const PromptEditor = ({
   return (
     <>
       <Editor
-        showResize
+        showResize={showResize}
         showOpenModal={showOpenModal}
         onOpenModal={onOpen}
         variables={variables}

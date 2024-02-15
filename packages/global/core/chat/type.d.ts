@@ -121,7 +121,9 @@ export type moduleDispatchResType = {
   extractResult?: Record<string, any>;
 
   // http
+  params?: Record<string, any>;
   body?: Record<string, any>;
+  headers?: Record<string, any>;
   httpResult?: Record<string, any>;
 
   // plugin output
