@@ -36,10 +36,8 @@ export async function saveChat({
   try {
     const chat = await MongoChat.findOne(
       {
-        chatId,
-        teamId,
-        tmbId,
-        appId
+        appId,
+        chatId
       },
       '_id metadata'
     );
