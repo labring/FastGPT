@@ -144,8 +144,12 @@ export const streamFetch = ({
           })();
 
           if (event === sseResponseEventEnum.answer) {
-            const answer: string = parseJson?.choices?.[0]?.delta?.content || '';
-            remainText += answer;
+            const text: string = parseJson?.choices?.[0]?.delta?.content || '';
+            remainText += text;
+          } else if (event === sseResponseEventEnum.response) {
+            const text: string = parseJson?.choices?.[0]?.delta?.content || '';
+            onMessage({ text });
+            responseText += text;
           } else if (
             event === sseResponseEventEnum.moduleStatus &&
             parseJson?.name &&

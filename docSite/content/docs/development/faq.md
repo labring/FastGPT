@@ -37,7 +37,7 @@ OneAPI 中没有配置该模型渠道。或者是修改了配置文件中一部�
 
 ### Incorrect API key provided: sk-xxxx.You can find your api Key at xxx
 
-OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 stop 然后 rm 掉，最后再 up -d 运行一次）。可以`exec`进入容器，`env`查看环境变量是否生效。
+OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 docker-compose down 然后再 docker-compose up -d 运行一次）。可以`exec`进入容器，`env`查看环境变量是否生效。
 
 ### 其他模型没法进行问题分类/内容提取
 
@@ -46,7 +46,8 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 ### 页面崩溃
 
 1. 关闭翻译
-2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。
+2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。（95%）
+3. 某些api不兼容问题（较少）
 
 ## 私有部署问题
 
@@ -55,10 +56,14 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 先看日志报错信息。
 
 1. 可以对话，但是索引没有进度：没有配置向量模型（vectorModels）
-2. 不能对话，也不能索引：API调用失败。可能是没连上OneAPI或OenAI
+2. 不能对话，也不能索引：API调用失败。可能是没连上OneAPI或OpenAI
 3. 有进度，但是非常慢：api key不行，OpenAI的免费号，一分钟只有3次还是60次。一天上限200次。
 
 ## Docker 部署常见问题
+
+### 首次部署，root用户提示未注册
+
+没有启动 Mongo 副本集模式。
 
 ### 如何更新？
 
@@ -86,6 +91,7 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 1. 挂载目录不正确
 2. 配置文件不正确，日志中会提示`invalid json`，配置文件需要是标准的 JSON 文件。
+3. 修改后，没有`docker-compose down`再`docker-compose up -d`，restart是不会重新挂载文件的。
 
 ### 为什么无法连接`本地模型`镜像。
 
@@ -112,8 +118,9 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 ### Operation `auth_codes.findOne()` buffering timed out after 10000ms
 
 mongo连接失败，检查
-1. mongo 服务有没有起来(有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以dockerhub找个最新的4.x，修改镜像版本，重新运行）
+1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以dockerhub找个最新的4.x，修改镜像版本，重新运行）
 2. 环境变量（账号密码，注意host和port）
+3. 副本集启动失败，一直在重启：没挂载mongo key；key没有权限；
 
 ## 本地开发问题
 

@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { onChangeNode, useFlowProviderStore } from '../../../../FlowProvider';
-import { Button, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -11,6 +11,7 @@ import DatasetParamsModal, {
   DatasetParamsProps
 } from '@/components/core/module/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 
 const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
   const { nodes } = useFlowProviderStore();
@@ -61,42 +62,60 @@ const SelectDatasetParam = ({ inputs = [], moduleId }: RenderInputProps) => {
   const Render = useMemo(() => {
     return (
       <>
-        <Button
-          variant={'whitePrimary'}
-          leftIcon={<MyIcon name={'common/settingLight'} w={'14px'} />}
-          onClick={onOpen}
-        >
+        {/* label */}
+        <Flex alignItems={'center'} mb={3}>
           {t('core.dataset.search.Params Setting')}
-        </Button>
-        {isOpen && (
-          <DatasetParamsModal
-            {...data}
-            maxTokens={tokenLimit}
-            onClose={onClose}
-            onSuccess={(e) => {
-              setData(e);
-              for (let key in e) {
-                const item = inputs.find((input) => input.key === key);
-                if (!item) continue;
-                onChangeNode({
-                  moduleId,
-                  type: 'updateInput',
-                  key,
-                  value: {
-                    ...item,
-                    //@ts-ignore
-                    value: e[key]
-                  }
-                });
-              }
+          <MyIcon
+            name={'common/settingLight'}
+            ml={2}
+            w={'16px'}
+            cursor={'pointer'}
+            _hover={{
+              color: 'primary.600'
             }}
+            onClick={onOpen}
           />
-        )}
+        </Flex>
+        <SearchParamsTip
+          searchMode={data.searchMode}
+          similarity={data.similarity}
+          limit={data.limit}
+          usingReRank={data.usingReRank}
+          usingQueryExtension={data.datasetSearchUsingExtensionQuery}
+        />
       </>
     );
-  }, [data, inputs, isOpen, moduleId, onClose, onOpen, t, tokenLimit]);
+  }, [data, onOpen, t]);
 
-  return Render;
+  return (
+    <>
+      {Render}
+      {isOpen && (
+        <DatasetParamsModal
+          {...data}
+          maxTokens={tokenLimit}
+          onClose={onClose}
+          onSuccess={(e) => {
+            setData(e);
+            for (let key in e) {
+              const item = inputs.find((input) => input.key === key);
+              if (!item) continue;
+              onChangeNode({
+                moduleId,
+                type: 'updateInput',
+                key,
+                value: {
+                  ...item,
+                  //@ts-ignore
+                  value: e[key]
+                }
+              });
+            }
+          }}
+        />
+      )}
+    </>
+  );
 };
 
 export default React.memo(SelectDatasetParam);

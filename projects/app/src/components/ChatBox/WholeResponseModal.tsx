@@ -248,11 +248,20 @@ const ResponseBox = React.memo(function ResponseBox({
 
         {/* http */}
         <>
-          {activeModule?.body && (
+          {activeModule?.headers && (
             <Row
-              label={t('core.chat.response.module http body')}
-              value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`}
+              label={'Headers'}
+              value={`~~~json\n${JSON.stringify(activeModule?.headers, null, 2)}`}
             />
+          )}
+          {activeModule?.params && (
+            <Row
+              label={'Params'}
+              value={`~~~json\n${JSON.stringify(activeModule?.params, null, 2)}`}
+            />
+          )}
+          {activeModule?.body && (
+            <Row label={'Body'} value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`} />
           )}
           {activeModule?.httpResult && (
             <Row

@@ -9,7 +9,6 @@
     {
       "moduleId": "w90mfp",
       "name": "定义插件输入",
-      "avatar": "/imgs/module/input.png",
       "flowType": "pluginInput",
       "showStatus": false,
       "position": {
@@ -86,8 +85,7 @@
     {
       "moduleId": "49de3g",
       "name": "HTTP模块",
-      "avatar": "/imgs/module/http.png",
-      "flowType": "httpRequest",
+      "flowType": "httpRequest468",
       "showStatus": true,
       "position": {
         "x": 1086.8929621216014,
@@ -98,6 +96,7 @@
           "key": "switch",
           "type": "target",
           "label": "core.module.input.label.switch",
+          "description": "core.module.input.description.Trigger",
           "valueType": "any",
           "showTargetInApp": true,
           "showTargetInPlugin": true,
@@ -105,9 +104,9 @@
         },
         {
           "key": "system_httpMethod",
-          "type": "select",
+          "type": "custom",
           "valueType": "string",
-          "label": "core.module.input.label.Http Request Method",
+          "label": "",
           "value": "POST",
           "list": [
             {
@@ -126,9 +125,9 @@
         },
         {
           "key": "system_httpReqUrl",
-          "type": "input",
+          "type": "hidden",
           "valueType": "string",
-          "label": "core.module.input.label.Http Request Url",
+          "label": "",
           "description": "core.module.input.description.Http Request Url",
           "placeholder": "https://api.ai.com/getInventory",
           "required": false,
@@ -139,15 +138,37 @@
         },
         {
           "key": "system_httpHeader",
-          "type": "textarea",
-          "valueType": "string",
-          "label": "core.module.input.label.Http Request Header",
+          "type": "custom",
+          "valueType": "any",
+          "value": "",
+          "label": "",
           "description": "core.module.input.description.Http Request Header",
           "placeholder": "core.module.input.description.Http Request Header",
           "required": false,
           "showTargetInApp": false,
           "showTargetInPlugin": false,
-          "value": "",
+          "connected": false
+        },
+        {
+          "key": "system_httpParams",
+          "type": "hidden",
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "type": "hidden",
+          "valueType": "any",
+          "value": "{\r\n  \"appId\": \"{{appId}}\",\r\n  \"chatId\": \"{{chatId}}\",\r\n  \"responseChatItemId\": \"{{responseChatItemId}}\",\r\n  \"defaultFeedback\": \"{{defaultFeedback}}\",\r\n  \"customFeedback\": \"{{customFeedback}}\"\r\n}",
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
           "connected": false
         },
         {
@@ -276,7 +297,6 @@
     {
       "moduleId": "s15f3v",
       "name": "指定回复",
-      "avatar": "/imgs/module/reply.png",
       "flowType": "answerNode",
       "position": {
         "x": 1705.6337348182756,
@@ -287,6 +307,7 @@
           "key": "switch",
           "type": "target",
           "label": "core.module.input.label.switch",
+          "description": "core.module.input.description.Trigger",
           "valueType": "any",
           "showTargetInApp": true,
           "showTargetInPlugin": true,
@@ -296,9 +317,9 @@
           "key": "text",
           "type": "textarea",
           "valueType": "any",
-          "label": "回复的内容",
-          "description": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
-          "placeholder": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
+          "label": "core.module.input.label.Response content",
+          "description": "core.module.input.description.Response content",
+          "placeholder": "core.module.input.description.Response content",
           "showTargetInApp": true,
           "showTargetInPlugin": true,
           "connected": true
