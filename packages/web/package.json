@@ -17,7 +17,7 @@
     "i18next": "^22.5.1",
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "next-i18next": "^13.3.0",
-    "pdfjs-dist": "^4.0.269",
+    "pdfjs-dist": "4.0.269",
     "react": "18.2.0",
     "react-dom": "18.2.0",
     "react-i18next": "^12.3.1",
