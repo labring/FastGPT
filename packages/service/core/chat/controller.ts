@@ -43,6 +43,7 @@ export const addCustomFeedbacks = async ({
   try {
     await MongoChatItem.findOneAndUpdate(
       {
+        appId,
         chatId,
         dataId: chatItemId
       },

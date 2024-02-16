@@ -76,13 +76,13 @@ try {
   ChatSchema.index({ chatId: 1 }, { background: true });
   // get user history
   ChatSchema.index({ tmbId: 1, appId: 1, top: -1, updateTime: -1 }, { background: true });
-  // delete by appid; clear history; init chat; update chat; auth chat;
+  // delete by appid; clear history; init chat; update chat; auth chat; get chat;
   ChatSchema.index({ appId: 1, chatId: 1 }, { background: true });
 
   // get chat logs;
   ChatSchema.index({ teamId: 1, appId: 1, updateTime: -1 }, { background: true });
   // get share chat history
-  ChatSchema.index({ shareId: 1, outLinkUid: 1 }, { background: true });
+  ChatSchema.index({ shareId: 1, outLinkUid: 1, updateTime: -1, source: 1 }, { background: true });
 } catch (error) {
   console.log(error);
 }
