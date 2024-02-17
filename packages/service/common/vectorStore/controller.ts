@@ -38,22 +38,22 @@ export const insertDatasetDataVector = async ({
   };
 };
 
-export const updateDatasetDataVector = async ({
-  id,
-  ...props
-}: InsertVectorProps & {
-  id: string;
-  query: string;
-  model: VectorModelItemType;
-}) => {
-  // insert new vector
-  const { charsLength, insertId } = await insertDatasetDataVector(props);
+// export const updateDatasetDataVector = async ({
+//   id,
+//   ...props
+// }: InsertVectorProps & {
+//   id: string;
+//   query: string;
+//   model: VectorModelItemType;
+// }) => {
+//   // insert new vector
+//   const { charsLength, insertId } = await insertDatasetDataVector(props);
 
-  // delete old vector
-  await deleteDatasetDataVector({
-    teamId: props.teamId,
-    id
-  });
+//   // delete old vector
+//   await deleteDatasetDataVector({
+//     teamId: props.teamId,
+//     id
+//   });
 
-  return { charsLength, insertId };
-};
+//   return { charsLength, insertId };
+// };

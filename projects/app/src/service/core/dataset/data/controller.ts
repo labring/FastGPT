@@ -6,11 +6,9 @@ import {
 } from '@fastgpt/global/core/dataset/controller';
 import {
   insertDatasetDataVector,
-  recallFromVectorStore,
-  updateDatasetDataVector
+  recallFromVectorStore
 } from '@fastgpt/service/common/vectorStore/controller';
 import {
-  DatasetDataIndexTypeEnum,
   DatasetSearchModeEnum,
   DatasetSearchModeMap,
   SearchScoreTypeEnum
@@ -22,6 +20,7 @@ import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/con
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import {
+  DatasetDataItemType,
   DatasetDataSchemaType,
   DatasetDataWithCollectionType,
   SearchDataResponseItemType
@@ -35,7 +34,7 @@ import type {
 } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { getVectorModel } from '../../ai/model';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export async function pushDataToTrainingQueue(
   props: {
@@ -128,8 +127,10 @@ export async function insertData2Dataset({
 /**
  * update data
  * 1. compare indexes
- * 2. update pg data
- * 3. update mongo data
+ * 2. insert new pg data
+ * session run:
+ *  3. update mongo data(session run)
+ *  4. delete old pg data
  */
 export async function updateData2Dataset({
   dataId,
@@ -147,17 +148,14 @@ export async function updateData2Dataset({
   const mongoData = await MongoDatasetData.findById(dataId);
   if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
-  // make sure have one index
-  if (indexes.length === 0) {
-    const databaseDefaultIndex = mongoData.indexes.find((index) => index.defaultIndex);
-
-    indexes = [
+  // make sure have default index
+  if (!indexes.find((index) => index.defaultIndex)) {
+    indexes.push(
       getDefaultIndex({
         q,
-        a,
-        dataId: databaseDefaultIndex ? String(databaseDefaultIndex.dataId) : undefined
+        a
       })
-    ];
+    );
   }
 
   // patch indexes, create, update, delete
@@ -166,7 +164,8 @@ export async function updateData2Dataset({
   // find database indexes in new Indexes, if have not,  delete it
   for (const item of mongoData.indexes) {
     const index = indexes.find((index) => index.dataId === item.dataId);
-    if (!index) {
+    // cannot delete default index
+    if (!index && !item.defaultIndex) {
       patchResult.push({
         type: 'delete',
         index: item
@@ -189,10 +188,6 @@ export async function updateData2Dataset({
           type: 'update',
           index: {
             ...item,
-            type:
-              item.type === DatasetDataIndexTypeEnum.qa && !a
-                ? DatasetDataIndexTypeEnum.chunk
-                : item.type,
             text: qaStr
           }
         });
@@ -215,10 +210,12 @@ export async function updateData2Dataset({
   mongoData.updateTime = new Date();
   await mongoData.save();
 
-  // update vector
-  const result = await Promise.all(
-    patchResult.map(async (item) => {
-      if (item.type === 'create') {
+  // insert vector
+  const clonePatchResult2Insert: PatchIndexesProps[] = JSON.parse(JSON.stringify(patchResult));
+  const insertResult = await Promise.all(
+    clonePatchResult2Insert.map(async (item) => {
+      // insert new vector and update dateId
+      if (item.type === 'create' || item.type === 'update') {
         const result = await insertDatasetDataVector({
           query: item.index.text,
           model: getVectorModel(model),
@@ -229,49 +226,53 @@ export async function updateData2Dataset({
         item.index.dataId = result.insertId;
         return result;
       }
-      if (item.type === 'update' && item.index.dataId) {
-        const result = await updateDatasetDataVector({
-          teamId: mongoData.teamId,
-          datasetId: mongoData.datasetId,
-          collectionId: mongoData.collectionId,
-          id: item.index.dataId,
-          query: item.index.text,
-          model: getVectorModel(model)
-        });
-        item.index.dataId = result.insertId;
-
-        return result;
-      }
-      if (item.type === 'delete' && item.index.dataId) {
-        await deleteDatasetDataVector({
-          teamId: mongoData.teamId,
-          id: item.index.dataId
-        });
-        return {
-          charsLength: 0
-        };
-      }
       return {
         charsLength: 0
       };
     })
   );
+  const charsLength = insertResult.reduce((acc, cur) => acc + cur.charsLength, 0);
 
-  const charsLength = result.reduce((acc, cur) => acc + cur.charsLength, 0);
-  const newIndexes = patchResult.filter((item) => item.type !== 'delete').map((item) => item.index);
+  await mongoSessionRun(async (session) => {
+    // update mongo
+    const newIndexes = clonePatchResult2Insert
+      .filter((item) => item.type !== 'delete')
+      .map((item) => item.index);
+    // update mongo other data
+    mongoData.q = q || mongoData.q;
+    mongoData.a = a ?? mongoData.a;
+    mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
+    // @ts-ignore
+    mongoData.indexes = newIndexes;
+    await mongoData.save({ session });
 
-  // update mongo other data
-  mongoData.q = q || mongoData.q;
-  mongoData.a = a ?? mongoData.a;
-  mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
-  // @ts-ignore
-  mongoData.indexes = newIndexes;
-  await mongoData.save();
+    // delete vector
+    const deleteIdList = patchResult
+      .filter((item) => item.type === 'delete' || item.type === 'update')
+      .map((item) => item.index.dataId)
+      .filter(Boolean);
+    if (deleteIdList.length > 0) {
+      await deleteDatasetDataVector({
+        teamId: mongoData.teamId,
+        idList: deleteIdList as string[]
+      });
+    }
+  });
 
   return {
     charsLength
   };
 }
+
+export const deleteDatasetData = async (data: DatasetDataItemType) => {
+  await mongoSessionRun(async (session) => {
+    await MongoDatasetData.findByIdAndDelete(data.id, { session });
+    await deleteDatasetDataVector({
+      teamId: data.teamId,
+      idList: data.indexes.map((item) => item.dataId)
+    });
+  });
+};
 
 type SearchDatasetDataProps = {
   teamId: string;

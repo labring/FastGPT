@@ -1,6 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushQABill } from '@/service/support/wallet/bill/push';
-import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
@@ -230,7 +230,6 @@ function formatSplitText(text: string, rawText: string) {
         indexes: [
           {
             defaultIndex: true,
-            type: DatasetDataIndexTypeEnum.qa,
             text: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`
           }
         ]
@@ -248,7 +247,6 @@ function formatSplitText(text: string, rawText: string) {
         indexes: [
           {
             defaultIndex: true,
-            type: DatasetDataIndexTypeEnum.chunk,
             text: chunk
           }
         ]

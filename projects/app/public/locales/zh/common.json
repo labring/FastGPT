@@ -551,7 +551,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -560,7 +561,7 @@
         "Data Content": "相关数据内容",
         "Data Content Placeholder": "该输入框是必填项，该内容通常是对于知识点的描述，也可以是用户的问题，最多 {{maxToken}} 字。",
         "Data Content Tip": "该输入框是必填项\n该内容通常是对于知识点的描述，也可以是用户的问题。",
-        "Default Index Tip": "无法编辑，默认索引会使用【相关数据内容】与【辅助数据】的文本直接生成索引，如不需要默认索引，可删除。 每条数据必须保证有一个以上索引，所有索引被删除后，会自动生成默认索引。",
+        "Default Index Tip": "无法编辑，默认索引会使用【相关数据内容】与【辅助数据】的文本直接生成索引。",
         "Edit": "编辑数据",
         "Empty Tip": "这个集合还没有数据~",
         "Main Content": "主要内容",

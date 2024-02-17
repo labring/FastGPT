@@ -19,7 +19,6 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
-import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import SideTabs from '@/components/SideTabs';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
@@ -195,7 +194,7 @@ const InputDataModal = ({
         id: dataId,
         ...e,
         indexes: e.indexes.map((index) =>
-          index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a }) : index
+          index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a, dataId: index.dataId }) : index
         )
       });
 
@@ -278,7 +277,7 @@ const InputDataModal = ({
                     bg={i % 2 !== 0 ? 'myWhite.400' : ''}
                     _hover={{
                       '& .delete': {
-                        display: index.defaultIndex && indexes.length === 1 ? 'none' : 'block'
+                        display: index.defaultIndex ? 'none' : 'block'
                       }
                     }}
                   >
@@ -331,7 +330,6 @@ const InputDataModal = ({
                   onClick={() =>
                     appendIndexes({
                       defaultIndex: false,
-                      type: DatasetDataIndexTypeEnum.chunk,
                       text: '',
                       dataId: `${Date.now()}`
                     })
