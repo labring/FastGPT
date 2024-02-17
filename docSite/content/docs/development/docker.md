@@ -110,9 +110,8 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 cd 项目目录
 # 创建 mongo 密钥
 openssl rand -base64 756 > ./mongodb.key
-# 600不行可以用chmod 999
 chmod 600 ./mongodb.key
-
+chown 999:root ./mongodb.key
 # 启动容器
 docker-compose pull
 docker-compose up -d
