@@ -77,7 +77,7 @@ export async function insertData2Dataset({
     return Promise.reject("teamId and tmbId can't be the same");
   }
 
-  const qaStr = `${q}\n${a}`.trim();
+  const qaStr = getDefaultIndex({ q, a }).text;
 
   // empty indexes check, if empty, create default index
   indexes =
@@ -85,9 +85,15 @@ export async function insertData2Dataset({
       ? indexes.map((index) => ({
           ...index,
           dataId: undefined,
-          defaultIndex: indexes?.length === 1 && index.text === qaStr ? true : index.defaultIndex
+          defaultIndex: index.text.trim() === qaStr
         }))
       : [getDefaultIndex({ q, a })];
+
+  if (!indexes.find((index) => index.defaultIndex)) {
+    indexes.unshift(getDefaultIndex({ q, a }));
+  }
+
+  indexes = indexes.slice(0, 6);
 
   // insert to vector store
   const result = await Promise.all(
@@ -142,61 +148,65 @@ export async function updateData2Dataset({
   if (!Array.isArray(indexes)) {
     return Promise.reject('indexes is required');
   }
-  const qaStr = `${q}\n${a}`.trim();
+  const qaStr = getDefaultIndex({ q, a }).text;
 
   // patch index and update pg
   const mongoData = await MongoDatasetData.findById(dataId);
   if (!mongoData) return Promise.reject('core.dataset.error.Data not found');
 
-  // make sure have default index
-  if (!indexes.find((index) => index.defaultIndex)) {
-    indexes.push(
-      getDefaultIndex({
-        q,
-        a
-      })
-    );
+  // remove defaultIndex
+  let formatIndexes = indexes.map((index) => ({
+    ...index,
+    text: index.text.trim(),
+    defaultIndex: index.text.trim() === qaStr
+  }));
+  if (!formatIndexes.find((index) => index.defaultIndex)) {
+    const defaultIndex = mongoData.indexes.find((index) => index.defaultIndex);
+    formatIndexes.unshift(defaultIndex ? defaultIndex : getDefaultIndex({ q, a }));
   }
+  formatIndexes = formatIndexes.slice(0, 6);
 
   // patch indexes, create, update, delete
   const patchResult: PatchIndexesProps[] = [];
 
   // find database indexes in new Indexes, if have not,  delete it
   for (const item of mongoData.indexes) {
-    const index = indexes.find((index) => index.dataId === item.dataId);
-    // cannot delete default index
-    if (!index && !item.defaultIndex) {
+    const index = formatIndexes.find((index) => index.dataId === item.dataId);
+    if (!index) {
       patchResult.push({
         type: 'delete',
         index: item
       });
     }
   }
-  for (const item of indexes) {
+  for (const item of formatIndexes) {
     const index = mongoData.indexes.find((index) => index.dataId === item.dataId);
     // in database, update
     if (index) {
-      // manual update index
+      // default index update
+      if (index.defaultIndex && index.text !== qaStr) {
+        patchResult.push({
+          type: 'update',
+          index: {
+            //@ts-ignore
+            ...index.toObject(),
+            text: qaStr
+          }
+        });
+        continue;
+      }
+      // custom index update
       if (index.text !== item.text) {
         patchResult.push({
           type: 'update',
           index: item
         });
-      } else if (index.defaultIndex && index.text !== qaStr) {
-        // update default index
-        patchResult.push({
-          type: 'update',
-          index: {
-            ...item,
-            text: qaStr
-          }
-        });
-      } else {
-        patchResult.push({
-          type: 'unChange',
-          index: item
-        });
+        continue;
       }
+      patchResult.push({
+        type: 'unChange',
+        index: item
+      });
     } else {
       // not in database, create
       patchResult.push({
@@ -232,7 +242,7 @@ export async function updateData2Dataset({
     })
   );
   const charsLength = insertResult.reduce((acc, cur) => acc + cur.charsLength, 0);
-
+  // console.log(clonePatchResult2Insert);
   await mongoSessionRun(async (session) => {
     // update mongo
     const newIndexes = clonePatchResult2Insert
