@@ -8,7 +8,7 @@ import Tabs from '../Tabs';
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import Markdown from '../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
@@ -39,8 +39,8 @@ function Row({
         {...(isCodeBlock
           ? { transform: 'translateY(-3px)' }
           : value
-            ? { px: 3, py: 1, border: theme.borders.base }
-            : {})}
+          ? { px: 3, py: 1, border: theme.borders.base }
+          : {})}
       >
         {value && <Markdown source={strValue} />}
         {rawDom}

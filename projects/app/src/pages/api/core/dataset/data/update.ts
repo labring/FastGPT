@@ -4,8 +4,8 @@ import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { connectToDatabase } from '@/service/mongo';
 import { updateData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetData } from '@/service/support/permission/auth/dataset';
-import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { authTeamBalance } from '@/service/support/permission/auth/team';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { UpdateDatasetDataProps } from '@/global/core/dataset/api';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -39,7 +39,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       model: vectorModel
     });
 
-    pushGenerateVectorBill({
+    pushGenerateVectorUsage({
       teamId,
       tmbId,
       charsLength,

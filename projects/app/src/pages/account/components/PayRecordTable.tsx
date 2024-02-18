@@ -15,7 +15,7 @@ import { getPayOrders, checkPayResult } from '@/web/support/wallet/pay/api';
 import type { PaySchema } from '@fastgpt/global/support/wallet/pay/type.d';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';

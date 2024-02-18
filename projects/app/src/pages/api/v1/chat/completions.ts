@@ -13,11 +13,11 @@ import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { pushChatBill } from '@/service/support/wallet/bill/push';
+import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
 import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
-import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
+import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -305,12 +305,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // add record
-    const { total } = pushChatBill({
+    const { total } = pushChatUsage({
       appName: app.name,
       appId: app._id,
       teamId: user.team.teamId,
       tmbId: user.team.tmbId,
-      source: getBillSourceByAuthType({ shareId, authType }),
+      source: getUsageSourceByAuthType({ shareId, authType }),
       response: responseData
     });
 

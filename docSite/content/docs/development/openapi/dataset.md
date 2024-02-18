@@ -13,11 +13,24 @@ weight: 853
 
 
 
-## 创建训练订单
+## 创建训练订单(4.6.9地址发生改动)
 
 {{< tabs tabTotal="2" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
+
+**新例子**
+
+```bash
+curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/usage/createTrainingUsage' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "name": "可选，自定义订单名称，例如：文档训练-fastgpt.docx"
+}'
+```
+
+**x例子**
 
 ```bash
 curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/bill/createTrainingBill' \

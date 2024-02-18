@@ -4,8 +4,8 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { sendOneInform } from '../support/user/inform/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { authTeamBalance } from '@/service/support/permission/auth/team';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 
@@ -138,7 +138,7 @@ export async function generateVector(): Promise<any> {
     });
 
     // push bill
-    pushGenerateVectorBill({
+    pushGenerateVectorUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
       charsLength,

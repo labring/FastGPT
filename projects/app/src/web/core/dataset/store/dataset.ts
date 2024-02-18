@@ -12,7 +12,7 @@ import {
 import { defaultDatasetDetail } from '@/constants/dataset';
 import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
-import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
+import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 
 type State = {
@@ -94,7 +94,7 @@ export const useDatasetStore = create<State>()(
               id: get().datasetDetail._id,
               status: DatasetStatusEnum.syncing
             }),
-            postCreateTrainingBill({
+            postCreateTrainingUsage({
               name: 'core.dataset.training.Website Sync',
               datasetId: get().datasetDetail._id
             })

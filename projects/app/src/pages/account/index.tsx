@@ -14,7 +14,7 @@ import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
-const BillTable = dynamic(() => import('./components/BillTable'));
+const UsageTable = dynamic(() => import('./components/UsageTable'));
 const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
@@ -23,7 +23,7 @@ const PriceBox = dynamic(() => import('@/components/support/wallet/Price'));
 enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
-  'bill' = 'bill',
+  'usage' = 'usage',
   'price' = 'price',
   'pay' = 'pay',
   'inform' = 'inform',
@@ -45,9 +45,9 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs?.isPlus
       ? [
           {
-            icon: 'support/bill/billRecordLight',
+            icon: 'support/usage/usageRecordLight',
             label: t('user.Usage Record'),
-            id: TabEnum.bill
+            id: TabEnum.usage
           }
         ]
       : []),
@@ -178,7 +178,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
             {currentTab === TabEnum.info && <UserInfo />}
             {currentTab === TabEnum.promotion && <Promotion />}
-            {currentTab === TabEnum.bill && <BillTable />}
+            {currentTab === TabEnum.usage && <UsageTable />}
             {currentTab === TabEnum.pay && <PayRecordTable />}
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}

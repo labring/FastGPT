@@ -32,7 +32,7 @@ import {
 } from '@/web/support/wallet/sub/api';
 import { SubDatasetSizePreviewCheckResponse } from '@fastgpt/global/support/wallet/sub/api.d';
 import { useRouter } from 'next/router';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyModal from '@/components/MyModal';

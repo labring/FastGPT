@@ -1,13 +1,15 @@
 import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { BillSchema as BillType } from '@fastgpt/global/support/wallet/bill/type';
-import { BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
+import { UsageSchemaType } from '@fastgpt/global/support/wallet/usage/type';
+import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-const BillSchema = new Schema({
+export const UsageCollectionName = 'usages';
+
+const UsageSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -38,7 +40,7 @@ const BillSchema = new Schema({
   },
   source: {
     type: String,
-    enum: Object.keys(BillSourceMap),
+    enum: Object.keys(UsageSourceMap),
     required: true
   },
   list: {
@@ -48,11 +50,12 @@ const BillSchema = new Schema({
 });
 
 try {
-  BillSchema.index({ teamId: 1, tmbId: 1, source: 1, time: -1 }, { background: true });
-  BillSchema.index({ time: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
+  UsageSchema.index({ teamId: 1, tmbId: 1, source: 1, time: -1 }, { background: true });
+  UsageSchema.index({ time: 1 }, { expireAfterSeconds: 180 * 24 * 60 * 60 });
 } catch (error) {
   console.log(error);
 }
 
-export const MongoBill: Model<BillType> = models['bill'] || model('bill', BillSchema);
-MongoBill.syncIndexes();
+export const MongoUsage: Model<UsageSchemaType> =
+  models[UsageCollectionName] || model(UsageCollectionName, UsageSchema);
+MongoUsage.syncIndexes();

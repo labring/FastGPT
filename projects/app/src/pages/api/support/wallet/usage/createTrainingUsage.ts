@@ -1,16 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { CreateTrainingBillProps } from '@fastgpt/global/support/wallet/bill/api.d';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { CreateTrainingUsageProps } from '@fastgpt/global/support/wallet/usage/api.d';
 import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
-import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { name, datasetId } = req.body as CreateTrainingBillProps;
+    const { name, datasetId } = req.body as CreateTrainingUsageProps;
 
     const { teamId, tmbId, dataset } = await authDataset({
       req,
@@ -20,11 +20,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       per: 'w'
     });
 
-    const { billId } = await createTrainingBill({
+    const { billId } = await createTrainingUsage({
       teamId,
       tmbId,
       appName: name,
-      billSource: BillSourceEnum.training,
+      billSource: UsageSourceEnum.training,
       vectorModel: getVectorModel(dataset.vectorModel).name,
       agentModel: getLLMModel(dataset.agentModel).name
     });

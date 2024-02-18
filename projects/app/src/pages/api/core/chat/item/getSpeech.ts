@@ -3,9 +3,9 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { GetChatSpeechProps } from '@/global/core/chat/api.d';
 import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
-import { pushAudioSpeechBill } from '@/service/support/wallet/bill/push';
+import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authCertOrShareId } from '@fastgpt/service/support/permission/auth/common';
-import { authType2BillSource } from '@/service/support/wallet/bill/utils';
+import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
 import { getAudioSpeechModel } from '@/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 
@@ -54,12 +54,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       speed: ttsConfig.speed,
       onSuccess: async ({ model, buffer }) => {
         try {
-          pushAudioSpeechBill({
+          pushAudioSpeechUsage({
             model: model,
             charsLength: input.length,
             tmbId,
             teamId,
-            source: authType2BillSource({ authType })
+            source: authType2UsageSource({ authType })
           });
 
           await MongoTTSBuffer.create({

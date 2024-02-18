@@ -1,13 +1,13 @@
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { PostReRankProps } from '@fastgpt/global/core/ai/api';
-import { createBill, concatBill } from './controller';
-import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
+import { createUsage, concatUsage } from './controller';
+import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
 
-export const pushChatBill = ({
+export const pushChatUsage = ({
   appName,
   appId,
   teamId,
@@ -19,12 +19,12 @@ export const pushChatBill = ({
   appId: string;
   teamId: string;
   tmbId: string;
-  source: `${BillSourceEnum}`;
+  source: `${UsageSourceEnum}`;
   response: ChatHistoryItemResType[];
 }) => {
   const total = response.reduce((sum, item) => sum + (item.price || 0), 0);
 
-  createBill({
+  createUsage({
     teamId,
     tmbId,
     appName,
@@ -49,7 +49,7 @@ export const pushChatBill = ({
   return { total };
 };
 
-export const pushQABill = async ({
+export const pushQAUsage = async ({
   teamId,
   tmbId,
   model,
@@ -69,7 +69,7 @@ export const pushQABill = async ({
     type: ModelTypeEnum.llm
   });
 
-  concatBill({
+  concatUsage({
     billId,
     teamId,
     tmbId,
@@ -81,13 +81,13 @@ export const pushQABill = async ({
   return { total };
 };
 
-export const pushGenerateVectorBill = ({
+export const pushGenerateVectorUsage = ({
   billId,
   teamId,
   tmbId,
   charsLength,
   model,
-  source = BillSourceEnum.fastgpt,
+  source = UsageSourceEnum.fastgpt,
   extensionModel,
   extensionInputTokens,
   extensionOutputTokens
@@ -97,7 +97,7 @@ export const pushGenerateVectorBill = ({
   tmbId: string;
   charsLength: number;
   model: string;
-  source?: `${BillSourceEnum}`;
+  source?: `${UsageSourceEnum}`;
 
   extensionModel?: string;
   extensionInputTokens?: number;
@@ -131,7 +131,7 @@ export const pushGenerateVectorBill = ({
 
   // 插入 Bill 记录
   if (billId) {
-    concatBill({
+    concatUsage({
       teamId,
       tmbId,
       total: totalVector,
@@ -140,7 +140,7 @@ export const pushGenerateVectorBill = ({
       listIndex: 0
     });
   } else {
-    createBill({
+    createUsage({
       teamId,
       tmbId,
       appName: 'wallet.moduleName.index',
@@ -170,7 +170,7 @@ export const pushGenerateVectorBill = ({
   return { total };
 };
 
-export const pushQuestionGuideBill = ({
+export const pushQuestionGuideUsage = ({
   inputTokens,
   outputTokens,
   teamId,
@@ -189,12 +189,12 @@ export const pushQuestionGuideBill = ({
     type: ModelTypeEnum.llm
   });
 
-  createBill({
+  createUsage({
     teamId,
     tmbId,
     appName: 'wallet.bill.Next Step Guide',
     total,
-    source: BillSourceEnum.fastgpt,
+    source: UsageSourceEnum.fastgpt,
     list: [
       {
         moduleName: 'wallet.bill.Next Step Guide',
@@ -207,20 +207,20 @@ export const pushQuestionGuideBill = ({
   });
 };
 
-export function pushAudioSpeechBill({
+export function pushAudioSpeechUsage({
   appName = 'wallet.bill.Audio Speech',
   model,
   charsLength,
   teamId,
   tmbId,
-  source = BillSourceEnum.fastgpt
+  source = UsageSourceEnum.fastgpt
 }: {
   appName?: string;
   model: string;
   charsLength: number;
   teamId: string;
   tmbId: string;
-  source: `${BillSourceEnum}`;
+  source: `${UsageSourceEnum}`;
 }) {
   const { total, modelName } = formatModelPrice2Store({
     model,
@@ -228,7 +228,7 @@ export function pushAudioSpeechBill({
     type: ModelTypeEnum.audioSpeech
   });
 
-  createBill({
+  createUsage({
     teamId,
     tmbId,
     appName,
@@ -245,7 +245,7 @@ export function pushAudioSpeechBill({
   });
 }
 
-export function pushWhisperBill({
+export function pushWhisperUsage({
   teamId,
   tmbId,
   duration
@@ -267,12 +267,12 @@ export function pushWhisperBill({
 
   const name = 'wallet.bill.Whisper';
 
-  createBill({
+  createUsage({
     teamId,
     tmbId,
     appName: name,
     total,
-    source: BillSourceEnum.fastgpt,
+    source: UsageSourceEnum.fastgpt,
     list: [
       {
         moduleName: name,
@@ -284,7 +284,7 @@ export function pushWhisperBill({
   });
 }
 
-export function pushReRankBill({
+export function pushReRankUsage({
   teamId,
   tmbId,
   source,
@@ -292,7 +292,7 @@ export function pushReRankBill({
 }: {
   teamId: string;
   tmbId: string;
-  source: `${BillSourceEnum}`;
+  source: `${UsageSourceEnum}`;
   inputs: PostReRankProps['inputs'];
 }) {
   const reRankModel = global.reRankModels[0];
@@ -307,7 +307,7 @@ export function pushReRankBill({
   });
   const name = 'wallet.bill.ReRank';
 
-  createBill({
+  createUsage({
     teamId,
     tmbId,
     appName: name,

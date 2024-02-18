@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { pushReRankBill } from '@/service/support/wallet/bill/push';
+import { pushReRankUsage } from '@/service/support/wallet/usage/push';
 import { connectToDatabase } from '@/service/mongo';
-import { authTeamBalance } from '@/service/support/permission/auth/bill';
+import { authTeamBalance } from '@/service/support/permission/auth/team';
 import { PostReRankProps, PostReRankResponse } from '@fastgpt/global/core/ai/api';
 import { reRankRecall } from '@/service/core/ai/rerank';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -24,7 +24,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     const result = await reRankRecall({ query, inputs });
 
-    const { total } = pushReRankBill({
+    const { total } = pushReRankUsage({
       teamId,
       tmbId,
       source: 'api',

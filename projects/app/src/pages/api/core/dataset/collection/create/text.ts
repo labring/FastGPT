@@ -16,8 +16,8 @@ import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dat
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 
@@ -74,11 +74,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         hashRawText: hashStr(text),
         rawTextLength: text.length
       }),
-      createTrainingBill({
+      createTrainingUsage({
         teamId,
         tmbId,
         appName: name,
-        billSource: BillSourceEnum.training,
+        billSource: UsageSourceEnum.training,
         vectorModel: getVectorModel(dataset.vectorModel)?.name,
         agentModel: getLLMModel(dataset.agentModel)?.name
       })

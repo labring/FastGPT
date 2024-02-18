@@ -11,9 +11,9 @@ import {
   Box,
   Button
 } from '@chakra-ui/react';
-import { BillSourceEnum, BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
-import { getUserBills } from '@/web/support/wallet/bill/api';
-import type { BillItemType } from '@fastgpt/global/support/wallet/bill/type';
+import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
+import { getUserUsages } from '@/web/support/wallet/usage/api';
+import type { BillItemType } from '@fastgpt/global/support/wallet/usage/type';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
@@ -28,16 +28,16 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@/components/Avatar';
-const BillDetail = dynamic(() => import('./BillDetail'));
+const UsageDetail = dynamic(() => import('./UsageDetail'));
 
-const BillTable = () => {
+const UsageTable = () => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const [dateRange, setDateRange] = useState<DateRangeType>({
     from: addDays(new Date(), -7),
     to: new Date()
   });
-  const [billSource, setBillSource] = useState<`${BillSourceEnum}` | ''>('');
+  const [billSource, setBillSource] = useState<`${UsageSourceEnum}` | ''>('');
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
   const [billDetail, setBillDetail] = useState<BillItemType>();
@@ -45,7 +45,7 @@ const BillTable = () => {
   const sourceList = useMemo(
     () => [
       { label: t('common.All'), value: '' },
-      ...Object.entries(BillSourceMap).map(([key, value]) => ({
+      ...Object.entries(UsageSourceMap).map(([key, value]) => ({
         label: t(value.label),
         value: key
       }))
@@ -78,7 +78,7 @@ const BillTable = () => {
     Pagination,
     getData
   } = usePagination<BillItemType>({
-    api: getUserBills,
+    api: getUserUsages,
     pageSize: isPc ? 20 : 10,
     params: {
       dateStart: dateRange.from || new Date(),
@@ -154,7 +154,7 @@ const BillTable = () => {
               <Tr key={item.id}>
                 {/* <Td>{item.memberName}</Td> */}
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                <Td>{t(BillSourceMap[item.source]?.label)}</Td>
+                <Td>{t(UsageSourceMap[item.source]?.label)}</Td>
                 <Td>{t(item.appName) || '-'}</Td>
                 <Td>{item.total}元</Td>
                 <Td>
@@ -178,9 +178,9 @@ const BillTable = () => {
       )}
 
       <Loading loading={isLoading} fixed={false} />
-      {!!billDetail && <BillDetail bill={billDetail} onClose={() => setBillDetail(undefined)} />}
+      {!!billDetail && <UsageDetail bill={billDetail} onClose={() => setBillDetail(undefined)} />}
     </Flex>
   );
 };
 
-export default React.memo(BillTable);
+export default React.memo(UsageTable);

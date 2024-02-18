@@ -13,8 +13,8 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
 import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
@@ -66,11 +66,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
 
       // 3. create bill and start sync
-      const { billId } = await createTrainingBill({
+      const { billId } = await createTrainingUsage({
         teamId,
         tmbId,
         appName: 'core.dataset.collection.Sync Collection',
-        billSource: BillSourceEnum.training,
+        billSource: UsageSourceEnum.training,
         vectorModel: getVectorModel(dataset.vectorModel).name,
         agentModel: getLLMModel(dataset.agentModel).name,
         session

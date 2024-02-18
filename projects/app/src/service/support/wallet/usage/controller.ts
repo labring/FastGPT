@@ -1,23 +1,23 @@
-import { ConcatBillProps, CreateBillProps } from '@fastgpt/global/support/wallet/bill/api';
+import { ConcatUsageProps, CreateUsageProps } from '@fastgpt/global/support/wallet/usage/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { POST } from '@fastgpt/service/common/api/plusRequest';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
-export function createBill(data: CreateBillProps) {
+export function createUsage(data: CreateUsageProps) {
   if (!FastGPTProUrl) return;
   if (data.total === 0) {
     addLog.info('0 Bill', data);
   }
   try {
-    POST('/support/wallet/bill/createBill', data);
+    POST('/support/wallet/usage/createUsage', data);
   } catch (error) {}
 }
-export function concatBill(data: ConcatBillProps) {
+export function concatUsage(data: ConcatUsageProps) {
   if (!FastGPTProUrl) return;
   if (data.total === 0) {
     addLog.info('0 Bill', data);
   }
   try {
-    POST('/support/wallet/bill/concatBill', data);
+    POST('/support/wallet/usage/concatUsage', data);
   } catch (error) {}
 }

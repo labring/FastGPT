@@ -4,8 +4,8 @@ import { sseErrRes } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { responseWrite } from '@fastgpt/service/common/response';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { pushChatBill } from '@/service/support/wallet/bill/push';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { pushChatUsage } from '@/service/support/wallet/usage/push';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { dispatchModules } from '@/service/moduleDispatch';
@@ -85,12 +85,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     res.end();
 
-    pushChatBill({
+    pushChatUsage({
       appName,
       appId,
       teamId,
       tmbId,
-      source: BillSourceEnum.fastgpt,
+      source: UsageSourceEnum.fastgpt,
       response: responseData
     });
   } catch (err: any) {

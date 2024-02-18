@@ -2,7 +2,7 @@ import type { ChatItemType, moduleDispatchResType } from '@fastgpt/global/core/c
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
-import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
+import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
 import { queryCfr } from '@fastgpt/service/core/ai/functions/cfr';
 import { getHistories } from '../utils';
 

@@ -1,6 +1,6 @@
 /* bill common  */
-import { PRICE_SCALE } from './constants';
-import { BillSourceEnum } from './constants';
+import { PRICE_SCALE } from '../constants';
+import { UsageSourceEnum } from './constants';
 import { AuthUserTypeEnum } from '../../permission/constant';
 
 /**
@@ -13,14 +13,14 @@ export const formatModelPrice2Read = (val = 0) => {
   return Number((val / 1000).toFixed(10));
 };
 
-export const getBillSourceByAuthType = ({
+export const getUsageSourceByAuthType = ({
   shareId,
   authType
 }: {
   shareId?: string;
   authType?: `${AuthUserTypeEnum}`;
 }) => {
-  if (shareId) return BillSourceEnum.shareLink;
-  if (authType === AuthUserTypeEnum.apikey) return BillSourceEnum.api;
-  return BillSourceEnum.fastgpt;
+  if (shareId) return UsageSourceEnum.shareLink;
+  if (authType === AuthUserTypeEnum.apikey) return UsageSourceEnum.api;
+  return UsageSourceEnum.fastgpt;
 };

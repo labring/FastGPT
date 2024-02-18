@@ -1,5 +1,5 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushQABill } from '@/service/support/wallet/bill/push';
+import { pushQAUsage } from '@/service/support/wallet/usage/push';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -9,7 +9,7 @@ import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { authTeamBalance } from '../support/permission/auth/bill';
+import { authTeamBalance } from '../support/permission/auth/team';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
@@ -161,7 +161,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     // add bill
     if (insertLen > 0) {
-      pushQABill({
+      pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
         charsLength: `${prompt}${answer}`.length,

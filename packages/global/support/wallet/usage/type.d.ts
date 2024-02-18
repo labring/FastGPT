@@ -1,7 +1,7 @@
-import { CreateBillProps } from './api';
-import { BillSourceEnum } from './constants';
+import { CreateUsageProps } from './api';
+import { UsageSourceEnum } from './constants';
 
-export type BillListItemCountType = {
+export type UsageListItemCountType = {
   inputTokens?: number;
   outputTokens?: number;
   charsLength?: number;
@@ -13,13 +13,13 @@ export type BillListItemCountType = {
   // abandon
   tokenLen?: number;
 };
-export type BillListItemType = BillListItemCountType & {
+export type UsageListItemType = UsageListItemCountType & {
   moduleName: string;
   amount: number;
   model?: string;
 };
 
-export type BillSchema = CreateBillProps & {
+export type UsageSchemaType = CreateUsageProps & {
   _id: string;
   time: Date;
 };
@@ -29,7 +29,7 @@ export type BillItemType = {
   // memberName: string;
   time: Date;
   appName: string;
-  source: BillSchema['source'];
+  source: UsageSchemaType['source'];
   total: number;
-  list: BillSchema['list'];
+  list: UsageSchemaType['list'];
 };

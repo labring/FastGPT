@@ -1,20 +1,21 @@
 import { ModelTypeEnum, getModelMap } from '@/service/core/ai/model';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { BillSourceEnum, PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/constants';
 
-export function authType2BillSource({
+export function authType2UsageSource({
   authType,
   shareId,
   source
 }: {
   authType?: `${AuthUserTypeEnum}`;
   shareId?: string;
-  source?: `${BillSourceEnum}`;
+  source?: `${UsageSourceEnum}`;
 }) {
   if (source) return source;
-  if (shareId) return BillSourceEnum.shareLink;
-  if (authType === AuthUserTypeEnum.apikey) return BillSourceEnum.api;
-  return BillSourceEnum.fastgpt;
+  if (shareId) return UsageSourceEnum.shareLink;
+  if (authType === AuthUserTypeEnum.apikey) return UsageSourceEnum.api;
+  return UsageSourceEnum.fastgpt;
 }
 
 export const formatModelPrice2Store = ({

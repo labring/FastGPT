@@ -2,12 +2,12 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { connectToDatabase } from '@/service/mongo';
-import { authTeamBalance } from '@/service/support/permission/auth/bill';
+import { authTeamBalance } from '@/service/support/permission/auth/team';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
+import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { getVectorModel } from '@/service/core/ai/model';
 
 type Props = {
@@ -55,13 +55,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       }
     });
 
-    const { total } = pushGenerateVectorBill({
+    const { total } = pushGenerateVectorUsage({
       teamId,
       tmbId,
       charsLength,
       model,
       billId,
-      source: getBillSourceByAuthType({ authType })
+      source: getUsageSourceByAuthType({ authType })
     });
 
     if (apikey) {

@@ -1,8 +1,8 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
-import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/constants';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import {
   TeamCollectionName,
   TeamMemberCollectionName

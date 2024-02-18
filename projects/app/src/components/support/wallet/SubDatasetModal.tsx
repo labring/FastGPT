@@ -35,7 +35,7 @@ import {
   subSelectMap
 } from '@fastgpt/global/support/wallet/sub/constants';
 import { SubDatasetSizePreviewCheckResponse } from '@fastgpt/global/support/wallet/sub/api.d';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 const SubDatasetModal = ({ onClose }: { onClose: () => void }) => {

@@ -1,8 +1,8 @@
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { MongoBill } from './schema';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { MongoUsage } from './schema';
 import { ClientSession } from '../../../common/mongo';
 
-export const createTrainingBill = async ({
+export const createTrainingUsage = async ({
   teamId,
   tmbId,
   appName,
@@ -14,12 +14,12 @@ export const createTrainingBill = async ({
   teamId: string;
   tmbId: string;
   appName: string;
-  billSource: `${BillSourceEnum}`;
+  billSource: `${UsageSourceEnum}`;
   vectorModel: string;
   agentModel: string;
   session?: ClientSession;
 }) => {
-  const [{ _id }] = await MongoBill.create(
+  const [{ _id }] = await MongoUsage.create(
     [
       {
         teamId,

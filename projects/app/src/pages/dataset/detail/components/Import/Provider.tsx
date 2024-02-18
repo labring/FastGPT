@@ -1,6 +1,6 @@
 import React, { useContext, useCallback, createContext, useState, useMemo, useEffect } from 'react';
 
-import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
+import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';

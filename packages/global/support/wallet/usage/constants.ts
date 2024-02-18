@@ -1,8 +1,4 @@
-// model price: xxx/1k tokens
-// ￥1 = 100000.
-export const PRICE_SCALE = 100000;
-
-export enum BillSourceEnum {
+export enum UsageSourceEnum {
   fastgpt = 'fastgpt',
   api = 'api',
   shareLink = 'shareLink',
@@ -12,23 +8,23 @@ export enum BillSourceEnum {
   extraDatasetSub = 'extraDatasetSub'
 }
 
-export const BillSourceMap = {
-  [BillSourceEnum.fastgpt]: {
+export const UsageSourceMap = {
+  [UsageSourceEnum.fastgpt]: {
     label: '在线使用'
   },
-  [BillSourceEnum.api]: {
+  [UsageSourceEnum.api]: {
     label: 'Api'
   },
-  [BillSourceEnum.shareLink]: {
+  [UsageSourceEnum.shareLink]: {
     label: '免登录链接'
   },
-  [BillSourceEnum.training]: {
+  [UsageSourceEnum.training]: {
     label: 'dataset.Training Name'
   },
-  [BillSourceEnum.standSubPlan]: {
+  [UsageSourceEnum.standSubPlan]: {
     label: 'support.wallet.subscription.type.standard'
   },
-  [BillSourceEnum.extraDatasetSub]: {
+  [UsageSourceEnum.extraDatasetSub]: {
     label: 'support.wallet.subscription.type.extraDatasetSize'
   }
 };
