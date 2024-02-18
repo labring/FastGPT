@@ -4,6 +4,7 @@ export enum UsageSourceEnum {
   shareLink = 'shareLink',
   training = 'training',
 
+  // abandon
   standSubPlan = 'standSubPlan',
   extraDatasetSub = 'extraDatasetSub'
 }

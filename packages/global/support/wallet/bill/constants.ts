@@ -1,41 +1,41 @@
-export enum PayTypeEnum {
+export enum BillTypeEnum {
   balance = 'balance',
-  subStandard = 'subStandard',
-  subExtraDatasetSize = 'subExtraDatasetSize',
-  subExtraPoints = 'subExtraPoints'
+  standSubPlan = 'standSubPlan',
+  extraDatasetSub = 'extraDatasetSub',
+  extraPoints = 'extraPoints'
 }
-export const payTypeMap = {
-  [PayTypeEnum.balance]: {
+export const billTypeMap = {
+  [BillTypeEnum.balance]: {
     label: 'support.user.team.pay.type.balance'
   },
-  [PayTypeEnum.subStandard]: {
+  [BillTypeEnum.standSubPlan]: {
     label: 'support.wallet.subscription.type.standard'
   },
-  [PayTypeEnum.subExtraDatasetSize]: {
+  [BillTypeEnum.extraDatasetSub]: {
     label: 'support.wallet.subscription.type.extraDatasetSize'
   },
-  [PayTypeEnum.subExtraPoints]: {
+  [BillTypeEnum.extraPoints]: {
     label: 'support.wallet.subscription.type.extraPoints'
   }
 };
 
-export enum PayStatusEnum {
+export enum BillStatusEnum {
   SUCCESS = 'SUCCESS',
   REFUND = 'REFUND',
   NOTPAY = 'NOTPAY',
   CLOSED = 'CLOSED'
 }
-export const payStatusMap = {
-  [PayStatusEnum.SUCCESS]: {
+export const billStatusMap = {
+  [BillStatusEnum.SUCCESS]: {
     label: 'support.user.team.pay.status.success'
   },
-  [PayStatusEnum.REFUND]: {
+  [BillStatusEnum.REFUND]: {
     label: 'support.user.team.pay.status.refund'
   },
-  [PayStatusEnum.NOTPAY]: {
+  [BillStatusEnum.NOTPAY]: {
     label: 'support.user.team.pay.status.notpay'
   },
-  [PayStatusEnum.CLOSED]: {
+  [BillStatusEnum.CLOSED]: {
     label: 'support.user.team.pay.status.closed'
   }
 };

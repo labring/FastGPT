@@ -1,7 +1,7 @@
 import { SubModeEnum, SubTypeEnum } from '../sub/constants';
-import { PayTypeEnum } from './constants';
+import { BillTypeEnum } from './constants';
 
-export type PaySchema = {
+export type BillSchemaType = {
   _id: string;
   userId: string;
   teamId: string;
@@ -13,6 +13,4 @@ export type PaySchema = {
 
   price: number;
   payWay: 'balance' | 'wx';
-
-  subMetadata: {};
 };

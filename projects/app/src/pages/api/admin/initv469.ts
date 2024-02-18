@@ -5,7 +5,6 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUsage } from '@fastgpt/service/support/wallet/usage/schema';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 
-let success = 0;
 /* pg 中的数据搬到 mongo dataset.datas 中，并做映射 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {

@@ -11,8 +11,8 @@ import {
   Flex,
   Box
 } from '@chakra-ui/react';
-import { getPayOrders, checkPayResult } from '@/web/support/wallet/pay/api';
-import type { PaySchema } from '@fastgpt/global/support/wallet/pay/type.d';
+import { getBills, checkPayResult } from '@/web/support/wallet/bill/api';
+import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import dayjs from 'dayjs';
 import { useQuery } from '@tanstack/react-query';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -22,10 +22,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const PayRecordTable = () => {
   const { Loading, setIsLoading } = useLoading();
-  const [payOrders, setPayOrders] = useState<PaySchema[]>([]);
+  const [payOrders, setPayOrders] = useState<BillSchemaType[]>([]);
   const { toast } = useToast();
 
-  const { isInitialLoading, refetch } = useQuery(['initPayOrder'], getPayOrders, {
+  const { isInitialLoading, refetch } = useQuery(['initPayOrder'], getBills, {
     onSuccess(res) {
       setPayOrders(res);
     }
