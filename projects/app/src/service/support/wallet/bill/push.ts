@@ -149,14 +149,14 @@ export const pushGenerateVectorBill = ({
       list: [
         {
           moduleName: 'wallet.moduleName.index',
-          amount: total,
+          amount: totalVector,
           model: vectorModelName,
           charsLength
         },
         ...(extensionModel !== undefined
           ? [
               {
-                moduleName: extensionModelName,
+                moduleName: 'core.module.template.Query extension',
                 amount: extensionTotal,
                 model: extensionModelName,
                 inputTokens: extensionInputTokens,

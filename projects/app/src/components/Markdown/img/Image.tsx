@@ -26,25 +26,20 @@ const MdImage = ({ src }: { src?: string }) => {
   };
 
   return (
-    <Skeleton
-      minH="100px"
-      isLoaded={!isLoading}
-      fadeDuration={2}
-      display={'flex'}
-      justifyContent={'center'}
-      my={1}
-    >
+    <>
       <Image
-        display={'inline-block'}
         borderRadius={'md'}
         src={src}
         alt={''}
         fallbackSrc={'/imgs/errImg.png'}
         fallbackStrategy={'onError'}
         cursor={succeed ? 'pointer' : 'default'}
-        loading="eager"
+        loading="lazy"
         objectFit={'contain'}
         referrerPolicy="no-referrer"
+        minW={'120px'}
+        minH={'120px'}
+        my={1}
         onLoad={() => {
           setIsLoading(false);
           setSucceed(true);
@@ -74,7 +69,7 @@ const MdImage = ({ src }: { src?: string }) => {
         </ModalContent>
         <ModalCloseButton bg={'myWhite.500'} zIndex={999999} />
       </Modal>
-    </Skeleton>
+    </>
   );
 };
 

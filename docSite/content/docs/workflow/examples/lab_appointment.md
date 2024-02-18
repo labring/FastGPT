@@ -36,7 +36,6 @@ weight: 403
 
 ## 3. 实验室介绍的知识库搜索
 
-
 这里不多介绍，标准的走了一套知识库搜索流程。
 
 ## 4. 内容提取
@@ -71,7 +70,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
 
 **困难点**
 
-1. 模型对连续对话时，分类和提取能力不足
+1. 模型对连续对话时，分类和提取能力不足。
 
 
 # 附件
@@ -87,7 +86,6 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
   {
     "moduleId": "userChatInput",
     "name": "用户问题(对话入口)",
-    "avatar": "/imgs/module/userChatInput.png",
     "flowType": "questionInput",
     "position": {
       "x": 309.7143912167367,
@@ -98,7 +96,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "userChatInput",
         "type": "systemInput",
         "valueType": "string",
-        "label": "用户问题",
+        "label": "core.module.input.label.user question",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
         "connected": false
@@ -107,7 +105,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     "outputs": [
       {
         "key": "userChatInput",
-        "label": "用户问题",
+        "label": "core.module.input.label.user question",
         "type": "source",
         "valueType": "string",
         "targets": [
@@ -122,18 +120,18 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
   {
     "moduleId": "98xq69",
     "name": "文本内容提取",
-    "avatar": "/imgs/module/extract.png",
     "flowType": "contentExtract",
     "showStatus": true,
     "position": {
-      "x": 2025.8337531196155,
-      "y": 1104.8374776004466
+      "x": 2026.044690845613,
+      "y": 1056.7496395595658
     },
     "inputs": [
       {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -143,7 +141,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "model",
         "type": "selectExtractModel",
         "valueType": "string",
-        "label": "提取模型",
+        "label": "core.module.input.label.LLM",
         "required": true,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -155,12 +153,12 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "textarea",
         "valueType": "string",
         "label": "提取要求描述",
-        "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务",
+        "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\n该输入框可使用全局变量。",
         "required": true,
-        "placeholder": "例如: \n1. 你是一个实验室预约助手，你的任务是帮助用户预约实验室。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
+        "placeholder": "例如: \n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
-        "value": "系统参数：\n- 当前时间：{{cTime}}\n\n你是实验室预约助手，请从对话中获取相关预约信息：\n\n1. 用户期望预约时间\n2. 实验室名称",
+        "value": "你是实验室预约助手，用户正在预约实验室，请为他获取相关预约的信息。\n当前时间 {{cTime}}。",
         "connected": false
       },
       {
@@ -171,7 +169,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "min": 0,
         "max": 30,
         "valueType": "chatHistory",
-        "value": 8,
+        "value": 12,
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "connected": false
@@ -194,10 +192,14 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "description": "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
         "value": [
           {
-            "desc": "预约时间 (YYYY/MM/DD HH:mm 格式)",
+            "desc": "姓名",
+            "key": "name",
+            "required": false
+          },
+          {
+            "desc": "时间(YYYY/MM/DD HH:mm格式)",
             "key": "time",
-            "required": false,
-            "enum": ""
+            "required": false
           },
           {
             "desc": "实验室名",
@@ -233,14 +235,22 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "source",
         "targets": [
           {
-            "moduleId": "xznuym",
+            "moduleId": "wgwpx2",
             "key": "info"
           }
         ]
       },
       {
+        "key": "name",
+        "label": "提取结果-姓名",
+        "description": "无法提取时不会返回",
+        "valueType": "string",
+        "type": "source",
+        "targets": []
+      },
+      {
         "key": "time",
-        "label": "提取结果-预约时间 (YYYY/MM/DD HH:mm 格式)",
+        "label": "提取结果-时间(YYYY/MM/DD HH:mm格式)",
         "description": "无法提取时不会返回",
         "valueType": "string",
         "type": "source",
@@ -259,17 +269,17 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
   {
     "moduleId": "eg5upi",
     "name": "指定回复",
-    "avatar": "/imgs/module/reply.png",
     "flowType": "answerNode",
     "position": {
-      "x": 3273.0448927780258,
-      "y": 2339.4574906500184
+      "x": 3644.154318570156,
+      "y": 2087.496890856384
     },
     "inputs": [
       {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -279,9 +289,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "text",
         "type": "textarea",
         "valueType": "any",
-        "label": "回复的内容",
-        "description": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
-        "placeholder": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
+        "label": "core.module.input.label.Response content",
+        "description": "core.module.input.description.Response content",
+        "placeholder": "core.module.input.description.Response content",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "value": "",
@@ -302,7 +312,6 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
   {
     "moduleId": "kge59i",
     "name": "用户引导",
-    "avatar": "/imgs/module/userGuide.png",
     "flowType": "userGuide",
     "position": {
       "x": 271.18826350548954,
@@ -313,7 +322,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "welcomeText",
         "type": "hidden",
         "valueType": "string",
-        "label": "开场白",
+        "label": "core.app.Welcome Text",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
         "value": "你好，我是实验室助手，请问有什么可以帮助你的么？如需预约或修改预约实验室，请提供姓名、时间和实验室名称。\n[实验室介绍]\n[开放时间]\n[预约]",
@@ -323,12 +332,12 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "variables",
         "type": "hidden",
         "valueType": "any",
-        "label": "对话框变量",
+        "label": "core.module.Variable",
         "value": [
           {
-            "id": "nzpco0",
+            "id": "gt9b23",
             "key": "name",
-            "label": "姓名",
+            "label": "name",
             "type": "input",
             "required": true,
             "maxLen": 50,
@@ -347,7 +356,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "questionGuide",
         "valueType": "boolean",
         "type": "switch",
-        "label": "问题引导",
+        "label": "",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
         "value": false,
@@ -357,9 +366,14 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "tts",
         "type": "hidden",
         "valueType": "any",
-        "label": "语音播报",
+        "label": "",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
+        "value": {
+          "type": "model",
+          "model": "tts-1",
+          "voice": "alloy"
+        },
         "connected": false
       }
     ],
@@ -368,7 +382,6 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
   {
     "moduleId": "hlw67t",
     "name": "问题分类",
-    "avatar": "/imgs/module/cq.png",
     "flowType": "classifyQuestion",
     "showStatus": true,
     "position": {
@@ -380,6 +393,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -389,23 +403,23 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "model",
         "type": "selectCQModel",
         "valueType": "string",
-        "label": "分类模型",
+        "label": "core.module.input.label.Classify model",
         "required": true,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
-        "value": "gpt-4",
+        "value": "gpt-3.5-turbo",
         "connected": false
       },
       {
         "key": "systemPrompt",
         "type": "textarea",
         "valueType": "string",
-        "label": "背景知识",
-        "description": "你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。",
-        "placeholder": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。",
+        "label": "core.module.input.label.Background",
+        "description": "core.module.input.description.Background",
+        "placeholder": "core.module.input.placeholder.Classify background",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
-        "value": "实验室是由浙江工业大学主导的人工智能实验室，请判断用户的问题是属于询问实验室介绍，或是预约实验室。",
+        "value": "xxx实验室是由xxx大学主导的人工智能实验室，请判断用户的问题是属于询问实验室介绍，或是预约实验室。",
         "connected": false
       },
       {
@@ -423,8 +437,8 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "userChatInput",
-        "type": "target",
-        "label": "core.module.input.label.user question",
+        "type": "custom",
+        "label": "",
         "required": true,
         "valueType": "string",
         "showTargetInApp": true,
@@ -462,7 +476,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "zltb5l",
+            "moduleId": "l11c2w",
             "key": "switch"
           }
         ]
@@ -516,23 +530,39 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "label": "",
         "type": "hidden",
         "targets": []
+      },
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "hidden",
+        "valueType": "string",
+        "targets": [
+          {
+            "moduleId": "98xq69",
+            "key": "content"
+          },
+          {
+            "moduleId": "mhw4md",
+            "key": "content"
+          }
+        ]
       }
     ]
   },
   {
     "moduleId": "l5xe4u",
     "name": "指定回复",
-    "avatar": "/imgs/module/reply.png",
     "flowType": "answerNode",
     "position": {
-      "x": 1094.059515373104,
-      "y": 2184.2930987678496
+      "x": 1108.6507148112876,
+      "y": 2292.8493299728207
     },
     "inputs": [
       {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -542,9 +572,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "text",
         "type": "textarea",
         "valueType": "any",
-        "label": "回复的内容",
-        "description": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
-        "placeholder": "可以使用 \\n 来实现连续换行。\n可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容。\n如传入非字符串类型数据将会自动转成字符串",
+        "label": "core.module.input.label.Response content",
+        "description": "core.module.input.description.Response content",
+        "placeholder": "core.module.input.description.Response content",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "value": "对不起，我不太理解你的问题，请更详细描述关于实验室问题。",
@@ -563,134 +593,8 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "zltb5l",
-    "name": "知识库搜索",
-    "avatar": "/imgs/module/db.png",
-    "flowType": "datasetSearchNode",
-    "showStatus": true,
-    "position": {
-      "x": 1573.0026778213864,
-      "y": 17.56534605419546
-    },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      },
-      {
-        "key": "datasets",
-        "type": "selectDataset",
-        "label": "关联的知识库",
-        "value": [],
-        "valueType": "selectDataset",
-        "list": [],
-        "required": true,
-        "showTargetInApp": false,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "similarity",
-        "type": "hidden",
-        "label": "最低相关性",
-        "value": 0.69,
-        "valueType": "number",
-        "min": 0,
-        "max": 1,
-        "step": 0.01,
-        "markList": [
-          {
-            "label": "0",
-            "value": 0
-          },
-          {
-            "label": "1",
-            "value": 1
-          }
-        ],
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "limit",
-        "type": "hidden",
-        "label": "引用上限",
-        "description": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
-        "value": 2,
-        "valueType": "number",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "searchMode",
-        "type": "hidden",
-        "label": "core.dataset.search.Mode",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "embedding",
-        "connected": false
-      },
-      {
-        "key": "userChatInput",
-        "type": "target",
-        "label": "core.module.input.label.user question",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "isEmpty",
-        "label": "搜索结果为空",
-        "type": "source",
-        "valueType": "boolean",
-        "targets": []
-      },
-      {
-        "key": "unEmpty",
-        "label": "搜索结果不为空",
-        "type": "source",
-        "valueType": "boolean",
-        "targets": []
-      },
-      {
-        "key": "quoteQA",
-        "label": "引用内容",
-        "description": "始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器",
-        "type": "source",
-        "valueType": "datasetQuote",
-        "targets": [
-          {
-            "moduleId": "bjfklc",
-            "key": "quoteQA"
-          }
-        ]
-      },
-      {
-        "key": "finish",
-        "label": "core.module.output.label.running done",
-        "description": "core.module.output.description.running done",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      }
-    ]
-  },
-  {
     "moduleId": "bjfklc",
     "name": "AI 对话",
-    "avatar": "/imgs/module/AI.png",
     "flowType": "chatNode",
     "showStatus": true,
     "position": {
@@ -702,6 +606,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -710,7 +615,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "model",
         "type": "selectChatModel",
-        "label": "对话模型",
+        "label": "core.module.input.label.aiModel",
         "required": true,
         "valueType": "string",
         "showTargetInApp": false,
@@ -721,22 +626,12 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "temperature",
         "type": "hidden",
-        "label": "温度",
+        "label": "",
         "value": 0,
         "valueType": "number",
         "min": 0,
         "max": 10,
         "step": 1,
-        "markList": [
-          {
-            "label": "严谨",
-            "value": 0
-          },
-          {
-            "label": "发散",
-            "value": 10
-          }
-        ],
         "showTargetInApp": false,
         "showTargetInPlugin": false,
         "connected": false
@@ -744,22 +639,12 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "maxToken",
         "type": "hidden",
-        "label": "回复上限",
+        "label": "",
         "value": 550,
         "valueType": "number",
         "min": 100,
         "max": 4000,
         "step": 50,
-        "markList": [
-          {
-            "label": "100",
-            "value": 100
-          },
-          {
-            "label": "4000",
-            "value": 4000
-          }
-        ],
         "showTargetInApp": false,
         "showTargetInPlugin": false,
         "connected": false
@@ -767,7 +652,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "isResponseAnswerText",
         "type": "hidden",
-        "label": "返回AI内容",
+        "label": "",
         "value": true,
         "valueType": "boolean",
         "showTargetInApp": false,
@@ -777,7 +662,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "quoteTemplate",
         "type": "hidden",
-        "label": "引用内容模板",
+        "label": "",
         "valueType": "string",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -787,7 +672,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "quotePrompt",
         "type": "hidden",
-        "label": "引用内容提示词",
+        "label": "",
         "valueType": "string",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -806,11 +691,11 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "systemPrompt",
         "type": "textarea",
-        "label": "系统提示词",
+        "label": "core.ai.Prompt",
         "max": 300,
         "valueType": "string",
-        "description": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
-        "placeholder": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
+        "description": "core.app.tip.chatNodeSystemPromptTip",
+        "placeholder": "core.app.tip.chatNodeSystemPromptTip",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "value": "",
@@ -824,27 +709,27 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "min": 0,
         "max": 30,
         "valueType": "chatHistory",
-        "value": 4,
+        "value": 2,
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "connected": false
       },
       {
-        "key": "quoteQA",
-        "type": "target",
-        "label": "引用内容",
-        "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "datasetQuote",
+        "key": "userChatInput",
+        "type": "custom",
+        "label": "",
+        "required": true,
+        "valueType": "string",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "connected": true
       },
       {
-        "key": "userChatInput",
+        "key": "quoteQA",
         "type": "target",
-        "label": "core.module.input.label.user question",
-        "required": true,
-        "valueType": "string",
+        "label": "知识库引用",
+        "description": "core.module.Dataset quote.Input description",
+        "valueType": "datasetQuote",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "connected": true
@@ -863,16 +748,16 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     "outputs": [
       {
         "key": "answerText",
-        "label": "AI回复",
-        "description": "将在 stream 回复完毕后触发",
+        "label": "core.module.output.label.Ai response content",
+        "description": "core.module.output.description.Ai response content",
         "valueType": "string",
         "type": "source",
         "targets": []
       },
       {
         "key": "history",
-        "label": "新的上下文",
-        "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
+        "label": "core.module.output.label.New context",
+        "description": "core.module.output.description.New context",
         "valueType": "chatHistory",
         "type": "source",
         "targets": []
@@ -884,24 +769,30 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "boolean",
         "type": "source",
         "targets": []
+      },
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "hidden",
+        "valueType": "string",
+        "targets": []
       }
     ]
   },
   {
     "moduleId": "ee1fo3",
     "name": "用户问题(对话入口)",
-    "avatar": "/imgs/module/userChatInput.png",
     "flowType": "questionInput",
     "position": {
-      "x": 1252.9256138382332,
-      "y": 704.9075783433977
+      "x": 1133.7087158919899,
+      "y": 638.1461154935015
     },
     "inputs": [
       {
         "key": "userChatInput",
         "type": "systemInput",
         "valueType": "string",
-        "label": "用户问题",
+        "label": "core.module.input.label.user question",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
         "connected": false
@@ -910,16 +801,12 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     "outputs": [
       {
         "key": "userChatInput",
-        "label": "用户问题",
+        "label": "core.module.input.label.user question",
         "type": "source",
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "zltb5l",
-            "key": "userChatInput"
-          },
-          {
-            "moduleId": "bjfklc",
+            "moduleId": "l11c2w",
             "key": "userChatInput"
           }
         ]
@@ -929,18 +816,18 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
   {
     "moduleId": "mhw4md",
     "name": "文本内容提取",
-    "avatar": "/imgs/module/extract.png",
     "flowType": "contentExtract",
     "showStatus": true,
     "position": {
-      "x": 2035.4759582500983,
-      "y": 2140.0194281002705
+      "x": 1998.6877686115522,
+      "y": 2284.0093794426766
     },
     "inputs": [
       {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -950,7 +837,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "model",
         "type": "selectExtractModel",
         "valueType": "string",
-        "label": "提取模型",
+        "label": "core.module.input.label.LLM",
         "required": true,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -962,9 +849,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "textarea",
         "valueType": "string",
         "label": "提取要求描述",
-        "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务",
+        "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\n该输入框可使用全局变量。",
         "required": true,
-        "placeholder": "例如: \n1. 你是一个实验室预约助手，你的任务是帮助用户预约实验室。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
+        "placeholder": "例如: \n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "value": "判断我的行为：查询预约，新增预约、取消预约或者修改预约实验室。",
@@ -978,7 +865,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "min": 0,
         "max": 30,
         "valueType": "chatHistory",
-        "value": 4,
+        "value": 12,
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "connected": false
@@ -1001,7 +888,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "description": "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
         "value": [
           {
-            "desc": "行为",
+            "desc": "预约行为(post: 预约; delete: 取消预约; put: 修改预约; get: 查看预约)",
             "key": "action",
             "required": true,
             "enum": "post\ndelete\nput\nget"
@@ -1037,13 +924,13 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "action",
-        "label": "提取结果-行为",
+        "label": "提取结果-预约行为(post: 预约; delete: 取消预约; put: 修改预约; get: 查看预约)",
         "description": "无法提取时不会返回",
         "valueType": "string",
         "type": "source",
         "targets": [
           {
-            "moduleId": "xznuym",
+            "moduleId": "wgwpx2",
             "key": "action"
           }
         ]
@@ -1051,59 +938,20 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "x3ymlc",
-    "name": "用户问题(对话入口)",
-    "avatar": "/imgs/module/userChatInput.png",
-    "flowType": "questionInput",
-    "position": {
-      "x": 1482.787362456553,
-      "y": 1763.0754750794902
-    },
-    "inputs": [
-      {
-        "key": "userChatInput",
-        "type": "systemInput",
-        "valueType": "string",
-        "label": "用户问题",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "userChatInput",
-        "label": "用户问题",
-        "type": "source",
-        "valueType": "string",
-        "targets": [
-          {
-            "moduleId": "98xq69",
-            "key": "content"
-          },
-          {
-            "moduleId": "mhw4md",
-            "key": "content"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "xznuym",
-    "name": "HTTP模块",
-    "avatar": "/imgs/module/http.png",
-    "flowType": "httpRequest",
+    "moduleId": "wgwpx2",
+    "name": "core.module.template.Http request",
+    "flowType": "httpRequest468",
     "showStatus": true,
     "position": {
-      "x": 2751.575624241899,
-      "y": 1976.1556611102292
+      "x": 2864.4878467558747,
+      "y": 1851.1959050194705
     },
     "inputs": [
       {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -1111,20 +959,10 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "system_httpMethod",
-        "type": "select",
+        "type": "custom",
         "valueType": "string",
-        "label": "core.module.input.label.Http Request Method",
+        "label": "",
         "value": "POST",
-        "list": [
-          {
-            "label": "GET",
-            "value": "GET"
-          },
-          {
-            "label": "POST",
-            "value": "POST"
-          }
-        ],
         "required": true,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -1132,24 +970,47 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "system_httpReqUrl",
-        "type": "input",
+        "type": "hidden",
         "valueType": "string",
-        "label": "core.module.input.label.Http Request Url",
+        "label": "",
         "description": "core.module.input.description.Http Request Url",
         "placeholder": "https://api.ai.com/getInventory",
         "required": false,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
-        "value": "",
+        "value": "https://d8dns0.laf.dev/labtest",
         "connected": false
       },
       {
         "key": "system_httpHeader",
-        "type": "textarea",
-        "valueType": "string",
-        "label": "core.module.input.label.Http Request Header",
+        "type": "custom",
+        "valueType": "any",
+        "value": [],
+        "label": "",
         "description": "core.module.input.description.Http Request Header",
         "placeholder": "core.module.input.description.Http Request Header",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpParams",
+        "type": "hidden",
+        "valueType": "any",
+        "value": [],
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpJsonBody",
+        "type": "hidden",
+        "valueType": "any",
+        "value": "{\r\n  \"name\": \"{{name}}\",\r\n  \"info\": \"{{info}}\",\r\n  \"action\": \"{{action}}\"\r\n}",
+        "label": "",
         "required": false,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -1170,7 +1031,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "info",
         "valueType": "string",
-        "label": "资料提取结果",
+        "label": "info",
         "type": "target",
         "required": true,
         "description": "",
@@ -1187,7 +1048,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       {
         "key": "action",
         "valueType": "string",
-        "label": "预约行为",
+        "label": "action",
         "type": "target",
         "required": true,
         "description": "",
@@ -1260,7 +1121,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "source",
         "valueType": "string",
         "key": "result",
-        "label": "结果",
+        "label": "result",
         "description": "",
         "edit": true,
         "editField": {
@@ -1275,6 +1136,167 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
             "key": "text"
           }
         ]
+      }
+    ]
+  },
+  {
+    "moduleId": "l11c2w",
+    "name": "core.module.template.Dataset search",
+    "flowType": "datasetSearchNode",
+    "showStatus": true,
+    "position": {
+      "x": 1694.7658061553766,
+      "y": 319.67984613673053
+    },
+    "inputs": [
+      {
+        "key": "switch",
+        "type": "target",
+        "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      },
+      {
+        "key": "datasets",
+        "type": "selectDataset",
+        "label": "core.module.input.label.Select dataset",
+        "value": [],
+        "valueType": "selectDataset",
+        "list": [],
+        "required": true,
+        "showTargetInApp": false,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "similarity",
+        "type": "selectDatasetParamsModal",
+        "label": "",
+        "value": 0.4,
+        "valueType": "number",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "limit",
+        "type": "hidden",
+        "label": "",
+        "value": 1500,
+        "valueType": "number",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "searchMode",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "embedding",
+        "connected": false
+      },
+      {
+        "key": "usingReRank",
+        "type": "hidden",
+        "label": "",
+        "valueType": "boolean",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": false,
+        "connected": false
+      },
+      {
+        "key": "datasetSearchUsingExtensionQuery",
+        "type": "hidden",
+        "label": "",
+        "valueType": "boolean",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": true,
+        "connected": false
+      },
+      {
+        "key": "datasetSearchExtensionModel",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "datasetSearchExtensionBg",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "",
+        "connected": false
+      },
+      {
+        "key": "userChatInput",
+        "type": "custom",
+        "label": "",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      }
+    ],
+    "outputs": [
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "hidden",
+        "valueType": "string",
+        "targets": [
+          {
+            "moduleId": "bjfklc",
+            "key": "userChatInput"
+          }
+        ]
+      },
+      {
+        "key": "isEmpty",
+        "label": "core.module.output.label.Search result empty",
+        "type": "source",
+        "valueType": "boolean",
+        "targets": []
+      },
+      {
+        "key": "unEmpty",
+        "label": "core.module.output.label.Search result not empty",
+        "type": "source",
+        "valueType": "boolean",
+        "targets": []
+      },
+      {
+        "key": "quoteQA",
+        "label": "core.module.Dataset quote.label",
+        "type": "source",
+        "valueType": "datasetQuote",
+        "targets": [
+          {
+            "moduleId": "bjfklc",
+            "key": "quoteQA"
+          }
+        ]
+      },
+      {
+        "key": "finish",
+        "label": "core.module.output.label.running done",
+        "description": "core.module.output.description.running done",
+        "valueType": "boolean",
+        "type": "source",
+        "targets": []
       }
     ]
   }
@@ -1294,13 +1316,9 @@ import cloud from '@lafjs/cloud'
 const db = cloud.database()
 
 type RequestType = {
-  variables: {
     name: string;
-  }
-  data: {
     info: string;
     action: 'post' | 'delete' | 'put' | 'get'
-  }
 }
 type recordType = {
   name?: string;
@@ -1310,9 +1328,13 @@ type recordType = {
 
 export default async function (ctx: FunctionContext) {
   try {
-    const { variables: { name }, data: { info, action } } = ctx.body as RequestType
+    console.log(ctx.body, '==2222=')
+
+    const { name,info, action } = ctx.body as RequestType
+
 
     const parseBody = { name, ...JSON.parse(info) } as recordType
+    console.log(parseBody, '===')
 
     if (action === 'get') {
       return await getRecord(parseBody)
@@ -1332,6 +1354,7 @@ export default async function (ctx: FunctionContext) {
       result: "异常"
     }
   } catch (err) {
+    console.log(err)
     return {
       result: "异常"
     }

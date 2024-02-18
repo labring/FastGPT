@@ -66,4 +66,5 @@ export type SearchTestResponse = {
   searchMode: `${DatasetSearchModeEnum}`;
   usingReRank: boolean;
   similarity: number;
+  usingQueryExtension: boolean;
 };

@@ -27,19 +27,17 @@ weight: 402
 ```ts
 import cloud from '@lafjs/cloud'
 
-const googleSearchKey = ""
-const googleCxId = ""
+const googleSearchKey = "xxx"
+const googleCxId = "3740cxxx"
 const baseurl = "https://www.googleapis.com/customsearch/v1"
 
 type RequestType = {
-  data: {
-    searchKey: string
-  }
+  searchKey: string
 }
 
 export default async function (ctx: FunctionContext) {
-  const { data: { searchKey } } = ctx.body as RequestType
-
+  const { searchKey } = ctx.body as RequestType
+  console.log(ctx.body)
   if (!searchKey) {
     return {
       prompt: ""
@@ -54,11 +52,10 @@ export default async function (ctx: FunctionContext) {
         key: googleSearchKey,
         c2coff: 1,
         start: 1,
-        end: 10,
+        end: 20,
         dateRestrict: 'm[1]',
       }
     })
-    // 获取搜索结果
     const result = data.items.map((item) => item.snippet).join('\n');
 
     return { prompt: result }
@@ -70,7 +67,6 @@ export default async function (ctx: FunctionContext) {
     }
   }
 }
-
 ```
 
 {{% /details %}}
@@ -86,18 +82,17 @@ export default async function (ctx: FunctionContext) {
   {
     "moduleId": "userChatInput",
     "name": "用户问题(对话入口)",
-    "avatar": "/imgs/module/userChatInput.png",
     "flowType": "questionInput",
     "position": {
-      "x": -210.28388868386423,
-      "y": 1577.7262770270404
+      "x": 200.0300839741032,
+      "y": 1641.7311245570252
     },
     "inputs": [
       {
         "key": "userChatInput",
         "type": "systemInput",
         "valueType": "string",
-        "label": "用户问题",
+        "label": "core.module.input.label.user question",
         "showTargetInApp": false,
         "showTargetInPlugin": false,
         "connected": false
@@ -106,13 +101,13 @@ export default async function (ctx: FunctionContext) {
     "outputs": [
       {
         "key": "userChatInput",
-        "label": "用户问题",
+        "label": "core.module.input.label.user question",
         "type": "source",
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "p9h459",
-            "key": "userChatInput"
+            "moduleId": "6g2075",
+            "key": "content"
           }
         ]
       }
@@ -121,7 +116,6 @@ export default async function (ctx: FunctionContext) {
   {
     "moduleId": "6g2075",
     "name": "文本内容提取",
-    "avatar": "/imgs/module/extract.png",
     "flowType": "contentExtract",
     "showStatus": true,
     "position": {
@@ -133,6 +127,7 @@ export default async function (ctx: FunctionContext) {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -142,7 +137,7 @@ export default async function (ctx: FunctionContext) {
         "key": "model",
         "type": "selectExtractModel",
         "valueType": "string",
-        "label": "提取模型",
+        "label": "core.module.input.label.LLM",
         "required": true,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -154,12 +149,12 @@ export default async function (ctx: FunctionContext) {
         "type": "textarea",
         "valueType": "string",
         "label": "提取要求描述",
-        "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务",
+        "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\n该输入框可使用全局变量。",
         "required": true,
-        "placeholder": "例如: \n1. 你是一个实验室预约助手，你的任务是帮助用户预约实验室。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
+        "placeholder": "例如: \n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
-        "value": "你是谷歌搜索机器人，根据当前问题和对话记录生成搜索词，当前时间是: {{cTime}}。\n你需要自行判断是否需要进行网络实时查询：\n- 如果需查询则生成搜索词。\n- 如果不需要查询则返回空字符串。",
+        "value": "你是谷歌搜索机器人，根据当前问题和对话记录生成搜索词。\n你需要自行判断是否需要进行网络实时查询：\n- 如果需查询则生成搜索词。\n- 如果不需要查询则不返回该字段。",
         "connected": false
       },
       {
@@ -170,7 +165,7 @@ export default async function (ctx: FunctionContext) {
         "min": 0,
         "max": 30,
         "valueType": "chatHistory",
-        "value": 2,
+        "value": 6,
         "showTargetInApp": true,
         "showTargetInPlugin": true,
         "connected": false
@@ -240,28 +235,573 @@ export default async function (ctx: FunctionContext) {
         "type": "source",
         "targets": [
           {
-            "moduleId": "ee1kxy",
-            "key": "searchKey"
+            "moduleId": "zakgqt",
+            "key": "prompt"
           }
         ]
       }
     ]
   },
   {
-    "moduleId": "ee1kxy",
-    "name": "HTTP模块",
-    "avatar": "/imgs/module/http.png",
-    "flowType": "httpRequest",
+    "moduleId": "r8ckxe",
+    "name": "AI 对话",
+    "flowType": "chatNode",
     "showStatus": true,
     "position": {
-      "x": 1608.5495771387305,
-      "y": 1844.976739172803
+      "x": 2886.1033536393606,
+      "y": 1867.5409594461544
     },
     "inputs": [
       {
         "key": "switch",
         "type": "target",
         "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "model",
+        "type": "selectChatModel",
+        "label": "core.module.input.label.aiModel",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "gpt-3.5-turbo",
+        "connected": false
+      },
+      {
+        "key": "temperature",
+        "type": "hidden",
+        "label": "",
+        "value": 0,
+        "valueType": "number",
+        "min": 0,
+        "max": 10,
+        "step": 1,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "maxToken",
+        "type": "hidden",
+        "label": "",
+        "value": 2000,
+        "valueType": "number",
+        "min": 100,
+        "max": 4000,
+        "step": 50,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "isResponseAnswerText",
+        "type": "hidden",
+        "label": "",
+        "value": true,
+        "valueType": "boolean",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "quoteTemplate",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "quotePrompt",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "aiSettings",
+        "type": "aiSettings",
+        "label": "",
+        "valueType": "any",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "systemPrompt",
+        "type": "textarea",
+        "label": "core.ai.Prompt",
+        "max": 300,
+        "valueType": "string",
+        "description": "core.app.tip.chatNodeSystemPromptTip",
+        "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "history",
+        "type": "numberInput",
+        "label": "core.module.input.label.chat history",
+        "required": true,
+        "min": 0,
+        "max": 30,
+        "valueType": "chatHistory",
+        "value": 6,
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "userChatInput",
+        "type": "custom",
+        "label": "",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      },
+      {
+        "key": "quoteQA",
+        "type": "target",
+        "label": "知识库引用",
+        "description": "core.module.Dataset quote.Input description",
+        "valueType": "datasetQuote",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "history",
+        "label": "core.module.output.label.New context",
+        "description": "core.module.output.description.New context",
+        "valueType": "chatHistory",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "answerText",
+        "label": "core.module.output.label.Ai response content",
+        "description": "core.module.output.description.Ai response content",
+        "valueType": "string",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "finish",
+        "label": "core.module.output.label.running done",
+        "description": "core.module.output.description.running done",
+        "valueType": "boolean",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "hidden",
+        "valueType": "string",
+        "targets": []
+      }
+    ]
+  },
+  {
+    "moduleId": "bwhh0x",
+    "name": "core.module.template.textEditor",
+    "flowType": "pluginModule",
+    "showStatus": false,
+    "position": {
+      "x": 2323.6602408408294,
+      "y": 2087.8175338140313
+    },
+    "inputs": [
+      {
+        "key": "pluginId",
+        "type": "hidden",
+        "label": "",
+        "value": "community-textEditor",
+        "valueType": "string",
+        "connected": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false
+      },
+      {
+        "key": "switch",
+        "type": "target",
+        "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "textarea",
+        "valueType": "string",
+        "label": "core.module.input.label.textEditor textarea",
+        "type": "textarea",
+        "required": true,
+        "description": "core.module.input.description.textEditor textarea",
+        "edit": false,
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "required": true,
+          "dataType": true,
+          "inputType": true
+        },
+        "connected": false,
+        "placeholder": "core.module.input.description.textEditor textarea",
+        "value": "请使用下面<data></data>中的数据作为你的知识。请直接输出答案，不要提及你是从<data></data>中获取的知识。\n\n当前时间: {{cTime}}\n\n<data>\n{{response}}\n</data>\n\n我的问题：“{{q}}”"
+      },
+      {
+        "key": "response",
+        "valueType": "string",
+        "label": "response",
+        "type": "target",
+        "required": true,
+        "description": "",
+        "edit": true,
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "required": true,
+          "dataType": true,
+          "inputType": false
+        },
+        "connected": true
+      },
+      {
+        "key": "q",
+        "valueType": "string",
+        "label": "q",
+        "type": "target",
+        "required": true,
+        "description": "",
+        "edit": true,
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "required": true,
+          "dataType": true,
+          "inputType": false
+        },
+        "connected": true
+      },
+      {
+        "key": "DYNAMIC_INPUT_KEY",
+        "valueType": "any",
+        "label": "需要加工的输入",
+        "type": "addInputParam",
+        "required": false,
+        "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。非字符串类型，会自动转成字符串类型。",
+        "edit": false,
+        "editField": {
+          "key": true,
+          "name": true,
+          "description": true,
+          "required": true,
+          "dataType": true,
+          "inputType": false
+        },
+        "defaultEditField": {
+          "label": "",
+          "key": "",
+          "description": "",
+          "inputType": "target",
+          "valueType": "string",
+          "required": true
+        },
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "text",
+        "valueType": "string",
+        "label": "core.module.output.label.text",
+        "type": "source",
+        "edit": false,
+        "targets": [
+          {
+            "moduleId": "r8ckxe",
+            "key": "userChatInput"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleId": "lxubmw",
+    "name": "用户问题(入口)",
+    "flowType": "questionInput",
+    "position": {
+      "x": 1744.5949622106039,
+      "y": 2767.1993979535087
+    },
+    "inputs": [
+      {
+        "key": "userChatInput",
+        "type": "systemInput",
+        "valueType": "string",
+        "label": "core.module.input.label.user question",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "source",
+        "valueType": "string",
+        "targets": [
+          {
+            "moduleId": "bwhh0x",
+            "key": "q"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleId": "se8tz2",
+    "name": "用户问题(对话入口)",
+    "flowType": "questionInput",
+    "position": {
+      "x": 1258.737695219056,
+      "y": 1282.7814513663104
+    },
+    "inputs": [
+      {
+        "key": "userChatInput",
+        "type": "systemInput",
+        "valueType": "string",
+        "label": "core.module.input.label.user question",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "source",
+        "valueType": "string",
+        "targets": [
+          {
+            "moduleId": "5jtdwx",
+            "key": "userChatInput"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleId": "5jtdwx",
+    "name": "AI 对话",
+    "flowType": "chatNode",
+    "showStatus": true,
+    "position": {
+      "x": 1709.9128961202969,
+      "y": 943.9619252986647
+    },
+    "inputs": [
+      {
+        "key": "switch",
+        "type": "target",
+        "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      },
+      {
+        "key": "model",
+        "type": "selectChatModel",
+        "label": "core.module.input.label.aiModel",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "gpt-3.5-turbo",
+        "connected": false
+      },
+      {
+        "key": "temperature",
+        "type": "hidden",
+        "label": "",
+        "value": 0,
+        "valueType": "number",
+        "min": 0,
+        "max": 10,
+        "step": 1,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "maxToken",
+        "type": "hidden",
+        "label": "",
+        "value": 2000,
+        "valueType": "number",
+        "min": 100,
+        "max": 4000,
+        "step": 50,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "isResponseAnswerText",
+        "type": "hidden",
+        "label": "",
+        "value": true,
+        "valueType": "boolean",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "quoteTemplate",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "quotePrompt",
+        "type": "hidden",
+        "label": "",
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "aiSettings",
+        "type": "aiSettings",
+        "label": "",
+        "valueType": "any",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "systemPrompt",
+        "type": "textarea",
+        "label": "core.ai.Prompt",
+        "max": 300,
+        "valueType": "string",
+        "description": "core.app.tip.chatNodeSystemPromptTip",
+        "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "history",
+        "type": "numberInput",
+        "label": "core.module.input.label.chat history",
+        "required": true,
+        "min": 0,
+        "max": 30,
+        "valueType": "chatHistory",
+        "value": 6,
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "userChatInput",
+        "type": "custom",
+        "label": "",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      },
+      {
+        "key": "quoteQA",
+        "type": "target",
+        "label": "知识库引用",
+        "description": "core.module.Dataset quote.Input description",
+        "valueType": "datasetQuote",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "history",
+        "label": "core.module.output.label.New context",
+        "description": "core.module.output.description.New context",
+        "valueType": "chatHistory",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "answerText",
+        "label": "core.module.output.label.Ai response content",
+        "description": "core.module.output.description.Ai response content",
+        "valueType": "string",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "finish",
+        "label": "core.module.output.label.running done",
+        "description": "core.module.output.description.running done",
+        "valueType": "boolean",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "hidden",
+        "valueType": "string",
+        "targets": []
+      }
+    ]
+  },
+  {
+    "moduleId": "zakgqt",
+    "name": "core.module.template.Http request",
+    "flowType": "httpRequest468",
+    "showStatus": true,
+    "position": {
+      "x": 1596.0994578513428,
+      "y": 1862.086836404846
+    },
+    "inputs": [
+      {
+        "key": "switch",
+        "type": "target",
+        "label": "core.module.input.label.switch",
+        "description": "core.module.input.description.Trigger",
         "valueType": "any",
         "showTargetInApp": true,
         "showTargetInPlugin": true,
@@ -269,20 +809,10 @@ export default async function (ctx: FunctionContext) {
       },
       {
         "key": "system_httpMethod",
-        "type": "select",
+        "type": "custom",
         "valueType": "string",
-        "label": "core.module.input.label.Http Request Method",
+        "label": "",
         "value": "POST",
-        "list": [
-          {
-            "label": "GET",
-            "value": "GET"
-          },
-          {
-            "label": "POST",
-            "value": "POST"
-          }
-        ],
         "required": true,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -290,24 +820,47 @@ export default async function (ctx: FunctionContext) {
       },
       {
         "key": "system_httpReqUrl",
-        "type": "input",
+        "type": "hidden",
         "valueType": "string",
-        "label": "core.module.input.label.Http Request Url",
+        "label": "",
         "description": "core.module.input.description.Http Request Url",
         "placeholder": "https://api.ai.com/getInventory",
         "required": false,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
-        "value": "",
+        "value": "https://d8dns0.laf.dev/google_earch",
         "connected": false
       },
       {
         "key": "system_httpHeader",
-        "type": "textarea",
-        "valueType": "string",
-        "label": "core.module.input.label.Http Request Header",
+        "type": "custom",
+        "valueType": "any",
+        "value": [],
+        "label": "",
         "description": "core.module.input.description.Http Request Header",
         "placeholder": "core.module.input.description.Http Request Header",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpParams",
+        "type": "hidden",
+        "valueType": "any",
+        "value": [],
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpJsonBody",
+        "type": "hidden",
+        "valueType": "any",
+        "value": "{\r\n  \"searchKey\": \"{{prompt}}\"\r\n}",
+        "label": "",
         "required": false,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
@@ -326,9 +879,9 @@ export default async function (ctx: FunctionContext) {
         "connected": false
       },
       {
-        "key": "searchKey",
+        "key": "prompt",
         "valueType": "string",
-        "label": "搜索词",
+        "label": "prompt",
         "type": "target",
         "required": true,
         "description": "",
@@ -400,7 +953,8 @@ export default async function (ctx: FunctionContext) {
       {
         "type": "source",
         "valueType": "string",
-        "label": "搜索结果",
+        "key": "prompt",
+        "label": "prompt",
         "description": "",
         "edit": true,
         "editField": {
@@ -414,663 +968,6 @@ export default async function (ctx: FunctionContext) {
             "moduleId": "bwhh0x",
             "key": "response"
           }
-        ],
-        "key": "prompt"
-      }
-    ]
-  },
-  {
-    "moduleId": "r8ckxe",
-    "name": "AI 对话",
-    "avatar": "/imgs/module/AI.png",
-    "flowType": "chatNode",
-    "showStatus": true,
-    "position": {
-      "x": 2739.8508590056117,
-      "y": 1804.8613188888335
-    },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "model",
-        "type": "selectChatModel",
-        "label": "对话模型",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "gpt-3.5-turbo",
-        "connected": false
-      },
-      {
-        "key": "temperature",
-        "type": "hidden",
-        "label": "温度",
-        "value": 0,
-        "valueType": "number",
-        "min": 0,
-        "max": 10,
-        "step": 1,
-        "markList": [
-          {
-            "label": "严谨",
-            "value": 0
-          },
-          {
-            "label": "发散",
-            "value": 10
-          }
-        ],
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "maxToken",
-        "type": "hidden",
-        "label": "回复上限",
-        "value": 2000,
-        "valueType": "number",
-        "min": 100,
-        "max": 4000,
-        "step": 50,
-        "markList": [
-          {
-            "label": "100",
-            "value": 100
-          },
-          {
-            "label": "4000",
-            "value": 4000
-          }
-        ],
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "isResponseAnswerText",
-        "type": "hidden",
-        "label": "返回AI内容",
-        "value": true,
-        "valueType": "boolean",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "quoteTemplate",
-        "type": "hidden",
-        "label": "引用内容模板",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "quotePrompt",
-        "type": "hidden",
-        "label": "引用内容提示词",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "aiSettings",
-        "type": "aiSettings",
-        "label": "",
-        "valueType": "any",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "systemPrompt",
-        "type": "textarea",
-        "label": "系统提示词",
-        "max": 300,
-        "valueType": "string",
-        "description": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
-        "placeholder": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "history",
-        "type": "numberInput",
-        "label": "core.module.input.label.chat history",
-        "required": true,
-        "min": 0,
-        "max": 30,
-        "valueType": "chatHistory",
-        "value": 6,
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "quoteQA",
-        "type": "target",
-        "label": "引用内容",
-        "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "datasetQuote",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "userChatInput",
-        "type": "target",
-        "label": "core.module.input.label.user question",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "history",
-        "label": "新的上下文",
-        "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
-        "valueType": "chatHistory",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "answerText",
-        "label": "AI回复",
-        "description": "将在 stream 回复完毕后触发",
-        "valueType": "string",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "finish",
-        "label": "core.module.output.label.running done",
-        "description": "core.module.output.description.running done",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      }
-    ]
-  },
-  {
-    "moduleId": "bwhh0x",
-    "name": "core.module.template.textEditor",
-    "avatar": "/imgs/module/textEditor.svg",
-    "flowType": "pluginModule",
-    "showStatus": false,
-    "position": {
-      "x": 2191.3365552198184,
-      "y": 2050.00737644673
-    },
-    "inputs": [
-      {
-        "key": "pluginId",
-        "type": "hidden",
-        "label": "pluginId",
-        "value": "community-textEditor",
-        "valueType": "string",
-        "connected": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false
-      },
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "textarea",
-        "valueType": "string",
-        "label": "core.module.input.label.textEditor textarea",
-        "type": "textarea",
-        "required": true,
-        "description": "core.module.input.description.textEditor textarea",
-        "edit": false,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true,
-          "inputType": true
-        },
-        "connected": false,
-        "placeholder": "core.module.input.description.textEditor textarea",
-        "value": "谷歌搜索结果:\n\"\"\"\n{{response}}\n\"\"\"\n\n请根据谷歌搜索结果和历史记录来回答我的问题，遵循以下要求：\n- 使用对话的语气回答问题。\n- 不要提及你是从谷歌搜索和历史记录获取的结果。\n- 使用与问题相同的语言回答。\n\n我的问题：“{{q}}”"
-      },
-      {
-        "key": "response",
-        "valueType": "string",
-        "label": "搜索结果",
-        "type": "target",
-        "required": true,
-        "description": "",
-        "edit": true,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true,
-          "inputType": false
-        },
-        "connected": true
-      },
-      {
-        "key": "q",
-        "valueType": "string",
-        "label": "问题",
-        "type": "target",
-        "required": true,
-        "description": "",
-        "edit": true,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true,
-          "inputType": false
-        },
-        "connected": true
-      },
-      {
-        "key": "DYNAMIC_INPUT_KEY",
-        "valueType": "any",
-        "label": "字符串变量",
-        "type": "addInputParam",
-        "required": false,
-        "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。",
-        "edit": false,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true,
-          "inputType": false
-        },
-        "defaultEditField": {
-          "label": "",
-          "key": "",
-          "description": "",
-          "inputType": "target",
-          "valueType": "string",
-          "required": true
-        },
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "text",
-        "valueType": "string",
-        "label": "core.module.output.label.text",
-        "type": "source",
-        "edit": false,
-        "targets": [
-          {
-            "moduleId": "r8ckxe",
-            "key": "userChatInput"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "lxubmw",
-    "name": "用户问题(入口)",
-    "avatar": "/imgs/module/userChatInput.png",
-    "flowType": "questionInput",
-    "position": {
-      "x": 1756.2023030545522,
-      "y": 2638.357914585682
-    },
-    "inputs": [
-      {
-        "key": "userChatInput",
-        "type": "systemInput",
-        "valueType": "string",
-        "label": "用户问题",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "userChatInput",
-        "label": "用户问题",
-        "type": "source",
-        "valueType": "string",
-        "targets": [
-          {
-            "moduleId": "bwhh0x",
-            "key": "q"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "se8tz2",
-    "name": "用户问题(对话入口)",
-    "avatar": "/imgs/module/userChatInput.png",
-    "flowType": "questionInput",
-    "position": {
-      "x": 1265.7020997254251,
-      "y": 1651.8948902038671
-    },
-    "inputs": [
-      {
-        "key": "userChatInput",
-        "type": "systemInput",
-        "valueType": "string",
-        "label": "用户问题",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "userChatInput",
-        "label": "用户问题",
-        "type": "source",
-        "valueType": "string",
-        "targets": [
-          {
-            "moduleId": "5jtdwx",
-            "key": "userChatInput"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "5jtdwx",
-    "name": "AI 对话",
-    "avatar": "/imgs/module/AI.png",
-    "flowType": "chatNode",
-    "showStatus": true,
-    "position": {
-      "x": 1589.1965513432344,
-      "y": 1018.248906699934
-    },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      },
-      {
-        "key": "model",
-        "type": "selectChatModel",
-        "label": "对话模型",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "gpt-3.5-turbo",
-        "connected": false
-      },
-      {
-        "key": "temperature",
-        "type": "hidden",
-        "label": "温度",
-        "value": 0,
-        "valueType": "number",
-        "min": 0,
-        "max": 10,
-        "step": 1,
-        "markList": [
-          {
-            "label": "严谨",
-            "value": 0
-          },
-          {
-            "label": "发散",
-            "value": 10
-          }
-        ],
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "maxToken",
-        "type": "hidden",
-        "label": "回复上限",
-        "value": 2000,
-        "valueType": "number",
-        "min": 100,
-        "max": 4000,
-        "step": 50,
-        "markList": [
-          {
-            "label": "100",
-            "value": 100
-          },
-          {
-            "label": "4000",
-            "value": 4000
-          }
-        ],
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "isResponseAnswerText",
-        "type": "hidden",
-        "label": "返回AI内容",
-        "value": true,
-        "valueType": "boolean",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "quoteTemplate",
-        "type": "hidden",
-        "label": "引用内容模板",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "quotePrompt",
-        "type": "hidden",
-        "label": "引用内容提示词",
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "aiSettings",
-        "type": "aiSettings",
-        "label": "",
-        "valueType": "any",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "systemPrompt",
-        "type": "textarea",
-        "label": "系统提示词",
-        "max": 300,
-        "valueType": "string",
-        "description": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
-        "placeholder": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "history",
-        "type": "numberInput",
-        "label": "core.module.input.label.chat history",
-        "required": true,
-        "min": 0,
-        "max": 30,
-        "valueType": "chatHistory",
-        "value": 6,
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "quoteQA",
-        "type": "target",
-        "label": "引用内容",
-        "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "datasetQuote",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "userChatInput",
-        "type": "target",
-        "label": "core.module.input.label.user question",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "history",
-        "label": "新的上下文",
-        "description": "将本次回复内容拼接上历史记录，作为新的上下文返回",
-        "valueType": "chatHistory",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "answerText",
-        "label": "AI回复",
-        "description": "将在 stream 回复完毕后触发",
-        "valueType": "string",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "finish",
-        "label": "core.module.output.label.running done",
-        "description": "core.module.output.description.running done",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      }
-    ]
-  },
-  {
-    "moduleId": "p9h459",
-    "name": "问题补全",
-    "avatar": "/imgs/module/cfr.svg",
-    "flowType": "cfr",
-    "showStatus": true,
-    "position": {
-      "x": 184.26897486756246,
-      "y": 1372.7983698162132
-    },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "model",
-        "type": "selectExtractModel",
-        "label": "core.module.input.label.aiModel",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "gpt-4",
-        "connected": false
-      },
-      {
-        "key": "systemPrompt",
-        "type": "textarea",
-        "label": "core.module.input.label.cfr background",
-        "max": 300,
-        "valueType": "string",
-        "description": "core.module.input.description.cfr background",
-        "placeholder": "core.module.input.placeholder.cfr background",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "value": "",
-        "connected": false
-      },
-      {
-        "key": "history",
-        "type": "numberInput",
-        "label": "core.module.input.label.chat history",
-        "required": true,
-        "min": 0,
-        "max": 30,
-        "valueType": "chatHistory",
-        "value": 6,
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "userChatInput",
-        "type": "target",
-        "label": "core.module.input.label.user question",
-        "required": true,
-        "valueType": "string",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "system_text",
-        "label": "core.module.output.label.cfr result",
-        "valueType": "string",
-        "type": "source",
-        "targets": [
-          {
-            "moduleId": "6g2075",
-            "key": "content"
-          }
         ]
       }
     ]
@@ -1082,8 +979,7 @@ export default async function (ctx: FunctionContext) {
 
 ## 流程说明
 
-1. 利用【问题补全】模块，优化用户的问题，明确主体对象。
-2. 利用【内容提取】模块，将用户的问题提取成搜索关键词。
-3. 将搜索关键词传入【HTTP模块】，执行谷歌搜索。
-4. 利用【文本编辑模块】组合搜索结果和问题，生成一个适合模型回答的问题。
-5. 将新的问题发给【AI模块】，回答搜索结果。
+1. 利用【内容提取】模块，将用户的问题提取成搜索关键词。
+2. 将搜索关键词传入【HTTP模块】，执行谷歌搜索。
+3. 利用【文本编辑模块】组合搜索结果和问题，生成一个适合模型回答的问题。
+4. 将新的问题发给【AI模块】，回答搜索结果。

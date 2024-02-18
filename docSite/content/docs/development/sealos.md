@@ -57,7 +57,7 @@ Sealos 的服务器在国外，不需要额外处理网络问题，无需服务�
 
 ### 简介
 
-FastGPT 商业版共包含了3个应用（fastgpt, fastgpt-plus, fastgpt-admin）和2个数据库，使用多 Api Key 时候需要安装 OneAPI（一个应用和一个数据库），总计4个应用和3个数据库。
+FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据库，使用多 Api Key 时候需要安装 OneAPI（一个应用和一个数据库），总计3个应用和3个数据库。
 
 ![](/imgs/onSealos1.png)
 
@@ -122,10 +122,7 @@ SYSTEM_FAVICON 可以是一个网络地址
 
 ![](/imgs/onsealos8.png)
 
-### 管理后台
-
-![](/imgs/onsealos9.png)
-
+### 管理后台(已合并到plus)
 
 ### 商业版镜像配置文件
 

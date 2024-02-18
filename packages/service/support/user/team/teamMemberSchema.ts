@@ -43,7 +43,8 @@ const TeamMemberSchema = new Schema({
 });
 
 try {
-  TeamMemberSchema.index({ teamId: 1 });
+  TeamMemberSchema.index({ teamId: 1 }, { background: true });
+  TeamMemberSchema.index({ userId: 1 }, { background: true });
 } catch (error) {
   console.log(error);
 }

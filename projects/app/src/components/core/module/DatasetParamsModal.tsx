@@ -37,7 +37,7 @@ export type DatasetParamsProps = {
   datasetSearchExtensionModel?: string;
   datasetSearchExtensionBg?: string;
 
-  maxTokens?: number;
+  maxTokens?: number; // limit max tokens
   searchEmptyText?: string;
 };
 enum SearchSettingTabEnum {

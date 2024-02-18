@@ -40,7 +40,8 @@ const TeamSchema = new Schema({
 });
 
 try {
-  // TeamSchema.index({ createTime: -1 });
+  TeamSchema.index({ name: 1 });
+  TeamSchema.index({ ownerId: 1 });
 } catch (error) {
   console.log(error);
 }
