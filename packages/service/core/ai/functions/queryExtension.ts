@@ -7,7 +7,7 @@ import { ChatItemType } from '@fastgpt/global/core/chat/type';
     可以根据上下文，消除指代性问题以及扩展问题，利于检索。
 */
 
-const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确。例如：
+const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确，并与原问题语言相同。例如：
 历史记录: 
 """
 """
@@ -37,8 +37,8 @@ A: 报错"no connection"可能是因为……
 Q: 作者是谁？
 A: FastGPT 的作者是 labring。
 """
-原问题: 介绍下他
-检索词: ["介绍下 FastGPT 的作者 labring。","作者 labring 的背景信息。","labring 为什么要做 FastGPT?"]
+原问题: Tell me about him
+检索词: ["Introduce labring, the author of FastGPT." ," Background information on author labring." "," Why does labring do FastGPT?"]
 ----------------
 历史记录: 
 """

@@ -249,30 +249,13 @@ function filterQuote({
   // slice filterSearch
   const filterQuoteQA = filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
-  // filterQuoteQA按collectionId聚合在一起后，再按chunkIndex从小到大排序
-  const sortQuoteQAMap: Record<string, SearchDataResponseItemType[]> = {};
-  filterQuoteQA.forEach((item) => {
-    if (sortQuoteQAMap[item.collectionId]) {
-      sortQuoteQAMap[item.collectionId].push(item);
-    } else {
-      sortQuoteQAMap[item.collectionId] = [item];
-    }
-  });
-  const sortQuoteQAList = Object.values(sortQuoteQAMap);
-
-  sortQuoteQAList.forEach((qaList) => {
-    qaList.sort((a, b) => a.chunkIndex - b.chunkIndex);
-  });
-
-  const flatQuoteList = sortQuoteQAList.flat();
-
   const quoteText =
-    flatQuoteList.length > 0
-      ? `${flatQuoteList.map((item, index) => getValue(item, index)).join('\n')}`
+    filterQuoteQA.length > 0
+      ? `${filterQuoteQA.map((item, index) => getValue(item, index).trim()).join('\n------\n')}`
       : '';
 
   return {
-    filterQuoteQA: flatQuoteList,
+    filterQuoteQA: filterQuoteQA,
     quoteText
   };
 }
