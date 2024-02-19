@@ -553,7 +553,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1211,8 +1212,8 @@
         "Type": "订单类型",
         "payWay": {
           "Way": "支付方式",
-          "wx": "微信支付",
-          "balance": "余额支付"
+          "balance": "余额支付",
+          "wx": "微信支付"
         },
         "status": {
           "closed": "已关闭",
@@ -1224,18 +1225,21 @@
       "noBill": "无账单记录~",
       "subscription": {
         "Ai points": "AI 积分计算标准",
-        "Buy now": "开始使用",
+        "Buy now": "切换套餐",
         "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
         "Current dataset store": "当前额外容量",
-        "Current plan": "当前计划",
+        "Current extra ai points": "当前额外积分",
+        "Current plan": "当前套餐",
         "Dataset store": "知识库容量",
         "Dataset store price tip": "每月1号从账号余额里扣除",
         "Expand size": "扩大容量",
+        "Extra ai points": "额外AI积分",
         "Extra dataset size": "额外知识库容量",
         "Extra plan": "额外套餐",
         "Extra plan tip": "标准套餐不够时，您可以购买额外套餐继续使用",
         "FAQ": "常见问题",
-        "Next plan": "未来计划",
+        "Next extra ai points": "下次额外积分",
+        "Next plan": "未来套餐",
         "Next sub dataset size": "下次订阅额外容量",
         "Nonsupport": "无法切换",
         "Refund plan and pay confirm": "切换该套餐您无需支付额外费用，并将退换 {{amount}} 元至余额中。",
@@ -1246,6 +1250,7 @@
         "Sub plan": "订阅套餐",
         "Sub plan tip": "免费使用 FastGPT 或升级更高的套餐",
         "Training weight": "训练优先级: {{weight}}",
+        "Update extra ai points": "调整额外AI积分",
         "Update extra dataset size": "调整知识库额外容量",
         "function": {
           "History store": "{{amount}} 天对话记录保留",

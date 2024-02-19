@@ -3,7 +3,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { StandardSubLevelEnum, SubModeEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { postCheckStandardSub, postUpdateStandardSub } from '@/web/support/wallet/sub/api';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
@@ -26,7 +25,7 @@ const Standard = ({
   const { subPlans, feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { ConfirmModal, openConfirm } = useConfirm({});
-
+  console.log(standardPlan);
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
   const standardSubList = useMemo(() => {
@@ -170,7 +169,22 @@ const Standard = ({
                 selectSubMode === standardPlan?.currentMode
               ) {
                 return (
-                  <Button mt={4} mb={6} w={'100%'} variant={'whiteBase'} isDisabled>
+                  <Button
+                    mt={4}
+                    mb={6}
+                    w={'100%'}
+                    variant={'whiteBase'}
+                    isDisabled={
+                      item.level === standardPlan?.nextSubLevel &&
+                      selectSubMode === standardPlan?.nextMode
+                    }
+                    onClick={() =>
+                      onclickPreCheckStandPlan({
+                        level: item.level,
+                        mode: selectSubMode
+                      })
+                    }
+                  >
                     {t('support.wallet.subscription.Current plan')}
                   </Button>
                 );

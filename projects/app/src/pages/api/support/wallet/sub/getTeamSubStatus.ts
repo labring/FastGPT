@@ -10,7 +10,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     await connectToDatabase();
 
-    // 凭证校验
     const { teamId } = await authCert({
       req,
       authToken: true

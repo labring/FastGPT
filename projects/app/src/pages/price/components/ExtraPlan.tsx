@@ -37,35 +37,22 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyModal from '@/components/MyModal';
 
-const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) => {
+const ExtraPlan = ({
+  extraDatasetSize,
+  extraPoints
+}: {
+  extraDatasetSize?: TeamSubSchema;
+  extraPoints?: TeamSubSchema;
+}) => {
   const { t } = useTranslation();
-  const { subPlans } = useSystemStore();
-  const extraDatasetPrice = subPlans?.extraDatasetSize?.price || 0;
-  const [datasetSize, setDatasetSize] = useState(0);
-  const [isRenew, setIsRenew] = useState('false');
   const router = useRouter();
-  const { userInfo } = useUserStore();
+  const { subPlans } = useSystemStore();
 
+  // extra dataset
+  const extraDatasetPrice = subPlans?.extraDatasetSize?.price || 0;
   const [confirmPayExtraDatasetSizeData, setConfirmPayExtraDatasetSizeData] =
     useState<SubDatasetSizePreviewCheckResponse>();
-
-  useEffect(() => {
-    setDatasetSize((extraDatasetSize?.nextExtraDatasetSize || 0) / 1000);
-    setIsRenew(extraDatasetSize?.status === SubStatusEnum.active ? 'true' : 'false');
-  }, [extraDatasetSize]);
-
-  const { mutate: onUpdateExtraDatasetSizeStatus } = useRequest({
-    mutationFn: (e: 'true' | 'false') => {
-      setIsRenew(e);
-      return putTeamDatasetSubStatus({
-        status: subSelectMap[e],
-        type: SubTypeEnum.extraDatasetSize
-      });
-    },
-    successToast: t('common.Update success'),
-    errorToast: t('common.error.Update error')
-  });
-
+  const [datasetSize, setDatasetSize] = useState(0);
   const { mutate: onClickUpdateExtraDatasetPlan, isLoading: isPayingExtraDatasetSize } = useRequest(
     {
       mutationFn: () => postUpdateTeamDatasetSizeSub({ size: datasetSize }),
@@ -93,6 +80,19 @@ const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) =
     },
     errorToast: t('common.error.Update error')
   });
+  useEffect(() => {
+    setDatasetSize((extraDatasetSize?.nextExtraDatasetSize || 0) / 1000);
+  }, [extraDatasetSize]);
+
+  // extra ai points
+  const [extraPointsAmount, setExtraPointsAmount] = useState(0);
+
+  const { userInfo } = useUserStore();
+
+  const formatPoints = (points: number = 0) => {
+    if (points === 0) return 0;
+    return `${points / 10000}万`;
+  };
 
   return (
     <Flex
@@ -107,7 +107,7 @@ const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) =
       <Box mt={8} mb={10} color={'myGray.500'} fontSize={'lg'}>
         {t('support.wallet.subscription.Extra plan tip')}
       </Box>
-      <Grid mt={8} gridTemplateColumns={['1fr', '1fr']}>
+      <Grid mt={8} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
         <Box
           bg={'rgba(255, 255, 255, 0.90)'}
           px={'32px'}
@@ -116,8 +116,9 @@ const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) =
           borderWidth={'1px'}
           borderColor={'myGray.150'}
           boxShadow={'1.5'}
+          w={['100%', '500px']}
         >
-          <Flex w={['100%', '500px']} borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
+          <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
             <Box flex={'1 0 0'}>
               <Box fontSize={'xl'} color={'primary.600'}>
                 {t('support.wallet.subscription.Extra dataset size')}
@@ -145,46 +146,28 @@ const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) =
                 {t('core.dataset.data.unit')}
               </Box>
             </Flex>
-            {extraDatasetSize?.nextExtraDatasetSize !== undefined && (
-              <Flex mt={4}>
-                <Box flex={'0 0 200px'}>
-                  {t('support.wallet.subscription.Next sub dataset size')}:
-                </Box>
-                <Box fontWeight={'bold'} flex={1}>
-                  {extraDatasetSize?.nextExtraDatasetSize || 0}
-                  {t('core.dataset.data.unit')}
-                </Box>
-              </Flex>
-            )}
-            {!!extraDatasetSize?.startTime && (
-              <Flex mt={3}>
-                <Box flex={'0 0 200px'}>订阅开始时间: </Box>
-                <Box>{formatTime2YMDHM(extraDatasetSize?.startTime)}</Box>
-              </Flex>
-            )}
-            {!!extraDatasetSize?.expiredTime && (
-              <Flex mt={3}>
-                <Box flex={'0 0 200px'}>订阅到期时间: </Box>
-                <Box>{formatTime2YMDHM(extraDatasetSize?.expiredTime)}</Box>
-              </Flex>
-            )}
-            <Flex mt={3} alignItems={'center'}>
-              <Box flex={'0 0 200px'}>是否自动续费: </Box>
-              <MySelect
-                value={isRenew}
-                size={'sm'}
-                w={'180px'}
-                bg={'myGray.50'}
-                boxShadow={'none'}
-                list={[
-                  { label: '自动续费', value: 'true' },
-                  { label: '不自动续费', value: 'false' }
-                ]}
-                onchange={(e) => {
-                  if (!extraDatasetSize) return;
-                  onUpdateExtraDatasetSizeStatus(e);
-                }}
-              />
+            <Flex mt={4}>
+              <Box flex={'0 0 200px'}>
+                {t('support.wallet.subscription.Next sub dataset size')}:
+              </Box>
+              <Box fontWeight={'bold'} flex={1}>
+                {extraDatasetSize?.nextExtraDatasetSize || 0}
+                {t('core.dataset.data.unit')}
+              </Box>
+            </Flex>
+            <Flex mt={3}>
+              <Box flex={'0 0 200px'}>订阅开始时间: </Box>
+              <Box>
+                {extraDatasetSize?.startTime ? formatTime2YMDHM(extraDatasetSize.startTime) : '-'}
+              </Box>
+            </Flex>
+            <Flex mt={3}>
+              <Box flex={'0 0 200px'}>订阅到期时间: </Box>
+              <Box>
+                {extraDatasetSize?.expiredTime
+                  ? formatTime2YMDHM(extraDatasetSize.expiredTime)
+                  : '-'}
+              </Box>
             </Flex>
             <Flex mt={4} alignItems={'center'}>
               <Box flex={'0 0 200px'}>
@@ -226,6 +209,104 @@ const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) =
             </Button>
           </Box>
         </Box>
+        <Box
+          bg={'rgba(255, 255, 255, 0.90)'}
+          w={['100%', '500px']}
+          px={'32px'}
+          py={'24px'}
+          borderRadius={'2xl'}
+          borderWidth={'1px'}
+          borderColor={'myGray.150'}
+          boxShadow={'1.5'}
+        >
+          <Flex borderBottomWidth={'1px'} borderBottomColor={'myGray.200'}>
+            <Box flex={'1 0 0'}>
+              <Box fontSize={'xl'} color={'primary.600'}>
+                {t('support.wallet.subscription.Extra ai points')}
+              </Box>
+              <Box mt={3} fontSize={['32px', '38px']} fontWeight={'bold'}>
+                ￥{3}/10万积分{' '}
+                <Box ml={1} as={'span'} fontSize={'lg'} color={'myGray.600'} fontWeight={'normal'}>
+                  /{t('common.month')}
+                </Box>
+              </Box>
+            </Box>
+            <MyIcon
+              transform={'translate(20px,-20px)'}
+              name={'support/bill/extraPoints'}
+              fill={'none'}
+            />
+          </Flex>
+          <Box>
+            <Flex mt={4}>
+              <Box flex={'0 0 200px'}>
+                {t('support.wallet.subscription.Current extra ai points')}:
+              </Box>
+              <Box fontWeight={'bold'} flex={1}>
+                {formatPoints(extraPoints?.currentExtraPoints)}
+              </Box>
+            </Flex>
+            <Flex mt={4}>
+              <Box flex={'0 0 200px'}>{t('support.wallet.subscription.Next extra ai points')}:</Box>
+              <Box fontWeight={'bold'} flex={1}>
+                {formatPoints(extraPoints?.nextExtraPoints || 0)}
+              </Box>
+            </Flex>
+            <Flex mt={3}>
+              <Box flex={'0 0 200px'}>订阅开始时间: </Box>
+              <Box>{extraPoints?.startTime ? formatTime2YMDHM(extraPoints.startTime) : '-'}</Box>
+            </Flex>
+            <Flex mt={3}>
+              <Box flex={'0 0 200px'}>订阅到期时间: </Box>
+              <Box>
+                {extraPoints?.expiredTime ? formatTime2YMDHM(extraPoints.expiredTime) : '-'}
+              </Box>
+            </Flex>
+            <Flex mt={4} alignItems={'center'}>
+              <Box flex={'0 0 200px'}>
+                {t('support.wallet.subscription.Update extra ai points')}
+              </Box>
+              <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
+                <NumberInput
+                  size={'sm'}
+                  flex={1}
+                  min={0}
+                  max={10000}
+                  step={1}
+                  value={extraPointsAmount}
+                  position={'relative'}
+                  onChange={(e) => {
+                    setExtraPointsAmount(Number(e));
+                  }}
+                >
+                  <NumberInputField
+                    pr={'30px'}
+                    value={extraPointsAmount}
+                    step={1}
+                    min={0}
+                    max={10000}
+                  />
+                  <NumberInputStepper>
+                    <NumberIncrementStepper />
+                    <NumberDecrementStepper />
+                  </NumberInputStepper>
+                </NumberInput>
+                <Box position={'absolute'} right={'20px'} color={'myGray.500'} fontSize={'xs'}>
+                  0万
+                </Box>
+              </Flex>
+            </Flex>
+            <Button
+              isDisabled={extraPointsAmount * 100000 === extraPoints?.nextExtraPoints}
+              mt={6}
+              w={'100%'}
+              variant={'primaryGhost'}
+              isLoading={isPayingExtraDatasetSize || isFetchingPreviewCheck}
+            >
+              {t('common.change')}
+            </Button>
+          </Box>
+        </Box>
       </Grid>
 
       {/* extra dataset size modal */}
@@ -261,11 +342,6 @@ const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) =
               </Box>
               <Box>30天</Box>
             </Flex>
-
-            {/* <Flex>
-              <Box flex={'0 0 120px'}>账号余额:</Box>
-              <Box>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}元</Box>
-            </Flex> */}
           </ModalBody>
           <ModalFooter mx={8} px={0} borderTopWidth={'1px'} borderTopColor={'myGray.200'}>
             <Box color={'myGray.600'}>账号余额：</Box>

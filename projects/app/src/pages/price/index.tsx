@@ -10,6 +10,7 @@ import StandardPlan from './components/Standard';
 import ExtraPlan from './components/ExtraPlan';
 import PointsCard from './components/Points';
 import FAQ from './components/FAQ';
+import { getToken } from '@/web/support/user/auth';
 
 const PriceBox = () => {
   const { t } = useTranslation();
@@ -19,7 +20,7 @@ const PriceBox = () => {
     ['getTeamDatasetValidSub'],
     getTeamDatasetValidSub,
     {
-      enabled: !!userInfo
+      enabled: !!getToken() || !!userInfo
     }
   );
 
@@ -37,7 +38,10 @@ const PriceBox = () => {
       {/* standard sub */}
       <StandardPlan standardPlan={teamSubPlan?.standard} refetchTeamSubPlan={refetchTeamSubPlan} />
 
-      <ExtraPlan extraDatasetSize={teamSubPlan?.extraDatasetSize} />
+      <ExtraPlan
+        extraDatasetSize={teamSubPlan?.extraDatasetSize}
+        extraPoints={teamSubPlan?.extraPoints}
+      />
 
       {/* points */}
       <PointsCard />

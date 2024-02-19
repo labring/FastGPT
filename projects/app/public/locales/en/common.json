@@ -1210,8 +1210,8 @@
         "Type": "Bill type",
         "payWay": {
           "Way": "Pay way",
-          "wx": "Wechat",
-          "balance": "Balance"
+          "balance": "Balance",
+          "wx": "Wechat"
         },
         "status": {
           "closed": "CLOSED",
@@ -1226,14 +1226,17 @@
         "Buy now": "Buy now",
         "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",
         "Current dataset store": "Current dataset store subscription",
+        "Current extra ai points": "Current extra points",
         "Current plan": "Current plan",
         "Dataset store": "Dataset store size",
         "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
         "Expand size": "Expand size",
+        "Extra ai points": "Extra ai points",
         "Extra dataset size": "Extra dataset size",
         "Extra plan": "Extra Plan",
         "Extra plan tip": "When the standard plan is not enough, you can purchase an additional plan to continue using",
         "FAQ": "Pricing FAQs",
+        "Next extra ai points": "Next extra points",
         "Next plan": "Future plan",
         "Next sub dataset size": "",
         "Nonsupport": "Nonsupport",
@@ -1245,6 +1248,7 @@
         "Sub plan": "Pricing Plans",
         "Sub plan tip": "Use FastGPT for free or upgrade to a higher plan",
         "Training weight": "Training weight: {{weight}}",
+        "Update extra ai points": "",
         "Update extra dataset size": "Update size",
         "function": {
           "History store": "",
