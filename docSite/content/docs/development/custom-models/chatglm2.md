@@ -47,7 +47,7 @@ ChatGLM2-6B 是开源中英双语对话模型 ChatGLM-6B 的第二代版本，�
 
 1. 根据上面的环境配置配置好环境，具体教程自行 GPT；
 2. 下载 [python 文件](https://github.com/labring/FastGPT/blob/main/files/models/ChatGLM2/openai_api.py)
-3. 在命令行输入命令 `pip install -r requirments.txt`；
+3. 在命令行输入命令 `pip install -r requirements.txt`；
 4. 打开你需要启动的 py 文件，在代码的 `verify_token` 方法中配置 token，这里的 token 只是加一层验证，防止接口被人盗用；
 5. 执行命令 `python openai_api.py --model_name 16`。这里的数字根据上面的配置进行选择。
 
