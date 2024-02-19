@@ -2,11 +2,7 @@ export enum UsageSourceEnum {
   fastgpt = 'fastgpt',
   api = 'api',
   shareLink = 'shareLink',
-  training = 'training',
-
-  // abandon
-  standSubPlan = 'standSubPlan',
-  extraDatasetSub = 'extraDatasetSub'
+  training = 'training'
 }
 
 export const UsageSourceMap = {
@@ -21,11 +17,5 @@ export const UsageSourceMap = {
   },
   [UsageSourceEnum.training]: {
     label: 'dataset.Training Name'
-  },
-  [UsageSourceEnum.standSubPlan]: {
-    label: 'support.wallet.subscription.type.standard'
-  },
-  [UsageSourceEnum.extraDatasetSub]: {
-    label: 'support.wallet.subscription.type.extraDatasetSize'
   }
 };

@@ -6,7 +6,7 @@ export enum BillTypeEnum {
 }
 export const billTypeMap = {
   [BillTypeEnum.balance]: {
-    label: 'support.user.team.pay.type.balance'
+    label: 'support.wallet.subscription.type.balance'
   },
   [BillTypeEnum.standSubPlan]: {
     label: 'support.wallet.subscription.type.standard'
@@ -27,15 +27,28 @@ export enum BillStatusEnum {
 }
 export const billStatusMap = {
   [BillStatusEnum.SUCCESS]: {
-    label: 'support.user.team.pay.status.success'
+    label: 'support.wallet.bill.status.success'
   },
   [BillStatusEnum.REFUND]: {
-    label: 'support.user.team.pay.status.refund'
+    label: 'support.wallet.bill.status.refund'
   },
   [BillStatusEnum.NOTPAY]: {
-    label: 'support.user.team.pay.status.notpay'
+    label: 'support.wallet.bill.status.notpay'
   },
   [BillStatusEnum.CLOSED]: {
-    label: 'support.user.team.pay.status.closed'
+    label: 'support.wallet.bill.status.closed'
+  }
+};
+
+export enum BillPayWayEnum {
+  balance = 'balance',
+  wx = 'wx'
+}
+export const billPayWayMap = {
+  [BillPayWayEnum.balance]: {
+    label: 'support.wallet.bill.payWay.balance'
+  },
+  [BillPayWayEnum.wx]: {
+    label: 'support.wallet.bill.payWay.wx'
   }
 };

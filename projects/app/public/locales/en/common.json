@@ -83,6 +83,7 @@
     "Delete Success": "Delete Successful",
     "Delete Tip": "Delete Confirm",
     "Delete Warning": "Warning",
+    "Detail": "Detail",
     "Done": "Done",
     "Edit": "Edit",
     "Exit": "Exit",
@@ -143,6 +144,7 @@
     "UnKnow": "UnKnow",
     "UnKnow Source": "UnKnow Source",
     "Unlimited": "Unlimited",
+    "Update": "Update",
     "Update Failed": "Update Failed",
     "Update Success": "Update Success",
     "Update Successful": "Update Successful",
@@ -1192,7 +1194,9 @@
       }
     },
     "wallet": {
+      "Amount": "Amount",
       "Balance not enough tip": "The balance is insufficient, please go to the account page first",
+      "Bills": "Bill",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",
       "Pay error": "Pay error",
@@ -1200,8 +1204,23 @@
       "bill": {
         "AI Model": "AI Model",
         "AI Type": "AI Type",
-        "Price": "Price（￥）"
+        "Number": "Number",
+        "Price": "Price（￥）",
+        "Status": "Status",
+        "Type": "Bill type",
+        "payWay": {
+          "Way": "Pay way",
+          "wx": "Wechat",
+          "balance": "Balance"
+        },
+        "status": {
+          "closed": "CLOSED",
+          "notpay": "NOT_PAY",
+          "refund": "REFUND",
+          "success": "SUCCESS"
+        }
       },
+      "noBill": "Not Bills",
       "subscription": {
         "Ai points": "AI Points Standard",
         "Buy now": "Buy now",
@@ -1219,6 +1238,7 @@
         "Next sub dataset size": "",
         "Nonsupport": "Nonsupport",
         "Refund plan and pay confirm": "There is no extra cost for you to switch this package and {{amount}} will be refunded to the balance.",
+        "Stand plan level": "Sub plan",
         "Standard plan pay confirm": "To switch this package, you need to pay {{payPrice}} Yuan.",
         "Standard update fail": "Update plan failed.",
         "Standard update success": "Change subscription plan successful!",
@@ -1236,6 +1256,7 @@
         },
         "mode": {
           "Month": "Monthly",
+          "Period": "Period",
           "Year": "Yearly",
           "Year sale": "2 months free"
         },
@@ -1248,9 +1269,14 @@
           "team": ""
         },
         "type": {
+          "balance": "Add Balance",
           "extraDatasetSize": "Extra dataset size",
-          "standard": ""
+          "extraPoints": "AI Points",
+          "standard": "Sub plan"
         }
+      },
+      "usage": {
+        "Usage Detail": "Usage Detail"
       }
     }
   },
@@ -1366,7 +1392,11 @@
     }
   },
   "wallet": {
-    "bill": {
+    "moduleName": {
+      "index": "Index Generation",
+      "qa": "QA Generation"
+    },
+    "usage": {
       "Ai model": "Ai Model",
       "App name": "App name",
       "Audio Speech": "Audio Speech",
@@ -1391,10 +1421,6 @@
       "Total": "Total",
       "Whisper": "Whisper",
       "bill username": "User"
-    },
-    "moduleName": {
-      "index": "Index Generation",
-      "qa": "QA Generation"
     }
   }
 }

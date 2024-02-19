@@ -1,5 +1,5 @@
-import { SubModeEnum, SubTypeEnum } from '../sub/constants';
-import { BillTypeEnum } from './constants';
+import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from '../sub/constants';
+import { BillPayWayEnum, BillTypeEnum } from './constants';
 
 export type BillSchemaType = {
   _id: string;
@@ -9,8 +9,12 @@ export type BillSchemaType = {
   createTime: Date;
   orderId: string;
   status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
-  type: `${PayType}`;
-
+  type: `${BillTypeEnum}`;
   price: number;
-  payWay: 'balance' | 'wx';
+  metadata?: {
+    payWay?: `${BillPayWayEnum}`;
+    subMode?: `${SubModeEnum}`;
+    standSubLevel?: `${StandardSubLevelEnum}`;
+    datasetSize?: number;
+  };
 };

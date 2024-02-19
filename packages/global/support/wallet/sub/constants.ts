@@ -40,11 +40,11 @@ export enum SubModeEnum {
 }
 export const subModeMap = {
   [SubModeEnum.month]: {
-    label: 'support.wallet.subscription.mode.month',
+    label: 'support.wallet.subscription.mode.Month',
     durationMonth: 1
   },
   [SubModeEnum.year]: {
-    label: 'support.wallet.subscription.mode.year',
+    label: 'support.wallet.subscription.mode.Year',
     durationMonth: 12
   }
 };

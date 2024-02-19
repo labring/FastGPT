@@ -6,12 +6,6 @@ export type UsageListItemCountType = {
   outputTokens?: number;
   charsLength?: number;
   duration?: number;
-
-  // sub
-  datasetSize?: number;
-
-  // abandon
-  tokenLen?: number;
 };
 export type UsageListItemType = UsageListItemCountType & {
   moduleName: string;
@@ -24,7 +18,7 @@ export type UsageSchemaType = CreateUsageProps & {
   time: Date;
 };
 
-export type BillItemType = {
+export type UsageItemType = {
   id: string;
   // memberName: string;
   time: Date;

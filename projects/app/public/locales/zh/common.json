@@ -83,6 +83,7 @@
     "Delete Success": "删除成功",
     "Delete Tip": "删除提示",
     "Delete Warning": "删除警告",
+    "Detail": "详情",
     "Done": "完成",
     "Edit": "编辑",
     "Exit": "退出",
@@ -143,6 +144,7 @@
     "UnKnow": "未知",
     "UnKnow Source": "未知来源",
     "Unlimited": "无限制",
+    "Update": "更新",
     "Update Failed": "更新异常",
     "Update Success": "更新成功",
     "Update Successful": "更新成功",
@@ -551,8 +553,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1194,7 +1195,9 @@
       }
     },
     "wallet": {
+      "Amount": "金额",
       "Balance not enough tip": "余额不足，请先到账号页充值",
+      "Bills": "账单",
       "Buy more": "扩容",
       "Confirm pay": "支付确认",
       "Pay error": "支付失败",
@@ -1202,8 +1205,23 @@
       "bill": {
         "AI Model": "AI 模型",
         "AI Type": "AI 类型",
-        "Price": "价格（￥）"
+        "Number": "订单号",
+        "Price": "价格（￥）",
+        "Status": "状态",
+        "Type": "订单类型",
+        "payWay": {
+          "Way": "支付方式",
+          "wx": "微信支付",
+          "balance": "余额支付"
+        },
+        "status": {
+          "closed": "已关闭",
+          "notpay": "未支付",
+          "refund": "已退款",
+          "success": "支付成功"
+        }
       },
+      "noBill": "无账单记录~",
       "subscription": {
         "Ai points": "AI 积分计算标准",
         "Buy now": "开始使用",
@@ -1221,6 +1239,7 @@
         "Next sub dataset size": "下次订阅额外容量",
         "Nonsupport": "无法切换",
         "Refund plan and pay confirm": "切换该套餐您无需支付额外费用，并将退换 {{amount}} 元至余额中。",
+        "Stand plan level": "订阅套餐",
         "Standard plan pay confirm": "切换该套餐，您本次需要补充支付 {{payPrice}} 元。",
         "Standard update fail": "修改订阅套餐异常",
         "Standard update success": "变更订阅套餐成功！",
@@ -1238,6 +1257,7 @@
         },
         "mode": {
           "Month": "按月",
+          "Period": "订阅周期",
           "Year": "按年",
           "Year sale": "赠送两个月"
         },
@@ -1250,9 +1270,14 @@
           "team": "团队版"
         },
         "type": {
+          "balance": "余额充值",
           "extraDatasetSize": "知识库扩容",
+          "extraPoints": "AI积分套餐",
           "standard": "套餐订阅"
         }
+      },
+      "usage": {
+        "Usage Detail": "使用详情"
       }
     }
   },
@@ -1368,7 +1393,11 @@
     }
   },
   "wallet": {
-    "bill": {
+    "moduleName": {
+      "index": "索引生成",
+      "qa": "QA 拆分"
+    },
+    "usage": {
       "Ai model": "AI模型",
       "App name": "应用名",
       "Audio Speech": "语音播报",
@@ -1383,7 +1412,7 @@
       "Input Token Length": "输入 Tokens",
       "Module name": "模块名",
       "Next Step Guide": "下一步指引",
-      "Number": "订单号",
+      "Number": "",
       "Output Token Length": "输出 Tokens",
       "ReRank": "结果重排",
       "Source": "来源",
@@ -1393,10 +1422,6 @@
       "Total": "总金额",
       "Whisper": "语音输入",
       "bill username": "用户"
-    },
-    "moduleName": {
-      "index": "索引生成",
-      "qa": "QA 拆分"
     }
   }
 }

@@ -1,6 +1,13 @@
-import { GET } from '@/web/common/api/request';
+import { RequestPaging } from '@/types';
+import { GET, POST } from '@/web/common/api/request';
+import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
-export const getBills = () => GET<BillSchemaType[]>(`/proApi/support/wallet/bill/list`);
+
+export const getBills = (
+  data: RequestPaging & {
+    type?: `${BillTypeEnum}`;
+  }
+) => POST<BillSchemaType[]>(`/proApi/support/wallet/bill/list`, data);
 
 export const getPayCode = (amount: number) =>
   GET<{

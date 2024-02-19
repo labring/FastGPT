@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
-import type { BillItemType } from '@fastgpt/global/support/wallet/usage/type';
+import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 import { usePagination } from '@/web/common/hooks/usePagination';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import dayjs from 'dayjs';
@@ -37,10 +37,10 @@ const UsageTable = () => {
     from: addDays(new Date(), -7),
     to: new Date()
   });
-  const [billSource, setBillSource] = useState<`${UsageSourceEnum}` | ''>('');
+  const [usageSource, setUsageSource] = useState<`${UsageSourceEnum}` | ''>('');
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
-  const [billDetail, setBillDetail] = useState<BillItemType>();
+  const [usageDetail, setUsageDetail] = useState<UsageItemType>();
 
   const sourceList = useMemo(
     () => [
@@ -73,17 +73,17 @@ const UsageTable = () => {
   );
 
   const {
-    data: bills,
+    data: usages,
     isLoading,
     Pagination,
     getData
-  } = usePagination<BillItemType>({
+  } = usePagination<UsageItemType>({
     api: getUserUsages,
     pageSize: isPc ? 20 : 10,
     params: {
       dateStart: dateRange.from || new Date(),
       dateEnd: addDays(dateRange.to || new Date(), 1),
-      source: billSource,
+      source: usageSource,
       teamMemberId: selectTmbId
     },
     defaultRequest: false
@@ -91,7 +91,7 @@ const UsageTable = () => {
 
   useEffect(() => {
     getData(1);
-  }, [billSource, selectTmbId]);
+  }, [usageSource, selectTmbId]);
 
   return (
     <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
@@ -136,10 +136,10 @@ const UsageTable = () => {
               <Th>
                 <MySelect
                   list={sourceList}
-                  value={billSource}
+                  value={usageSource}
                   size={'sm'}
                   onchange={(e) => {
-                    setBillSource(e);
+                    setUsageSource(e);
                   }}
                   w={'130px'}
                 ></MySelect>
@@ -150,15 +150,15 @@ const UsageTable = () => {
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
-            {bills.map((item) => (
+            {usages.map((item) => (
               <Tr key={item.id}>
                 {/* <Td>{item.memberName}</Td> */}
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                <Td>{t(UsageSourceMap[item.source]?.label)}</Td>
+                <Td>{t(UsageSourceMap[item.source]?.label) || '-'}</Td>
                 <Td>{t(item.appName) || '-'}</Td>
                 <Td>{item.total}元</Td>
                 <Td>
-                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setBillDetail(item)}>
+                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
                     详情
                   </Button>
                 </Td>
@@ -168,7 +168,7 @@ const UsageTable = () => {
         </Table>
       </TableContainer>
 
-      {!isLoading && bills.length === 0 && (
+      {!isLoading && usages.length === 0 && (
         <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'}>
           <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
           <Box mt={2} color={'myGray.500'}>
@@ -178,7 +178,9 @@ const UsageTable = () => {
       )}
 
       <Loading loading={isLoading} fixed={false} />
-      {!!billDetail && <UsageDetail bill={billDetail} onClose={() => setBillDetail(undefined)} />}
+      {!!usageDetail && (
+        <UsageDetail usage={usageDetail} onClose={() => setUsageDetail(undefined)} />
+      )}
     </Flex>
   );
 };

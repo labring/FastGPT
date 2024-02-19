@@ -131,7 +131,7 @@ const ExtraPlan = ({ extraDatasetSize }: { extraDatasetSize?: TeamSubSchema }) =
             </Box>
             <MyIcon
               transform={'translate(20px,-20px)'}
-              name={'support/pay/extraDatasetsize'}
+              name={'support/bill/extraDatasetsize'}
               fill={'none'}
             />
           </Flex>

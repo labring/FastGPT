@@ -15,7 +15,7 @@ import Script from 'next/script';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
-const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
+const BillTable = dynamic(() => import('./components/BillTable'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
 const PriceBox = dynamic(() => import('@/components/support/wallet/Price'));
@@ -25,7 +25,7 @@ enum TabEnum {
   'promotion' = 'promotion',
   'usage' = 'usage',
   'price' = 'price',
-  'pay' = 'pay',
+  'bill' = 'bill',
   'inform' = 'inform',
   'apikey' = 'apikey',
   'loginout' = 'loginout'
@@ -54,16 +54,16 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs?.show_pay && userInfo?.team.canWrite
       ? [
           {
-            icon: 'support/pay/payRecordLight',
-            label: t('user.Recharge Record'),
-            id: TabEnum.pay
+            icon: 'support/bill/payRecordLight',
+            label: t('support.wallet.Bills'),
+            id: TabEnum.bill
           }
         ]
       : []),
     ...(feConfigs?.show_pay
       ? [
           {
-            icon: 'support/pay/priceLight',
+            icon: 'support/bill/priceLight',
             label: t('support.user.Price'),
             id: TabEnum.price
           }
@@ -179,7 +179,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             {currentTab === TabEnum.info && <UserInfo />}
             {currentTab === TabEnum.promotion && <Promotion />}
             {currentTab === TabEnum.usage && <UsageTable />}
-            {currentTab === TabEnum.pay && <PayRecordTable />}
+            {currentTab === TabEnum.bill && <BillTable />}
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}
           </Box>
