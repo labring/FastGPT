@@ -22,7 +22,7 @@ import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/t
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
-import { getUserAndAuthBalance } from '@fastgpt/service/support/user/controller';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/user/controller';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
@@ -97,90 +97,100 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     /* auth app permission */
-    const { user, app, responseDetail, authType, apikey, canWrite, uid } = await (async () => {
-      if (shareId && outLinkUid) {
-        const { user, appId, authType, responseDetail, uid } = await authOutLinkChatStart({
-          shareId,
-          ip: originIp,
-          outLinkUid,
-          question: question.value
-        });
-        const app = await MongoApp.findById(appId);
+    const { teamId, tmbId, user, app, responseDetail, authType, apikey, canWrite, uid } =
+      await (async () => {
+        if (shareId && outLinkUid) {
+          const { teamId, tmbId, user, appId, authType, responseDetail, uid } =
+            await authOutLinkChatStart({
+              shareId,
+              ip: originIp,
+              outLinkUid,
+              question: question.value
+            });
+          const app = await MongoApp.findById(appId);
 
-        if (!app) {
-          return Promise.reject('app is empty');
+          if (!app) {
+            return Promise.reject('app is empty');
+          }
+
+          return {
+            teamId,
+            tmbId,
+            user,
+            app,
+            responseDetail,
+            apikey: '',
+            authType,
+            canWrite: false,
+            uid
+          };
         }
 
-        return {
-          user,
-          app,
-          responseDetail,
-          apikey: '',
+        const {
+          appId: apiKeyAppId,
+          teamId,
+          tmbId,
+          userId,
           authType,
-          canWrite: false,
-          uid
-        };
-      }
+          apikey
+        } = await authCert({
+          req,
+          authToken: true,
+          authApiKey: true
+        });
 
-      const {
-        appId: apiKeyAppId,
-        tmbId,
-        authType,
-        apikey
-      } = await authCert({
-        req,
-        authToken: true,
-        authApiKey: true
-      });
+        const user = await getUserChatInfoAndAuthTeamPoints({
+          teamId,
+          userId
+        });
 
-      const user = await getUserAndAuthBalance({
-        tmbId,
-        minBalance: 0
-      });
+        // openapi key
+        if (authType === AuthUserTypeEnum.apikey) {
+          if (!apiKeyAppId) {
+            return Promise.reject(
+              'Key is error. You need to use the app key rather than the account key.'
+            );
+          }
+          const app = await MongoApp.findById(apiKeyAppId);
 
-      // openapi key
-      if (authType === AuthUserTypeEnum.apikey) {
-        if (!apiKeyAppId) {
-          return Promise.reject(
-            'Key is error. You need to use the app key rather than the account key.'
-          );
+          if (!app) {
+            return Promise.reject('app is empty');
+          }
+
+          return {
+            teamId,
+            tmbId,
+            user,
+            app,
+            responseDetail: detail,
+            apikey,
+            authType,
+            canWrite: true
+          };
         }
-        const app = await MongoApp.findById(apiKeyAppId);
 
-        if (!app) {
-          return Promise.reject('app is empty');
+        // token auth
+        if (!appId) {
+          return Promise.reject('appId is empty');
         }
+        const { app, canWrite } = await authApp({
+          req,
+          authToken: true,
+          appId,
+          per: 'r'
+        });
 
         return {
+          teamId,
+          tmbId,
           user,
           app,
           responseDetail: detail,
           apikey,
           authType,
-          canWrite: true
+          canWrite: canWrite || false
         };
-      }
-
-      // token auth
-      if (!appId) {
-        return Promise.reject('appId is empty');
-      }
-      const { app, canWrite } = await authApp({
-        req,
-        authToken: true,
-        appId,
-        per: 'r'
-      });
-
-      return {
-        user,
-        app,
-        responseDetail: detail,
-        apikey,
-        authType,
-        canWrite: canWrite || false
-      };
-    })();
+      })();
 
     // auth chat permission
     await autChatCrud({
@@ -209,8 +219,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res,
       mode: 'chat',
       user,
-      teamId: String(user.team.teamId),
-      tmbId: String(user.team.tmbId),
+      teamId: String(teamId),
+      tmbId: String(tmbId),
       appId: String(app._id),
       chatId,
       responseChatItemId,
@@ -229,10 +239,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       await saveChat({
         chatId,
         appId: app._id,
-        teamId: user.team.teamId,
-        tmbId: user.team.tmbId,
+        teamId: teamId,
+        tmbId: tmbId,
         variables,
-        updateUseTime: !shareId && String(user.team.tmbId) === String(app.tmbId), // owner update use time
+        updateUseTime: !shareId && String(tmbId) === String(app.tmbId), // owner update use time
         shareId,
         outLinkUid: uid,
         source: (() => {
@@ -305,11 +315,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // add record
-    const { total } = pushChatUsage({
+    const { totalPoints } = pushChatUsage({
       appName: app.name,
       appId: app._id,
-      teamId: user.team.teamId,
-      tmbId: user.team.tmbId,
+      teamId: teamId,
+      tmbId: tmbId,
       source: getUsageSourceByAuthType({ shareId, authType }),
       response: responseData
     });

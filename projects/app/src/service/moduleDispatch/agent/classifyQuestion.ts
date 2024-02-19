@@ -1,5 +1,5 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -11,7 +11,7 @@ import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
 import { getHistories } from '../utils';
-import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -43,7 +43,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const chatHistories = getHistories(history, histories);
 
-  const { arg, inputTokens, outputTokens } = await (async () => {
+  const { arg, charsLength } = await (async () => {
     if (cqModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -60,21 +60,19 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
-  const { total, modelName } = formatModelPrice2Store({
+  const { totalPoints, modelName } = formatModelChars2Points({
     model: cqModel.model,
-    inputLen: inputTokens,
-    outputLen: outputTokens,
-    type: ModelTypeEnum.llm
+    charsLength,
+    modelType: ModelTypeEnum.llm
   });
 
   return {
     [result.key]: true,
     [ModuleOutputKeyEnum.responseData]: {
-      price: user.openaiAccount?.key ? 0 : total,
+      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
-      inputTokens,
-      outputTokens,
+      charsLength,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
@@ -149,11 +147,13 @@ ${systemPrompt}
     const arg = JSON.parse(
       response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
     );
+    const functionChars =
+      agentFunction.description.length +
+      agentFunction.parameters.properties.type.description.length;
 
     return {
       arg,
-      inputTokens: response.usage?.prompt_tokens || 0,
-      outputTokens: response.usage?.completion_tokens || 0
+      charsLength: countMessagesChars(messages) + functionChars
     };
   } catch (error) {
     console.log(agentFunction.parameters);
@@ -163,8 +163,7 @@ ${systemPrompt}
 
     return {
       arg: {},
-      inputTokens: 0,
-      outputTokens: 0
+      charsLength: 0
     };
   }
 }
@@ -206,8 +205,7 @@ async function completions({
     agents.find((item) => answer.includes(item.key) || answer.includes(item.value))?.key || '';
 
   return {
-    inputTokens: data.usage?.prompt_tokens || 0,
-    outputTokens: data.usage?.completion_tokens || 0,
+    charsLength: countMessagesChars(messages),
     arg: { type: id }
   };
 }

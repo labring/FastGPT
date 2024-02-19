@@ -110,7 +110,7 @@ const Points = () => {
           <Box flex={4} textAlign={'center'} h={'100%'}>
             <Flex py={4}>
               <Box flex={'1 0 0'}>{whisperModel?.name}</Box>
-              <Box flex={'1 0 0'}>{whisperModel?.inputPrice}积分 / 分钟</Box>
+              <Box flex={'1 0 0'}>{whisperModel?.charsPointsPrice}积分 / 分钟</Box>
             </Flex>
           </Box>
         </Box>

@@ -1,5 +1,5 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
@@ -7,7 +7,6 @@ import { ModelTypeEnum, getLLMModel, getVectorModel } from '@/service/core/ai/mo
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
 
@@ -96,13 +95,13 @@ export async function dispatchDatasetSearch(
 
   // count bill results
   // vector
-  const { total, modelName } = formatModelPrice2Store({
+  const { totalPoints, modelName } = formatModelChars2Points({
     model: vectorModel.model,
-    inputLen: charsLength,
-    type: ModelTypeEnum.vector
+    charsLength,
+    modelType: ModelTypeEnum.vector
   });
-  const responseData: moduleDispatchResType & { price: number } = {
-    price: total,
+  const responseData: moduleDispatchResType & { totalPoints: number } = {
+    totalPoints,
     query: concatQueries.join('\n'),
     model: modelName,
     charsLength,
@@ -113,16 +112,14 @@ export async function dispatchDatasetSearch(
   };
 
   if (aiExtensionResult) {
-    const { total, modelName } = formatModelPrice2Store({
+    const { totalPoints, modelName } = formatModelChars2Points({
       model: aiExtensionResult.model,
-      inputLen: aiExtensionResult.inputTokens,
-      outputLen: aiExtensionResult.outputTokens,
-      type: ModelTypeEnum.llm
+      charsLength: aiExtensionResult.charsLength,
+      modelType: ModelTypeEnum.llm
     });
 
-    responseData.price += total;
-    responseData.inputTokens = aiExtensionResult.inputTokens;
-    responseData.outputTokens = aiExtensionResult.outputTokens;
+    responseData.totalPoints += totalPoints;
+    responseData.charsLength = aiExtensionResult.charsLength;
     responseData.extensionModel = modelName;
     responseData.extensionResult =
       aiExtensionResult.extensionQueries?.join('\n') ||

@@ -1,6 +1,7 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getAIApi } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { countGptMessagesChars } from '../../chat/utils';
 
 /* 
     cfr:  coreference resolution - 指代消除
@@ -100,8 +101,7 @@ export const queryCfr = async ({
       rawQuery: query,
       cfrQuery: query,
       model,
-      inputTokens: 0,
-      outputTokens: 0
+      charsLength: 0
     };
   }
 
@@ -117,6 +117,15 @@ A: ${chatBg}
     })
     .join('\n');
   const concatFewShot = `${systemFewShot}${historyFewShot}`.trim();
+  const messages = [
+    {
+      role: 'user',
+      content: replaceVariable(defaultPrompt, {
+        query: `${query}`,
+        histories: concatFewShot
+      })
+    }
+  ];
 
   const ai = getAIApi({
     timeout: 480000
@@ -126,15 +135,8 @@ A: ${chatBg}
     model: model,
     temperature: 0.01,
     max_tokens: 150,
-    messages: [
-      {
-        role: 'user',
-        content: replaceVariable(defaultPrompt, {
-          query: `${query}`,
-          histories: concatFewShot
-        })
-      }
-    ],
+    //@ts-ignore
+    messages,
     stream: false
   });
 
@@ -144,8 +146,7 @@ A: ${chatBg}
       rawQuery: query,
       cfrQuery: query,
       model,
-      inputTokens: 0,
-      outputTokens: 0
+      charsLength: 0
     };
   }
 
@@ -153,7 +154,6 @@ A: ${chatBg}
     rawQuery: query,
     cfrQuery: answer,
     model,
-    inputTokens: result.usage?.prompt_tokens || 0,
-    outputTokens: result.usage?.completion_tokens || 0
+    charsLength: countGptMessagesChars(messages)
   };
 };

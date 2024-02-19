@@ -1,7 +1,6 @@
 import { ModelTypeEnum, getModelMap } from '@/service/core/ai/model';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { PRICE_SCALE } from '@fastgpt/global/support/wallet/constants';
 
 export function authType2UsageSource({
   authType,
@@ -18,38 +17,28 @@ export function authType2UsageSource({
   return UsageSourceEnum.fastgpt;
 }
 
-export const formatModelPrice2Store = ({
+export const formatModelChars2Points = ({
   model,
-  inputLen = 0,
-  outputLen = 0,
-  type,
+  charsLength = 0,
+  modelType,
   multiple = 1000
 }: {
   model: string;
-  inputLen: number;
-  outputLen?: number;
-  type: `${ModelTypeEnum}`;
+  charsLength: number;
+  modelType: `${ModelTypeEnum}`;
   multiple?: number;
 }) => {
-  const modelData = getModelMap?.[type]?.(model);
+  const modelData = getModelMap?.[modelType]?.(model);
   if (!modelData)
     return {
-      inputTotal: 0,
-      outputTotal: 0,
-      total: 0,
+      totalPoints: 0,
       modelName: ''
     };
-  const inputTotal = modelData.inputPrice
-    ? Math.ceil(modelData.inputPrice * (inputLen / multiple) * PRICE_SCALE)
-    : 0;
-  const outputTotal = modelData.outputPrice
-    ? Math.ceil(modelData.outputPrice * (outputLen / multiple) * PRICE_SCALE)
-    : 0;
+
+  const totalPoints = (modelData.charsPointsPrice || 0) * (charsLength / multiple);
 
   return {
     modelName: modelData.name,
-    inputTotal: inputTotal,
-    outputTotal: outputTotal,
-    total: inputTotal + outputTotal
+    totalPoints
   };
 };

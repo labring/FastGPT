@@ -13,8 +13,7 @@
       "maxResponse": 4000,
       "quoteMaxToken": 13000,
       "maxTemperature": 1.2,
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": false,
@@ -32,8 +31,7 @@
       "maxResponse": 16000,
       "quoteMaxToken": 13000,
       "maxTemperature": 1.2,
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": true,
@@ -51,8 +49,7 @@
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": false,
@@ -70,8 +67,7 @@
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": false,
@@ -87,8 +83,7 @@
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "defaultToken": 700,
       "maxToken": 3000,
       "weight": 100
@@ -99,8 +94,7 @@
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "voices": [
         { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
         { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
@@ -114,7 +108,6 @@
   "whisperModel": {
     "model": "whisper-1",
     "name": "Whisper1",
-    "inputPrice": 0,
-    "outputPrice": 0
+    "charsPointsPrice": 0
   }
 }

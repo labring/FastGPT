@@ -88,15 +88,17 @@ export type ChatHistoryItemType = HistoryItemType & {
 export type moduleDispatchResType = {
   // common
   moduleLogo?: string;
-  price?: number;
   runningTime?: number;
+  query?: string;
+  textOutput?: string;
+
+  // bill
   inputTokens?: number;
   outputTokens?: number;
   charsLength?: number;
   model?: string;
-  query?: string;
   contextTotalLen?: number;
-  textOutput?: string;
+  totalPoints?: number;
 
   // chat
   temperature?: number;

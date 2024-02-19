@@ -1,12 +1,12 @@
 import type { NextApiResponse } from 'next';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
-import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
@@ -154,7 +154,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   );
 
-  const { answerText, inputTokens, outputTokens, completeMessages } = await (async () => {
+  const { answerText, completeMessages } = await (async () => {
     if (stream) {
       // sse response
       const { answer } = await streamResponse({
@@ -172,17 +172,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       return {
         answerText: answer,
-        inputTokens: countMessagesTokens({
-          messages: filterMessages
-        }),
-        outputTokens: countMessagesTokens({
-          messages: [
-            {
-              obj: ChatRoleEnum.AI,
-              value: answer
-            }
-          ]
-        }),
         completeMessages
       };
     } else {
@@ -196,27 +185,24 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       return {
         answerText: answer,
-        inputTokens: unStreamResponse.usage?.prompt_tokens || 0,
-        outputTokens: unStreamResponse.usage?.completion_tokens || 0,
         completeMessages
       };
     }
   })();
 
-  const { total, modelName } = formatModelPrice2Store({
+  const charsLength = countMessagesChars(completeMessages);
+  const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    inputLen: inputTokens,
-    outputLen: outputTokens,
-    type: ModelTypeEnum.llm
+    charsLength,
+    modelType: ModelTypeEnum.llm
   });
 
   return {
     answerText,
     responseData: {
-      price: user.openaiAccount?.key ? 0 : total,
+      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
-      inputTokens,
-      outputTokens,
+      charsLength,
       query: `${userChatInput}`,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,

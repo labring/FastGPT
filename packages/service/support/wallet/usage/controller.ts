@@ -26,21 +26,21 @@ export const createTrainingUsage = async ({
         tmbId,
         appName,
         source: billSource,
+        totalPoints: 0,
         list: [
           {
-            moduleName: 'wallet.moduleName.index',
+            moduleName: 'support.wallet.moduleName.index',
             model: vectorModel,
             charsLength: 0,
             amount: 0
           },
           {
-            moduleName: 'wallet.moduleName.qa',
+            moduleName: 'support.wallet.moduleName.qa',
             model: agentModel,
             charsLength: 0,
             amount: 0
           }
-        ],
-        total: 0
+        ]
       }
     ],
     { session }

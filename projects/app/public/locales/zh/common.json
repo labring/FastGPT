@@ -553,8 +553,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -613,7 +612,7 @@
         "Down load csv template": "点击下载 CSV 模板",
         "Embedding Estimated Price Tips": "索引计费: {{price}}/1k字符",
         "Estimated Price": "预估价格: {{amount}}{{unit}}",
-        "Estimated Price Tips": "QA计费为\n输入: {{inputPrice}}/1k tokens\n输出: {{outputPrice}}/1k tokens",
+        "Estimated Price Tips": "QA计费为\n输入: 1k字符 = {{charsPointsPrice}}积分",
         "Fetch Error": "获取链接失败",
         "Fetch Url": "网络链接",
         "Fetch url placeholder": "最多10个链接，每行一个。",
@@ -1222,6 +1221,10 @@
           "success": "支付成功"
         }
       },
+      "moduleName": {
+        "index": "索引生成",
+        "qa": "QA 拆分"
+      },
       "noBill": "无账单记录~",
       "subscription": {
         "Ai points": "AI 积分计算标准",
@@ -1282,7 +1285,31 @@
         }
       },
       "usage": {
-        "Usage Detail": "使用详情"
+        "Ai model": "AI模型",
+        "App name": "应用名",
+        "Audio Speech": "语音播报",
+        "Bill Module": "扣费模块",
+        "Chars length": "文本长度",
+        "Data Length": "数据长度",
+        "Dataset store": "知识库存储",
+        "Duration": "时长（秒）",
+        "Extension Input Token Length": "问题补全输入Tokens",
+        "Extension Output Token Length": "问题补全输出Tokens",
+        "Extension result": "问题补全结果",
+        "Input Token Length": "输入 Tokens",
+        "Module name": "模块名",
+        "Number": "",
+        "Output Token Length": "输出 Tokens",
+        "ReRank": "结果重排",
+        "Source": "来源",
+        "Text Length": "文本长度",
+        "Time": "生成时间",
+        "Token Length": "Token长度",
+        "Total": "总金额",
+        "Total points": "AI积分消耗",
+        "Usage Detail": "使用详情",
+        "Whisper": "语音输入",
+        "bill username": "用户"
       }
     }
   },
@@ -1395,38 +1422,6 @@
         "Update to Visitor": "修改成访客",
         "Visitor": "访客"
       }
-    }
-  },
-  "wallet": {
-    "moduleName": {
-      "index": "索引生成",
-      "qa": "QA 拆分"
-    },
-    "usage": {
-      "Ai model": "AI模型",
-      "App name": "应用名",
-      "Audio Speech": "语音播报",
-      "Bill Module": "扣费模块",
-      "Chars length": "文本长度",
-      "Data Length": "数据长度",
-      "Dataset store": "知识库存储",
-      "Duration": "时长（秒）",
-      "Extension Input Token Length": "问题补全输入Tokens",
-      "Extension Output Token Length": "问题补全输出Tokens",
-      "Extension result": "问题补全结果",
-      "Input Token Length": "输入 Tokens",
-      "Module name": "模块名",
-      "Next Step Guide": "下一步指引",
-      "Number": "",
-      "Output Token Length": "输出 Tokens",
-      "ReRank": "结果重排",
-      "Source": "来源",
-      "Text Length": "文本长度",
-      "Time": "生成时间",
-      "Token Length": "Token长度",
-      "Total": "总金额",
-      "Whisper": "语音输入",
-      "bill username": "用户"
     }
   }
 }

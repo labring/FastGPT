@@ -87,46 +87,6 @@ const SubSchema = new Schema({
     type: Number
   },
 
-  // standard sub limit
-  // maxTeamMember: {
-  //   type: Number
-  // },
-  // maxAppAmount: {
-  //   type: Number
-  // },
-  // maxDatasetAmount: {
-  //   type: Number
-  // },
-  // chatHistoryStoreDuration: {
-  //   // n day
-  //   type: Number
-  // },
-  // maxDatasetSize: {
-  //   type: Number
-  // },
-  // trainingWeight: {
-  //   // 0 1 2 3
-  //   type: Number
-  // },
-  // customApiKey: {
-  //   type: Boolean
-  // },
-  // customCopyright: {
-  //   type: Boolean
-  // },
-  // websiteSyncInterval: {
-  //   // hours
-  //   type: Number
-  // },
-  // reRankWeight: {
-  //   // 0 1 2 3
-  //   type: Number
-  // },
-  // totalPoints: {
-  //   // record standard sub points
-  //   type: Number
-  // },
-
   surplusPoints: {
     // standard sub / extra points sub
     type: Number

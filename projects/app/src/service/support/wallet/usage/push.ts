@@ -1,11 +1,9 @@
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { ModelTypeEnum } from '@/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { PostReRankProps } from '@fastgpt/global/core/ai/api';
 import { createUsage, concatUsage } from './controller';
-import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 
 export const pushChatUsage = ({
   appName,
@@ -22,18 +20,18 @@ export const pushChatUsage = ({
   source: `${UsageSourceEnum}`;
   response: ChatHistoryItemResType[];
 }) => {
-  const total = response.reduce((sum, item) => sum + (item.price || 0), 0);
+  const totalPoints = response.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   createUsage({
     teamId,
     tmbId,
     appName,
     appId,
-    total,
+    totalPoints,
     source,
     list: response.map((item) => ({
       moduleName: item.moduleName,
-      amount: item.price || 0,
+      amount: item.totalPoints || 0,
       model: item.model,
       inputTokens: item.inputTokens,
       outputTokens: item.outputTokens,
@@ -44,9 +42,9 @@ export const pushChatUsage = ({
     source,
     teamId,
     tmbId,
-    price: formatStorePrice2Read(total)
+    totalPoints
   });
-  return { total };
+  return { totalPoints };
 };
 
 export const pushQAUsage = async ({
@@ -63,22 +61,22 @@ export const pushQAUsage = async ({
   billId: string;
 }) => {
   // 计算价格
-  const { total } = formatModelPrice2Store({
+  const { totalPoints } = formatModelChars2Points({
     model,
-    inputLen: charsLength,
-    type: ModelTypeEnum.llm
+    modelType: ModelTypeEnum.llm,
+    charsLength
   });
 
   concatUsage({
     billId,
     teamId,
     tmbId,
-    total,
+    totalPoints,
     charsLength,
     listIndex: 1
   });
 
-  return { total };
+  return { totalPoints };
 };
 
 export const pushGenerateVectorUsage = ({
@@ -89,8 +87,7 @@ export const pushGenerateVectorUsage = ({
   model,
   source = UsageSourceEnum.fastgpt,
   extensionModel,
-  extensionInputTokens,
-  extensionOutputTokens
+  extensionCharsLength
 }: {
   billId?: string;
   teamId: string;
@@ -100,41 +97,39 @@ export const pushGenerateVectorUsage = ({
   source?: `${UsageSourceEnum}`;
 
   extensionModel?: string;
-  extensionInputTokens?: number;
-  extensionOutputTokens?: number;
+  extensionCharsLength?: number;
 }) => {
-  const { total: totalVector, modelName: vectorModelName } = formatModelPrice2Store({
+  const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
+    modelType: ModelTypeEnum.vector,
     model,
-    inputLen: charsLength,
-    type: ModelTypeEnum.vector
+    charsLength
   });
 
-  const { extensionTotal, extensionModelName } = (() => {
-    if (!extensionModel || !extensionInputTokens || !extensionOutputTokens)
+  const { extensionTotalPoints, extensionModelName } = (() => {
+    if (!extensionModel || !extensionCharsLength)
       return {
-        extensionTotal: 0,
+        extensionTotalPoints: 0,
         extensionModelName: ''
       };
-    const { total, modelName } = formatModelPrice2Store({
+    const { totalPoints, modelName } = formatModelChars2Points({
+      modelType: ModelTypeEnum.llm,
       model: extensionModel,
-      inputLen: extensionInputTokens,
-      outputLen: extensionOutputTokens,
-      type: ModelTypeEnum.llm
+      charsLength: extensionCharsLength
     });
     return {
-      extensionTotal: total,
+      extensionTotalPoints: totalPoints,
       extensionModelName: modelName
     };
   })();
 
-  const total = totalVector + extensionTotal;
+  const totalPoints = totalVector + extensionTotalPoints;
 
   // 插入 Bill 记录
   if (billId) {
     concatUsage({
       teamId,
       tmbId,
-      total: totalVector,
+      totalPoints,
       billId,
       charsLength,
       listIndex: 0
@@ -144,7 +139,7 @@ export const pushGenerateVectorUsage = ({
       teamId,
       tmbId,
       appName: 'wallet.moduleName.index',
-      total,
+      totalPoints,
       source,
       list: [
         {
@@ -157,58 +152,53 @@ export const pushGenerateVectorUsage = ({
           ? [
               {
                 moduleName: 'core.module.template.Query extension',
-                amount: extensionTotal,
+                amount: extensionTotalPoints,
                 model: extensionModelName,
-                inputTokens: extensionInputTokens,
-                outputTokens: extensionOutputTokens
+                charsLength: extensionCharsLength
               }
             ]
           : [])
       ]
     });
   }
-  return { total };
+  return { totalPoints };
 };
 
 export const pushQuestionGuideUsage = ({
-  inputTokens,
-  outputTokens,
+  charsLength,
   teamId,
   tmbId
 }: {
-  inputTokens: number;
-  outputTokens: number;
+  charsLength: number;
   teamId: string;
   tmbId: string;
 }) => {
   const qgModel = global.llmModels[0];
-  const { total, modelName } = formatModelPrice2Store({
-    inputLen: inputTokens,
-    outputLen: outputTokens,
+  const { totalPoints, modelName } = formatModelChars2Points({
+    charsLength,
     model: qgModel.model,
-    type: ModelTypeEnum.llm
+    modelType: ModelTypeEnum.llm
   });
 
   createUsage({
     teamId,
     tmbId,
-    appName: 'wallet.bill.Next Step Guide',
-    total,
+    appName: 'core.app.Next Step Guide',
+    totalPoints,
     source: UsageSourceEnum.fastgpt,
     list: [
       {
-        moduleName: 'wallet.bill.Next Step Guide',
-        amount: total,
+        moduleName: 'core.app.Next Step Guide',
+        amount: totalPoints,
         model: modelName,
-        inputTokens,
-        outputTokens
+        charsLength
       }
     ]
   });
 };
 
 export function pushAudioSpeechUsage({
-  appName = 'wallet.bill.Audio Speech',
+  appName = 'support.wallet.bill.Audio Speech',
   model,
   charsLength,
   teamId,
@@ -222,22 +212,22 @@ export function pushAudioSpeechUsage({
   tmbId: string;
   source: `${UsageSourceEnum}`;
 }) {
-  const { total, modelName } = formatModelPrice2Store({
+  const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    inputLen: charsLength,
-    type: ModelTypeEnum.audioSpeech
+    charsLength,
+    modelType: ModelTypeEnum.audioSpeech
   });
 
   createUsage({
     teamId,
     tmbId,
     appName,
-    total,
+    totalPoints,
     source,
     list: [
       {
         moduleName: appName,
-        amount: total,
+        amount: totalPoints,
         model: modelName,
         charsLength
       }
@@ -258,70 +248,28 @@ export function pushWhisperUsage({
 
   if (!whisperModel) return;
 
-  const { total, modelName } = formatModelPrice2Store({
+  const { totalPoints, modelName } = formatModelChars2Points({
     model: whisperModel.model,
-    inputLen: duration,
-    type: ModelTypeEnum.whisper,
+    charsLength: duration,
+    modelType: ModelTypeEnum.whisper,
     multiple: 60
   });
 
-  const name = 'wallet.bill.Whisper';
+  const name = 'support.wallet.bill.Whisper';
 
   createUsage({
     teamId,
     tmbId,
     appName: name,
-    total,
+    totalPoints,
     source: UsageSourceEnum.fastgpt,
     list: [
       {
         moduleName: name,
-        amount: total,
+        amount: totalPoints,
         model: modelName,
         duration
       }
     ]
   });
-}
-
-export function pushReRankUsage({
-  teamId,
-  tmbId,
-  source,
-  inputs
-}: {
-  teamId: string;
-  tmbId: string;
-  source: `${UsageSourceEnum}`;
-  inputs: PostReRankProps['inputs'];
-}) {
-  const reRankModel = global.reRankModels[0];
-  if (!reRankModel) return { total: 0 };
-
-  const charsLength = inputs.reduce((sum, item) => sum + item.text.length, 0);
-
-  const { total, modelName } = formatModelPrice2Store({
-    model: reRankModel.model,
-    inputLen: charsLength,
-    type: ModelTypeEnum.rerank
-  });
-  const name = 'wallet.bill.ReRank';
-
-  createUsage({
-    teamId,
-    tmbId,
-    appName: name,
-    total,
-    source,
-    list: [
-      {
-        moduleName: name,
-        amount: total,
-        model: modelName,
-        charsLength
-      }
-    ]
-  });
-
-  return { total };
 }

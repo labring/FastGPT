@@ -2,7 +2,7 @@ import type { ChatItemType, moduleDispatchResType } from '@fastgpt/global/core/c
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
-import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 import { queryCfr } from '@fastgpt/service/core/ai/functions/cfr';
 import { getHistories } from '../utils';
 
@@ -36,26 +36,24 @@ export const dispatchCFR = async ({
   const cfrModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { cfrQuery, inputTokens, outputTokens } = await queryCfr({
+  const { cfrQuery, charsLength } = await queryCfr({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
     model: cfrModel.model
   });
 
-  const { total, modelName } = formatModelPrice2Store({
+  const { totalPoints, modelName } = formatModelChars2Points({
     model: cfrModel.model,
-    inputLen: inputTokens,
-    outputLen: outputTokens,
-    type: ModelTypeEnum.llm
+    charsLength,
+    modelType: ModelTypeEnum.llm
   });
 
   return {
     [ModuleOutputKeyEnum.responseData]: {
-      price: total,
+      totalPoints,
       model: modelName,
-      inputTokens,
-      outputTokens,
+      charsLength,
       query: userChatInput,
       textOutput: cfrQuery
     },

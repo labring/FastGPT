@@ -13,10 +13,10 @@ const Price = ({ onClose }: { onClose: () => void }) => {
       title: 'AI语言模型',
       describe: '',
       md: `
-| 模型 | 输入价格(￥) | 输出价格(￥) |
-| --- | --- | --- |
+| 模型 | 输入计费 |
+| --- | --- |
 ${llmModelList
-  ?.map((item) => `| ${item.name} | ${item.inputPrice}/1k tokens | ${item.outputPrice}/1k tokens |`)
+  ?.map((item) => `| ${item.name} | 1k字符 = ${item.charsPointsPrice}积分 |`)
   .join('\n')}`
     },
     {
@@ -25,7 +25,7 @@ ${llmModelList
       md: `
 | 模型 | 价格(￥) |
 | --- | --- |
-${vectorModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 |`).join('\n')}
+${vectorModelList?.map((item) => `| ${item.name} | ${item.charsPointsPrice}/1k 字符 |`).join('\n')}
       `
     },
     {
@@ -35,7 +35,7 @@ ${vectorModelList?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 
 | 模型 | 价格(￥) |
 | --- | --- |
 ${audioSpeechModelList
-  ?.map((item) => `| ${item.name} | ${item.inputPrice}/1k 字符 | - |`)
+  ?.map((item) => `| ${item.name} | ${item.charsPointsPrice}/1k 字符 | - |`)
   .join('\n')}`
     },
     ...(whisperModel
@@ -46,7 +46,7 @@ ${audioSpeechModelList
             md: `
 | 模型 | 价格(￥) |
 | --- | --- |
-| ${whisperModel.name} | ${whisperModel.inputPrice}/分钟 | - |`
+| ${whisperModel.name} | ${whisperModel.charsPointsPrice}/分钟 | - |`
           }
         ]
       : [])

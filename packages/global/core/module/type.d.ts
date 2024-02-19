@@ -1,6 +1,7 @@
 import { FlowNodeTypeEnum } from './node/constant';
 import { ModuleIOValueTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
+import { UserModelSchema } from 'support/user/type';
 
 export type FlowModuleTemplateType = {
   id: string; // module id, unique
@@ -105,7 +106,7 @@ export type ChatDispatchProps = {
   mode: 'test' | 'chat';
   teamId: string;
   tmbId: string;
-  user: UserType;
+  user: UserModelSchema;
   appId: string;
   chatId?: string;
   responseChatItemId?: string;

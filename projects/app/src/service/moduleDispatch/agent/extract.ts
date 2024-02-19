@@ -1,5 +1,5 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -11,7 +11,7 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
 import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
-import { formatModelPrice2Store } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -43,7 +43,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const extractModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { arg, inputTokens, outputTokens } = await (async () => {
+  const { arg, charsLength } = await (async () => {
     if (extractModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -80,11 +80,10 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     }
   }
 
-  const { total, modelName } = formatModelPrice2Store({
+  const { totalPoints, modelName } = formatModelChars2Points({
     model: extractModel.model,
-    inputLen: inputTokens,
-    outputLen: outputTokens,
-    type: ModelTypeEnum.llm
+    charsLength,
+    modelType: ModelTypeEnum.llm
   });
 
   return {
@@ -93,11 +92,10 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
     [ModuleOutputKeyEnum.responseData]: {
-      price: user.openaiAccount?.key ? 0 : total,
+      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: content,
-      inputTokens,
-      outputTokens,
+      charsLength,
       extractDescription: description,
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
@@ -193,10 +191,12 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
     }
   })();
 
+  const functionChars =
+    agentFunction.description.length + agentFunction.parameters.properties.type.description.length;
+
   return {
     rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
-    inputTokens: response.usage?.prompt_tokens || 0,
-    outputTokens: response.usage?.completion_tokens || 0,
+    charsLength: countMessagesChars(messages) + functionChars,
     arg
   };
 }
@@ -238,8 +238,6 @@ Human: ${content}`
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
-  const inputTokens = data.usage?.prompt_tokens || 0;
-  const outputTokens = data.usage?.completion_tokens || 0;
 
   // parse response
   const start = answer.indexOf('{');
@@ -248,8 +246,7 @@ Human: ${content}`
   if (start === -1 || end === -1)
     return {
       rawResponse: answer,
-      inputTokens,
-      outputTokens,
+      charsLength: countMessagesChars(messages),
       arg: {}
     };
 
@@ -261,15 +258,14 @@ Human: ${content}`
   try {
     return {
       rawResponse: answer,
-      inputTokens,
-      outputTokens,
+      charsLength: countMessagesChars(messages),
+
       arg: JSON.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
     return {
       rawResponse: answer,
-      inputTokens,
-      outputTokens,
+      charsLength: countMessagesChars(messages),
       arg: {}
     };
   }

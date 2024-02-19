@@ -17,6 +17,7 @@ import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
+import { formatNumber } from '../../../../../../packages/global/common/math/tools';
 
 const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => void }) => {
   const { t } = useTranslation();
@@ -25,10 +26,8 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
     [usage.list]
   );
 
-  const { hasModel, hasInputTokens, hasOutputTokens, hasCharsLen, hasDuration } = useMemo(() => {
+  const { hasModel, hasCharsLen, hasDuration } = useMemo(() => {
     let hasModel = false;
-    let hasInputTokens = false;
-    let hasOutputTokens = false;
     let hasCharsLen = false;
     let hasDuration = false;
     let hasDataLen = false;
@@ -38,12 +37,6 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
         hasModel = true;
       }
 
-      if (typeof item.inputTokens === 'number') {
-        hasInputTokens = true;
-      }
-      if (typeof item.outputTokens === 'number') {
-        hasOutputTokens = true;
-      }
       if (typeof item.charsLength === 'number') {
         hasCharsLen = true;
       }
@@ -54,8 +47,6 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
 
     return {
       hasModel,
-      hasInputTokens,
-      hasOutputTokens,
       hasCharsLen,
       hasDuration,
       hasDataLen
@@ -76,37 +67,35 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
           <Box>{usage.id}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 80px'}>{t('wallet.usage.Time')}:</Box>
+          <Box flex={'0 0 80px'}>{t('support.wallet.usage.Time')}:</Box>
           <Box>{dayjs(usage.time).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 80px'}>{t('wallet.usage.App name')}:</Box>
+          <Box flex={'0 0 80px'}>{t('support.wallet.usage.App name')}:</Box>
           <Box>{t(usage.appName) || '-'}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 80px'}>{t('wallet.usage.Source')}:</Box>
+          <Box flex={'0 0 80px'}>{t('support.wallet.usage.Source')}:</Box>
           <Box>{t(UsageSourceMap[usage.source]?.label)}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 80px'}>{t('wallet.usage.Total')}:</Box>
-          <Box fontWeight={'bold'}>{usage.total}元</Box>
+          <Box flex={'0 0 80px'}>{t('support.wallet.usage.Total points')}:</Box>
+          <Box fontWeight={'bold'}>{formatNumber(usage.totalPoints)}</Box>
         </Flex>
         <Box pb={4}>
           <Box flex={'0 0 80px'} mb={1}>
-            {t('wallet.usage.Bill Module')}
+            {t('support.wallet.usage.Bill Module')}
           </Box>
           <TableContainer>
             <Table>
               <Thead>
                 <Tr>
-                  <Th>{t('wallet.usage.Module name')}</Th>
-                  {hasModel && <Th>{t('wallet.usage.Ai model')}</Th>}
-                  {hasInputTokens && <Th>{t('wallet.usage.Input Token Length')}</Th>}
-                  {hasOutputTokens && <Th>{t('wallet.usage.Output Token Length')}</Th>}
-                  {hasCharsLen && <Th>{t('wallet.usage.Text Length')}</Th>}
-                  {hasDuration && <Th>{t('wallet.usage.Duration')}</Th>}
+                  <Th>{t('support.wallet.usage.Module name')}</Th>
+                  {hasModel && <Th>{t('support.wallet.usage.Ai model')}</Th>}
+                  {hasCharsLen && <Th>{t('support.wallet.usage.Text Length')}</Th>}
+                  {hasDuration && <Th>{t('support.wallet.usage.Duration')}</Th>}
 
-                  <Th>费用(￥)</Th>
+                  <Th>{t('support.wallet.usage.Total points')}</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -114,11 +103,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                   <Tr key={i}>
                     <Td>{t(item.moduleName)}</Td>
                     {hasModel && <Td>{item.model ?? '-'}</Td>}
-                    {hasInputTokens && <Td>{item.inputTokens ?? '-'}</Td>}
-                    {hasOutputTokens && <Td>{item.outputTokens ?? '-'}</Td>}
                     {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
-                    <Td>{formatStorePrice2Read(item.amount)}</Td>
+                    <Td>{formatNumber(item.amount)}</Td>
                   </Tr>
                 ))}
               </Tbody>

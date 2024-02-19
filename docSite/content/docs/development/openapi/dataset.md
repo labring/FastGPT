@@ -167,7 +167,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/list?paren
             "vectorModel": {
                 "model": "text-embedding-ada-002",
                 "name": "Embedding-2",
-                "inputPrice": 0,
+                "charsPointsPrice": 0,
                 "defaultToken": 512,
                 "maxToken": 8000,
                 "weight": 100
@@ -226,7 +226,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
         "vectorModel": {
             "model": "text-embedding-ada-002",
             "name": "Embedding-2",
-            "inputPrice": 0,
+            "charsPointsPrice": 0,
             "defaultToken": 512,
             "maxToken": 8000,
             "weight": 100
@@ -236,8 +236,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
             "name": "FastAI-16k",
             "maxContext": 16000,
             "maxResponse": 16000,
-            "inputPrice": 0,
-            "outputPrice": 0
+            "charsPointsPrice": 0
         },
         "intro": "",
         "permission": "private",

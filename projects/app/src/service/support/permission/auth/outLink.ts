@@ -6,7 +6,7 @@ import type {
   AuthOutLinkResponse
 } from '@fastgpt/global/support/outLink/api.d';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/auth/outLink';
-import { getUserAndAuthBalance } from '@fastgpt/service/support/user/controller';
+import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/user/controller';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
@@ -60,11 +60,13 @@ export async function authOutLinkChatStart({
 
   // check balance and chat limit
   const [user, { uid }] = await Promise.all([
-    getUserAndAuthBalance({ tmbId: shareChat.tmbId, minBalance: 0 }),
+    getUserChatInfoAndAuthTeamPoints({ tmbId: shareChat.tmbId }),
     authOutLinkChatLimit({ outLink: shareChat, ip, outLinkUid, question })
   ]);
 
   return {
+    teamId: shareChat.teamId,
+    tmbId: shareChat.tmbId,
     authType: AuthUserTypeEnum.token,
     responseDetail: shareChat.responseDetail,
     user,

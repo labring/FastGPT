@@ -5,8 +5,8 @@ import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 
 export function createUsage(data: CreateUsageProps) {
   if (!FastGPTProUrl) return;
-  if (data.total === 0) {
-    addLog.info('0 Bill', data);
+  if (data.totalPoints === 0) {
+    addLog.info('0 totalPoints', data);
   }
   try {
     POST('/support/wallet/usage/createUsage', data);
@@ -14,8 +14,8 @@ export function createUsage(data: CreateUsageProps) {
 }
 export function concatUsage(data: ConcatUsageProps) {
   if (!FastGPTProUrl) return;
-  if (data.total === 0) {
-    addLog.info('0 Bill', data);
+  if (data.totalPoints === 0) {
+    addLog.info('0 totalPoints', data);
   }
   try {
     POST('/support/wallet/usage/concatUsage', data);

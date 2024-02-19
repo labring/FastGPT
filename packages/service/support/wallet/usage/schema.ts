@@ -20,6 +20,11 @@ const UsageSchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
+  source: {
+    type: String,
+    enum: Object.keys(UsageSourceMap),
+    required: true
+  },
   appName: {
     type: String,
     default: ''
@@ -33,16 +38,16 @@ const UsageSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
-  total: {
-    // 1 * PRICE_SCALE
+  totalPoints: {
+    // total points
     type: Number,
     required: true
   },
-  source: {
-    type: String,
-    enum: Object.keys(UsageSourceMap),
-    required: true
-  },
+  // total: {
+  //   // total points
+  //   type: Number,
+  //   required: true
+  // },
   list: {
     type: Array,
     default: []

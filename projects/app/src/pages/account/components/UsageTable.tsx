@@ -28,6 +28,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@/components/Avatar';
+import { formatNumber } from '../../../../../../packages/global/common/math/tools';
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
 const UsageTable = () => {
@@ -145,7 +146,7 @@ const UsageTable = () => {
                 ></MySelect>
               </Th>
               <Th>{t('user.Application Name')}</Th>
-              <Th>{t('user.Total Amount')}</Th>
+              <Th>{t('support.wallet.usage.Total points')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -156,7 +157,7 @@ const UsageTable = () => {
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
                 <Td>{t(UsageSourceMap[item.source]?.label) || '-'}</Td>
                 <Td>{t(item.appName) || '-'}</Td>
-                <Td>{item.total}元</Td>
+                <Td>{formatNumber(item.totalPoints) || '-'}</Td>
                 <Td>
                   <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
                     详情

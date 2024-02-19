@@ -254,7 +254,7 @@ const Standard = ({
               </Flex>
               <Flex alignItems={'center'}>
                 <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                <Box color={'myGray.600'}>
+                <Box fontWeight={'bold'}>
                   {t('support.wallet.subscription.function.Max dataset size', {
                     amount: item.maxDatasetSize
                   })}
@@ -262,7 +262,7 @@ const Standard = ({
               </Flex>
               <Flex alignItems={'center'}>
                 <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                <Box color={'myGray.600'}>
+                <Box fontWeight={'bold'}>
                   {t('support.wallet.subscription.function.Points', {
                     amount: item.totalPoints
                   })}
@@ -276,10 +276,10 @@ const Standard = ({
                   })}
                 </Box>
               </Flex>
-              {!!item.customApiKey && (
+              {!!item.reRankWeight && (
                 <Flex alignItems={'center'}>
                   <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box color={'myGray.600'}>个人API Key</Box>
+                  <Box color={'myGray.600'}>检索结果重排</Box>
                 </Flex>
               )}
               {!!item.websiteSyncInterval && (

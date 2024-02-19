@@ -10,7 +10,7 @@ export type ConcatUsageProps = UsageListItemCountType & {
   teamId: string;
   tmbId: string;
   billId?: string;
-  total: number;
+  totalPoints: number;
   listIndex?: number;
 };
 
@@ -19,7 +19,8 @@ export type CreateUsageProps = {
   tmbId: string;
   appName: string;
   appId?: string;
-  total: number;
+  totalPoints: number;
+  // inputTokens: number;
   source: `${UsageSourceEnum}`;
   list: UsageListItemType[];
 };

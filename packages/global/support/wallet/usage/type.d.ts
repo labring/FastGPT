@@ -2,8 +2,6 @@ import { CreateUsageProps } from './api';
 import { UsageSourceEnum } from './constants';
 
 export type UsageListItemCountType = {
-  inputTokens?: number;
-  outputTokens?: number;
   charsLength?: number;
   duration?: number;
 };
@@ -20,10 +18,9 @@ export type UsageSchemaType = CreateUsageProps & {
 
 export type UsageItemType = {
   id: string;
-  // memberName: string;
   time: Date;
   appName: string;
   source: UsageSchemaType['source'];
-  total: number;
+  totalPoints: number;
   list: UsageSchemaType['list'];
 };
