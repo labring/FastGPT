@@ -11,11 +11,13 @@ export type BillSchemaType = {
   status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
   type: `${BillTypeEnum}`;
   price: number;
-  metadata?: {
-    payWay?: `${BillPayWayEnum}`;
+  metadata: {
+    payWay: `${BillPayWayEnum}`;
     subMode?: `${SubModeEnum}`;
     standSubLevel?: `${StandardSubLevelEnum}`;
+    month?: number;
     datasetSize?: number;
+    extraPoints?: number;
   };
 };
 

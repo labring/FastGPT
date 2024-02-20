@@ -11,6 +11,7 @@ import ExtraPlan from './components/ExtraPlan';
 import PointsCard from './components/Points';
 import FAQ from './components/FAQ';
 import { getToken } from '@/web/support/user/auth';
+import Script from 'next/script';
 
 const PriceBox = () => {
   const { t } = useTranslation();
@@ -25,30 +26,33 @@ const PriceBox = () => {
   );
 
   return (
-    <Box
-      h={'100%'}
-      overflow={'overlay'}
-      w={'100%'}
-      px={['20px', '5vw']}
-      py={['30px', '80px']}
-      backgroundImage={'url(/imgs/priceBg.svg)'}
-      backgroundSize={'cover'}
-      backgroundRepeat={'no-repeat'}
-    >
-      {/* standard sub */}
-      <StandardPlan standardPlan={teamSubPlan?.standard} refetchTeamSubPlan={refetchTeamSubPlan} />
+    <>
+      <Script src="/js/qrcode.min.js" strategy="lazyOnload"></Script>
+      <Box
+        h={'100%'}
+        overflow={'overlay'}
+        w={'100%'}
+        px={['20px', '5vw']}
+        py={['30px', '80px']}
+        backgroundImage={'url(/imgs/priceBg.svg)'}
+        backgroundSize={'cover'}
+        backgroundRepeat={'no-repeat'}
+      >
+        {/* standard sub */}
+        <StandardPlan
+          standardPlan={teamSubPlan?.standard}
+          refetchTeamSubPlan={refetchTeamSubPlan}
+        />
 
-      <ExtraPlan
-        extraDatasetSize={teamSubPlan?.extraDatasetSize}
-        extraPoints={teamSubPlan?.extraPoints}
-      />
+        <ExtraPlan />
 
-      {/* points */}
-      <PointsCard />
+        {/* points */}
+        <PointsCard />
 
-      {/* question */}
-      <FAQ />
-    </Box>
+        {/* question */}
+        <FAQ />
+      </Box>
+    </>
   );
 };
 

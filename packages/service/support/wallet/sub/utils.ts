@@ -1,6 +1,5 @@
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import { addHours } from 'date-fns';
 import { FeTeamSubType, StandSubPlanLevelMapType } from '@fastgpt/global/support/wallet/sub/type.d';
 import { getVectorCountByTeamId } from '../../../common/vectorStore/controller';
 
@@ -14,33 +13,33 @@ export const getTeamDatasetMaxSize = async ({
 }) => {
   if (!standardPlans) {
     return {
-      maxSize: Infinity,
-      sub: null
+      maxSize: Infinity
     };
   }
 
   const plans = await MongoTeamSub.find({
     teamId,
-    expiredTime: { $gte: addHours(new Date(), -3) }
+    type: [SubTypeEnum.standard, SubTypeEnum.extraDatasetSize]
   }).lean();
 
   const standard = plans.find((plan) => plan.type === SubTypeEnum.standard);
-  const extraDatasetSize = plans.find((plan) => plan.type === SubTypeEnum.extraDatasetSize);
+  const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
 
   const standardMaxDatasetSize =
     standard?.currentSubLevel && standardPlans
       ? standardPlans[standard.currentSubLevel]?.maxDatasetSize || Infinity
       : Infinity;
+
   const totalDatasetSize =
-    standardMaxDatasetSize + (extraDatasetSize?.currentExtraDatasetSize || 0);
+    standardMaxDatasetSize +
+    extraDatasetSize.reduce((acc, cur) => acc + cur.currentExtraDatasetSize, 0);
 
   return {
-    maxSize: totalDatasetSize,
-    sub: extraDatasetSize
+    maxSize: totalDatasetSize
   };
 };
 
-export const getTeamSubPlanStatus = async ({
+export const getTeamStandardPlan = async ({
   teamId,
   standardPlans
 }: {
@@ -53,35 +52,31 @@ export const getTeamSubPlanStatus = async ({
   ]);
 
   const standard = plans.find((plan) => plan.type === SubTypeEnum.standard);
-  const extraDatasetSize = plans.find((plan) => plan.type === SubTypeEnum.extraDatasetSize);
-  const extraPoints = plans.find((plan) => plan.type === SubTypeEnum.extraPoints);
+  const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
+  const extraPoints = plans.filter((plan) => plan.type === SubTypeEnum.extraPoints);
+
+  const totalPoints =
+    (standard?.totalPoints || 0) +
+    extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0);
+  const surplusPoints =
+    (standard?.surplusPoints || 0) +
+    extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0);
 
   const standardMaxDatasetSize =
     standard?.currentSubLevel && standardPlans
       ? standardPlans[standard.currentSubLevel]?.maxDatasetSize || Infinity
       : Infinity;
   const totalDatasetSize =
-    standardMaxDatasetSize + (extraDatasetSize?.currentExtraDatasetSize || 0);
-
-  const standardMaxPoints =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[standard.currentSubLevel]?.totalPoints || Infinity
-      : Infinity;
-  const totalPoints = standardMaxPoints + (extraPoints?.currentExtraPoints || 0);
-
-  const surplusPoints = (standard?.surplusPoints || 0) + (extraPoints?.surplusPoints || 0);
+    standardMaxDatasetSize +
+    extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0);
 
   return {
     [SubTypeEnum.standard]: standard,
-    [SubTypeEnum.extraDatasetSize]: extraDatasetSize,
-    [SubTypeEnum.extraPoints]: extraPoints,
 
-    standardMaxDatasetSize,
-    datasetMaxSize: totalDatasetSize,
-    usedDatasetSize,
-
-    standardMaxPoints,
     totalPoints,
-    usedPoints: totalPoints - surplusPoints
+    usedPoints: totalPoints - surplusPoints,
+
+    datasetMaxSize: totalDatasetSize,
+    usedDatasetSize
   };
 };

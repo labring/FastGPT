@@ -12,7 +12,7 @@ import {
   Box,
   ModalBody
 } from '@chakra-ui/react';
-import { getBills, checkPayResult } from '@/web/support/wallet/bill/api';
+import { getBills, checkBalancePayResult } from '@/web/support/wallet/bill/api';
 import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import dayjs from 'dayjs';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -31,6 +31,7 @@ import MyBox from '@/components/common/MyBox';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyModal from '@/components/MyModal';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
+import { formatNumber2Million } from '@fastgpt/global/common/math/tools';
 
 const BillTable = () => {
   const { t } = useTranslation();
@@ -67,7 +68,7 @@ const BillTable = () => {
   const { mutate: handleRefreshPayOrder, isLoading: isRefreshing } = useRequest({
     mutationFn: async (payId: string) => {
       try {
-        const data = await checkPayResult(payId);
+        const data = await checkBalancePayResult(payId);
         toast({
           title: data,
           status: 'success'
@@ -128,12 +129,7 @@ const BillTable = () => {
                 <Td>
                   {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
                 </Td>
-                <Td>
-                  {item.price >= 0
-                    ? `+${formatStorePrice2Read(item.price)}`
-                    : formatStorePrice2Read(item.price)}
-                  元
-                </Td>
+                <Td>{formatStorePrice2Read(item.price)}元</Td>
                 <Td>{t(billStatusMap[item.status]?.label)}</Td>
                 <Td>
                   {item.status === 'NOTPAY' && (
@@ -181,8 +177,6 @@ export default BillTable;
 function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () => void }) {
   const { t } = useTranslation();
 
-  const hasMode = !!bill.metadata?.subMode;
-
   return (
     <MyModal
       isOpen={true}
@@ -212,12 +206,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         )}
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 120px'}>{t('support.wallet.Amount')}:</Box>
-          <Box>
-            {bill.price >= 0
-              ? `+${formatStorePrice2Read(bill.price)}`
-              : formatStorePrice2Read(bill.price)}
-            元
-          </Box>
+          <Box>{formatStorePrice2Read(bill.price)}元</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
           <Box flex={'0 0 120px'}>{t('support.wallet.bill.Type')}:</Box>
@@ -239,6 +228,12 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
           <Flex alignItems={'center'} pb={4}>
             <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra dataset size')}:</Box>
             <Box>{bill.metadata?.datasetSize}</Box>
+          </Flex>
+        )}
+        {bill.metadata?.extraPoints !== undefined && (
+          <Flex alignItems={'center'} pb={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra ai points')}:</Box>
+            <Box>{formatNumber2Million(bill.metadata.extraPoints)}百万</Box>
           </Flex>
         )}
       </ModalBody>

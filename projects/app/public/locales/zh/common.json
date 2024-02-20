@@ -554,7 +554,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1203,6 +1204,7 @@
       "Amount": "金额",
       "Balance not enough tip": "余额不足，请先到账号页充值",
       "Bills": "账单",
+      "Buy": "购买",
       "Buy more": "扩容",
       "Confirm pay": "支付确认",
       "Pay error": "支付失败",
@@ -1246,6 +1248,7 @@
         "Extra plan": "额外套餐",
         "Extra plan tip": "标准套餐不够时，您可以购买额外套餐继续使用",
         "FAQ": "常见问题",
+        "Month amount": "月数",
         "Next extra ai points": "下次额外积分",
         "Next plan": "未来套餐",
         "Next sub dataset size": "下次订阅额外容量",
@@ -1258,8 +1261,8 @@
         "Sub plan": "订阅套餐",
         "Sub plan tip": "免费使用 FastGPT 或升级更高的套餐",
         "Training weight": "训练优先级: {{weight}}",
-        "Update extra ai points": "调整额外AI积分",
-        "Update extra dataset size": "调整知识库额外容量",
+        "Update extra ai points": "额外AI积分",
+        "Update extra dataset size": "额外存储量",
         "function": {
           "History store": "{{amount}} 天对话记录保留",
           "Max app": "{{amount}} 个应用与插件",

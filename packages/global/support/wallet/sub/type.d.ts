@@ -27,6 +27,9 @@ export type SubPlanType = {
   [SubTypeEnum.extraDatasetSize]: {
     price: number;
   };
+  [SubTypeEnum.extraPoints]: {
+    price: number;
+  };
 };
 
 export type TeamSubSchema = {
@@ -34,40 +37,29 @@ export type TeamSubSchema = {
   teamId: string;
   type: `${SubTypeEnum}`;
   status: `${SubStatusEnum}`;
-  currentMode: `${SubModeEnum}`;
-  nextMode: `${SubModeEnum}`;
   startTime: Date;
   expiredTime: Date;
   price: number;
 
+  currentMode: `${SubModeEnum}`;
+  nextMode: `${SubModeEnum}`;
   currentSubLevel: `${StandardSubLevelEnum}`;
   nextSubLevel: `${StandardSubLevelEnum}`;
+
   pointPrice: number;
   totalPoints: number;
-
-  currentExtraDatasetSize: number;
-  nextExtraDatasetSize: number;
-
-  currentExtraPoints: number;
-  nextExtraPoints: number;
-
   surplusPoints: number;
 
-  // abandon
-  datasetStoreAmount?: number;
-  renew?: boolean;
+  currentExtraDatasetSize: number;
 };
 
 export type FeTeamSubType = {
   [SubTypeEnum.standard]?: TeamSubSchema;
-  [SubTypeEnum.extraDatasetSize]?: TeamSubSchema;
-  [SubTypeEnum.extraPoints]?: TeamSubSchema;
 
-  standardMaxDatasetSize: number;
   totalPoints: number;
   usedPoints: number;
 
-  standardMaxPoints: number;
+  // standard + extra
   datasetMaxSize: number;
   usedDatasetSize: number;
 };

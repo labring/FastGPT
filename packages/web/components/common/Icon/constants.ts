@@ -147,6 +147,7 @@ export const iconPaths = {
   'support/bill/extraPoints': () => import('./icons/support/bill/extraPoints.svg'),
   'support/bill/payRecordLight': () => import('./icons/support/bill/payRecordLight.svg'),
   'support/bill/priceLight': () => import('./icons/support/bill/priceLight.svg'),
+  'support/bill/shoppingCart': () => import('./icons/support/bill/shoppingCart.svg'),
   'support/outlink/apikeyFill': () => import('./icons/support/outlink/apikeyFill.svg'),
   'support/outlink/apikeyLight': () => import('./icons/support/outlink/apikeyLight.svg'),
   'support/outlink/iframeLight': () => import('./icons/support/outlink/iframeLight.svg'),

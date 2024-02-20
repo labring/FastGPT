@@ -88,7 +88,7 @@ importers:
         specifier: ^0.5.0
         version: 0.5.0
       date-fns:
-        specifier: ^2.30.0
+        specifier: 2.30.0
         version: 2.30.0
       dayjs:
         specifier: ^1.11.7
@@ -285,7 +285,7 @@ importers:
         specifier: ^1.5.1
         version: 1.6.7
       date-fns:
-        specifier: ^2.30.0
+        specifier: 2.30.0
         version: 2.30.0
       dayjs:
         specifier: ^1.11.7
