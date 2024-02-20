@@ -41,7 +41,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     /* user auth */
-    const [_, { teamId, tmbId, userId }] = await Promise.all([
+    const [_, { teamId, tmbId }] = await Promise.all([
       authApp({ req, authToken: true, appId, per: 'r' }),
       authCert({
         req,
@@ -50,10 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // auth balance
-    const user = await getUserChatInfoAndAuthTeamPoints({
-      teamId,
-      userId
-    });
+    const user = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
     /* start process */
     const { responseData, moduleDispatchBills } = await dispatchModules({
@@ -72,8 +69,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stream: true,
       detail: true
     });
-
-    console.log(moduleDispatchBills);
 
     responseWrite({
       res,

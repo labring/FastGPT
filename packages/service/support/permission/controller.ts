@@ -94,10 +94,9 @@ export async function parseHeaderCert({
     })();
 
     // auth apikey
-    const { userId, teamId, tmbId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
+    const { teamId, tmbId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
 
     return {
-      uid: userId,
       teamId,
       tmbId,
       apikey,
@@ -113,12 +112,11 @@ export async function parseHeaderCert({
 
   const { cookie, token, rootkey, authorization } = (req.headers || {}) as ReqHeaderAuthType;
 
-  const { uid, teamId, tmbId, appId, openApiKey, authType } = await (async () => {
+  const { teamId, tmbId, appId, openApiKey, authType } = await (async () => {
     if (authApiKey && authorization) {
       // apikey from authorization
       const authResponse = await parseAuthorization(authorization);
       return {
-        uid: authResponse.uid,
         teamId: authResponse.teamId,
         tmbId: authResponse.tmbId,
         appId: authResponse.appId,
@@ -130,7 +128,6 @@ export async function parseHeaderCert({
       // user token(from fastgpt web)
       const res = await authCookieToken(cookie, token);
       return {
-        uid: res.userId,
         teamId: res.teamId,
         tmbId: res.tmbId,
         appId: '',
@@ -142,7 +139,6 @@ export async function parseHeaderCert({
       await parseRootKey(rootkey);
       // root user
       return {
-        uid: '',
         teamId: '',
         tmbId: '',
         appId: '',
@@ -159,7 +155,6 @@ export async function parseHeaderCert({
   }
 
   return {
-    userId: String(uid),
     teamId: String(teamId),
     tmbId: String(tmbId),
     appId,

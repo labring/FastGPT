@@ -58,9 +58,9 @@ export async function authOutLinkChatStart({
   // get outLink and app
   const { shareChat, appId } = await authOutLinkValid({ shareId });
 
-  // check balance and chat limit
-  const [user, { uid }] = await Promise.all([
-    getUserChatInfoAndAuthTeamPoints({ tmbId: shareChat.tmbId }),
+  // check ai points and chat limit
+  const [{ user }, { uid }] = await Promise.all([
+    getUserChatInfoAndAuthTeamPoints(shareChat.tmbId),
     authOutLinkChatLimit({ outLink: shareChat, ip, outLinkUid, question })
   ]);
 

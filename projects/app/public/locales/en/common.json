@@ -99,8 +99,6 @@
     "Last use time": "Last use time",
     "Load Failed": "Load Failed",
     "Loading": "Loading",
-    "Max credit": "Credit",
-    "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
     "More settings": "More settings",
     "Name": "Name",
     "Name Can": "Name Can't Be Empty",
@@ -1169,6 +1167,9 @@
       "Usage": "Usage"
     },
     "outlink": {
+      "Max usage points": "Max usage",
+      "Max usage points tip": "The maximum number of credits allowed for this link will not be used. -1 indicates no limit.",
+      "Usage points": "Usage points",
       "share": {
         "Response Quote": "Show Quote",
         "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document."

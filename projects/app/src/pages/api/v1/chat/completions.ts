@@ -15,7 +15,7 @@ import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
-import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
+import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 
@@ -97,7 +97,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     /* auth app permission */
-    const { teamId, tmbId, user, app, responseDetail, authType, apikey, canWrite, uid } =
+    const { teamId, tmbId, user, app, responseDetail, authType, apikey, canWrite, outLinkUserId } =
       await (async () => {
         if (shareId && outLinkUid) {
           const { teamId, tmbId, user, appId, authType, responseDetail, uid } =
@@ -122,7 +122,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             apikey: '',
             authType,
             canWrite: false,
-            uid
+            outLinkUserId: uid
           };
         }
 
@@ -130,7 +130,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           appId: apiKeyAppId,
           teamId,
           tmbId,
-          userId,
           authType,
           apikey
         } = await authCert({
@@ -139,10 +138,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           authApiKey: true
         });
 
-        const user = await getUserChatInfoAndAuthTeamPoints({
-          teamId,
-          userId
-        });
+        const user = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
         // openapi key
         if (authType === AuthUserTypeEnum.apikey) {
@@ -215,7 +211,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
-    const { responseData, answerText } = await dispatchModules({
+    const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
       res,
       mode: 'chat',
       user,
@@ -244,7 +240,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         variables,
         updateUseTime: !shareId && String(tmbId) === String(app.tmbId), // owner update use time
         shareId,
-        outLinkUid: uid,
+        outLinkUid: outLinkUserId,
         source: (() => {
           if (shareId) {
             return ChatSourceEnum.share;
@@ -321,20 +317,20 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       teamId: teamId,
       tmbId: tmbId,
       source: getUsageSourceByAuthType({ shareId, authType }),
-      response: responseData
+      moduleDispatchBills
     });
 
     if (shareId) {
       pushResult2Remote({ outLinkUid, shareId, responseData });
-      updateOutLinkUsage({
+      addOutLinkUsage({
         shareId,
-        total
+        totalPoints
       });
     }
     if (apikey) {
       updateApiKeyUsage({
         apikey,
-        usage: total
+        totalPoints
       });
     }
   } catch (err: any) {

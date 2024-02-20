@@ -94,7 +94,7 @@ const Share = ({ appId }: { appId: string }) => {
           <Thead>
             <Tr>
               <Th>{t('common.Name')}</Th>
-              <Th>{t('common.Price used')}</Th>
+              <Th>{t('support.outlink.Usage points')}</Th>
               <Th>{t('core.app.share.Is response quote')}</Th>
               {feConfigs?.isPlus && (
                 <>
@@ -112,11 +112,11 @@ const Share = ({ appId }: { appId: string }) => {
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
                 <Td>
-                  {formatStorePrice2Read(item.total)}
+                  {Math.round(item.usagePoints)}
                   {feConfigs?.isPlus
                     ? `${
-                        item.limit && item.limit.credit > -1
-                          ? ` / ￥${item.limit.credit}`
+                        item.limit?.maxUsagePoints && item.limit.maxUsagePoints > -1
+                          ? ` / ${item.limit.maxUsagePoints}`
                           : ` / ${t('common.Unlimited')}`
                       }`
                     : ''}
@@ -315,15 +315,15 @@ function EditLinkModal({
             </Flex>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('common.Max credit')}
-                <MyTooltip label={t('common.Max credit tips' || '')}>
+                {t('support.outlink.Max usage points')}
+                <MyTooltip label={t('support.outlink.Max usage points tip')}>
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Flex>
               <Input
-                {...register('limit.credit', {
+                {...register('limit.maxUsagePoints', {
                   min: -1,
-                  max: 1000,
+                  max: 10000000,
                   valueAsNumber: true,
                   required: true
                 })}

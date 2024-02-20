@@ -2,17 +2,17 @@ import axios from 'axios';
 import { MongoOutLink } from './schema';
 import { FastGPTProUrl } from '../../common/system/constants';
 
-export const updateOutLinkUsage = async ({
+export const addOutLinkUsage = async ({
   shareId,
-  total
+  totalPoints
 }: {
   shareId: string;
-  total: number;
+  totalPoints: number;
 }) => {
   MongoOutLink.findOneAndUpdate(
     { shareId },
     {
-      $inc: { total },
+      $inc: { usagePoints: totalPoints },
       lastTime: new Date()
     }
   ).catch((err) => {

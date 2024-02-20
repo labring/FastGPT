@@ -99,8 +99,6 @@
     "Last use time": "最后使用时间",
     "Load Failed": "加载失败",
     "Loading": "加载中...",
-    "Max credit": "最大金额",
-    "Max credit tips": "该链接最大可消耗多少金额，超出后链接将被禁止使用。-1 代表无限制。",
     "More settings": "更多设置",
     "Name": "名称",
     "Name Can": "名称不能为空",
@@ -1170,6 +1168,9 @@
       "Usage": "已用额度(￥)"
     },
     "outlink": {
+      "Max usage points": "积分上限",
+      "Max usage points tip": "该链接最多允许使用多少积分，超出后将无法使用。-1 代表无限制。",
+      "Usage points": "积分消耗",
       "share": {
         "Response Quote": "返回引用",
         "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"

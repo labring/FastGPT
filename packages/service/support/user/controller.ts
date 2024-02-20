@@ -4,6 +4,7 @@ import { authTeamSurplusAiPoints, getTmbInfoByTmbId, getUserDefaultTeam } from '
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { MongoTeamMember } from './team/teamMemberSchema';
+import { TeamMemberWithUserSchema } from '@fastgpt/global/support/user/team/type';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -49,41 +50,16 @@ export async function getUserDetail({
   };
 }
 
-export async function getUserChatInfoAndAuthTeamPoints({
-  teamId,
-  userId,
-  tmbId
-}: {
-  teamId?: string;
-  userId?: string;
-  tmbId?: string;
-}) {
-  if (tmbId) {
-    const tmb = await MongoTeamMember.findById(tmbId, 'teamId userId');
-    if (!tmb) return Promise.reject(UserErrEnum.unAuthUser);
+export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {
+  const tmb = (await MongoTeamMember.findById(tmbId, 'teamId userId').populate(
+    'userId',
+    'timezone openaiAccount'
+  )) as TeamMemberWithUserSchema;
+  if (!tmb) return Promise.reject(UserErrEnum.unAuthUser);
 
-    const [user] = await Promise.all([
-      MongoUser.findById(tmb.userId, 'timezone openaiAccount'),
-      authTeamSurplusAiPoints(tmb.teamId)
-    ]);
+  await authTeamSurplusAiPoints(tmb.teamId);
 
-    if (!user) {
-      return Promise.reject(UserErrEnum.unAuthUser);
-    }
-
-    return user;
-  } else if (teamId && userId) {
-    const [user] = await Promise.all([
-      MongoUser.findById(userId, 'timezone openaiAccount'),
-      authTeamSurplusAiPoints(teamId)
-    ]);
-
-    if (!user) {
-      return Promise.reject(UserErrEnum.unAuthUser);
-    }
-
-    return user;
-  }
-
-  return Promise.reject(UserErrEnum.unAuthUser);
+  return {
+    user: tmb.userId
+  };
 }
