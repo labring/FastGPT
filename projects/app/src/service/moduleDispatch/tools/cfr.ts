@@ -1,5 +1,8 @@
 import type { ChatItemType, moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type {
+  ModuleDispatchProps,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
 import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
@@ -12,10 +15,9 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   [ModuleInputKeyEnum.userChatInput]: string;
 }>;
-type Response = {
+type Response = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.text]: string;
-  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
-};
+}>;
 
 export const dispatchCFR = async ({
   histories,
@@ -57,6 +59,14 @@ export const dispatchCFR = async ({
       query: userChatInput,
       textOutput: cfrQuery
     },
+    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+      {
+        moduleName: '问题补全',
+        totalPoints,
+        model: modelName,
+        charsLength
+      }
+    ],
     [ModuleOutputKeyEnum.text]: cfrQuery
   };
 };

@@ -197,7 +197,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
           <Box>{bill.orderId}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>{t('wallet.usage.Time')}:</Box>
+          <Box flex={'0 0 120px'}>{t('support.wallet.usage.Time')}:</Box>
           <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>

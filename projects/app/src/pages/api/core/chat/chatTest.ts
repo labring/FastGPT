@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
 
     /* start process */
-    const { responseData } = await dispatchModules({
+    const { responseData, moduleDispatchBills } = await dispatchModules({
       res,
       mode: 'test',
       teamId,
@@ -72,6 +72,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       stream: true,
       detail: true
     });
+
+    console.log(moduleDispatchBills);
 
     responseWrite({
       res,
@@ -91,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       teamId,
       tmbId,
       source: UsageSourceEnum.fastgpt,
-      response: responseData
+      moduleDispatchBills
     });
   } catch (err: any) {
     res.status(500);

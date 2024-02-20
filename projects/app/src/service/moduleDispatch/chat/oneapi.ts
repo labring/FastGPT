@@ -10,7 +10,7 @@ import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
-import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchResponse, ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { countMessagesTokens, sliceMessagesTB } from '@fastgpt/global/common/string/tiktoken';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
@@ -32,11 +32,10 @@ export type ChatProps = ModuleDispatchProps<
     [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
-export type ChatResponse = {
+export type ChatResponse = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.answerText]: string;
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [ModuleOutputKeyEnum.history]: ChatItemType[];
-};
+}>;
 
 /* request openai chat */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
@@ -46,7 +45,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     detail = false,
     user,
     histories,
-    outputs,
+    module: { name, outputs },
     params: {
       model,
       temperature = 0,
@@ -199,7 +198,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   return {
     answerText,
-    responseData: {
+    [ModuleOutputKeyEnum.responseData]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       charsLength,
@@ -209,6 +208,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       historyPreview: getHistoryPreview(completeMessages),
       contextTotalLen: completeMessages.length
     },
+    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+      {
+        moduleName: name,
+        totalPoints,
+        model: modelName,
+        charsLength
+      }
+    ],
     history: completeMessages
   };
 };

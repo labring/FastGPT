@@ -93,8 +93,6 @@ export type moduleDispatchResType = {
   textOutput?: string;
 
   // bill
-  inputTokens?: number;
-  outputTokens?: number;
   charsLength?: number;
   model?: string;
   contextTotalLen?: number;
@@ -113,6 +111,7 @@ export type moduleDispatchResType = {
   searchUsingReRank?: boolean;
   extensionModel?: string;
   extensionResult?: string;
+  extensionCharsLength?: number;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];

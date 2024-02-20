@@ -4,6 +4,7 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { createUsage, concatUsage } from './controller';
 import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
 
 export const pushChatUsage = ({
   appName,
@@ -11,16 +12,16 @@ export const pushChatUsage = ({
   teamId,
   tmbId,
   source,
-  response
+  moduleDispatchBills
 }: {
   appName: string;
   appId: string;
   teamId: string;
   tmbId: string;
   source: `${UsageSourceEnum}`;
-  response: ChatHistoryItemResType[];
+  moduleDispatchBills: ChatModuleBillType[];
 }) => {
-  const totalPoints = response.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+  const totalPoints = moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   createUsage({
     teamId,
@@ -29,12 +30,10 @@ export const pushChatUsage = ({
     appId,
     totalPoints,
     source,
-    list: response.map((item) => ({
+    list: moduleDispatchBills.map((item) => ({
       moduleName: item.moduleName,
       amount: item.totalPoints || 0,
       model: item.model,
-      inputTokens: item.inputTokens,
-      outputTokens: item.outputTokens,
       charsLength: item.charsLength
     }))
   });

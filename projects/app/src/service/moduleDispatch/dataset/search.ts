@@ -2,13 +2,17 @@ import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type {
+  ModuleDispatchProps,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum, getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
+import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -21,12 +25,11 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSearchExtensionModel]: string;
   [ModuleInputKeyEnum.datasetSearchExtensionBg]: string;
 }>;
-export type DatasetSearchResponse = {
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
+export type DatasetSearchResponse = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.datasetIsEmpty]?: boolean;
   [ModuleOutputKeyEnum.datasetUnEmpty]?: boolean;
   [ModuleOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
-};
+}>;
 
 export async function dispatchDatasetSearch(
   props: DatasetSearchProps
@@ -34,6 +37,7 @@ export async function dispatchDatasetSearch(
   const {
     teamId,
     histories,
+    module,
     params: {
       datasets = [],
       similarity,
@@ -110,6 +114,14 @@ export async function dispatchDatasetSearch(
     searchMode,
     searchUsingReRank: searchUsingReRank
   };
+  const moduleDispatchBills: ChatModuleBillType[] = [
+    {
+      totalPoints,
+      moduleName: module.name,
+      model: modelName,
+      charsLength
+    }
+  ];
 
   if (aiExtensionResult) {
     const { totalPoints, modelName } = formatModelChars2Points({
@@ -124,12 +136,20 @@ export async function dispatchDatasetSearch(
     responseData.extensionResult =
       aiExtensionResult.extensionQueries?.join('\n') ||
       JSON.stringify(aiExtensionResult.extensionQueries);
+
+    moduleDispatchBills.push({
+      totalPoints,
+      moduleName: 'core.module.template.Query extension',
+      model: modelName,
+      charsLength: aiExtensionResult.charsLength
+    });
   }
 
   return {
     isEmpty: searchRes.length === 0 ? true : undefined,
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
-    responseData
+    responseData,
+    moduleDispatchBills
   };
 }

@@ -1011,8 +1011,9 @@ export const useChatBox = () => {
         const historyDom = document.getElementById('history');
         if (!historyDom) return;
         const dom = Array.from(historyDom.children).map((child, i) => {
-          const avatar = `<img src="${child.querySelector<HTMLImageElement>('.avatar')
-            ?.src}" alt="" />`;
+          const avatar = `<img src="${
+            child.querySelector<HTMLImageElement>('.avatar')?.src
+          }" alt="" />`;
 
           const chatContent = child.querySelector<HTMLDivElement>('.markdown');
 

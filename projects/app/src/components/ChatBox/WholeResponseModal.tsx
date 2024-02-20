@@ -8,10 +8,10 @@ import Tabs from '../Tabs';
 import MyModal from '../MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import Markdown from '../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 
 function Row({
   label,
@@ -132,7 +132,10 @@ const ResponseBox = React.memo(function ResponseBox({
         <>
           <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
           {activeModule?.totalPoints !== undefined && (
-            <Row label={t('support.wallet.usage.Total points')} value={activeModule.totalPoints} />
+            <Row
+              label={t('support.wallet.usage.Total points')}
+              value={formatNumber(activeModule.totalPoints)}
+            />
           )}
           <Row
             label={t('core.chat.response.module time')}
@@ -142,14 +145,6 @@ const ResponseBox = React.memo(function ResponseBox({
           <Row
             label={t('support.wallet.usage.Chars length')}
             value={`${activeModule?.charsLength}`}
-          />
-          <Row
-            label={t('support.wallet.usage.Input Token Length')}
-            value={`${activeModule?.inputTokens}`}
-          />
-          <Row
-            label={t('support.wallet.usage.Output Token Length')}
-            value={`${activeModule?.outputTokens}`}
           />
           <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
           <Row

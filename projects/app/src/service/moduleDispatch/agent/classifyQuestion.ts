@@ -3,7 +3,10 @@ import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/cha
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
+import type {
+  ClassifyQuestionAgentItemType,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -20,10 +23,9 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
-type CQResponse = {
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
+type CQResponse = ModuleDispatchResponse<{
   [key: string]: any;
-};
+}>;
 
 const agentFunName = 'classify_question';
 
@@ -31,6 +33,7 @@ const agentFunName = 'classify_question';
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     user,
+    module: { name },
     histories,
     params: { model, history = 6, agents, userChatInput }
   } = props as Props;
@@ -76,7 +79,15 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
-    }
+    },
+    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+      {
+        moduleName: name,
+        totalPoints,
+        model: modelName,
+        charsLength
+      }
+    ]
   };
 };
 

@@ -1,7 +1,14 @@
 import { FlowNodeTypeEnum } from './node/constant';
-import { ModuleIOValueTypeEnum, ModuleTemplateTypeEnum, VariableInputEnum } from './constants';
+import {
+  ModuleIOValueTypeEnum,
+  ModuleOutputKeyEnum,
+  ModuleTemplateTypeEnum,
+  VariableInputEnum
+} from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
+import { moduleDispatchResType } from '..//chat/type';
+import { ChatModuleBillType } from '../../support/wallet/bill/type';
 
 export type FlowModuleTemplateType = {
   id: string; // module id, unique
@@ -117,7 +124,10 @@ export type ChatDispatchProps = {
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
-  outputs: RunningModuleItemType['outputs'];
-  inputs: RunningModuleItemType['inputs'];
+  module: RunningModuleItemType;
   params: T;
+};
+export type ModuleDispatchResponse<T> = T & {
+  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
+  [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleBillType[];
 };

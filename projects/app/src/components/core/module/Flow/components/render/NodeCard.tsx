@@ -61,8 +61,9 @@ const NodeCard = (props: Props) => {
               icon: 'common/refreshLight',
               label: t('plugin.Synchronous version'),
               onClick: () => {
-                const pluginId = inputs.find((item) => item.key === ModuleInputKeyEnum.pluginId)
-                  ?.value;
+                const pluginId = inputs.find(
+                  (item) => item.key === ModuleInputKeyEnum.pluginId
+                )?.value;
                 if (!pluginId) return;
                 openConfirm(async () => {
                   try {

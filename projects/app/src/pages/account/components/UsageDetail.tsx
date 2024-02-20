@@ -17,7 +17,7 @@ import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
-import { formatNumber } from '../../../../../../packages/global/common/math/tools';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 
 const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => void }) => {
   const { t } = useTranslation();
@@ -57,7 +57,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
     <MyModal
       isOpen={true}
       onClose={onClose}
-      iconSrc="/imgs/modal/usage.svg"
+      iconSrc="/imgs/modal/bill.svg"
       title={t('support.wallet.usage.Usage Detail')}
       maxW={['90vw', '700px']}
     >

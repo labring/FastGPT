@@ -3,7 +3,10 @@ import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/cha
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
+import type {
+  ContextExtractAgentItemType,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
@@ -20,18 +23,18 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.description]: string;
   [ModuleInputKeyEnum.aiModel]: string;
 }>;
-type Response = {
+type Response = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.success]?: boolean;
   [ModuleOutputKeyEnum.failed]?: boolean;
   [ModuleOutputKeyEnum.contextExtractFields]: string;
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
-};
+}>;
 
 const agentFunName = 'extract_json_data';
 
 export async function dispatchContentExtract(props: Props): Promise<Response> {
   const {
     user,
+    module: { name },
     histories,
     params: { content, history = 6, model, description, extractKeys }
   } = props;
@@ -99,7 +102,15 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractDescription: description,
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
-    }
+    },
+    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+      {
+        moduleName: name,
+        totalPoints,
+        model: modelName,
+        charsLength
+      }
+    ]
   };
 }
 
@@ -192,7 +203,7 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
   })();
 
   const functionChars =
-    agentFunction.description.length + agentFunction.parameters.properties.type.description.length;
+    description.length + extractKeys.reduce((sum, item) => sum + item.desc.length, 0);
 
   return {
     rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',

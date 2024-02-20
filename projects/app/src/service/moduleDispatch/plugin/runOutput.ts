@@ -14,7 +14,7 @@ export const dispatchPluginOutput = (props: PluginOutputProps): PluginOutputResp
 
   return {
     responseData: {
-      price: 0,
+      totalPoints: 0,
       pluginOutput: params
     }
   };
