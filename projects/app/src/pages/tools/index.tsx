@@ -7,6 +7,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import { getDocPath } from '@/web/common/system/doc';
+import { AI_POINT_USAGE_CARD_ROUTE } from '@/global/support/wallet/constants';
 
 const Tools = () => {
   const { t } = useTranslation();
@@ -38,6 +39,15 @@ const Tools = () => {
             icon: 'common/courseLight',
             label: '使用文档',
             link: getDocPath('/docs/intro')
+          }
+        ]
+      : []),
+    ...(feConfigs?.show_pay
+      ? [
+          {
+            icon: 'support/bill/priceLight',
+            label: '计费说明',
+            link: '/price'
           }
         ]
       : [])

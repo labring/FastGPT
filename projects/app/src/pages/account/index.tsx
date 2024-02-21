@@ -12,6 +12,7 @@ import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
+import { AI_POINT_USAGE_CARD_ROUTE } from '@/global/support/wallet/constants';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
@@ -119,7 +120,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           router.replace('/login');
         })();
       } else if (tab === TabEnum.price) {
-        router.push('/price#point-card');
+        router.push(AI_POINT_USAGE_CARD_ROUTE);
       } else {
         router.replace({
           query: {
