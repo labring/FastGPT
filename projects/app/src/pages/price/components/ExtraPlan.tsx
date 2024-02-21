@@ -57,7 +57,7 @@ const ExtraPlan = () => {
         setQRPayData({
           readPrice: res.readPrice,
           codeUrl: res.codeUrl,
-          payId: res.payId
+          billId: res.billId
         });
       } catch (err) {
         toast({
@@ -100,7 +100,7 @@ const ExtraPlan = () => {
         setQRPayData({
           readPrice: res.readPrice,
           codeUrl: res.codeUrl,
-          payId: res.payId
+          billId: res.billId
         });
       } catch (err) {
         toast({

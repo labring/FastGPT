@@ -10,10 +10,10 @@ import { useRouter } from 'next/router';
 export type QRPayProps = {
   readPrice: number;
   codeUrl: string;
-  payId: string;
+  billId: string;
 };
 
-const QRCodePayModal = ({ readPrice, codeUrl, payId }: QRPayProps) => {
+const QRCodePayModal = ({ readPrice, codeUrl, billId }: QRPayProps) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -33,13 +33,13 @@ const QRCodePayModal = ({ readPrice, codeUrl, payId }: QRPayProps) => {
   }, [dom]);
 
   useQuery(
-    [payId],
+    [billId],
     () => {
-      if (!payId) return null;
-      return checkBalancePayResult(payId);
+      if (!billId) return null;
+      return checkBalancePayResult(billId);
     },
     {
-      enabled: !!payId,
+      enabled: !!billId,
       refetchInterval: 3000,
       onSuccess(res) {
         if (!res) return;
