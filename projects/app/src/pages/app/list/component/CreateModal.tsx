@@ -8,8 +8,12 @@ import {
   Input,
   Grid,
   useTheme,
-  Card
+  Card,
+  Text,
+  HStack,
+  Tag
 } from '@chakra-ui/react';
+import { AddIcon } from '@chakra-ui/icons';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -32,7 +36,13 @@ type FormType = {
   templateId: string;
 };
 
-const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
+const CreateModal = ({
+  onClose,
+  onSuccess
+}: {
+  onClose: () => void;
+  onSuccess: () => void;
+}) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
@@ -151,13 +161,13 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
                   boxShadow={'sm'}
                   {...(getValues('templateId') === item.id
                     ? {
-                        bg: 'myWhite.600'
-                      }
+                      bg: 'myWhite.600'
+                    }
                     : {
-                        _hover: {
-                          boxShadow: 'md'
-                        }
-                      })}
+                      _hover: {
+                        boxShadow: 'md'
+                      }
+                    })}
                   onClick={() => {
                     setValue('templateId', item.id);
                     setRefresh((state) => !state);

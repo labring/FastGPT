@@ -12,7 +12,7 @@ import { getLLMModel } from '@/service/core/ai/model';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, avatar, type, simpleTemplateId, intro, modules, permission } =
+    const { name, avatar, type, simpleTemplateId, intro, modules, permission, teamTags } =
       req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
@@ -65,6 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         avatar,
         intro,
         permission,
+        teamTags: teamTags,
         ...(modules && {
           modules
         })

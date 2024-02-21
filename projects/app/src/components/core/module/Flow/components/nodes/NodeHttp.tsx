@@ -263,16 +263,16 @@ function RenderHttpProps({
           { label: <RenderPropsItem text="Params" num={paramsLength} />, id: TabEnum.params },
           ...(requestMethods === 'POST'
             ? [
-                {
-                  label: (
-                    <Flex alignItems={'center'}>
-                      Body
-                      {jsonBody?.value && <Box ml={1}>✅</Box>}
-                    </Flex>
-                  ),
-                  id: TabEnum.body
-                }
-              ]
+              {
+                label: (
+                  <Flex alignItems={'center'}>
+                    Body
+                    {jsonBody?.value && <Box ml={1}>✅</Box>}
+                  </Flex>
+                ),
+                id: TabEnum.body
+              }
+            ]
             : []),
           { label: <RenderPropsItem text="Headers" num={headersLength} />, id: TabEnum.headers }
         ]}

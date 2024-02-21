@@ -58,6 +58,7 @@ export const streamFetch = ({
 
     // animate response to make it looks smooth
     function animateResponseText() {
+      console.log("animateResponseText-abort", abortCtrl)
       // abort message
       if (abortCtrl.signal.aborted) {
         onMessage({ text: remainText });

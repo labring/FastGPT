@@ -96,12 +96,36 @@
       "name": "OpenAI TTS1",
       "charsPointsPrice": 0,
       "voices": [
-        { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
-        { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
-        { "label": "Fable", "value": "fable", "bufferId": "openai-Fable" },
-        { "label": "Onyx", "value": "onyx", "bufferId": "openai-Onyx" },
-        { "label": "Nova", "value": "nova", "bufferId": "openai-Nova" },
-        { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
+        {
+          "label": "Alloy",
+          "value": "alloy",
+          "bufferId": "openai-Alloy"
+        },
+        {
+          "label": "Echo",
+          "value": "echo",
+          "bufferId": "openai-Echo"
+        },
+        {
+          "label": "Fable",
+          "value": "fable",
+          "bufferId": "openai-Fable"
+        },
+        {
+          "label": "Onyx",
+          "value": "onyx",
+          "bufferId": "openai-Onyx"
+        },
+        {
+          "label": "Nova",
+          "value": "nova",
+          "bufferId": "openai-Nova"
+        },
+        {
+          "label": "Shimmer",
+          "value": "shimmer",
+          "bufferId": "openai-Shimmer"
+        }
       ]
     }
   ],

@@ -4,6 +4,7 @@ import { ChatRoleEnum, ChatSourceEnum, ChatStatusEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum } from '../module/constants';
 import { AppSchema } from '../app/type';
+import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 
 export type ChatSchema = {
@@ -24,6 +25,22 @@ export type ChatSchema = {
   content: ChatItemType[];
   metadata?: Record<string, any>;
 };
+
+export type teamInfoType = {
+  avatar: string;
+  balance: number;
+  createTime: string;
+  maxSize: number;
+  name: string;
+  ownerId: string;
+  tagsUrl: string;
+  _id: string;
+}
+
+export type chatAppListSchema = {
+  apps: Array<AppType>,
+  teamInfo: teamInfoSchema
+}
 
 export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
   appId: AppSchema;

@@ -35,9 +35,14 @@ type FastGptShareChatProps = {
   shareId?: string;
   outLinkUid?: string;
 };
+type FastGptTeamShareChatProps = {
+  teamId?: string;
+  outLinkUid?: string;
+};
 export type Props = ChatCompletionCreateParams &
   FastGptWebChatProps &
-  FastGptShareChatProps & {
+  FastGptShareChatProps &
+  FastGptTeamShareChatProps & {
     messages: ChatMessageItemType[];
     stream?: boolean;
     detail?: boolean;
@@ -60,6 +65,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   const {
     chatId,
     appId,
+    teamId,
     shareId,
     outLinkUid,
     stream = false,
@@ -200,6 +206,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       per: 'w'
     });
 
+
+
     // get and concat history
     const { history } = await getChatItems({
       appId: app._id,
@@ -207,6 +215,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       limit: 30,
       field: `dataId obj value`
     });
+
     const concatHistories = history.concat(chatMessages);
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
@@ -229,6 +238,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       stream,
       detail
     });
+    console.log("af")
 
     // save chat
     if (chatId) {
@@ -333,7 +343,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         totalPoints
       });
     }
-  } catch (err: any) {
+  } catch (err) {
     if (stream) {
       sseErrRes(res, err);
       res.end();

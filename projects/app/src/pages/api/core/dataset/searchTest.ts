@@ -68,7 +68,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     // push bill
-    const { total } = pushGenerateVectorUsage({
+    const { totalPoints } = pushGenerateVectorUsage({
       teamId,
       tmbId,
       charsLength,
@@ -77,15 +77,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
       ...(aiExtensionResult &&
         extensionModel && {
-          extensionModel: extensionModel.name,
-          extensionInputTokens: aiExtensionResult.inputTokens,
-          extensionOutputTokens: aiExtensionResult.outputTokens
-        })
+        extensionModel: extensionModel.name,
+        extensionCharsLength: aiExtensionResult.charsLength,
+      })
     });
     if (apikey) {
       updateApiKeyUsage({
         apikey,
-        usage: total
+        totalPoints: totalPoints
       });
     }
 

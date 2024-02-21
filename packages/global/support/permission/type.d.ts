@@ -1,7 +1,7 @@
 import { AuthUserTypeEnum } from './constant';
 
 export type AuthResponseType = {
-  userId: string;
+  userId?: string;
   teamId: string;
   tmbId: string;
   isOwner: boolean;

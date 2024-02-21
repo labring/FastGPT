@@ -55,7 +55,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       }
     });
 
-    const { total } = pushGenerateVectorUsage({
+    const { totalPoints } = pushGenerateVectorUsage({
       teamId,
       tmbId,
       charsLength,
@@ -67,7 +67,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (apikey) {
       updateApiKeyUsage({
         apikey,
-        usage: total
+        totalPoints: totalPoints
       });
     }
   } catch (err) {
