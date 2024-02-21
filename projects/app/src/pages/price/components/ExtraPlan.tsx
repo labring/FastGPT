@@ -159,7 +159,7 @@ const ExtraPlan = () => {
           <Box>
             <Flex mt={4}>
               <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
-              购买套餐
+              购买资源包
             </Flex>
             <Flex mt={4} alignItems={'center'}>
               <Box flex={'0 0 200px'}>{t('support.wallet.subscription.Month amount')}</Box>
@@ -261,7 +261,7 @@ const ExtraPlan = () => {
           <Box>
             <Flex mt={4}>
               <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
-              购买套餐
+              购买资源包
             </Flex>
             <Flex mt={4} alignItems={'center'}>
               <Box flex={'0 0 200px'}>{t('support.wallet.subscription.Month amount')}</Box>

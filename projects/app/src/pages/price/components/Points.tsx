@@ -15,7 +15,7 @@ const Points = () => {
       alignItems={'center'}
       position={'relative'}
     >
-      <Box fontWeight={'bold'} fontSize={['24px', '36px']}>
+      <Box id="point-card" fontWeight={'bold'} fontSize={['24px', '36px']}>
         {t('support.wallet.subscription.Ai points')}
       </Box>
       <Grid gap={6} mt={['30px', '48px']} w={'100%'}>

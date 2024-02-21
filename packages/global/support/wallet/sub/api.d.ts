@@ -8,6 +8,7 @@ export type StandardSubPlanParams = {
 
 export type StandardSubPlanUpdateResponse = {
   balanceEnough: boolean; // team balance is enough
+  teamBalance: number;
   payPrice?: number;
   planPrice: number;
   planPointPrice: number;

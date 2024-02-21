@@ -6,6 +6,7 @@ import { useQuery } from '@tanstack/react-query';
 import { checkBalancePayResult } from '@/web/support/wallet/bill/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 export type QRPayProps = {
   readPrice: number;
@@ -13,7 +14,12 @@ export type QRPayProps = {
   billId: string;
 };
 
-const QRCodePayModal = ({ readPrice, codeUrl, billId }: QRPayProps) => {
+const QRCodePayModal = ({
+  readPrice,
+  codeUrl,
+  billId,
+  onSuccess
+}: QRPayProps & { onSuccess?: () => any }) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -41,13 +47,25 @@ const QRCodePayModal = ({ readPrice, codeUrl, billId }: QRPayProps) => {
     {
       enabled: !!billId,
       refetchInterval: 3000,
-      onSuccess(res) {
+      onSuccess: async (res) => {
         if (!res) return;
-        toast({
-          title: res,
-          status: 'success'
-        });
-        router.reload();
+
+        try {
+          await onSuccess?.();
+          toast({
+            title: res,
+            status: 'success'
+          });
+        } catch (error) {
+          toast({
+            title: getErrText(error),
+            status: 'error'
+          });
+        }
+
+        setTimeout(() => {
+          router.reload();
+        }, 1000);
       }
     }
   );
@@ -56,7 +74,7 @@ const QRCodePayModal = ({ readPrice, codeUrl, billId }: QRPayProps) => {
     <MyModal isOpen title={t('user.Pay')} iconSrc="/imgs/modal/pay.svg">
       <ModalBody textAlign={'center'}>
         <Box mb={3}>请微信扫码支付: {readPrice}元，请勿关闭页面</Box>
-        <Box id={'payQRCode'} display={'inline-block'}></Box>
+        <Box id={'payQRCode'} display={'inline-block'} h={'128px'}></Box>
       </ModalBody>
       <ModalFooter />
     </MyModal>

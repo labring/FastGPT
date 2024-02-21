@@ -141,6 +141,22 @@ const UserInfo = () => {
       usedSize: teamSubPlan.usedDatasetSize
     };
   }, [teamSubPlan.usedDatasetSize, teamSubPlan.datasetMaxSize, t]);
+  const aiPointsUsageMap = useMemo(() => {
+    const rate = teamSubPlan.usedPoints / teamSubPlan.totalPoints;
+
+    const colorScheme = (() => {
+      if (rate < 0.5) return 'green';
+      if (rate < 0.8) return 'yellow';
+      return 'red';
+    })();
+
+    return {
+      colorScheme,
+      value: rate * 100,
+      maxSize: teamSubPlan.totalPoints || t('common.Unlimited'),
+      usedSize: teamSubPlan.usedPoints
+    };
+  }, [teamSubPlan.usedPoints, teamSubPlan.totalPoints, t]);
 
   return (
     <Box
@@ -278,6 +294,9 @@ const UserInfo = () => {
                       {t('support.user.team.Dataset usage')}:&nbsp;{datasetUsageMap.usedSize}/
                       {datasetUsageMap.maxSize}
                     </Box>
+                    {userInfo?.team?.canWrite && (
+                      <Button size={'sm'}>{t('support.wallet.Buy more')}</Button>
+                    )}
                   </Flex>
                   <Box mt={1}>
                     <Progress
@@ -294,9 +313,20 @@ const UserInfo = () => {
                 <Box mt={6} whiteSpace={'nowrap'} w={['85%', '300px']}>
                   <Flex alignItems={'center'}>
                     <Box flex={'1 0 0'} fontSize={'md'}>
-                      套餐AI积分: {Math.round(teamSubPlan.usedPoints)}/{teamSubPlan.totalPoints}
+                      AI积分: {Math.round(teamSubPlan.usedPoints)}/{teamSubPlan.totalPoints}
                     </Box>
                   </Flex>
+                  <Box mt={1}>
+                    <Progress
+                      value={aiPointsUsageMap.value}
+                      colorScheme={aiPointsUsageMap.colorScheme}
+                      borderRadius={'md'}
+                      isAnimated
+                      hasStripe
+                      borderWidth={'1px'}
+                      borderColor={'borderColor.base'}
+                    />
+                  </Box>
                 </Box>
               </>
             )}

@@ -10,11 +10,19 @@ import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 
-const PayModal = ({ onClose }: { onClose: () => void }) => {
+const PayModal = ({
+  onClose,
+  defaultValue,
+  onSuccess
+}: {
+  defaultValue?: number;
+  onClose: () => void;
+  onSuccess?: () => any;
+}) => {
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [inputVal, setInputVal] = useState<number | ''>('');
+  const [inputVal, setInputVal] = useState<number | undefined>(defaultValue);
   const [loading, setLoading] = useState(false);
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
 
@@ -30,7 +38,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
       setQRPayData({
         readPrice: res.readPrice,
         codeUrl: res.codeUrl,
-        payId: res.payId
+        billId: res.billId
       });
     } catch (err) {
       toast({
@@ -82,7 +90,7 @@ const PayModal = ({ onClose }: { onClose: () => void }) => {
         </Button>
       </ModalFooter>
 
-      {!!qrPayData && <QRCodePayModal {...qrPayData} />}
+      {!!qrPayData && <QRCodePayModal {...qrPayData} onSuccess={onSuccess} />}
     </MyModal>
   );
 };

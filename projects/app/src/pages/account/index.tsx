@@ -18,7 +18,6 @@ const UsageTable = dynamic(() => import('./components/UsageTable'));
 const BillTable = dynamic(() => import('./components/BillTable'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
-const PriceBox = dynamic(() => import('@/components/support/wallet/Price'));
 
 enum TabEnum {
   'info' = 'info',
@@ -108,11 +107,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认退出登录？'
   });
-  const {
-    isOpen: isOpenPriceBox,
-    onOpen: onOpenPriceBox,
-    onClose: onClosePriceBox
-  } = useDisclosure();
 
   const router = useRouter();
   const theme = useTheme();
@@ -125,7 +119,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           router.replace('/login');
         })();
       } else if (tab === TabEnum.price) {
-        onOpenPriceBox();
+        router.push('/price#point-card');
       } else {
         router.replace({
           query: {
@@ -134,7 +128,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         });
       }
     },
-    [onOpenPriceBox, openConfirm, router, setUserInfo]
+    [openConfirm, router, setUserInfo]
   );
 
   return (
@@ -186,8 +180,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         </Flex>
         <ConfirmModal />
       </PageContainer>
-
-      {isOpenPriceBox && <PriceBox onClose={onClosePriceBox} />}
     </>
   );
 };

@@ -11,9 +11,9 @@ export type TeamStandardSubPlanItemType = {
   maxDatasetSize: number;
   customApiKey: boolean;
   customCopyright: boolean; // feature
-  websiteSyncInterval: number; // n hours
+  websiteSyncInterval: boolean;
+  reRankWeight: boolean; // 1~4
   trainingWeight: number; // 1~4
-  reRankWeight: number; // 1~4
   totalPoints: number; // n ten thousand
 };
 

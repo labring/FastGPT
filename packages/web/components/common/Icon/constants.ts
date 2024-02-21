@@ -128,6 +128,7 @@ export const iconPaths = {
   kbTest: () => import('./icons/kbTest.svg'),
   menu: () => import('./icons/menu.svg'),
   minus: () => import('./icons/minus.svg'),
+  'modal/confirmPay': () => import('./icons/modal/confirmPay.svg'),
   'modal/edit': () => import('./icons/modal/edit.svg'),
   'modal/manualDataset': () => import('./icons/modal/manualDataset.svg'),
   'modal/selectSource': () => import('./icons/modal/selectSource.svg'),
