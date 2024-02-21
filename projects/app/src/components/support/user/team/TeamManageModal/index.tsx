@@ -199,13 +199,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   gap={3}
                   {...(userInfo?.team?.teamId === team.teamId
                     ? {
-                      bg: 'primary.200'
-                    }
-                    : {
-                      _hover: {
-                        bg: 'myGray.100'
+                        bg: 'primary.200'
                       }
-                    })}
+                    : {
+                        _hover: {
+                          bg: 'myGray.100'
+                        }
+                      })}
                   onClick={() => onSwitchTeam(team.teamId)}
                 >
                   <Avatar src={team.avatar} w={['18px', '22px']} />
@@ -214,8 +214,8 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                     w={0}
                     {...(team.role === TeamMemberRoleEnum.owner
                       ? {
-                        fontWeight: 'bold'
-                      }
+                          fontWeight: 'bold'
+                        }
                       : {})}
                   >
                     {team.teamName}
@@ -423,16 +423,17 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                                   },
                                   ...(item.status === TeamMemberStatusEnum.reject
                                     ? [
-                                      {
-                                        label: t('user.team.Reinvite'),
-                                        onClick: () => {
-                                          onUpdateMember({
-                                            teamId: item.teamId,
-                                            memberId: item.tmbId,
-                                            status: TeamMemberStatusEnum.waiting
-                                          });
+                                        {
+                                          label: t('user.team.Reinvite'),
+                                          onClick: () => {
+                                            onUpdateMember({
+                                              teamId: item.teamId,
+                                              memberId: item.tmbId,
+                                              status: TeamMemberStatusEnum.waiting
+                                            });
+                                          }
                                         }
-                                      }]
+                                      ]
                                     : []),
                                   {
                                     label: t('user.team.Remove Member Tip'),

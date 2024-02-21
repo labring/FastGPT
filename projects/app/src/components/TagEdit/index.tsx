@@ -5,7 +5,9 @@ import {
   MenuList,
   MenuItemOption,
   MenuOptionGroup,
-  Flex, TagLabel, TagCloseButton,
+  Flex,
+  TagLabel,
+  TagCloseButton,
   HStack,
   Tag,
   Input
@@ -26,23 +28,21 @@ const TagEdit = ({
   };
   useMemo(() => {
     setTeamTagsOptions(teamsTags);
-  }, [teamsTags])
+  }, [teamsTags]);
   return (
     <>
       <Menu closeOnSelect={false}>
-        <MenuButton
-          className="menu-btn"
-          maxHeight={'250'}
-          minWidth={'80%'}
-        >
-          <HStack style={{
-            border: 'solid 2px #f3f3f3',
-            borderRadius: '5px',
-            padding: '3px',
+        <MenuButton className="menu-btn" maxHeight={'250'} minWidth={'80%'}>
+          <HStack
+            style={{
+              border: 'solid 2px #f3f3f3',
+              borderRadius: '5px',
+              padding: '3px',
 
-            flexWrap: "wrap",
-            minHeight: '40px'
-          }}>
+              flexWrap: 'wrap',
+              minHeight: '40px'
+            }}
+          >
             {teamsTags.map((item: TeamTagsSchema, index: number) => {
               const key: string = item?.key;
               if (defaultValues.indexOf(key as never) > -1) {
@@ -62,7 +62,7 @@ const TagEdit = ({
             })}
           </HStack>
         </MenuButton>
-        <MenuList style={{ height: "300px", overflow: "scroll" }}>
+        <MenuList style={{ height: '300px', overflow: 'scroll' }}>
           <Input
             style={{ border: 'none', borderBottom: 'solid 1px #f6f6f6' }}
             placeholder="pleace "
@@ -81,7 +81,7 @@ const TagEdit = ({
           <MenuOptionGroup
             defaultValue={defaultValues}
             type="checkbox"
-            style={{ height: "300px", overflow: "scroll" }}
+            style={{ height: '300px', overflow: 'scroll' }}
             onChange={(e) => {
               setSelectTeamsTags(e);
             }}

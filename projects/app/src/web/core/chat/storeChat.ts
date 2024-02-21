@@ -92,7 +92,7 @@ export const useChatStore = create<State>()(
             if (customTitle !== undefined || top !== undefined) {
               try {
                 putChatHistory(props);
-              } catch (error) { }
+              } catch (error) {}
             }
 
             set((state) => {

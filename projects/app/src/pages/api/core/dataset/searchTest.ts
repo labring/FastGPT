@@ -77,9 +77,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
       ...(aiExtensionResult &&
         extensionModel && {
-        extensionModel: extensionModel.name,
-        extensionCharsLength: aiExtensionResult.charsLength,
-      })
+          extensionModel: extensionModel.name,
+          extensionCharsLength: aiExtensionResult.charsLength
+        })
     });
     if (apikey) {
       updateApiKeyUsage({

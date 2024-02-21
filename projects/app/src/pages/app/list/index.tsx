@@ -1,12 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import {
-  Box,
-  Grid,
-  Flex,
-  IconButton,
-  Button,
-  useDisclosure,
-} from '@chakra-ui/react';
+import { Box, Grid, Flex, IconButton, Button, useDisclosure } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
@@ -72,11 +65,7 @@ const MyApps = () => {
         <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
           {t('app.My Apps')}
         </Box>
-        <Button
-          leftIcon={<AddIcon />}
-          variant={'primaryOutline'}
-          onClick={onOpenCreateModal}
-        >
+        <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
           {t('common.New Create')}
         </Button>
       </Flex>
@@ -194,10 +183,7 @@ const MyApps = () => {
       )}
       <ConfirmModal />
       {isOpenCreateModal && (
-        <CreateModal
-          onClose={onCloseCreateModal}
-          onSuccess={() => loadMyApps(true)}
-        />
+        <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps(true)} />
       )}
     </PageContainer>
   );

@@ -164,7 +164,8 @@ export async function dispatchModules({
     const set = new Set<string>();
     const filterModules = nextRunModules.filter((module) => {
       if (set.has(module.moduleId)) return false;
-      set.add(module.moduleId); ``
+      set.add(module.moduleId);
+      ``;
       return true;
     });
 
@@ -248,7 +249,7 @@ export async function dispatchModules({
         dispatchRes[ModuleOutputKeyEnum.moduleDispatchBills]
     });
   }
-  console.log('initModule')
+  console.log('initModule');
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
 
@@ -284,7 +285,7 @@ function loadModules(
   modules: ModuleItemType[],
   variables: Record<string, any>
 ): RunningModuleItemType[] {
-  console.log('initModule', modules)
+  console.log('initModule', modules);
   return modules
     .filter((item) => {
       return ![FlowNodeTypeEnum.userGuide].includes(item.moduleId as any);

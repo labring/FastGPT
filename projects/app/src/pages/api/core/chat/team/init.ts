@@ -56,8 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId,
       chatId,
       limit: 30,
-      field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${ModuleOutputKeyEnum.responseData
-        }`
+      field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${ModuleOutputKeyEnum.responseData}`
     });
 
     jsonRes<InitChatResponse>(res, {

@@ -9,13 +9,7 @@ import { TeamTagsSchema } from '@fastgpt/global/support/user/team/type';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { getTeamsTags } from '@/web/support/user/team/api';
-const TagsEditModal = ({
-  appDetail,
-  onClose
-}: {
-  appDetail?: any;
-  onClose: () => void;
-}) => {
+const TagsEditModal = ({ appDetail, onClose }: { appDetail?: any; onClose: () => void }) => {
   const { t } = useTranslation();
   const [teamsTags, setTeamTags] = useState<Array<TeamTagsSchema>>([]);
   const [selectedTags, setSelectedTags] = useState(appDetail?.teamTags);
@@ -63,7 +57,13 @@ const TagsEditModal = ({
   }, []);
 
   return (
-    <MyModal style={{ width: '900px' }} isOpen onClose={onClose} iconSrc="/imgs/module/ai.svg" title={'标签管理'}>
+    <MyModal
+      style={{ width: '900px' }}
+      isOpen
+      onClose={onClose}
+      iconSrc="/imgs/module/ai.svg"
+      title={'标签管理'}
+    >
       <ModalBody>
         {/* <HStack spacing={2}>
         {teamsTags.map((item,index) => {
@@ -79,7 +79,9 @@ const TagsEditModal = ({
         })}
         </HStack>  */}
         <Flex width={'100%'} alignItems={'center'}>
-          <Box mb={3} mr={3} fontWeight='semibold'>{t('团队标签')}</Box>
+          <Box mb={3} mr={3} fontWeight="semibold">
+            {t('团队标签')}
+          </Box>
           <TagsEdit
             defaultValues={selectedTags}
             teamsTags={teamsTags}

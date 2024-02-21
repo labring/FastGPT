@@ -1,7 +1,17 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
-import { Box, Button, Flex, ModalBody, Tag, ModalFooter, Input, HStack, Avatar } from '@chakra-ui/react';
-import { AttachmentIcon, CopyIcon, DragHandleIcon } from '@chakra-ui/icons'
+import {
+  Box,
+  Button,
+  Flex,
+  ModalBody,
+  Tag,
+  ModalFooter,
+  Input,
+  HStack,
+  Avatar
+} from '@chakra-ui/react';
+import { AttachmentIcon, CopyIcon, DragHandleIcon } from '@chakra-ui/icons';
 import { putUpdateTeamTags, updateTags } from '@/web/support/user/team/api';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
@@ -30,8 +40,9 @@ const TeamTagsAsync = ({
   });
   const { copyData } = useCopyData();
   const baseUrl = global.feConfigs?.customSharePageDomain || location?.origin;
-  const linkUrl = `${baseUrl}/chat/team?teamId=${teamInfo?._id}${getValues('showHistory') ? '' : '&showHistory=0'
-    }`;
+  const linkUrl = `${baseUrl}/chat/team?teamId=${teamInfo?._id}${
+    getValues('showHistory') ? '' : '&showHistory=0'
+  }`;
 
   // tags Async
   const { mutate: onclickAsync, isLoading: creating } = useRequest({
@@ -45,11 +56,11 @@ const TeamTagsAsync = ({
     errorToast: t('common.Create Failed')
   });
   const asyncTags = async () => {
-    console.log("getValues", getValues())
-    const res: Array<TeamTagsSchema> = (await updateTags(teamInfo?._id, getValues().tagsUrl));
+    console.log('getValues', getValues());
+    const res: Array<TeamTagsSchema> = await updateTags(teamInfo?._id, getValues().tagsUrl);
     setTeamTags(res);
     toast({ status: 'success', title: '团队标签同步成功' });
-  }
+  };
   useEffect(() => {
     console.log('teamInfo', teamInfo);
   }, []);
@@ -78,7 +89,9 @@ const TeamTagsAsync = ({
       >
         <ModalBody style={{ padding: '10rpx' }}>
           <Flex mt={3} alignItems={'center'}>
-            <Box mb={2} fontWeight='semibold'>{t('同步链接')}</Box>
+            <Box mb={2} fontWeight="semibold">
+              {t('同步链接')}
+            </Box>
             <Input
               flex={1}
               ml={4}
@@ -90,12 +103,13 @@ const TeamTagsAsync = ({
               })}
             />
           </Flex>
-          <Flex mt={3} alignItems={'center'}
-          >
-            <Box mb={2} fontWeight='semibold'>{t('分享链接')}</Box>
+          <Flex mt={3} alignItems={'center'}>
+            <Box mb={2} fontWeight="semibold">
+              {t('分享链接')}
+            </Box>
             {/* code */}
             <Box ml={4} borderRadius={'md'} overflow={'hidden'}>
-              <Flex >
+              <Flex>
                 <Box whiteSpace={'pre'} p={3} overflowX={'auto'} bg={'myWhite.600'} color="blue">
                   {linkUrl}
                 </Box>
@@ -115,7 +129,9 @@ const TeamTagsAsync = ({
             </Box>
           </Flex>
           <Flex mt={3} alignItems={'center'}>
-            <Box mb={2} fontWeight='semibold'>{t('标签列表')}</Box>
+            <Box mb={2} fontWeight="semibold">
+              {t('标签列表')}
+            </Box>
             <HStack
               ml={4}
               maxHeight={'250'}
@@ -126,22 +142,16 @@ const TeamTagsAsync = ({
                 padding: '10px',
                 maxWidth: '70%',
                 flexWrap: 'wrap',
-                overflow: "scroll"
+                overflow: 'scroll'
               }}
               spacing={1}
             >
               {_teamsTags.map((item, index) => {
                 return (
-                  <Tag
-                    key={index}
-                    mt={2}
-                    size={'md'}
-                    colorScheme='red'
-                    borderRadius="full"
-                  >
+                  <Tag key={index} mt={2} size={'md'} colorScheme="red" borderRadius="full">
                     <Avatar
-                      src='https://bit.ly/sage-adeb'
-                      size='xs'
+                      src="https://bit.ly/sage-adeb"
+                      size="xs"
                       name={item.label}
                       ml={-2}
                       mr={2}

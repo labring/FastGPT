@@ -30,7 +30,11 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useTeamShareChatStore } from '@/web/core/chat/storeTeamChat';
-import type { ChatHistoryItemType, chatAppListSchema, teamInfoType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  ChatHistoryItemType,
+  chatAppListSchema,
+  teamInfoType
+} from '@fastgpt/global/core/chat/type.d';
 import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { POST } from '@/web/common/api/request';
@@ -87,7 +91,7 @@ const OutLink = ({
         toast({
           status: 'error',
           title: t('core.chat.You need to a chat app')
-        })
+        });
         return;
       }
       // 根据teamId 获取教研token以及用户tags，然后通过是否为
@@ -100,7 +104,7 @@ const OutLink = ({
         toast({
           status: 'error',
           title: t('core.chat.You need to a chat app')
-        })
+        });
       }
       //
       return null;
@@ -114,7 +118,7 @@ const OutLink = ({
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
-      console.log("res", 13);
+      console.log('res', 13);
       const prompts = messages.slice(-2);
       const completionChatId = chatId ? chatId : nanoid();
 
@@ -180,20 +184,20 @@ const OutLink = ({
   );
 
   const { isFetching } = useQuery(['init', appId, teamId], async () => {
-    console.log("res", 3);
+    console.log('res', 3);
     if (!teamId) {
       toast({
         status: 'error',
         title: t('core.chat.You need to a chat app')
-      })
+      });
       return;
     }
     return teamId && loadApps();
   });
 
   useQuery(['loadHistories', appId], () => {
-    console.log("res", 1);
-    teamId && appId ? loadHistories({ appId, outLinkUid }) : null
+    console.log('res', 1);
+    teamId && appId ? loadHistories({ appId, outLinkUid }) : null;
   });
   // 初始化聊天框
   useQuery(['init', { appId, chatId }], () => {
@@ -201,7 +205,7 @@ const OutLink = ({
       toast({
         status: 'error',
         title: t('core.chat.You need to a chat app')
-      })
+      });
       return;
     }
     // pc: redirect to latest model chat
@@ -274,12 +278,12 @@ const OutLink = ({
           toast({
             status: 'error',
             title: t('core.chat.You need to a chat app')
-          })
+          });
           return;
         }
         loading && setIsLoading(true);
         const res = await getTeamChatInfo({ appId, chatId, outLinkUid });
-        console.log("res", res);
+        console.log('res', res);
         const history = res.history.map((item) => ({
           ...item,
           status: ChatStatusEnum.finish
@@ -360,23 +364,23 @@ const OutLink = ({
                 alignItems={'center'}
                 {...(item._id === appId
                   ? {
-                    bg: 'white',
-                    boxShadow: 'md'
-                  }
-                  : {
-                    _hover: {
-                      bg: 'myGray.200'
-                    },
-                    onClick: () => {
-                      router.replace({
-                        query: {
-                          appId: item._id,
-                          teamId: teamId,
-                          authToken: authToken
-                        }
-                      });
+                      bg: 'white',
+                      boxShadow: 'md'
                     }
-                  })}
+                  : {
+                      _hover: {
+                        bg: 'myGray.200'
+                      },
+                      onClick: () => {
+                        router.replace({
+                          query: {
+                            appId: item._id,
+                            teamId: teamId,
+                            authToken: authToken
+                          }
+                        });
+                      }
+                    })}
               >
                 <Avatar src={item.avatar} w={'24px'} />
                 <Box ml={2} className={'textEllipsis'}>
@@ -480,7 +484,7 @@ const OutLink = ({
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
-                onUpdateVariable={(e) => { }}
+                onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
                 onDelMessage={(e) =>
                   delOneHistoryItem({ ...e, appId: chatData.appId, chatId, outLinkUid })

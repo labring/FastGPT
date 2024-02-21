@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { tmbId } = await authCert({ req, authToken: true });
     const tmb = await MongoTeamMember.findById(tmbId);
     if (!tmb) {
-      throw new Error("can not find it")
+      throw new Error('can not find it');
     }
     const userId = tmb.userId;
     // auth key

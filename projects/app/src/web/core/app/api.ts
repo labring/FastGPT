@@ -34,7 +34,7 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
 export const replaceAppById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/updateTeamTasg?appId=${id}`, data);
 
-// updateTeamTasg 
+// updateTeamTasg
 export const putAppTagsById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/updateTeamTasg?appId=${id}`, data);
 /* 共享市场 */

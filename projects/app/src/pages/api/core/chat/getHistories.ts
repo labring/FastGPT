@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         return {
           shareId,
           outLinkUid: outLinkUid,
-          source: ChatSourceEnum.team,
+          source: ChatSourceEnum.team
         };
       }
       if (appId) {

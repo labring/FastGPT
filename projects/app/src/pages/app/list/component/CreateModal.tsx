@@ -36,13 +36,7 @@ type FormType = {
   templateId: string;
 };
 
-const CreateModal = ({
-  onClose,
-  onSuccess
-}: {
-  onClose: () => void;
-  onSuccess: () => void;
-}) => {
+const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
@@ -161,13 +155,13 @@ const CreateModal = ({
                   boxShadow={'sm'}
                   {...(getValues('templateId') === item.id
                     ? {
-                      bg: 'myWhite.600'
-                    }
-                    : {
-                      _hover: {
-                        boxShadow: 'md'
+                        bg: 'myWhite.600'
                       }
-                    })}
+                    : {
+                        _hover: {
+                          boxShadow: 'md'
+                        }
+                      })}
                   onClick={() => {
                     setValue('templateId', item.id);
                     setRefresh((state) => !state);
