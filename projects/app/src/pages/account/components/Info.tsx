@@ -39,7 +39,6 @@ const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu')
 const PayModal = dynamic(() => import('./PayModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
-const SubDatasetModal = dynamic(() => import('@/components/support/wallet/SubDatasetModal'));
 
 const UserInfo = () => {
   const theme = useTheme();
@@ -64,11 +63,6 @@ const UserInfo = () => {
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
-  const {
-    isOpen: isOpenSubDatasetModal,
-    onClose: onCloseSubDatasetModal,
-    onOpen: onOpenSubDatasetModal
-  } = useDisclosure();
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -284,11 +278,6 @@ const UserInfo = () => {
                       {t('support.user.team.Dataset usage')}:&nbsp;{datasetUsageMap.usedSize}/
                       {datasetUsageMap.maxSize}
                     </Box>
-                    {userInfo?.team?.canWrite && (
-                      <Button size={'sm'} onClick={onOpenSubDatasetModal}>
-                        {t('support.wallet.Buy more')}
-                      </Button>
-                    )}
                   </Flex>
                   <Box mt={1}>
                     <Progress
@@ -410,7 +399,6 @@ const UserInfo = () => {
           onClose={onCloseOpenai}
         />
       )}
-      {isOpenSubDatasetModal && <SubDatasetModal onClose={onCloseSubDatasetModal} />}
       <File onSelect={onSelectFile} />
     </Box>
   );
