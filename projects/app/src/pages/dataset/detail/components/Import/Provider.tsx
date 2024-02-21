@@ -176,7 +176,8 @@ const Provider = ({
         return {
           ...file,
           chunkChars: chars,
-          chunks: chunks.map((chunk) => ({
+          chunks: chunks.map((chunk, i) => ({
+            chunkIndex: i,
             q: chunk,
             a: ''
           }))

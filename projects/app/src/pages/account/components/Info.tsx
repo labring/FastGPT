@@ -295,7 +295,9 @@ const UserInfo = () => {
                       {datasetUsageMap.maxSize}
                     </Box>
                     {userInfo?.team?.canWrite && (
-                      <Button size={'sm'}>{t('support.wallet.Buy more')}</Button>
+                      <Button size={'sm'} onClick={() => router.push('/price')}>
+                        {t('support.wallet.Buy more')}
+                      </Button>
                     )}
                   </Flex>
                   <Box mt={1}>

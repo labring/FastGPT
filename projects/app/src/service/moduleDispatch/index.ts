@@ -249,7 +249,6 @@ export async function dispatchModules({
         dispatchRes[ModuleOutputKeyEnum.moduleDispatchBills]
     });
   }
-  console.log('initModule');
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
 
@@ -285,7 +284,6 @@ function loadModules(
   modules: ModuleItemType[],
   variables: Record<string, any>
 ): RunningModuleItemType[] {
-  console.log('initModule', modules);
   return modules
     .filter((item) => {
       return ![FlowNodeTypeEnum.userGuide].includes(item.moduleId as any);

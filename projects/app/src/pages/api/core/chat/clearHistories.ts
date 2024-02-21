@@ -14,10 +14,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await connectToDatabase();
     const { appId, shareId, outLinkUid } = req.query as ClearHistoriesProps;
 
+    let chatAppId = appId;
+
     const match = await (async () => {
       if (shareId && outLinkUid) {
-        const { uid } = await authOutLink({ shareId, outLinkUid });
+        const { appId, uid } = await authOutLink({ shareId, outLinkUid });
 
+        chatAppId = appId;
         return {
           shareId,
           outLinkUid: uid
@@ -41,11 +44,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const idList = list.map((item) => item.chatId);
 
     await MongoChatItem.deleteMany({
-      appId,
+      appId: chatAppId,
       chatId: { $in: idList }
     });
     await MongoChat.deleteMany({
-      appId,
+      appId: chatAppId,
       chatId: { $in: idList }
     });
 
