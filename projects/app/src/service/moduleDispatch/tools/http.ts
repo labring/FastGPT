@@ -1,21 +1,35 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  DYNAMIC_INPUT_KEY,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum
+} from '@fastgpt/global/core/module/constants';
 import axios from 'axios';
-import { flatDynamicParams, valueTypeFormat } from '../utils';
+import { valueTypeFormat } from '../utils';
 import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
 
-export type HttpRequestProps = ModuleDispatchProps<{
+type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
   [ModuleInputKeyEnum.httpMethod]: string;
   [ModuleInputKeyEnum.httpReqUrl]: string;
-  [ModuleInputKeyEnum.httpHeader]: string;
+  [ModuleInputKeyEnum.httpHeaders]: string;
   [key: string]: any;
 }>;
-export type HttpResponse = {
+type HttpResponse = {
   [ModuleOutputKeyEnum.failed]?: boolean;
   [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
+};
+
+const flatDynamicParams = (params: Record<string, any>) => {
+  const dynamicParams = params[DYNAMIC_INPUT_KEY];
+  if (!dynamicParams) return params;
+  return {
+    ...params,
+    ...dynamicParams,
+    [DYNAMIC_INPUT_KEY]: undefined
+  };
 };
 
 export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<HttpResponse> => {

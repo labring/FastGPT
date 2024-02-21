@@ -71,7 +71,6 @@ const BillTable = () => {
       })),
     [members]
   );
-  console.log(members);
 
   const {
     data: bills,

@@ -74,8 +74,10 @@ export enum ModuleInputKeyEnum {
 
   // http
   httpReqUrl = 'system_httpReqUrl',
-  httpHeader = 'system_httpHeader',
+  httpHeaders = 'system_httpHeader',
   httpMethod = 'system_httpMethod',
+  httpParams = 'system_httpParams',
+  httpJsonBody = 'system_httpJsonBody',
   abandon_httpUrl = 'url',
 
   // app

@@ -32,8 +32,8 @@ export async function generateVector(): Promise<any> {
     try {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
-          mode: TrainingModeEnum.chunk,
-          lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) }
+          lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) },
+          mode: TrainingModeEnum.chunk
         },
         {
           lockTime: new Date()

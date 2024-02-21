@@ -9,7 +9,6 @@
     {
       "moduleId": "w90mfp",
       "name": "定义插件输入",
-      "avatar": "/imgs/module/input.png",
       "flowType": "pluginInput",
       "showStatus": false,
       "position": {
@@ -20,10 +19,10 @@
         {
           "key": "textarea",
           "valueType": "string",
-          "label": "core.module.input.label.textEditor textarea",
+          "label": "文本内容",
           "type": "textarea",
           "required": true,
-          "description": "core.module.input.description.textEditor textarea",
+          "description": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
           "edit": true,
           "editField": {
             "key": true,
@@ -66,7 +65,7 @@
         {
           "key": "textarea",
           "valueType": "string",
-          "label": "core.module.input.label.textEditor textarea",
+          "label": "文本内容",
           "type": "source",
           "edit": true,
           "targets": [
@@ -94,7 +93,6 @@
     {
       "moduleId": "tze1ju",
       "name": "定义插件输出",
-      "avatar": "/imgs/module/output.png",
       "flowType": "pluginOutput",
       "showStatus": false,
       "position": {
@@ -135,8 +133,7 @@
     {
       "moduleId": "49de3g",
       "name": "HTTP模块",
-      "avatar": "/imgs/module/http.png",
-      "flowType": "httpRequest",
+      "flowType": "httpRequest468",
       "showStatus": true,
       "position": {
         "x": 1086.8929621216014,
@@ -147,6 +144,7 @@
           "key": "switch",
           "type": "target",
           "label": "core.module.input.label.switch",
+          "description": "core.module.input.description.Trigger",
           "valueType": "any",
           "showTargetInApp": true,
           "showTargetInPlugin": true,
@@ -154,9 +152,9 @@
         },
         {
           "key": "system_httpMethod",
-          "type": "select",
+          "type": "custom",
           "valueType": "string",
-          "label": "core.module.input.label.Http Request Method",
+          "label": "",
           "value": "POST",
           "list": [
             {
@@ -175,9 +173,9 @@
         },
         {
           "key": "system_httpReqUrl",
-          "type": "input",
+          "type": "hidden",
           "valueType": "string",
-          "label": "core.module.input.label.Http Request Url",
+          "label": "",
           "description": "core.module.input.description.Http Request Url",
           "placeholder": "https://api.ai.com/getInventory",
           "required": false,
@@ -188,15 +186,37 @@
         },
         {
           "key": "system_httpHeader",
-          "type": "textarea",
-          "valueType": "string",
-          "label": "core.module.input.label.Http Request Header",
+          "type": "custom",
+          "valueType": "any",
+          "value": "",
+          "label": "",
           "description": "core.module.input.description.Http Request Header",
           "placeholder": "core.module.input.description.Http Request Header",
           "required": false,
           "showTargetInApp": false,
           "showTargetInPlugin": false,
-          "value": "",
+          "connected": false
+        },
+        {
+          "key": "system_httpParams",
+          "type": "hidden",
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "type": "hidden",
+          "valueType": "any",
+          "value": "{\r\n  \"text\": \"{{text}}\"\r\n}",
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
           "connected": false
         },
         {

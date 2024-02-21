@@ -1,17 +1,20 @@
-import React, { useEffect } from 'react';
-import Editor, { loader, useMonaco } from '@monaco-editor/react';
-import { useCallback, useRef, useState } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
+import Editor, { Monaco, loader, useMonaco } from '@monaco-editor/react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import MyIcon from '../../Icon';
-import { EditorVariablePickerType } from '../PromptEditor/type';
 import { useToast } from '../../../../hooks/useToast';
 import { useTranslation } from 'next-i18next';
 
 loader.config({
-  paths: { vs: 'https://cdn.staticfile.net/monaco-editor/0.43.0/min/vs' }
+  paths: { vs: '/js/monaco-editor.0.45.0/vs' }
 });
 
-type Props = Omit<BoxProps, 'onChange' | 'resize' | 'height'> & {
+type EditorVariablePickerType = {
+  key: string;
+  label: string;
+};
+
+type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   height?: number;
   resize?: boolean;
   defaultValue?: string;
@@ -42,43 +45,95 @@ const options = {
   tabSize: 2
 };
 
-const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props }: Props) => {
+const JSONEditor = ({ defaultValue, value, onChange, resize, variables = [], ...props }: Props) => {
   const { toast } = useToast();
   const { t } = useTranslation();
   const [height, setHeight] = useState(props.height || 100);
   const initialY = useRef(0);
   const completionRegisterRef = useRef<any>();
   const monaco = useMonaco();
+  const triggerChar = useRef<string>();
 
   useEffect(() => {
-    completionRegisterRef.current = monaco?.languages.registerCompletionItemProvider('json', {
-      triggerCharacters: ['"'],
-      provideCompletionItems: function (model, position) {
-        var word = model.getWordUntilPosition(position);
-        var range = {
+    if (!monaco) return;
+
+    // 自定义补全提供者
+    completionRegisterRef.current = monaco.languages.registerCompletionItemProvider('json', {
+      triggerCharacters: ['{'],
+      provideCompletionItems: function (model, position, context) {
+        const lineContent = model.getLineContent(position.lineNumber);
+
+        if (context.triggerCharacter) {
+          console.log(context.triggerCharacter);
+          triggerChar.current = context.triggerCharacter;
+        }
+        const word = model.getWordUntilPosition(position);
+        const range = {
           startLineNumber: position.lineNumber,
           endLineNumber: position.lineNumber,
           startColumn: word.startColumn,
           endColumn: word.endColumn
         };
+
+        const startText = lineContent.substring(0, position.column - 1); // 光标前的文本
+        const endText = lineContent.substring(position.column - 1); // 光标后的文本
+        const before2Char = startText[startText.length - 2];
+        const beforeChar = startText[startText.length - 1];
+        const afterChar = endText[0];
+        const after2Char = endText[1];
+
+        if (before2Char !== '{' && beforeChar !== '"') {
+          return {
+            suggestions: []
+          };
+        }
+
         return {
           suggestions:
-            variables?.map((item) => ({
-              label: `${item.label}`,
-              kind: monaco.languages.CompletionItemKind.Function,
-              documentation: item.label,
-              insertText: `{{${item.label}}}`,
-              range: range
-            })) || [],
-          dispose: () => {}
+            variables?.map((item) => {
+              let insertText = item.key;
+              if (before2Char !== '{') {
+                insertText = `{${insertText}`;
+              }
+              if (afterChar !== '}') {
+                insertText = `${insertText}}`;
+              }
+              if (after2Char !== '}') {
+                insertText = `${insertText}}`;
+              }
+
+              return {
+                label: item.key,
+                kind: monaco.languages.CompletionItemKind.Variable,
+                detail: item.label,
+                insertText: insertText,
+                range
+              };
+            }) || []
         };
+      }
+    });
+
+    // 自定义语法高亮
+    monaco.languages.setMonarchTokensProvider('json', {
+      tokenizer: {
+        root: [
+          // 匹配variables里的变量
+          [new RegExp(`{{(${variables.map((item) => item.key).join('|')})}}`), 'variable'],
+          [/".*?"/, 'string'], // 匹配字符串
+          [/[{}\[\]]/, '@brackets'], // 匹配括号
+          [/[0-9]+/, 'number'], // 匹配数字
+          [/true|false/, 'keyword'], // 匹配布尔值
+          [/:/, 'delimiter'], // 匹配冒号
+          [/,/, 'delimiter.comma'] // 匹配逗号
+        ]
       }
     });
 
     return () => {
       completionRegisterRef.current?.dispose();
     };
-  }, [monaco, completionRegisterRef.current]);
+  }, [monaco, variables]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     initialY.current = e.clientY;
@@ -98,6 +153,48 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props
     document.addEventListener('mouseup', handleMouseUp);
   }, []);
 
+  const onBlur = useCallback(() => {
+    if (!value) return;
+    // replace {{xx}} to true
+    const replaceValue = value?.replace(/{{(.*?)}}/g, 'true');
+    try {
+      JSON.parse(replaceValue);
+    } catch (error) {
+      toast({
+        status: 'warning',
+        title: t('common.jsonEditor.Parse error')
+      });
+    }
+  }, [value]);
+  const beforeMount = useCallback((monaco: Monaco) => {
+    monaco.languages.json.jsonDefaults.setDiagnosticsOptions({
+      validate: false,
+      allowComments: false,
+      schemas: [
+        {
+          uri: 'http://myserver/foo-schema.json', // 一个假设的 URI
+          fileMatch: ['*'], // 匹配所有文件
+          schema: {} // 空的 Schema
+        }
+      ]
+    });
+
+    monaco.editor.defineTheme('JSONEditorTheme', {
+      base: 'vs', // 可以基于已有的主题进行定制
+      inherit: true, // 继承基础主题的设置
+      rules: [{ token: 'variable', foreground: '2B5FD9' }],
+      colors: {
+        'editor.background': '#ffffff00',
+        'editorLineNumber.foreground': '#aaa',
+        'editorOverviewRuler.border': '#ffffff00',
+        'editor.lineHighlightBackground': '#F7F8FA',
+        'scrollbarSlider.background': '#E8EAEC',
+        'editorIndentGuide.activeBackground': '#ddd',
+        'editorIndentGuide.background': '#eee'
+      }
+    });
+  }, []);
+
   return (
     <Box position={'relative'}>
       {resize && (
@@ -105,7 +202,7 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props
           position={'absolute'}
           right={'0'}
           bottom={'0'}
-          zIndex={999}
+          zIndex={10}
           cursor={'ns-resize'}
           px={'4px'}
           onMouseDown={handleMouseDown}
@@ -119,47 +216,20 @@ const JSONEditor = ({ defaultValue, value, onChange, resize, variables, ...props
         borderRadius={'md'}
         borderColor={'myGray.200'}
         py={2}
-        {...props}
         height={'auto'}
+        {...props}
       >
         <Editor
           height={height}
           defaultLanguage="json"
           options={options as any}
-          theme={'JSONEditorTheme'}
-          beforeMount={(monaco) => {
-            monaco?.editor.defineTheme('JSONEditorTheme', {
-              base: 'vs',
-              inherit: true,
-              rules: [],
-              colors: {
-                'editor.background': '#ffffff00',
-                'editorLineNumber.foreground': '#aaa',
-                'editorOverviewRuler.border': '#ffffff00',
-                'editor.lineHighlightBackground': '#F7F8FA',
-                'scrollbarSlider.background': '#E8EAEC',
-                'editorIndentGuide.activeBackground': '#ddd',
-                'editorIndentGuide.background': '#eee'
-              }
-            });
-          }}
+          theme="JSONEditorTheme"
+          beforeMount={beforeMount}
           defaultValue={defaultValue}
           value={value}
           onChange={(e) => onChange?.(e || '')}
           wrapperProps={{
-            onBlur: () => {
-              if (!value) return;
-              try {
-                JSON.parse(value as string);
-              } catch (error: any) {
-                toast({
-                  title: t('common.Invalid Json'),
-                  description: error.message,
-                  status: 'warning',
-                  isClosable: true
-                });
-              }
-            }
+            onBlur
           }}
         />
       </Box>

@@ -36,8 +36,8 @@ export async function generateQA(): Promise<any> {
     try {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
-          mode: TrainingModeEnum.qa,
-          lockTime: { $lte: new Date(Date.now() - 6 * 60 * 1000) }
+          lockTime: { $lte: new Date(Date.now() - 6 * 60 * 1000) },
+          mode: TrainingModeEnum.qa
         },
         {
           lockTime: new Date()

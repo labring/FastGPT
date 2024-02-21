@@ -100,7 +100,7 @@ export default function VariablePickerPlugin({
                 p={2}
                 borderRadius={'md'}
                 position={'fixed'}
-                w={'200px'}
+                w={'auto'}
                 overflow={'hidden'}
                 zIndex={99999}
               >
@@ -113,6 +113,8 @@ export default function VariablePickerPlugin({
                     py={2}
                     borderRadius={'sm'}
                     cursor={'pointer'}
+                    maxH={'300px'}
+                    overflow={'auto'}
                     _notLast={{
                       mb: 2
                     }}
@@ -133,8 +135,11 @@ export default function VariablePickerPlugin({
                       setHighlightedIndex(index);
                     }}
                   >
-                    <MyIcon name={item.icon as any} w={'14px'} />
-                    <Box ml={2} fontSize={'sm'}>{`${item.key}(${item.label})`}</Box>
+                    <MyIcon name={(item.icon as any) || 'core/modules/variable'} w={'14px'} />
+                    <Box ml={2} fontSize={'sm'}>
+                      {item.key}
+                      {item.key !== item.label && `(${item.label})`}
+                    </Box>
                   </Flex>
                 ))}
               </Box>,

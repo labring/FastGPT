@@ -200,6 +200,9 @@
     "input": {
       "Repeat Value": "Repeat Value"
     },
+    "jsonEditor": {
+      "Parse error": "Json parse error, please check it"
+    },
     "link": {
       "UnValid": "UnValid Link"
     },
@@ -227,7 +230,6 @@
   },
   "core": {
     "Chat": "Chat",
-    "Chat API is error or undefined": "The session interface reported an error or returned null",
     "Chat test": "Chat test",
     "Max Token": "MaxTokens",
     "Start chat": "Start chat",
@@ -362,7 +364,7 @@
     "chat": {
       "Admin Mark Content": "Corrected response",
       "Audio Speech Error": "Audio Speech Error",
-      "Chat API is error or undefined": "",
+      "Chat API is error or undefined": "The session interface reported an error or returned null",
       "Confirm to clear history": "Confirm to clear history?",
       "Confirm to clear share chat history": " Are you sure to delete all chats?",
       "Converting to text": "Converting to text...",
@@ -661,6 +663,8 @@
         "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
+        "Nonsupport": "Nonsupport",
+        "Not similarity": "",
         "Params Setting": "Params Setting",
         "Quote index": "Quote index",
         "Rank": "Rank",
@@ -748,6 +752,7 @@
     },
     "module": {
       "Add question type": "Add type",
+      "Can not connect self": "Cannot connect itself",
       "Data Type": "Data Type",
       "Dataset quote": {
         "Add quote": "Add quote",
@@ -759,6 +764,8 @@
       "Field Name": "Name",
       "Field Type": "Type",
       "Field key": "Key",
+      "Http request props": "Request props",
+      "Http request settings": "Request settings",
       "Input Type": "Input Type",
       "Plugin output must connect": "Custom outputs must all be connected",
       "QueryExtension": {
@@ -778,6 +785,22 @@
         "Field Description Placeholder": "Name/age /sql statement......",
         "Field Setting Title": "Extract field configuration"
       },
+      "http": {
+        "Add props": "Add props",
+        "AppId": "appId",
+        "ChatId": "chatId",
+        "Current time": "Current time",
+        "Histories": "histories",
+        "Key already exists": "Key already exists",
+        "Key cannot be empty": "Name cannot be empty",
+        "Props name": "Name",
+        "Props tip": "You can set parameters related to Http requests\nGlobal changes or external parameter inputs can be invoked by {{key}}",
+        "Props value": "Value",
+        "ResponseChatItemId": "Ai response id",
+        "Url and params have been split": "Path parameters are automatically added to Params",
+        "Variables": "Global variables",
+        "params": ""
+      },
       "input": {
         "Add Input": "Add Input",
         "Input Number": "Input: {{length}}",
@@ -789,7 +812,6 @@
           "Response content": "You can use \\n to achieve continuous line wrapping.\nReplies can be achieved by external module input, which overwrites the content currently filled in.\nIf passed non-string type data will be automatically converted to a string",
           "TFSwitch textarea": "Allows you to define a number of strings to achieve false matching, one per line, and supports regular expressions.",
           "Trigger": "Most of the time, you don't need to concatenate this property. You can connect this property when you need to delay execution, or precisely control the timing of execution.",
-          "anyInput": "Can pass anything ",
           "dynamic input": "Receives parameters dynamically added by the user and will be tiled in at run time ",
           "textEditor textarea": "The passed variable can be referenced by {{key}}. Variables support only strings or numbers."
         },
@@ -803,9 +825,10 @@
           "Quote": "Quote",
           "Response content": "Response content",
           "Select dataset": "Select dataset",
+          "TFSwitch input tip": "",
           "TFSwitch textarea": "Custom False matching rule ",
           "aiModel": "AI model ",
-          "anyInput": "Any input ",
+          "anyInput": "Any input",
           "chat history": "chat history",
           "switch": "Trigger",
           "textEditor textarea": "Text edit",
@@ -852,7 +875,7 @@
         "Ai chat": "LLM Chat",
         "Ai chat intro": "Request LLM chat",
         "Assigned reply": "Assigned reply",
-        "Assigned reply intro": "The module can respond directly to a specified piece of content. Often used to guide and prompt",
+        "Assigned reply intro": "The module can respond directly to a specified piece of content. Often used to guide and prompt. When non-string content is passed in, it is converted to a string for output.",
         "Chat entrance": "Chat entrance",
         "Chat entrance intro": "When the user sends a content, the flow will start from this module.",
         "Classify question": "Classify question",

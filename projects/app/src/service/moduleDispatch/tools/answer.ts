@@ -23,7 +23,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   if (stream) {
     responseWrite({
       res,
-      event: detail ? sseResponseEventEnum.answer : undefined,
+      event: detail ? sseResponseEventEnum.response : undefined,
       data: textAdaptGptResponse({
         text: `\n${formatText}`
       })
@@ -31,6 +31,6 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   }
 
   return {
-    answerText: formatText
+    [ModuleOutputKeyEnum.answerText]: formatText
   };
 };

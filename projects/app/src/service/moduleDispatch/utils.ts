@@ -9,16 +9,6 @@ export const getHistories = (history?: ChatItemType[] | number, histories: ChatI
   return [];
 };
 
-export const flatDynamicParams = (params: Record<string, any>) => {
-  const dynamicParams = params[DYNAMIC_INPUT_KEY];
-  if (!dynamicParams) return params;
-  return {
-    ...params,
-    ...dynamicParams,
-    [DYNAMIC_INPUT_KEY]: undefined
-  };
-};
-
 /* value type format */
 export const valueTypeFormat = (value: any, type?: `${ModuleIOValueTypeEnum}`) => {
   if (value === undefined) return;

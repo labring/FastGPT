@@ -135,38 +135,38 @@ const NodeCard = (props: Props) => {
         boxShadow: '4'
       }}
     >
-      <Flex className="custom-drag-handle" px={4} py={3} alignItems={'center'}>
-        <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
-        <Box ml={3} fontSize={'lg'} color={'myGray.600'}>
-          {t(name)}
+      <Box className="custom-drag-handle" px={4} py={3}>
+        <Flex alignItems={'center'}>
+          <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
+          <Box ml={3} fontSize={'lg'}>
+            {t(name)}
+          </Box>
+          <Box flex={1} />
+          {!forbidMenu && (
+            <MyMenu
+              offset={[-60, 5]}
+              width={120}
+              Button={
+                <MenuButton
+                  className={'nodrag'}
+                  _hover={{ bg: 'myWhite.600' }}
+                  cursor={'pointer'}
+                  borderRadius={'md'}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                  }}
+                >
+                  <MyIcon name={'more'} w={'14px'} p={2} />
+                </MenuButton>
+              }
+              menuList={menuList}
+            />
+          )}
+        </Flex>
+        <Box fontSize={'xs'} color={'myGray.600'}>
+          {t(intro)}
         </Box>
-        {intro && (
-          <MyTooltip label={t(intro)} forceShow>
-            <QuestionOutlineIcon display={['none', 'inline']} mb={'1px'} ml={1} />
-          </MyTooltip>
-        )}
-        <Box flex={1} />
-        {!forbidMenu && (
-          <MyMenu
-            offset={[-60, 5]}
-            width={120}
-            Button={
-              <MenuButton
-                className={'nodrag'}
-                _hover={{ bg: 'myWhite.600' }}
-                cursor={'pointer'}
-                borderRadius={'md'}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                <MyIcon name={'more'} w={'14px'} p={2} />
-              </MenuButton>
-            }
-            menuList={menuList}
-          />
-        )}
-      </Flex>
+      </Box>
       {children}
       <EditTitleModal />
       <ConfirmModal />

@@ -45,13 +45,19 @@ const JsonEditor = ({ inputs = [], item, moduleId }: RenderInputProps) => {
     [item, moduleId]
   );
 
+  const value = useMemo(() => {
+    if (typeof item.value === 'string') {
+      return item.value;
+    }
+    return JSON.stringify(item.value, null, 2);
+  }, [item.value]);
+
   return (
     <JSONEditor
-      title={t(item.label)}
-      bg={'myWhite.400'}
+      bg={'myGray.50'}
       placeholder={t(item.placeholder || '')}
       resize
-      value={item.value}
+      value={value}
       onChange={(e) => {
         update(e);
       }}

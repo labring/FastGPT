@@ -120,43 +120,39 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
         <Input flex={[1, '0 0 300px']} maxLength={30} {...register('name')} />
       </Flex>
-      {vectorModelList.length > 1 && (
-        <Flex mt={8} w={'100%'} alignItems={'center'}>
-          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-            {t('core.ai.model.Vector Model')}
-          </Box>
-          <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
-        </Flex>
-      )}
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.ai.model.Vector Model')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
+      </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.Max Token')}
         </Box>
         <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
       </Flex>
-      {datasetModelList.length > 1 && (
-        <Flex mt={6} alignItems={'center'}>
-          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-            {t('core.ai.model.Dataset Agent Model')}
-          </Box>
-          <Box flex={[1, '0 0 300px']}>
-            <MySelect
-              w={'100%'}
-              value={getValues('agentModel').model}
-              list={datasetModelList.map((item) => ({
-                label: item.name,
-                value: item.model
-              }))}
-              onchange={(e) => {
-                const agentModel = datasetModelList.find((item) => item.model === e);
-                if (!agentModel) return;
-                setValue('agentModel', agentModel);
-                setRefresh((state) => !state);
-              }}
-            />
-          </Box>
-        </Flex>
-      )}
+      <Flex mt={6} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.ai.model.Dataset Agent Model')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>
+          <MySelect
+            w={'100%'}
+            value={getValues('agentModel').model}
+            list={datasetModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onchange={(e) => {
+              const agentModel = datasetModelList.find((item) => item.model === e);
+              if (!agentModel) return;
+              setValue('agentModel', agentModel);
+              setRefresh((state) => !state);
+            }}
+          />
+        </Box>
+      </Flex>
 
       <Flex mt={8} alignItems={'center'} w={'100%'}>
         <Box flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</Box>

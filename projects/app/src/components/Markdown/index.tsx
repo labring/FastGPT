@@ -99,7 +99,7 @@ const Code = React.memo(function Code(e: any) {
         {children}
       </CodeLight>
     );
-  }, [codeType, className, inline, match, strChildren]);
+  }, [codeType, className, inline, match, children, strChildren]);
 
   return Component;
 });

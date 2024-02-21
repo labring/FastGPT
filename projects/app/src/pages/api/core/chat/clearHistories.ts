@@ -27,8 +27,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         const { tmbId } = await authCert({ req, authToken: true });
 
         return {
-          appId,
           tmbId,
+          appId,
           source: ChatSourceEnum.online
         };
       }
