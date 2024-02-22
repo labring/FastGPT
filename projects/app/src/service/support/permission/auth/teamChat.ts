@@ -5,7 +5,7 @@ import type {
   AuthOutLinkInitProps,
   AuthOutLinkResponse
 } from '@fastgpt/global/support/outLink/api.d';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/user/controller';
+import { getUserChatInfoAndAuthTeamPoints } from './team';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 export function authOutLinkInit(data: AuthOutLinkInitProps): Promise<AuthOutLinkResponse> {
@@ -35,10 +35,10 @@ export async function authTeamShareChatStart({
     throw new Error('can not find it');
   }
 
-  const userInfo = await getUserChatInfoAndAuthTeamPoints(String(tmb._id));
+  const { user } = await getUserChatInfoAndAuthTeamPoints(String(tmb._id));
 
   return {
-    user: userInfo,
+    user,
     uid: outLinkUid
   };
 }

@@ -63,6 +63,8 @@ const UserSchema = new Schema({
 });
 
 try {
+  // login
+  UserSchema.index({ username: 1, password: 1 });
   UserSchema.index({ createTime: -1 });
 } catch (error) {
   console.log(error);

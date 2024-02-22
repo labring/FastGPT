@@ -4,11 +4,11 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { connectToDatabase } from '@/service/mongo';
-import { authTeamBalance } from '@/service/support/permission/auth/team';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { getVectorModel } from '@/service/core/ai/model';
+import { checkTeamAIPoints } from '@/service/support/permission/teamLimit';
 
 type Props = {
   input: string | string[];
@@ -34,7 +34,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       authApiKey: true
     });
 
-    await authTeamBalance(teamId);
+    await checkTeamAIPoints(teamId);
 
     const { charsLength, vectors } = await getVectorsByText({
       input: query,
