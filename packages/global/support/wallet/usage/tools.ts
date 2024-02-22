@@ -9,9 +9,6 @@ import { AuthUserTypeEnum } from '../../permission/constant';
 export const formatStorePrice2Read = (val = 0, multiple = 1) => {
   return Number(((val / PRICE_SCALE) * multiple).toFixed(10));
 };
-export const formatModelPrice2Read = (val = 0) => {
-  return Number((val / 1000).toFixed(10));
-};
 
 export const getUsageSourceByAuthType = ({
   shareId,

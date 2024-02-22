@@ -616,6 +616,7 @@
         "Embedding Estimated Price Tips": "Index billing: {{price}}/1k chars",
         "Estimated Price": "Estimated Price: : {{amount}}{{unit}}",
         "Estimated Price Tips": "QA charges\nInput: 1k chars={{charsPointsPrice}} points",
+        "Estimated points": "About {{points}} points",
         "Fetch Error": "Get link failed",
         "Fetch Url": "Url",
         "Fetch url placeholder": "Up to 10 links, one per line.",

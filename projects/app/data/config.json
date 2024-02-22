@@ -69,7 +69,7 @@
       "maxTemperature": 1.2,
       "charsPointsPrice": 0,
       "censor": false,
-      "vision": false,
+      "vision": true,
       "datasetProcess": false,
       "toolChoice": true,
       "functionCall": false,

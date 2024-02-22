@@ -26,12 +26,7 @@ export const useUserStore = create<State>()(
         },
         setUserInfo(user: UserType | null) {
           set((state) => {
-            state.userInfo = user
-              ? {
-                  ...user,
-                  balance: formatStorePrice2Read(user.balance)
-                }
-              : null;
+            state.userInfo = user ? user : null;
           });
         },
         async updateUserInfo(user: UserUpdateParams) {

@@ -85,9 +85,7 @@ const SubSchema = new Schema({
 
 try {
   SubSchema.index({ teamId: 1, type: 1 });
-  SubSchema.index({ status: 1 });
-  SubSchema.index({ type: 1 });
-  SubSchema.index({ expiredTime: -1 });
+  SubSchema.index({ type: 1, expiredTime: -1 });
 } catch (error) {
   console.log(error);
 }

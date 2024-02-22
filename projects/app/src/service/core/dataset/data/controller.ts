@@ -388,7 +388,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           a: data.a,
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
-          collectionId: String(data.collectionId._id),
+          collectionId: String(data.collectionId?._id),
           sourceName: data.collectionId.name || '',
           sourceId: data.collectionId?.fileId || data.collectionId?.rawLink,
           score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
