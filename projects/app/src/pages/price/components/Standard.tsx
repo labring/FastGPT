@@ -52,12 +52,12 @@ const Standard = ({
             maxDatasetAmount: value.maxDatasetAmount,
             chatHistoryStoreDuration: value.chatHistoryStoreDuration,
             maxDatasetSize: value.maxDatasetSize,
-            customApiKey: value.customApiKey,
-            customCopyright: value.customCopyright,
+            permissionCustomApiKey: value.permissionCustomApiKey,
+            permissionCustomCopyright: value.permissionCustomCopyright,
             trainingWeight: value.trainingWeight,
-            reRankWeight: value.reRankWeight,
+            permissionReRank: value.permissionReRank,
             totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
-            websiteSyncInterval: value.websiteSyncInterval
+            permissionWebsiteSync: value.permissionWebsiteSync
           };
         })
       : [];
@@ -281,13 +281,13 @@ const Standard = ({
                     })}
                   </Box>
                 </Flex>
-                {!!item.reRankWeight && (
+                {!!item.permissionReRank && (
                   <Flex alignItems={'center'}>
                     <MyIcon name={'price/right'} w={'16px'} mr={3} />
                     <Box color={'myGray.600'}>检索结果重排</Box>
                   </Flex>
                 )}
-                {!!item.websiteSyncInterval && (
+                {!!item.permissionWebsiteSync && (
                   <Flex alignItems={'center'}>
                     <MyIcon name={'price/right'} w={'16px'} mr={3} />
                     <Box color={'myGray.600'}>Web站点同步</Box>
