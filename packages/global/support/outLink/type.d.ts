@@ -7,14 +7,14 @@ export type OutLinkSchema = {
   tmbId: string;
   appId: string;
   name: string;
-  total: number;
+  usagePoints: number;
   lastTime: Date;
   type: `${OutLinkTypeEnum}`;
   responseDetail: boolean;
   limit?: {
     expiredTime?: Date;
     QPM: number;
-    credit: number;
+    maxUsagePoints: number;
     hookUrl?: string;
   };
 };

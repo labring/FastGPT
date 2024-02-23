@@ -1,6 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
-import { pushQABill } from '@/service/support/wallet/bill/push';
-import { DatasetDataIndexTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import { pushQAUsage } from '@/service/support/wallet/usage/push';
+import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
@@ -9,12 +9,12 @@ import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { authTeamBalance } from '../support/permission/auth/bill';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { getLLMModel } from '../core/ai/model';
+import { checkTeamAIPoints } from '../support/permission/teamLimit';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -89,16 +89,16 @@ export async function generateQA(): Promise<any> {
 
   // auth balance
   try {
-    await authTeamBalance(data.teamId);
+    await checkTeamAIPoints(data.teamId);
   } catch (error: any) {
-    if (error?.statusText === UserErrEnum.balanceNotEnough) {
+    if (error?.statusText === TeamErrEnum.aiPointsNotEnough) {
       // send inform and lock data
       try {
         sendOneInform({
           type: 'system',
           title: '文本训练任务中止',
           content:
-            '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+            '该团队账号的AI积分不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
           tmbId: data.tmbId
         });
         console.log('余额不足，暂停【QA】生成任务');
@@ -161,7 +161,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     // add bill
     if (insertLen > 0) {
-      pushQABill({
+      pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
         charsLength: `${prompt}${answer}`.length,
@@ -230,7 +230,6 @@ function formatSplitText(text: string, rawText: string) {
         indexes: [
           {
             defaultIndex: true,
-            type: DatasetDataIndexTypeEnum.qa,
             text: `${q}\n${a.trim().replace(/\n\s*/g, '\n')}`
           }
         ]
@@ -248,7 +247,6 @@ function formatSplitText(text: string, rawText: string) {
         indexes: [
           {
             defaultIndex: true,
-            type: DatasetDataIndexTypeEnum.chunk,
             text: chunk
           }
         ]

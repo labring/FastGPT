@@ -19,14 +19,15 @@ export async function authOpenApiKey({ apikey }: { apikey: string }) {
     // auth limit
     // @ts-ignore
     if (global.feConfigs?.isPlus) {
-      await POST('/support/openapi/authLimit', { openApi } as AuthOpenApiLimitProps);
+      await POST('/support/openapi/authLimit', {
+        openApi: openApi.toObject()
+      } as AuthOpenApiLimitProps);
     }
 
     updateApiKeyUsedTime(openApi._id);
 
     return {
       apikey,
-      userId: String(openApi.userId),
       teamId: String(openApi.teamId),
       tmbId: String(openApi.tmbId),
       appId: openApi.appId || ''

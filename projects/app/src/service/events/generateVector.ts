@@ -4,10 +4,10 @@ import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { sendOneInform } from '../support/user/inform/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
+import { checkTeamAIPoints } from '../support/permission/teamLimit';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -93,16 +93,16 @@ export async function generateVector(): Promise<any> {
 
   // auth balance
   try {
-    await authTeamBalance(data.teamId);
+    await checkTeamAIPoints(data.teamId);
   } catch (error: any) {
-    if (error?.statusText === UserErrEnum.balanceNotEnough) {
+    if (error?.statusText === TeamErrEnum.aiPointsNotEnough) {
       // send inform and lock data
       try {
         sendOneInform({
           type: 'system',
           title: '文本训练任务中止',
           content:
-            '该团队账号余额不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
+            '该团队账号AI积分不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
           tmbId: data.tmbId
         });
         console.log('余额不足，暂停【向量】生成任务');
@@ -138,7 +138,7 @@ export async function generateVector(): Promise<any> {
     });
 
     // push bill
-    pushGenerateVectorBill({
+    pushGenerateVectorUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
       charsLength,

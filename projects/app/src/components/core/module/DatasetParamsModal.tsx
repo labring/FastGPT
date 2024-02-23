@@ -27,6 +27,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Tabs from '@/components/Tabs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import SelectAiModel from '@/components/Select/SelectAiModel';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -61,6 +63,8 @@ const DatasetParamsModal = ({
 }: DatasetParamsProps & { onClose: () => void; onSuccess: (e: DatasetParamsProps) => void }) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { toast } = useToast();
+  const { teamPlanStatus } = useUserStore();
   const { reRankModelList, llmModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
@@ -71,7 +75,7 @@ const DatasetParamsModal = ({
       limit,
       similarity,
       searchMode,
-      usingReRank,
+      usingReRank: !!usingReRank && !!teamPlanStatus?.standardConstants?.permissionReRank,
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel: datasetSearchExtensionModel ?? llmModelList[0]?.model,
       datasetSearchExtensionBg
@@ -104,6 +108,10 @@ const DatasetParamsModal = ({
 
     return true;
   }, [getValues, similarity]);
+
+  const showReRank = useMemo(() => {
+    return usingReRank !== undefined && reRankModelList.length > 0;
+  }, [reRankModelList.length, usingReRank]);
 
   return (
     <MyModal
@@ -148,7 +156,7 @@ const DatasetParamsModal = ({
                 setRefresh(!refresh);
               }}
             />
-            {usingReRank !== undefined && reRankModelList.length > 0 && (
+            {showReRank && (
               <>
                 <Divider my={4} />
                 <Flex
@@ -168,6 +176,12 @@ const DatasetParamsModal = ({
                       }
                     : {})}
                   onClick={(e) => {
+                    if (!teamPlanStatus?.standardConstants?.permissionReRank) {
+                      return toast({
+                        status: 'warning',
+                        title: t('support.team.limit.No permission rerank')
+                      });
+                    }
                     setValue('usingReRank', !getValues('usingReRank'));
                     setRefresh((state) => !state);
                   }}
@@ -273,7 +287,7 @@ const DatasetParamsModal = ({
         {currentTabType === SearchSettingTabEnum.queryExtension && (
           <Box>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('core.module.template.Query extension intro')}
+              {t('core.dataset.Query extension intro')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
               <Box flex={'1 0 0'}>{t('core.dataset.search.Using query extension')}</Box>

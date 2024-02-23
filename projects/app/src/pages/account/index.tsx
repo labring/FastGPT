@@ -14,18 +14,16 @@ import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
+const UsageTable = dynamic(() => import('./components/UsageTable'));
 const BillTable = dynamic(() => import('./components/BillTable'));
-const PayRecordTable = dynamic(() => import('./components/PayRecordTable'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
-const PriceBox = dynamic(() => import('@/components/support/wallet/Price'));
 
 enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
+  'usage' = 'usage',
   'bill' = 'bill',
-  'price' = 'price',
-  'pay' = 'pay',
   'inform' = 'inform',
   'apikey' = 'apikey',
   'loginout' = 'loginout'
@@ -45,27 +43,18 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs?.isPlus
       ? [
           {
-            icon: 'support/bill/billRecordLight',
+            icon: 'support/usage/usageRecordLight',
             label: t('user.Usage Record'),
-            id: TabEnum.bill
+            id: TabEnum.usage
           }
         ]
       : []),
     ...(feConfigs?.show_pay && userInfo?.team.canWrite
       ? [
           {
-            icon: 'support/pay/payRecordLight',
-            label: t('user.Recharge Record'),
-            id: TabEnum.pay
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_pay
-      ? [
-          {
-            icon: 'support/pay/priceLight',
-            label: t('support.user.Price'),
-            id: TabEnum.price
+            icon: 'support/bill/payRecordLight',
+            label: t('support.wallet.Bills'),
+            id: TabEnum.bill
           }
         ]
       : []),
@@ -108,11 +97,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { openConfirm, ConfirmModal } = useConfirm({
     content: '确认退出登录？'
   });
-  const {
-    isOpen: isOpenPriceBox,
-    onOpen: onOpenPriceBox,
-    onClose: onClosePriceBox
-  } = useDisclosure();
 
   const router = useRouter();
   const theme = useTheme();
@@ -124,8 +108,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           setUserInfo(null);
           router.replace('/login');
         })();
-      } else if (tab === TabEnum.price) {
-        onOpenPriceBox();
       } else {
         router.replace({
           query: {
@@ -134,7 +116,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         });
       }
     },
-    [onOpenPriceBox, openConfirm, router, setUserInfo]
+    [openConfirm, router, setUserInfo]
   );
 
   return (
@@ -178,16 +160,14 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
             {currentTab === TabEnum.info && <UserInfo />}
             {currentTab === TabEnum.promotion && <Promotion />}
+            {currentTab === TabEnum.usage && <UsageTable />}
             {currentTab === TabEnum.bill && <BillTable />}
-            {currentTab === TabEnum.pay && <PayRecordTable />}
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}
           </Box>
         </Flex>
         <ConfirmModal />
       </PageContainer>
-
-      {isOpenPriceBox && <PriceBox onClose={onClosePriceBox} />}
     </>
   );
 };

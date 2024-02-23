@@ -1,6 +1,5 @@
 import React, { useContext, useCallback, createContext, useState, useMemo, useEffect } from 'react';
 
-import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
@@ -34,7 +33,7 @@ type useImportStoreType = {
   totalChunkChars: number;
   totalChunks: number;
   chunkSize: number;
-  predictPrice: number;
+  predictPoints: number;
   priceTip: string;
   uploadRate: number;
   splitSources2Chunks: () => void;
@@ -54,7 +53,7 @@ const StateContext = createContext<useImportStoreType>({
   totalChunkChars: 0,
   totalChunks: 0,
   chunkSize: 0,
-  predictPrice: 0,
+  predictPoints: 0,
   priceTip: '',
   uploadRate: 50,
   splitSources2Chunks: () => {}
@@ -105,10 +104,9 @@ const Provider = ({
       chunkSize: embeddingChunkSize,
       showChunkInput: true,
       showPromptInput: false,
-      inputPrice: vectorModel.inputPrice,
-      outputPrice: 0,
+      charsPointsPrice: vectorModel.charsPointsPrice,
       priceTip: t('core.dataset.import.Embedding Estimated Price Tips', {
-        price: vectorModel.inputPrice
+        price: vectorModel.charsPointsPrice
       }),
       uploadRate: 150
     },
@@ -120,10 +118,9 @@ const Provider = ({
       chunkSize: agentModel.maxContext * 0.55 || 6000,
       showChunkInput: false,
       showPromptInput: true,
-      inputPrice: agentModel.inputPrice,
-      outputPrice: agentModel.outputPrice,
+      charsPointsPrice: agentModel.charsPointsPrice,
       priceTip: t('core.dataset.import.QA Estimated Price Tips', {
-        price: agentModel?.inputPrice
+        price: agentModel?.charsPointsPrice
       }),
       uploadRate: 30
     }
@@ -151,15 +148,12 @@ const Provider = ({
     () => sources.reduce((sum, file) => sum + file.chunkChars, 0),
     [sources]
   );
-  const predictPrice = useMemo(() => {
+  const predictPoints = useMemo(() => {
     if (mode === TrainingModeEnum.qa) {
-      const inputTotal = totalChunkChars * selectModelStaticParam.inputPrice;
-      const outputTotal = totalChunkChars * 0.5 * selectModelStaticParam.inputPrice;
-
-      return formatModelPrice2Read(inputTotal + outputTotal);
+      return +(((totalChunkChars * 1.5) / 1000) * agentModel.charsPointsPrice).toFixed(2);
     }
-    return formatModelPrice2Read(totalChunkChars * selectModelStaticParam.inputPrice);
-  }, [mode, selectModelStaticParam.inputPrice, totalChunkChars]);
+    return +((totalChunkChars / 1000) * vectorModel.charsPointsPrice).toFixed(2);
+  }, [agentModel.charsPointsPrice, mode, totalChunkChars, vectorModel.charsPointsPrice]);
   const totalChunks = useMemo(
     () => sources.reduce((sum, file) => sum + file.chunks.length, 0),
     [sources]
@@ -178,7 +172,8 @@ const Provider = ({
         return {
           ...file,
           chunkChars: chars,
-          chunks: chunks.map((chunk) => ({
+          chunks: chunks.map((chunk, i) => ({
+            chunkIndex: i,
             q: chunk,
             a: ''
           }))
@@ -198,7 +193,7 @@ const Provider = ({
     totalChunkChars,
     totalChunks,
     chunkSize,
-    predictPrice,
+    predictPoints,
     splitSources2Chunks
   };
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;

@@ -1,4 +1,7 @@
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type {
+  ModuleDispatchProps,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type.d';
 import { dispatchModules } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import {
@@ -14,10 +17,9 @@ type RunPluginProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.pluginId]: string;
   [key: string]: any;
 }>;
-type RunPluginResponse = {
+type RunPluginResponse = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.answerText]: string;
-  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
-};
+}>;
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
@@ -58,7 +60,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return params;
   })();
 
-  const { responseData, answerText } = await dispatchModules({
+  const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
     ...props,
     modules: plugin.modules.map((module) => ({
       ...module,
@@ -76,9 +78,9 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   return {
     answerText,
     // responseData, // debug
-    responseData: {
+    [ModuleOutputKeyEnum.responseData]: {
       moduleLogo: plugin.avatar,
-      price: responseData.reduce((sum, item) => sum + (item.price || 0), 0),
+      totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
       runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0),
       pluginOutput: output?.pluginOutput,
       pluginDetail:
@@ -89,6 +91,14 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             })
           : undefined
     },
+    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+      {
+        moduleName: plugin.name,
+        totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
+        model: plugin.name,
+        charsLength: 0
+      }
+    ],
     ...(output ? output.pluginOutput : {})
   };
 };

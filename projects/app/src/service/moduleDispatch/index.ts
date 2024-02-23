@@ -23,11 +23,12 @@ import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttpRequest } from './tools/http';
 import { dispatchHttp468Request } from './tools/http468';
 import { dispatchAppRequest } from './tools/runApp';
-import { dispatchCFR } from './tools/cfr';
+import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 import { valueTypeFormat } from './utils';
+import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -44,7 +45,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
-  [FlowNodeTypeEnum.cfr]: dispatchCFR,
+  [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
 
   // none
   [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()
@@ -82,16 +83,19 @@ export async function dispatchModules({
   // let storeData: Record<string, any> = {}; // after module used
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAnswerText = ''; // AI answer
+  let chatModuleBills: ChatModuleBillType[] = [];
   let runningTime = Date.now();
 
   function pushStore(
     { inputs = [] }: RunningModuleItemType,
     {
       answerText = '',
-      responseData
+      responseData,
+      moduleDispatchBills
     }: {
       answerText?: string;
       responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
+      moduleDispatchBills?: ChatModuleBillType[];
     }
   ) {
     const time = Date.now();
@@ -104,6 +108,9 @@ export async function dispatchModules({
           runningTime: +((time - runningTime) / 1000).toFixed(2)
         });
       }
+    }
+    if (moduleDispatchBills) {
+      chatModuleBills = chatModuleBills.concat(moduleDispatchBills);
     }
     runningTime = time;
 
@@ -158,6 +165,7 @@ export async function dispatchModules({
     const filterModules = nextRunModules.filter((module) => {
       if (set.has(module.moduleId)) return false;
       set.add(module.moduleId);
+      ``;
       return true;
     });
 
@@ -199,8 +207,7 @@ export async function dispatchModules({
       user,
       stream,
       detail,
-      outputs: module.outputs,
-      inputs: module.inputs,
+      module,
       params
     };
 
@@ -237,10 +244,11 @@ export async function dispatchModules({
         ? params[ModuleOutputKeyEnum.userChatInput]
         : undefined,
       ...dispatchRes,
-      [ModuleOutputKeyEnum.responseData]: formatResponseData
+      [ModuleOutputKeyEnum.responseData]: formatResponseData,
+      [ModuleOutputKeyEnum.moduleDispatchBills]:
+        dispatchRes[ModuleOutputKeyEnum.moduleDispatchBills]
     });
   }
-
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
 
@@ -266,7 +274,8 @@ export async function dispatchModules({
 
   return {
     [ModuleOutputKeyEnum.answerText]: chatAnswerText,
-    [ModuleOutputKeyEnum.responseData]: chatResponse
+    [ModuleOutputKeyEnum.responseData]: chatResponse,
+    [ModuleOutputKeyEnum.moduleDispatchBills]: chatModuleBills
   };
 }
 

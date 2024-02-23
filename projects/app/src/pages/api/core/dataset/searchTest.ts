@@ -4,14 +4,16 @@ import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/api.d';
 import { connectToDatabase } from '@/service/mongo';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
-import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel } from '@/service/core/ai/model';
-import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
+import {
+  checkTeamAIPoints,
+  checkTeamReRankPermission
+} from '@/service/support/permission/teamLimit';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -43,7 +45,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       per: 'r'
     });
     // auth balance
-    await authTeamBalance(teamId);
+    await checkTeamAIPoints(teamId);
 
     // query extension
     const extensionModel =
@@ -65,28 +67,27 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       similarity,
       datasetIds: [datasetId],
       searchMode,
-      usingReRank
+      usingReRank: usingReRank && (await checkTeamReRankPermission(teamId))
     });
 
     // push bill
-    const { total } = pushGenerateVectorBill({
+    const { totalPoints } = pushGenerateVectorUsage({
       teamId,
       tmbId,
       charsLength,
       model: dataset.vectorModel,
-      source: apikey ? BillSourceEnum.api : BillSourceEnum.fastgpt,
+      source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 
       ...(aiExtensionResult &&
         extensionModel && {
           extensionModel: extensionModel.name,
-          extensionInputTokens: aiExtensionResult.inputTokens,
-          extensionOutputTokens: aiExtensionResult.outputTokens
+          extensionCharsLength: aiExtensionResult.charsLength
         })
     });
     if (apikey) {
       updateApiKeyUsage({
         apikey,
-        usage: total
+        totalPoints: totalPoints
       });
     }
 

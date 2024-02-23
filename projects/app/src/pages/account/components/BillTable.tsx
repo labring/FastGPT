@@ -1,5 +1,6 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import {
+  Button,
   Table,
   Thead,
   Tbody,
@@ -9,43 +10,38 @@ import {
   TableContainer,
   Flex,
   Box,
-  Button
+  ModalBody
 } from '@chakra-ui/react';
-import { BillSourceEnum, BillSourceMap } from '@fastgpt/global/support/wallet/bill/constants';
-import { getUserBills } from '@/web/support/wallet/bill/api';
-import type { BillItemType } from '@fastgpt/global/support/wallet/bill/type';
-import { usePagination } from '@/web/common/hooks/usePagination';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { getBills, checkBalancePayResult } from '@/web/support/wallet/bill/api';
+import type { BillSchemaType } from '@fastgpt/global/support/wallet/bill/type.d';
 import dayjs from 'dayjs';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
-import { addDays } from 'date-fns';
-import dynamic from 'next/dynamic';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import MySelect from '@/components/Select';
-import { useQuery } from '@tanstack/react-query';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { getTeamMembers } from '@/web/support/user/team/api';
-import Avatar from '@/components/Avatar';
-const BillDetail = dynamic(() => import('./BillDetail'));
+import {
+  BillTypeEnum,
+  billPayWayMap,
+  billStatusMap,
+  billTypeMap
+} from '@fastgpt/global/support/wallet/bill/constants';
+import { usePagination } from '@/web/common/hooks/usePagination';
+import MyBox from '@/components/common/MyBox';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import MyModal from '@/components/MyModal';
+import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
 
 const BillTable = () => {
   const { t } = useTranslation();
-  const { Loading } = useLoading();
-  const [dateRange, setDateRange] = useState<DateRangeType>({
-    from: addDays(new Date(), -7),
-    to: new Date()
-  });
-  const [billSource, setBillSource] = useState<`${BillSourceEnum}` | ''>('');
-  const { isPc } = useSystemStore();
-  const { userInfo } = useUserStore();
-  const [billDetail, setBillDetail] = useState<BillItemType>();
+  const { toast } = useToast();
+  const [billType, setBillType] = useState<`${BillTypeEnum}` | ''>('');
+  const [billDetail, setBillDetail] = useState<BillSchemaType>();
 
-  const sourceList = useMemo(
+  const billTypeList = useMemo(
     () => [
       { label: t('common.All'), value: '' },
-      ...Object.entries(BillSourceMap).map(([key, value]) => ({
+      ...Object.entries(billTypeMap).map(([key, value]) => ({
         label: t(value.label),
         value: key
       }))
@@ -53,134 +49,193 @@ const BillTable = () => {
     [t]
   );
 
-  const [selectTmbId, setSelectTmbId] = useState(userInfo?.team?.tmbId);
-  const { data: members = [] } = useQuery(['getMembers', userInfo?.team?.teamId], () => {
-    if (!userInfo?.team?.teamId) return [];
-    return getTeamMembers(userInfo.team.teamId);
-  });
-  const tmbList = useMemo(
-    () =>
-      members.map((item) => ({
-        label: (
-          <Flex alignItems={'center'}>
-            <Avatar src={item.avatar} w={'16px'} mr={1} />
-            {item.memberName}
-          </Flex>
-        ),
-        value: item.tmbId
-      })),
-    [members]
-  );
-
   const {
     data: bills,
     isLoading,
     Pagination,
-    getData
-  } = usePagination<BillItemType>({
-    api: getUserBills,
-    pageSize: isPc ? 20 : 10,
+    getData,
+    total
+  } = usePagination<BillSchemaType>({
+    api: getBills,
+    pageSize: 20,
     params: {
-      dateStart: dateRange.from || new Date(),
-      dateEnd: addDays(dateRange.to || new Date(), 1),
-      source: billSource,
-      teamMemberId: selectTmbId
+      type: billType
     },
     defaultRequest: false
   });
 
+  const { mutate: handleRefreshPayOrder, isLoading: isRefreshing } = useRequest({
+    mutationFn: async (payId: string) => {
+      try {
+        const data = await checkBalancePayResult(payId);
+        toast({
+          title: data,
+          status: 'success'
+        });
+      } catch (error: any) {
+        toast({
+          title: error?.message,
+          status: 'warning'
+        });
+        console.log(error);
+      }
+      try {
+        getData(1);
+      } catch (error) {}
+    }
+  });
+
   useEffect(() => {
     getData(1);
-  }, [billSource, selectTmbId]);
+  }, [billType]);
 
   return (
-    <Flex flexDirection={'column'} py={[0, 5]} h={'100%'} position={'relative'}>
-      <Flex
-        flexDir={['column', 'row']}
-        gap={2}
-        w={'100%'}
-        px={[3, 8]}
-        alignItems={['flex-end', 'center']}
-      >
-        {tmbList.length > 1 && userInfo?.team?.canWrite && (
-          <Flex alignItems={'center'}>
-            <Box mr={2} flexShrink={0}>
-              {t('support.user.team.member')}
-            </Box>
-            <MySelect
-              size={'sm'}
-              minW={'100px'}
-              list={tmbList}
-              value={selectTmbId}
-              onchange={setSelectTmbId}
-            />
-          </Flex>
-        )}
-        <Box flex={'1'} />
-        <Flex alignItems={'center'} gap={3}>
-          <DateRangePicker
-            defaultDate={dateRange}
-            position="bottom"
-            onChange={setDateRange}
-            onSuccess={() => getData(1)}
-          />
-          <Pagination />
-        </Flex>
-      </Flex>
-      <TableContainer px={[3, 8]} position={'relative'} flex={'1 0 0'} h={0} overflowY={'auto'}>
+    <MyBox
+      isLoading={isLoading || isRefreshing}
+      position={'relative'}
+      h={'100%'}
+      overflow={'overlay'}
+      py={[0, 5]}
+      px={[3, 8]}
+    >
+      <TableContainer>
         <Table>
           <Thead>
             <Tr>
-              {/* <Th>{t('user.team.Member Name')}</Th> */}
-              <Th>{t('user.Time')}</Th>
+              <Th>#</Th>
               <Th>
                 <MySelect
-                  list={sourceList}
-                  value={billSource}
+                  list={billTypeList}
+                  value={billType}
                   size={'sm'}
                   onchange={(e) => {
-                    setBillSource(e);
+                    setBillType(e);
                   }}
                   w={'130px'}
                 ></MySelect>
               </Th>
-              <Th>{t('user.Application Name')}</Th>
-              <Th>{t('user.Total Amount')}</Th>
+              <Th>{t('user.Time')}</Th>
+              <Th>{t('support.wallet.Amount')}</Th>
+              <Th>{t('support.wallet.bill.Status')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
-            {bills.map((item) => (
-              <Tr key={item.id}>
-                {/* <Td>{item.memberName}</Td> */}
-                <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
-                <Td>{t(BillSourceMap[item.source]?.label)}</Td>
-                <Td>{t(item.appName) || '-'}</Td>
-                <Td>{item.total}元</Td>
+            {bills.map((item, i) => (
+              <Tr key={item._id}>
+                <Td>{i + 1}</Td>
+                <Td>{t(billTypeMap[item.type]?.label)}</Td>
                 <Td>
-                  <Button size={'sm'} variant={'whitePrimary'} onClick={() => setBillDetail(item)}>
-                    详情
+                  {item.createTime ? dayjs(item.createTime).format('YYYY/MM/DD HH:mm:ss') : '-'}
+                </Td>
+                <Td>{formatStorePrice2Read(item.price)}元</Td>
+                <Td>{t(billStatusMap[item.status]?.label)}</Td>
+                <Td>
+                  {item.status === 'NOTPAY' && (
+                    <Button mr={4} onClick={() => handleRefreshPayOrder(item._id)} size={'sm'}>
+                      {t('common.Update')}
+                    </Button>
+                  )}
+                  <Button variant={'whiteBase'} size={'sm'} onClick={() => setBillDetail(item)}>
+                    {t('common.Detail')}
                   </Button>
                 </Td>
               </Tr>
             ))}
           </Tbody>
         </Table>
+        {total >= 20 && (
+          <Flex mt={3} justifyContent={'flex-end'}>
+            <Pagination />
+          </Flex>
+        )}
+        {!isLoading && bills.length === 0 && (
+          <Flex
+            mt={'20vh'}
+            flexDirection={'column'}
+            alignItems={'center'}
+            justifyContent={'center'}
+          >
+            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
+            <Box mt={2} color={'myGray.500'}>
+              {t('support.wallet.noBill')}
+            </Box>
+          </Flex>
+        )}
       </TableContainer>
 
-      {!isLoading && bills.length === 0 && (
-        <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            无使用记录~
-          </Box>
-        </Flex>
+      {!!billDetail && (
+        <BillDetailModal bill={billDetail} onClose={() => setBillDetail(undefined)} />
       )}
-
-      <Loading loading={isLoading} fixed={false} />
-      {!!billDetail && <BillDetail bill={billDetail} onClose={() => setBillDetail(undefined)} />}
-    </Flex>
+    </MyBox>
   );
 };
 
-export default React.memo(BillTable);
+export default BillTable;
+
+function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () => void }) {
+  const { t } = useTranslation();
+
+  return (
+    <MyModal
+      isOpen={true}
+      onClose={onClose}
+      iconSrc="/imgs/modal/bill.svg"
+      title={t('support.wallet.usage.Usage Detail')}
+      maxW={['90vw', '700px']}
+    >
+      <ModalBody>
+        <Flex alignItems={'center'} pb={4}>
+          <Box flex={'0 0 120px'}>{t('support.wallet.bill.Number')}:</Box>
+          <Box>{bill.orderId}</Box>
+        </Flex>
+        <Flex alignItems={'center'} pb={4}>
+          <Box flex={'0 0 120px'}>{t('support.wallet.usage.Time')}:</Box>
+          <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
+        </Flex>
+        <Flex alignItems={'center'} pb={4}>
+          <Box flex={'0 0 120px'}>{t('support.wallet.bill.Status')}:</Box>
+          <Box>{t(billStatusMap[bill.status]?.label)}</Box>
+        </Flex>
+        {!!bill.metadata?.payWay && (
+          <Flex alignItems={'center'} pb={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.bill.payWay.Way')}:</Box>
+            <Box>{t(billPayWayMap[bill.metadata.payWay]?.label)}</Box>
+          </Flex>
+        )}
+        <Flex alignItems={'center'} pb={4}>
+          <Box flex={'0 0 120px'}>{t('support.wallet.Amount')}:</Box>
+          <Box>{formatStorePrice2Read(bill.price)}元</Box>
+        </Flex>
+        <Flex alignItems={'center'} pb={4}>
+          <Box flex={'0 0 120px'}>{t('support.wallet.bill.Type')}:</Box>
+          <Box>{t(billTypeMap[bill.type]?.label)}</Box>
+        </Flex>
+        {!!bill.metadata?.subMode && (
+          <Flex alignItems={'center'} pb={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.mode.Period')}:</Box>
+            <Box>{t(subModeMap[bill.metadata.subMode]?.label)}</Box>
+          </Flex>
+        )}
+        {!!bill.metadata?.standSubLevel && (
+          <Flex alignItems={'center'} pb={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Stand plan level')}:</Box>
+            <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label)}</Box>
+          </Flex>
+        )}
+        {bill.metadata?.datasetSize !== undefined && (
+          <Flex alignItems={'center'} pb={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra dataset size')}:</Box>
+            <Box>{bill.metadata?.datasetSize}</Box>
+          </Flex>
+        )}
+        {bill.metadata?.extraPoints !== undefined && (
+          <Flex alignItems={'center'} pb={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra ai points')}:</Box>
+            <Box>{bill.metadata.extraPoints}</Box>
+          </Flex>
+        )}
+      </ModalBody>
+    </MyModal>
+  );
+}
