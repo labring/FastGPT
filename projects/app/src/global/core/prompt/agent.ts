@@ -24,7 +24,7 @@ A2:
 
 <context>
 {{text}}
-<context/>
+</context>
 `
 };
 
