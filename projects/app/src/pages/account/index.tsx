@@ -12,7 +12,7 @@ import UserInfo from './components/InforNew';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/global/support/wallet/constants';
+import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));

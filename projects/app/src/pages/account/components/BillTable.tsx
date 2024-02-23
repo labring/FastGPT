@@ -31,7 +31,6 @@ import MyBox from '@/components/common/MyBox';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyModal from '@/components/MyModal';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { formatNumber2Million } from '@fastgpt/global/common/math/tools';
 
 const BillTable = () => {
   const { t } = useTranslation();
@@ -233,7 +232,7 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
         {bill.metadata?.extraPoints !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra ai points')}:</Box>
-            <Box>{formatNumber2Million(bill.metadata.extraPoints)}百万</Box>
+            <Box>{bill.metadata.extraPoints}</Box>
           </Flex>
         )}
       </ModalBody>

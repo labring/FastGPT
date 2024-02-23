@@ -14,16 +14,16 @@ const FAQ = () => {
       desc: '当前套餐价格大于新套餐时，无法立即切换，将会在当前套餐过期后以“续费”形式进行切换。\n当前套餐价格小于新套餐时，系统会自动计算当前套餐剩余余额，您可支付差价进行套餐切换。'
     },
     {
-      title: '知识库索引怎么计算？',
-      desc: '知识库索引是系统存储的最小单位。每条知识库数据可能会有多条索引，你可以在知识库数据的编辑面板，查看该数据的索引数量和具体内容。'
-    },
-    {
       title: '什么是AI积分？',
       desc: '每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“AI 积分计算标准”。'
     },
     {
       title: 'AI积分会过期么？',
-      desc: '会过期。当前套餐过期后，AI积分将会清空，并更新为新套餐的AI积分。'
+      desc: '会过期。当前套餐过期后，AI积分将会清空，并更新为新套餐的AI积分。年度套餐的AI积分时长为1年，而不是每个月。'
+    },
+    {
+      title: '知识库索引怎么计算？',
+      desc: '知识库索引是系统存储的最小单位。通常每条知识库数据对应一条索引，但也会有多条索引的情况。你可以在知识库数据的编辑面板，查看该数据的索引数量和具体内容。'
     },
     {
       title: '额外资源包可以叠加么？',
@@ -54,8 +54,8 @@ const FAQ = () => {
         {faqs.map((item, i) => (
           <Box
             key={i}
-            py={2}
-            px={4}
+            py={4}
+            px={5}
             borderRadius={'lg'}
             borderWidth={'1px'}
             borderColor={'myGray.150'}
@@ -64,10 +64,8 @@ const FAQ = () => {
               borderColor: 'primary.300'
             }}
           >
-            <Box fontSize={'lg'} fontWeight={'500'}>
-              {item.title}
-            </Box>
-            <Box color={'myGray.500'} whiteSpace={'pre-wrap'}>
+            <Box fontWeight={'bold'}>{item.title}</Box>
+            <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
               {item.desc}
             </Box>
           </Box>

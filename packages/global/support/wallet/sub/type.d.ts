@@ -3,8 +3,8 @@ import { StandardSubLevelEnum, SubModeEnum, SubStatusEnum, SubTypeEnum } from '.
 // Content of plan
 export type TeamStandardSubPlanItemType = {
   price: number; // read price / month
-  pointPrice: number; // read price/ one ten thousand
-  totalPoints: number; // n ten thousand
+  pointPrice: number; // read price/ one thousand
+  totalPoints: number; // n
   maxTeamMember: number;
   maxAppAmount: number; // max app or plugin amount
   maxDatasetAmount: number;

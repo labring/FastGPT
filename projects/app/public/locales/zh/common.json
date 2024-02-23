@@ -865,8 +865,8 @@
           "Ai response content": "将在 stream 回复完毕后触发",
           "New context": "将本次回复内容拼接上历史记录，作为新的上下文返回",
           "Quote": "始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器",
-          "running done": "模块调用结束时触发",
-          "query extension result": "以字符串数组的形式输出，可将该结果直接连接到“知识库搜索”的“用户问题”中，建议不要连接到“AI对话”的“用户问题”中"
+          "query extension result": "以字符串数组的形式输出，可将该结果直接连接到“知识库搜索”的“用户问题”中，建议不要连接到“AI对话”的“用户问题”中",
+          "running done": "模块调用结束时触发"
         },
         "label": {
           "Ai response content": "AI回复内容",
@@ -1274,7 +1274,7 @@
           "Max dataset": "{{amount}} 个知识库",
           "Max dataset size": "{{amount}} 组知识库索引",
           "Max members": "{{amount}} 个团队成员",
-          "Points": "{{amount}}万AI积分"
+          "Points": "{{amount}} AI积分"
         },
         "mode": {
           "Month": "按月",
@@ -1285,9 +1285,8 @@
         "standardSubLevel": {
           "enterprise": "企业版",
           "experience": "体验版",
-          "experience desc": "可使用 {{title}} 的完整功能",
           "free": "免费版",
-          "free desc": "每月均可免费使用 {{title}} 的基础功能",
+          "free desc": "每月均可免费使用基础功能，15天不活跃时，将会清除知识库",
           "team": "团队版"
         },
         "type": {
