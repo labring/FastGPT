@@ -11,12 +11,13 @@ import {
   TrainingModeEnum,
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
-import { checkDatasetLimit } from '@/service/support/permission/teamLimit';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
+import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -42,7 +43,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 1. check dataset limit
     await checkDatasetLimit({
       teamId,
-      insertLen: predictDataLimitLength(trainingType, new Array(10))
+      insertLen: predictDataLimitLength(trainingType, new Array(10)),
+      standardPlans: getStandardSubPlan()
     });
 
     const { _id: collectionId } = await mongoSessionRun(async (session) => {
@@ -64,11 +66,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
 
       // 3. create bill and start sync
-      const { billId } = await createTrainingUsage({
+      const { billId } = await createTrainingBill({
         teamId,
         tmbId,
         appName: 'core.dataset.collection.Sync Collection',
-        billSource: UsageSourceEnum.training,
+        billSource: BillSourceEnum.training,
         vectorModel: getVectorModel(dataset.vectorModel).name,
         agentModel: getLLMModel(dataset.agentModel).name,
         session

@@ -15,7 +15,7 @@
     "nextjs-cors": "^2.1.2",
     "node-cron": "^3.0.3",
     "pg": "^8.10.0",
-    "date-fns": "2.30.0",
+    "date-fns": "^2.30.0",
     "tunnel": "^0.0.6"
   },
   "devDependencies": {

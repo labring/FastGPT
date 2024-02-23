@@ -9,22 +9,10 @@ export type TeamSchema = {
   createTime: Date;
   balance: number;
   maxSize: number;
-  tagsUrl: string;
   limit: {
     lastExportDatasetTime: Date;
     lastWebsiteSyncTime: Date;
   };
-};
-export type tagsType = {
-  label: string,
-  key: string
-}
-export type TeamTagsSchema = {
-  _id: string;
-  label: string;
-  teamId: string;
-  key: string;
-  createTime: Date;
 };
 
 export type TeamMemberSchema = {
@@ -38,13 +26,13 @@ export type TeamMemberSchema = {
   defaultTeam: boolean;
 };
 
-export type TeamMemberWithUserSchema = Omit<TeamMemberSchema, 'userId'> & {
+export type TeamMemberWithUserSchema = TeamMemberSchema & {
   userId: UserModelSchema;
 };
-export type TeamMemberWithTeamSchema = Omit<TeamMemberSchema, 'teamId'> & {
+export type TeamMemberWithTeamSchema = TeamMemberSchema & {
   teamId: TeamSchema;
 };
-export type TeamMemberWithTeamAndUserSchema = Omit<TeamMemberWithTeamSchema, 'userId'> & {
+export type TeamMemberWithTeamAndUserSchema = TeamMemberWithTeamSchema & {
   userId: UserModelSchema;
 };
 

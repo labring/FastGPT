@@ -8,21 +8,15 @@ export function updateApiKeyUsedTime(id: string) {
   });
 }
 
-export function updateApiKeyUsage({
-  apikey,
-  totalPoints
-}: {
-  apikey: string;
-  totalPoints: number;
-}) {
+export function updateApiKeyUsage({ apikey, usage }: { apikey: string; usage: number }) {
   MongoOpenApi.findOneAndUpdate(
     { apiKey: apikey },
     {
       $inc: {
-        usagePoints: totalPoints
+        usage
       }
     }
   ).catch((err) => {
-    console.log('update apiKey totalPoints error', err);
+    console.log('update apiKey usage error', err);
   });
 }

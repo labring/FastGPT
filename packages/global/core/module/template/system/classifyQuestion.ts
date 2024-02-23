@@ -24,7 +24,7 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
     Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectLLMModel,
+      type: FlowNodeInputTypeEnum.selectCQModel,
       valueType: ModuleIOValueTypeEnum.string,
       label: 'core.module.input.label.Classify model',
       required: true,

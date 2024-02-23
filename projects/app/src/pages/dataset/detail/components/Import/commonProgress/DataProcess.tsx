@@ -46,7 +46,7 @@ function DataProcess({
     maxChunkSize,
     totalChunkChars,
     totalChunks,
-    predictPoints,
+    predictPrice,
     showRePreview,
     splitSources2Chunks,
     priceTip
@@ -275,7 +275,7 @@ function DataProcess({
             {feConfigs?.show_pay && (
               <MyTooltip label={priceTip}>
                 <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
-                  {t('core.dataset.import.Estimated points', { points: predictPoints })}
+                  {t('core.dataset.import.Estimated Price', { amount: predictPrice, unit: '元' })}
                 </Tag>
               </MyTooltip>
             )}

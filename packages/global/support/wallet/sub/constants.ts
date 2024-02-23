@@ -1,3 +1,5 @@
+export const POINTS_SCALE = 10000;
+
 export enum SubTypeEnum {
   standard = 'standard',
   extraDatasetSize = 'extraDatasetSize',
@@ -17,15 +19,19 @@ export const subTypeMap = {
 
 export enum SubStatusEnum {
   active = 'active',
-  expired = 'expired'
+  canceled = 'canceled'
 }
 export const subStatusMap = {
   [SubStatusEnum.active]: {
     label: 'support.wallet.subscription.status.active'
   },
-  [SubStatusEnum.expired]: {
+  [SubStatusEnum.canceled]: {
     label: 'support.wallet.subscription.status.canceled'
   }
+};
+export const subSelectMap = {
+  true: SubStatusEnum.active,
+  false: SubStatusEnum.canceled
 };
 
 export enum SubModeEnum {
@@ -34,11 +40,11 @@ export enum SubModeEnum {
 }
 export const subModeMap = {
   [SubModeEnum.month]: {
-    label: 'support.wallet.subscription.mode.Month',
+    label: 'support.wallet.subscription.mode.month',
     durationMonth: 1
   },
   [SubModeEnum.year]: {
-    label: 'support.wallet.subscription.mode.Year',
+    label: 'support.wallet.subscription.mode.year',
     durationMonth: 12
   }
 };
@@ -57,7 +63,7 @@ export const standardSubLevelMap = {
   },
   [StandardSubLevelEnum.experience]: {
     label: 'support.wallet.subscription.standardSubLevel.experience',
-    desc: ''
+    desc: 'support.wallet.subscription.standardSubLevel.experience desc'
   },
   [StandardSubLevelEnum.team]: {
     label: 'support.wallet.subscription.standardSubLevel.team',

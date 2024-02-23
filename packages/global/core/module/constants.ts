@@ -89,10 +89,9 @@ export enum ModuleInputKeyEnum {
 
 export enum ModuleOutputKeyEnum {
   // common
-  responseData = 'responseData',
-  moduleDispatchBills = 'moduleDispatchBills',
   userChatInput = 'userChatInput',
   finish = 'finish',
+  responseData = 'responseData',
   history = 'history',
   answerText = 'answerText', //  answer module text key
   success = 'success',

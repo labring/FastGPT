@@ -4,13 +4,13 @@ import { sseErrRes } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { responseWrite } from '@fastgpt/service/common/response';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { pushChatUsage } from '@/service/support/wallet/usage/push';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { pushChatBill } from '@/service/support/wallet/bill/push';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { dispatchModules } from '@/service/moduleDispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { getUserAndAuthBalance } from '@fastgpt/service/support/user/controller';
 
 export type Props = {
   history: ChatItemType[];
@@ -50,10 +50,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // auth balance
-    const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
+    const user = await getUserAndAuthBalance({
+      tmbId,
+      minBalance: 0
+    });
 
     /* start process */
-    const { responseData, moduleDispatchBills } = await dispatchModules({
+    const { responseData } = await dispatchModules({
       res,
       mode: 'test',
       teamId,
@@ -82,13 +85,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     res.end();
 
-    pushChatUsage({
+    pushChatBill({
       appName,
       appId,
       teamId,
       tmbId,
-      source: UsageSourceEnum.fastgpt,
-      moduleDispatchBills
+      source: BillSourceEnum.fastgpt,
+      response: responseData
     });
   } catch (err: any) {
     res.status(500);

@@ -16,7 +16,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   let filePaths: string[] = [];
 
   try {
-    const { teamId, tmbId } = await authCert({ req, authToken: true });
+    const { userId, teamId, tmbId } = await authCert({ req, authToken: true });
 
     const { file, bucketName, metadata } = await upload.doUpload(req, res);
 

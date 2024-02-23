@@ -6,7 +6,8 @@ export type LLMModelItemType = {
   quoteMaxToken: number;
   maxTemperature: number;
 
-  charsPointsPrice: number; // 1k chars=n points
+  inputPrice: number;
+  outputPrice: number;
 
   censor?: boolean;
   vision?: boolean;
@@ -26,7 +27,8 @@ export type VectorModelItemType = {
   model: string;
   name: string;
   defaultToken: number;
-  charsPointsPrice: number;
+  inputPrice: number;
+  outputPrice: number;
   maxToken: number;
   weight: number;
   hidden?: boolean;
@@ -36,7 +38,8 @@ export type VectorModelItemType = {
 export type ReRankModelItemType = {
   model: string;
   name: string;
-  charsPointsPrice: number;
+  inputPrice: number;
+  outputPrice?: number;
   requestUrl?: string;
   requestAuth?: string;
 };
@@ -44,12 +47,14 @@ export type ReRankModelItemType = {
 export type AudioSpeechModelType = {
   model: string;
   name: string;
-  charsPointsPrice: number;
+  inputPrice: number;
+  outputPrice?: number;
   voices: { label: string; value: string; bufferId: string }[];
 };
 
 export type WhisperModelType = {
   model: string;
   name: string;
-  charsPointsPrice: number; // 60s = n points
+  inputPrice: number;
+  outputPrice?: number;
 };

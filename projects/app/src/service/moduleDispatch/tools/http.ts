@@ -1,8 +1,5 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import {
   DYNAMIC_INPUT_KEY,
   ModuleInputKeyEnum,
@@ -19,10 +16,11 @@ type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.httpHeaders]: string;
   [key: string]: any;
 }>;
-type HttpResponse = ModuleDispatchResponse<{
+type HttpResponse = {
   [ModuleOutputKeyEnum.failed]?: boolean;
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
-}>;
+};
 
 const flatDynamicParams = (params: Record<string, any>) => {
   const dynamicParams = params[DYNAMIC_INPUT_KEY];
@@ -40,7 +38,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     chatId,
     responseChatItemId,
     variables,
-    module: { outputs },
+    outputs,
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,
@@ -99,8 +97,8 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     }
 
     return {
-      [ModuleOutputKeyEnum.responseData]: {
-        totalPoints: 0,
+      responseData: {
+        price: 0,
         body: formatBody,
         httpResult: response
       },
@@ -111,8 +109,8 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
 
     return {
       [ModuleOutputKeyEnum.failed]: true,
-      [ModuleOutputKeyEnum.responseData]: {
-        totalPoints: 0,
+      responseData: {
+        price: 0,
         body: formatBody,
         httpResult: { error }
       }

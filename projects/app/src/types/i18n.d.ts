@@ -1,5 +1,5 @@
 import 'i18next';
-//import common from '../../public/locales/en/common.json';
+// import common from '../../public/locales/en/common.json';
 
 interface I18nNamespaces {
   common: any;

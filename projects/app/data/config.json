@@ -13,7 +13,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 13000,
       "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": false,
@@ -31,7 +32,8 @@
       "maxResponse": 16000,
       "quoteMaxToken": 13000,
       "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": true,
@@ -49,7 +51,8 @@
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": false,
@@ -67,9 +70,10 @@
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "censor": false,
-      "vision": true,
+      "vision": false,
       "datasetProcess": false,
       "toolChoice": true,
       "functionCall": false,
@@ -83,7 +87,8 @@
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "charsPointsPrice": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "defaultToken": 700,
       "maxToken": 3000,
       "weight": 100
@@ -94,44 +99,22 @@
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
-      "charsPointsPrice": 0,
+      "inputPrice": 0,
+      "outputPrice": 0,
       "voices": [
-        {
-          "label": "Alloy",
-          "value": "alloy",
-          "bufferId": "openai-Alloy"
-        },
-        {
-          "label": "Echo",
-          "value": "echo",
-          "bufferId": "openai-Echo"
-        },
-        {
-          "label": "Fable",
-          "value": "fable",
-          "bufferId": "openai-Fable"
-        },
-        {
-          "label": "Onyx",
-          "value": "onyx",
-          "bufferId": "openai-Onyx"
-        },
-        {
-          "label": "Nova",
-          "value": "nova",
-          "bufferId": "openai-Nova"
-        },
-        {
-          "label": "Shimmer",
-          "value": "shimmer",
-          "bufferId": "openai-Shimmer"
-        }
+        { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
+        { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
+        { "label": "Fable", "value": "fable", "bufferId": "openai-Fable" },
+        { "label": "Onyx", "value": "onyx", "bufferId": "openai-Onyx" },
+        { "label": "Nova", "value": "nova", "bufferId": "openai-Nova" },
+        { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
       ]
     }
   ],
   "whisperModel": {
     "model": "whisper-1",
     "name": "Whisper1",
-    "charsPointsPrice": 0
+    "inputPrice": 0,
+    "outputPrice": 0
   }
 }

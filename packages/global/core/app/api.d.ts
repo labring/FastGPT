@@ -17,7 +17,6 @@ export interface AppUpdateParams {
   intro?: string;
   modules?: AppSchema['modules'];
   permission?: AppSchema['permission'];
-  teamTags?: AppSchema['teamTags'];
 }
 
 export type FormatForm2ModulesProps = {
