@@ -8,7 +8,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
-import UserInfo from './components/Info';
+import UserInfo from './components/InforNew';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';

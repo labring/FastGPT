@@ -38,6 +38,7 @@
     "Logs Title": "标题",
     "Mark Count": "标注答案数量",
     "My Apps": "我的应用",
+    "Apps Share": "应用分享",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置",
     "To Chat": "前去对话",
@@ -131,9 +132,11 @@
     "Select One Folder": "选择一个目录",
     "Select template": "选择模板",
     "Set Avatar": "点击设置头像",
+    "Set Team Tags": "团队标签",
     "Set Name": "取个名字",
     "Set Team Tags": "团队标签",
     "Setting": "设置",
+    "Team Tags Set": "标签",
     "Status": "状态",
     "Submit failed": "提交失败",
     "Submit success": "提交成功",
@@ -554,8 +557,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1346,6 +1348,7 @@
     "Notice": "通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
+    "Standard Detail": "套餐详情",
     "Password": "密码",
     "Pay": "充值",
     "Permission": "使用权限",
@@ -1380,6 +1383,10 @@
       "Confirm Invite": "确认邀请",
       "Create Team": "创建新团队",
       "Invite Member": "邀请成员",
+      "Team Tags Async": "标签同步",
+      "Team Tags Async Success": "链接报错成功，标签信息更新",
+      "Team Tags Async Tip": "填写标签同步连接，获取最新",
+      "Tags Async": "保存",
       "Invite Member Failed Tip": "邀请成员出现异常",
       "Invite Member Result Tip": "邀请结果提示",
       "Invite Member Success Tip": "邀请成员完成\n成功: {{success}}人\n用户名无效: {{inValid}}\n已在团队中:{{inTeam}}",

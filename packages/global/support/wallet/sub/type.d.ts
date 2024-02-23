@@ -55,9 +55,10 @@ export type TeamSubSchema = {
 
 export type FeTeamSubType = {
   [SubTypeEnum.standard]?: TeamSubSchema;
-
   totalPoints: number;
   usedPoints: number;
+  standardMaxDatasetSize?: number,
+  standardMaxPoints?: number,
 
   // standard + extra
   datasetMaxSize: number;
