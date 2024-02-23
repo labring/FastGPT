@@ -12,13 +12,14 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { checkDatasetLimit } from '@/service/support/permission/teamLimit';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
-import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
+import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -52,7 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 2. check dataset limit
     await checkDatasetLimit({
       teamId,
-      insertLen: predictDataLimitLength(trainingType, chunks)
+      insertLen: predictDataLimitLength(trainingType, chunks),
+      standardPlans: getStandardSubPlan()
     });
 
     // 3. create collection and training bill
@@ -72,11 +74,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         hashRawText: hashStr(text),
         rawTextLength: text.length
       }),
-      createTrainingUsage({
+      createTrainingBill({
         teamId,
         tmbId,
         appName: name,
-        billSource: UsageSourceEnum.training,
+        billSource: BillSourceEnum.training,
         vectorModel: getVectorModel(dataset.vectorModel)?.name,
         agentModel: getLLMModel(dataset.agentModel)?.name
       })

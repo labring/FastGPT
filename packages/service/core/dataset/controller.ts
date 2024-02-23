@@ -66,11 +66,6 @@ export async function delDatasetRelevantData({
   if (!datasets.length) return;
 
   const teamId = datasets[0].teamId;
-
-  if (!teamId) {
-    return Promise.reject('teamId is required');
-  }
-
   const datasetIds = datasets.map((item) => String(item._id));
 
   // Get _id, teamId, fileId, metadata.relatedImgId for all collections

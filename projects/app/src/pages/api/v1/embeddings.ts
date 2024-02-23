@@ -2,13 +2,13 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
+import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
 import { connectToDatabase } from '@/service/mongo';
+import { authTeamBalance } from '@/service/support/permission/auth/bill';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
-import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
+import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
 import { getVectorModel } from '@/service/core/ai/model';
-import { checkTeamAIPoints } from '@/service/support/permission/teamLimit';
 
 type Props = {
   input: string | string[];
@@ -34,7 +34,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       authApiKey: true
     });
 
-    await checkTeamAIPoints(teamId);
+    await authTeamBalance(teamId);
 
     const { charsLength, vectors } = await getVectorsByText({
       input: query,
@@ -55,19 +55,19 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       }
     });
 
-    const { totalPoints } = pushGenerateVectorUsage({
+    const { total } = pushGenerateVectorBill({
       teamId,
       tmbId,
       charsLength,
       model,
       billId,
-      source: getUsageSourceByAuthType({ authType })
+      source: getBillSourceByAuthType({ authType })
     });
 
     if (apikey) {
       updateApiKeyUsage({
         apikey,
-        totalPoints: totalPoints
+        usage: total
       });
     }
   } catch (err) {

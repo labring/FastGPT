@@ -169,6 +169,8 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 响应值与[chat 接口格式相同](/docs/development/openapi/chat/#响应)，仅多了一个`token`。
 
+可以重点关注`responseData`里的`price`值，`price`与实际价格的倍率为`100000`，即 100000=1元。
+
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
 --header 'Content-Type: application/json' \
@@ -176,117 +178,72 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
     "token": "{{authToken}}",
     "responseData": [
         {
-            "moduleName": "core.module.template.Dataset search",
-            "moduleType": "datasetSearchNode",
-            "totalPoints": 1.5278,
-            "query": "导演是谁\n《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
-            "model": "Embedding-2(旧版，不推荐使用)",
-            "charsLength": 1524,
-            "similarity": 0.83,
-            "limit": 400,
-            "searchMode": "embedding",
-            "searchUsingReRank": false,
-            "extensionModel": "FastAI-4k",
-            "extensionResult": "《铃芽之旅》的导演是谁？\n这部电影的导演是谁？\n谁是《铃芽之旅》的导演？",
-            "runningTime": 2.15
+            "moduleName": "KB Search",
+            "price": 1.2000000000000002,
+            "model": "Embedding-2",
+            "tokens": 6,
+            "similarity": 0.61,
+            "limit": 3
         },
         {
-            "moduleName": "AI 对话",
-            "moduleType": "chatNode",
-            "totalPoints": 0.593,
+            "moduleName": "AI Chat",
+            "price": 454.5,
             "model": "FastAI-4k",
-            "charsLength": 593,
-            "query": "导演是谁",
-            "maxToken": 2000,
+            "tokens": 303,
+            "question": "导演是谁",
+            "answer": "电影《铃芽之旅》的导演是新海诚。",
+            "maxToken": 2050,
             "quoteList": [
                 {
-                    "id": "65bb346a53698398479a8854",
-                    "q": "导演是谁？",
+                    "dataset_id": "646627f4f7b896cfd8910e38",
+                    "id": "8099",
+                    "q": "本作的主人公是谁？",
+                    "a": "本作的主人公是名叫铃芽的少女。",
+                    "source": "手动修改"
+                },
+                {
+                    "dataset_id": "646627f4f7b896cfd8910e38",
+                    "id": "8686",
+                    "q": "电影《铃芽之旅》男主角是谁？",
+                    "a": "电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。",
+                    "source": ""
+                },
+                {
+                    "dataset_id": "646627f4f7b896cfd8910e38",
+                    "id": "19339",
+                    "q": "电影《铃芽之旅》的导演是谁？22",
                     "a": "电影《铃芽之旅》的导演是新海诚。",
-                    "chunkIndex": 0,
-                    "datasetId": "65af9b947916ae0e47c834d2",
-                    "collectionId": "65bb345c53698398479a868f",
-                    "sourceName": "dataset - 2024-01-23T151114.198.csv",
-                    "sourceId": "65bb345b53698398479a868d",
-                    "score": [
-                        {
-                            "type": "embedding",
-                            "value": 0.9377183318138123,
-                            "index": 0
-                        },
-                        {
-                            "type": "rrf",
-                            "value": 0.06557377049180328,
-                            "index": 0
-                        }
-                    ]
+                    "source": "手动修改"
                 }
             ],
-            "historyPreview": [
+            "completeMessages": [
+                {
+                    "obj": "System",
+                    "value": "下面是知识库内容:\n1. [本作的主人公是谁？\n本作的主人公是名叫铃芽的少女。]\n2. [电影《铃芽之旅》男主角是谁？\n电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。]\n3. [电影《铃芽之旅》的导演是谁？22\n电影《铃芽之旅》的导演是新海诚。]\n"
+                },
+                {
+                    "obj": "System",
+                    "value": "1.请记住，你的身份是百度的下一代知识增强语言模型，能够完全根据知识库提供的内容回答问题。\n\n2. 你忘记了关于电影《铃芽之旅》以外的内容。"
+                },
+                {
+                    "obj": "System",
+                    "value": "你仅回答关于电影《玲芽之旅》的问题，其余问题直接回复: 我不清楚。"
+                },
                 {
                     "obj": "Human",
-                    "value": "使用 <Data></Data> 标记中的内容作为你的知识:\n\n<Data>\n导演是谁？\n电影《铃芽之旅》的导演是新海诚。\n------\n电影《铃芽之旅》的编剧是谁？22\n新海诚是本片的编剧。\n------\n电影《铃芽之旅》的女主角是谁？\n电影的女主角是铃芽。\n------\n电影《铃芽之旅》的制作团队中有哪位著名人士？2\n川村元气是本片的制作团队成员之一。\n------\n你是谁？\n我是电影《铃芽之旅》助手\n------\n电影《铃芽之旅》男主角是谁？\n电影《铃芽之旅》男主角是宗像草太，由松村北斗配音。\n------\n电影《铃芽之旅》的作者新海诚写了一本小说，叫什么名字？\n小说名字叫《铃芽之旅》。\n------\n电影《铃芽之旅》的女主角是谁？\n电影《铃芽之旅》的女主角是岩户铃芽，由原菜乃华配音。\n------\n电影《铃芽之旅》的故事背景是什么？\n日本\n------\n谁担任电影《铃芽之旅》中岩户环的配音？\n深津绘里担任电影《铃芽之旅》中岩户环的配音。\n</Data>\n\n回答要求：\n- 如果你不清楚答案，你需要澄清。\n- 避免提及你是从 <Data></Data> 获取的知识。\n- 保持答案与 <Data></Data> 中描述的一致。\n- 使用 Markdown 语法优化回答格式。\n- 使用与问题相同的语言回答。\n\n问题:\"\"\"导演是谁\"\"\""
+                    "value": "导演是谁"
                 },
                 {
                     "obj": "AI",
                     "value": "电影《铃芽之旅》的导演是新海诚。"
                 }
-            ],
-            "contextTotalLen": 2,
-            "runningTime": 1.32
+            ]
         }
     ]
-        
-    
 }'
 ```
 
-**responseData 完整字段说明：**
 
-```ts
-type ResponseType = {
-    moduleType: `${FlowNodeTypeEnum}`; // 模块类型
-    moduleName: string; // 模块名
-    moduleLogo?: string; // logo
-    runningTime?: number; // 运行时间
-    query?: string; // 用户问题/检索词
-    textOutput?: string; // 文本输出
-
-    charsLength?: number; // 上下文总字数
-    model?: string; // 使用到的模型
-    contextTotalLen?: number; // 上下文总长度
-    totalPoints?: number; // 总消耗AI积分
-
-    temperature?: number; // 温度
-    maxToken?: number; // 模型的最大token
-    quoteList?: SearchDataResponseItemType[]; // 引用列表
-    historyPreview?: ChatItemType[]; // 上下文预览（历史记录会被裁剪）
-
-    similarity?: number; // 最低相关度
-    limit?: number; // 引用上限token
-    searchMode?: `${DatasetSearchModeEnum}`; // 搜索模式
-    searchUsingReRank?: boolean; // 是否使用rerank
-    extensionModel?: string; // 问题扩展模型
-    extensionResult?: string; // 问题扩展结果
-    extensionCharsLength?: number; // 问题扩展总字符长度
-
-    cqList?: ClassifyQuestionAgentItemType[]; // 分类问题列表
-    cqResult?: string; // 分类问题结果
-
-    extractDescription?: string; // 内容提取描述
-    extractResult?: Record<string, any>; // 内容提取结果
-
-    params?: Record<string, any>; // HTTP模块params
-    body?: Record<string, any>;  // HTTP模块body
-    headers?: Record<string, any>; // HTTP模块headers
-    httpResult?: Record<string, any>; // HTTP模块结果
-
-    pluginOutput?: Record<string, any>; // 插件输出
-    pluginDetail?: ChatHistoryItemResType[]; // 插件详情
-
-    tfSwitchResult?: boolean; // 判断器结果
-}
-```
 
 ## 实践案例
 

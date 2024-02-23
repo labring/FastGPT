@@ -8,7 +8,8 @@ export const defaultQAModels: LLMModelItemType[] = [
     maxResponse: 16000,
     quoteMaxToken: 13000,
     maxTemperature: 1.2,
-    charsPointsPrice: 0,
+    inputPrice: 0,
+    outputPrice: 0,
     censor: false,
     vision: false,
     datasetProcess: true,
@@ -25,7 +26,8 @@ export const defaultVectorModels: VectorModelItemType[] = [
   {
     model: 'text-embedding-ada-002',
     name: 'Embedding-2',
-    charsPointsPrice: 0,
+    inputPrice: 0,
+    outputPrice: 0,
     defaultToken: 500,
     maxToken: 3000,
     weight: 100

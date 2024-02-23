@@ -1,6 +1,8 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { OpenApiSchema } from '@fastgpt/global/support/openapi/type';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
+import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -8,6 +10,10 @@ import {
 
 const OpenApiSchema = new Schema(
   {
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: 'user'
+    },
     teamId: {
       type: Schema.Types.ObjectId,
       ref: TeamCollectionName,
@@ -38,17 +44,22 @@ const OpenApiSchema = new Schema(
       type: String,
       default: 'Api Key'
     },
-    usagePoints: {
+    usage: {
+      // total usage. value from bill total
       type: Number,
-      default: 0
+      default: 0,
+      get: (val: number) => formatStorePrice2Read(val)
     },
     limit: {
       expiredTime: {
         type: Date
       },
-      maxUsagePoints: {
+      credit: {
+        // value from user settings
         type: Number,
-        default: -1
+        default: -1,
+        set: (val: number) => val * PRICE_SCALE,
+        get: (val: number) => formatStorePrice2Read(val)
       }
     }
   },

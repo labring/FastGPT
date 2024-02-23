@@ -19,6 +19,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
+import { DatasetDataIndexTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
 import SideTabs from '@/components/SideTabs';
 import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
@@ -161,10 +162,9 @@ const InputDataModal = ({
         q: e.q,
         a: e.a,
         // remove dataId
-        indexes: e.indexes.map((index) => ({
-          ...index,
-          dataId: undefined
-        }))
+        indexes: e.indexes.map((index) =>
+          index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a }) : index
+        )
       });
 
       return {
@@ -195,7 +195,7 @@ const InputDataModal = ({
         id: dataId,
         ...e,
         indexes: e.indexes.map((index) =>
-          index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a, dataId: index.dataId }) : index
+          index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a }) : index
         )
       });
 
@@ -278,7 +278,7 @@ const InputDataModal = ({
                     bg={i % 2 !== 0 ? 'myWhite.400' : ''}
                     _hover={{
                       '& .delete': {
-                        display: index.defaultIndex ? 'none' : 'block'
+                        display: index.defaultIndex && indexes.length === 1 ? 'none' : 'block'
                       }
                     }}
                   >
@@ -331,6 +331,7 @@ const InputDataModal = ({
                   onClick={() =>
                     appendIndexes({
                       defaultIndex: false,
+                      type: DatasetDataIndexTypeEnum.chunk,
                       text: '',
                       dataId: `${Date.now()}`
                     })
@@ -382,47 +383,45 @@ const InputTab = ({
   const [inputType, setInputType] = useState(InputTypeEnum.q);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      <Box>
-        <RowTabs
-          list={[
-            {
-              label: (
-                <Flex alignItems={'center'}>
-                  <Box as="span" color={'red.600'}>
-                    *
-                  </Box>
-                  {t('core.dataset.data.Main Content')}
-                  <MyTooltip label={t('core.dataset.data.Data Content Tip')}>
-                    <QuestionOutlineIcon ml={1} />
-                  </MyTooltip>
-                </Flex>
-              ),
-              value: InputTypeEnum.q
-            },
-            {
-              label: (
-                <Flex alignItems={'center'}>
-                  {t('core.dataset.data.Auxiliary Data')}
-                  <MyTooltip label={t('core.dataset.data.Auxiliary Data Tip')}>
-                    <QuestionOutlineIcon ml={1} />
-                  </MyTooltip>
-                </Flex>
-              ),
-              value: InputTypeEnum.a
-            }
-          ]}
-          value={inputType}
-          onChange={(e) => setInputType(e as InputTypeEnum)}
-        />
-      </Box>
+    <Box>
+      <RowTabs
+        list={[
+          {
+            label: (
+              <Flex alignItems={'center'}>
+                <Box as="span" color={'red.600'}>
+                  *
+                </Box>
+                {t('core.dataset.data.Main Content')}
+                <MyTooltip label={t('core.dataset.data.Data Content Tip')}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Flex>
+            ),
+            value: InputTypeEnum.q
+          },
+          {
+            label: (
+              <Flex alignItems={'center'}>
+                {t('core.dataset.data.Auxiliary Data')}
+                <MyTooltip label={t('core.dataset.data.Auxiliary Data Tip')}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Flex>
+            ),
+            value: InputTypeEnum.a
+          }
+        ]}
+        value={inputType}
+        onChange={(e) => setInputType(e as InputTypeEnum)}
+      />
 
-      <Box mt={3} flex={'1 0 0'}>
+      <Box mt={3}>
         {inputType === InputTypeEnum.q && (
           <Textarea
             placeholder={t('core.dataset.data.Data Content Placeholder', { maxToken })}
             maxLength={maxToken}
-            h={'100%'}
+            rows={isPc ? 24 : 12}
             bg={'myWhite.400'}
             {...register(`q`, {
               required: true
@@ -434,7 +433,6 @@ const InputTab = ({
             placeholder={t('core.dataset.data.Auxiliary Data Placeholder', {
               maxToken: maxToken * 1.5
             })}
-            h={'100%'}
             bg={'myWhite.400'}
             rows={isPc ? 24 : 12}
             maxLength={maxToken * 1.5}
@@ -442,6 +440,6 @@ const InputTab = ({
           />
         )}
       </Box>
-    </Flex>
+    </Box>
   );
 };

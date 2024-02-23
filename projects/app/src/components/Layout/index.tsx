@@ -23,7 +23,6 @@ const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/login/provider': true,
   '/login/fastlogin': true,
   '/chat/share': true,
-  '/chat/team': true,
   '/app/edit': true,
   '/chat': true,
   '/tools/price': true,
@@ -35,7 +34,6 @@ const phoneUnShowLayoutRoute: Record<string, boolean> = {
   '/login/provider': true,
   '/login/fastlogin': true,
   '/chat/share': true,
-  '/chat/team': true,
   '/tools/price': true,
   '/price': true
 };
@@ -116,10 +114,9 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             </Box>
           </>
         )}
-
-        {!!userInfo && <UpdateInviteModal />}
       </Box>
       <Loading loading={loading} zIndex={999999} />
+      {!!userInfo && <UpdateInviteModal />}
     </>
   );
 };

@@ -27,8 +27,7 @@ export enum ChatSourceEnum {
   test = 'test',
   online = 'online',
   share = 'share',
-  api = 'api',
-  team = 'team'
+  api = 'api'
 }
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
@@ -42,9 +41,6 @@ export const ChatSourceMap = {
   },
   [ChatSourceEnum.api]: {
     name: 'core.chat.logs.api'
-  },
-  [ChatSourceEnum.team]: {
-    name: 'core.chat.logs.team'
   }
 };
 

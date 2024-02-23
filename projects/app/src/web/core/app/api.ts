@@ -15,7 +15,6 @@ export const getMyApps = () => GET<AppListItemType[]>('/core/app/list');
  */
 export const postCreateApp = (data: CreateAppParams) => POST<string>('/core/app/create', data);
 
-export const getMyAppsByTags = (data: {}) => POST(`/proApi/core/chat/team/getApps`, data);
 /**
  * 根据 ID 删除模型
  */
@@ -31,12 +30,7 @@ export const getModelById = (id: string) => GET<AppDetailType>(`/core/app/detail
  */
 export const putAppById = (id: string, data: AppUpdateParams) =>
   PUT(`/core/app/update?appId=${id}`, data);
-export const replaceAppById = (id: string, data: AppUpdateParams) =>
-  PUT(`/core/app/updateTeamTasg?appId=${id}`, data);
 
-// updateTeamTasg
-export const putAppTagsById = (id: string, data: AppUpdateParams) =>
-  PUT(`/core/app/updateTeamTasg?appId=${id}`, data);
 /* 共享市场 */
 /**
  * 获取共享市场模型

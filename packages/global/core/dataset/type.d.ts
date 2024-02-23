@@ -3,6 +3,7 @@ import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
 import {
   DatasetCollectionTypeEnum,
+  DatasetDataIndexTypeEnum,
   DatasetStatusEnum,
   DatasetTypeEnum,
   SearchScoreTypeEnum,
@@ -63,6 +64,7 @@ export type DatasetCollectionSchemaType = {
 export type DatasetDataIndexItemType = {
   defaultIndex: boolean;
   dataId: string; // pg data id
+  type: `${DatasetDataIndexTypeEnum}`;
   text: string;
 };
 export type DatasetDataSchemaType = {
@@ -140,7 +142,6 @@ export type DatasetCollectionItemType = CollectionWithDatasetType & {
 /* ================= data ===================== */
 export type DatasetDataItemType = {
   id: string;
-  teamId: string;
   datasetId: string;
   collectionId: string;
   sourceName: string;
@@ -172,7 +173,7 @@ export type DatasetFileSchema = {
 /* ============= search =============== */
 export type SearchDataResponseItemType = Omit<
   DatasetDataItemType,
-  'teamId' | 'indexes' | 'isOwner' | 'canWrite'
+  'indexes' | 'isOwner' | 'canWrite'
 > & {
   score: { type: `${SearchScoreTypeEnum}`; value: number; index: number }[];
   // score: number;

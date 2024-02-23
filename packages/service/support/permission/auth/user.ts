@@ -12,7 +12,7 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
     role: `${TeamMemberRoleEnum}`;
   }
 > {
-  const { teamId, tmbId } = await parseHeaderCert(props);
+  const { userId, teamId, tmbId } = await parseHeaderCert(props);
   const team = await getTmbInfoByTmbId({ tmbId });
 
   if (team.role === TeamMemberRoleEnum.visitor) {
@@ -20,6 +20,7 @@ export async function authUserNotVisitor(props: AuthModeType): Promise<
   }
 
   return {
+    userId,
     teamId,
     tmbId,
     team,

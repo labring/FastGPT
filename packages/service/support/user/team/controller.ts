@@ -36,7 +36,7 @@ export async function getTmbInfoByTmbId({ tmbId }: { tmbId: string }) {
     return Promise.reject('tmbId or userId is required');
   }
   return getTeamMember({
-    _id: new Types.ObjectId(String(tmbId)),
+    _id: new Types.ObjectId(tmbId),
     status: notLeaveStatus
   });
 }

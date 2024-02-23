@@ -27,7 +27,6 @@ import {
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
-import Head from 'next/head';
 
 const DataCard = dynamic(() => import('./components/DataCard'));
 const Test = dynamic(() => import('./components/Test'));
@@ -146,9 +145,7 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
 
   return (
     <>
-      <Head>
-        <title>{datasetDetail?.name}</title>
-      </Head>
+      <Script src="/js/pdf.js" strategy="lazyOnload"></Script>
       <PageContainer>
         <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
           {isPc ? (

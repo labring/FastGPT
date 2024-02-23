@@ -57,7 +57,7 @@ export async function pushDataListToTrainingQueue({
     if (trainingMode === TrainingModeEnum.chunk) {
       const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
       if (!vectorModelData) {
-        return Promise.reject(`File model ${vectorModel} is inValid`);
+        return Promise.reject(`Model ${vectorModel} is inValid`);
       }
 
       return {
@@ -70,7 +70,7 @@ export async function pushDataListToTrainingQueue({
     if (trainingMode === TrainingModeEnum.qa) {
       const qaModelData = datasetModelList?.find((item) => item.model === agentModel);
       if (!qaModelData) {
-        return Promise.reject(`Vector model ${agentModel} is inValid`);
+        return Promise.reject(`Model ${agentModel} is inValid`);
       }
       return {
         maxToken: qaModelData.maxContext * 0.8,
