@@ -329,7 +329,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, responseData });
+      pushResult2Remote({ outLinkUid, shareId, appName: app.name, responseData });
       addOutLinkUsage({
         shareId,
         totalPoints
