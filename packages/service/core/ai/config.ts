@@ -11,6 +11,7 @@ export const getAIApi = (props?: {
   timeout?: number;
 }) => {
   const { userKey, timeout } = props || {};
+
   return new OpenAI({
     apiKey: userKey?.key || systemAIChatKey,
     baseURL: userKey?.baseUrl || baseUrl,

@@ -13,11 +13,24 @@ weight: 853
 
 
 
-## 创建训练订单
+## 创建训练订单(4.6.9地址发生改动)
 
 {{< tabs tabTotal="2" >}}
 {{< tab tabName="请求示例" >}}
 {{< markdownify >}}
+
+**新例子**
+
+```bash
+curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/usage/createTrainingUsage' \
+--header 'Authorization: Bearer {{apikey}}' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "name": "可选，自定义订单名称，例如：文档训练-fastgpt.docx"
+}'
+```
+
+**x例子**
 
 ```bash
 curl --location --request POST 'https://api.fastgpt.in/api/support/wallet/bill/createTrainingBill' \
@@ -154,7 +167,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/list?paren
             "vectorModel": {
                 "model": "text-embedding-ada-002",
                 "name": "Embedding-2",
-                "inputPrice": 0,
+                "charsPointsPrice": 0,
                 "defaultToken": 512,
                 "maxToken": 8000,
                 "weight": 100
@@ -213,7 +226,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
         "vectorModel": {
             "model": "text-embedding-ada-002",
             "name": "Embedding-2",
-            "inputPrice": 0,
+            "charsPointsPrice": 0,
             "defaultToken": 512,
             "maxToken": 8000,
             "weight": 100
@@ -223,8 +236,7 @@ curl --location --request GET 'http://localhost:3000/api/core/dataset/detail?id=
             "name": "FastAI-16k",
             "maxContext": 16000,
             "maxResponse": 16000,
-            "inputPrice": 0,
-            "outputPrice": 0
+            "charsPointsPrice": 0
         },
         "intro": "",
         "permission": "private",
@@ -800,6 +812,33 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/collect
 
 ## 数据
 
+### 数据的结构
+
+**Data结构**
+
+| 字段 | 类型 | 说明 | 必填 |
+| --- | --- | --- | --- |
+| teamId | String | 团队ID | ✅ |
+| tmbId | String | 成员ID | ✅ |
+| datasetId | String | 知识库ID | ✅ |
+| collectionId | String | 集合ID | ✅ |
+| q | String | 主要数据 | ✅ |
+| a | String | 辅助数据 | ✖ |
+| fullTextToken | String | 分词 | ✖ |
+| indexes | Index[] | 向量索引 | ✅ |
+| updateTime | Date | 更新时间 | ✅ |
+| chunkIndex | Number | 分块下表 | ✖ |
+
+**Index结构**
+
+每组数据的自定义索引最多5个
+
+| 字段 | 类型 | 说明 | 必填 |
+| --- | --- | --- | --- |
+| defaultIndex | Boolean | 是否为默认索引 | ✅ |
+| dataId | String | 关联的向量ID | ✅ |
+| text | String | 文本内容 | ✅ |
+
 ### 为集合批量添加添加数据
 
 注意，每次最多推送 200 组数据。
@@ -825,11 +864,14 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
         {
             "q": "你会什么？",
             "a": "我什么都会",
-            "indexes": [{
-                "defaultIndex": false,
-                "type":"custom",
-                "text":"自定义索引，不使用默认索引"
-            }]
+            "indexes": [
+                {
+                    "text":"自定义索引1"
+                },
+                {
+                    "text":"自定义索引2"
+                }
+            ]
         }
     ]
 }'
@@ -850,7 +892,7 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
 - data：（具体数据）
   - q: 主要数据（必填）
   - a: 辅助数据（选填）
-  - indexes: 自定义索引（选填），不传入则默认使用q和a构建索引。也可以传入
+  - indexes: 自定义索引（选填）。可以不传或者传空数组，默认都会使用q和a组成一个索引。
 {{% /alert %}}
 
 {{< /markdownify >}}
@@ -866,7 +908,6 @@ curl --location --request POST 'https://api.fastgpt.in/api/core/dataset/data/pus
     "data": {
         "insertLen": 1, // 最终插入成功的数量
         "overToken": [], // 超出 token 的
-       
         "repeat": [], // 重复的数量
         "error": [] // 其他错误
     }
@@ -1050,7 +1091,16 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
     "id":"65abd4b29d1448617cba61db",
     "q":"测试111",
     "a":"sss",
-    "indexes":[]
+    "indexes":[
+        {
+            "dataId": "xxx",
+            "defaultIndex":false,
+            "text":"自定义索引1"
+        },
+        {
+            "text":"修改后的自定义索引2。（会删除原来的自定义索引2，并插入新的自定义索引2）"
+        }
+    ]
 }'
 ```
 
@@ -1064,7 +1114,7 @@ curl --location --request PUT 'http://localhost:3000/api/core/dataset/data/updat
 - id: 数据的id
 - q: 主要数据（选填）
 - a: 辅助数据（选填）
-- indexes: 自定义索引（选填），类型参考`为集合批量添加添加数据`，建议直接不传。更新q,a后，如果有默认索引，则会直接更新默认索引。
+- indexes: 自定义索引（选填），类型参考`为集合批量添加添加数据`。如果创建时候有自定义索引，
 {{% /alert %}}
 
 {{< /markdownify >}}

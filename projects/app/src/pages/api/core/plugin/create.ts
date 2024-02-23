@@ -4,12 +4,15 @@ import { connectToDatabase } from '@/service/mongo';
 import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
+import { checkTeamPluginLimit } from '@/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
     const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
     const body = req.body as CreateOnePluginParams;
+
+    await checkTeamPluginLimit(teamId);
 
     const { _id } = await MongoPlugin.create({
       ...body,

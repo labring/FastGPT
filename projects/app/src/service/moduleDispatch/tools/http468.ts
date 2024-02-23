@@ -1,5 +1,7 @@
-import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type {
+  ModuleDispatchProps,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type.d';
 import {
   DYNAMIC_INPUT_KEY,
   ModuleInputKeyEnum,
@@ -24,11 +26,10 @@ type HttpRequestProps = ModuleDispatchProps<{
   [DYNAMIC_INPUT_KEY]: Record<string, any>;
   [key: string]: any;
 }>;
-type HttpResponse = {
+type HttpResponse = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.failed]?: boolean;
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
-};
+}>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
@@ -38,7 +39,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     chatId,
     responseChatItemId,
     variables,
-    outputs,
+    module: { outputs },
     histories,
     params: {
       system_httpMethod: httpMethod = 'POST',
@@ -119,8 +120,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
 
     return {
-      responseData: {
-        price: 0,
+      [ModuleOutputKeyEnum.responseData]: {
+        totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
@@ -131,8 +132,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   } catch (error) {
     return {
       [ModuleOutputKeyEnum.failed]: true,
-      responseData: {
-        price: 0,
+      [ModuleOutputKeyEnum.responseData]: {
+        totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,

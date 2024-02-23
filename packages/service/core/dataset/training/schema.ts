@@ -2,7 +2,7 @@
 import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
-import { DatasetDataIndexTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { DatasetColCollectionName } from '../collection/schema';
 import { DatasetCollectionName } from '../schema';
 import {
@@ -86,11 +86,6 @@ const TrainingDataSchema = new Schema({
   indexes: {
     type: [
       {
-        type: {
-          type: String,
-          enum: Object.keys(DatasetDataIndexTypeMap),
-          required: true
-        },
         text: {
           type: String,
           required: true

@@ -3,8 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { connectToDatabase } from '@/service/mongo';
 import { authDatasetData } from '@/service/support/permission/auth/dataset';
-import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
+import { deleteDatasetData } from '@/service/core/dataset/data/controller';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -26,19 +25,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       per: 'w'
     });
 
-    // update mongo data update time
-    await MongoDatasetData.findByIdAndUpdate(dataId, {
-      updateTime: new Date()
-    });
-
-    // delete vector data
-    await deleteDatasetDataVector({
-      teamId,
-      idList: datasetData.indexes.map((item) => item.dataId)
-    });
-
-    // delete mongo data
-    await MongoDatasetData.findByIdAndDelete(dataId);
+    await deleteDatasetData(datasetData);
 
     jsonRes(res, {
       data: 'success'

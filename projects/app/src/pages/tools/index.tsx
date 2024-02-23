@@ -40,6 +40,15 @@ const Tools = () => {
             link: getDocPath('/docs/intro')
           }
         ]
+      : []),
+    ...(feConfigs?.show_pay
+      ? [
+          {
+            icon: 'support/bill/priceLight',
+            label: '计费说明',
+            link: '/price'
+          }
+        ]
       : [])
   ];
 

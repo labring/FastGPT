@@ -1,18 +1,19 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getAIApi } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { countGptMessagesChars } from '../../chat/utils';
 
 /* 
     query extension - 问题扩展
     可以根据上下文，消除指代性问题以及扩展问题，利于检索。
 */
 
-const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确。例如：
+const defaultPrompt = `作为一个向量检索助手，你的任务是结合历史记录，从不同角度，为“原问题”生成个不同版本的“检索词”，从而提高向量检索的语义丰富度，提高向量检索的精度。生成的问题要求指向对象清晰明确，并与原问题语言相同。例如：
 历史记录: 
 """
 """
 原问题: 介绍下剧情。
-检索词: ["发生了什么故事？","故事梗概是什么？","讲述了什么故事？"]
+检索词: ["介绍下故事的背景和主要人物。","故事的主题是什么？","剧情是是如何发展的？"]
 ----------------
 历史记录: 
 """
@@ -20,7 +21,7 @@ Q: 对话背景。
 A: 当前对话是关于 FatGPT 的介绍和使用等。
 """
 原问题: 怎么下载
-检索词: ["FastGPT 怎么下载？","下载 FastGPT 需要什么条件？","有哪些渠道可以下载 FastGPT？"]
+检索词: ["FastGPT 如何下载？","下载 FastGPT 需要什么条件？","有哪些渠道可以下载 FastGPT？"]
 ----------------
 历史记录: 
 """
@@ -30,15 +31,15 @@ Q: 报错 "no connection"
 A: 报错"no connection"可能是因为……
 """
 原问题: 怎么解决
-检索词: ["FastGPT 报错"no connection"如何解决？", "报错 'no connection' 是什么原因？", "FastGPT提示'no connection'，要怎么办？"]
+检索词: ["FastGPT 报错"no connection"如何解决？", "造成 'no connection' 报错的原因。", "FastGPT提示'no connection'，要怎么办？"]
 ----------------
 历史记录: 
 """
 Q: 作者是谁？
 A: FastGPT 的作者是 labring。
 """
-原问题: 介绍下他
-检索词: ["介绍下 FastGPT 的作者 labring。","作者 labring 的背景信息。","labring 为什么要做 FastGPT?"]
+原问题: Tell me about him
+检索词: ["Introduce labring, the author of FastGPT." ," Background information on author labring." "," Why does labring do FastGPT?"]
 ----------------
 历史记录: 
 """
@@ -105,8 +106,7 @@ export const queryExtension = async ({
   rawQuery: string;
   extensionQueries: string[];
   model: string;
-  inputTokens: number;
-  outputTokens: number;
+  charsLength: number;
 }> => {
   const systemFewShot = chatBg
     ? `Q: 对话背景。
@@ -125,18 +125,20 @@ A: ${chatBg}
     timeout: 480000
   });
 
+  const messages = [
+    {
+      role: 'user',
+      content: replaceVariable(defaultPrompt, {
+        query: `${query}`,
+        histories: concatFewShot
+      })
+    }
+  ];
   const result = await ai.chat.completions.create({
     model: model,
     temperature: 0.01,
-    messages: [
-      {
-        role: 'user',
-        content: replaceVariable(defaultPrompt, {
-          query: `${query}`,
-          histories: concatFewShot
-        })
-      }
-    ],
+    // @ts-ignore
+    messages,
     stream: false
   });
 
@@ -146,8 +148,7 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: [],
       model,
-      inputTokens: 0,
-      outputTokens: 0
+      charsLength: 0
     };
   }
 
@@ -160,8 +161,7 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: queries,
       model,
-      inputTokens: result.usage?.prompt_tokens || 0,
-      outputTokens: result.usage?.completion_tokens || 0
+      charsLength: countGptMessagesChars(messages)
     };
   } catch (error) {
     console.log(error);
@@ -169,8 +169,7 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: [],
       model,
-      inputTokens: 0,
-      outputTokens: 0
+      charsLength: 0
     };
   }
 };

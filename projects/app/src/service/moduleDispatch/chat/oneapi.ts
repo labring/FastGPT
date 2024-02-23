@@ -1,16 +1,16 @@
 import type { NextApiResponse } from 'next';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
-import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
+import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
-import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchResponse, ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { countMessagesTokens, sliceMessagesTB } from '@fastgpt/global/common/string/tiktoken';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
@@ -32,11 +32,10 @@ export type ChatProps = ModuleDispatchProps<
     [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
-export type ChatResponse = {
+export type ChatResponse = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.answerText]: string;
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [ModuleOutputKeyEnum.history]: ChatItemType[];
-};
+}>;
 
 /* request openai chat */
 export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResponse> => {
@@ -46,7 +45,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     detail = false,
     user,
     histories,
-    outputs,
+    module: { name, outputs },
     params: {
       model,
       temperature = 0,
@@ -154,7 +153,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   );
 
-  const { answerText, inputTokens, outputTokens, completeMessages } = await (async () => {
+  const { answerText, completeMessages } = await (async () => {
     if (stream) {
       // sse response
       const { answer } = await streamResponse({
@@ -172,17 +171,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       return {
         answerText: answer,
-        inputTokens: countMessagesTokens({
-          messages: filterMessages
-        }),
-        outputTokens: countMessagesTokens({
-          messages: [
-            {
-              obj: ChatRoleEnum.AI,
-              value: answer
-            }
-          ]
-        }),
         completeMessages
       };
     } else {
@@ -196,33 +184,38 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
       return {
         answerText: answer,
-        inputTokens: unStreamResponse.usage?.prompt_tokens || 0,
-        outputTokens: unStreamResponse.usage?.completion_tokens || 0,
         completeMessages
       };
     }
   })();
 
-  const { total, modelName } = formatModelPrice2Store({
+  const charsLength = countMessagesChars(completeMessages);
+  const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    inputLen: inputTokens,
-    outputLen: outputTokens,
-    type: ModelTypeEnum.llm
+    charsLength,
+    modelType: ModelTypeEnum.llm
   });
 
   return {
     answerText,
-    responseData: {
-      price: user.openaiAccount?.key ? 0 : total,
+    [ModuleOutputKeyEnum.responseData]: {
+      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
-      inputTokens,
-      outputTokens,
+      charsLength,
       query: `${userChatInput}`,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(completeMessages),
       contextTotalLen: completeMessages.length
     },
+    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+      {
+        moduleName: name,
+        totalPoints,
+        model: modelName,
+        charsLength
+      }
+    ],
     history: completeMessages
   };
 };
@@ -249,30 +242,13 @@ function filterQuote({
   // slice filterSearch
   const filterQuoteQA = filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
-  // filterQuoteQA按collectionId聚合在一起后，再按chunkIndex从小到大排序
-  const sortQuoteQAMap: Record<string, SearchDataResponseItemType[]> = {};
-  filterQuoteQA.forEach((item) => {
-    if (sortQuoteQAMap[item.collectionId]) {
-      sortQuoteQAMap[item.collectionId].push(item);
-    } else {
-      sortQuoteQAMap[item.collectionId] = [item];
-    }
-  });
-  const sortQuoteQAList = Object.values(sortQuoteQAMap);
-
-  sortQuoteQAList.forEach((qaList) => {
-    qaList.sort((a, b) => a.chunkIndex - b.chunkIndex);
-  });
-
-  const flatQuoteList = sortQuoteQAList.flat();
-
   const quoteText =
-    flatQuoteList.length > 0
-      ? `${flatQuoteList.map((item, index) => getValue(item, index)).join('\n')}`
+    filterQuoteQA.length > 0
+      ? `${filterQuoteQA.map((item, index) => getValue(item, index).trim()).join('\n------\n')}`
       : '';
 
   return {
-    filterQuoteQA: flatQuoteList,
+    filterQuoteQA: filterQuoteQA,
     quoteText
   };
 }

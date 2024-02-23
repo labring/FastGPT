@@ -16,7 +16,7 @@ import { useImportStore, type FormType } from '../Provider';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { postCreateTrainingBill } from '@/web/support/wallet/bill/api';
+import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { chunksUpload, fileCollectionCreate } from '@/web/core/dataset/utils';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
@@ -54,7 +54,7 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
 
       // Batch create collection and upload chunks
       for await (const item of uploadList) {
-        const billId = await postCreateTrainingBill({
+        const billId = await postCreateTrainingUsage({
           name: item.sourceName,
           datasetId: datasetDetail._id
         });

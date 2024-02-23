@@ -46,7 +46,7 @@ type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
   name: '',
   limit: {
-    credit: -1
+    maxUsagePoints: -1
   }
 };
 
@@ -153,16 +153,16 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             </Tr>
           </Thead>
           <Tbody fontSize={'sm'}>
-            {apiKeys.map(({ _id, name, usage, limit, apiKey, createTime, lastUsedTime }) => (
+            {apiKeys.map(({ _id, name, usagePoints, limit, apiKey, createTime, lastUsedTime }) => (
               <Tr key={_id}>
                 <Td>{name}</Td>
                 <Td>{apiKey}</Td>
-                <Td>{usage}</Td>
+                <Td>{Math.round(usagePoints)}</Td>
                 {feConfigs?.isPlus && (
                   <>
                     <Td>
-                      {limit?.credit && limit?.credit > -1
-                        ? `${limit?.credit}`
+                      {limit?.maxUsagePoints && limit?.maxUsagePoints > -1
+                        ? `${limit?.maxUsagePoints}`
                         : t('common.Unlimited')}
                     </Td>
                     <Td whiteSpace={'pre-wrap'}>
@@ -334,15 +334,15 @@ function EditKeyModal({
           <>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('common.Max credit')}:
-                <MyTooltip label={t('common.Max credit tips' || '')}>
+                {t('support.outlink.Max usage points')}:
+                <MyTooltip label={t('support.outlink.Max usage points tip')}>
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Flex>
               <Input
-                {...register('limit.credit', {
+                {...register('limit.maxUsagePoints', {
                   min: -1,
-                  max: 1000,
+                  max: 10000000,
                   valueAsNumber: true,
                   required: true
                 })}

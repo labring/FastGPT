@@ -116,8 +116,7 @@ CHAT_API_KEY=sk-xxxxxx
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 13000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
-      "inputPrice": 0, 
-      "outputPrice": 0,
+      "charsPointsPrice": 0, 
       "censor": false,
       "vision": false, // 是否支持图片输入
       "datasetProcess": false, // 是否设置为知识库处理模型

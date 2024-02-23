@@ -1,3 +1,8 @@
+/* 
+  user sub plan
+  1. type=standard: There will only be 1, and each team will have one
+  2. type=extraDatasetSize/extraPoints: Can buy multiple
+*/
 import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
@@ -23,23 +28,8 @@ const SubSchema = new Schema({
     required: true
   },
   status: {
-    // active: continue sub; canceled: canceled sub;
     type: String,
     enum: Object.keys(subStatusMap),
-    required: true
-  },
-  mode: {
-    type: String,
-    enum: Object.keys(subModeMap)
-  },
-  currentMode: {
-    type: String,
-    enum: Object.keys(subModeMap),
-    required: true
-  },
-  nextMode: {
-    type: String,
-    enum: Object.keys(subModeMap),
     required: true
   },
   startTime: {
@@ -55,12 +45,16 @@ const SubSchema = new Schema({
     type: Number,
     required: true
   },
-  pointPrice: {
-    // stand level point total price
-    type: Number
-  },
 
-  // sub content
+  // standard sub
+  currentMode: {
+    type: String,
+    enum: Object.keys(subModeMap)
+  },
+  nextMode: {
+    type: String,
+    enum: Object.keys(subModeMap)
+  },
   currentSubLevel: {
     type: String,
     enum: Object.keys(standardSubLevelMap)
@@ -69,79 +63,34 @@ const SubSchema = new Schema({
     type: String,
     enum: Object.keys(standardSubLevelMap)
   },
+
+  // stand sub and extra points sub. Plan total points
   totalPoints: {
     type: Number
   },
+  pointPrice: {
+    // stand level point total price
+    type: Number
+  },
+  surplusPoints: {
+    // plan surplus points
+    type: Number
+  },
 
+  // extra dataset size
   currentExtraDatasetSize: {
     type: Number
-  },
-  nextExtraDatasetSize: {
-    type: Number
-  },
-
-  currentExtraPoints: {
-    type: Number
-  },
-  nextExtraPoints: {
-    type: Number
-  },
-
-  // standard sub limit
-  // maxTeamMember: {
-  //   type: Number
-  // },
-  // maxAppAmount: {
-  //   type: Number
-  // },
-  // maxDatasetAmount: {
-  //   type: Number
-  // },
-  // chatHistoryStoreDuration: {
-  //   // n day
-  //   type: Number
-  // },
-  // maxDatasetSize: {
-  //   type: Number
-  // },
-  // trainingWeight: {
-  //   // 0 1 2 3
-  //   type: Number
-  // },
-  // customApiKey: {
-  //   type: Boolean
-  // },
-  // customCopyright: {
-  //   type: Boolean
-  // },
-  // websiteSyncInterval: {
-  //   // hours
-  //   type: Number
-  // },
-  // reRankWeight: {
-  //   // 0 1 2 3
-  //   type: Number
-  // },
-  // totalPoints: {
-  //   // record standard sub points
-  //   type: Number
-  // },
-
-  surplusPoints: {
-    // standard sub / extra points sub
-    type: Number
-  },
-
-  // abandon
-  renew: Boolean, //决定是否续费
-  datasetStoreAmount: Number
+  }
 });
 
 try {
-  SubSchema.index({ teamId: 1 });
-  SubSchema.index({ status: 1 });
-  SubSchema.index({ type: 1 });
-  SubSchema.index({ expiredTime: -1 });
+  // get team plan
+  SubSchema.index({ teamId: 1, type: 1, expiredTime: -1 });
+
+  // timer task. check expired plan; update standard plan;
+  SubSchema.index({ type: 1, expiredTime: -1 });
+  // timer task. clear dead team
+  SubSchema.index({ type: 1, currentSubLevel: 1, nextSubLevel: 1 });
 } catch (error) {
   console.log(error);
 }

@@ -1,25 +1,18 @@
-import { BillSourceEnum } from './constants';
-import { BillListItemCountType, BillListItemType } from './type';
-
-export type CreateTrainingBillProps = {
-  name: string;
-  datasetId: string;
-};
-
-export type ConcatBillProps = BillListItemCountType & {
-  teamId: string;
-  tmbId: string;
-  billId?: string;
-  total: number;
-  listIndex?: number;
-};
+import { BillTypeEnum } from './constants';
 
 export type CreateBillProps = {
-  teamId: string;
-  tmbId: string;
-  appName: string;
-  appId?: string;
-  total: number;
-  source: `${BillSourceEnum}`;
-  list: BillListItemType[];
+  type: `${BillTypeEnum}`;
+
+  // balance
+  balance?: number; // read
+
+  month?: number;
+  // extra dataset size
+  extraDatasetSize?: number; // 1k
+  extraPoints?: number; // 100w
+};
+export type CreateBillResponse = {
+  billId: string;
+  codeUrl: string;
+  readPrice: number;
 };

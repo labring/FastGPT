@@ -8,8 +8,12 @@ import {
   Input,
   Grid,
   useTheme,
-  Card
+  Card,
+  Text,
+  HStack,
+  Tag
 } from '@chakra-ui/react';
+import { AddIcon } from '@chakra-ui/icons';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';

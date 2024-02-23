@@ -1,35 +1,29 @@
-import { CreateBillProps } from './api';
-import { BillSourceEnum } from './constants';
+import { StandardSubLevelEnum, SubModeEnum, SubTypeEnum } from '../sub/constants';
+import { BillPayWayEnum, BillTypeEnum } from './constants';
 
-export type BillListItemCountType = {
-  inputTokens?: number;
-  outputTokens?: number;
-  charsLength?: number;
-  duration?: number;
-
-  // sub
-  datasetSize?: number;
-
-  // abandon
-  tokenLen?: number;
-};
-export type BillListItemType = BillListItemCountType & {
-  moduleName: string;
-  amount: number;
-  model?: string;
-};
-
-export type BillSchema = CreateBillProps & {
+export type BillSchemaType = {
   _id: string;
-  time: Date;
+  userId: string;
+  teamId: string;
+  tmbId: string;
+  createTime: Date;
+  orderId: string;
+  status: 'SUCCESS' | 'REFUND' | 'NOTPAY' | 'CLOSED';
+  type: `${BillTypeEnum}`;
+  price: number;
+  metadata: {
+    payWay: `${BillPayWayEnum}`;
+    subMode?: `${SubModeEnum}`;
+    standSubLevel?: `${StandardSubLevelEnum}`;
+    month?: number;
+    datasetSize?: number;
+    extraPoints?: number;
+  };
 };
 
-export type BillItemType = {
-  id: string;
-  // memberName: string;
-  time: Date;
-  appName: string;
-  source: BillSchema['source'];
-  total: number;
-  list: BillSchema['list'];
+export type ChatModuleBillType = {
+  totalPoints: number;
+  moduleName: string;
+  model: string;
+  charsLength: number;
 };
