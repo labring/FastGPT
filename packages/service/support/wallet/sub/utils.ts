@@ -1,6 +1,9 @@
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import { FeTeamSubType, StandSubPlanLevelMapType } from '@fastgpt/global/support/wallet/sub/type.d';
+import {
+  FeTeamPlanStatusType,
+  StandSubPlanLevelMapType
+} from '@fastgpt/global/support/wallet/sub/type.d';
 import { getVectorCountByTeamId } from '../../../common/vectorStore/controller';
 
 export const getTeamSubPlans = async ({
@@ -9,7 +12,7 @@ export const getTeamSubPlans = async ({
 }: {
   teamId: string;
   standardPlans?: StandSubPlanLevelMapType;
-}): Promise<FeTeamSubType> => {
+}): Promise<FeTeamPlanStatusType> => {
   const [plans, usedDatasetSize] = await Promise.all([
     MongoTeamSub.find({ teamId }).lean(),
     getVectorCountByTeamId(teamId)

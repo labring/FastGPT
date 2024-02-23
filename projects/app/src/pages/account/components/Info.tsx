@@ -32,7 +32,7 @@ import MySelect from '@/components/Select';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
-import { getTeamDatasetValidSub } from '@/web/support/wallet/sub/api';
+import { getTeamPlanStatus } from '@/web/support/wallet/sub/api';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
@@ -124,7 +124,7 @@ const UserInfo = () => {
       datasetMaxSize: 800,
       usedDatasetSize: 0
     }
-  } = useQuery(['getTeamDatasetValidSub'], getTeamDatasetValidSub);
+  } = useQuery(['getTeamPlanStatus'], getTeamPlanStatus);
   const datasetUsageMap = useMemo(() => {
     const rate = teamSubPlan.usedDatasetSize / teamSubPlan.datasetMaxSize;
 

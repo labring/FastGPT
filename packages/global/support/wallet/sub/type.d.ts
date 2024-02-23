@@ -53,7 +53,7 @@ export type TeamSubSchema = {
   currentExtraDatasetSize: number;
 };
 
-export type FeTeamSubType = {
+export type FeTeamPlanStatusType = {
   [SubTypeEnum.standard]?: TeamSubSchema;
   standardConstants?: TeamStandardSubPlanItemType;
 

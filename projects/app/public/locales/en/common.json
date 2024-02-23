@@ -864,8 +864,8 @@
           "Ai response content": "Will be triggered after the stream reply is complete",
           "New context": "Concatenate the reply content with history and return it as a new context",
           "Quote": "Always return an array, if you want the search results to be empty to perform additional operations, you need to use the above two inputs and the trigger of the target module",
-          "running done": "Triggered when the module call finish",
-          "query extension result": "Output as an array of strings to connect the result directly to the 'Question' of the knowledge base search"
+          "query extension result": "Output as an array of strings to connect the result directly to the 'Question' of the knowledge base search",
+          "running done": "Triggered when the module call finish"
         },
         "label": {
           "Ai response content": "Response Content",
@@ -1187,6 +1187,11 @@
     },
     "subscription": {
       "Cancel subscription": "Cancel"
+    },
+    "team": {
+      "limit": {
+        "No permission rerank": "Not permission to rerank, please upgrade your plan"
+      }
     },
     "user": {
       "Need to login": "Please log in first",

@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getTeamSubPlans } from '@fastgpt/service/support/wallet/sub/utils';
 import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
-import { FeTeamSubType } from '@fastgpt/global/support/wallet/sub/type';
+import { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       authToken: true
     });
 
-    jsonRes<FeTeamSubType>(res, {
+    jsonRes<FeTeamPlanStatusType>(res, {
       data: await getTeamSubPlans({
         teamId,
         standardPlans: getStandardSubPlan()
