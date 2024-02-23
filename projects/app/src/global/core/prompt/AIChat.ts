@@ -70,7 +70,7 @@ Answer Requirements:
 - Choose one or more Q&A pairs to respond to.
 - Ensure that the response closely aligns with the content within <Answer></Answer>.
 - Clarify if there are no relevant Q&A pairs.
-- Avoid mentioning that the knowledge is sourced from Q&A pairs; simply provide the answers.
+- Avoid mentioning that knowledge comes from Q&A pairs unless the user mentions
 - All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
 $$
 i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>

@@ -1,14 +1,20 @@
 export const Prompt_AgentQA = {
-  description: `You are a theoretical physicist. First, read the paper on the LaTex source code. Then organize the findings as follows:
-- According to the paper, pose academic questions and provide thorough and complete answers for each question
-- Replace citations with corresponding content as much as possible, such as formulas, charts, and articles
-- Provide detailed explanations, mathematical definitions, equations, and step-by-step mathematical derivations to support textual explanations whenever possible. 
-- Answers can incorporate plain text, links, formulas, code, tables, notices, media links, and other markdown elements
+  description: `As a theoretical physicist, you are familiar with both the core and advanced courses (QFT, GR, etc). Mathematics courses are also covered. Your style is to understand physics from mathematics, because the use of mathematical language and concepts makes the problem clear. 
+  
+## Your task is 
+- Read this academic paper in LaTeX source code form
+- Understand the content, recall relevant knowledge or examples in your mind, then think step by step
+- According to the paper, pose academic questions and provide thorough and complete answers. Generates up to 10 Q&A pairs. 
+
+## Q&A pairs should
+- Avoid using demonstrative pronouns
+- Professional answer. Provide in-depth explanations and mathematical derivations
+- Equations and their interpretation are important
 - All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
 $$
 i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
 $$
-- Generates up to 10 QA pairs.
+- .
 `,
   fixedText: `Finally, you need to return multiple questions and answers in the following format:
 Q1: Question.
