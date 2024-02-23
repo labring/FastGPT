@@ -1,6 +1,5 @@
 import React, { useContext, useCallback, createContext, useState, useMemo, useEffect } from 'react';
 
-import { formatModelPrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
@@ -34,7 +33,7 @@ type useImportStoreType = {
   totalChunkChars: number;
   totalChunks: number;
   chunkSize: number;
-  predictPrice: number;
+  predictPoints: number;
   priceTip: string;
   uploadRate: number;
   splitSources2Chunks: () => void;
@@ -54,7 +53,7 @@ const StateContext = createContext<useImportStoreType>({
   totalChunkChars: 0,
   totalChunks: 0,
   chunkSize: 0,
-  predictPrice: 0,
+  predictPoints: 0,
   priceTip: '',
   uploadRate: 50,
   splitSources2Chunks: () => {}
@@ -149,15 +148,12 @@ const Provider = ({
     () => sources.reduce((sum, file) => sum + file.chunkChars, 0),
     [sources]
   );
-  const predictPrice = useMemo(() => {
+  const predictPoints = useMemo(() => {
     if (mode === TrainingModeEnum.qa) {
-      const inputTotal = totalChunkChars * selectModelStaticParam.charsPointsPrice;
-      const outputTotal = totalChunkChars * 0.5 * selectModelStaticParam.charsPointsPrice;
-
-      return formatModelPrice2Read(inputTotal + outputTotal);
+      return +(((totalChunkChars * 1.5) / 1000) * agentModel.charsPointsPrice).toFixed(2);
     }
-    return formatModelPrice2Read(totalChunkChars * selectModelStaticParam.charsPointsPrice);
-  }, [mode, selectModelStaticParam.charsPointsPrice, totalChunkChars]);
+    return +((totalChunkChars / 1000) * vectorModel.charsPointsPrice).toFixed(2);
+  }, [agentModel.charsPointsPrice, mode, totalChunkChars, vectorModel.charsPointsPrice]);
   const totalChunks = useMemo(
     () => sources.reduce((sum, file) => sum + file.chunks.length, 0),
     [sources]
@@ -176,7 +172,8 @@ const Provider = ({
         return {
           ...file,
           chunkChars: chars,
-          chunks: chunks.map((chunk) => ({
+          chunks: chunks.map((chunk, i) => ({
+            chunkIndex: i,
             q: chunk,
             a: ''
           }))
@@ -196,7 +193,7 @@ const Provider = ({
     totalChunkChars,
     totalChunks,
     chunkSize,
-    predictPrice,
+    predictPoints,
     splitSources2Chunks
   };
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;

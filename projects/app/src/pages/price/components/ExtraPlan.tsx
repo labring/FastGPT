@@ -120,13 +120,13 @@ const ExtraPlan = () => {
       alignItems={'center'}
       position={'relative'}
     >
-      <Box fontWeight={'bold'} fontSize={['24px', '36px']}>
+      <Box id={'extra-plan'} fontWeight={'bold'} fontSize={['24px', '36px']}>
         {t('support.wallet.subscription.Extra plan')}
       </Box>
       <Box mt={8} mb={10} color={'myGray.500'} fontSize={'lg'}>
         {t('support.wallet.subscription.Extra plan tip')}
       </Box>
-      <Grid mt={8} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5}>
+      <Grid mt={8} gridTemplateColumns={['1fr', '1fr 1fr']} gap={5} w={['100%', 'auto']}>
         <Box
           bg={'rgba(255, 255, 255, 0.90)'}
           px={'32px'}
@@ -143,13 +143,14 @@ const ExtraPlan = () => {
                 {t('support.wallet.subscription.Extra dataset size')}
               </Box>
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'}>
-                ￥{extraDatasetPrice}/1k组{' '}
+                ￥{extraDatasetPrice}/1000组{' '}
                 <Box ml={1} as={'span'} fontSize={'lg'} color={'myGray.600'} fontWeight={'normal'}>
                   /{t('common.month')}
                 </Box>
               </Box>
             </Box>
             <MyIcon
+              display={['none', 'display']}
               mt={'-30px'}
               transform={'translateX(20px)'}
               name={'support/bill/extraDatasetsize'}
@@ -162,7 +163,9 @@ const ExtraPlan = () => {
               购买资源包
             </Flex>
             <Flex mt={4} alignItems={'center'}>
-              <Box flex={'0 0 200px'}>{t('support.wallet.subscription.Month amount')}</Box>
+              <Box flex={['0 0 100px', '0 0 200px']}>
+                {t('support.wallet.subscription.Month amount')}
+              </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
                 <NumberInput size={'sm'} flex={1} step={1} min={1} max={12} position={'relative'}>
                   <NumberInputField
@@ -185,7 +188,7 @@ const ExtraPlan = () => {
               </Flex>
             </Flex>
             <Flex mt={4} alignItems={'center'}>
-              <Box flex={'0 0 200px'}>
+              <Box flex={['0 0 100px', '0 0 200px']}>
                 {t('support.wallet.subscription.Update extra dataset size')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
@@ -245,13 +248,14 @@ const ExtraPlan = () => {
                 {t('support.wallet.subscription.Extra ai points')}
               </Box>
               <Box mt={3} fontSize={['28px', '32px']} fontWeight={'bold'}>
-                ￥{extraPointsPrice}/100万积分{' '}
+                ￥{extraPointsPrice}/1000积分{' '}
                 <Box ml={1} as={'span'} fontSize={'lg'} color={'myGray.600'} fontWeight={'normal'}>
                   /{t('common.month')}
                 </Box>
               </Box>
             </Box>
             <MyIcon
+              display={['none', 'display']}
               mt={'-30px'}
               transform={'translateX(20px)'}
               name={'support/bill/extraPoints'}
@@ -264,7 +268,9 @@ const ExtraPlan = () => {
               购买资源包
             </Flex>
             <Flex mt={4} alignItems={'center'}>
-              <Box flex={'0 0 200px'}>{t('support.wallet.subscription.Month amount')}</Box>
+              <Box flex={['0 0 100px', '0 0 200px']}>
+                {t('support.wallet.subscription.Month amount')}
+              </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
                 <NumberInput size={'sm'} flex={1} step={1} min={1} max={12} position={'relative'}>
                   <NumberInputField
@@ -287,7 +293,7 @@ const ExtraPlan = () => {
               </Flex>
             </Flex>
             <Flex mt={4} alignItems={'center'}>
-              <Box flex={'0 0 200px'}>
+              <Box flex={['0 0 100px', '0 0 200px']}>
                 {t('support.wallet.subscription.Update extra ai points')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
@@ -315,7 +321,7 @@ const ExtraPlan = () => {
                   </NumberInputStepper>
                 </NumberInput>
                 <Box position={'absolute'} right={'20px'} color={'myGray.500'} fontSize={'xs'}>
-                  百万
+                  000积分
                 </Box>
               </Flex>
             </Flex>

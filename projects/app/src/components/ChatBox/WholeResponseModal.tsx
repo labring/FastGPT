@@ -206,7 +206,7 @@ const ResponseBox = React.memo(function ResponseBox({
           <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
           <Row
             label={t('core.chat.response.search using reRank')}
-            value={activeModule?.searchUsingReRank}
+            value={`${activeModule?.searchUsingReRank}`}
           />
           <Row
             label={t('core.chat.response.Extension model')}

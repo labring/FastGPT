@@ -137,12 +137,12 @@ export const pushGenerateVectorUsage = ({
     createUsage({
       teamId,
       tmbId,
-      appName: 'wallet.moduleName.index',
+      appName: 'support.wallet.moduleName.index',
       totalPoints,
       source,
       list: [
         {
-          moduleName: 'wallet.moduleName.index',
+          moduleName: 'support.wallet.moduleName.index',
           amount: totalVector,
           model: vectorModelName,
           charsLength

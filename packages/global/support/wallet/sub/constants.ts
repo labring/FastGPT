@@ -1,5 +1,3 @@
-export const POINTS_SCALE = 10000;
-
 export enum SubTypeEnum {
   standard = 'standard',
   extraDatasetSize = 'extraDatasetSize',
@@ -59,7 +57,7 @@ export const standardSubLevelMap = {
   },
   [StandardSubLevelEnum.experience]: {
     label: 'support.wallet.subscription.standardSubLevel.experience',
-    desc: 'support.wallet.subscription.standardSubLevel.experience desc'
+    desc: ''
   },
   [StandardSubLevelEnum.team]: {
     label: 'support.wallet.subscription.standardSubLevel.team',

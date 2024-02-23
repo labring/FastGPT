@@ -2,19 +2,19 @@ import { StandardSubLevelEnum, SubModeEnum, SubStatusEnum, SubTypeEnum } from '.
 
 // Content of plan
 export type TeamStandardSubPlanItemType = {
-  price: number; // read price
-  pointPrice: number; // read price/ one ten thousand
+  price: number; // read price / month
+  pointPrice: number; // read price/ one thousand
+  totalPoints: number; // n
   maxTeamMember: number;
   maxAppAmount: number; // max app or plugin amount
   maxDatasetAmount: number;
   chatHistoryStoreDuration: number; // n day
   maxDatasetSize: number;
-  customApiKey: boolean;
-  customCopyright: boolean; // feature
-  websiteSyncInterval: boolean;
-  reRankWeight: boolean; // 1~4
   trainingWeight: number; // 1~4
-  totalPoints: number; // n ten thousand
+  permissionCustomApiKey: boolean;
+  permissionCustomCopyright: boolean; // feature
+  permissionWebsiteSync: boolean;
+  permissionReRank: boolean;
 };
 
 export type StandSubPlanLevelMapType = Record<
@@ -53,12 +53,14 @@ export type TeamSubSchema = {
   currentExtraDatasetSize: number;
 };
 
-export type FeTeamSubType = {
+export type FeTeamPlanStatusType = {
   [SubTypeEnum.standard]?: TeamSubSchema;
+  standardConstants?: TeamStandardSubPlanItemType;
+
   totalPoints: number;
   usedPoints: number;
-  standardMaxDatasetSize?: number,
-  standardMaxPoints?: number,
+  standardMaxDatasetSize?: number;
+  standardMaxPoints?: number;
 
   // standard + extra
   datasetMaxSize: number;

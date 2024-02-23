@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { Box, Button, Flex, Grid, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -13,10 +13,10 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import MyModal from '@/components/MyModal';
-import PayModal from '@/pages/account/components/PayModal';
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
+import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
 
 type ConfirmPayModalProps = {
   teamBalance: number;
@@ -52,12 +52,12 @@ const Standard = ({
             maxDatasetAmount: value.maxDatasetAmount,
             chatHistoryStoreDuration: value.chatHistoryStoreDuration,
             maxDatasetSize: value.maxDatasetSize,
-            customApiKey: value.customApiKey,
-            customCopyright: value.customCopyright,
+            permissionCustomApiKey: value.permissionCustomApiKey,
+            permissionCustomCopyright: value.permissionCustomCopyright,
             trainingWeight: value.trainingWeight,
-            reRankWeight: value.reRankWeight,
+            permissionReRank: value.permissionReRank,
             totalPoints: value.totalPoints * (selectSubMode === SubModeEnum.month ? 1 : 12),
-            websiteSyncInterval: value.websiteSyncInterval
+            permissionWebsiteSync: value.permissionWebsiteSync
           };
         })
       : [];
@@ -157,7 +157,7 @@ const Standard = ({
               <Box fontSize={['32px', '42px']} fontWeight={'bold'}>
                 ￥{item.price}
               </Box>
-              <Box color={'myGray.500'} h={'40px'}>
+              <Box color={'myGray.500'} h={'40px'} fontSize={'xs'}>
                 {t(item.desc, { title: feConfigs?.systemTitle })}
               </Box>
               {(() => {
@@ -224,76 +224,7 @@ const Standard = ({
               })()}
 
               {/* function list */}
-              <Grid gap={4}>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box color={'myGray.600'}>
-                    {t('support.wallet.subscription.function.Max members', {
-                      amount: item.maxTeamMember
-                    })}
-                  </Box>
-                </Flex>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box color={'myGray.600'}>
-                    {t('support.wallet.subscription.function.Max app', {
-                      amount: item.maxAppAmount
-                    })}
-                  </Box>
-                </Flex>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box color={'myGray.600'}>
-                    {t('support.wallet.subscription.function.Max dataset', {
-                      amount: item.maxDatasetAmount
-                    })}
-                  </Box>
-                </Flex>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box color={'myGray.600'}>
-                    {t('support.wallet.subscription.function.History store', {
-                      amount: item.chatHistoryStoreDuration
-                    })}
-                  </Box>
-                </Flex>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box fontWeight={'bold'}>
-                    {t('support.wallet.subscription.function.Max dataset size', {
-                      amount: item.maxDatasetSize
-                    })}
-                  </Box>
-                </Flex>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box fontWeight={'bold'}>
-                    {t('support.wallet.subscription.function.Points', {
-                      amount: item.totalPoints
-                    })}
-                  </Box>
-                </Flex>
-                <Flex alignItems={'center'}>
-                  <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                  <Box color={'myGray.600'}>
-                    {t('support.wallet.subscription.Training weight', {
-                      weight: item.trainingWeight
-                    })}
-                  </Box>
-                </Flex>
-                {!!item.reRankWeight && (
-                  <Flex alignItems={'center'}>
-                    <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                    <Box color={'myGray.600'}>检索结果重排</Box>
-                  </Flex>
-                )}
-                {!!item.websiteSyncInterval && (
-                  <Flex alignItems={'center'}>
-                    <MyIcon name={'price/right'} w={'16px'} mr={3} />
-                    <Box color={'myGray.600'}>Web站点同步</Box>
-                  </Flex>
-                )}
-              </Grid>
+              <StandardPlanContentList level={item.level} mode={selectSubMode} />
             </Box>
           );
         })}

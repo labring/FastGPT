@@ -7,7 +7,6 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import { getDocPath } from '@/web/common/system/doc';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/global/support/wallet/constants';
 
 const Tools = () => {
   const { t } = useTranslation();

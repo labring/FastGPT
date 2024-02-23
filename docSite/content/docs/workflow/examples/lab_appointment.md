@@ -139,7 +139,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "model",
-        "type": "selectExtractModel",
+        "type": "selectLLMModel",
         "valueType": "string",
         "label": "core.module.input.label.LLM",
         "required": true,
@@ -401,7 +401,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "model",
-        "type": "selectCQModel",
+        "type": "selectLLMModel",
         "valueType": "string",
         "label": "core.module.input.label.Classify model",
         "required": true,
@@ -614,7 +614,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "model",
-        "type": "selectChatModel",
+        "type": "selectLLMModel",
         "label": "core.module.input.label.aiModel",
         "required": true,
         "valueType": "string",
@@ -835,7 +835,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
       },
       {
         "key": "model",
-        "type": "selectExtractModel",
+        "type": "selectLLMModel",
         "valueType": "string",
         "label": "core.module.input.label.LLM",
         "required": true,

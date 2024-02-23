@@ -7,9 +7,6 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
-import { MongoTeamSub } from '../../wallet/sub/schema';
-import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
@@ -115,22 +112,3 @@ export async function createDefaultTeam({
     });
   }
 }
-
-export const authTeamSurplusAiPoints = async (teamId: string) => {
-  const plans = await MongoTeamSub.find(
-    {
-      teamId,
-      type: [SubTypeEnum.standard, SubTypeEnum.extraPoints]
-    },
-    'surplusPoints'
-  ).lean();
-
-  if (plans.length === 0) return;
-
-  const total = plans.reduce((acc, plan) => acc + (plan.surplusPoints || 0), 0);
-
-  if (total <= 0) {
-    return Promise.reject(UserErrEnum.aiPointsNotEnough);
-  }
-  return total;
-};

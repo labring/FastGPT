@@ -88,7 +88,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         },
         {
           key: 'model',
-          type: 'selectChatModel',
+          type: 'selectLLMModel',
           label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
@@ -498,7 +498,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         },
         {
           key: 'model',
-          type: 'selectChatModel',
+          type: 'selectLLMModel',
           label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',

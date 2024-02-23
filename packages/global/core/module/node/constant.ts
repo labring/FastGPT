@@ -20,9 +20,7 @@ export enum FlowNodeInputTypeEnum {
   aiSettings = 'aiSettings',
 
   // ai model select
-  selectChatModel = 'selectChatModel',
-  selectCQModel = 'selectCQModel',
-  selectExtractModel = 'selectExtractModel',
+  selectLLMModel = 'selectLLMModel',
 
   // dataset special input
   selectDataset = 'selectDataset',
@@ -58,7 +56,7 @@ export enum FlowNodeTypeEnum {
   pluginModule = 'pluginModule',
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
-  cfr = 'cfr'
+  queryExtension = 'cfr'
 
   // abandon
 }

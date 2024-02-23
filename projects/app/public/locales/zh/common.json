@@ -38,7 +38,6 @@
     "Logs Title": "标题",
     "Mark Count": "标注答案数量",
     "My Apps": "我的应用",
-    "Apps Share": "应用分享",
     "Output Field Settings": "输出字段编辑",
     "Paste Config": "粘贴配置",
     "To Chat": "前去对话",
@@ -111,6 +110,7 @@
     "Number of words": "{{amount}}字",
     "OK": "好的",
     "Opened": "已开启",
+    "Other": "其他",
     "Output": "输出",
     "Params": "参数",
     "Password inconsistency": "两次密码不一致",
@@ -132,11 +132,9 @@
     "Select One Folder": "选择一个目录",
     "Select template": "选择模板",
     "Set Avatar": "点击设置头像",
-    "Set Team Tags": "团队标签",
     "Set Name": "取个名字",
     "Set Team Tags": "团队标签",
     "Setting": "设置",
-    "Team Tags Set": "标签",
     "Status": "状态",
     "Submit failed": "提交失败",
     "Submit success": "提交成功",
@@ -440,7 +438,7 @@
       },
       "response": {
         "Complete Response": "完整响应",
-        "Extension model": "问题补全模型",
+        "Extension model": "问题优化模型",
         "Plugin Resonse Detail": "插件详情",
         "Read complete response": "查看详情",
         "Read complete response tips": "点击查看详细流程",
@@ -506,6 +504,7 @@
       "Manual collection": "手动数据集",
       "My Dataset": "我的知识库",
       "Name": "知识库名称",
+      "Query extension intro": "开启问题优化功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
       "Quote Length": "引用内容长度",
       "Read Dataset": "查看知识库详情",
       "Search score tip": "{{scoreText}}下面是详细排名和得分情况:\n----\n{{detailScore}}",
@@ -557,7 +556,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -614,9 +614,10 @@
         "Data file progress": "数据上传进度",
         "Data process params": "数据处理参数",
         "Down load csv template": "点击下载 CSV 模板",
-        "Embedding Estimated Price Tips": "索引计费: {{price}}/1k字符",
+        "Embedding Estimated Price Tips": "索引计费: {{price}}积分/1k字符",
         "Estimated Price": "预估价格: {{amount}}{{unit}}",
         "Estimated Price Tips": "QA计费为\n输入: 1k字符 = {{charsPointsPrice}}积分",
+        "Estimated points": "预估消耗 {{points}} 积分",
         "Fetch Error": "获取链接失败",
         "Fetch Url": "网络链接",
         "Fetch url placeholder": "最多10个链接，每行一个。",
@@ -636,7 +637,7 @@
         "Preview chunks": "分段预览",
         "Preview raw text": "预览源文本（最多展示10000字）",
         "Process way": "处理方式",
-        "QA Estimated Price Tips": "QA计费为: {{price}}元/1k 字符(包含输入和输出)",
+        "QA Estimated Price Tips": "QA计费为: {{price}}积分/1k 字符(包含输入和输出)",
         "QA Import": "QA拆分",
         "QA Import Tip": "根据一定规则，将文本拆成一段较大的段落，调用 AI 为该段落生成问答对。",
         "Re Preview": "重新生成预览",
@@ -686,7 +687,7 @@
         "Source name": "引用来源名",
         "Top K": "单次搜索上限",
         "Using cfr": "",
-        "Using query extension": "使用问题补全",
+        "Using query extension": "使用问题优化",
         "mode": {
           "embedding": "语义检索",
           "embedding desc": "使用向量进行文本相关性查询",
@@ -850,8 +851,8 @@
         "dynamicTargetInput": "动态外部数据",
         "input": "输入框",
         "selectApp": "应用选择",
-        "selectChatModel": "对话模型选择",
         "selectDataset": "知识库选择",
+        "selectLLMModel": "对话模型选择",
         "switch": "开关",
         "target": "外部数据",
         "textarea": "段落输入"
@@ -863,6 +864,7 @@
           "Ai response content": "将在 stream 回复完毕后触发",
           "New context": "将本次回复内容拼接上历史记录，作为新的上下文返回",
           "Quote": "始终返回数组，如果希望搜索结果为空时执行额外操作，需要用到上面的两个输入以及目标模块的触发器",
+          "query extension result": "以字符串数组的形式输出，可将该结果直接连接到“知识库搜索”的“用户问题”中，建议不要连接到“AI对话”的“用户问题”中",
           "running done": "模块调用结束时触发"
         },
         "label": {
@@ -871,7 +873,7 @@
           "Quote": "引用内容",
           "Search result empty": "搜索结果为空",
           "Search result not empty": "搜索结果不为空",
-          "cfr result": "补全结果",
+          "query extension result": "优化结果",
           "result false": "False",
           "result true": "True",
           "running done": "模块调用结束",
@@ -898,8 +900,8 @@
         "Http request": "HTTP 请求",
         "Http request intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "My plugin module": "个人插件",
-        "Query extension": "问题补全",
-        "Query extension intro": "开启问题补全功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
+        "Query extension": "问题优化",
+        "Query extension intro": "使用问题优化功能，可以提高知识库连续对话时搜索的精度。使用该功能后，会先利用 AI 根据上下文构建一个或多个新的检索词，这些检索词更利于进行知识库搜索。该模块已内置在知识库搜索模块中，如果您仅进行一次知识库搜索，可直接使用知识库内置的补全功能。",
         "Response module": "文本输出",
         "Running app": "应用调用",
         "Running app intro": "可以选择一个其他应用进行调用",
@@ -1186,9 +1188,16 @@
     "subscription": {
       "Cancel subscription": "取消订阅"
     },
+    "team": {
+      "limit": {
+        "No permission rerank": "无权使用结果重排，请升级您的套餐"
+      }
+    },
     "user": {
+      "Avatar": "头像",
       "Need to login": "请先登录",
       "Price": "计费标准",
+      "User self info": "个人信息",
       "auth": {
         "Sending Code": "正在发送"
       },
@@ -1236,6 +1245,7 @@
       },
       "noBill": "无账单记录~",
       "subscription": {
+        "AI points": "AI积分",
         "Ai points": "AI 积分计算标准",
         "Buy now": "切换套餐",
         "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
@@ -1262,16 +1272,18 @@
         "Standard update success": "变更订阅套餐成功！",
         "Sub plan": "订阅套餐",
         "Sub plan tip": "免费使用 FastGPT 或升级更高的套餐",
+        "Team plan and usage": "套餐与用量",
         "Training weight": "训练优先级: {{weight}}",
         "Update extra ai points": "额外AI积分",
         "Update extra dataset size": "额外存储量",
+        "Upgrade plan": "升级套餐",
         "function": {
           "History store": "{{amount}} 天对话记录保留",
           "Max app": "{{amount}} 个应用与插件",
           "Max dataset": "{{amount}} 个知识库",
           "Max dataset size": "{{amount}} 组知识库索引",
           "Max members": "{{amount}} 个团队成员",
-          "Points": "{{amount}}万AI积分"
+          "Points": "{{amount}} AI积分"
         },
         "mode": {
           "Month": "按月",
@@ -1282,9 +1294,9 @@
         "standardSubLevel": {
           "enterprise": "企业版",
           "experience": "体验版",
-          "experience desc": "可使用 {{title}} 的完整功能",
+          "experience desc": "",
           "free": "免费版",
-          "free desc": "每月均可免费使用 {{title}} 的基础功能",
+          "free desc": "每月均可免费使用基础功能，15天不活跃时，将会清除知识库",
           "team": "团队版"
         },
         "type": {
@@ -1303,9 +1315,9 @@
         "Data Length": "数据长度",
         "Dataset store": "知识库存储",
         "Duration": "时长（秒）",
-        "Extension Input Token Length": "问题补全输入Tokens",
-        "Extension Output Token Length": "问题补全输出Tokens",
-        "Extension result": "问题补全结果",
+        "Extension Input Token Length": "问题优化输入Tokens",
+        "Extension Output Token Length": "问题优化输出Tokens",
+        "Extension result": "问题优化结果",
         "Input Token Length": "输入 Tokens",
         "Module name": "模块名",
         "Number": "",
@@ -1348,7 +1360,6 @@
     "Notice": "通知",
     "Old password is error": "旧密码错误",
     "OpenAI Account Setting": "OpenAI 账号配置",
-    "Standard Detail": "套餐详情",
     "Password": "密码",
     "Pay": "充值",
     "Permission": "使用权限",
@@ -1362,6 +1373,7 @@
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Sign Out": "登出",
     "Source": "来源",
+    "Standard Detail": "套餐详情",
     "Team": "团队",
     "Time": "时间",
     "Timezone": "时区",
@@ -1383,10 +1395,6 @@
       "Confirm Invite": "确认邀请",
       "Create Team": "创建新团队",
       "Invite Member": "邀请成员",
-      "Team Tags Async": "标签同步",
-      "Team Tags Async Success": "链接报错成功，标签信息更新",
-      "Team Tags Async Tip": "填写标签同步连接，获取最新",
-      "Tags Async": "保存",
       "Invite Member Failed Tip": "邀请成员出现异常",
       "Invite Member Result Tip": "邀请结果提示",
       "Invite Member Success Tip": "邀请成员完成\n成功: {{success}}人\n用户名无效: {{inValid}}\n已在团队中:{{inTeam}}",

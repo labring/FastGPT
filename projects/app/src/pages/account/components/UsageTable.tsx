@@ -157,7 +157,7 @@ const UsageTable = () => {
                 <Td>{dayjs(item.time).format('YYYY/MM/DD HH:mm:ss')}</Td>
                 <Td>{t(UsageSourceMap[item.source]?.label) || '-'}</Td>
                 <Td>{t(item.appName) || '-'}</Td>
-                <Td>{formatNumber(item.totalPoints) || '-'}</Td>
+                <Td>{formatNumber(item.totalPoints) || 0}</Td>
                 <Td>
                   <Button size={'sm'} variant={'whitePrimary'} onClick={() => setUsageDetail(item)}>
                     详情

@@ -13,6 +13,7 @@ import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
 import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
+import { checkTeamReRankPermission } from '@/service/support/permission/teamLimit';
 
 type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
@@ -76,6 +77,8 @@ export async function dispatchDatasetSearch(
     histories: getHistories(6, histories)
   });
 
+  // console.log(concatQueries, rewriteQuery, aiExtensionResult);
+
   // get vector
   const vectorModel = getVectorModel(datasets[0]?.vectorModel?.model);
 
@@ -94,7 +97,7 @@ export async function dispatchDatasetSearch(
     limit,
     datasetIds: datasets.map((item) => item.datasetId),
     searchMode,
-    usingReRank
+    usingReRank: usingReRank && (await checkTeamReRankPermission(teamId))
   });
 
   // count bill results

@@ -2,11 +2,9 @@ import React, { useMemo } from 'react';
 
 import MySelect, { type SelectProps } from './index';
 import { useTranslation } from 'next-i18next';
-import dynamic from 'next/dynamic';
-import { useDisclosure } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/global/support/wallet/constants';
+import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
 
 const SelectAiModel = ({ list, ...props }: SelectProps) => {
   const { t } = useTranslation();

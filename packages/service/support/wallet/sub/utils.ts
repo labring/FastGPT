@@ -1,51 +1,18 @@
 import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import { FeTeamSubType, StandSubPlanLevelMapType } from '@fastgpt/global/support/wallet/sub/type.d';
+import {
+  FeTeamPlanStatusType,
+  StandSubPlanLevelMapType
+} from '@fastgpt/global/support/wallet/sub/type.d';
 import { getVectorCountByTeamId } from '../../../common/vectorStore/controller';
 
-/* get team dataset max size */
-export const getTeamDatasetMaxSize = async ({
+export const getTeamSubPlans = async ({
   teamId,
   standardPlans
 }: {
   teamId: string;
   standardPlans?: StandSubPlanLevelMapType;
-}) => {
-  if (!standardPlans) {
-    return {
-      maxSize: Infinity
-    };
-  }
-
-  const plans = await MongoTeamSub.find({
-    teamId,
-    type: [SubTypeEnum.standard, SubTypeEnum.extraDatasetSize]
-  }).lean();
-
-  const standard = plans.find((plan) => plan.type === SubTypeEnum.standard);
-  const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
-
-  const standardMaxDatasetSize =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[standard.currentSubLevel]?.maxDatasetSize || Infinity
-      : Infinity;
-
-  const totalDatasetSize =
-    standardMaxDatasetSize +
-    extraDatasetSize.reduce((acc, cur) => acc + cur.currentExtraDatasetSize, 0);
-
-  return {
-    maxSize: totalDatasetSize
-  };
-};
-
-export const getTeamStandardPlan = async ({
-  teamId,
-  standardPlans
-}: {
-  teamId: string;
-  standardPlans?: StandSubPlanLevelMapType;
-}): Promise<FeTeamSubType> => {
+}): Promise<FeTeamPlanStatusType> => {
   const [plans, usedDatasetSize] = await Promise.all([
     MongoTeamSub.find({ teamId }).lean(),
     getVectorCountByTeamId(teamId)
@@ -72,11 +39,32 @@ export const getTeamStandardPlan = async ({
 
   return {
     [SubTypeEnum.standard]: standard,
+    standardConstants:
+      standard?.currentSubLevel && standardPlans
+        ? standardPlans[standard.currentSubLevel]
+        : undefined,
 
     totalPoints,
     usedPoints: totalPoints - surplusPoints,
 
     datasetMaxSize: totalDatasetSize,
     usedDatasetSize
+  };
+};
+export const getTeamStandPlan = async ({
+  teamId,
+  standardPlans
+}: {
+  teamId: string;
+  standardPlans?: StandSubPlanLevelMapType;
+}) => {
+  const standard = await MongoTeamSub.findOne({ teamId, type: SubTypeEnum.standard }).lean();
+
+  return {
+    [SubTypeEnum.standard]: standard,
+    standardConstants:
+      standard?.currentSubLevel && standardPlans
+        ? standardPlans[standard.currentSubLevel]
+        : undefined
   };
 };

@@ -116,9 +116,10 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             </Box>
           </>
         )}
+
+        {!!userInfo && <UpdateInviteModal />}
       </Box>
       <Loading loading={loading} zIndex={999999} />
-      {!!userInfo && <UpdateInviteModal />}
     </>
   );
 };

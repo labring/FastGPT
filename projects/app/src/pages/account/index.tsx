@@ -8,11 +8,10 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
 import Tabs from '@/components/Tabs';
-import UserInfo from './components/InforNew';
+import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/global/support/wallet/constants';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
@@ -24,7 +23,6 @@ enum TabEnum {
   'info' = 'info',
   'promotion' = 'promotion',
   'usage' = 'usage',
-  'price' = 'price',
   'bill' = 'bill',
   'inform' = 'inform',
   'apikey' = 'apikey',
@@ -57,15 +55,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             icon: 'support/bill/payRecordLight',
             label: t('support.wallet.Bills'),
             id: TabEnum.bill
-          }
-        ]
-      : []),
-    ...(feConfigs?.show_pay
-      ? [
-          {
-            icon: 'support/bill/priceLight',
-            label: t('support.user.Price'),
-            id: TabEnum.price
           }
         ]
       : []),
@@ -119,8 +108,6 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           setUserInfo(null);
           router.replace('/login');
         })();
-      } else if (tab === TabEnum.price) {
-        router.push(AI_POINT_USAGE_CARD_ROUTE);
       } else {
         router.replace({
           query: {

@@ -6,7 +6,7 @@ import type {
   AuthOutLinkResponse
 } from '@fastgpt/global/support/outLink/api.d';
 import { authOutLinkValid } from '@fastgpt/service/support/permission/auth/outLink';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/user/controller';
+import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { OutLinkErrEnum } from '@fastgpt/global/common/error/code/outLink';
 import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';

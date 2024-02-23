@@ -36,7 +36,7 @@ llm模型全部合并
       "charsPointsPrice": 0, 
       "censor": false,
       "vision": false, // 是否支持图片输入
-      "datasetProcess": false, // 是否设置为知识库处理模型
+      "datasetProcess": false, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
       "toolChoice": true, // 是否支持工具选择
       "functionCall": false, // 是否支持函数调用
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
@@ -89,7 +89,7 @@ llm模型全部合并
       "maxTemperature": 1.2,
       "charsPointsPrice": 0,
       "censor": false,
-      "vision": false,
+      "vision": true,
       "datasetProcess": false,
       "toolChoice": true,
       "functionCall": false,

@@ -23,7 +23,7 @@ import { dispatchContentExtract } from './agent/extract';
 import { dispatchHttpRequest } from './tools/http';
 import { dispatchHttp468Request } from './tools/http468';
 import { dispatchAppRequest } from './tools/runApp';
-import { dispatchCFR } from './tools/cfr';
+import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
@@ -45,7 +45,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.pluginModule]: dispatchRunPlugin,
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
-  [FlowNodeTypeEnum.cfr]: dispatchCFR,
+  [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
 
   // none
   [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()
@@ -249,7 +249,6 @@ export async function dispatchModules({
         dispatchRes[ModuleOutputKeyEnum.moduleDispatchBills]
     });
   }
-  console.log('initModule');
   // start process width initInput
   const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
 
@@ -285,7 +284,6 @@ function loadModules(
   modules: ModuleItemType[],
   variables: Record<string, any>
 ): RunningModuleItemType[] {
-  console.log('initModule', modules);
   return modules
     .filter((item) => {
       return ![FlowNodeTypeEnum.userGuide].includes(item.moduleId as any);

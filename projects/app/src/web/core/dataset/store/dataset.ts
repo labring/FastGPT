@@ -89,19 +89,17 @@ export const useDatasetStore = create<State>()(
         async startWebsiteSync() {
           await checkTeamWebSyncLimit();
 
-          const [_, billId] = await Promise.all([
+          const billId = await postCreateTrainingUsage({
+            name: 'core.dataset.training.Website Sync',
+            datasetId: get().datasetDetail._id
+          });
+
+          return postWebsiteSync({ datasetId: get().datasetDetail._id, billId }).then(() => {
             get().updateDataset({
               id: get().datasetDetail._id,
               status: DatasetStatusEnum.syncing
-            }),
-            postCreateTrainingUsage({
-              name: 'core.dataset.training.Website Sync',
-              datasetId: get().datasetDetail._id
-            })
-          ]);
-          try {
-            postWebsiteSync({ datasetId: get().datasetDetail._id, billId });
-          } catch (error) {}
+            });
+          });
         }
       })),
       {

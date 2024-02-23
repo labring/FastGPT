@@ -22,7 +22,7 @@ import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/t
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
-import { getUserChatInfoAndAuthTeamPoints } from '@fastgpt/service/support/user/controller';
+import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
@@ -329,7 +329,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     });
 
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, responseData });
+      pushResult2Remote({ outLinkUid, shareId, appName: app.name, responseData });
       addOutLinkUsage({
         shareId,
         totalPoints
