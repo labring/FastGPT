@@ -492,7 +492,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
         }))
       });
 
-      if (!Array.isArray(results)) {
+      if (results.length === 0) {
         usingReRank = false;
         return [];
       }

@@ -506,6 +506,7 @@
       "Manual collection": "Manual collection",
       "My Dataset": "My Dataset",
       "Name": "Name",
+      "Query extension intro": "If the problem completion function is enabled, the accuracy of knowledge base search can be improved in continuous conversations. After this function is enabled, when searching the knowledge base, AI will be used to complete the missing information of the problem according to the conversation records.",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
       "Search score tip": "{{scoreText}}Here are the rankings and scores:\n----\n{{detailScore}}",
@@ -686,7 +687,7 @@
         "Source name": "Source",
         "Top K": "Top K",
         "Using cfr": "Open query extension",
-        "Using query extension": "",
+        "Using query extension": "Open query extension",
         "mode": {
           "embedding": "Vector recall",
           "embedding desc": "Use vectors for text correlation queries",
@@ -850,8 +851,8 @@
         "dynamicTargetInput": "dynamic Target Input",
         "input": "Input",
         "selectApp": "App Selector",
-        "selectChatModel": "Select Chat Model",
         "selectDataset": "Dataset Selector",
+        "selectLLMModel": "Select Chat Model",
         "switch": "Switch",
         "target": "Target Data",
         "textarea": "Textarea"
@@ -863,7 +864,8 @@
           "Ai response content": "Will be triggered after the stream reply is complete",
           "New context": "Concatenate the reply content with history and return it as a new context",
           "Quote": "Always return an array, if you want the search results to be empty to perform additional operations, you need to use the above two inputs and the trigger of the target module",
-          "running done": "Triggered when the module call finish"
+          "running done": "Triggered when the module call finish",
+          "query extension result": "Output as an array of strings to connect the result directly to the 'Question' of the knowledge base search"
         },
         "label": {
           "Ai response content": "Response Content",
@@ -871,7 +873,7 @@
           "Quote": "Quote",
           "Search result empty": "Search result empty",
           "Search result not empty": "Search result not empty",
-          "cfr result": "Response text",
+          "query extension result": "Response text",
           "result false": "False",
           "result true": "True",
           "running done": "done",

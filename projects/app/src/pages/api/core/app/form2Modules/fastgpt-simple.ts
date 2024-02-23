@@ -92,7 +92,7 @@ function simpleChatTemplate({ formData, maxToken }: Props): ModuleItemType[] {
         },
         {
           key: 'model',
-          type: 'selectChatModel',
+          type: 'selectLLMModel',
           label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
@@ -471,7 +471,7 @@ function datasetTemplate({ formData, maxToken }: Props): ModuleItemType[] {
         },
         {
           key: 'model',
-          type: 'selectChatModel',
+          type: 'selectLLMModel',
           label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',

@@ -77,6 +77,8 @@ export async function dispatchDatasetSearch(
     histories: getHistories(6, histories)
   });
 
+  // console.log(concatQueries, rewriteQuery, aiExtensionResult);
+
   // get vector
   const vectorModel = getVectorModel(datasets[0]?.vectorModel?.model);
 

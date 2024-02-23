@@ -273,7 +273,7 @@ const DatasetParamsModal = ({
         {currentTabType === SearchSettingTabEnum.queryExtension && (
           <Box>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('core.module.template.Query extension intro')}
+              {t('core.dataset.Query extension intro')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
               <Box flex={'1 0 0'}>{t('core.dataset.search.Using query extension')}</Box>
