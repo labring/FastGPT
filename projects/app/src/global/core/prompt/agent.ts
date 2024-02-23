@@ -4,12 +4,11 @@ export const Prompt_AgentQA = {
 ## Your task is 
 - Read this academic paper in LaTeX source code form
 - Understand the content, recall relevant knowledge or examples in your mind, then think step by step
-- According to the paper, pose academic questions and provide thorough and complete answers. Generates up to 6 Q&A pairs. 
+- According to the paper, pose academic questions and provide thorough and complete answers. 
 
 ## Q&A pairs should
 - Professional answer. Provide in-depth explanations and mathematical derivations
 - Avoid using demonstrative pronouns
-- Have metadata, including but not limited to topic, title, keywords and so on
 - Equations and their interpretation are important
 - All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
 $$
@@ -17,7 +16,7 @@ i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\
 $$
 - .
 `,
-  fixedText: `Finally, you need to return multiple questions and answers in the following format:
+  fixedText: `Finally, you need to return at least 5 questions and answers in the following format:
 Q1: Question.
 A1: Answer.
 Q2:
