@@ -29,5 +29,4 @@ export type UserType = {
   promotionRate: UserModelSchema['promotionRate'];
   openaiAccount: UserModelSchema['openaiAccount'];
   team: TeamItemType;
-  standardInfo?: standardInfoType;
 };

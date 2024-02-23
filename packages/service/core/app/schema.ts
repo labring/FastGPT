@@ -61,9 +61,6 @@ const AppSchema = new Schema({
     type: String,
     enum: Object.keys(PermissionTypeMap),
     default: PermissionTypeEnum.private
-  },
-  teamTags: {
-    type: [String]
   }
 });
 

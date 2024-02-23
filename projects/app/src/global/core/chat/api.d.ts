@@ -14,12 +14,6 @@ export type InitChatProps = {
   chatId?: string;
   loadCustomFeedbacks?: boolean;
 };
-/* ---------- chat ----------- */
-export type chatByTeamProps = {
-  teamId?: string;
-  appId?: string;
-  outLinkUid?: string;
-};
 export type InitOutLinkChatProps = {
   chatId?: string;
   shareId?: string;
@@ -45,7 +39,6 @@ export type InitChatResponse = {
 /* ---------- history ----------- */
 export type getHistoriesProps = {
   appId?: string;
-  authToken?: string;
   // share chat
   shareId?: string;
   outLinkUid?: string; // authToken/uid

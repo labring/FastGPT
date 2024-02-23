@@ -24,7 +24,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectLLMModel,
+      type: FlowNodeInputTypeEnum.selectExtractModel,
       valueType: ModuleIOValueTypeEnum.string,
       label: 'core.module.input.label.LLM',
       required: true,

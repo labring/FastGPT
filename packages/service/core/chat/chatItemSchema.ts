@@ -92,8 +92,6 @@ try {
   ChatItemSchema.index({ appId: 1, chatId: 1, dataId: 1 }, { background: true });
   // admin charts
   ChatItemSchema.index({ time: -1, obj: 1 }, { background: true });
-  // timer, clear history
-  ChatItemSchema.index({ teamId: 1, time: -1 }, { background: true });
 } catch (error) {
   console.log(error);
 }

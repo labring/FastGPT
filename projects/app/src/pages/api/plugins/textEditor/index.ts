@@ -34,6 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     const textResult = replaceVariable(text, obj);
+
     res.json({
       text: textResult
     });

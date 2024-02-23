@@ -1,5 +1,5 @@
 import type { HistoryItemType, ChatSiteItemType } from '../../core/chat/type.d';
-import { OutLinkSchema } from './type.d';
+import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 
 export type AuthOutLinkInitProps = {
   outLinkUid: string;

@@ -15,7 +15,6 @@ export type UpdateTeamProps = {
   teamId: string;
   name?: string;
   avatar?: string;
-  tagsUrl?: string;
 };
 
 /* ------------- member ----------- */

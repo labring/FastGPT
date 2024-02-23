@@ -31,7 +31,7 @@ export const AiChatModule: FlowModuleTemplateType = {
     Input_Template_Switch,
     {
       key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectLLMModel,
+      type: FlowNodeInputTypeEnum.selectChatModel,
       label: 'core.module.input.label.aiModel',
       required: true,
       valueType: ModuleIOValueTypeEnum.string,

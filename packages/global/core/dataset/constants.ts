@@ -71,6 +71,30 @@ export const DatasetCollectionSyncResultMap = {
 };
 
 /* ------------ data -------------- */
+export enum DatasetDataIndexTypeEnum {
+  chunk = 'chunk',
+  qa = 'qa',
+  summary = 'summary',
+  hypothetical = 'hypothetical',
+  custom = 'custom'
+}
+export const DatasetDataIndexTypeMap = {
+  [DatasetDataIndexTypeEnum.chunk]: {
+    name: 'dataset.data.indexes.chunk'
+  },
+  [DatasetDataIndexTypeEnum.summary]: {
+    name: 'dataset.data.indexes.summary'
+  },
+  [DatasetDataIndexTypeEnum.hypothetical]: {
+    name: 'dataset.data.indexes.hypothetical'
+  },
+  [DatasetDataIndexTypeEnum.qa]: {
+    name: 'dataset.data.indexes.qa'
+  },
+  [DatasetDataIndexTypeEnum.custom]: {
+    name: 'dataset.data.indexes.custom'
+  }
+};
 
 /* ------------ training -------------- */
 export enum TrainingModeEnum {

@@ -1,5 +1,6 @@
 export type OpenApiSchema = {
   _id: string;
+  userId: string;
   teamId: string;
   tmbId: string;
   createTime: Date;
@@ -7,9 +8,9 @@ export type OpenApiSchema = {
   apiKey: string;
   appId?: string;
   name: string;
-  usagePoints: number;
+  usage: number;
   limit?: {
     expiredTime?: Date;
-    maxUsagePoints: number;
+    credit?: number;
   };
 };

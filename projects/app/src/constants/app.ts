@@ -15,8 +15,7 @@ export const defaultApp: AppDetailType = {
   tmbId: '',
   permission: 'private',
   isOwner: false,
-  canWrite: false,
-  teamTags: ['']
+  canWrite: false
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {
@@ -24,7 +23,7 @@ export const defaultOutLinkForm: OutLinkEditType = {
   responseDetail: false,
   limit: {
     QPM: 100,
-    maxUsagePoints: -1
+    credit: -1
   }
 };
 

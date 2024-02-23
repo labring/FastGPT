@@ -2,15 +2,15 @@ import React, { useMemo } from 'react';
 
 import MySelect, { type SelectProps } from './index';
 import { useTranslation } from 'next-i18next';
+import dynamic from 'next/dynamic';
+import { useDisclosure } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRouter } from 'next/router';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
+
+const PriceBox = dynamic(() => import('@/components/support/wallet/Price'));
 
 const SelectAiModel = ({ list, ...props }: SelectProps) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
-  const router = useRouter();
-
   const expandList = useMemo(() => {
     return feConfigs.show_pay
       ? list.concat({
@@ -20,6 +20,12 @@ const SelectAiModel = ({ list, ...props }: SelectProps) => {
       : list;
   }, [feConfigs.show_pay, list, t]);
 
+  const {
+    isOpen: isOpenPriceBox,
+    onOpen: onOpenPriceBox,
+    onClose: onClosePriceBox
+  } = useDisclosure();
+
   return (
     <>
       <MySelect
@@ -27,12 +33,13 @@ const SelectAiModel = ({ list, ...props }: SelectProps) => {
         {...props}
         onchange={(e) => {
           if (e === 'price') {
-            router.push(AI_POINT_USAGE_CARD_ROUTE);
+            onOpenPriceBox();
             return;
           }
           props.onchange?.(e);
         }}
       />
+      {isOpenPriceBox && <PriceBox onClose={onClosePriceBox} />}
     </>
   );
 };

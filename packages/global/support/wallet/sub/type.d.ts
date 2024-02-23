@@ -2,19 +2,19 @@ import { StandardSubLevelEnum, SubModeEnum, SubStatusEnum, SubTypeEnum } from '.
 
 // Content of plan
 export type TeamStandardSubPlanItemType = {
-  price: number; // read price / month
-  pointPrice: number; // read price/ one thousand
-  totalPoints: number; // n
+  price: number; // read price
+  pointPrice: number; // read price/ one ten thousand
   maxTeamMember: number;
   maxAppAmount: number; // max app or plugin amount
   maxDatasetAmount: number;
   chatHistoryStoreDuration: number; // n day
   maxDatasetSize: number;
+  customApiKey: boolean;
+  customCopyright: boolean; // feature
+  websiteSyncInterval: number; // n hours
   trainingWeight: number; // 1~4
-  permissionCustomApiKey: boolean;
-  permissionCustomCopyright: boolean; // feature
-  permissionWebsiteSync: boolean;
-  permissionReRank: boolean;
+  reRankWeight: number; // 1~4
+  totalPoints: number; // n ten thousand
 };
 
 export type StandSubPlanLevelMapType = Record<
@@ -27,9 +27,6 @@ export type SubPlanType = {
   [SubTypeEnum.extraDatasetSize]: {
     price: number;
   };
-  [SubTypeEnum.extraPoints]: {
-    price: number;
-  };
 };
 
 export type TeamSubSchema = {
@@ -37,32 +34,40 @@ export type TeamSubSchema = {
   teamId: string;
   type: `${SubTypeEnum}`;
   status: `${SubStatusEnum}`;
+  currentMode: `${SubModeEnum}`;
+  nextMode: `${SubModeEnum}`;
   startTime: Date;
   expiredTime: Date;
   price: number;
 
-  currentMode: `${SubModeEnum}`;
-  nextMode: `${SubModeEnum}`;
   currentSubLevel: `${StandardSubLevelEnum}`;
   nextSubLevel: `${StandardSubLevelEnum}`;
-
   pointPrice: number;
   totalPoints: number;
-  surplusPoints: number;
 
   currentExtraDatasetSize: number;
+  nextExtraDatasetSize: number;
+
+  currentExtraPoints: number;
+  nextExtraPoints: number;
+
+  surplusPoints: number;
+
+  // abandon
+  datasetStoreAmount?: number;
+  renew?: boolean;
 };
 
-export type FeTeamPlanStatusType = {
+export type FeTeamSubType = {
   [SubTypeEnum.standard]?: TeamSubSchema;
-  standardConstants?: TeamStandardSubPlanItemType;
+  [SubTypeEnum.extraDatasetSize]?: TeamSubSchema;
+  [SubTypeEnum.extraPoints]?: TeamSubSchema;
 
+  standardMaxDatasetSize: number;
   totalPoints: number;
   usedPoints: number;
-  standardMaxDatasetSize?: number;
-  standardMaxPoints?: number;
 
-  // standard + extra
+  standardMaxPoints: number;
   datasetMaxSize: number;
   usedDatasetSize: number;
 };

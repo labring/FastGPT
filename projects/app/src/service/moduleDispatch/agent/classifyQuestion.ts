@@ -1,12 +1,9 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type {
-  ClassifyQuestionAgentItemType,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -14,7 +11,7 @@ import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
 import { getHistories } from '../utils';
-import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { formatModelPrice2Store } from '@/service/support/wallet/bill/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -23,9 +20,10 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
-type CQResponse = ModuleDispatchResponse<{
+type CQResponse = {
+  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
-}>;
+};
 
 const agentFunName = 'classify_question';
 
@@ -33,7 +31,6 @@ const agentFunName = 'classify_question';
 export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse> => {
   const {
     user,
-    module: { name },
     histories,
     params: { model, history = 6, agents, userChatInput }
   } = props as Props;
@@ -46,7 +43,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const chatHistories = getHistories(history, histories);
 
-  const { arg, charsLength } = await (async () => {
+  const { arg, inputTokens, outputTokens } = await (async () => {
     if (cqModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -63,31 +60,25 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const result = agents.find((item) => item.key === arg?.type) || agents[agents.length - 1];
 
-  const { totalPoints, modelName } = formatModelChars2Points({
+  const { total, modelName } = formatModelPrice2Store({
     model: cqModel.model,
-    charsLength,
-    modelType: ModelTypeEnum.llm
+    inputLen: inputTokens,
+    outputLen: outputTokens,
+    type: ModelTypeEnum.llm
   });
 
   return {
     [result.key]: true,
     [ModuleOutputKeyEnum.responseData]: {
-      totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
+      price: user.openaiAccount?.key ? 0 : total,
       model: modelName,
       query: userChatInput,
-      charsLength,
+      inputTokens,
+      outputTokens,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
-    },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
-      {
-        moduleName: name,
-        totalPoints,
-        model: modelName,
-        charsLength
-      }
-    ]
+    }
   };
 };
 
@@ -158,13 +149,11 @@ ${systemPrompt}
     const arg = JSON.parse(
       response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
     );
-    const functionChars =
-      agentFunction.description.length +
-      agentFunction.parameters.properties.type.description.length;
 
     return {
       arg,
-      charsLength: countMessagesChars(messages) + functionChars
+      inputTokens: response.usage?.prompt_tokens || 0,
+      outputTokens: response.usage?.completion_tokens || 0
     };
   } catch (error) {
     console.log(agentFunction.parameters);
@@ -174,7 +163,8 @@ ${systemPrompt}
 
     return {
       arg: {},
-      charsLength: 0
+      inputTokens: 0,
+      outputTokens: 0
     };
   }
 }
@@ -216,7 +206,8 @@ async function completions({
     agents.find((item) => answer.includes(item.key) || answer.includes(item.value))?.key || '';
 
   return {
-    charsLength: countMessagesChars(messages),
+    inputTokens: data.usage?.prompt_tokens || 0,
+    outputTokens: data.usage?.completion_tokens || 0,
     arg: { type: id }
   };
 }

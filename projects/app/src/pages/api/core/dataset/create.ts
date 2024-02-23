@@ -7,7 +7,6 @@ import { createDefaultCollection } from '@fastgpt/service/core/dataset/collectio
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLLMModel, getVectorModel, getDatasetModel } from '@/service/core/ai/model';
-import { checkTeamDatasetLimit } from '@/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -32,7 +31,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     // check limit
-    await checkTeamDatasetLimit(teamId);
+    const authCount = await MongoDataset.countDocuments({
+      teamId,
+      type: DatasetTypeEnum.dataset
+    });
+    if (authCount >= 50) {
+      throw new Error('每个团队上限 50 个知识库');
+    }
 
     const { _id } = await MongoDataset.create({
       name,

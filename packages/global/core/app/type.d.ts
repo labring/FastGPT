@@ -5,7 +5,7 @@ import type { AIChatModuleProps, DatasetModuleProps } from '../module/node/type.
 import { VariableInputEnum } from '../module/constants';
 import { SelectedDatasetType } from '../module/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { TeamTagsSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
+
 export interface AppSchema {
   _id: string;
   userId: string;
@@ -20,7 +20,6 @@ export interface AppSchema {
   modules: ModuleItemType[];
   permission: `${PermissionTypeEnum}`;
   inited?: boolean;
-  teamTags: [string];
 }
 
 export type AppListItemType = {
