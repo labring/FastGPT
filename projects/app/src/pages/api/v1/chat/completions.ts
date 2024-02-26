@@ -18,7 +18,7 @@ import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink'
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
-
+import { authTeamShareChatStart } from '@/service/support/permission/auth/teamChat';
 import { selectShareResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
@@ -36,7 +36,7 @@ type FastGptShareChatProps = {
   outLinkUid?: string;
 };
 type FastGptTeamShareChatProps = {
-  teamId?: string;
+  shareTeamId?: string;
   outLinkUid?: string;
 };
 export type Props = ChatCompletionCreateParams &
@@ -65,7 +65,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   const {
     chatId,
     appId,
-    teamId,
+    shareTeamId,
     shareId,
     outLinkUid,
     stream = false,
@@ -73,7 +73,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     messages = [],
     variables = {}
   } = req.body as Props;
-
   try {
     const originIp = requestIp.getClientIp(req);
 
@@ -101,7 +100,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (!question) {
       throw new Error('Question is empty');
     }
-
     /* auth app permission */
     const { teamId, tmbId, user, app, responseDetail, authType, apikey, canWrite, outLinkUserId } =
       await (async () => {
@@ -127,6 +125,31 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             responseDetail,
             apikey: '',
             authType,
+            canWrite: false,
+            outLinkUserId: uid
+          };
+        }
+        // team Apps share
+        if (shareTeamId && appId && outLinkUid) {
+          const { user, uid, tmbId } = await authTeamShareChatStart({
+            teamId: shareTeamId,
+            ip: originIp,
+            outLinkUid,
+            question: question.value
+          });
+          const app = await MongoApp.findById(appId);
+          if (!app) {
+            return Promise.reject('app is empty');
+          }
+
+          return {
+            teamId: shareTeamId,
+            tmbId,
+            user,
+            app,
+            responseDetail: detail,
+            authType: AuthUserTypeEnum.token,
+            apikey: '',
             canWrite: false,
             outLinkUserId: uid
           };
@@ -202,6 +225,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       appId: app._id,
       chatId,
       shareId,
+      shareTeamId,
       outLinkUid,
       per: 'w'
     });
@@ -236,14 +260,13 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       stream,
       detail
     });
-    console.log('af');
 
     // save chat
     if (chatId) {
       await saveChat({
         chatId,
         appId: app._id,
-        teamId: teamId,
+        teamId,
         tmbId: tmbId,
         variables,
         updateUseTime: !shareId && String(tmbId) === String(app.tmbId), // owner update use time
@@ -322,7 +345,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { totalPoints } = pushChatUsage({
       appName: app.name,
       appId: app._id,
-      teamId: teamId,
+      teamId,
       tmbId: tmbId,
       source: getUsageSourceByAuthType({ shareId, authType }),
       moduleDispatchBills

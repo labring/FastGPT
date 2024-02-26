@@ -4,7 +4,7 @@ import {
   StandardSubPlanUpdateResponse
 } from '@fastgpt/global/support/wallet/sub/api';
 import { SubStatusEnum, SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
-import { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
+import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 
 export const putTeamDatasetSubStatus = (data: {
   status: `${SubStatusEnum}`;
@@ -13,7 +13,8 @@ export const putTeamDatasetSubStatus = (data: {
 
 export const getTeamPlanStatus = () =>
   GET<FeTeamPlanStatusType>(`/support/wallet/sub/getTeamSubStatus`);
-
+export const getUserSubscriptionList = () =>
+  GET<TeamSubSchema>(`/support/wallet/sub/getUserSubscriptionList`);
 export const postCheckStandardSub = (data: StandardSubPlanParams) =>
   POST<StandardSubPlanUpdateResponse>('/proApi/support/wallet/sub/standard/preCheck', data);
 export const postUpdateStandardSub = (data: StandardSubPlanParams) =>

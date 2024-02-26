@@ -20,8 +20,8 @@ import { UpdateChatFeedbackProps } from '@fastgpt/global/core/chat/api';
 /**
  * 根据队伍ID和获取
  */
-export const getChatListById = (data: { teamId: string; authToken: string }) =>
-  GET<chatAppListSchema>(`/proApi/core/chat/init`, data);
+export const getChatListById = (data: { shareTeamId: string; authToken: string }) =>
+  POST<chatAppListSchema>(`/proApi/core/chat/init`, data);
 
 /**
  * 获取团队分享的对话列表 initTeamChat

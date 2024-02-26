@@ -121,6 +121,7 @@ type Props = {
   appId?: string;
   chatId?: string;
   shareId?: string;
+  shareTeamId?: string;
   outLinkUid?: string;
 
   onUpdateVariable?: (e: Record<string, any>) => void;
@@ -146,6 +147,7 @@ const ChatBox = (
     appId,
     chatId,
     shareId,
+    shareTeamId,
     outLinkUid,
     onUpdateVariable,
     onStartChat,
@@ -396,21 +398,22 @@ const ChatBox = (
               };
             })
           );
-
-          setTimeout(() => {
-            createQuestionGuide({
-              history: newChatList.map((item, i) =>
-                i === newChatList.length - 1
-                  ? {
-                      ...item,
-                      value: responseText
-                    }
-                  : item
-              )
-            });
-            generatingScroll();
-            isPc && TextareaDom.current?.focus();
-          }, 100);
+          if (!shareTeamId) {
+            setTimeout(() => {
+              createQuestionGuide({
+                history: newChatList.map((item, i) =>
+                  i === newChatList.length - 1
+                    ? {
+                        ...item,
+                        value: responseText
+                      }
+                    : item
+                )
+              });
+              generatingScroll();
+              isPc && TextareaDom.current?.focus();
+            }, 100);
+          }
         } catch (err: any) {
           toast({
             title: t(getErrText(err, 'core.chat.error.Chat error')),

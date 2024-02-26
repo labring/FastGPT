@@ -35,12 +35,13 @@ export type teamInfoType = {
   ownerId: string;
   tagsUrl: string;
   _id: string;
-}
+};
 
 export type chatAppListSchema = {
-  apps: Array<AppType>,
-  teamInfo: teamInfoSchema
-}
+  apps: AppType[];
+  teamInfo: teamInfoSchema;
+  uid?: string;
+};
 
 export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
   appId: AppSchema;

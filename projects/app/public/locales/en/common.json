@@ -1174,6 +1174,13 @@
       "New api key tip": "Please keep your secret key, the secret key will not be displayed again~",
       "Usage": "Usage"
     },
+    "standard": {
+      "type": "type",
+      "storage": "storage",
+      "AI Bonus Points": "AI Bonus Points",
+      "Start Time": "Start Time",
+      "Expired Time": "Expired Time"
+    },
     "outlink": {
       "Max usage points": "Max usage",
       "Max usage points tip": "The maximum number of credits allowed for this link will not be used. -1 indicates no limit.",
@@ -1213,6 +1220,7 @@
       "Amount": "Amount",
       "Balance not enough tip": "The balance is insufficient, please go to the account page first",
       "Bills": "Bill",
+      "Standard Plan Detail": "Standard Plan Detail",
       "Buy": "Buy",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",

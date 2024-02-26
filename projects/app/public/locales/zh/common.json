@@ -556,8 +556,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1176,6 +1175,13 @@
       "New api key tip": "请保管好你的秘钥，秘钥不会再次展示~",
       "Usage": "已用额度(￥)"
     },
+    "standard": {
+      "type": "类型",
+      "storage": "存储量",
+      "AI Bonus Points": "AI 积分",
+      "Start Time": "开始时间",
+      "Expired Time": "结束时间"
+    },
     "outlink": {
       "Max usage points": "积分上限",
       "Max usage points tip": "该链接最多允许使用多少积分，超出后将无法使用。-1 代表无限制。",
@@ -1213,6 +1219,7 @@
     },
     "wallet": {
       "Amount": "金额",
+      "Standard Plan Detail": "套餐详情",
       "Balance not enough tip": "余额不足，请先到账号页充值",
       "Bills": "账单",
       "Buy": "购买",
@@ -1373,7 +1380,6 @@
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Sign Out": "登出",
     "Source": "来源",
-    "Standard Detail": "套餐详情",
     "Team": "团队",
     "Time": "时间",
     "Timezone": "时区",
