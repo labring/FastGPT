@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState, useTransition } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -16,7 +16,8 @@ import {
   Tr,
   Th,
   Td,
-  TableContainer
+  TableContainer,
+  Button
 } from '@chakra-ui/react';
 import MySelect from '@/components/Select';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
@@ -26,7 +27,6 @@ import Tabs from '@/components/Tabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useForm } from 'react-hook-form';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
@@ -36,6 +36,8 @@ import {
   splitGuideModule
 } from '@fastgpt/global/core/module/utils';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
+import HttpImportModal from '../render/HttpImportModal';
 
 enum TabEnum {
   params = 'params',
@@ -133,11 +135,18 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
 
   return (
     <Box>
-      <Box mb={2}>{t('core.module.Http request settings')}</Box>
+      <Box mb={2} display={'flex'} justifyContent={'space-between'}>
+        <span>{t('core.module.Http request settings')}</span>
+        <span>
+          <HttpImportModal moduleId={moduleId} inputs={inputs}>
+            <Button variant={'link'}>openapi 导入</Button>
+          </HttpImportModal>
+        </span>
+      </Box>
       <Flex alignItems={'center'} className="nodrag">
         <MySelect
           h={'34px'}
-          w={'80px'}
+          w={'88px'}
           bg={'myGray.50'}
           width={'100%'}
           value={requestMethods?.value}
@@ -149,6 +158,18 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
             {
               label: 'POST',
               value: 'POST'
+            },
+            {
+              label: 'PUT',
+              value: 'PUT'
+            },
+            {
+              label: 'DELETE',
+              value: 'DELETE'
+            },
+            {
+              label: 'PATCH',
+              value: 'PATCH'
             }
           ]}
           onchange={(e) => {
@@ -178,10 +199,6 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   );
 });
 
-const defaultForm = {
-  key: '',
-  value: ''
-};
 function RenderHttpProps({
   moduleId,
   inputs
@@ -261,7 +278,7 @@ function RenderHttpProps({
       <Tabs
         list={[
           { label: <RenderPropsItem text="Params" num={paramsLength} />, id: TabEnum.params },
-          ...(requestMethods === 'POST'
+          ...(requestMethods !== 'GET'
             ? [
                 {
                   label: (
@@ -303,36 +320,68 @@ const RenderForm = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [_, startSts] = useTransition();
-  const { register, reset, handleSubmit } = useForm({
-    defaultValues: defaultForm
-  });
 
-  const list = useMemo(() => (input.value || []) as PropsArrType[], [input.value]);
+  const [list, setList] = useState<PropsArrType[]>(input.value || []);
+  const [updateTrigger, setUpdateTrigger] = useState(false);
+  const [shouldUpdateNode, setShouldUpdateNode] = useState(false);
 
-  const addNewProps = useCallback(
-    ({ key, value }: { key: string; value: string }) => {
-      const checkExist = list.find((item) => item.key === key);
-      if (checkExist) {
-        return toast({
-          status: 'warning',
-          title: t('core.module.http.Key already exists')
-        });
-      }
-      if (!key) return;
+  useEffect(() => {
+    setList(input.value || []);
+  }, [input.value]);
+
+  useEffect(() => {
+    if (shouldUpdateNode) {
       onChangeNode({
         moduleId,
         type: 'updateInput',
         key: input.key,
         value: {
           ...input,
-          value: [...list, { key, type: 'string', value }]
+          value: list
         }
       });
-      reset(defaultForm);
-    },
-    [input, list, moduleId, reset, t, toast]
-  );
+      setShouldUpdateNode(false);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [list]);
+
+  const handleKeyChange = (index: number, newKey: string) => {
+    setList((prevList) => {
+      if (!newKey) {
+        setUpdateTrigger((prev) => !prev);
+        toast({
+          status: 'warning',
+          title: t('core.module.http.Key cannot be empty')
+        });
+        return prevList;
+      }
+      const checkExist = prevList.find((item, i) => i !== index && item.key == newKey);
+      if (checkExist) {
+        setUpdateTrigger((prev) => !prev);
+        toast({
+          status: 'warning',
+          title: t('core.module.http.Key already exists')
+        });
+        return prevList;
+      }
+      return prevList.map((item, i) => (i === index ? { ...item, key: newKey } : item));
+    });
+    setShouldUpdateNode(true);
+  };
+
+  const handleAddNewProps = (key: string, value: string = '') => {
+    const checkExist = list.find((item) => item.key === key);
+    if (checkExist) {
+      return toast({
+        status: 'warning',
+        title: t('core.module.http.Key already exists')
+      });
+    }
+    if (!key) return;
+
+    setList((prevList) => [...prevList, { key, type: 'string', value }]);
+    setShouldUpdateNode(true);
+  };
 
   return (
     <TableContainer>
@@ -347,103 +396,68 @@ const RenderForm = ({
           {list.map((item, index) => (
             <Tr key={`${input.key}${index}`}>
               <Td p={0} w={'150px'}>
-                <Input
-                  w={'150px'}
-                  defaultValue={item.key}
-                  variant={'unstyled'}
-                  paddingLeft={2}
-                  placeholder={t('core.module.http.Props name')}
-                  onBlur={(e) => {
-                    const val = e.target.value;
-                    if (!val) {
-                      return toast({
-                        status: 'warning',
-                        title: t('core.module.http.Key cannot be empty')
-                      });
-                    }
-
-                    const checkExist = list.find((item, i) => i !== index && item.key == val);
-                    if (checkExist) {
-                      return toast({
-                        status: 'warning',
-                        title: t('core.module.http.Key already exists')
-                      });
-                    }
-
-                    startSts(() => {
-                      onChangeNode({
-                        moduleId,
-                        type: 'updateInput',
-                        key: input.key,
-                        value: {
-                          ...input,
-                          value: list.map((item, i) => (i === index ? { ...item, key: val } : item))
-                        }
-                      });
-                    });
+                <HttpInput
+                  hasVariablePlugin={false}
+                  hasDropDownPlugin={true}
+                  setDropdownValue={(value) => {
+                    handleKeyChange(index, value);
                   }}
+                  placeholder={t('core.module.http.Props name')}
+                  value={item.key}
+                  variables={variables}
+                  onBlur={(val) => {
+                    handleKeyChange(index, val);
+                  }}
+                  updateTriger={updateTrigger}
                 />
               </Td>
-              <Td p={0} display={'flex'} alignItems={'center'}>
-                <Input
-                  flex={'1 0 0'}
-                  w={'150px'}
-                  defaultValue={item.value}
-                  variant={'unstyled'}
-                  paddingLeft={2}
-                  placeholder={t('core.module.http.Props value')}
-                  onBlur={(e) => {
-                    const val = e.target.value;
-                    startSts(() => {
-                      onChangeNode({
-                        moduleId,
-                        type: 'updateInput',
-                        key: input.key,
-                        value: {
-                          ...input,
-                          value: list.map((item, i) =>
-                            i === index ? { ...item, value: val } : item
-                          )
-                        }
-                      });
-                    });
-                  }}
-                />
-                <MyIcon
-                  name={'delete'}
-                  cursor={'pointer'}
-                  _hover={{ color: 'red.600' }}
-                  w={'14px'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onChangeNode({
-                      moduleId,
-                      type: 'updateInput',
-                      key: input.key,
-                      value: {
-                        ...input,
-                        value: list.filter((val) => val.key !== item.key)
-                      }
-                    });
-                  }}
-                />
+              <Td p={0}>
+                <Box display={'flex'} alignItems={'center'}>
+                  <HttpInput
+                    placeholder={t('core.module.http.Props value')}
+                    value={item.value}
+                    variables={variables}
+                    onBlur={(val) => {
+                      setList((prevList) =>
+                        prevList.map((item, i) => (i === index ? { ...item, value: val } : item))
+                      );
+                      setShouldUpdateNode(true);
+                    }}
+                  />
+                  <MyIcon
+                    name={'delete'}
+                    cursor={'pointer'}
+                    _hover={{ color: 'red.600' }}
+                    w={'14px'}
+                    onClick={() => {
+                      setList((prevlist) => prevlist.filter((val) => val.key !== item.key));
+                      setShouldUpdateNode(true);
+                    }}
+                  />
+                </Box>
               </Td>
             </Tr>
           ))}
           <Tr>
             <Td p={0} w={'150px'}>
-              <Input
-                w={'150px'}
-                variant={'unstyled'}
-                paddingLeft={2}
+              <HttpInput
+                hasDropDownPlugin={true}
+                setDropdownValue={(val) => {
+                  handleAddNewProps(val);
+                }}
                 placeholder={t('core.module.http.Add props')}
-                {...register('key', {
-                  onBlur: handleSubmit(addNewProps)
-                })}
+                value={''}
+                h={40}
+                variables={variables}
+                onBlur={(val) => {
+                  handleAddNewProps(val);
+                }}
               />
             </Td>
             <Td p={0}>
-              <Input variant={'unstyled'} paddingLeft={2} {...register('value')} />
+              <Box display={'flex'} alignItems={'center'}>
+                <HttpInput />
+              </Box>
             </Td>
           </Tr>
         </Tbody>
@@ -468,6 +482,7 @@ const RenderJson = ({
         height={200}
         resize
         value={input.value}
+        placeholder="{ }"
         onChange={(e) => {
           startSts(() => {
             onChangeNode({

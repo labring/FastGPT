@@ -5,48 +5,51 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
-import VariablePickerPlugin from './plugins/VariablePickerPlugin';
 import { Box } from '@chakra-ui/react';
 import styles from './index.module.scss';
-import VariablePlugin from './plugins/VariablePlugin';
-import { VariableNode } from './plugins/VariablePlugin/node';
 import { EditorState, LexicalEditor } from 'lexical';
-import OnBlurPlugin from './plugins/OnBlurPlugin';
-import MyIcon from '../../Icon';
-import { EditorVariablePickerType } from './type.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import FocusPlugin from './plugins/FocusPlugin';
-import { textToEditorState } from './utils';
+import { EditorVariablePickerType } from '../../Textarea/PromptEditor/type';
+import { VariableNode } from '../../Textarea/PromptEditor/plugins/VariablePlugin/node';
+import { textToEditorState } from '../../Textarea/PromptEditor/utils';
+import DropDownMenu from '../../Textarea/PromptEditor/modules/DropDownMenu';
+import { SingleLinePlugin } from '../../Textarea/PromptEditor/plugins/SingleLinePlugin';
+import OnBlurPlugin from '../../Textarea/PromptEditor/plugins/OnBlurPlugin';
+import VariablePlugin from '../../Textarea/PromptEditor/plugins/VariablePlugin';
+import VariablePickerPlugin from '../../Textarea/PromptEditor/plugins/VariablePickerPlugin';
+import FocusPlugin from '../../Textarea/PromptEditor/plugins/FocusPlugin';
 
 export default function Editor({
-  h = 200,
-  showResize = true,
-  showOpenModal = true,
-  onOpenModal,
+  h = 40,
+  hasVariablePlugin = true,
+  hasDropDownPlugin = false,
   variables,
   onChange,
   onBlur,
   value,
-  placeholder = ''
+  currentValue,
+  placeholder = '',
+  setDropdownValue,
+  updateTrigger
 }: {
   h?: number;
-  showResize?: boolean;
-  showOpenModal?: boolean;
-  onOpenModal?: () => void;
+  hasVariablePlugin?: boolean;
+  hasDropDownPlugin?: boolean;
   variables: EditorVariablePickerType[];
   onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   currentValue?: string;
   placeholder?: string;
+  setDropdownValue?: (value: string) => void;
+  updateTrigger?: boolean;
 }) {
   const [key, setKey] = useState(getNanoid(6));
   const [_, startSts] = useTransition();
-  const [height, setHeight] = useState(h);
   const [focus, setFocus] = useState(false);
 
   const initialConfig = {
-    namespace: 'promptEditor',
+    namespace: 'HttpInput',
     nodes: [VariableNode],
     editorState: textToEditorState(value),
     onError: (error: Error) => {
@@ -54,32 +57,13 @@ export default function Editor({
     }
   };
 
-  const initialY = useRef(0);
-  const handleMouseDown = (e: React.MouseEvent) => {
-    initialY.current = e.clientY;
-
-    const handleMouseMove = (e: MouseEvent) => {
-      const deltaY = e.clientY - initialY.current;
-      setHeight((prevHeight) => (prevHeight + deltaY < h * 0.5 ? h * 0.5 : prevHeight + deltaY));
-      initialY.current = e.clientY;
-    };
-
-    const handleMouseUp = () => {
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  };
-
   useEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables.length]);
+  }, [value, variables.length, updateTrigger]);
 
   return (
-    <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>
+    <Box position={'relative'} width={'full'} h={`${h}px`} cursor={'text'}>
       <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
@@ -91,7 +75,7 @@ export default function Editor({
               right={0}
               bottom={0}
               py={3}
-              px={4}
+              px={2}
               pointerEvents={'none'}
               overflow={'overlay'}
             >
@@ -118,34 +102,13 @@ export default function Editor({
             });
           }}
         />
-        <VariablePickerPlugin variables={variables} />
-        <VariablePlugin variables={variables} />
+        {hasVariablePlugin ? <VariablePickerPlugin variables={variables} /> : ''}
+        {hasVariablePlugin ? <VariablePlugin variables={variables} /> : ''}
         <OnBlurPlugin onBlur={onBlur} />
+        <SingleLinePlugin />
       </LexicalComposer>
-      {showResize && (
-        <Box
-          position={'absolute'}
-          right={'0'}
-          bottom={'-1'}
-          zIndex={9}
-          cursor={'ns-resize'}
-          px={'2px'}
-          onMouseDown={handleMouseDown}
-        >
-          <MyIcon name={'common/editor/resizer'} width={'14px'} height={'14px'} />
-        </Box>
-      )}
-      {showOpenModal && (
-        <Box
-          zIndex={10}
-          position={'absolute'}
-          bottom={1}
-          right={2}
-          cursor={'pointer'}
-          onClick={onOpenModal}
-        >
-          <MyIcon name={'common/fullScreenLight'} w={'14px'} color={'myGray.600'} />
-        </Box>
+      {focus && !currentValue && hasDropDownPlugin && (
+        <DropDownMenu variables={variables} setDropdownValue={setDropdownValue} />
       )}
     </Box>
   );
