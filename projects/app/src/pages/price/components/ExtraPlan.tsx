@@ -23,7 +23,6 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 
 const ExtraPlan = () => {
   const { t } = useTranslation();
-  const router = useRouter();
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
   const [loading, setLoading] = useState(false);
@@ -79,8 +78,9 @@ const ExtraPlan = () => {
     }
   });
   const onclickBuyExtraPoints = useCallback(
-    async ({ points, month }: { points: number; month: number }) => {
+    async ({ points }: { points: number }) => {
       try {
+        const month = 1;
         const payAmount = points * month * extraPointsPrice;
 
         if (payAmount === 0) {
@@ -93,7 +93,6 @@ const ExtraPlan = () => {
 
         const res = await getWxPayQRCode({
           type: BillTypeEnum.extraPoints,
-          month,
           extraPoints: points
         });
 
@@ -150,20 +149,20 @@ const ExtraPlan = () => {
               </Box>
             </Box>
             <MyIcon
-              display={['none', 'display']}
+              display={['none', 'block']}
               mt={'-30px'}
               transform={'translateX(20px)'}
               name={'support/bill/extraDatasetsize'}
               fill={'none'}
             />
           </Flex>
-          <Box>
+          <Box h={'120px'} w={'100%'}>
             <Flex mt={4}>
               <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
               购买资源包
             </Flex>
             <Flex mt={4} alignItems={'center'}>
-              <Box flex={['0 0 100px', '0 0 200px']}>
+              <Box flex={['0 0 100px', '1 0 0']}>
                 {t('support.wallet.subscription.Month amount')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
@@ -188,7 +187,7 @@ const ExtraPlan = () => {
               </Flex>
             </Flex>
             <Flex mt={4} alignItems={'center'}>
-              <Box flex={['0 0 100px', '0 0 200px']}>
+              <Box flex={['0 0 100px', '1 0 0']}>
                 {t('support.wallet.subscription.Update extra dataset size')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
@@ -220,16 +219,16 @@ const ExtraPlan = () => {
                 </Box>
               </Flex>
             </Flex>
-            <Button
-              mt={6}
-              w={'100%'}
-              variant={'primaryGhost'}
-              isLoading={loading}
-              onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
-            >
-              {t('support.wallet.Buy')}
-            </Button>
           </Box>
+          <Button
+            mt={6}
+            w={'100%'}
+            variant={'primaryGhost'}
+            isLoading={loading}
+            onClick={handleSubmitDatasetSize(onclickBuyDatasetSize)}
+          >
+            {t('support.wallet.Buy')}
+          </Button>
         </Box>
         {/* points */}
         <Box
@@ -255,20 +254,20 @@ const ExtraPlan = () => {
               </Box>
             </Box>
             <MyIcon
-              display={['none', 'display']}
+              display={['none', 'block']}
               mt={'-30px'}
               transform={'translateX(20px)'}
               name={'support/bill/extraPoints'}
               fill={'none'}
             />
           </Flex>
-          <Box>
+          <Box h={'120px'} w={'100%'}>
             <Flex mt={4}>
               <MyIcon mr={2} name={'support/bill/shoppingCart'} w={'16px'} color={'primary.600'} />
               购买资源包
             </Flex>
-            <Flex mt={4} alignItems={'center'}>
-              <Box flex={['0 0 100px', '0 0 200px']}>
+            {/* <Flex mt={4} alignItems={'center'}>
+              <Box flex={['0 0 100px', '1 0 0']}>
                 {t('support.wallet.subscription.Month amount')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
@@ -291,9 +290,9 @@ const ExtraPlan = () => {
                   {t('common.month')}
                 </Box>
               </Flex>
-            </Flex>
+            </Flex> */}
             <Flex mt={4} alignItems={'center'}>
-              <Box flex={['0 0 100px', '0 0 200px']}>
+              <Box flex={['0 0 100px', '1 0 0']}>
                 {t('support.wallet.subscription.Update extra ai points')}
               </Box>
               <Flex alignItems={'center'} mt={1} w={'180px'} position={'relative'}>
@@ -325,16 +324,16 @@ const ExtraPlan = () => {
                 </Box>
               </Flex>
             </Flex>
-            <Button
-              mt={6}
-              w={'100%'}
-              variant={'primaryGhost'}
-              isLoading={loading}
-              onClick={handleSubmitExtraPoints(onclickBuyExtraPoints)}
-            >
-              {t('support.wallet.Buy')}
-            </Button>
           </Box>
+          <Button
+            mt={6}
+            w={'100%'}
+            variant={'primaryGhost'}
+            isLoading={loading}
+            onClick={handleSubmitExtraPoints(onclickBuyExtraPoints)}
+          >
+            {t('support.wallet.Buy')}
+          </Button>
         </Box>
       </Grid>
 

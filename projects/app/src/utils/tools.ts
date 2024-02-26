@@ -53,7 +53,7 @@ export const formatTimeToChatTime = (time: Date) => {
 
   // 如果传入时间小于60秒，返回刚刚
   if (now.diff(target, 'second') < 60) {
-    return 'common.time.Just now';
+    return '刚刚';
   }
 
   // 如果时间是今天，展示几时:几分
@@ -63,12 +63,12 @@ export const formatTimeToChatTime = (time: Date) => {
 
   // 如果是昨天，展示昨天
   if (now.subtract(1, 'day').isSame(target, 'day')) {
-    return 'common.time.Yesterday';
+    return '昨天';
   }
 
   // 如果是前天，展示前天
   if (now.subtract(2, 'day').isSame(target, 'day')) {
-    return 'common.time.The day before yesterday';
+    return '前天';
   }
 
   // 如果是今年，展示某月某日

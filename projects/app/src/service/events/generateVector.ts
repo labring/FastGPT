@@ -1,13 +1,11 @@
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { sendOneInform } from '../support/user/inform/api';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { checkTeamAIPoints } from '../support/permission/teamLimit';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -17,9 +15,9 @@ const reduceQueue = () => {
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
-  if (global.vectorQueueLen >= global.systemEnv.vectorMaxProcess) return;
+  if (global.vectorQueueLen >= 1) return;
   global.vectorQueueLen++;
-
+  await delay(2000);
   const start = Date.now();
 
   // get training data
@@ -92,24 +90,7 @@ export async function generateVector(): Promise<any> {
   }
 
   // auth balance
-  try {
-    await checkTeamAIPoints(data.teamId);
-  } catch (error: any) {
-    if (error?.statusText === TeamErrEnum.aiPointsNotEnough) {
-      // send inform and lock data
-      try {
-        sendOneInform({
-          type: 'system',
-          title: '文本训练任务中止',
-          content:
-            '该团队账号AI积分不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-          tmbId: data.tmbId
-        });
-        console.log('余额不足，暂停【向量】生成任务');
-        lockTrainingDataByTeamId(data.teamId);
-      } catch (error) {}
-    }
-
+  if (!(await checkTeamAiPointsAndLock(data.teamId, data.tmbId))) {
     reduceQueue();
     return generateVector();
   }
@@ -124,7 +105,7 @@ export async function generateVector(): Promise<any> {
       return;
     }
 
-    // insert data to pg
+    // insert to dataset
     const { charsLength } = await insertData2Dataset({
       teamId: data.teamId,
       tmbId: data.tmbId,
@@ -137,7 +118,7 @@ export async function generateVector(): Promise<any> {
       model: data.model
     });
 
-    // push bill
+    // push usage
     pushGenerateVectorUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
@@ -154,34 +135,8 @@ export async function generateVector(): Promise<any> {
     console.log(`embedding finished, time: ${Date.now() - start}ms`);
   } catch (err: any) {
     reduceQueue();
-    // log
-    if (err?.response) {
-      addLog.info('openai error: 生成向量错误', {
-        status: err.response?.status,
-        stateusText: err.response?.statusText,
-        data: err.response?.data
-      });
-    } else {
-      console.log(err);
-      addLog.error(getErrText(err, '生成向量错误'));
-    }
 
-    // message error or openai account error
-    if (
-      err?.message === 'invalid message format' ||
-      err.response?.data?.error?.type === 'invalid_request_error' ||
-      err?.code === 500
-    ) {
-      addLog.info('Lock training data');
-      console.log(err?.code);
-      console.log(err.response?.data?.error?.type);
-      console.log(err?.message);
-
-      try {
-        await MongoDatasetTraining.findByIdAndUpdate(data._id, {
-          lockTime: new Date('2998/5/5')
-        });
-      } catch (error) {}
+    if (await checkInvalidChunkAndLock({ err, data, errText: '向量模型调用失败' })) {
       return generateVector();
     }
 

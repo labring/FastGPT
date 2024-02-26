@@ -54,11 +54,6 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
 
       // Batch create collection and upload chunks
       for await (const item of uploadList) {
-        const billId = await postCreateTrainingUsage({
-          name: item.sourceName,
-          datasetId: datasetDetail._id
-        });
-
         // create collection
         const collectionId = await (async () => {
           const commonParams = {
@@ -125,6 +120,12 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
         })();
 
         if (!collectionId) continue;
+        if (item.link) continue;
+
+        const billId = await postCreateTrainingUsage({
+          name: item.sourceName,
+          datasetId: datasetDetail._id
+        });
 
         // upload chunks
         const chunks = item.chunks;

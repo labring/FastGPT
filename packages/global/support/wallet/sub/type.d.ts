@@ -59,8 +59,6 @@ export type FeTeamPlanStatusType = {
 
   totalPoints: number;
   usedPoints: number;
-  standardMaxDatasetSize?: number;
-  standardMaxPoints?: number;
 
   // standard + extra
   datasetMaxSize: number;

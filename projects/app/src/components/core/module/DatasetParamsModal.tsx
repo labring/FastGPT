@@ -176,7 +176,10 @@ const DatasetParamsModal = ({
                       }
                     : {})}
                   onClick={(e) => {
-                    if (!teamPlanStatus?.standardConstants?.permissionReRank) {
+                    if (
+                      teamPlanStatus?.standardConstants &&
+                      !teamPlanStatus?.standardConstants?.permissionReRank
+                    ) {
                       return toast({
                         status: 'warning',
                         title: t('support.team.limit.No permission rerank')

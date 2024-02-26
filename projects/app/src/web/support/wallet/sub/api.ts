@@ -13,8 +13,7 @@ export const putTeamDatasetSubStatus = (data: {
 
 export const getTeamPlanStatus = () =>
   GET<FeTeamPlanStatusType>(`/support/wallet/sub/getTeamSubStatus`);
-export const getUserSubscriptionList = () =>
-  GET<TeamSubSchema>(`/support/wallet/sub/getUserSubscriptionList`);
+export const getTeamPlans = () => GET<TeamSubSchema[]>(`/support/wallet/sub/getTeamPlans`);
 export const postCheckStandardSub = (data: StandardSubPlanParams) =>
   POST<StandardSubPlanUpdateResponse>('/proApi/support/wallet/sub/standard/preCheck', data);
 export const postUpdateStandardSub = (data: StandardSubPlanParams) =>

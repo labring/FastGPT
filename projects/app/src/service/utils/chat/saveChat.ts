@@ -70,7 +70,7 @@ export async function saveChat({
         chat.metadata = metadataUpdate;
         await chat.save({ session });
       } else {
-        MongoChat.create(
+        await MongoChat.create(
           [
             {
               chatId,

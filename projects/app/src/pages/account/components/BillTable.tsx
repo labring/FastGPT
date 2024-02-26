@@ -223,6 +223,12 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
             <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label)}</Box>
           </Flex>
         )}
+        {bill.metadata?.month !== undefined && (
+          <Flex alignItems={'center'} pb={4}>
+            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Month amount')}:</Box>
+            <Box>{bill.metadata?.month}</Box>
+          </Flex>
+        )}
         {bill.metadata?.datasetSize !== undefined && (
           <Flex alignItems={'center'} pb={4}>
             <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra dataset size')}:</Box>

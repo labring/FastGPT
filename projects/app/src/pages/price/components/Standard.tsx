@@ -128,6 +128,7 @@ const Standard = ({
         gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(4,1fr)']}
         gap={[4, 6, 8]}
         w={'100%'}
+        maxW={'1440px'}
       >
         {standardSubList.map((item) => {
           const isCurrentPlan =

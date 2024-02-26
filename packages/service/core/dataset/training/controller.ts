@@ -11,7 +11,7 @@ import { simpleText } from '@fastgpt/global/common/string/tools';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { VectorModelItemType, LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
-export const lockTrainingDataByTeamId = async (teamId: string, retry = 3): Promise<any> => {
+export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
     await MongoDatasetTraining.updateMany(
       {
@@ -21,13 +21,7 @@ export const lockTrainingDataByTeamId = async (teamId: string, retry = 3): Promi
         lockTime: new Date('2999/5/5')
       }
     );
-  } catch (error) {
-    if (retry > 0) {
-      await delay(1000);
-      return lockTrainingDataByTeamId(teamId, retry - 1);
-    }
-    return Promise.reject(error);
-  }
+  } catch (error) {}
 };
 
 export async function pushDataListToTrainingQueue({
@@ -51,9 +45,7 @@ export async function pushDataListToTrainingQueue({
     datasetId: { _id: datasetId, vectorModel, agentModel }
   } = await getCollectionWithDataset(collectionId);
 
-  const checkModelValid = async ({ collectionId }: { collectionId: string }) => {
-    if (!collectionId) return Promise.reject(`CollectionId is empty`);
-
+  const checkModelValid = async () => {
     if (trainingMode === TrainingModeEnum.chunk) {
       const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
       if (!vectorModelData) {
@@ -61,7 +53,7 @@ export async function pushDataListToTrainingQueue({
       }
 
       return {
-        maxToken: vectorModelData.maxToken * 1.5,
+        maxToken: vectorModelData.maxToken * 1.3,
         model: vectorModelData.model,
         weight: vectorModelData.weight
       };
@@ -81,9 +73,7 @@ export async function pushDataListToTrainingQueue({
     return Promise.reject(`Training mode "${trainingMode}" is inValid`);
   };
 
-  const { model, maxToken, weight } = await checkModelValid({
-    collectionId
-  });
+  const { model, maxToken, weight } = await checkModelValid();
 
   // format q and a, remove empty char
   data.forEach((item) => {

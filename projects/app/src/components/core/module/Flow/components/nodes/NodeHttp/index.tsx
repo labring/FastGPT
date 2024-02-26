@@ -1,11 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useState, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
-import NodeCard from '../render/NodeCard';
+import NodeCard from '../../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
-import Divider from '../modules/Divider';
-import Container from '../modules/Container';
-import RenderInput from '../render/RenderInput';
-import RenderOutput from '../render/RenderOutput';
+import Divider from '../../modules/Divider';
+import Container from '../../modules/Container';
+import RenderInput from '../../render/RenderInput';
+import RenderOutput from '../../render/RenderOutput';
 import {
   Box,
   Flex,
@@ -21,7 +21,7 @@ import {
 } from '@chakra-ui/react';
 import MySelect from '@/components/Select';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { onChangeNode, useFlowProviderStore } from '../../FlowProvider';
+import { onChangeNode, useFlowProviderStore } from '../../../FlowProvider';
 import { useTranslation } from 'next-i18next';
 import Tabs from '@/components/Tabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -37,7 +37,8 @@ import {
 } from '@fastgpt/global/core/module/utils';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
-import HttpImportModal from '../render/HttpImportModal';
+import dynamic from 'next/dynamic';
+const OpenApiImportModal = dynamic(() => import('./OpenApiImportModal'));
 
 enum TabEnum {
   params = 'params',
@@ -138,9 +139,9 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
       <Box mb={2} display={'flex'} justifyContent={'space-between'}>
         <span>{t('core.module.Http request settings')}</span>
         <span>
-          <HttpImportModal moduleId={moduleId} inputs={inputs}>
-            <Button variant={'link'}>openapi 导入</Button>
-          </HttpImportModal>
+          <OpenApiImportModal moduleId={moduleId} inputs={inputs}>
+            <Button variant={'link'}>{t('core.module.http.OpenAPI import')}</Button>
+          </OpenApiImportModal>
         </span>
       </Box>
       <Flex alignItems={'center'} className="nodrag">
@@ -278,7 +279,7 @@ function RenderHttpProps({
       <Tabs
         list={[
           { label: <RenderPropsItem text="Params" num={paramsLength} />, id: TabEnum.params },
-          ...(requestMethods !== 'GET'
+          ...(!['GET', 'DELETE'].includes(requestMethods)
             ? [
                 {
                   label: (
@@ -474,7 +475,9 @@ const RenderJson = ({
   input: FlowNodeInputItemType;
   variables: EditorVariablePickerType[];
 }) => {
+  const { t } = useTranslation();
   const [_, startSts] = useTransition();
+
   return (
     <Box mt={1}>
       <JSONEditor
@@ -482,7 +485,7 @@ const RenderJson = ({
         height={200}
         resize
         value={input.value}
-        placeholder="{ }"
+        placeholder={t('core.module.template.http body placeholder')}
         onChange={(e) => {
           startSts(() => {
             onChangeNode({
@@ -503,7 +506,7 @@ const RenderJson = ({
 };
 const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
   return (
-    <Flex alignItems={'center'} fontSize={'xs'} transform={'scale(0.8)'}>
+    <Flex alignItems={'center'}>
       <Box>{text}</Box>
       {num > 0 && (
         <Box ml={1} borderRadius={'50%'} bg={'myGray.200'} px={2} py={'1px'}>
@@ -515,6 +518,7 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 };
 
 const NodeHttp = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
+  const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
 
   const CustomComponents = useMemo(
@@ -526,12 +530,12 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
         <>
           <RenderHttpProps moduleId={moduleId} inputs={inputs} />
           <Box mt={2} transform={'translateY(10px)'}>
-            外部参数输入
+            {t('core.module.Variable import')}
           </Box>
         </>
       )
     }),
-    [inputs, moduleId]
+    [inputs, moduleId, t]
   );
 
   return (

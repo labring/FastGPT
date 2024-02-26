@@ -14,10 +14,13 @@ export const checkDatasetLimit = async ({
   teamId: string;
   insertLen?: number;
 }) => {
-  const [{ totalPoints, usedPoints, datasetMaxSize }, usedSize] = await Promise.all([
-    getTeamSubPlans({ teamId, standardPlans: getStandardSubPlan() }),
-    getVectorCountByTeamId(teamId)
-  ]);
+  const [{ standardConstants, totalPoints, usedPoints, datasetMaxSize }, usedSize] =
+    await Promise.all([
+      getTeamSubPlans({ teamId, standardPlans: getStandardSubPlan() }),
+      getVectorCountByTeamId(teamId)
+    ]);
+
+  if (!standardConstants) return;
 
   if (usedSize + insertLen >= datasetMaxSize) {
     return Promise.reject(TeamErrEnum.datasetSizeNotEnough);
@@ -30,10 +33,12 @@ export const checkDatasetLimit = async ({
 };
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  const { totalPoints, usedPoints } = await getTeamSubPlans({
+  const { standardConstants, totalPoints, usedPoints } = await getTeamSubPlans({
     teamId,
     standardPlans: getStandardSubPlan()
   });
+
+  if (!standardConstants) return;
 
   if (usedPoints >= totalPoints) {
     return Promise.reject(TeamErrEnum.aiPointsNotEnough);
@@ -50,7 +55,7 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
     getTeamStandPlan({ teamId, standardPlans: getStandardSubPlan() }),
     MongoDataset.countDocuments({
       teamId,
-      type: DatasetTypeEnum.dataset
+      type: { $ne: DatasetTypeEnum.folder }
     })
   ]);
 

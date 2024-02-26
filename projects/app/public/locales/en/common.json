@@ -93,6 +93,9 @@
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Finish": "Finish",
+    "Import": "Import",
+    "Import failed": "Import failed",
+    "Import success": "Import success",
     "Input": "Input",
     "Intro": "Intro",
     "Invalid Json": "Invalid Json",
@@ -781,6 +784,7 @@
       "Unlink tip": "[{{name}}] An unfilled or unconnected parameter exists",
       "Variable": "Variables",
       "Variable Setting": "Variable Setting",
+      "Variable import": "Variable import",
       "edit": {
         "Field Already Exist": "Key already exist",
         "Field Edit": "Field Edit"
@@ -799,6 +803,8 @@
         "Histories": "histories",
         "Key already exists": "Key already exists",
         "Key cannot be empty": "Name cannot be empty",
+        "OpenAPI import": "OpenAPI import",
+        "OpenAPI import placeholder": "Please enter the OpenAPI format content, and the request information for the first interface will be extracted.",
         "Props name": "Name",
         "Props tip": "You can set parameters related to Http requests\nGlobal changes or external parameter inputs can be invoked by {{key}}",
         "Props value": "Value",
@@ -909,6 +915,7 @@
         "Tool module": "Tools",
         "UnKnow Module": "UnKnow Module",
         "User guide": "User guide",
+        "http body placeholder": "Same syntax as APIFox",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"
       },
@@ -1174,13 +1181,6 @@
       "New api key tip": "Please keep your secret key, the secret key will not be displayed again~",
       "Usage": "Usage"
     },
-    "standard": {
-      "type": "type",
-      "storage": "storage",
-      "AI Bonus Points": "AI Bonus Points",
-      "Start Time": "Start Time",
-      "Expired Time": "Expired Time"
-    },
     "outlink": {
       "Max usage points": "Max usage",
       "Max usage points tip": "The maximum number of credits allowed for this link will not be used. -1 indicates no limit.",
@@ -1189,6 +1189,13 @@
         "Response Quote": "Show Quote",
         "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document."
       }
+    },
+    "standard": {
+      "AI Bonus Points": "AI Bonus Points",
+      "Expired Time": "Expired Time",
+      "Start Time": "Start Time",
+      "storage": "storage",
+      "type": "type"
     },
     "subscription": {
       "Cancel subscription": "Cancel"
@@ -1220,12 +1227,12 @@
       "Amount": "Amount",
       "Balance not enough tip": "The balance is insufficient, please go to the account page first",
       "Bills": "Bill",
-      "Standard Plan Detail": "Standard Plan Detail",
       "Buy": "Buy",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",
       "Pay error": "Pay error",
       "Pay success": "Pay success",
+      "Standard Plan Detail": "Standard Plan Detail",
       "bill": {
         "AI Model": "AI Model",
         "AI Type": "AI Type",

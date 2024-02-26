@@ -22,9 +22,10 @@ export const getTeamSubPlans = async ({
   const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
   const extraPoints = plans.filter((plan) => plan.type === SubTypeEnum.extraPoints);
 
-  const totalPoints =
-    (standard?.totalPoints || 0) +
-    extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0);
+  const totalPoints = standardPlans
+    ? (standard?.totalPoints || 0) +
+      extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0)
+    : Infinity;
   const surplusPoints =
     (standard?.surplusPoints || 0) +
     extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0);

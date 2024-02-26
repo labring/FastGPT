@@ -38,10 +38,14 @@ export function replaceVariable(text: string, obj: Record<string, string | numbe
   return text || '';
 }
 
-/* replace sensitive link */
-export const replaceSensitiveLink = (text: string) => {
-  const urlRegex = /(?<=https?:\/\/)[^\s]+/g;
-  return text.replace(urlRegex, 'xxx');
+/* replace sensitive text */
+export const replaceSensitiveText = (text: string) => {
+  // 1. http link
+  text = text.replace(/(?<=https?:\/\/)[^\s]+/g, 'xxx');
+  // 2. nx-xxx 全部替换成xxx
+  text = text.replace(/ns-[\w-]+/g, 'xxx');
+
+  return text;
 };
 
 export const getNanoid = (size = 12) => {

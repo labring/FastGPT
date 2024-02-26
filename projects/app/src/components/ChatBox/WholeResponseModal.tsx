@@ -271,16 +271,16 @@ const ResponseBox = React.memo(function ResponseBox({
 
         {/* plugin */}
         <>
-          {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
-            <Row
-              label={t('core.chat.response.Plugin Resonse Detail')}
-              rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
-            />
-          )}
           {activeModule?.pluginOutput && (
             <Row
               label={t('core.chat.response.plugin output')}
               value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
+            />
+          )}
+          {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
+            <Row
+              label={t('core.chat.response.Plugin Resonse Detail')}
+              rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
             />
           )}
         </>

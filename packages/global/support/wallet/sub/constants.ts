@@ -7,15 +7,15 @@ export enum SubTypeEnum {
 export const subTypeMap = {
   [SubTypeEnum.standard]: {
     label: 'support.wallet.subscription.type.standard',
-    icon: 'acount/plans'
+    icon: 'support/account/plans'
   },
   [SubTypeEnum.extraDatasetSize]: {
     label: 'support.wallet.subscription.type.extraDatasetSize',
-    icon: 'core/app/simpleMode/database'
+    icon: 'core/dataset/datasetLight'
   },
   [SubTypeEnum.extraPoints]: {
     label: 'support.wallet.subscription.type.extraPoints',
-    icon: 'core/app/simpleMode/dataset'
+    icon: 'core/chat/chatLight'
   }
 };
 

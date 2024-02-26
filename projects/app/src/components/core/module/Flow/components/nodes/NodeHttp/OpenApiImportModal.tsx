@@ -1,13 +1,13 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import MyModal from '@/components/MyModal';
-import { ModalBody, Button, ModalFooter, useDisclosure, Textarea } from '@chakra-ui/react';
+import { ModalBody, Button, ModalFooter, useDisclosure, Textarea, Box } from '@chakra-ui/react';
 import { useTranslation } from 'react-i18next';
-import { onChangeNode } from '../../FlowProvider';
+import { onChangeNode } from '../../../FlowProvider';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
-import { debounce } from 'lodash';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import yaml from 'js-yaml';
+import { useForm } from 'react-hook-form';
 
 type RequestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
 const methodMap: { [K in RequestMethod]: string } = {
@@ -18,7 +18,7 @@ const methodMap: { [K in RequestMethod]: string } = {
   patch: 'PATCH'
 };
 
-export default function HttpImportModal({
+const OpenApiImportModal = ({
   children,
   moduleId,
   inputs
@@ -26,10 +26,15 @@ export default function HttpImportModal({
   children: React.ReactElement;
   moduleId: string;
   inputs: FlowNodeInputItemType[];
-}) {
+}) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
-  const [importContent, setImportContent] = useState('');
+  const { register, handleSubmit } = useForm({
+    defaultValues: {
+      openapiContent: ''
+    }
+  });
+
   const { toast } = useToast();
 
   const handleFileProcessing = async (content: string) => {
@@ -134,12 +139,12 @@ export default function HttpImportModal({
       onClose();
 
       toast({
-        title: '导入成功',
+        title: t('common.Import success'),
         status: 'success'
       });
     } catch (error: any) {
       toast({
-        title: '导入失败',
+        title: t('common.Import failed'),
         description: error.message,
         status: 'error'
       });
@@ -149,17 +154,12 @@ export default function HttpImportModal({
 
   return (
     <>
-      {children &&
-        React.cloneElement(children, {
-          onClick: () => {
-            onOpen();
-          }
-        })}
+      {children && <Box onClick={onOpen}>{children}</Box>}
       <MyModal
         isOpen={isOpen}
         onClose={onClose}
         iconSrc="modal/edit"
-        title={'导入'}
+        title={t('common.Import')}
         m={'auto'}
         w={500}
       >
@@ -167,19 +167,19 @@ export default function HttpImportModal({
           <Textarea
             height={400}
             maxH={500}
-            mt={4}
-            onChange={debounce((e) => {
-              setImportContent(e.target.value);
-            }, 200)}
-            placeholder="请输入 openapi 格式内容"
+            mt={2}
+            {...register('openapiContent')}
+            placeholder={t('core.module.http.OpenAPI import placeholder')}
           />
         </ModalBody>
         <ModalFooter>
-          <Button mr={2} onClick={() => handleFileProcessing(importContent)}>
+          <Button onClick={handleSubmit((data) => handleFileProcessing(data.openapiContent))}>
             {t('common.Confirm')}
           </Button>
         </ModalFooter>
       </MyModal>
     </>
   );
-}
+};
+
+export default React.memo(OpenApiImportModal);

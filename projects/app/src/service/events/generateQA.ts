@@ -1,7 +1,6 @@
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { pushQAUsage } from '@/service/support/wallet/usage/push';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { sendOneInform } from '../support/user/inform/api';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -10,11 +9,9 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
-import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { getLLMModel } from '../core/ai/model';
-import { checkTeamAIPoints } from '../support/permission/teamLimit';
-import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -87,25 +84,10 @@ export async function generateQA(): Promise<any> {
     return generateQA();
   }
 
-  // auth balance
-  try {
-    await checkTeamAIPoints(data.teamId);
-  } catch (error: any) {
-    if (error?.statusText === TeamErrEnum.aiPointsNotEnough) {
-      // send inform and lock data
-      try {
-        sendOneInform({
-          type: 'system',
-          title: '文本训练任务中止',
-          content:
-            '该团队账号的AI积分不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-          tmbId: data.tmbId
-        });
-        console.log('余额不足，暂停【QA】生成任务');
-        lockTrainingDataByTeamId(data.teamId);
-      } catch (error) {}
-    }
+  console.log('Start QA Training');
 
+  // auth balance
+  if (await checkTeamAiPointsAndLock(data.teamId, data.tmbId)) {
     reduceQueue();
     return generateQA();
   }
@@ -176,32 +158,8 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     generateQA();
   } catch (err: any) {
     reduceQueue();
-    // log
-    if (err?.response) {
-      addLog.info('openai error: 生成QA错误', {
-        status: err.response?.status,
-        stateusText: err.response?.statusText,
-        data: err.response?.data
-      });
-    } else {
-      console.log(err);
-      addLog.error(getErrText(err, '生成 QA 错误'));
-    }
 
-    // message error or openai account error
-    if (
-      err?.message === 'invalid message format' ||
-      err.response?.data?.error?.type === 'invalid_request_error' ||
-      err?.code === 500
-    ) {
-      addLog.info('invalid message format', {
-        text
-      });
-      try {
-        await MongoDatasetTraining.findByIdAndUpdate(data._id, {
-          lockTime: new Date('2998/5/5')
-        });
-      } catch (error) {}
+    if (await checkInvalidChunkAndLock({ err, data, errText: 'QA模型调用失败' })) {
       return generateQA();
     }
 

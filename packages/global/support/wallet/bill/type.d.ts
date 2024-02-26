@@ -24,6 +24,6 @@ export type BillSchemaType = {
 export type ChatModuleBillType = {
   totalPoints: number;
   moduleName: string;
-  model: string;
-  charsLength: number;
+  model?: string;
+  charsLength?: number;
 };

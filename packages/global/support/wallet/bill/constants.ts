@@ -54,4 +54,4 @@ export const billPayWayMap = {
 };
 
 export const SUB_DATASET_SIZE_RATE = 1000;
-export const SUB_EXTRA_POINT_RATE = 1000000;
+export const SUB_EXTRA_POINT_RATE = 1000;

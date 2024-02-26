@@ -93,6 +93,9 @@
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
     "Finish": "完成",
+    "Import": "导入",
+    "Import failed": "导入失败",
+    "Import success": "导入成功",
     "Input": "输入",
     "Intro": "介绍",
     "Invalid Json": "无效的JSON格式，请注意检查。",
@@ -556,7 +559,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -782,6 +786,7 @@
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
       "Variable": "全局变量",
       "Variable Setting": "变量设置",
+      "Variable import": "外部参数输入",
       "edit": {
         "Field Already Exist": "key 重复",
         "Field Edit": "字段编辑"
@@ -800,6 +805,8 @@
         "Histories": "历史纪录,最多取10条",
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
+        "OpenAPI import": "OpenAPI 导入",
+        "OpenAPI import placeholder": "请输入 OpenAPI 格式内容，将会提取第一个接口的请求信息。",
         "Props name": "参数名",
         "Props tip": "可以设置 Http 请求的相关参数\n可通过 {{key}} 来调用全局变了或外部参数输入，当前可使用变量:\n{{variable}}",
         "Props value": "参数值",
@@ -910,6 +917,7 @@
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
+        "http body placeholder": "与APIFox相同的语法",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"
       },
@@ -1175,13 +1183,6 @@
       "New api key tip": "请保管好你的秘钥，秘钥不会再次展示~",
       "Usage": "已用额度(￥)"
     },
-    "standard": {
-      "type": "类型",
-      "storage": "存储量",
-      "AI Bonus Points": "AI 积分",
-      "Start Time": "开始时间",
-      "Expired Time": "结束时间"
-    },
     "outlink": {
       "Max usage points": "积分上限",
       "Max usage points tip": "该链接最多允许使用多少积分，超出后将无法使用。-1 代表无限制。",
@@ -1190,6 +1191,13 @@
         "Response Quote": "返回引用",
         "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"
       }
+    },
+    "standard": {
+      "AI Bonus Points": "AI 积分",
+      "Expired Time": "结束时间",
+      "Start Time": "开始时间",
+      "storage": "存储量",
+      "type": "类型"
     },
     "subscription": {
       "Cancel subscription": "取消订阅"
@@ -1219,7 +1227,6 @@
     },
     "wallet": {
       "Amount": "金额",
-      "Standard Plan Detail": "套餐详情",
       "Balance not enough tip": "余额不足，请先到账号页充值",
       "Bills": "账单",
       "Buy": "购买",
@@ -1227,6 +1234,7 @@
       "Confirm pay": "支付确认",
       "Pay error": "支付失败",
       "Pay success": "支付成功",
+      "Standard Plan Detail": "套餐详情",
       "bill": {
         "AI Model": "AI 模型",
         "AI Type": "AI 类型",
@@ -1380,6 +1388,7 @@
     "Set OpenAI Account Failed": "设置 OpenAI 账号异常",
     "Sign Out": "登出",
     "Source": "来源",
+    "Standard Detail": "",
     "Team": "团队",
     "Time": "时间",
     "Timezone": "时区",

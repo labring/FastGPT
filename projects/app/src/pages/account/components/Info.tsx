@@ -42,6 +42,8 @@ const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
 
 const Account = () => {
   const { isPc } = useSystemStore();
+  const { teamPlanStatus } = useUserStore();
+  const standardPlan = teamPlanStatus?.standardConstants;
 
   const { initUserInfo } = useUserStore();
 
@@ -57,14 +59,16 @@ const Account = () => {
               <Other />
             </Box>
           </Box>
-          <Box ml={'45px'} flex={'1 0 0'} maxW={'600px'}>
-            <PlanUsage />
-          </Box>
+          {!!standardPlan && (
+            <Box ml={'45px'} flex={'1 0 0'} maxW={'600px'}>
+              <PlanUsage />
+            </Box>
+          )}
         </Flex>
       ) : (
         <>
           <MyInfo />
-          <PlanUsage />
+          {!!standardPlan && <PlanUsage />}
           <Other />
         </>
       )}
@@ -152,7 +156,7 @@ const MyInfo = () => {
       {/* user info */}
       {isPc && (
         <Flex alignItems={'center'} fontSize={'xl'} h={'30px'}>
-          <MyIcon mr={2} name={'acount/user'} w={'20px'} />
+          <MyIcon mr={2} name={'support/user/userLight'} w={'20px'} />
           {t('support.user.User self info')}
         </Flex>
       )}
@@ -341,8 +345,8 @@ const PlanUsage = () => {
     return {
       colorScheme,
       value: rate * 100,
-      maxSize: teamPlanStatus.totalPoints || t('common.Unlimited'),
-      usedSize: teamPlanStatus.usedPoints
+      max: teamPlanStatus.totalPoints ? teamPlanStatus.totalPoints : t('common.Unlimited'),
+      used: teamPlanStatus.usedPoints ? Math.round(teamPlanStatus.usedPoints) : 0
     };
   }, [teamPlanStatus, t]);
 
@@ -350,7 +354,7 @@ const PlanUsage = () => {
     <Box mt={[6, 0]}>
       <Flex fontSize={'xl'} h={'30px'}>
         <Flex alignItems={'center'}>
-          <MyIcon mr={2} name={'acount/plans'} w={'20px'} />
+          <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('support.wallet.subscription.Team plan and usage')}
         </Flex>
         <Button
@@ -418,6 +422,7 @@ const PlanUsage = () => {
           </Flex>
           <Box mt={3}>
             <Progress
+              size={'sm'}
               value={datasetUsageMap.value}
               colorScheme={datasetUsageMap.colorScheme}
               borderRadius={'md'}
@@ -433,12 +438,13 @@ const PlanUsage = () => {
             <Flex alignItems={'center'}>
               <Box fontWeight={'bold'}>{t('support.wallet.subscription.AI points')}</Box>
               <Box color={'myGray.600'} ml={2}>
-                {Math.round(teamPlanStatus.usedPoints)}/{teamPlanStatus.totalPoints}
+                {aiPointsUsageMap.used}/{aiPointsUsageMap.max}
               </Box>
             </Flex>
           </Flex>
           <Box mt={3}>
             <Progress
+              size={'sm'}
               value={aiPointsUsageMap.value}
               colorScheme={aiPointsUsageMap.colorScheme}
               borderRadius={'md'}

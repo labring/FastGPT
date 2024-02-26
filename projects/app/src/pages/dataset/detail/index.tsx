@@ -28,6 +28,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import Head from 'next/head';
+import MyBox from '@/components/common/MyBox';
 
 const DataCard = dynamic(() => import('./components/DataCard'));
 const Test = dynamic(() => import('./components/Test'));
@@ -150,7 +151,13 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
         <title>{datasetDetail?.name}</title>
       </Head>
       <PageContainer>
-        <Flex flexDirection={['column', 'row']} h={'100%'} pt={[4, 0]}>
+        <MyBox
+          isLoading={isUpdating}
+          display={'flex'}
+          flexDirection={['column', 'row']}
+          h={'100%'}
+          pt={[4, 0]}
+        >
           {isPc ? (
             <Flex
               flexDirection={'column'}
@@ -277,9 +284,9 @@ const Detail = ({ datasetId, currentTab }: { datasetId: string; currentTab: `${T
               {currentTab === TabEnum.import && <Import />}
             </Box>
           )}
-        </Flex>
+        </MyBox>
       </PageContainer>
-      <ConfirmSyncModal isLoading={isUpdating} />
+      <ConfirmSyncModal />
     </>
   );
 };

@@ -259,10 +259,10 @@ const JSONEditor = ({
         <Box
           className="monaco-placeholder"
           position={'absolute'}
-          top={'2px'}
+          top={2}
           left={4}
-          opacity={0.5}
-          fontSize={'16px'}
+          fontSize={'xs'}
+          color={'myGray.500'}
           display={placeholderDisplay}
         >
           {placeholder}

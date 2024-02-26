@@ -1,47 +1,40 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 import {
   ModalBody,
-  Box,
-  Flex,
-  Input,
   ModalFooter,
-  Button,
   Table,
   Thead,
   Tbody,
-  Text,
   Tr,
   Th,
   Td,
-  TableContainer
+  TableContainer,
+  ModalCloseButton
 } from '@chakra-ui/react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
-import { useQuery, useMutation } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import dayjs from 'dayjs';
-import { getUserSubscriptionList } from '@/web/support/wallet/sub/api';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getTeamPlans } from '@/web/support/wallet/sub/api';
 import { subTypeMap, standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
+import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
-  const {
-    data: standardHistory = [],
-    isLoading: isGetting,
-    refetch
-  } = useQuery(['getUserStandDardList'], getUserSubscriptionList);
+  const { subPlans } = useSystemStore();
+  const { data: teamPlans = [], isLoading } = useQuery(['getTeamPlans'], getTeamPlans);
 
   return (
     <MyModal
       isOpen
       maxW={['90vw', '1200px']}
-      onClose={onClose}
-      iconSrc="acount/plansBlue"
+      iconSrc="modal/teamPlans"
       title={t('support.wallet.Standard Plan Detail')}
     >
+      <ModalCloseButton onClick={onClose} />
       <ModalBody>
         <TableContainer mt={2} position={'relative'} minH={'300px'}>
           <Table>
@@ -56,43 +49,50 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>
-              {Array.isArray(standardHistory) &&
-                standardHistory.map(
-                  ({
-                    _id,
-                    type,
-                    currentSubLevel,
-                    currentExtraDatasetSize,
-                    surplusPoints,
-                    totalPoints,
-                    startTime,
-                    expiredTime
-                  }: TeamSubSchema) => {
-                    return (
-                      <Tr key={_id}>
-                        <Td>
-                          <MyIcon
-                            mr={2}
-                            name={subTypeMap[type].icon as any}
-                            w={'20px'}
-                            color="#111824"
-                          />
-                          {t(standardSubLevelMap[currentSubLevel].label)}
-                        </Td>
-                        <Td>{currentExtraDatasetSize ? currentExtraDatasetSize + ' 组' : '—'}</Td>
-                        <Td>
-                          {totalPoints ? `${surplusPoints.toFixed(0)} / ${totalPoints} 积分` : '—'}
-                        </Td>
-                        <Td>{dayjs(startTime).format('YYYY/MM/DD\nHH:mm')}</Td>
-                        <Td>{dayjs(expiredTime).format('YYYY/MM/DD\nHH:mm')}</Td>
-                      </Tr>
-                    );
-                  }
-                )}
+              {teamPlans.map(
+                ({
+                  _id,
+                  type,
+                  currentSubLevel,
+                  currentExtraDatasetSize,
+                  surplusPoints = 0,
+                  totalPoints = 0,
+                  startTime,
+                  expiredTime
+                }: TeamSubSchema) => {
+                  const standardPlan = currentSubLevel
+                    ? subPlans?.standard?.[currentSubLevel]
+                    : undefined;
+                  const datasetSize = standardPlan?.maxDatasetSize || currentExtraDatasetSize;
+
+                  return (
+                    <Tr key={_id}>
+                      <Td>
+                        <MyIcon
+                          mr={2}
+                          name={subTypeMap[type]?.icon as any}
+                          w={'20px'}
+                          color={'myGray.800'}
+                        />
+                        {t(subTypeMap[type]?.label)}
+                        {currentSubLevel && `(${t(standardSubLevelMap[currentSubLevel]?.label)})`}
+                      </Td>
+                      <Td>{datasetSize ? `${datasetSize}组` : '-'}</Td>
+                      <Td>
+                        {totalPoints
+                          ? `${Math.round(totalPoints - surplusPoints)} / ${totalPoints} 积分`
+                          : '-'}
+                      </Td>
+                      <Td>{formatTime2YMDHM(startTime)}</Td>
+                      <Td>{formatTime2YMDHM(expiredTime)}</Td>
+                    </Tr>
+                  );
+                }
+              )}
               <Tr key={'_id'}></Tr>
             </Tbody>
           </Table>
-          <Loading loading={isGetting} fixed={false} />
+          <Loading loading={isLoading} fixed={false} />
         </TableContainer>
       </ModalBody>
       <ModalFooter></ModalFooter>

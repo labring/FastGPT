@@ -26,7 +26,7 @@ type Response = ModuleDispatchResponse<{
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     res,
-    user,
+    teamId,
     stream,
     detail,
     histories,
@@ -40,7 +40,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const appData = await MongoApp.findOne({
     _id: app.id,
-    teamId: user.team.teamId
+    teamId
   });
 
   if (!appData) {
@@ -90,9 +90,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     [ModuleOutputKeyEnum.moduleDispatchBills]: [
       {
         moduleName: appData.name,
-        totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
-        charsLength: 0,
-        model: appData.name
+        totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
       }
     ],
     answerText: answerText,

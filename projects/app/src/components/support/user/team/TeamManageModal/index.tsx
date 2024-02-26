@@ -23,15 +23,11 @@ import {
   Tbody,
   Tr,
   Th,
-  Tag,
   Td,
   TableContainer,
-  useTheme,
   useDisclosure,
-  MenuButton,
-  HStack
+  MenuButton
 } from '@chakra-ui/react';
-import { SpinnerIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -55,10 +51,10 @@ const InviteModal = dynamic(() => import('./InviteModal'));
 const TeamTagsAsync = dynamic(() => import('../TeamTagsAsync'));
 
 const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { toast } = useToast();
+  const { teamPlanStatus } = useUserStore();
   const [teamsTags, setTeamTags] = useState<any>();
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm();
@@ -292,27 +288,31 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               <Box ml={2} bg={'myGray.100'} borderRadius={'20px'} px={3} fontSize={'xs'}>
                 {members.length}
               </Box>
-              {userInfo.team.role === TeamMemberRoleEnum.owner && (
-                <Button
-                  variant={'whitePrimary'}
-                  size="sm"
-                  borderRadius={'md'}
-                  ml={3}
-                  leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
-                  onClick={() => {
-                    if (userInfo.team.maxSize <= members.length) {
-                      toast({
-                        status: 'warning',
-                        title: t('user.team.Over Max Member Tip', { max: userInfo.team.maxSize })
-                      });
-                    } else {
-                      onOpenInvite();
+              {userInfo.team.role === TeamMemberRoleEnum.owner &&
+                teamPlanStatus?.standardConstants &&
+                teamPlanStatus.standardConstants.maxTeamMember > members.length && (
+                  <Button
+                    variant={'whitePrimary'}
+                    size="sm"
+                    borderRadius={'md'}
+                    ml={3}
+                    leftIcon={
+                      <MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />
                     }
-                  }}
-                >
-                  {t('user.team.Invite Member')}
-                </Button>
-              )}
+                    onClick={() => {
+                      if (userInfo.team.maxSize <= members.length) {
+                        toast({
+                          status: 'warning',
+                          title: t('user.team.Over Max Member Tip', { max: userInfo.team.maxSize })
+                        });
+                      } else {
+                        onOpenInvite();
+                      }
+                    }}
+                  >
+                    {t('user.team.Invite Member')}
+                  </Button>
+                )}
               {userInfo.team.role === TeamMemberRoleEnum.owner && (
                 <Button
                   variant={'whitePrimary'}
