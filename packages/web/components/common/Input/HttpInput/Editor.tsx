@@ -1,4 +1,4 @@
-import { useState, useRef, useTransition, useEffect } from 'react';
+import { useState, useRef, useTransition, useEffect, useMemo } from 'react';
 import { LexicalComposer } from '@lexical/react/LexicalComposer';
 import { PlainTextPlugin } from '@lexical/react/LexicalPlainTextPlugin';
 import { ContentEditable } from '@lexical/react/LexicalContentEditable';
@@ -60,7 +60,19 @@ export default function Editor({
   useEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables.length, updateTrigger]);
+  }, [value, variables.length]);
+
+  useEffect(() => {
+    setKey(getNanoid(6));
+  }, [updateTrigger]);
+
+  const dropdownVariables = useMemo(
+    () =>
+      variables.filter((item) => {
+        return item.key.includes(currentValue || '') && item.key !== currentValue;
+      }),
+    [currentValue]
+  );
 
   return (
     <Box position={'relative'} width={'full'} h={`${h}px`} cursor={'text'}>
@@ -107,8 +119,8 @@ export default function Editor({
         <OnBlurPlugin onBlur={onBlur} />
         <SingleLinePlugin />
       </LexicalComposer>
-      {focus && !currentValue && hasDropDownPlugin && (
-        <DropDownMenu variables={variables} setDropdownValue={setDropdownValue} />
+      {focus && hasDropDownPlugin && (
+        <DropDownMenu variables={dropdownVariables} setDropdownValue={setDropdownValue} />
       )}
     </Box>
   );

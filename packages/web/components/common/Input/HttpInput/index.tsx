@@ -15,7 +15,7 @@ const HttpInput = ({
   h,
   placeholder,
   setDropdownValue,
-  updateTriger
+  updateTrigger
 }: {
   hasVariablePlugin?: boolean;
   hasDropDownPlugin?: boolean;
@@ -26,7 +26,7 @@ const HttpInput = ({
   h?: number;
   placeholder?: string;
   setDropdownValue?: (value: string) => void;
-  updateTriger?: boolean;
+  updateTrigger?: boolean;
 }) => {
   const [currentValue, setCurrentValue] = React.useState(value);
 
@@ -61,7 +61,7 @@ const HttpInput = ({
         onBlur={onBlurInput}
         placeholder={placeholder}
         setDropdownValue={setDropdownValue}
-        updateTrigger={updateTriger}
+        updateTrigger={updateTrigger}
       />
     </>
   );

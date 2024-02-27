@@ -326,6 +326,13 @@ const RenderForm = ({
   const [updateTrigger, setUpdateTrigger] = useState(false);
   const [shouldUpdateNode, setShouldUpdateNode] = useState(false);
 
+  const leftVariables = useMemo(() => {
+    return variables.filter((variable) => {
+      const existVariables = list.map((item) => item.key);
+      return !existVariables.includes(variable.key);
+    });
+  }, [list, variables]);
+
   useEffect(() => {
     setList(input.value || []);
   }, [input.value]);
@@ -402,14 +409,15 @@ const RenderForm = ({
                   hasDropDownPlugin={true}
                   setDropdownValue={(value) => {
                     handleKeyChange(index, value);
+                    setUpdateTrigger((prev) => !prev);
                   }}
                   placeholder={t('core.module.http.Props name')}
                   value={item.key}
-                  variables={variables}
+                  variables={leftVariables}
                   onBlur={(val) => {
                     handleKeyChange(index, val);
                   }}
-                  updateTriger={updateTrigger}
+                  updateTrigger={updateTrigger}
                 />
               </Td>
               <Td p={0}>
@@ -449,7 +457,7 @@ const RenderForm = ({
                 placeholder={t('core.module.http.Add props')}
                 value={''}
                 h={40}
-                variables={variables}
+                variables={leftVariables}
                 onBlur={(val) => {
                   handleAddNewProps(val);
                 }}
