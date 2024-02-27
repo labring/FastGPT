@@ -59,11 +59,15 @@ export function ChatContextFilter({
   return [...systemPrompts, ...chats];
 }
 
+export const replaceValidChars = (str: string) => {
+  const reg = /[\s\r\n]+/g;
+  return str.replace(reg, '');
+};
 export const countMessagesChars = (messages: ChatItemType[]) => {
-  return messages.reduce((sum, item) => sum + item.value.length, 0);
+  return messages.reduce((sum, item) => sum + replaceValidChars(item.value).length, 0);
 };
 export const countGptMessagesChars = (messages: ChatMessageItemType[]) =>
-  messages.reduce((sum, item) => sum + item.content.length, 0);
+  messages.reduce((sum, item) => sum + replaceValidChars(item.content).length, 0);
 
 /**
     string to vision model. Follow the markdown code block rule for interception:

@@ -7,16 +7,16 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { getLLMModel } from '../core/ai/model';
 import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
+import { countGptMessagesChars } from '@fastgpt/service/core/chat/utils';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
 
-  return global.vectorQueueLen === 0;
+  return global.qaQueueLen === 0;
 };
 
 export async function generateQA(): Promise<any> {
@@ -83,11 +83,11 @@ export async function generateQA(): Promise<any> {
     reduceQueue();
     return generateQA();
   }
-
   console.log('Start QA Training');
 
   // auth balance
-  if (await checkTeamAiPointsAndLock(data.teamId, data.tmbId)) {
+  if (!(await checkTeamAiPointsAndLock(data.teamId, data.tmbId))) {
+    console.log('balance not enough');
     reduceQueue();
     return generateQA();
   }
@@ -119,6 +119,12 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 
+    addLog.info(`QA Training Finish`, {
+      time: `${(Date.now() - startTime) / 1000}s`,
+      splitLength: qaArr.length,
+      usage: chatResponse.usage
+    });
+
     // get vector and insert
     const { insertLen } = await pushDataToTrainingQueue({
       teamId: data.teamId,
@@ -135,18 +141,12 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     // delete data from training
     await MongoDatasetTraining.findByIdAndDelete(data._id);
 
-    addLog.info(`QA Training Finish`, {
-      time: `${(Date.now() - startTime) / 1000}s`,
-      splitLength: qaArr.length,
-      usage: chatResponse.usage
-    });
-
     // add bill
     if (insertLen > 0) {
       pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        charsLength: `${prompt}${answer}`.length,
+        charsLength: countGptMessagesChars(messages).length,
         billId: data.billId,
         model
       });

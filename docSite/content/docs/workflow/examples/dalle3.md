@@ -66,7 +66,7 @@ Body:
 
 Headers:
 
-`Authorization: sk-xxx`
+`Authorization: Bearer sk-xxx`
 
 Response:
 

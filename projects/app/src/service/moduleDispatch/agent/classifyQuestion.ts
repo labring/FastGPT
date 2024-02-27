@@ -83,7 +83,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
     [ModuleOutputKeyEnum.moduleDispatchBills]: [
       {
         moduleName: name,
-        totalPoints,
+        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
         charsLength
       }

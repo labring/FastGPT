@@ -9,7 +9,6 @@ import {
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum
 } from '@fastgpt/global/core/module/constants';
-import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import { getPluginRuntimeById } from '@fastgpt/service/core/plugin/controller';
 import { authPluginCanUse } from '@fastgpt/service/support/permission/auth/plugin';
 

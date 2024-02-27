@@ -127,7 +127,7 @@ export const appTemplates: (AppItemType & {
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             connected: false
           },
           {
@@ -888,7 +888,7 @@ export const appTemplates: (AppItemType & {
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             connected: false
           },
           {

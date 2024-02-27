@@ -17,6 +17,7 @@ import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRC
 import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
+import { useRouter } from 'next/router';
 
 type ConfirmPayModalProps = {
   teamBalance: number;
@@ -34,8 +35,8 @@ const Standard = ({
   refetchTeamSubPlan: () => void;
 }) => {
   const { t } = useTranslation();
+  const router = useRouter();
   const { subPlans, feConfigs } = useSystemStore();
-  const { toast } = useToast();
   const [confirmPayData, setConfirmPayData] = useState<ConfirmPayModalProps>();
 
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
@@ -67,6 +68,7 @@ const Standard = ({
     mutationFn: (data: StandardSubPlanParams) => postUpdateStandardSub(data),
     onSuccess() {
       refetchTeamSubPlan();
+      router.reload();
     },
     successToast: t('support.wallet.subscription.Standard update success'),
     errorToast: t('support.wallet.subscription.Standard update fail')

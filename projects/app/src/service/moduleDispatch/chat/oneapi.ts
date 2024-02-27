@@ -211,7 +211,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [ModuleOutputKeyEnum.moduleDispatchBills]: [
       {
         moduleName: name,
-        totalPoints,
+        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
         charsLength
       }

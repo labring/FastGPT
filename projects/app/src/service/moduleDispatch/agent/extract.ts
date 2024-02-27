@@ -106,7 +106,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [ModuleOutputKeyEnum.moduleDispatchBills]: [
       {
         moduleName: name,
-        totalPoints,
+        totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
         charsLength
       }

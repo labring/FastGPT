@@ -1,8 +1,6 @@
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { addLog } from '@fastgpt/service/common/system/log';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
 import { delay } from '@fastgpt/global/common/system/utils';
@@ -15,9 +13,8 @@ const reduceQueue = () => {
 
 /* 索引生成队列。每导入一次，就是一个单独的线程 */
 export async function generateVector(): Promise<any> {
-  if (global.vectorQueueLen >= 1) return;
+  if (global.vectorQueueLen >= global.systemEnv.vectorMaxProcess) return;
   global.vectorQueueLen++;
-  await delay(2000);
   const start = Date.now();
 
   // get training data

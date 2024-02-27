@@ -141,6 +141,7 @@ async function fetchData({
       'Content-Type': 'application/json',
       ...headers
     },
+    timeout: 360000,
     params: method === 'GET' ? query : {},
     data: method === 'POST' ? body : {}
   });
