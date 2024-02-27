@@ -11,7 +11,6 @@ const getVectorObj = () => {
 export const initVectorStore = getVectorObj().init;
 export const deleteDatasetDataVector = getVectorObj().delete;
 export const recallFromVectorStore = getVectorObj().recall;
-export const checkVectorDataExist = getVectorObj().checkDataExist;
 export const getVectorDataByTime = getVectorObj().getVectorDataByTime;
 export const getVectorCountByTeamId = getVectorObj().getVectorCountByTeamId;
 

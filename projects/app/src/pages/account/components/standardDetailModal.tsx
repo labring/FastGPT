@@ -16,7 +16,7 @@ import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@/web/common/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getTeamPlans } from '@/web/support/wallet/sub/api';
+import { getTeamPlans } from '@/web/support/user/team/api';
 import { subTypeMap, standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';

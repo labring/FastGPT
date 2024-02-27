@@ -164,11 +164,6 @@ export const embeddingRecall = async (
   }
 };
 
-export const checkDataExist = async (id: string) => {
-  const { rows } = await PgClient.query(`SELECT id FROM ${PgDatasetTableName} WHERE id=${id};`);
-
-  return rows.length > 0;
-};
 export const getVectorCountByTeamId = async (teamId: string) => {
   const total = await PgClient.count(PgDatasetTableName, {
     where: [['team_id', String(teamId)]]

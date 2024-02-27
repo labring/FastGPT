@@ -5,7 +5,8 @@ import type { UserUpdateParams } from '@/types/user';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { getTokenLogin, putUserInfo } from '@/web/support/user/api';
 import { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type';
-import { getTeamPlanStatus } from '@/web/support/wallet/sub/api';
+import { getTeamPlanStatus } from './team/api';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type State = {
   userInfo: UserType | null;
@@ -60,6 +61,7 @@ export const useUserStore = create<State>()(
         },
         teamPlanStatus: null,
         initTeamPlanStatus() {
+          if (!useSystemStore.getState()?.feConfigs?.isPlus) return Promise.resolve();
           return getTeamPlanStatus().then((res) => {
             set((state) => {
               state.teamPlanStatus = res;

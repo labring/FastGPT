@@ -30,7 +30,7 @@ import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
-import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
+import { formatTime2YMD } from '@fastgpt/global/common/string/time';
 import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
 
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
@@ -386,7 +386,7 @@ const PlanUsage = () => {
             </Box>
             <Flex mt="3" color={'#485264'} fontSize="sm">
               <Box>{t('common.Expired Time')}:</Box>
-              <Box ml={2}>{formatTime2YMDHM(standardPlan?.expiredTime)}</Box>
+              <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
             </Flex>
           </Box>
           <Button onClick={() => router.push('/price')}>

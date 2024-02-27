@@ -88,9 +88,7 @@ try {
   SubSchema.index({ teamId: 1, type: 1, expiredTime: -1 });
 
   // timer task. check expired plan; update standard plan;
-  SubSchema.index({ type: 1, expiredTime: -1 });
-  // timer task. clear dead team
-  SubSchema.index({ type: 1, currentSubLevel: 1, nextSubLevel: 1 });
+  SubSchema.index({ type: 1, currentSubLevel: 1, expiredTime: -1 });
 } catch (error) {
   console.log(error);
 }

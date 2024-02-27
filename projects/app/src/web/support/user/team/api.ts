@@ -14,6 +14,7 @@ import {
   TeamMemberItemType,
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type.d';
+import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -55,3 +56,9 @@ export const checkTeamExportDatasetLimit = (datasetId: string) =>
 export const checkTeamWebSyncLimit = () => GET(`/support/user/team/limit/webSyncLimit`);
 export const checkTeamDatasetSizeLimit = (size: number) =>
   GET(`/support/user/team/limit/datasetSizeLimit`, { size });
+
+/* plans */
+export const getTeamPlanStatus = () =>
+  GET<FeTeamPlanStatusType>(`/proApi/support/user/team/plan/getTeamSubStatus`, { maxQuantity: 1 });
+export const getTeamPlans = () =>
+  GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);
