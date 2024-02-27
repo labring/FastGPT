@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import { ModalFooter, ModalBody, Button, Input, Box, Grid } from '@chakra-ui/react';
 import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -9,6 +9,7 @@ import MyModal from '@/components/MyModal';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const PayModal = ({
   onClose,
@@ -22,6 +23,7 @@ const PayModal = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
+  const { subPlans } = useSystemStore();
   const [inputVal, setInputVal] = useState<number | undefined>(defaultValue);
   const [loading, setLoading] = useState(false);
   const [qrPayData, setQRPayData] = useState<QRPayProps>();
@@ -49,11 +51,17 @@ const PayModal = ({
     setLoading(false);
   }, [inputVal, toast]);
 
+  const payList = useMemo(() => {
+    const list = Object.values(subPlans?.standard || {});
+    const priceList = list.map((item) => item.price);
+    return priceList.concat(priceList.map((item) => item * 10)).filter(Boolean);
+  }, [subPlans?.standard]);
+
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('user.Pay')} iconSrc="/imgs/modal/pay.svg">
       <ModalBody px={0} display={'flex'} flexDirection={'column'}>
         <Grid gridTemplateColumns={'repeat(3,1fr)'} gridGap={5} mb={4} px={6}>
-          {[10, 20, 50, 100, 200, 500].map((item) => (
+          {payList.map((item) => (
             <Button
               key={item}
               variant={item === inputVal ? 'solid' : 'outline'}

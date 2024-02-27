@@ -1174,6 +1174,9 @@
     "Update Your Plugin": "更新插件"
   },
   "support": {
+    "account": {
+      "Individuation": "个性化"
+    },
     "openapi": {
       "Api baseurl": "API根地址",
       "Api manager": "API 秘钥管理",

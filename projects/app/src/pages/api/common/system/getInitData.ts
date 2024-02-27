@@ -6,8 +6,6 @@ import type { InitDateResponse } from '@/global/common/api/systemRes';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
 import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
 import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
-import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
-import { getSimpleTemplatesFromPlus } from '@/service/core/app/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { connectToDatabase } from '@/service/mongo';

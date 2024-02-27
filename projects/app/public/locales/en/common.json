@@ -1172,6 +1172,9 @@
     "Update Your Plugin": "Update Plugin"
   },
   "support": {
+    "account": {
+      "Individuation": "Individuation"
+    },
     "openapi": {
       "Api baseurl": "Baseurl",
       "Api manager": "API key management",

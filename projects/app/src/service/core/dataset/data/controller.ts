@@ -382,7 +382,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     const formatResult = concatResults
       .map((data, index) => {
-        if (data.collectionId) {
+        if (!data.collectionId) {
           console.log('Collection is not found', data);
         }
 

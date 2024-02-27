@@ -160,6 +160,7 @@ export const iconPaths = {
   'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg'),
   'support/team/memberLight': () => import('./icons/support/team/memberLight.svg'),
   'support/usage/usageRecordLight': () => import('./icons/support/usage/usageRecordLight.svg'),
+  'support/user/individuation': () => import('./icons/support/user/individuation.svg'),
   'support/user/informLight': () => import('./icons/support/user/informLight.svg'),
   'support/user/userFill': () => import('./icons/support/user/userFill.svg'),
   'support/user/userLight': () => import('./icons/support/user/userLight.svg'),

@@ -18,6 +18,7 @@ const UsageTable = dynamic(() => import('./components/UsageTable'));
 const BillTable = dynamic(() => import('./components/BillTable'));
 const InformTable = dynamic(() => import('./components/InformTable'));
 const ApiKeyTable = dynamic(() => import('./components/ApiKeyTable'));
+const Individuation = dynamic(() => import('./components/Individuation'));
 
 enum TabEnum {
   'info' = 'info',
@@ -25,6 +26,7 @@ enum TabEnum {
   'usage' = 'usage',
   'bill' = 'bill',
   'inform' = 'inform',
+  'individuation' = 'individuation',
   'apikey' = 'apikey',
   'loginout' = 'loginout'
 }
@@ -77,6 +79,11 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           }
         ]
       : []),
+    {
+      icon: 'support/user/individuation',
+      label: t('support.account.Individuation'),
+      id: TabEnum.individuation
+    },
     ...(feConfigs.isPlus
       ? [
           {
@@ -162,6 +169,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             {currentTab === TabEnum.promotion && <Promotion />}
             {currentTab === TabEnum.usage && <UsageTable />}
             {currentTab === TabEnum.bill && <BillTable />}
+            {currentTab === TabEnum.individuation && <Individuation />}
             {currentTab === TabEnum.inform && <InformTable />}
             {currentTab === TabEnum.apikey && <ApiKeyTable />}
           </Box>

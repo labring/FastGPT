@@ -14,6 +14,7 @@ import dynamic from 'next/dynamic';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import TagsEditModal from './tagsEditModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const InfoModal = dynamic(() => import('../InfoModal'));
 
 const AppCard = ({ appId }: { appId: string }) => {
@@ -21,6 +22,7 @@ const AppCard = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { appDetail } = useAppStore();
+  const { feConfigs } = useSystemStore();
   const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
   const [TeamTagsSet, setTeamTagsSet] = useState<AppSchema>();
 
@@ -126,7 +128,7 @@ const AppCard = ({ appId }: { appId: string }) => {
             >
               {t('core.app.navbar.Publish')}
             </Button>
-            {appDetail.isOwner && (
+            {appDetail.canWrite && feConfigs?.show_team_chat && (
               <Button
                 mr={3}
                 size={['sm', 'md']}

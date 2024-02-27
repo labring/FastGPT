@@ -45,6 +45,7 @@ import { FormDataType, defaultForm } from './EditModal';
 import MyMenu from '@/components/MyMenu';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const EditModal = dynamic(() => import('./EditModal'));
 const InviteModal = dynamic(() => import('./InviteModal'));
@@ -55,6 +56,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const { Loading } = useLoading();
   const { toast } = useToast();
   const { teamPlanStatus } = useUserStore();
+  const { feConfigs } = useSystemStore();
   const [teamsTags, setTeamTags] = useState<any>();
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm();
@@ -313,7 +315,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                     {t('user.team.Invite Member')}
                   </Button>
                 )}
-              {userInfo.team.role === TeamMemberRoleEnum.owner && (
+              {userInfo.team.role === TeamMemberRoleEnum.owner && feConfigs?.show_team_chat && (
                 <Button
                   variant={'whitePrimary'}
                   size="sm"
