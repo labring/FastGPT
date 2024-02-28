@@ -74,12 +74,12 @@ export const initTeamStandardPlan2Free = async ({
         startTime: new Date(),
         expiredTime: addMonths(new Date(), 1),
         price: 0,
+        pointPrice: 0,
 
         currentSubLevel: StandardSubLevelEnum.free,
         nextSubLevel: StandardSubLevelEnum.free,
-        pointPrice: 0,
-        totalPoints: freePoints,
 
+        totalPoints: freePoints,
         surplusPoints: freePoints
       }
     ],
