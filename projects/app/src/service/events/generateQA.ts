@@ -9,7 +9,7 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
-import { getLLMModel } from '../core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
 import { countGptMessagesChars } from '@fastgpt/service/core/chat/utils';
 

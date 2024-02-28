@@ -14,6 +14,9 @@ import { addMonths } from 'date-fns';
 export const getStandardPlans = () => {
   return global?.subPlans?.standard;
 };
+export const getStandardPlan = (level: `${StandardSubLevelEnum}`) => {
+  return global.subPlans?.standard?.[level];
+};
 
 export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
   const standardPlans = global.subPlans?.standard;

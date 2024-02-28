@@ -7,7 +7,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
-import { getVectorModel } from '@/service/core/ai/model';
+import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 type Props = {

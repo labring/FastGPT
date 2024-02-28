@@ -8,7 +8,7 @@ import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel } from '@/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
 import {
   checkTeamAIPoints,

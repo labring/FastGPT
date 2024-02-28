@@ -14,7 +14,7 @@ import {
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 

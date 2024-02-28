@@ -6,7 +6,7 @@ import { text2Speech } from '@fastgpt/service/core/ai/audio/speech';
 import { pushAudioSpeechUsage } from '@/service/support/wallet/usage/push';
 import { authCertOrShareId } from '@fastgpt/service/support/permission/auth/common';
 import { authType2UsageSource } from '@/service/support/wallet/usage/utils';
-import { getAudioSpeechModel } from '@/service/core/ai/model';
+import { getAudioSpeechModel } from '@fastgpt/service/core/ai/model';
 import { MongoTTSBuffer } from '@fastgpt/service/common/buffer/tts/schema';
 
 /* 

@@ -1,5 +1,5 @@
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { ModelTypeEnum } from '@/service/core/ai/model';
+import { ModelTypeEnum } from '@fastgpt/service/core/ai/model';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { createUsage, concatUsage } from './controller';

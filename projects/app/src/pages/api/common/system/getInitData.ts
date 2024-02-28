@@ -13,6 +13,7 @@ import { PluginTemplateType } from '@fastgpt/global/core/plugin/type';
 import { readConfigData } from '@/service/common/system';
 import { exit } from 'process';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
+import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -123,15 +124,8 @@ export async function initSystemConfig() {
   };
 
   // set config
-  global.feConfigs = config.feConfigs;
+  initFastGPTConfig(config);
   global.systemEnv = config.systemEnv;
-  global.subPlans = config.subPlans;
-
-  global.llmModels = config.llmModels;
-  global.vectorModels = config.vectorModels;
-  global.reRankModels = config.reRankModels;
-  global.audioSpeechModels = config.audioSpeechModels;
-  global.whisperModel = config.whisperModel;
 
   console.log({
     feConfigs: global.feConfigs,

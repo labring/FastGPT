@@ -1,4 +1,4 @@
-import { ModelTypeEnum, getModelMap } from '@/service/core/ai/model';
+import { ModelTypeEnum, getModelMap } from '@fastgpt/service/core/ai/model';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 

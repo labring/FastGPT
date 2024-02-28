@@ -18,7 +18,7 @@ import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d'
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
-import { getLLMModel, ModelTypeEnum } from '@/service/core/ai/model';
+import { getLLMModel, ModelTypeEnum } from '@fastgpt/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';

@@ -33,7 +33,7 @@ import type {
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
-import { getVectorModel } from '../../ai/model';
+import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { startQueue } from '@/service/utils/tools';
 

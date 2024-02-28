@@ -18,7 +18,7 @@ import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller'
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

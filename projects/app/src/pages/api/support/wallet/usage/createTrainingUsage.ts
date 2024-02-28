@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { CreateTrainingUsageProps } from '@fastgpt/global/support/wallet/usage/api.d';
-import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 

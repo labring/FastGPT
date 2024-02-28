@@ -7,7 +7,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
-import { getVectorModel } from '@/service/core/ai/model';
+import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';

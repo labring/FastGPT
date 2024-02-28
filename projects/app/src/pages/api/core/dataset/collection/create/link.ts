@@ -15,7 +15,7 @@ import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { reloadCollectionChunks } from '@fastgpt/service/core/dataset/collection/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 

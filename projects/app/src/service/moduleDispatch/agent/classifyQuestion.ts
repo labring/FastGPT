@@ -12,7 +12,7 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { ModelTypeEnum, getLLMModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
 

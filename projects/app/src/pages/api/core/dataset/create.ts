@@ -6,7 +6,7 @@ import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { createDefaultCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { getLLMModel, getVectorModel, getDatasetModel } from '@/service/core/ai/model';
+import { getLLMModel, getVectorModel, getDatasetModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

@@ -6,7 +6,7 @@ import type {
   ModuleDispatchProps,
   ModuleDispatchResponse
 } from '@fastgpt/global/core/module/type.d';
-import { ModelTypeEnum, getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { ModelTypeEnum, getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
