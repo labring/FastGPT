@@ -7,17 +7,15 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
-import { getVectorModel } from '@/service/core/ai/model';
+import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
-import { authTeamBalance } from '@/service/support/permission/auth/bill';
-import { pushGenerateVectorBill } from '@/service/support/wallet/bill/push';
+import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
-import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -43,8 +41,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     await checkDatasetLimit({
       teamId,
-      insertLen: 1,
-      standardPlans: getStandardSubPlan()
+      insertLen: 1
     });
 
     // auth collection and get dataset
@@ -52,7 +49,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       {
         datasetId: { _id: datasetId, vectorModel }
       }
-    ] = await Promise.all([getCollectionWithDataset(collectionId), authTeamBalance(teamId)]);
+    ] = await Promise.all([getCollectionWithDataset(collectionId)]);
 
     // format data
     const formatQ = simpleText(q);
@@ -90,7 +87,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       indexes: formatIndexes
     });
 
-    pushGenerateVectorBill({
+    pushGenerateVectorUsage({
       teamId,
       tmbId,
       charsLength,

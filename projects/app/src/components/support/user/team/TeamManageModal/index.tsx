@@ -2,13 +2,16 @@ import React, { useMemo, useState } from 'react';
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
+import { DragHandleIcon } from '@chakra-ui/icons';
 import {
   getTeamList,
   getTeamMembers,
   putSwitchTeam,
   putUpdateMember,
   delRemoveMember,
-  delLeaveTeam
+  delLeaveTeam,
+  getTeamsTags,
+  insertTeamsTags
 } from '@/web/support/user/team/api';
 import {
   Box,
@@ -22,7 +25,6 @@ import {
   Th,
   Td,
   TableContainer,
-  useTheme,
   useDisclosure,
   MenuButton
 } from '@chakra-ui/react';
@@ -43,15 +45,19 @@ import { FormDataType, defaultForm } from './EditModal';
 import MyMenu from '@/components/MyMenu';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const EditModal = dynamic(() => import('./EditModal'));
 const InviteModal = dynamic(() => import('./InviteModal'));
+const TeamTagsAsync = dynamic(() => import('../TeamTagsAsync'));
 
 const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { toast } = useToast();
+  const { teamPlanStatus } = useUserStore();
+  const { feConfigs } = useSystemStore();
+  const [teamsTags, setTeamTags] = useState<any>();
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm();
   const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
@@ -61,6 +67,11 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const { userInfo, initUserInfo } = useUserStore();
   const [editTeamData, setEditTeamData] = useState<FormDataType>();
   const { isOpen: isOpenInvite, onOpen: onOpenInvite, onClose: onCloseInvite } = useDisclosure();
+  const {
+    isOpen: isOpenTeamTagsAsync,
+    onOpen: onOpenTeamTagsAsync,
+    onClose: onCloseTeamTagsAsync
+  } = useDisclosure();
 
   const {
     data: myTeams = [],
@@ -76,6 +87,8 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     mutationFn: async (teamId: string) => {
       const token = await putSwitchTeam(teamId);
       token && setToken(token);
+      // get team tags
+      await getTeamsTags(teamId);
       return initUserInfo();
     },
     errorToast: t('user.team.Switch Team Failed')
@@ -86,6 +99,11 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     ['getMembers', userInfo?.team?.teamId],
     () => {
       if (!userInfo?.team?.teamId) return [];
+      // get team tags
+      getTeamsTags(userInfo.team.teamId).then((res: any) => {
+        setTeamTags(res);
+      });
+
       return getTeamMembers(userInfo.team.teamId);
     }
   );
@@ -108,7 +126,9 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     mutationFn: async (teamId?: string) => {
       if (!teamId) return;
       // change to personal team
+      // get members
       await onSwitchTeam(defaultTeam.teamId);
+
       return delLeaveTeam(teamId);
     },
     onSuccess() {
@@ -184,6 +204,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                           bg: 'myGray.100'
                         }
                       })}
+                  onClick={() => onSwitchTeam(team.teamId)}
                 >
                   <Avatar src={team.avatar} w={['18px', '22px']} />
                   <Box
@@ -196,6 +217,17 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                       : {})}
                   >
                     {team.teamName}
+                    {/* {userInfo?.team?.teamId === team.teamId && (
+                      <HStack spacing={1}>
+                        {teamsTags.slice(0, 3).map((item: any, index) => {
+                          return (
+                            <Tag key={index} size={'sm'} variant="outline" colorScheme="blue">
+                              {item.label}
+                            </Tag>
+                          );
+                        })}
+                      </HStack>
+                    )} */}
                   </Box>
                   {userInfo?.team?.teamId === team.teamId ? (
                     <MyIcon name={'common/tickFill'} w={'16px'} color={'primary.500'} />
@@ -229,7 +261,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               borderBottomColor={'myGray.100'}
               mb={3}
             >
-              <Box fontSize={['lg', 'xl']} fontWeight={'bold'}>
+              <Box fontSize={['lg', 'xl']} fontWeight={'bold'} alignItems={'center'}>
                 {userInfo.team.teamName}
               </Box>
               {userInfo.team.role === TeamMemberRoleEnum.owner && (
@@ -258,25 +290,50 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               <Box ml={2} bg={'myGray.100'} borderRadius={'20px'} px={3} fontSize={'xs'}>
                 {members.length}
               </Box>
-              {userInfo.team.role === TeamMemberRoleEnum.owner && (
+              {userInfo.team.role === TeamMemberRoleEnum.owner &&
+                teamPlanStatus?.standardConstants &&
+                teamPlanStatus.standardConstants.maxTeamMember > members.length && (
+                  <Button
+                    variant={'whitePrimary'}
+                    size="sm"
+                    borderRadius={'md'}
+                    ml={3}
+                    leftIcon={
+                      <MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />
+                    }
+                    onClick={() => {
+                      if (userInfo.team.maxSize <= members.length) {
+                        toast({
+                          status: 'warning',
+                          title: t('user.team.Over Max Member Tip', { max: userInfo.team.maxSize })
+                        });
+                      } else {
+                        onOpenInvite();
+                      }
+                    }}
+                  >
+                    {t('user.team.Invite Member')}
+                  </Button>
+                )}
+              {userInfo.team.role === TeamMemberRoleEnum.owner && feConfigs?.show_team_chat && (
                 <Button
                   variant={'whitePrimary'}
                   size="sm"
                   borderRadius={'md'}
                   ml={3}
-                  leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
+                  leftIcon={<DragHandleIcon w={'14px'} color={'primary.500'} />}
                   onClick={() => {
                     if (userInfo.team.maxSize <= members.length) {
                       toast({
                         status: 'warning',
-                        title: t('user.team.Over Max Member Tip', { max: userInfo.team.maxSize })
+                        title: t('user.team.Team Tags Async', { max: userInfo.team.maxSize })
                       });
                     } else {
-                      onOpenInvite();
+                      onOpenTeamTagsAsync();
                     }
                   }}
                 >
-                  {t('user.team.Invite Member')}
+                  {t('user.team.Team Tags Async')}
                 </Button>
               )}
               <Box flex={1} />
@@ -433,6 +490,13 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
           teamId={userInfo.team.teamId}
           onClose={onCloseInvite}
           onSuccess={refetchMembers}
+        />
+      )}
+      {isOpenTeamTagsAsync && (
+        <TeamTagsAsync
+          teamInfo={teamsTags?.tagsUrl}
+          teamsTags={teamsTags?.list || []}
+          onClose={onCloseTeamTagsAsync}
         />
       )}
       <ConfirmRemoveMemberModal />

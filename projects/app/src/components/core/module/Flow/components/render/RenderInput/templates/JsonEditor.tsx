@@ -55,7 +55,7 @@ const JsonEditor = ({ inputs = [], item, moduleId }: RenderInputProps) => {
   return (
     <JSONEditor
       bg={'myGray.50'}
-      placeholder={t(item.placeholder || '')}
+      placeholder={item.placeholder}
       resize
       value={value}
       onChange={(e) => {

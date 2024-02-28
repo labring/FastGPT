@@ -3,6 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectToDatabase } from '@/service/mongo';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -13,8 +14,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('Params is missing');
     }
 
-    const { userId } = await authCert({ req, authToken: true });
-
+    const { tmbId } = await authCert({ req, authToken: true });
+    const tmb = await MongoTeamMember.findById(tmbId);
+    if (!tmb) {
+      throw new Error('can not find it');
+    }
+    const userId = tmb.userId;
     // auth old password
     const user = await MongoUser.findOne({
       _id: userId,

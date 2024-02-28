@@ -37,8 +37,9 @@ const OpenAIAccountModal = ({
     >
       <ModalBody>
         <Box fontSize={'sm'} color={'myGray.500'}>
-          可以填写 OpenAI/OneAPI 的相关秘钥。如果你填写了该内容，在线上平台使用 OpenAI Chat
-          模型不会计费（不包含知识库训练、索引生成）。请注意你的 Key 是否有访问对应模型的权限。
+          可以填写 OpenAI/OneAPI
+          的相关秘钥。如果你填写了该内容，在线上平台使用【AI对话】、【问题分类】和【内容提取】将会走你填写的Key，不会计费。请注意你的
+          Key 是否有访问对应模型的权限。GPT模型可以选择 FastAI。
         </Box>
         <Flex alignItems={'center'} mt={5}>
           <Box flex={'0 0 65px'}>API Key:</Box>

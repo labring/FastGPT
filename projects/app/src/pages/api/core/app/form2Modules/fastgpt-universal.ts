@@ -7,7 +7,6 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { FormatForm2ModulesProps } from '@fastgpt/global/core/app/api';
-import { getLLMModel } from '@/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -88,7 +87,7 @@ function simpleChatTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         },
         {
           key: 'model',
-          type: 'selectChatModel',
+          type: 'selectLLMModel',
           label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',
@@ -498,7 +497,7 @@ function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
         },
         {
           key: 'model',
-          type: 'selectChatModel',
+          type: 'selectLLMModel',
           label: 'core.module.input.label.aiModel',
           required: true,
           valueType: 'string',

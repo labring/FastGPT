@@ -57,7 +57,7 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
       className={`markdown ${styles.markdown}
       ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
-      remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
+      remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
       components={components}
       linkTarget={'_blank'}

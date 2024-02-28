@@ -22,19 +22,11 @@ export type PagingData<T> = {
 export type RequestPaging = { pageNum: number; pageSize: number; [key]: any };
 
 declare global {
-  var feConfigs: FastGPTFeConfigsType;
   var systemEnv: SystemEnvType;
   var systemInitd: boolean;
-  var subPlans: SubPlanType | undefined;
 
   var qaQueueLen: number;
   var vectorQueueLen: number;
-
-  var llmModels: LLMModelItemType[];
-  var vectorModels: VectorModelItemType[];
-  var audioSpeechModels: AudioSpeechModelType[];
-  var whisperModel: WhisperModelType;
-  var reRankModels: ReRankModelItemType[];
 
   var systemVersion: string;
 

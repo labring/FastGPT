@@ -6,7 +6,7 @@ import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import fs from 'fs';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import { pushWhisperBill } from '@/service/support/wallet/bill/push';
+import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 
 const upload = getUploadModel({
   maxSize: 2
@@ -40,7 +40,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       model: global.whisperModel.model
     });
 
-    pushWhisperBill({
+    pushWhisperUsage({
       teamId,
       tmbId,
       duration

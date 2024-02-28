@@ -6,13 +6,13 @@ import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { getLLMModel } from '@/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, avatar, type, simpleTemplateId, intro, modules, permission } =
+    const { name, avatar, type, simpleTemplateId, intro, modules, permission, teamTags } =
       req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
@@ -65,6 +65,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         avatar,
         intro,
         permission,
+        teamTags: teamTags,
         ...(modules && {
           modules
         })

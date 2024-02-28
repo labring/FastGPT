@@ -1,5 +1,5 @@
 import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';

@@ -1,18 +1,19 @@
 import axios from 'axios';
 import { MongoOutLink } from './schema';
 import { FastGPTProUrl } from '../../common/system/constants';
+import { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type';
 
-export const updateOutLinkUsage = async ({
+export const addOutLinkUsage = async ({
   shareId,
-  total
+  totalPoints
 }: {
   shareId: string;
-  total: number;
+  totalPoints: number;
 }) => {
   MongoOutLink.findOneAndUpdate(
     { shareId },
     {
-      $inc: { total },
+      $inc: { usagePoints: totalPoints },
       lastTime: new Date()
     }
   ).catch((err) => {
@@ -23,11 +24,13 @@ export const updateOutLinkUsage = async ({
 export const pushResult2Remote = async ({
   outLinkUid,
   shareId,
+  appName,
   responseData
 }: {
   outLinkUid?: string; // raw id, not parse
   shareId?: string;
-  responseData?: any[];
+  appName: string;
+  responseData?: ChatHistoryItemResType[];
 }) => {
   if (!shareId || !outLinkUid || !FastGPTProUrl) return;
   try {
@@ -42,6 +45,7 @@ export const pushResult2Remote = async ({
       url: '/shareAuth/finish',
       data: {
         token: outLinkUid,
+        appName,
         responseData
       }
     });

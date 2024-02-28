@@ -46,11 +46,7 @@ const RenderList: {
     Component: dynamic(() => import('./templates/AiSetting'))
   },
   {
-    types: [
-      FlowNodeInputTypeEnum.selectChatModel,
-      FlowNodeInputTypeEnum.selectCQModel,
-      FlowNodeInputTypeEnum.selectExtractModel
-    ],
+    types: [FlowNodeInputTypeEnum.selectLLMModel],
     Component: dynamic(() => import('./templates/SelectAiModel'))
   },
   {

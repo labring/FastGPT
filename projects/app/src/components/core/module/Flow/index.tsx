@@ -33,7 +33,7 @@ const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
   [FlowNodeTypeEnum.pluginInput]: dynamic(() => import('./components/nodes/NodePluginInput')),
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
-  [FlowNodeTypeEnum.cfr]: NodeSimple
+  [FlowNodeTypeEnum.queryExtension]: NodeSimple
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
