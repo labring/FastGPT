@@ -99,11 +99,6 @@ const MyInfo = () => {
     onClose: onCloseUpdatePsw,
     onOpen: onOpenUpdatePsw
   } = useDisclosure();
-  const {
-    isOpen: isOpenStandardModal,
-    onClose: onCloseStandardModal,
-    onOpen: onOpenStandardModal
-  } = useDisclosure();
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
     multiple: false
@@ -259,7 +254,7 @@ const MyInfo = () => {
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
               </Box>
               {feConfigs?.show_pay && userInfo?.team?.canWrite && (
-                <Button size={'sm'} ml={5} onClick={onOpenPayModal}>
+                <Button variant={'whitePrimary'} size={'sm'} ml={5} onClick={onOpenPayModal}>
                   {t('user.Pay')}
                 </Button>
               )}
@@ -357,12 +352,7 @@ const PlanUsage = () => {
           <MyIcon mr={2} name={'support/account/plans'} w={'20px'} />
           {t('support.wallet.subscription.Team plan and usage')}
         </Flex>
-        <Button
-          ml={4}
-          variant={'whitePrimary'}
-          size={'sm'}
-          onClick={() => router.push(AI_POINT_USAGE_CARD_ROUTE)}
-        >
+        <Button ml={4} size={'sm'} onClick={() => router.push(AI_POINT_USAGE_CARD_ROUTE)}>
           {t('support.user.Price')}
         </Button>
         <Button ml={4} variant={'whitePrimary'} size={'sm'} onClick={onOpenStandardModal}>

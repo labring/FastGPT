@@ -20,7 +20,6 @@ const PayModal = ({
   onClose: () => void;
   onSuccess?: () => any;
 }) => {
-  const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
   const { subPlans } = useSystemStore();
@@ -60,6 +59,9 @@ const PayModal = ({
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('user.Pay')} iconSrc="/imgs/modal/pay.svg">
       <ModalBody px={0} display={'flex'} flexDirection={'column'}>
+        <Box px={6} fontSize={'sm'} color={'myGray.600'} mb={2} maxW={'400px'}>
+          该余额仅用于自动续费标准套餐。如需购买额外套餐，可直接下单，无需充值余额。
+        </Box>
         <Grid gridTemplateColumns={'repeat(3,1fr)'} gridGap={5} mb={4} px={6}>
           {payList.map((item) => (
             <Button
