@@ -3,7 +3,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { Box, Image } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { getTeamPlanStatus } from '@/web/support/wallet/sub/api';
+import { getTeamPlanStatus } from '@/web/support/user/team/api';
 import { useQuery } from '@tanstack/react-query';
 
 import StandardPlan from './components/Standard';

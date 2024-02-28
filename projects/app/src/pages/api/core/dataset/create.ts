@@ -7,7 +7,7 @@ import { createDefaultCollection } from '@fastgpt/service/core/dataset/collectio
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLLMModel, getVectorModel, getDatasetModel } from '@/service/core/ai/model';
-import { checkTeamDatasetLimit } from '@/service/support/permission/teamLimit';
+import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

@@ -2,9 +2,7 @@ import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 import { TeamMemberWithUserSchema } from '@fastgpt/global/support/user/team/type';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
-import { checkTeamAIPoints } from '../teamLimit';
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import axios from 'axios';
 
 export async function getUserChatInfoAndAuthTeamPoints(tmbId: string) {

@@ -15,7 +15,7 @@ import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controll
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import { checkDatasetLimit } from '@/service/support/permission/teamLimit';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

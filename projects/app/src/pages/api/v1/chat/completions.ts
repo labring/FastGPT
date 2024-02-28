@@ -167,7 +167,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           authApiKey: true
         });
 
-        const user = await getUserChatInfoAndAuthTeamPoints(tmbId);
+        const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
         // openapi key
         if (authType === AuthUserTypeEnum.apikey) {

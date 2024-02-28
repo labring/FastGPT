@@ -38,7 +38,6 @@ const Standard = ({
   const router = useRouter();
   const { subPlans, feConfigs } = useSystemStore();
   const [confirmPayData, setConfirmPayData] = useState<ConfirmPayModalProps>();
-
   const [selectSubMode, setSelectSubMode] = useState<`${SubModeEnum}`>(SubModeEnum.month);
 
   const standardSubList = useMemo(() => {

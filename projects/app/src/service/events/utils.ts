@@ -1,5 +1,5 @@
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
-import { checkTeamAIPoints } from '../support/permission/teamLimit';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 import { sendOneInform } from '../support/user/inform/api';
 import { lockTrainingDataByTeamId } from '@fastgpt/service/core/dataset/training/controller';
 import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';

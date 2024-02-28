@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
-import { checkTeamPluginLimit } from '@/service/support/permission/teamLimit';
+import { checkTeamPluginLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

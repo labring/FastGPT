@@ -1,9 +1,8 @@
-import { getVectorCountByTeamId } from '@fastgpt/service/common/vectorStore/controller';
-import { getTeamSubPlans, getTeamStandPlan } from '@fastgpt/service/support/wallet/sub/utils';
-import { getStandardSubPlan } from '../wallet/sub/utils';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
-import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
+import { getVectorCountByTeamId } from '../../common/vectorStore/controller';
+import { getTeamPlanStatus, getTeamStandPlan } from '../../support/wallet/sub/utils';
+import { MongoApp } from '../../core/app/schema';
+import { MongoPlugin } from '../../core/plugin/schema';
+import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
@@ -15,10 +14,7 @@ export const checkDatasetLimit = async ({
   insertLen?: number;
 }) => {
   const [{ standardConstants, totalPoints, usedPoints, datasetMaxSize }, usedSize] =
-    await Promise.all([
-      getTeamSubPlans({ teamId, standardPlans: getStandardSubPlan() }),
-      getVectorCountByTeamId(teamId)
-    ]);
+    await Promise.all([getTeamPlanStatus({ teamId }), getVectorCountByTeamId(teamId)]);
 
   if (!standardConstants) return;
 
@@ -33,9 +29,8 @@ export const checkDatasetLimit = async ({
 };
 
 export const checkTeamAIPoints = async (teamId: string) => {
-  const { standardConstants, totalPoints, usedPoints } = await getTeamSubPlans({
-    teamId,
-    standardPlans: getStandardSubPlan()
+  const { standardConstants, totalPoints, usedPoints } = await getTeamPlanStatus({
+    teamId
   });
 
   if (!standardConstants) return;
@@ -52,7 +47,7 @@ export const checkTeamAIPoints = async (teamId: string) => {
 
 export const checkTeamDatasetLimit = async (teamId: string) => {
   const [{ standardConstants }, datasetCount] = await Promise.all([
-    getTeamStandPlan({ teamId, standardPlans: getStandardSubPlan() }),
+    getTeamStandPlan({ teamId }),
     MongoDataset.countDocuments({
       teamId,
       type: { $ne: DatasetTypeEnum.folder }
@@ -65,7 +60,7 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
 };
 export const checkTeamAppLimit = async (teamId: string) => {
   const [{ standardConstants }, appCount] = await Promise.all([
-    getTeamStandPlan({ teamId, standardPlans: getStandardSubPlan() }),
+    getTeamStandPlan({ teamId }),
     MongoApp.count({ teamId })
   ]);
 
@@ -75,7 +70,7 @@ export const checkTeamAppLimit = async (teamId: string) => {
 };
 export const checkTeamPluginLimit = async (teamId: string) => {
   const [{ standardConstants }, pluginCount] = await Promise.all([
-    getTeamStandPlan({ teamId, standardPlans: getStandardSubPlan() }),
+    getTeamStandPlan({ teamId }),
     MongoPlugin.count({ teamId })
   ]);
 
@@ -86,22 +81,11 @@ export const checkTeamPluginLimit = async (teamId: string) => {
 
 export const checkTeamReRankPermission = async (teamId: string) => {
   const { standardConstants } = await getTeamStandPlan({
-    teamId,
-    standardPlans: getStandardSubPlan()
+    teamId
   });
 
   if (standardConstants && !standardConstants?.permissionReRank) {
     return false;
   }
   return true;
-};
-export const checkTeamWebSyncPermission = async (teamId: string) => {
-  const { standardConstants } = await getTeamStandPlan({
-    teamId,
-    standardPlans: getStandardSubPlan()
-  });
-
-  if (standardConstants && !standardConstants?.permissionWebsiteSync) {
-    return Promise.reject(TeamErrEnum.websiteSyncNotEnough);
-  }
 };

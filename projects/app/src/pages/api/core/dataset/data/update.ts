@@ -6,7 +6,7 @@ import { updateData2Dataset } from '@/service/core/dataset/data/controller';
 import { authDatasetData } from '@/service/support/permission/auth/dataset';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { UpdateDatasetDataProps } from '@/global/core/dataset/api';
-import { checkDatasetLimit } from '@/service/support/permission/teamLimit';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

@@ -13,7 +13,7 @@ import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/searc
 import {
   checkTeamAIPoints,
   checkTeamReRankPermission
-} from '@/service/support/permission/teamLimit';
+} from '@fastgpt/service/support/permission/teamLimit';
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {

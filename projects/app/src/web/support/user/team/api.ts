@@ -59,6 +59,6 @@ export const checkTeamDatasetSizeLimit = (size: number) =>
 
 /* plans */
 export const getTeamPlanStatus = () =>
-  GET<FeTeamPlanStatusType>(`/proApi/support/user/team/plan/getTeamSubStatus`, { maxQuantity: 1 });
+  GET<FeTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
 export const getTeamPlans = () =>
   GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);

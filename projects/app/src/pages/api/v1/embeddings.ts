@@ -8,7 +8,7 @@ import { getVectorsByText } from '@fastgpt/service/core/ai/embedding';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { getVectorModel } from '@/service/core/ai/model';
-import { checkTeamAIPoints } from '@/service/support/permission/teamLimit';
+import { checkTeamAIPoints } from '@fastgpt/service/support/permission/teamLimit';
 
 type Props = {
   input: string | string[];
