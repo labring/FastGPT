@@ -28,6 +28,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           }
         };
       }
+      if (appId && outLinkUid) {
+        return {
+          shareId,
+          outLinkUid: outLinkUid,
+          source: ChatSourceEnum.team
+        };
+      }
       if (appId) {
         const { tmbId } = await authCert({ req, authToken: true });
         return {
@@ -36,6 +43,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           source: ChatSourceEnum.online
         };
       }
+
       return Promise.reject('Params are error');
     })();
 

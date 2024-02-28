@@ -7,18 +7,16 @@ export default function OnBlurPlugin({ onBlur }: { onBlur?: (editor: LexicalEdit
   const [editor] = useLexicalComposerContext();
 
   useEffect(() => {
-    return mergeRegister(
-      editor.registerCommand(
-        BLUR_COMMAND,
-        () => {
-          if (onBlur) onBlur(editor);
+    return editor.registerCommand(
+      BLUR_COMMAND,
+      () => {
+        onBlur?.(editor);
 
-          return true;
-        },
-        COMMAND_PRIORITY_EDITOR
-      )
+        return true;
+      },
+      COMMAND_PRIORITY_EDITOR
     );
-  }, [editor, onBlur]);
+  }, [editor]);
 
   return null;
 }

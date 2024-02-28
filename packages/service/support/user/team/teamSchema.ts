@@ -27,7 +27,10 @@ const TeamSchema = new Schema({
   },
   maxSize: {
     type: Number,
-    default: 3
+    default: 1
+  },
+  tagsUrl: {
+    type: String
   },
   limit: {
     lastExportDatasetTime: {

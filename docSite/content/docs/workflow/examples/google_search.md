@@ -135,7 +135,7 @@ export default async function (ctx: FunctionContext) {
       },
       {
         "key": "model",
-        "type": "selectExtractModel",
+        "type": "selectLLMModel",
         "valueType": "string",
         "label": "core.module.input.label.LLM",
         "required": true,
@@ -264,7 +264,7 @@ export default async function (ctx: FunctionContext) {
       },
       {
         "key": "model",
-        "type": "selectChatModel",
+        "type": "selectLLMModel",
         "label": "core.module.input.label.aiModel",
         "required": true,
         "valueType": "string",
@@ -635,7 +635,7 @@ export default async function (ctx: FunctionContext) {
       },
       {
         "key": "model",
-        "type": "selectChatModel",
+        "type": "selectLLMModel",
         "label": "core.module.input.label.aiModel",
         "required": true,
         "valueType": "string",

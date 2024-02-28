@@ -37,6 +37,7 @@ export default function Editor({
   onChange?: (editorState: EditorState) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
+  currentValue?: string;
   placeholder?: string;
 }) {
   const [key, setKey] = useState(getNanoid(6));
@@ -75,7 +76,7 @@ export default function Editor({
   useEffect(() => {
     if (focus) return;
     setKey(getNanoid(6));
-  }, [value, variables, focus]);
+  }, [value, variables.length]);
 
   return (
     <Box position={'relative'} width={'full'} h={`${height}px`} cursor={'text'}>

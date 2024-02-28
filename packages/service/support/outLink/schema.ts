@@ -35,8 +35,7 @@ const OutLinkSchema = new Schema({
     type: String,
     required: true
   },
-  total: {
-    // total amount
+  usagePoints: {
     type: Number,
     default: 0
   },
@@ -48,6 +47,10 @@ const OutLinkSchema = new Schema({
     default: false
   },
   limit: {
+    maxUsagePoints: {
+      type: Number,
+      default: -1
+    },
     expiredTime: {
       type: Date
     },
@@ -55,15 +58,17 @@ const OutLinkSchema = new Schema({
       type: Number,
       default: 1000
     },
-    credit: {
-      type: Number,
-      default: -1
-    },
     hookUrl: {
       type: String
     }
   }
 });
+
+try {
+  OutLinkSchema.index({ shareId: -1 });
+} catch (error) {
+  console.log(error);
+}
 
 export const MongoOutLink: Model<SchemaType> =
   models['outlinks'] || model('outlinks', OutLinkSchema);

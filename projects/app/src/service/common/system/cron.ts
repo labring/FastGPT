@@ -1,6 +1,5 @@
 import { initSystemConfig } from '@/pages/api/common/system/getInitData';
-import { generateQA } from '@/service/events/generateQA';
-import { generateVector } from '@/service/events/generateVector';
+import { startQueue } from '@/service/utils/tools';
 import { setCron } from '@fastgpt/service/common/system/cron';
 
 export const startCron = () => {
@@ -17,7 +16,6 @@ export const setUpdateSystemConfigCron = () => {
 
 export const setTrainingQueueCron = () => {
   setCron('*/1 * * * *', () => {
-    generateVector();
-    generateQA();
+    startQueue();
   });
 };

@@ -68,12 +68,6 @@ export async function chunksUpload({
     });
   }
 
-  // add chunk index
-  chunks = chunks.map((chunk) => ({
-    ...chunk,
-    chunkIndex: chunk.chunkIndex
-  }));
-
   let successInsert = 0;
   let retryTimes = 10;
   for (let i = 0; i < chunks.length; i += rate) {

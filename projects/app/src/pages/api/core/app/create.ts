@@ -6,6 +6,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
+import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,12 +26,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
 
     // 上限校验
-    const authCount = await MongoApp.countDocuments({
-      teamId
-    });
-    if (authCount >= 50) {
-      throw new Error('每个团队上限 50 个应用');
-    }
+    await checkTeamAppLimit(teamId);
 
     // 创建模型
     const response = await MongoApp.create({

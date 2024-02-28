@@ -6,7 +6,6 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { AuthResponseType } from '@fastgpt/global/support/permission/type';
-
 /* 
   outLink: Must be the owner
   token: team owner and chat owner have all permissions
@@ -15,12 +14,14 @@ export async function autChatCrud({
   appId,
   chatId,
   shareId,
+  shareTeamId,
   outLinkUid,
   per = 'owner',
   ...props
 }: AuthModeType & {
   appId: string;
   chatId?: string;
+  shareTeamId?: string;
   shareId?: string;
   outLinkUid?: string;
 }): Promise<{
@@ -28,7 +29,7 @@ export async function autChatCrud({
   isOutLink: boolean;
   uid?: string;
 }> {
-  const isOutLink = Boolean(shareId && outLinkUid);
+  const isOutLink = Boolean((shareId || shareTeamId) && outLinkUid);
   if (!chatId) return { isOutLink, uid: outLinkUid };
 
   const chat = await MongoChat.findOne({ appId, chatId }).lean();
@@ -45,6 +46,11 @@ export async function autChatCrud({
         return { uid };
       }
       return Promise.reject(ChatErrEnum.unAuthChat);
+    }
+    if (shareTeamId && outLinkUid) {
+      if (chat.teamId == shareTeamId && chat.outLinkUid === outLinkUid) {
+        return { uid: outLinkUid };
+      }
     }
 
     // req auth

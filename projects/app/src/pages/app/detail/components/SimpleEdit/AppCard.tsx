@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Box, Flex, Button, IconButton } from '@chakra-ui/react';
+import { DragHandleIcon } from '@chakra-ui/icons';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useRouter } from 'next/router';
@@ -12,6 +13,8 @@ import PermissionIconText from '@/components/support/permission/IconText';
 import dynamic from 'next/dynamic';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import TagsEditModal from './tagsEditModal';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const InfoModal = dynamic(() => import('../InfoModal'));
 
 const AppCard = ({ appId }: { appId: string }) => {
@@ -19,7 +22,9 @@ const AppCard = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { appDetail } = useAppStore();
+  const { feConfigs } = useSystemStore();
   const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
+  const [TeamTagsSet, setTeamTagsSet] = useState<AppSchema>();
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('app.Confirm Del App Tip')
@@ -123,6 +128,17 @@ const AppCard = ({ appId }: { appId: string }) => {
             >
               {t('core.app.navbar.Publish')}
             </Button>
+            {appDetail.canWrite && feConfigs?.show_team_chat && (
+              <Button
+                mr={3}
+                size={['sm', 'md']}
+                variant={'whitePrimary'}
+                leftIcon={<DragHandleIcon w={'16px'} />}
+                onClick={() => setTeamTagsSet(appDetail)}
+              >
+                {t('common.Team Tags Set')}
+              </Button>
+            )}
             {appDetail.isOwner && (
               <Button
                 size={['sm', 'md']}
@@ -136,10 +152,12 @@ const AppCard = ({ appId }: { appId: string }) => {
           </Flex>
         </Box>
       </Box>
-
       <ConfirmDelModal />
       {settingAppInfo && (
         <InfoModal defaultApp={settingAppInfo} onClose={() => setSettingAppInfo(undefined)} />
+      )}
+      {TeamTagsSet && (
+        <TagsEditModal appDetail={appDetail} onClose={() => setTeamTagsSet(undefined)} />
       )}
     </>
   );

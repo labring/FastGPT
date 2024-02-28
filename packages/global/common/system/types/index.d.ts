@@ -30,6 +30,7 @@ export type FastGPTFeConfigsType = {
   show_pay?: boolean;
   show_openai_account?: boolean;
   show_promotion?: boolean;
+  show_team_chat?: boolean;
   hide_app_flow?: boolean;
   concatMd?: string;
   docUrl?: string;

@@ -2,7 +2,10 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
 import { countMessagesTokens, countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { adaptRole_Chat2Message } from '@fastgpt/global/core/chat/adapt';
-import type { ChatCompletionContentPart } from '@fastgpt/global/core/ai/type.d';
+import type {
+  ChatCompletionContentPart,
+  ChatMessageItemType
+} from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 
 /* slice chat context by tokens */
@@ -55,6 +58,16 @@ export function ChatContextFilter({
 
   return [...systemPrompts, ...chats];
 }
+
+export const replaceValidChars = (str: string) => {
+  const reg = /[\s\r\n]+/g;
+  return str.replace(reg, '');
+};
+export const countMessagesChars = (messages: ChatItemType[]) => {
+  return messages.reduce((sum, item) => sum + replaceValidChars(item.value).length, 0);
+};
+export const countGptMessagesChars = (messages: ChatMessageItemType[]) =>
+  messages.reduce((sum, item) => sum + replaceValidChars(item.content).length, 0);
 
 /**
     string to vision model. Follow the markdown code block rule for interception:

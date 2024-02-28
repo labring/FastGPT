@@ -147,8 +147,6 @@ export async function delCollectionAndRelatedSources({
     collectionId: { $in: collectionIds }
   });
 
-  await delay(2000);
-
   // delete dataset.datas
   await MongoDatasetData.deleteMany({ teamId, collectionId: { $in: collectionIds } }, { session });
   // delete imgs

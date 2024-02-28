@@ -13,7 +13,7 @@ import { RunAppModule } from '@fastgpt/global/core/module/template/system/runApp
 import { PluginInputModule } from '@fastgpt/global/core/module/template/system/pluginInput';
 import { PluginOutputModule } from '@fastgpt/global/core/module/template/system/pluginOutput';
 import { RunPluginModule } from '@fastgpt/global/core/module/template/system/runPlugin';
-import { AiCFR } from '@fastgpt/global/core/module/template/system/coreferenceResolution';
+import { AiQueryExtension } from '@fastgpt/global/core/module/template/system/queryExtension';
 
 import type {
   FlowModuleTemplateType,
@@ -31,7 +31,8 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule468
+  HttpModule468,
+  AiQueryExtension
 ];
 export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   PluginInputModule,
@@ -43,7 +44,8 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   RunAppModule,
   ClassifyQuestionModule,
   ContextExtractModule,
-  HttpModule468
+  HttpModule468,
+  AiQueryExtension
 ];
 
 export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
@@ -61,7 +63,7 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
   RunPluginModule,
-  AiCFR
+  AiQueryExtension
 ];
 
 export const moduleTemplatesList: moduleTemplateListType = [
