@@ -61,7 +61,6 @@ export const useUserStore = create<State>()(
         },
         teamPlanStatus: null,
         initTeamPlanStatus() {
-          if (!useSystemStore.getState()?.feConfigs?.isPlus) return Promise.resolve();
           return getTeamPlanStatus().then((res) => {
             set((state) => {
               state.teamPlanStatus = res;
