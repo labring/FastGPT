@@ -21,7 +21,7 @@ export type BillSchemaType = {
   };
 };
 
-export type ChatModuleBillType = {
+export type ChatModuleUsageType = {
   totalPoints: number;
   moduleName: string;
   model?: string;

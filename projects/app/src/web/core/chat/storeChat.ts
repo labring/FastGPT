@@ -4,7 +4,7 @@ import { immer } from 'zustand/middleware/immer';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import type {
   InitChatResponse,
-  getHistoriesProps,
+  GetHistoriesProps,
   ClearHistoriesProps,
   DelHistoryProps,
   UpdateHistoryProps,
@@ -21,7 +21,7 @@ import { defaultChatData } from '@/global/core/chat/constants';
 
 type State = {
   histories: ChatHistoryItemType[];
-  loadHistories: (data: getHistoriesProps) => Promise<null>;
+  loadHistories: (data: GetHistoriesProps) => Promise<null>;
   delOneHistory(data: DelHistoryProps): Promise<void>;
   clearHistories(data: ClearHistoriesProps): Promise<void>;
   pushHistory: (history: ChatHistoryItemType) => void;

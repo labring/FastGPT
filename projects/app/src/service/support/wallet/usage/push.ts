@@ -1,10 +1,9 @@
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { ModelTypeEnum } from '@fastgpt/service/core/ai/model';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { createUsage, concatUsage } from './controller';
 import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
-import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
+import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 export const pushChatUsage = ({
   appName,
@@ -19,7 +18,7 @@ export const pushChatUsage = ({
   teamId: string;
   tmbId: string;
   source: `${UsageSourceEnum}`;
-  moduleDispatchBills: ChatModuleBillType[];
+  moduleDispatchBills: ChatModuleUsageType[];
 }) => {
   const totalPoints = moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
@@ -197,7 +196,7 @@ export const pushQuestionGuideUsage = ({
 };
 
 export function pushAudioSpeechUsage({
-  appName = 'support.wallet.bill.Audio Speech',
+  appName = 'support.wallet.usage.Audio Speech',
   model,
   charsLength,
   teamId,
@@ -254,7 +253,7 @@ export function pushWhisperUsage({
     multiple: 60
   });
 
-  const name = 'support.wallet.bill.Whisper';
+  const name = 'support.wallet.usage.Whisper';
 
   createUsage({
     teamId,

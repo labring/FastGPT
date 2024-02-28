@@ -150,7 +150,18 @@ const OutLink = ({
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [chatId, shareId, outLinkUid, setChatData, appId, pushHistory, router, histories, updateHistory]
+    [
+      chatId,
+      shareId,
+      outLinkUid,
+      t,
+      setChatData,
+      appId,
+      pushHistory,
+      router,
+      histories,
+      updateHistory
+    ]
   );
 
   const loadChatInfo = useCallback(
@@ -234,28 +245,6 @@ const OutLink = ({
   useEffect(() => {
     setIdEmbed(window !== top);
   }, []);
-
-  // todo:4.6.4 init: update local chat history, add outLinkUid
-  useEffect(() => {
-    const activeHistory = shareChatHistory.filter((item) => !item.delete);
-    if (!localUId || !shareId || activeHistory.length === 0) return;
-    (async () => {
-      try {
-        await POST('/core/chat/initLocalShareHistoryV464', {
-          shareId,
-          outLinkUid: localUId,
-          chatIds: shareChatHistory.map((item) => item.chatId)
-        });
-        clearLocalHistory();
-        // router.reload();
-      } catch (error) {
-        toast({
-          status: 'warning',
-          title: getErrText(error, t('core.shareChat.Init Error'))
-        });
-      }
-    })();
-  }, [clearLocalHistory, localUId, router, shareChatHistory, shareId, t, toast]);
 
   return (
     <PageContainer

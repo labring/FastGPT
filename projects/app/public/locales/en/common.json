@@ -268,6 +268,7 @@
       "Quote templates": "Quote templates",
       "Random": "Random",
       "Save and preview": "Save",
+      "Search team tags": "Search tags",
       "Select TTS": "Select TTS",
       "Select app from template": "Select from the template",
       "Select quote template": "Select quote template",
@@ -278,6 +279,7 @@
       "Simple Config Tip": "Only basic functions are included. For complex agent functions, use advanced orchestration.",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "Team tags": "Team tags",
       "Temperature": "Temperature",
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
@@ -409,7 +411,7 @@
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "Unpin": "Unpin",
-      "You need to a chat app": "You need to a chat app",
+      "You need to a chat app": "You don't have apps available",
       "error": {
         "Chat error": "Chat error",
         "Messages empty": "Interface content is empty, maybe the text is too long ~",
@@ -1223,7 +1225,11 @@
       },
       "team": {
         "Dataset usage": "Dataset usage",
-        "member": "Member"
+        "Team Tags Async Success": "Team async success",
+        "member": "Member",
+        "tag": {
+          "Have not opened": "Team chat is not enabled"
+        }
       }
     },
     "wallet": {

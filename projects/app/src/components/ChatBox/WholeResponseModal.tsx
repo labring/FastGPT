@@ -51,11 +51,11 @@ function Row({
 
 const WholeResponseModal = ({
   response,
-  isShare,
+  showDetail,
   onClose
 }: {
   response: ChatHistoryItemResType[];
-  isShare: boolean;
+  showDetail: boolean;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -78,7 +78,7 @@ const WholeResponseModal = ({
       }
     >
       <Flex h={'100%'} flexDirection={'column'}>
-        <ResponseBox response={response} isShare={isShare} />
+        <ResponseBox response={response} showDetail={showDetail} />
       </Flex>
     </MyModal>
   );
@@ -88,10 +88,10 @@ export default WholeResponseModal;
 
 const ResponseBox = React.memo(function ResponseBox({
   response,
-  isShare
+  showDetail
 }: {
   response: ChatHistoryItemResType[];
-  isShare: boolean;
+  showDetail: boolean;
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -188,7 +188,7 @@ const ResponseBox = React.memo(function ResponseBox({
           {activeModule.quoteList && activeModule.quoteList.length > 0 && (
             <Row
               label={t('core.chat.response.module quoteList')}
-              rawDom={<QuoteList isShare={isShare} rawSearch={activeModule.quoteList} />}
+              rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
             />
           )}
         </>
@@ -280,7 +280,7 @@ const ResponseBox = React.memo(function ResponseBox({
           {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
             <Row
               label={t('core.chat.response.Plugin Resonse Detail')}
-              rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
+              rawDom={<ResponseBox response={activeModule.pluginDetail} showDetail={showDetail} />}
             />
           )}
         </>

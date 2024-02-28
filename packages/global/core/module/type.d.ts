@@ -8,7 +8,7 @@ import {
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
 import { moduleDispatchResType } from '..//chat/type';
-import { ChatModuleBillType } from '../../support/wallet/bill/type';
+import { ChatModuleUsageType } from '../../support/wallet/bill/type';
 
 export type FlowModuleTemplateType = {
   id: string; // module id, unique
@@ -129,5 +129,5 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
 };
 export type ModuleDispatchResponse<T> = T & {
   [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
-  [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleBillType[];
+  [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleUsageType[];
 };

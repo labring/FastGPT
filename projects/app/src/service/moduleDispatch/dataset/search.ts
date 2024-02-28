@@ -12,7 +12,7 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
-import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
+import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { checkTeamReRankPermission } from '@fastgpt/service/support/permission/teamLimit';
 
 type DatasetSearchProps = ModuleDispatchProps<{
@@ -117,7 +117,7 @@ export async function dispatchDatasetSearch(
     searchMode,
     searchUsingReRank: searchUsingReRank
   };
-  const moduleDispatchBills: ChatModuleBillType[] = [
+  const moduleDispatchBills: ChatModuleUsageType[] = [
     {
       totalPoints,
       moduleName: module.name,

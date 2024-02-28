@@ -26,23 +26,6 @@ export type ChatSchema = {
   metadata?: Record<string, any>;
 };
 
-export type teamInfoType = {
-  avatar: string;
-  balance: number;
-  createTime: string;
-  maxSize: number;
-  name: string;
-  ownerId: string;
-  tagsUrl: string;
-  _id: string;
-};
-
-export type chatAppListSchema = {
-  apps: AppType[];
-  teamInfo: teamInfoSchema;
-  uid?: string;
-};
-
 export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
   appId: AppSchema;
 };
@@ -88,6 +71,13 @@ export type ChatSiteItemType = ChatItemType & {
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;
+};
+
+/* --------- team chat --------- */
+export type ChatAppListSchema = {
+  apps: AppType[];
+  teamInfo: teamInfoSchema;
+  uid?: string;
 };
 
 /* ---------- history ------------- */

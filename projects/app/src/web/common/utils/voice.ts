@@ -5,10 +5,11 @@ import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { TTSTypeEnum } from '@/constants/app';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
+import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
 
 export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
   const { t } = useTranslation();
-  const { shareId } = useRouter().query as { shareId?: string };
+  const { shareId, outLinkUid, teamId, teamToken } = useRouter().query as OutLinkChatAuthProps;
   const { ttsConfig } = props || {};
   const { toast } = useToast();
   const [audio, setAudio] = useState<HTMLAudioElement>();
@@ -63,7 +64,10 @@ export const useAudioPlay = (props?: { ttsConfig?: AppTTSConfigType }) => {
               chatItemId,
               ttsConfig,
               input: text,
-              shareId
+              shareId,
+              outLinkUid,
+              teamId,
+              teamToken
             })
           });
           setAudioLoading(false);

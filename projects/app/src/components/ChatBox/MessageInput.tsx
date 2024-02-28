@@ -13,6 +13,7 @@ import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 enum FileTypeEnum {
@@ -47,7 +48,7 @@ const MessageInput = ({
 }) => {
   const [, startSts] = useTransition();
 
-  const { shareId } = useRouter().query as { shareId?: string };
+  const { shareId, outLinkUid, teamId, teamToken } = useRouter().query as OutLinkChatAuthProps;
   const {
     isSpeaking,
     isTransCription,
@@ -56,7 +57,7 @@ const MessageInput = ({
     speakingTimeString,
     renderAudioGraph,
     stream
-  } = useSpeech({ shareId });
+  } = useSpeech({ shareId, outLinkUid, teamId, teamToken });
   const { isPc } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
@@ -82,7 +83,10 @@ const MessageInput = ({
             maxSize: 1024 * 1024 * 5,
             // 30 day expired.
             expiredTime: addDays(new Date(), 7),
-            shareId
+            shareId,
+            outLinkUid,
+            teamId,
+            teamToken
           });
           setFileList((state) =>
             state.map((item) =>
