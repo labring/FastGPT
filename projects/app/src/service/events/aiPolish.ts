@@ -38,6 +38,13 @@ Human: ${userChatInput}`,
     user,
     histories,
     polish,
+    module: {
+      name: 'core.modulte.template.Ai polish',
+      moduleId: '', // Add the moduleId property
+      flowType: 'userGuide', // Add the flowType property
+      inputs: [],
+      outputs: []
+    },
     params: {
       model: polishModel,
       temperature: 0,
@@ -54,9 +61,7 @@ Human: ${userChatInput}`,
     teamId: teamId,
     tmbId: tmbId,
     appId: appId,
-    variables: variables,
-    outputs: [],
-    inputs: []
+    variables: variables
   });
 
   return polishedAnswerText;

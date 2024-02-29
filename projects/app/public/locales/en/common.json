@@ -898,6 +898,8 @@
       "template": {
         "Ai chat": "LLM Chat",
         "Ai chat intro": "Request LLM chat",
+        "Ai Polish": "AI Polish",
+        "Ai Polish intro": "Using AI to polish response content, connecting multiple response nodes in the workflow and ensuring a consistent response style.",
         "Assigned reply": "Assigned reply",
         "Assigned reply intro": "The module can respond directly to a specified piece of content. Often used to guide and prompt. When non-string content is passed in, it is converted to a string for output.",
         "Chat entrance": "Chat entrance",

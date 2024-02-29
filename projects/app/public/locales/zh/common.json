@@ -563,8 +563,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -902,6 +901,8 @@
       "template": {
         "Ai chat": "AI 对话",
         "Ai chat intro": "AI 大模型对话",
+        "Ai Polish": "AI 回复润色",
+        "Ai Polish intro": "使用AI润色回复内容，衔接多回复节点的workflow以及并使回复风格统一。",
         "Assigned reply": "指定回复",
         "Assigned reply intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
         "Chat entrance": "对话入口",
