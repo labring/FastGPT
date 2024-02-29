@@ -11,12 +11,15 @@ import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { dispatchModules } from '@/service/moduleDispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/module/utils';
+import { aiPolish } from '@/service/events/aiPolish';
 
 export type Props = {
   history: ChatItemType[];
   prompt: string;
   modules: ModuleItemType[];
   variables: Record<string, any>;
+  polish: boolean;
   appId: string;
   appName: string;
 };
@@ -31,6 +34,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   });
 
   let { modules = [], history = [], prompt, variables = {}, appName, appId } = req.body as Props;
+
+  let { polish } = splitGuideModule(getGuideModule(modules));
   try {
     await connectToDatabase();
     if (!history || !modules || !prompt) {
@@ -53,7 +58,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
     /* start process */
-    const { responseData, moduleDispatchBills } = await dispatchModules({
+    const { responseData, answerText, moduleDispatchBills } = await dispatchModules({
       res,
       mode: 'test',
       teamId,
@@ -62,6 +67,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId,
       modules,
       variables,
+      polish,
       histories: history,
       startParams: {
         userChatInput: prompt
@@ -70,13 +76,34 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       detail: true
     });
 
+    // ai polish
+    if (answerText && polish) {
+      await aiPolish({
+        res,
+        teamId,
+        tmbId,
+        user,
+        appId,
+        variables,
+        polish: false,
+        histories: history,
+        stream: true,
+        detail: true,
+        mode: 'test',
+        userChatInput: prompt,
+        answerText: answerText
+      });
+    }
+
     responseWrite({
       res,
+      polish,
       event: sseResponseEventEnum.answer,
       data: '[DONE]'
     });
     responseWrite({
       res,
+      polish,
       event: sseResponseEventEnum.appStreamResponse,
       data: JSON.stringify(responseData)
     });

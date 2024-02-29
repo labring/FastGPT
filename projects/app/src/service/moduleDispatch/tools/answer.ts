@@ -15,6 +15,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
     res,
     detail,
     stream,
+    polish,
     params: { text = '' }
   } = props as AnswerProps;
 
@@ -23,6 +24,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   if (stream) {
     responseWrite({
       res,
+      polish,
       event: detail ? sseResponseEventEnum.response : undefined,
       data: textAdaptGptResponse({
         text: `\n${formatText}`

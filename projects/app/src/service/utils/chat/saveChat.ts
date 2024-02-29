@@ -13,6 +13,7 @@ type Props = {
   teamId: string;
   tmbId: string;
   variables?: Record<string, any>;
+  polish?: boolean;
   updateUseTime: boolean;
   source: `${ChatSourceEnum}`;
   shareId?: string;
@@ -27,6 +28,7 @@ export async function saveChat({
   teamId,
   tmbId,
   variables,
+  polish,
   updateUseTime,
   source,
   shareId,
@@ -78,6 +80,7 @@ export async function saveChat({
               tmbId,
               appId,
               variables,
+              polish,
               title,
               source,
               shareId,

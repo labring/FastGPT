@@ -35,6 +35,7 @@ import SelectAiModel from '@/components/Select/SelectAiModel';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import PolishSwitch from '@/components/core/module/Flow/components/modules/PolishSwitch';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
@@ -398,6 +399,19 @@ const EditForm = ({
               onChange={(e) => {
                 const value = e.target.checked;
                 setValue('userGuide.questionGuide', value);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
+
+          {/* polish guide */}
+          <Box {...BoxStyles} borderBottom={'none'}>
+            <PolishSwitch
+              isChecked={getValues('userGuide.polish')}
+              size={'lg'}
+              onChange={(e) => {
+                const value = e.target.checked;
+                setValue('userGuide.polish', value);
                 setRefresh((state) => !state);
               }}
             />

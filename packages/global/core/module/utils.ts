@@ -24,6 +24,9 @@ export const splitGuideModule = (guideModules?: ModuleItemType) => {
     !!guideModules?.inputs?.find((item) => item.key === ModuleInputKeyEnum.questionGuide)?.value ||
     false;
 
+  const polish: boolean =
+    !!guideModules?.inputs?.find((item) => item.key === ModuleInputKeyEnum.polish)?.value || false;
+
   const ttsConfig: AppTTSConfigType = guideModules?.inputs?.find(
     (item) => item.key === ModuleInputKeyEnum.tts
   )?.value || { type: 'web' };
@@ -32,6 +35,7 @@ export const splitGuideModule = (guideModules?: ModuleItemType) => {
     welcomeText,
     variableModules,
     questionGuide,
+    polish,
     ttsConfig
   };
 };

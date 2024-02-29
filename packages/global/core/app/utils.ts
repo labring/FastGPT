@@ -31,6 +31,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       welcomeText: '',
       variables: [],
       questionGuide: false,
+      polish: true,
       tts: {
         type: 'web'
       }
@@ -116,13 +117,14 @@ export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
           target?.inputs?.find((item) => item.key === ModuleInputKeyEnum.answerText)?.value || '';
       }
     } else if (module.flowType === FlowNodeTypeEnum.userGuide) {
-      const { welcomeText, variableModules, questionGuide, ttsConfig } = splitGuideModule(
+      const { welcomeText, variableModules, questionGuide, polish, ttsConfig } = splitGuideModule(
         getGuideModule(modules)
       );
       defaultAppForm.userGuide = {
         welcomeText: welcomeText,
         variables: variableModules,
         questionGuide: questionGuide,
+        polish: polish,
         tts: ttsConfig
       };
     }

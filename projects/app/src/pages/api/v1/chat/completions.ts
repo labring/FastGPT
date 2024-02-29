@@ -18,6 +18,7 @@ import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink'
 import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
+import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/module/utils';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { selectSimpleChatResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
@@ -31,6 +32,7 @@ import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { aiPolish } from '@/service/events/aiPolish';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -113,7 +115,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('Question is empty');
     }
 
-    /* 
+    /*
       1. auth app permission
       2. auth balance
       3. get app
@@ -150,6 +152,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         });
       })();
 
+    // get polish config
+    const { polish } = splitGuideModule(getGuideModule(app.modules));
+
     // get and concat history
     const { history } = await getChatItems({
       appId: app._id,
@@ -161,7 +166,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
-    const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
+    let { responseData, moduleDispatchBills, answerText } = await dispatchModules({
       res,
       mode: 'chat',
       user,
@@ -172,6 +177,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       responseChatItemId,
       modules: app.modules,
       variables,
+      polish,
       histories: concatHistories,
       startParams: {
         userChatInput: question.value
@@ -179,6 +185,25 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       stream,
       detail
     });
+
+    // ai polish
+    if (answerText && polish) {
+      answerText = await aiPolish({
+        res,
+        teamId: String(teamId),
+        tmbId: String(tmbId),
+        user,
+        appId: String(app._id),
+        variables,
+        polish: false,
+        histories: history,
+        stream: true,
+        detail: true,
+        mode: 'test',
+        userChatInput: question.value,
+        answerText: answerText
+      });
+    }
 
     // save chat
     if (chatId) {
@@ -189,6 +214,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         teamId,
         tmbId: tmbId,
         variables,
+        polish: polish || false,
         updateUseTime: isOwnerUse, // owner update use time
         shareId,
         outLinkUid: outLinkUserId,
@@ -227,6 +253,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (stream) {
       responseWrite({
         res,
+        polish,
         event: detail ? sseResponseEventEnum.answer : undefined,
         data: textAdaptGptResponse({
           text: null,
@@ -235,6 +262,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
       responseWrite({
         res,
+        polish,
         event: detail ? sseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
@@ -242,6 +270,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       if (responseDetail && detail) {
         responseWrite({
           res,
+          polish,
           event: sseResponseEventEnum.appStreamResponse,
           data: JSON.stringify(feResponseData)
         });

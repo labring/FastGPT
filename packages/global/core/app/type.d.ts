@@ -86,6 +86,7 @@ export type AppSimpleEditFormType = {
       }[];
     }[];
     questionGuide: boolean;
+    polish: boolean;
     tts: {
       type: 'none' | 'web' | 'model';
       model?: string | undefined;
@@ -121,6 +122,7 @@ export type AppSimpleEditConfigTemplateType = {
       welcomeText?: boolean;
       variables?: boolean;
       questionGuide?: boolean;
+      polish?: boolean;
       tts?: boolean;
     };
   };

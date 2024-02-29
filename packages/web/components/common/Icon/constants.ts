@@ -62,6 +62,7 @@ export const iconPaths = {
   'core/app/logsLight': () => import('./icons/core/app/logsLight.svg'),
   'core/app/markLight': () => import('./icons/core/app/markLight.svg'),
   'core/app/questionGuide': () => import('./icons/core/app/questionGuide.svg'),
+  'core/app/polish': () => import('./icons/core/app/polish.svg'),
   'core/app/simpleMode/ai': () => import('./icons/core/app/simpleMode/ai.svg'),
   'core/app/simpleMode/chat': () => import('./icons/core/app/simpleMode/chat.svg'),
   'core/app/simpleMode/dataset': () => import('./icons/core/app/simpleMode/dataset.svg'),

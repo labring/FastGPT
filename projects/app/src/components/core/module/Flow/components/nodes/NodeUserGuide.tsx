@@ -14,6 +14,7 @@ import Container from '../modules/Container';
 import NodeCard from '../render/NodeCard';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
+import PolishSwitch from '@/components/core/module/Flow/components/modules/PolishSwitch';
 import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import { useTranslation } from 'next-i18next';
@@ -33,6 +34,9 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
           </Box>
           <Box mt={3} pt={3} borderTop={theme.borders.base}>
             <QuestionGuide data={data} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+            <Polish data={data} />
           </Box>
         </Container>
       </NodeCard>
@@ -135,6 +139,35 @@ function QuestionGuide({ data }: { data: FlowModuleItemType }) {
           type: 'updateInput',
           value: {
             ...inputs.find((item) => item.key === ModuleInputKeyEnum.questionGuide),
+            value
+          }
+        });
+      }}
+    />
+  );
+}
+
+function Polish({ data }: { data: FlowModuleItemType }) {
+  const { inputs, moduleId } = data;
+
+  const polish = useMemo(
+    () =>
+      (inputs.find((item) => item.key === ModuleInputKeyEnum.polish)?.value as boolean) || false,
+    [inputs]
+  );
+
+  return (
+    <PolishSwitch
+      isChecked={polish}
+      size={'lg'}
+      onChange={(e) => {
+        const value = e.target.checked;
+        onChangeNode({
+          moduleId,
+          key: ModuleInputKeyEnum.polish,
+          type: 'updateInput',
+          value: {
+            ...inputs.find((item) => item.key === ModuleInputKeyEnum.polish),
             value
           }
         });

@@ -120,6 +120,7 @@ export type ChatDispatchProps = {
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>;
+  polish: boolean;
   stream: boolean;
   detail: boolean; // response detail
 };

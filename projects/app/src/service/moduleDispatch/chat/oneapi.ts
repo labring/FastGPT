@@ -45,6 +45,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     detail = false,
     user,
     histories,
+    polish,
     module: { name, outputs },
     params: {
       model,
@@ -157,6 +158,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       const { answer } = await streamResponse({
         res,
         detail,
+        polish,
         stream: response
       });
       // count tokens
@@ -165,7 +167,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         value: answer
       });
 
-      targetResponse({ res, detail, outputs });
+      targetResponse({ res, polish, detail, outputs });
 
       return {
         answerText: answer,
@@ -327,10 +329,12 @@ function getMaxTokens({
 function targetResponse({
   res,
   outputs,
+  polish,
   detail
 }: {
   res: NextApiResponse;
   outputs: ModuleItemType['outputs'];
+  polish: boolean;
   detail: boolean;
 }) {
   const targets =
@@ -339,6 +343,7 @@ function targetResponse({
   if (targets.length === 0) return;
   responseWrite({
     res,
+    polish,
     event: detail ? sseResponseEventEnum.answer : undefined,
     data: textAdaptGptResponse({
       text: '\n'
@@ -349,10 +354,12 @@ function targetResponse({
 async function streamResponse({
   res,
   detail,
+  polish,
   stream
 }: {
   res: NextApiResponse;
   detail: boolean;
+  polish: boolean;
   stream: StreamChatType;
 }) {
   const write = responseWriteController({
@@ -370,6 +377,7 @@ async function streamResponse({
 
     responseWrite({
       write,
+      polish,
       event: detail ? sseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
         text: content

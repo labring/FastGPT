@@ -53,6 +53,16 @@ export const appTemplates: (AppItemType & {
             connected: false
           },
           {
+            key: 'polish',
+            valueType: 'boolean',
+            value: true,
+            type: 'switch',
+            label: '',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
             key: 'tts',
             type: 'hidden',
             valueType: 'any',
@@ -334,6 +344,15 @@ export const appTemplates: (AppItemType & {
             showTargetInApp: false,
             showTargetInPlugin: false,
             value: false,
+            connected: false
+          },
+          {
+            key: 'polish',
+            valueType: 'boolean',
+            type: 'switch',
+            label: '',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
             connected: false
           },
           {
@@ -811,6 +830,15 @@ export const appTemplates: (AppItemType & {
             showTargetInApp: false,
             showTargetInPlugin: false,
             value: false,
+            connected: false
+          },
+          {
+            key: 'polish',
+            valueType: 'boolean',
+            type: 'switch',
+            label: '',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
             connected: false
           },
           {
@@ -1702,6 +1730,15 @@ export const appTemplates: (AppItemType & {
           },
           {
             key: 'questionGuide',
+            valueType: 'boolean',
+            type: 'switch',
+            label: '',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'polish',
             valueType: 'boolean',
             type: 'switch',
             label: '',

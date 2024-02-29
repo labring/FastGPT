@@ -33,6 +33,7 @@ export enum ModuleInputKeyEnum {
   history = 'history',
   userChatInput = 'userChatInput',
   questionGuide = 'questionGuide',
+  polish = 'polish',
   tts = 'tts',
   answerText = 'text',
   agents = 'agents', // cq agent key

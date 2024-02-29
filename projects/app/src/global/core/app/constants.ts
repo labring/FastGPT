@@ -26,6 +26,7 @@ export const SimpleModeTemplate_FastGPT_Universal: AppSimpleEditConfigTemplateTy
       welcomeText: true,
       variables: true,
       questionGuide: true,
+      polish: true,
       tts: true
     }
   }

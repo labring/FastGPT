@@ -28,6 +28,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     res,
     teamId,
     stream,
+    polish,
     detail,
     histories,
     params: { userChatInput, history, app }
@@ -50,6 +51,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   if (stream) {
     responseWrite({
       res,
+      polish,
       event: detail ? sseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
         text: '\n'

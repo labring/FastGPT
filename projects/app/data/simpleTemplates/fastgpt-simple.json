@@ -22,6 +22,7 @@
       "welcomeText": true,
       "variables": false,
       "questionGuide": false,
+      "polish": true,
       "tts": true
     }
   }

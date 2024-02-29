@@ -118,10 +118,12 @@ export function responseWrite({
   res,
   write,
   event,
+  polish = false,
   data
 }: {
   res?: NextApiResponse;
   write?: (text: string) => void;
+  polish?: boolean;
   event?: string;
   data: string;
 }) {
@@ -130,5 +132,8 @@ export function responseWrite({
   if (!Write) return;
 
   event && Write(`event: ${event}\n`);
-  Write(`data: ${data}\n\n`);
+
+  if (!polish || event !== sseResponseEventEnum.response) {
+    Write(`data: ${data}\n\n`);
+  }
 }
