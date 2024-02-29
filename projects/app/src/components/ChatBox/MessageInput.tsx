@@ -36,8 +36,12 @@ const MessageInput = ({
   isChatting,
   TextareaDom,
   showFileSelector = false,
-  resetInputVal
-}: {
+  resetInputVal,
+  shareId,
+  outLinkUid,
+  teamId,
+  teamToken
+}: OutLinkChatAuthProps & {
   onChange?: (e: string) => void;
   onSendMessage: (e: string) => void;
   onStop: () => void;
@@ -48,7 +52,6 @@ const MessageInput = ({
 }) => {
   const [, startSts] = useTransition();
 
-  const { shareId, outLinkUid, teamId, teamToken } = useRouter().query as OutLinkChatAuthProps;
   const {
     isSpeaking,
     isTransCription,

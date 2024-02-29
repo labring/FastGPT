@@ -662,6 +662,10 @@ const ChatBox = (
                         display={index === chatHistory.length - 1 && isChatting ? 'none' : 'flex'}
                         showVoiceIcon={showVoiceIcon}
                         ttsConfig={ttsConfig}
+                        shareId={shareId}
+                        outLinkUid={outLinkUid}
+                        teamId={teamId}
+                        teamToken={teamToken}
                         onDelete={
                           onDelMessage
                             ? () => {
@@ -914,6 +918,10 @@ const ChatBox = (
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           showFileSelector={showFileSelector}
+          shareId={shareId}
+          outLinkUid={outLinkUid}
+          teamId={teamId}
+          teamToken={teamToken}
         />
       )}
       {/* user feedback modal */}
@@ -1255,8 +1263,12 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
   onAddUserDislike,
   onAddUserLike,
   ml,
-  mr
-}: {
+  mr,
+  shareId,
+  outLinkUid,
+  teamId,
+  teamToken
+}: OutLinkChatAuthProps & {
   isChatting: boolean;
   chat: ChatSiteItemType;
   setChatHistory?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
@@ -1274,7 +1286,11 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({
-    ttsConfig
+    ttsConfig,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken
   });
   const controlIconStyle = {
     w: '14px',

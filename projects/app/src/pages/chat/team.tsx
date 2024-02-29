@@ -369,9 +369,9 @@ const OutLink = ({
                   delOneHistoryItem({ ...e, appId: chatData.appId, chatId, teamId, teamToken })
                 }
                 appId={chatData.appId}
-                teamId={teamId}
                 chatId={chatId}
-                outLinkUid={teamToken}
+                teamId={teamId}
+                teamToken={teamToken}
               />
             </Box>
           </Flex>
