@@ -516,6 +516,7 @@ const RenderForm = ({
                 hasDropDownPlugin={tabType === TabEnum.headers}
                 setDropdownValue={(val) => {
                   handleAddNewProps(val);
+                  setUpdateTrigger((prev) => !prev);
                 }}
                 placeholder={t('core.module.http.Add props')}
                 value={''}

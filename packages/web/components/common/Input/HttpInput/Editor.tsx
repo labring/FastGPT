@@ -64,6 +64,7 @@ export default function Editor({
 
   useEffect(() => {
     setKey(getNanoid(6));
+    setFocus(false);
   }, [updateTrigger]);
 
   const dropdownVariables = useMemo(
