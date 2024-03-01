@@ -53,7 +53,7 @@ export async function checkInvalidCollection(start: Date, end: Date) {
       }
     },
     '_id teamId collectionId'
-  );
+  ).lean();
 
   // 2. 合并所有的collectionId
   const map = new Map<string, { teamId: string; collectionId: string }>();

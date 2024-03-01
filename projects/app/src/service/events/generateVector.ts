@@ -2,8 +2,9 @@ import { insertData2Dataset } from '@/service/core/dataset/data/controller';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
-import { delay } from '@fastgpt/global/common/system/utils';
+import { checkTeamAiPointsAndLock } from './utils';
+import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
+import { addMinutes } from 'date-fns';
 
 const reduceQueue = () => {
   global.vectorQueueLen = global.vectorQueueLen > 0 ? global.vectorQueueLen - 1 : 0;
@@ -27,7 +28,7 @@ export async function generateVector(): Promise<any> {
     try {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
-          lockTime: { $lte: new Date(Date.now() - 1 * 60 * 1000) },
+          lockTime: { $lte: addMinutes(new Date(), -1) },
           mode: TrainingModeEnum.chunk
         },
         {
@@ -103,7 +104,7 @@ export async function generateVector(): Promise<any> {
     }
 
     // insert to dataset
-    const { charsLength } = await insertData2Dataset({
+    const { tokens } = await insertData2Dataset({
       teamId: data.teamId,
       tmbId: data.tmbId,
       datasetId: data.datasetId,
@@ -119,7 +120,7 @@ export async function generateVector(): Promise<any> {
     pushGenerateVectorUsage({
       teamId: data.teamId,
       tmbId: data.tmbId,
-      charsLength,
+      tokens,
       model: data.model,
       billId: data.billId
     });

@@ -18,7 +18,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const qgModel = global.llmModels[0];
 
-    const { result, charsLength } = await createQuestionGuide({
+    const { result, tokens } = await createQuestionGuide({
       messages,
       model: qgModel.model
     });
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     pushQuestionGuideUsage({
-      charsLength,
+      tokens,
       teamId,
       tmbId
     });

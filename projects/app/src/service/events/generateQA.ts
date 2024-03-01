@@ -10,8 +10,10 @@ import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
-import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
-import { countGptMessagesChars } from '@fastgpt/service/core/chat/utils';
+import { checkTeamAiPointsAndLock } from './utils';
+import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
+import { addMinutes } from 'date-fns';
+import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -33,7 +35,7 @@ export async function generateQA(): Promise<any> {
     try {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
-          lockTime: { $lte: new Date(Date.now() - 6 * 60 * 1000) },
+          lockTime: { $lte: addMinutes(new Date(), -6) },
           mode: TrainingModeEnum.qa
         },
         {
@@ -146,7 +148,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        charsLength: countGptMessagesChars(messages).length,
+        tokens: countGptMessagesTokens(messages),
         billId: data.billId,
         model
       });

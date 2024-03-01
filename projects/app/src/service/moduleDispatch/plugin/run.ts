@@ -95,7 +95,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         moduleName: plugin.name,
         totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
         model: plugin.name,
-        charsLength: 0
+        tokens: 0
       }
     ],
     ...(output ? output.pluginOutput : {})

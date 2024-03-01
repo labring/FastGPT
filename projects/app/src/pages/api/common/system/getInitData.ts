@@ -125,7 +125,6 @@ export async function initSystemConfig() {
 
   // set config
   initFastGPTConfig(config);
-  global.systemEnv = config.systemEnv;
 
   console.log({
     feConfigs: global.feConfigs,

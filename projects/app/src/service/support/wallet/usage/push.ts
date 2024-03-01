@@ -2,7 +2,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { ModelTypeEnum } from '@fastgpt/service/core/ai/model';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { createUsage, concatUsage } from './controller';
-import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 export const pushChatUsage = ({
@@ -33,7 +33,7 @@ export const pushChatUsage = ({
       moduleName: item.moduleName,
       amount: item.totalPoints || 0,
       model: item.model,
-      charsLength: item.charsLength
+      tokens: item.tokens
     }))
   });
   addLog.info(`finish completions`, {
@@ -49,20 +49,20 @@ export const pushQAUsage = async ({
   teamId,
   tmbId,
   model,
-  charsLength,
+  tokens,
   billId
 }: {
   teamId: string;
   tmbId: string;
   model: string;
-  charsLength: number;
+  tokens: number;
   billId: string;
 }) => {
   // 计算价格
   const { totalPoints } = formatModelChars2Points({
     model,
     modelType: ModelTypeEnum.llm,
-    charsLength
+    tokens
   });
 
   concatUsage({
@@ -70,7 +70,7 @@ export const pushQAUsage = async ({
     teamId,
     tmbId,
     totalPoints,
-    charsLength,
+    tokens,
     listIndex: 1
   });
 
@@ -81,30 +81,30 @@ export const pushGenerateVectorUsage = ({
   billId,
   teamId,
   tmbId,
-  charsLength,
+  tokens,
   model,
   source = UsageSourceEnum.fastgpt,
   extensionModel,
-  extensionCharsLength
+  extensionTokens
 }: {
   billId?: string;
   teamId: string;
   tmbId: string;
-  charsLength: number;
+  tokens: number;
   model: string;
   source?: `${UsageSourceEnum}`;
 
   extensionModel?: string;
-  extensionCharsLength?: number;
+  extensionTokens?: number;
 }) => {
   const { totalPoints: totalVector, modelName: vectorModelName } = formatModelChars2Points({
     modelType: ModelTypeEnum.vector,
     model,
-    charsLength
+    tokens
   });
 
   const { extensionTotalPoints, extensionModelName } = (() => {
-    if (!extensionModel || !extensionCharsLength)
+    if (!extensionModel || !extensionTokens)
       return {
         extensionTotalPoints: 0,
         extensionModelName: ''
@@ -112,7 +112,7 @@ export const pushGenerateVectorUsage = ({
     const { totalPoints, modelName } = formatModelChars2Points({
       modelType: ModelTypeEnum.llm,
       model: extensionModel,
-      charsLength: extensionCharsLength
+      tokens: extensionTokens
     });
     return {
       extensionTotalPoints: totalPoints,
@@ -129,7 +129,7 @@ export const pushGenerateVectorUsage = ({
       tmbId,
       totalPoints,
       billId,
-      charsLength,
+      tokens,
       listIndex: 0
     });
   } else {
@@ -144,7 +144,7 @@ export const pushGenerateVectorUsage = ({
           moduleName: 'support.wallet.moduleName.index',
           amount: totalVector,
           model: vectorModelName,
-          charsLength
+          tokens
         },
         ...(extensionModel !== undefined
           ? [
@@ -152,7 +152,7 @@ export const pushGenerateVectorUsage = ({
                 moduleName: 'core.module.template.Query extension',
                 amount: extensionTotalPoints,
                 model: extensionModelName,
-                charsLength: extensionCharsLength
+                tokens: extensionTokens
               }
             ]
           : [])
@@ -163,17 +163,17 @@ export const pushGenerateVectorUsage = ({
 };
 
 export const pushQuestionGuideUsage = ({
-  charsLength,
+  tokens,
   teamId,
   tmbId
 }: {
-  charsLength: number;
+  tokens: number;
   teamId: string;
   tmbId: string;
 }) => {
   const qgModel = global.llmModels[0];
   const { totalPoints, modelName } = formatModelChars2Points({
-    charsLength,
+    tokens,
     model: qgModel.model,
     modelType: ModelTypeEnum.llm
   });
@@ -189,7 +189,7 @@ export const pushQuestionGuideUsage = ({
         moduleName: 'core.app.Next Step Guide',
         amount: totalPoints,
         model: modelName,
-        charsLength
+        tokens
       }
     ]
   });
@@ -212,7 +212,7 @@ export function pushAudioSpeechUsage({
 }) {
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    charsLength,
+    tokens: charsLength,
     modelType: ModelTypeEnum.audioSpeech
   });
 
@@ -248,7 +248,7 @@ export function pushWhisperUsage({
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: whisperModel.model,
-    charsLength: duration,
+    tokens: duration,
     modelType: ModelTypeEnum.whisper,
     multiple: 60
   });

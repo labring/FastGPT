@@ -75,17 +75,25 @@ export const DatasetCollectionSyncResultMap = {
 /* ------------ training -------------- */
 export enum TrainingModeEnum {
   chunk = 'chunk',
+  auto = 'auto',
   qa = 'qa'
 }
 
 export const TrainingTypeMap = {
   [TrainingModeEnum.chunk]: {
     label: 'core.dataset.training.Chunk mode',
-    tooltip: 'core.dataset.import.Chunk Split Tip'
+    tooltip: 'core.dataset.import.Chunk Split Tip',
+    isPlus: true
+  },
+  [TrainingModeEnum.auto]: {
+    label: 'core.dataset.training.Auto mode',
+    tooltip: 'core.dataset.training.Auto mode Tip',
+    isPlus: true
   },
   [TrainingModeEnum.qa]: {
     label: 'core.dataset.training.QA mode',
-    tooltip: 'core.dataset.import.QA Import Tip'
+    tooltip: 'core.dataset.import.QA Import Tip',
+    isPlus: true
   }
 };
 

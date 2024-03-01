@@ -42,7 +42,7 @@ const Points = () => {
             {llmModelList?.map((item, i) => (
               <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
                 <Box flex={'1 0 0'}>{item.name}</Box>
-                <Box flex={'1 0 0'}>{item.charsPointsPrice}积分 / 1000字符</Box>
+                <Box flex={'1 0 0'}>{item.charsPointsPrice}积分 / 1000 Tokens</Box>
               </Flex>
             ))}
           </Box>
@@ -67,7 +67,7 @@ const Points = () => {
             {vectorModelList?.map((item, i) => (
               <Flex key={item.model} py={4} bg={i % 2 !== 0 ? 'myGray.50' : ''}>
                 <Box flex={'1 0 0'}>{item.name}</Box>
-                <Box flex={'1 0 0'}>{item.charsPointsPrice}积分 / 1000字符</Box>
+                <Box flex={'1 0 0'}>{item.charsPointsPrice}积分 / 1000 Tokens</Box>
               </Flex>
             ))}
           </Box>

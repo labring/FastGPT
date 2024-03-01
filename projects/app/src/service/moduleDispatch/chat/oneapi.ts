@@ -1,17 +1,17 @@
 import type { NextApiResponse } from 'next';
-import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
-import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
-import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 import type { ModuleDispatchResponse, ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { countMessagesTokens, sliceMessagesTB } from '@fastgpt/global/common/string/tiktoken';
+import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
@@ -98,7 +98,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     userChatInput,
     systemPrompt
   });
-  const { max_tokens } = getMaxTokens({
+  const { max_tokens } = await getMaxTokens({
     model: modelConstantsData,
     maxToken,
     filterMessages
@@ -137,8 +137,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   const response = await ai.chat.completions.create(
     {
-      presence_penalty: 0,
-      frequency_penalty: 0,
       ...modelConstantsData?.defaultConfig,
       model: modelConstantsData.model,
       temperature,
@@ -189,10 +187,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   })();
 
-  const charsLength = countMessagesChars(completeMessages);
+  const tokens = countMessagesTokens(completeMessages);
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
-    charsLength,
+    tokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -201,7 +199,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     [ModuleOutputKeyEnum.responseData]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
-      charsLength,
+      tokens,
       query: `${userChatInput}`,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
@@ -213,7 +211,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        charsLength
+        tokens
       }
     ],
     history: completeMessages
@@ -292,7 +290,7 @@ function getChatMessages({
 
   const filterMessages = ChatContextFilter({
     messages,
-    maxTokens: Math.ceil(model.maxContext - 300) // filter token. not response maxToken
+    maxTokens: model.maxContext - 300 // filter token. not response maxToken
   });
 
   const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
@@ -315,11 +313,12 @@ function getMaxTokens({
   const tokensLimit = model.maxContext;
 
   /* count response max token */
-  const promptsToken = countMessagesTokens({
-    messages: filterMessages
-  });
+  const promptsToken = countMessagesTokens(filterMessages);
   maxToken = promptsToken + maxToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
 
+  if (maxToken <= 0) {
+    return Promise.reject('Over max token');
+  }
   return {
     max_tokens: maxToken
   };

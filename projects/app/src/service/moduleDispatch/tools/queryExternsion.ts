@@ -5,7 +5,7 @@ import type {
 } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
-import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
@@ -32,7 +32,7 @@ export const dispatchQueryExtension = async ({
   const queryExtensionModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { extensionQueries, charsLength } = await queryExtension({
+  const { extensionQueries, tokens } = await queryExtension({
     chatBg: systemPrompt,
     query: userChatInput,
     histories: chatHistories,
@@ -43,7 +43,7 @@ export const dispatchQueryExtension = async ({
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: queryExtensionModel.model,
-    charsLength,
+    tokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -60,7 +60,7 @@ export const dispatchQueryExtension = async ({
     [ModuleOutputKeyEnum.responseData]: {
       totalPoints,
       model: modelName,
-      charsLength,
+      tokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
     },
@@ -69,7 +69,7 @@ export const dispatchQueryExtension = async ({
         moduleName: module.name,
         totalPoints,
         model: modelName,
-        charsLength
+        tokens
       }
     ],
     [ModuleOutputKeyEnum.text]: JSON.stringify(filterSameQueries)

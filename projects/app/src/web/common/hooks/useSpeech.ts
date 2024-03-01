@@ -79,7 +79,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
         const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
 
         formData.append('file', blob, 'recording.webm');
-        formData.append('metadata', JSON.stringify(props));
+        formData.append(
+          'data',
+          JSON.stringify({
+            ...props,
+            duration
+          })
+        );
 
         setIsTransCription(true);
         try {

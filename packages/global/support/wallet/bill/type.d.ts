@@ -22,8 +22,8 @@ export type BillSchemaType = {
 };
 
 export type ChatModuleUsageType = {
+  tokens?: number;
   totalPoints: number;
   moduleName: string;
   model?: string;
-  charsLength?: number;
 };

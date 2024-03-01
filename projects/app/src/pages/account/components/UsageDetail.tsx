@@ -25,8 +25,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
     [usage.list]
   );
 
-  const { hasModel, hasCharsLen, hasDuration } = useMemo(() => {
+  const { hasModel, hasToken, hasCharsLen, hasDuration } = useMemo(() => {
     let hasModel = false;
+    let hasToken = false;
     let hasCharsLen = false;
     let hasDuration = false;
     let hasDataLen = false;
@@ -36,6 +37,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
         hasModel = true;
       }
 
+      if (typeof item.tokens === 'number') {
+        hasToken = true;
+      }
       if (typeof item.charsLength === 'number') {
         hasCharsLen = true;
       }
@@ -46,6 +50,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
 
     return {
       hasModel,
+      hasToken,
       hasCharsLen,
       hasDuration,
       hasDataLen
@@ -91,9 +96,9 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                 <Tr>
                   <Th>{t('support.wallet.usage.Module name')}</Th>
                   {hasModel && <Th>{t('support.wallet.usage.Ai model')}</Th>}
+                  {hasToken && <Th>{t('support.wallet.usage.Token Length')}</Th>}
                   {hasCharsLen && <Th>{t('support.wallet.usage.Text Length')}</Th>}
                   {hasDuration && <Th>{t('support.wallet.usage.Duration')}</Th>}
-
                   <Th>{t('support.wallet.usage.Total points')}</Th>
                 </Tr>
               </Thead>
@@ -102,6 +107,7 @@ const UsageDetail = ({ usage, onClose }: { usage: UsageItemType; onClose: () => 
                   <Tr key={i}>
                     <Td>{t(item.moduleName)}</Td>
                     {hasModel && <Td>{item.model ?? '-'}</Td>}
+                    {hasToken && <Td>{item.tokens ?? '-'}</Td>}
                     {hasCharsLen && <Td>{item.charsLength ?? '-'}</Td>}
                     {hasDuration && <Td>{item.duration ?? '-'}</Td>}
                     <Td>{formatNumber(item.amount)}</Td>
