@@ -21,6 +21,7 @@ type Props = Omit<BoxProps, 'resize' | 'onChange'> & {
   value?: string;
   onChange?: (e: string) => void;
   variables?: EditorVariablePickerType[];
+  defaultHeight?: number;
 };
 
 const options = {
@@ -52,11 +53,12 @@ const JSONEditor = ({
   resize,
   variables = [],
   placeholder,
+  defaultHeight = 100,
   ...props
 }: Props) => {
   const { toast } = useToast();
   const { t } = useTranslation();
-  const [height, setHeight] = useState(props.height || 100);
+  const [height, setHeight] = useState(defaultHeight);
   const [placeholderDisplay, setPlaceholderDisplay] = useState('block');
   const initialY = useRef(0);
   const completionRegisterRef = useRef<any>();
@@ -205,7 +207,15 @@ const JSONEditor = ({
   }, []);
 
   return (
-    <Box position={'relative'}>
+    <Box
+      borderWidth={'1px'}
+      borderRadius={'md'}
+      borderColor={'myGray.200'}
+      py={2}
+      height={height}
+      position={'relative'}
+      {...props}
+    >
       {resize && (
         <Box
           position={'absolute'}
@@ -219,54 +229,43 @@ const JSONEditor = ({
           <MyIcon name={'common/editor/resizer'} width={'16px'} height={'16px'} />
         </Box>
       )}
-
+      <Editor
+        height={'100%'}
+        defaultLanguage="json"
+        options={options as any}
+        theme="JSONEditorTheme"
+        beforeMount={beforeMount}
+        defaultValue={defaultValue}
+        value={value}
+        onChange={(e) => {
+          onChange?.(e || '');
+          if (!e) {
+            setPlaceholderDisplay('block');
+          } else {
+            setPlaceholderDisplay('none');
+          }
+        }}
+        wrapperProps={{
+          onBlur
+        }}
+        onMount={() => {
+          if (!value) {
+            setPlaceholderDisplay('block');
+          } else {
+            setPlaceholderDisplay('none');
+          }
+        }}
+      />
       <Box
-        borderWidth={'1px'}
-        borderRadius={'md'}
-        borderColor={'myGray.200'}
-        py={2}
-        height={'auto'}
-        position={'relative'}
-        {...props}
+        className="monaco-placeholder"
+        position={'absolute'}
+        top={2}
+        left={4}
+        fontSize={'xs'}
+        color={'myGray.500'}
+        display={placeholderDisplay}
       >
-        <Editor
-          height={height}
-          defaultLanguage="json"
-          options={options as any}
-          theme="JSONEditorTheme"
-          beforeMount={beforeMount}
-          defaultValue={defaultValue}
-          value={value}
-          onChange={(e) => {
-            onChange?.(e || '');
-            if (!e) {
-              setPlaceholderDisplay('block');
-            } else {
-              setPlaceholderDisplay('none');
-            }
-          }}
-          wrapperProps={{
-            onBlur
-          }}
-          onMount={() => {
-            if (!value) {
-              setPlaceholderDisplay('block');
-            } else {
-              setPlaceholderDisplay('none');
-            }
-          }}
-        />
-        <Box
-          className="monaco-placeholder"
-          position={'absolute'}
-          top={2}
-          left={4}
-          fontSize={'xs'}
-          color={'myGray.500'}
-          display={placeholderDisplay}
-        >
-          {placeholder}
-        </Box>
+        {placeholder}
       </Box>
     </Box>
   );

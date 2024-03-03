@@ -1,12 +1,12 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Flex, Image, useDisclosure } from '@chakra-ui/react';
+import { Box, Center, Flex, Spinner, useDisclosure } from '@chakra-ui/react';
 import { PageTypeEnum } from '@/constants/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import LoginForm from './components/LoginForm';
+import LoginForm from './components/LoginForm/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';
@@ -14,15 +14,21 @@ import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
+const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
 
 const Login = () => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { feConfigs } = useSystemStore();
-  const [pageType, setPageType] = useState<`${PageTypeEnum}`>(PageTypeEnum.login);
+  const [pageType, setPageType] = useState<`${PageTypeEnum}`>();
   const { setUserInfo } = useUserStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
+
+  useEffect(() => {
+    if (!feConfigs.oauth) return;
+    setPageType(feConfigs.oauth?.wechat ? PageTypeEnum.wechat : PageTypeEnum.login);
+  }, [feConfigs.oauth, feConfigs.oauth?.wechat]);
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -43,7 +49,8 @@ const Login = () => {
     const TypeMap = {
       [PageTypeEnum.login]: LoginForm,
       [PageTypeEnum.register]: RegisterForm,
-      [PageTypeEnum.forgetPassword]: ForgetPasswordForm
+      [PageTypeEnum.forgetPassword]: ForgetPasswordForm,
+      [PageTypeEnum.wechat]: WechatForm
     };
 
     const Component = TypeMap[type];
@@ -87,7 +94,13 @@ const Login = () => {
           ]}
         >
           <Box w={['100%', '380px']} flex={'1 0 0'}>
-            <DynamicComponent type={pageType} />
+            {pageType ? (
+              <DynamicComponent type={pageType} />
+            ) : (
+              <Center w={'full'} h={'full'}>
+                <Spinner />
+              </Center>
+            )}
           </Box>
           {feConfigs?.concatMd && (
             <Box

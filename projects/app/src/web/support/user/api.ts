@@ -71,3 +71,8 @@ export const postLogin = ({ password, ...props }: PostLoginProps) =>
 export const loginOut = () => GET('/support/user/account/loginout');
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
+
+export const getWechatQR = () => GET('/proApi/support/user/account/publicWechat/getWechatQR');
+
+export const getWechatResult = (data: { code: string }) =>
+  GET(`/proApi/support/user/account/publicWechat/getWechatResult`, data);

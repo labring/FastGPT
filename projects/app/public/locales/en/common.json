@@ -1224,7 +1224,9 @@
       "login": {
         "Github": "Github",
         "Google": "Google",
-        "Provider error": "Login exception, please try again"
+        "Phone": "Phone Login",
+        "Provider error": "Login exception, please try again",
+        "Wechat": "Wechat"
       },
       "team": {
         "Dataset usage": "Dataset usage",

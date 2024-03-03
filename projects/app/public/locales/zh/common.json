@@ -1226,7 +1226,9 @@
       "login": {
         "Github": "Github 登录",
         "Google": "Google 登录",
-        "Provider error": "登录异常，请重试"
+        "Phone": "手机号登录",
+        "Provider error": "登录异常，请重试",
+        "Wechat": "微信登录"
       },
       "team": {
         "Dataset usage": "知识库容量",

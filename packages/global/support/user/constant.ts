@@ -13,7 +13,8 @@ export const userStatusMap = {
 
 export enum OAuthEnum {
   github = 'github',
-  google = 'google'
+  google = 'google',
+  wechat = 'wechat'
 }
 
 export enum UserAuthTypeEnum {

@@ -555,7 +555,7 @@ const RenderJson = ({
     <Box mt={1}>
       <JSONEditor
         bg={'myGray.50'}
-        height={200}
+        defaultHeight={200}
         resize
         value={input.value}
         placeholder={t('core.module.template.http body placeholder')}
