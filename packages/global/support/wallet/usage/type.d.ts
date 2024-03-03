@@ -2,6 +2,7 @@ import { CreateUsageProps } from './api';
 import { UsageSourceEnum } from './constants';
 
 export type UsageListItemCountType = {
+  tokens?: number;
   charsLength?: number;
   duration?: number;
 };

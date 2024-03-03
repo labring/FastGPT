@@ -34,7 +34,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       insertLen: 1
     });
 
-    const { charsLength } = await updateData2Dataset({
+    const { tokens } = await updateData2Dataset({
       dataId: id,
       q,
       a,
@@ -45,7 +45,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     pushGenerateVectorUsage({
       teamId,
       tmbId,
-      charsLength,
+      tokens,
       model: vectorModel
     });
 

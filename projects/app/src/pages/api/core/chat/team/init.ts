@@ -4,59 +4,57 @@ import { connectToDatabase } from '@/service/mongo';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
+import type { InitChatResponse, InitTeamChatProps } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
+import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { selectSimpleChatResponse } from '@/utils/service/core/chat';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
 
-    let { appId, chatId, outLinkUid } = req.query as {
-      chatId?: string;
-      appId?: string;
-      outLinkUid?: string;
-    };
+    let { teamId, appId, chatId, teamToken } = req.query as InitTeamChatProps;
 
-    if (!appId) {
-      return jsonRes(res, {
-        code: 501,
-        message: "You don't have an app yet"
-      });
+    if (!teamId || !appId || !teamToken) {
+      throw new Error('teamId, appId, teamToken are required');
     }
 
-    // auth app permission
-    const [chat, app] = await Promise.all([
-      //   authApp({
-      //     req,
-      //     authToken: false,
-      //     appId,
-      //     per: 'r'
-      //   }),
-      chatId ? MongoChat.findOne({ appId, chatId }) : undefined,
+    const { uid } = await authTeamSpaceToken({
+      teamId,
+      teamToken
+    });
+
+    const [team, chat, app] = await Promise.all([
+      MongoTeam.findById(teamId, 'name avatar').lean(),
+      MongoChat.findOne({ teamId, appId, chatId }).lean(),
       MongoApp.findById(appId).lean()
     ]);
+
     if (!app) {
       throw new Error(AppErrEnum.unExist);
     }
 
     // auth chat permission
-    // if (chat && chat.outLinkUid !== outLinkUid) {
-    //   throw new Error(ChatErrEnum.unAuthChat);
-    // }
-    // // auth chat permission
-    // if (chat && !app.canWrite && String(tmbId) !== String(chat?.tmbId)) {
-    //   throw new Error(ChatErrEnum.unAuthChat);
-    // }
+    if (chat && chat.outLinkUid !== uid) {
+      throw new Error(ChatErrEnum.unAuthChat);
+    }
 
     // get app and history
     const { history } = await getChatItems({
       appId,
       chatId,
       limit: 30,
-      field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${ModuleOutputKeyEnum.responseData}`
+      field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${ModuleOutputKeyEnum.responseData}`
+    });
+
+    // pick share response field
+    history.forEach((item) => {
+      item.responseData = selectSimpleChatResponse({ responseData: item.responseData });
     });
 
     jsonRes<InitChatResponse>(res, {
@@ -64,7 +62,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         chatId,
         appId,
         title: chat?.title || '新对话',
-        userAvatar: undefined,
+        userAvatar: team?.avatar,
         variables: chat?.variables || {},
         history,
         app: {

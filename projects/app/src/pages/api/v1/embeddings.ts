@@ -36,7 +36,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     await checkTeamAIPoints(teamId);
 
-    const { charsLength, vectors } = await getVectorsByText({
+    const { tokens, vectors } = await getVectorsByText({
       input: query,
       model: getVectorModel(model)
     });
@@ -50,15 +50,15 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       })),
       model,
       usage: {
-        prompt_tokens: charsLength,
-        total_tokens: charsLength
+        prompt_tokens: tokens,
+        total_tokens: tokens
       }
     });
 
     const { totalPoints } = pushGenerateVectorUsage({
       teamId,
       tmbId,
-      charsLength,
+      tokens,
       model,
       billId,
       source: getUsageSourceByAuthType({ authType })

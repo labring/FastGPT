@@ -4,8 +4,6 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { readFileSync, readdirSync } from 'fs';
 import type { InitDateResponse } from '@/global/common/api/systemRes';
 import type { FastGPTConfigFileType } from '@fastgpt/global/common/system/types/index.d';
-import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
-import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import { getFastGPTConfigFromDB } from '@fastgpt/service/common/system/config/controller';
 import { connectToDatabase } from '@/service/mongo';
@@ -63,7 +61,6 @@ export async function getInitConfig() {
     await connectToDatabase();
 
     await Promise.all([
-      initGlobal(),
       initSystemConfig(),
       // getSimpleModeTemplates(),
       getSystemVersion(),
@@ -82,18 +79,6 @@ export async function getInitConfig() {
       exit(1);
     }
   }
-}
-
-export function initGlobal() {
-  if (global.communityPlugins) return;
-
-  global.communityPlugins = [];
-  global.simpleModeTemplates = [];
-  global.qaQueueLen = global.qaQueueLen ?? 0;
-  global.vectorQueueLen = global.vectorQueueLen ?? 0;
-  // init tikToken
-  getTikTokenEnc();
-  initHttpAgent();
 }
 
 export async function initSystemConfig() {
@@ -125,7 +110,6 @@ export async function initSystemConfig() {
 
   // set config
   initFastGPTConfig(config);
-  global.systemEnv = config.systemEnv;
 
   console.log({
     feConfigs: global.feConfigs,

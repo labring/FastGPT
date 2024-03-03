@@ -1,7 +1,7 @@
 import React, { useState, Dispatch, useCallback } from 'react';
 import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { PageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/constants/user';
 import { postRegister } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes';
@@ -13,7 +13,7 @@ import { useTranslation } from 'next-i18next';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;
-  setPageType: Dispatch<`${PageTypeEnum}`>;
+  setPageType: Dispatch<`${LoginPageTypeEnum}`>;
 }
 
 interface RegisterType {
@@ -196,7 +196,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
           color={'primary.700'}
           cursor={'pointer'}
           _hover={{ textDecoration: 'underline' }}
-          onClick={() => setPageType('login')}
+          onClick={() => setPageType(LoginPageTypeEnum.passwordLogin)}
         >
           已有账号，去登录
         </Box>

@@ -46,12 +46,16 @@ export async function pushDataListToTrainingQueue({
   } = await getCollectionWithDataset(collectionId);
 
   const checkModelValid = async () => {
-    if (trainingMode === TrainingModeEnum.chunk) {
-      const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
-      if (!vectorModelData) {
-        return Promise.reject(`File model ${vectorModel} is inValid`);
-      }
+    const agentModelData = datasetModelList?.find((item) => item.model === agentModel);
+    if (!agentModelData) {
+      return Promise.reject(`Vector model ${agentModel} is inValid`);
+    }
+    const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
+    if (!vectorModelData) {
+      return Promise.reject(`File model ${vectorModel} is inValid`);
+    }
 
+    if (trainingMode === TrainingModeEnum.chunk) {
       return {
         maxToken: vectorModelData.maxToken * 1.3,
         model: vectorModelData.model,
@@ -59,17 +63,14 @@ export async function pushDataListToTrainingQueue({
       };
     }
 
-    if (trainingMode === TrainingModeEnum.qa) {
-      const qaModelData = datasetModelList?.find((item) => item.model === agentModel);
-      if (!qaModelData) {
-        return Promise.reject(`Vector model ${agentModel} is inValid`);
-      }
+    if (trainingMode === TrainingModeEnum.qa || trainingMode === TrainingModeEnum.auto) {
       return {
-        maxToken: qaModelData.maxContext * 0.8,
-        model: qaModelData.model,
+        maxToken: agentModelData.maxContext * 0.8,
+        model: agentModelData.model,
         weight: 0
       };
     }
+
     return Promise.reject(`Training mode "${trainingMode}" is inValid`);
   };
 

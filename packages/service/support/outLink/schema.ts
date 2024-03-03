@@ -6,6 +6,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { appCollectionName } from '../../core/app/schema';
 
 const OutLinkSchema = new Schema({
   shareId: {
@@ -24,7 +25,7 @@ const OutLinkSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: 'model',
+    ref: appCollectionName,
     required: true
   },
   type: {

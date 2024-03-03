@@ -1,5 +1,5 @@
 import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import type {
@@ -12,7 +12,7 @@ import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/mo
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
-import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
+import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { checkTeamReRankPermission } from '@fastgpt/service/support/permission/teamLimit';
 
 type DatasetSearchProps = ModuleDispatchProps<{
@@ -85,7 +85,7 @@ export async function dispatchDatasetSearch(
   // start search
   const {
     searchRes,
-    charsLength,
+    tokens,
     usingSimilarityFilter,
     usingReRank: searchUsingReRank
   } = await searchDatasetData({
@@ -104,37 +104,37 @@ export async function dispatchDatasetSearch(
   // vector
   const { totalPoints, modelName } = formatModelChars2Points({
     model: vectorModel.model,
-    charsLength,
+    tokens,
     modelType: ModelTypeEnum.vector
   });
   const responseData: moduleDispatchResType & { totalPoints: number } = {
     totalPoints,
     query: concatQueries.join('\n'),
     model: modelName,
-    charsLength,
+    tokens,
     similarity: usingSimilarityFilter ? similarity : undefined,
     limit,
     searchMode,
     searchUsingReRank: searchUsingReRank
   };
-  const moduleDispatchBills: ChatModuleBillType[] = [
+  const moduleDispatchBills: ChatModuleUsageType[] = [
     {
       totalPoints,
       moduleName: module.name,
       model: modelName,
-      charsLength
+      tokens
     }
   ];
 
   if (aiExtensionResult) {
     const { totalPoints, modelName } = formatModelChars2Points({
       model: aiExtensionResult.model,
-      charsLength: aiExtensionResult.charsLength,
+      tokens: aiExtensionResult.tokens,
       modelType: ModelTypeEnum.llm
     });
 
     responseData.totalPoints += totalPoints;
-    responseData.charsLength = aiExtensionResult.charsLength;
+    responseData.tokens = aiExtensionResult.tokens;
     responseData.extensionModel = modelName;
     responseData.extensionResult =
       aiExtensionResult.extensionQueries?.join('\n') ||
@@ -144,7 +144,7 @@ export async function dispatchDatasetSearch(
       totalPoints,
       moduleName: 'core.module.template.Query extension',
       model: modelName,
-      charsLength: aiExtensionResult.charsLength
+      tokens: aiExtensionResult.tokens
     });
   }
 

@@ -10,8 +10,10 @@ import { Prompt_AgentQA } from '@/global/core/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
-import { checkInvalidChunkAndLock, checkTeamAiPointsAndLock } from './utils';
-import { countGptMessagesChars } from '@fastgpt/service/core/chat/utils';
+import { checkTeamAiPointsAndLock } from './utils';
+import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
+import { addMinutes } from 'date-fns';
+import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -20,9 +22,11 @@ const reduceQueue = () => {
 };
 
 export async function generateQA(): Promise<any> {
-  if (global.qaQueueLen >= global.systemEnv.qaMaxProcess) return;
+  const max = global.systemEnv?.qaMaxProcess || 10;
+  if (global.qaQueueLen >= max) return;
   global.qaQueueLen++;
 
+  const startTime = Date.now();
   // get training data
   const {
     data,
@@ -33,7 +37,7 @@ export async function generateQA(): Promise<any> {
     try {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
-          lockTime: { $lte: new Date(Date.now() - 6 * 60 * 1000) },
+          lockTime: { $lte: addMinutes(new Date(), -6) },
           mode: TrainingModeEnum.qa
         },
         {
@@ -66,7 +70,7 @@ export async function generateQA(): Promise<any> {
         text: data.q
       };
     } catch (error) {
-      console.log(`Get Training Data error`, error);
+      addLog.error(`[QA Queue] Error`, error);
       return {
         error: true
       };
@@ -75,7 +79,7 @@ export async function generateQA(): Promise<any> {
 
   if (done || !data) {
     if (reduceQueue()) {
-      console.log(`【QA】Task Done`);
+      addLog.info(`[QA Queue] Done`);
     }
     return;
   }
@@ -83,17 +87,15 @@ export async function generateQA(): Promise<any> {
     reduceQueue();
     return generateQA();
   }
-  console.log('Start QA Training');
 
   // auth balance
   if (!(await checkTeamAiPointsAndLock(data.teamId, data.tmbId))) {
-    console.log('balance not enough');
     reduceQueue();
     return generateQA();
   }
+  addLog.info(`[QA Queue] Start`);
 
   try {
-    const startTime = Date.now();
     const model = getLLMModel(data.model)?.model;
     const prompt = `${data.prompt || Prompt_AgentQA.description}
 ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
@@ -119,8 +121,8 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
 
     const qaArr = formatSplitText(answer, text); // 格式化后的QA对
 
-    addLog.info(`QA Training Finish`, {
-      time: `${(Date.now() - startTime) / 1000}s`,
+    addLog.info(`[QA Queue] Finish`, {
+      time: Date.now() - startTime,
       splitLength: qaArr.length,
       usage: chatResponse.usage
     });
@@ -146,7 +148,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        charsLength: countGptMessagesChars(messages).length,
+        tokens: countGptMessagesTokens(messages),
         billId: data.billId,
         model
       });

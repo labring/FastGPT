@@ -4,22 +4,21 @@ import { connectToDatabase } from '@/service/mongo';
 import type { CreateQuestionGuideParams } from '@/global/core/ai/api.d';
 import { pushQuestionGuideUsage } from '@/service/support/wallet/usage/push';
 import { createQuestionGuide } from '@fastgpt/service/core/ai/functions/createQuestionGuide';
-import { authCertOrShareId } from '@fastgpt/service/support/permission/auth/common';
+import { authChatCert } from '@/service/support/permission/auth/chat';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { messages, shareId } = req.body as CreateQuestionGuideParams;
+    const { messages } = req.body as CreateQuestionGuideParams;
 
-    const { tmbId, teamId } = await authCertOrShareId({
+    const { tmbId, teamId } = await authChatCert({
       req,
-      authToken: true,
-      shareId
+      authToken: true
     });
 
     const qgModel = global.llmModels[0];
 
-    const { result, charsLength } = await createQuestionGuide({
+    const { result, tokens } = await createQuestionGuide({
       messages,
       model: qgModel.model
     });
@@ -29,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     pushQuestionGuideUsage({
-      charsLength,
+      tokens,
       teamId,
       tmbId
     });

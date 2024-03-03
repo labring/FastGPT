@@ -1,3 +1,4 @@
+import { AppSchema } from 'core/app/type';
 import { OutLinkTypeEnum } from './constant';
 
 export type OutLinkSchema = {
@@ -17,6 +18,9 @@ export type OutLinkSchema = {
     maxUsagePoints: number;
     hookUrl?: string;
   };
+};
+export type OutLinkWithAppType = Omit<OutLinkSchema, 'appId'> & {
+  appId: AppSchema;
 };
 
 export type OutLinkEditType = {

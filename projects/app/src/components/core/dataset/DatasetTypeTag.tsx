@@ -8,7 +8,7 @@ import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
   const { t } = useTranslation();
 
-  const item = DatasetTypeMap[type];
+  const item = DatasetTypeMap[type] || DatasetTypeMap['dataset'];
 
   return (
     <Flex

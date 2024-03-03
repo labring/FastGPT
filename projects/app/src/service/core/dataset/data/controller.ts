@@ -35,7 +35,6 @@ import type {
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { startQueue } from '@/service/utils/tools';
 
 export async function pushDataToTrainingQueue(
   props: {
@@ -48,8 +47,6 @@ export async function pushDataToTrainingQueue(
     vectorModelList: global.vectorModels,
     datasetModelList: global.llmModels
   });
-
-  startQueue();
 
   return result;
 }
@@ -129,7 +126,7 @@ export async function insertData2Dataset({
 
   return {
     insertId: _id,
-    charsLength: result.reduce((acc, cur) => acc + cur.charsLength, 0)
+    tokens: result.reduce((acc, cur) => acc + cur.tokens, 0)
   };
 }
 
@@ -240,11 +237,11 @@ export async function updateData2Dataset({
         return result;
       }
       return {
-        charsLength: 0
+        tokens: 0
       };
     })
   );
-  const charsLength = insertResult.reduce((acc, cur) => acc + cur.charsLength, 0);
+  const tokens = insertResult.reduce((acc, cur) => acc + cur.tokens, 0);
   // console.log(clonePatchResult2Insert);
   await mongoSessionRun(async (session) => {
     // update mongo
@@ -273,7 +270,7 @@ export async function updateData2Dataset({
   });
 
   return {
-    charsLength
+    tokens
   };
 }
 
@@ -343,7 +340,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     };
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
-    const { vectors, charsLength } = await getVectorsByText({
+    const { vectors, tokens } = await getVectorsByText({
       model: getVectorModel(model),
       input: query
     });
@@ -407,7 +404,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     return {
       embeddingRecallResults: formatResult,
-      charsLength
+      tokens
     };
   };
   const fullTextRecall = async ({
@@ -552,22 +549,21 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     // multi query recall
     const embeddingRecallResList: SearchDataResponseItemType[][] = [];
     const fullTextRecallResList: SearchDataResponseItemType[][] = [];
-    let totalCharsLength = 0;
+    let totalTokens = 0;
 
     await Promise.all(
       queries.map(async (query) => {
-        const [{ charsLength, embeddingRecallResults }, { fullTextRecallResults }] =
-          await Promise.all([
-            embeddingRecall({
-              query,
-              limit: embeddingLimit
-            }),
-            fullTextRecall({
-              query,
-              limit: fullTextLimit
-            })
-          ]);
-        totalCharsLength += charsLength;
+        const [{ tokens, embeddingRecallResults }, { fullTextRecallResults }] = await Promise.all([
+          embeddingRecall({
+            query,
+            limit: embeddingLimit
+          }),
+          fullTextRecall({
+            query,
+            limit: fullTextLimit
+          })
+        ]);
+        totalTokens += tokens;
 
         embeddingRecallResList.push(embeddingRecallResults);
         fullTextRecallResList.push(fullTextRecallResults);
@@ -583,7 +579,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     ).slice(0, fullTextLimit);
 
     return {
-      charsLength: totalCharsLength,
+      tokens: totalTokens,
       embeddingRecallResults: rrfEmbRecall,
       fullTextRecallResults: rrfFTRecall
     };
@@ -594,7 +590,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const { embeddingLimit, fullTextLimit } = countRecallLimit();
 
   // recall
-  const { embeddingRecallResults, fullTextRecallResults, charsLength } = await multiQueryRecall({
+  const { embeddingRecallResults, fullTextRecallResults, tokens } = await multiQueryRecall({
     embeddingLimit,
     fullTextLimit
   });
@@ -666,7 +662,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
   return {
     searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
-    charsLength,
+    tokens,
     searchMode,
     limit: maxTokens,
     similarity,

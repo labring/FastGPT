@@ -44,6 +44,9 @@ export default function DropDownMenu({
       position={'fixed'}
       w={'auto'}
       zIndex={99999}
+      maxH={'300px'}
+      overflow={'auto'}
+      className="nowheel"
     >
       {variables.map((item, index) => (
         <Flex

@@ -1,7 +1,7 @@
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getAIApi } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { countGptMessagesChars } from '../../chat/utils';
+import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 
 /* 
     query extension - 问题扩展
@@ -106,7 +106,7 @@ export const queryExtension = async ({
   rawQuery: string;
   extensionQueries: string[];
   model: string;
-  charsLength: number;
+  tokens: number;
 }> => {
   const systemFewShot = chatBg
     ? `Q: 对话背景。
@@ -148,7 +148,7 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: [],
       model,
-      charsLength: 0
+      tokens: 0
     };
   }
 
@@ -161,7 +161,7 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: queries,
       model,
-      charsLength: countGptMessagesChars(messages)
+      tokens: countGptMessagesTokens(messages)
     };
   } catch (error) {
     console.log(error);
@@ -169,7 +169,7 @@ A: ${chatBg}
       rawQuery: query,
       extensionQueries: [],
       model,
-      charsLength: 0
+      tokens: 0
     };
   }
 };

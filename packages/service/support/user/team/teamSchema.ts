@@ -25,11 +25,7 @@ const TeamSchema = new Schema({
     type: Number,
     default: 0
   },
-  maxSize: {
-    type: Number,
-    default: 1
-  },
-  tagsUrl: {
+  teamDomain: {
     type: String
   },
   limit: {

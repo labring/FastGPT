@@ -95,6 +95,20 @@ const Provider = ({
   const customSplitChar = processParamsForm.watch('customSplitChar');
 
   const modeStaticParams = {
+    [TrainingModeEnum.auto]: {
+      chunkOverlapRatio: 0.2,
+      maxChunkSize: 2048,
+      minChunkSize: 100,
+      autoChunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
+      chunkSize: vectorModel?.defaultToken ? vectorModel?.defaultToken * 2 : 1024,
+      showChunkInput: false,
+      showPromptInput: false,
+      charsPointsPrice: agentModel.charsPointsPrice,
+      priceTip: t('core.dataset.import.Auto mode Estimated Price Tips', {
+        price: agentModel.charsPointsPrice
+      }),
+      uploadRate: 100
+    },
     [TrainingModeEnum.chunk]: {
       chunkSizeField: 'embeddingChunkSize' as ChunkSizeFieldType,
       chunkOverlapRatio: 0.2,
@@ -149,10 +163,17 @@ const Provider = ({
     [sources]
   );
   const predictPoints = useMemo(() => {
-    if (mode === TrainingModeEnum.qa) {
-      return +(((totalChunkChars * 1.5) / 1000) * agentModel.charsPointsPrice).toFixed(2);
+    const totalTokensPredict = totalChunkChars / 1000;
+    if (mode === TrainingModeEnum.auto) {
+      const price = totalTokensPredict * 1.3 * agentModel.charsPointsPrice;
+      return +price.toFixed(2);
     }
-    return +((totalChunkChars / 1000) * vectorModel.charsPointsPrice).toFixed(2);
+    if (mode === TrainingModeEnum.qa) {
+      const price = totalTokensPredict * 1.2 * agentModel.charsPointsPrice;
+      return +price.toFixed(2);
+    }
+
+    return +(totalTokensPredict * vectorModel.charsPointsPrice).toFixed(2);
   }, [agentModel.charsPointsPrice, mode, totalChunkChars, vectorModel.charsPointsPrice]);
   const totalChunks = useMemo(
     () => sources.reduce((sum, file) => sum + file.chunks.length, 0),

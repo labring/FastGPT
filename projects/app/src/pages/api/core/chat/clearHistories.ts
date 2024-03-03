@@ -7,12 +7,13 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ClearHistoriesProps } from '@/global/core/chat/api';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 
 /* clear chat history */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, shareId, outLinkUid } = req.query as ClearHistoriesProps;
+    const { appId, shareId, outLinkUid, teamId, teamToken } = req.query as ClearHistoriesProps;
 
     let chatAppId = appId;
 
@@ -23,6 +24,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         chatAppId = appId;
         return {
           shareId,
+          outLinkUid: uid
+        };
+      }
+      if (teamId && teamToken) {
+        const { uid } = await authTeamSpaceToken({ teamId, teamToken });
+        return {
+          teamId,
+          appId,
           outLinkUid: uid
         };
       }
