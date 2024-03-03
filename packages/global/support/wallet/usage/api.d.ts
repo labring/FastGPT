@@ -20,7 +20,6 @@ export type CreateUsageProps = {
   appName: string;
   appId?: string;
   totalPoints: number;
-  // inputTokens: number;
   source: `${UsageSourceEnum}`;
   list: UsageListItemType[];
 };

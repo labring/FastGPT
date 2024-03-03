@@ -1,3 +1,5 @@
+import { getTikTokenEnc } from '@fastgpt/global/common/string/tiktoken';
+import { initHttpAgent } from '@fastgpt/service/common/middle/httpAgent';
 import { existsSync, readFileSync } from 'fs';
 
 export const readConfigData = (name: string) => {
@@ -23,3 +25,15 @@ export const readConfigData = (name: string) => {
 
   return content;
 };
+
+export function initGlobal() {
+  if (global.communityPlugins) return;
+
+  global.communityPlugins = [];
+  global.simpleModeTemplates = [];
+  global.qaQueueLen = global.qaQueueLen ?? 0;
+  global.vectorQueueLen = global.vectorQueueLen ?? 0;
+  // init tikToken
+  getTikTokenEnc();
+  initHttpAgent();
+}

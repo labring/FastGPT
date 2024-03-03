@@ -28,7 +28,7 @@ import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 import { valueTypeFormat } from './utils';
-import { ChatModuleBillType } from '@fastgpt/global/support/wallet/bill/type';
+import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -83,7 +83,7 @@ export async function dispatchModules({
   // let storeData: Record<string, any> = {}; // after module used
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAnswerText = ''; // AI answer
-  let chatModuleBills: ChatModuleBillType[] = [];
+  let chatModuleBills: ChatModuleUsageType[] = [];
   let runningTime = Date.now();
 
   function pushStore(
@@ -95,7 +95,7 @@ export async function dispatchModules({
     }: {
       answerText?: string;
       responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
-      moduleDispatchBills?: ChatModuleBillType[];
+      moduleDispatchBills?: ChatModuleUsageType[];
     }
   ) {
     const time = Date.now();
@@ -165,7 +165,6 @@ export async function dispatchModules({
     const filterModules = nextRunModules.filter((module) => {
       if (set.has(module.moduleId)) return false;
       set.add(module.moduleId);
-      ``;
       return true;
     });
 

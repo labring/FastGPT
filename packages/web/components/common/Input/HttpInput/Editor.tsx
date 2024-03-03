@@ -64,14 +64,17 @@ export default function Editor({
 
   useEffect(() => {
     setKey(getNanoid(6));
+    setFocus(false);
   }, [updateTrigger]);
 
   const dropdownVariables = useMemo(
     () =>
       variables.filter((item) => {
-        return item.key.includes(currentValue || '') && item.key !== currentValue;
+        const key = item.key.toLowerCase();
+        const current = currentValue?.toLowerCase();
+        return key.includes(current || '') && item.key !== currentValue;
       }),
-    [currentValue]
+    [currentValue, variables]
   );
 
   return (
@@ -115,7 +118,7 @@ export default function Editor({
           }}
         />
         {hasVariablePlugin ? <VariablePickerPlugin variables={variables} /> : ''}
-        {hasVariablePlugin ? <VariablePlugin variables={variables} /> : ''}
+        <VariablePlugin variables={variables} />
         <OnBlurPlugin onBlur={onBlur} />
         <SingleLinePlugin />
       </LexicalComposer>

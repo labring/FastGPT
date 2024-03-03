@@ -1,6 +1,7 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
-import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type {
@@ -14,7 +15,7 @@ import { Prompt_CQJson } from '@/global/core/prompt/agent';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getHistories } from '../utils';
-import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -46,7 +47,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const chatHistories = getHistories(history, histories);
 
-  const { arg, charsLength } = await (async () => {
+  const { arg, tokens } = await (async () => {
     if (cqModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -65,7 +66,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: cqModel.model,
-    charsLength,
+    tokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -75,7 +76,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
-      charsLength,
+      tokens,
       cqList: agents,
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
@@ -85,7 +86,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        charsLength
+        tokens
       }
     ]
   };
@@ -136,6 +137,13 @@ ${systemPrompt}
       required: ['type']
     }
   };
+  const tools: any = [
+    {
+      type: 'function',
+      function: agentFunction
+    }
+  ];
+
   const ai = getAIApi({
     userKey: user.openaiAccount,
     timeout: 480000
@@ -144,13 +152,8 @@ ${systemPrompt}
   const response = await ai.chat.completions.create({
     model: cqModel.model,
     temperature: 0,
-    messages: [...adaptMessages],
-    tools: [
-      {
-        type: 'function',
-        function: agentFunction
-      }
-    ],
+    messages: adaptMessages,
+    tools,
     tool_choice: { type: 'function', function: { name: agentFunName } }
   });
 
@@ -158,13 +161,10 @@ ${systemPrompt}
     const arg = JSON.parse(
       response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
     );
-    const functionChars =
-      agentFunction.description.length +
-      agentFunction.parameters.properties.type.description.length;
 
     return {
       arg,
-      charsLength: countMessagesChars(messages) + functionChars
+      tokens: countMessagesTokens(messages, tools)
     };
   } catch (error) {
     console.log(agentFunction.parameters);
@@ -174,7 +174,7 @@ ${systemPrompt}
 
     return {
       arg: {},
-      charsLength: 0
+      tokens: 0
     };
   }
 }
@@ -216,7 +216,7 @@ async function completions({
     agents.find((item) => answer.includes(item.key) || answer.includes(item.value))?.key || '';
 
   return {
-    charsLength: countMessagesChars(messages),
+    tokens: countMessagesTokens(messages),
     arg: { type: id }
   };
 }

@@ -26,23 +26,6 @@ export type ChatSchema = {
   metadata?: Record<string, any>;
 };
 
-export type teamInfoType = {
-  avatar: string;
-  balance: number;
-  createTime: string;
-  maxSize: number;
-  name: string;
-  ownerId: string;
-  tagsUrl: string;
-  _id: string;
-};
-
-export type chatAppListSchema = {
-  apps: AppType[];
-  teamInfo: teamInfoSchema;
-  uid?: string;
-};
-
 export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
   appId: AppSchema;
 };
@@ -90,6 +73,13 @@ export type ChatSiteItemType = ChatItemType & {
   ttsBuffer?: Uint8Array;
 };
 
+/* --------- team chat --------- */
+export type ChatAppListSchema = {
+  apps: AppType[];
+  teamInfo: teamInfoSchema;
+  uid?: string;
+};
+
 /* ---------- history ------------- */
 export type HistoryItemType = {
   chatId: string;
@@ -111,7 +101,7 @@ export type moduleDispatchResType = {
   textOutput?: string;
 
   // bill
-  charsLength?: number;
+  tokens?: number;
   model?: string;
   contextTotalLen?: number;
   totalPoints?: number;
@@ -129,7 +119,7 @@ export type moduleDispatchResType = {
   searchUsingReRank?: boolean;
   extensionModel?: string;
   extensionResult?: string;
-  extensionCharsLength?: number;
+  extensionTokens?: number;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];

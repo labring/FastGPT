@@ -4,6 +4,7 @@ import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type.d';
 import {
   DatasetStatusEnum,
   DatasetStatusMap,
+  DatasetTypeEnum,
   DatasetTypeMap
 } from '@fastgpt/global/core/dataset/constants';
 import {
@@ -39,7 +40,7 @@ const DatasetSchema = new Schema({
     type: String,
     enum: Object.keys(DatasetTypeMap),
     required: true,
-    default: 'dataset'
+    default: DatasetTypeEnum.dataset
   },
   status: {
     type: String,

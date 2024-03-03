@@ -10,6 +10,7 @@ import {
 import axios from 'axios';
 import { valueTypeFormat } from '../utils';
 import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 type PropsArrType = {
   key: string;
@@ -130,7 +131,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ...results
     };
   } catch (error) {
-    const err = httpRequestErrorResponseData(error)
+    addLog.error('Http request error', error);
     return {
       [ModuleOutputKeyEnum.failed]: true,
       [ModuleOutputKeyEnum.responseData]: {
@@ -138,7 +139,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
-        httpResult: { error: err }
+        httpResult: { error: formatHttpError(error) }
       }
     };
   }
@@ -280,21 +281,14 @@ function removeUndefinedSign(obj: Record<string, any>) {
   }
   return obj;
 }
-function httpRequestErrorResponseData(error: any) {
-    try {
-        return {
-            message: error?.message || undefined,
-            name: error?.name || undefined,
-            method: error?.config?.method || undefined,
-            baseURL: error?.config?.baseURL || undefined,
-            url: error?.config?.url || undefined,
-            code: error?.code || undefined,
-            status: error?.status || undefined
-        }
-    } catch (error) {
-        return {
-            message: 'Request Failed',
-            name: "AxiosError",
-        };
-    }
+function formatHttpError(error: any) {
+  return {
+    message: error?.message,
+    name: error?.name,
+    method: error?.config?.method,
+    baseURL: error?.config?.baseURL,
+    url: error?.config?.url,
+    code: error?.code,
+    status: error?.status
+  };
 }

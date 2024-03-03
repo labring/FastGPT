@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import Head from 'next/head';
 import { getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
@@ -11,13 +11,12 @@ import {
   DrawerContent,
   useTheme
 } from '@chakra-ui/react';
-import Avatar from '@/components/Avatar';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useQuery } from '@tanstack/react-query';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SideBar from '@/components/SideBar';
 import PageContainer from '@/components/PageContainer';
-import { getChatListById } from '@/web/core/chat/api';
+import { getMyTokensApps } from '@/web/core/chat/api';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import ChatHeader from './components/ChatHeader';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -25,112 +24,49 @@ import { useTranslation } from 'next-i18next';
 import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { customAlphabet } from 'nanoid';
-import { useLoading } from '@/web/common/hooks/useLoading';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
 import { streamFetch } from '@/web/common/api/fetch';
-import { useTeamShareChatStore } from '@/web/core/chat/storeTeamChat';
-import type {
-  ChatHistoryItemType,
-  chatAppListSchema,
-  teamInfoType
-} from '@fastgpt/global/core/chat/type.d';
+import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
-import { POST } from '@/web/common/api/request';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import MyBox from '@/components/common/MyBox';
+import SliderApps from './components/SliderApps';
+
 const OutLink = ({
-  shareTeamId,
+  teamId,
   appId,
   chatId,
-  authToken
+  teamToken
 }: {
-  shareTeamId: string;
+  teamId: string;
   appId: string;
   chatId: string;
-  authToken: string;
+  teamToken: string;
 }) => {
-  type routerQueryType = {
-    chatId?: string;
-    appId?: string;
-    shareTeamId: string;
-    authToken?: string;
-  };
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
   const theme = useTheme();
-  const [myApps, setMyApps] = useState<Array<any>>([]);
   const { isPc } = useSystemStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const [teamInfo, setTeamInfo] = useState<teamInfoType>();
-  const { Loading, setIsLoading } = useLoading();
   const forbidRefresh = useRef(false);
 
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const {
+    chatData,
+    setChatData,
     histories,
     loadHistories,
     lastChatAppId,
-    setLastChatAppId,
     lastChatId,
-    setLastChatId,
     pushHistory,
     updateHistory,
     delOneHistory,
-    chatData,
-    setChatData,
     delOneHistoryItem,
     clearHistories
   } = useChatStore();
-  const {
-    localUId,
-    teamShareChatHistory, // abandon
-    clearLocalHistory // abandon
-  } = useTeamShareChatStore();
-
-  const outLinkUid: string = authToken || localUId;
-
-  // 纯网络获取流程
-  const loadApps = useCallback(async () => {
-    try {
-      if (!shareTeamId) {
-        toast({
-          status: 'error',
-          title: t('core.chat.You need to a chat app')
-        });
-        return;
-      }
-      // 根据获取历史记录列表
-      const res = await getChatListById({ shareTeamId, authToken });
-      const { apps, teamInfo } = res;
-      setMyApps(apps);
-      setTeamInfo(teamInfo);
-      if (apps.length <= 0) {
-        return toast({
-          status: 'error',
-          title: t('core.chat.You need to a chat app')
-        });
-      }
-      if (!apps.find((obj) => obj._id === appId)) {
-        toast({
-          status: 'warning',
-          title: 'you do not have this App'
-        });
-        router.replace({
-          query: {
-            appId: apps[0]?._id,
-            shareTeamId,
-            authToken: authToken
-          } as routerQueryType
-        });
-      }
-    } catch (error: any) {
-      toast({
-        status: 'warning',
-        title: error?.message
-      });
-    }
-  }, [appId, authToken, router, shareTeamId, t, toast]);
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -142,14 +78,14 @@ const OutLink = ({
           messages: prompts,
           variables,
           appId,
-          shareTeamId,
-          outLinkUid: outLinkUid,
+          teamId,
+          teamToken,
           chatId: completionChatId
         },
         onMessage: generatingMessage,
         abortCtrl: controller
       });
-
+      console.log(responseData);
       const newTitle =
         chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
         prompts[1]?.value?.slice(0, 20) ||
@@ -169,11 +105,9 @@ const OutLink = ({
           forbidRefresh.current = true;
           router.replace({
             query: {
-              chatId: completionChatId,
-              appId,
-              shareTeamId,
-              authToken: authToken
-            } as routerQueryType
+              ...router.query,
+              chatId: completionChatId
+            }
           });
         }
       } else {
@@ -183,7 +117,9 @@ const OutLink = ({
           updateHistory({
             ...currentChat,
             updateTime: new Date(),
-            title: newTitle
+            title: newTitle,
+            teamId,
+            teamToken
           });
       }
       // update chat window
@@ -195,227 +131,146 @@ const OutLink = ({
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [appId, chatId, histories, pushHistory, router, setChatData, updateHistory]
+    [
+      appId,
+      teamToken,
+      chatId,
+      histories,
+      pushHistory,
+      router,
+      setChatData,
+      teamId,
+      t,
+      updateHistory
+    ]
   );
 
-  const { isFetching } = useQuery(['init', appId, shareTeamId], async () => {
-    console.log('res', 3);
-    if (!shareTeamId) {
+  /* replace router query to last chat */
+  useEffect(() => {
+    if ((!chatId || !appId) && (lastChatId || lastChatAppId)) {
+      router.replace({
+        query: {
+          ...router.query,
+          chatId: chatId || lastChatId,
+          appId: appId || lastChatAppId
+        }
+      });
+    }
+  }, []);
+
+  // get chat app list
+  const loadApps = useCallback(async () => {
+    try {
+      const apps = await getMyTokensApps({ teamId, teamToken });
+
+      if (apps.length <= 0) {
+        toast({
+          status: 'error',
+          title: t('core.chat.You need to a chat app')
+        });
+        return [];
+      }
+
+      // if app id not exist, redirect to first app
+      if (!appId || !apps.find((item) => item._id === appId)) {
+        router.replace({
+          query: {
+            ...router.query,
+            appId: apps[0]?._id
+          }
+        });
+      }
+      return apps;
+    } catch (error: any) {
+      toast({
+        status: 'warning',
+        title: getErrText(error)
+      });
+    }
+    return [];
+  }, [appId, teamToken, router, teamId, t, toast]);
+  const { data: myApps = [], isLoading: isLoadingApps } = useQuery(['initApps', teamId], () => {
+    if (!teamId) {
       toast({
         status: 'error',
-        title: t('core.chat.You need to a chat app')
+        title: t('support.user.team.tag.Have not opened')
       });
       return;
     }
-    return shareTeamId && loadApps();
+    return loadApps();
   });
 
+  // load histories
   useQuery(['loadHistories', appId], () => {
-    if (shareTeamId && appId) {
-      return loadHistories({ appId, outLinkUid });
+    if (teamId && appId) {
+      return loadHistories({ teamId, appId, teamToken: teamToken });
     }
     return;
   });
-  // 初始化聊天框
-  useQuery(['init', { appId, chatId }], () => {
-    if (!shareTeamId) {
-      toast({
-        status: 'error',
-        title: t('core.chat.You need to a chat app')
-      });
-      return;
-    }
-    if (myApps.length > 0 && myApps.findIndex((obj) => obj._id === appId) === -1) {
-      toast({
-        status: 'warning',
-        title: 'you do not have this App'
-      });
-      return;
-    }
-    // pc: redirect to latest model chat
-    if (!appId && lastChatAppId) {
-      return router.replace({
-        query: {
-          appId: lastChatAppId,
-          chatId: lastChatId,
-          shareTeamId,
-          authToken: authToken
-        } as routerQueryType
-      });
-    }
-    if (!appId && myApps[0]) {
-      return router.replace({
-        query: {
-          appId: myApps[0]._id,
-          chatId: lastChatId,
-          shareTeamId,
-          authToken: authToken
-        } as routerQueryType
-      });
-    }
-    if (!appId) {
-      (async () => {
-        const { apps = [] } = await getChatListById({ shareTeamId, authToken });
-        setMyApps(apps);
-        if (apps.length === 0) {
-          toast({
-            status: 'error',
-            title: t('core.chat.You need to a chat app')
-          });
-        } else {
-          router.replace({
-            query: {
-              appId: apps[0]._id,
-              chatId: lastChatId,
-              shareTeamId,
-              authToken: authToken
-            } as routerQueryType
-          });
-        }
-      })();
-      return;
-    }
-
-    // store id
-    appId && setLastChatAppId(appId);
-    setLastChatId(chatId);
-    return loadChatInfo({
-      appId,
-      chatId,
-      loading: appId !== chatData.appId
-    });
-  });
 
   // get chat app info
-  const loadChatInfo = useCallback(
-    async ({
-      appId,
-      chatId,
-      loading = false
-    }: {
-      appId: string;
-      chatId: string;
-      loading?: boolean;
-    }) => {
-      try {
-        if (!shareTeamId) {
-          toast({
-            status: 'error',
-            title: t('core.chat.You need to a chat app')
-          });
-          return;
-        }
-        loading && setIsLoading(true);
-        const res = await getTeamChatInfo({ appId, chatId, outLinkUid });
-        console.log('res', res);
-        const history = res.history.map((item) => ({
-          ...item,
-          status: ChatStatusEnum.finish
-        }));
+  const loadChatInfo = useCallback(async () => {
+    try {
+      const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken: teamToken });
 
-        setChatData({
-          ...res,
-          history
-        });
+      const history = res.history.map((item) => ({
+        ...item,
+        status: ChatStatusEnum.finish
+      }));
 
-        // have records.
-        ChatBoxRef.current?.resetHistory(history);
-        ChatBoxRef.current?.resetVariables(res.variables);
-        if (res.history.length > 0) {
-          setTimeout(() => {
-            ChatBoxRef.current?.scrollToBottom('auto');
-          }, 500);
-        }
-      } catch (e: any) {
-        // reset all chat tore
-        setLastChatAppId('');
-        setLastChatId('');
-        toast({
-          title: t('core.chat.Failed to initialize chat'),
-          status: 'error'
-        });
-        if (e?.code === 501) {
-          //router.replace('/app/list');
-        } else if (chatId) {
-          router.replace({
-            query: {
-              ...router.query,
-              chatId: ''
-            } as routerQueryType
-          });
-        }
+      setChatData({
+        ...res,
+        history
+      });
+
+      // have records.
+      ChatBoxRef.current?.resetHistory(history);
+      ChatBoxRef.current?.resetVariables(res.variables);
+
+      if (res.history.length > 0) {
+        setTimeout(() => {
+          ChatBoxRef.current?.scrollToBottom('auto');
+        }, 500);
       }
-      setIsLoading(false);
+    } catch (e: any) {
+      toast({
+        title: t('core.chat.Failed to initialize chat'),
+        status: 'error'
+      });
+      if (chatId) {
+        router.replace({
+          query: {
+            ...router.query,
+            chatId: ''
+          }
+        });
+      }
+    }
+    return null;
+  }, [teamId, appId, chatId, teamToken, setChatData, toast, t, router]);
+  const { isFetching } = useQuery(['init', teamId, appId, chatId], () => {
+    if (forbidRefresh.current) {
+      forbidRefresh.current = false;
       return null;
-    },
-    [setIsLoading, setChatData, router, setLastChatAppId, setLastChatId, toast]
-  );
-  // 监测路由改变
-  useEffect(() => {
-    const activeHistory = teamShareChatHistory.filter((item) => !item.delete);
-    if (!localUId || !shareTeamId || activeHistory.length === 0) return;
-    (async () => {
-      try {
-        await POST('/core/chat/initLocalShareHistoryV464', {
-          outLinkUid: localUId,
-          chatIds: teamShareChatHistory.map((item) => item.chatId)
-        });
-        clearLocalHistory();
-        // router.reload();
-      } catch (error) {
-        toast({
-          status: 'warning',
-          title: t('core.shareChat.Init Error')
-        });
-      }
-    })();
-  }, [clearLocalHistory, localUId, router, teamShareChatHistory, shareTeamId, t, toast]);
+    }
+    if (teamId && appId) {
+      return loadChatInfo();
+    }
+    return null;
+  });
 
   return (
-    <Flex h={'100%'}>
+    <MyBox display={'flex'} h={'100%'} isLoading={isLoadingApps || isFetching}>
+      <Head>
+        <title>{chatData.app.name}</title>
+      </Head>
       {/* pc show myself apps */}
-      <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-        <Flex flexDirection={'column'} h={'100%'}>
-          <Box flex={'1 0 0'} h={0} px={5} py={4} overflow={'overlay'}>
-            {myApps &&
-              myApps.map((item) => (
-                <Flex
-                  key={item._id}
-                  py={2}
-                  px={3}
-                  mb={3}
-                  cursor={'pointer'}
-                  borderRadius={'md'}
-                  alignItems={'center'}
-                  {...(item._id === appId
-                    ? {
-                        bg: 'white',
-                        boxShadow: 'md'
-                      }
-                    : {
-                        _hover: {
-                          bg: 'myGray.200'
-                        },
-                        onClick: () => {
-                          router.replace({
-                            query: {
-                              appId: item._id,
-                              shareTeamId,
-                              authToken: authToken
-                            } as routerQueryType
-                          });
-                        }
-                      })}
-                >
-                  <Avatar src={item.avatar} w={'24px'} />
-                  <Box ml={2} className={'textEllipsis'}>
-                    {item.name}
-                  </Box>
-                </Flex>
-              ))}
-          </Box>
-        </Flex>
-      </Box>
+      {isPc && (
+        <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
+          <SliderApps showExist={false} apps={myApps} activeAppId={appId} />
+        </Box>
+      )}
+
       <PageContainer flex={'1 0 0'} w={0} p={[0, '16px']} position={'relative'}>
         <Flex h={'100%'} flexDirection={['column', 'row']} bg={'white'}>
           {((children: React.ReactNode) => {
@@ -449,36 +304,35 @@ const OutLink = ({
               onChangeChat={(chatId) => {
                 router.replace({
                   query: {
-                    chatId: chatId || '',
-                    appId,
-                    shareTeamId,
-                    authToken: authToken
-                  } as routerQueryType
+                    ...router.query,
+                    chatId: chatId || ''
+                  }
                 });
                 if (!isPc) {
                   onCloseSlider();
                 }
               }}
-              onDelHistory={(e) => delOneHistory({ ...e, appId })}
+              onDelHistory={(e) => delOneHistory({ ...e, appId, teamId, teamToken })}
               onClearHistory={() => {
-                clearHistories({ appId });
+                clearHistories({ appId, teamId, teamToken });
                 router.replace({
                   query: {
-                    appId,
-                    shareTeamId,
-                    authToken: authToken
-                  } as routerQueryType
+                    ...router.query,
+                    chatId: ''
+                  }
                 });
               }}
               onSetHistoryTop={(e) => {
-                updateHistory({ ...e, appId });
+                updateHistory({ ...e, teamId, teamToken, appId });
               }}
               onSetCustomTitle={async (e) => {
                 updateHistory({
                   appId,
                   chatId: e.chatId,
                   title: e.title,
-                  customTitle: e.title
+                  customTitle: e.title,
+                  teamId,
+                  teamToken
                 });
               }}
             />
@@ -496,8 +350,8 @@ const OutLink = ({
               appAvatar={chatData.app.avatar}
               appName={chatData.app.name}
               history={chatData.history}
-              showHistory={true}
               onOpenSlider={onOpenSlider}
+              showHistory
             />
             {/* chat box */}
             <Box flex={1}>
@@ -512,33 +366,33 @@ const OutLink = ({
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
                 onDelMessage={(e) =>
-                  delOneHistoryItem({ ...e, appId: chatData.appId, chatId, outLinkUid })
+                  delOneHistoryItem({ ...e, appId: chatData.appId, chatId, teamId, teamToken })
                 }
                 appId={chatData.appId}
-                shareTeamId={shareTeamId}
                 chatId={chatId}
-                outLinkUid={outLinkUid}
+                teamId={teamId}
+                teamToken={teamToken}
               />
             </Box>
           </Flex>
         </Flex>
       </PageContainer>
-    </Flex>
+    </MyBox>
   );
 };
 
 export async function getServerSideProps(context: any) {
-  const shareTeamId = context?.query?.shareTeamId || '';
+  const teamId = context?.query?.teamId || '';
   const appId = context?.query?.appId || '';
   const chatId = context?.query?.chatId || '';
-  const authToken: string = context?.query?.authToken || '';
+  const teamToken: string = context?.query?.teamToken || '';
 
   return {
     props: {
-      shareTeamId,
+      teamId,
       appId,
       chatId,
-      authToken,
+      teamToken,
       ...(await serviceSideProps(context))
     }
   };

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
 
 import MyModal from '../MyModal';
@@ -10,12 +10,12 @@ import RawSourceBox from '../core/dataset/RawSourceBox';
 const QuoteModal = ({
   rawSearch = [],
   onClose,
-  isShare,
+  showDetail,
   metadata
 }: {
   rawSearch: SearchDataResponseItemType[];
   onClose: () => void;
-  isShare: boolean;
+  showDetail: boolean;
   metadata?: {
     collectionId: string;
     sourceId?: string;
@@ -57,7 +57,7 @@ const QuoteModal = ({
         }
       >
         <ModalBody>
-          <QuoteList rawSearch={filterResults} isShare={isShare} />
+          <QuoteList rawSearch={filterResults} showDetail={showDetail} />
         </ModalBody>
       </MyModal>
     </>
@@ -68,10 +68,10 @@ export default QuoteModal;
 
 export const QuoteList = React.memo(function QuoteList({
   rawSearch = [],
-  isShare
+  showDetail
 }: {
   rawSearch: SearchDataResponseItemType[];
-  isShare: boolean;
+  showDetail: boolean;
 }) {
   const theme = useTheme();
 
@@ -88,7 +88,7 @@ export const QuoteList = React.memo(function QuoteList({
           _hover={{ '& .hover-data': { display: 'flex' } }}
           bg={i % 2 === 0 ? 'white' : 'myWhite.500'}
         >
-          <QuoteItem quoteItem={item} canViewSource={!isShare} linkToDataset={!isShare} />
+          <QuoteItem quoteItem={item} canViewSource={showDetail} linkToDataset={showDetail} />
         </Box>
       ))}
     </>

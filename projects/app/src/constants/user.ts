@@ -1,7 +1,8 @@
-export enum PageTypeEnum {
-  login = 'login',
+export enum LoginPageTypeEnum {
+  passwordLogin = 'passwordLogin',
   register = 'register',
-  forgetPassword = 'forgetPassword'
+  forgetPassword = 'forgetPassword',
+  wechat = 'wechat'
 }
 
 export enum PromotionEnum {

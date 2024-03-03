@@ -129,6 +129,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     [appId, chatId, histories, pushHistory, router, setChatData, t, updateHistory]
   );
 
+  useQuery(['loadModels'], () => loadMyApps(false));
+
   // get chat app info
   const loadChatInfo = useCallback(
     async ({
@@ -251,7 +253,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-          <SliderApps appId={appId} />
+          <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 

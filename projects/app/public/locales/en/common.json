@@ -268,6 +268,7 @@
       "Quote templates": "Quote templates",
       "Random": "Random",
       "Save and preview": "Save",
+      "Search team tags": "Search tags",
       "Select TTS": "Select TTS",
       "Select app from template": "Select from the template",
       "Select quote template": "Select quote template",
@@ -278,6 +279,7 @@
       "Simple Config Tip": "Only basic functions are included. For complex agent functions, use advanced orchestration.",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "Team tags": "Team tags",
       "Temperature": "Temperature",
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
@@ -409,7 +411,7 @@
       "Stop Speak": "Stop Speak",
       "Type a message": "Input problem",
       "Unpin": "Unpin",
-      "You need to a chat app": "You need to a chat app",
+      "You need to a chat app": "You don't have apps available",
       "error": {
         "Chat error": "Chat error",
         "Messages empty": "Interface content is empty, maybe the text is too long ~",
@@ -468,7 +470,7 @@
         "module similarity": "Similarity",
         "module temperature": "Temperature",
         "module time": "Running Time",
-        "module tokens": "Tokens",
+        "module tokens": "Total Tokens",
         "plugin output": "Plugin Output",
         "search using reRank": "ReRank",
         "text output": "Text Output"
@@ -594,6 +596,7 @@
       "file": "File",
       "folder": "Folder",
       "import": {
+        "Auto mode Estimated Price Tips": "Enhanced processing calls the file processing model: {{price}} integral /1k Tokens",
         "Auto process": "Auto",
         "Auto process desc": "Automatically set segmentation and preprocessing rules",
         "CSV Import": "CSV QA Import",
@@ -615,9 +618,9 @@
         "Data file progress": "Data upload progress",
         "Data process params": "Data process params",
         "Down load csv template": "Down load csv template",
-        "Embedding Estimated Price Tips": "Index billing: {{price}}/1k chars",
+        "Embedding Estimated Price Tips": "Index billing: {{price}}/1k Tokens",
         "Estimated Price": "Estimated Price: : {{amount}}{{unit}}",
-        "Estimated Price Tips": "QA charges\nInput: 1k chars={{charsPointsPrice}} points",
+        "Estimated Price Tips": "QA charges: {{charsPointsPrice}} points/1k Tokens",
         "Estimated points": "About {{points}} points",
         "Fetch Error": "Get link failed",
         "Fetch Url": "Url",
@@ -638,7 +641,7 @@
         "Preview chunks": "Chunks",
         "Preview raw text": "Preview file text (max show 10000 words)",
         "Process way": "Process way",
-        "QA Estimated Price Tips": "QA billing: {{price}}/1k characters (including input and output)",
+        "QA Estimated Price Tips": "QA billing: {{price}}/1k Tokens (including input and output)",
         "QA Import": "QA Split",
         "QA Import Tip": "According to certain rules, the text is broken into a larger paragraph, and the AI is invoked to generate a question and answer pair for the paragraph.",
         "Re Preview": "RePreview",
@@ -737,6 +740,8 @@
       },
       "training": {
         "Agent queue": "QA wait list",
+        "Auto mode": "Enhancement process",
+        "Auto mode Tip": "Subindex and call model are used to generate relevant questions and abstracts to increase the semantic richness of data blocks and facilitate retrieval. It consumes more storage space and increases the number of AI calls.",
         "Chunk mode": "Chunk split",
         "Full": "Expect more than 5 minutes",
         "Leisure": "Leisure",
@@ -1217,13 +1222,33 @@
         "Sending Code": "Sending"
       },
       "login": {
+        "And": "&",
+        "Email": "Email",
+        "Forget Password": "Forget Password?",
         "Github": "Github",
         "Google": "Google",
-        "Provider error": "Login exception, please try again"
+        "Password": "Password",
+        "Password login": "Password login",
+        "Phone": "Phone Login",
+        "Phone number": "Phone",
+        "Policy tip": "By using it, you agree with us",
+        "Privacy": "Privacy",
+        "Provider error": "Login exception, please try again",
+        "Register": "Register",
+        "Root login": "Log in as the root user",
+        "Root password placeholder": "root password is the environment variable you set",
+        "Terms": "Terms",
+        "Username": "Username",
+        "Wechat": "Wechat",
+        "Wx qr login": "Wechat scan code login"
       },
       "team": {
         "Dataset usage": "Dataset usage",
-        "member": "Member"
+        "Team Tags Async Success": "Team async success",
+        "member": "Member",
+        "tag": {
+          "Have not opened": "Team chat is not enabled"
+        }
       }
     },
     "wallet": {

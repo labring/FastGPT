@@ -68,6 +68,7 @@ import type { AppTTSConfigType, VariableItemType } from '@fastgpt/global/core/mo
 import MessageInput from './MessageInput';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import ChatBoxDivider from '../core/chat/Divider';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -106,7 +107,7 @@ const MessageCardStyle: BoxProps = {
   maxW: ['calc(100% - 25px)', 'calc(100% - 40px)']
 };
 
-type Props = {
+type Props = OutLinkChatAuthProps & {
   feedbackType?: `${FeedbackTypeEnum}`;
   showMarkIcon?: boolean; // admin mark dataset
   showVoiceIcon?: boolean;
@@ -120,9 +121,6 @@ type Props = {
   // not chat test params
   appId?: string;
   chatId?: string;
-  shareId?: string;
-  shareTeamId?: string;
-  outLinkUid?: string;
 
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
@@ -147,8 +145,9 @@ const ChatBox = (
     appId,
     chatId,
     shareId,
-    shareTeamId,
     outLinkUid,
+    teamId,
+    teamToken,
     onUpdateVariable,
     onStartChat,
     onDelMessage
@@ -288,7 +287,10 @@ const ChatBox = (
         const result = await postQuestionGuide(
           {
             messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6),
-            shareId
+            shareId,
+            outLinkUid,
+            teamId,
+            teamToken
           },
           abortSignal
         );
@@ -300,7 +302,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, shareId]
+    [questionGuide, shareId, outLinkUid, teamId, teamToken]
   );
 
   /**
@@ -398,22 +400,20 @@ const ChatBox = (
               };
             })
           );
-          if (!shareTeamId) {
-            setTimeout(() => {
-              createQuestionGuide({
-                history: newChatList.map((item, i) =>
-                  i === newChatList.length - 1
-                    ? {
-                        ...item,
-                        value: responseText
-                      }
-                    : item
-                )
-              });
-              generatingScroll();
-              isPc && TextareaDom.current?.focus();
-            }, 100);
-          }
+          setTimeout(() => {
+            createQuestionGuide({
+              history: newChatList.map((item, i) =>
+                i === newChatList.length - 1
+                  ? {
+                      ...item,
+                      value: responseText
+                    }
+                  : item
+              )
+            });
+            generatingScroll();
+            isPc && TextareaDom.current?.focus();
+          }, 100);
         } catch (err: any) {
           toast({
             title: t(getErrText(err, 'core.chat.error.Chat error')),
@@ -622,6 +622,7 @@ const ChatBox = (
                     {/* control icon */}
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
                       <ChatControllerComponent
+                        isChatting={isChatting}
                         chat={item}
                         onDelete={
                           onDelMessage
@@ -654,12 +655,17 @@ const ChatBox = (
                       <ChatAvatar src={appAvatar} type={'AI'} />
                       {/* control icon */}
                       <ChatControllerComponent
+                        isChatting={isChatting}
                         ml={2}
                         chat={item}
                         setChatHistory={setChatHistory}
                         display={index === chatHistory.length - 1 && isChatting ? 'none' : 'flex'}
                         showVoiceIcon={showVoiceIcon}
                         ttsConfig={ttsConfig}
+                        shareId={shareId}
+                        outLinkUid={outLinkUid}
+                        teamId={teamId}
+                        teamToken={teamToken}
                         onDelete={
                           onDelMessage
                             ? () => {
@@ -829,7 +835,10 @@ const ChatBox = (
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
 
-                        <ResponseTags responseData={item.responseData} isShare={!!shareId} />
+                        <ResponseTags
+                          responseData={item.responseData}
+                          showDetail={!shareId && !teamId}
+                        />
 
                         {/* custom feedback */}
                         {item.customFeedbacks && item.customFeedbacks.length > 0 && (
@@ -909,6 +918,10 @@ const ChatBox = (
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           showFileSelector={showFileSelector}
+          shareId={shareId}
+          outLinkUid={outLinkUid}
+          teamId={teamId}
+          teamToken={teamToken}
         />
       )}
       {/* user feedback modal */}
@@ -1236,6 +1249,7 @@ function Empty() {
 }
 
 const ChatControllerComponent = React.memo(function ChatControllerComponent({
+  isChatting,
   chat,
   setChatHistory,
   display,
@@ -1249,8 +1263,13 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
   onAddUserDislike,
   onAddUserLike,
   ml,
-  mr
-}: {
+  mr,
+  shareId,
+  outLinkUid,
+  teamId,
+  teamToken
+}: OutLinkChatAuthProps & {
+  isChatting: boolean;
   chat: ChatSiteItemType;
   setChatHistory?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   showVoiceIcon?: boolean;
@@ -1267,7 +1286,11 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({
-    ttsConfig
+    ttsConfig,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken
   });
   const controlIconStyle = {
     w: '14px',
@@ -1296,7 +1319,7 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
           onClick={() => copyData(chat.value)}
         />
       </MyTooltip>
-      {!!onDelete && (
+      {!!onDelete && !isChatting && (
         <>
           {onRetry && (
             <MyTooltip label={t('core.chat.retry')}>

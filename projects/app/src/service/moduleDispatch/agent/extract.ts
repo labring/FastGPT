@@ -1,6 +1,7 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter, countMessagesChars } from '@fastgpt/service/core/chat/utils';
-import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type {
@@ -14,7 +15,7 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
-import { formatModelChars2Points } from '@/service/support/wallet/usage/utils';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -46,7 +47,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const extractModel = getLLMModel(model);
   const chatHistories = getHistories(history, histories);
 
-  const { arg, charsLength } = await (async () => {
+  const { arg, tokens } = await (async () => {
     if (extractModel.toolChoice) {
       return toolChoice({
         ...props,
@@ -85,7 +86,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 
   const { totalPoints, modelName } = formatModelChars2Points({
     model: extractModel.model,
-    charsLength,
+    tokens,
     modelType: ModelTypeEnum.llm
   });
 
@@ -98,7 +99,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: content,
-      charsLength,
+      tokens,
       extractDescription: description,
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
@@ -108,7 +109,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
         model: modelName,
-        charsLength
+        tokens
       }
     ]
   };
@@ -170,6 +171,12 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
       required: extractKeys.filter((item) => item.required).map((item) => item.key)
     }
   };
+  const tools: any = [
+    {
+      type: 'function',
+      function: agentFunction
+    }
+  ];
 
   const ai = getAIApi({
     userKey: user.openaiAccount,
@@ -180,12 +187,7 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
     model: extractModel.model,
     temperature: 0,
     messages: [...adaptMessages],
-    tools: [
-      {
-        type: 'function',
-        function: agentFunction
-      }
-    ],
+    tools,
     tool_choice: { type: 'function', function: { name: agentFunName } }
   });
 
@@ -202,12 +204,9 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
     }
   })();
 
-  const functionChars =
-    description.length + extractKeys.reduce((sum, item) => sum + item.desc.length, 0);
-
   return {
     rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
-    charsLength: countMessagesChars(messages) + functionChars,
+    tokens: countMessagesTokens(messages, tools),
     arg
   };
 }
@@ -257,7 +256,7 @@ Human: ${content}`
   if (start === -1 || end === -1)
     return {
       rawResponse: answer,
-      charsLength: countMessagesChars(messages),
+      tokens: countMessagesTokens(messages),
       arg: {}
     };
 
@@ -269,14 +268,14 @@ Human: ${content}`
   try {
     return {
       rawResponse: answer,
-      charsLength: countMessagesChars(messages),
+      tokens: countMessagesTokens(messages),
 
       arg: JSON.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
     return {
       rawResponse: answer,
-      charsLength: countMessagesChars(messages),
+      tokens: countMessagesTokens(messages),
       arg: {}
     };
   }

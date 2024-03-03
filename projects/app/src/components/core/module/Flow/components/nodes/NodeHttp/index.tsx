@@ -301,10 +301,22 @@ function RenderHttpProps({
         headers &&
         jsonBody &&
         {
-          [TabEnum.params]: <RenderForm moduleId={moduleId} input={params} variables={variables} />,
+          [TabEnum.params]: (
+            <RenderForm
+              moduleId={moduleId}
+              input={params}
+              variables={variables}
+              tabType={TabEnum.params}
+            />
+          ),
           [TabEnum.body]: <RenderJson moduleId={moduleId} variables={variables} input={jsonBody} />,
           [TabEnum.headers]: (
-            <RenderForm moduleId={moduleId} input={headers} variables={variables} />
+            <RenderForm
+              moduleId={moduleId}
+              input={headers}
+              variables={variables}
+              tabType={TabEnum.headers}
+            />
           )
         }[selectedTab]}
     </Box>
@@ -313,11 +325,13 @@ function RenderHttpProps({
 const RenderForm = ({
   moduleId,
   input,
-  variables
+  variables,
+  tabType
 }: {
   moduleId: string;
   input: FlowNodeInputItemType;
   variables: EditorVariablePickerType[];
+  tabType?: TabEnum;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -327,11 +341,52 @@ const RenderForm = ({
   const [shouldUpdateNode, setShouldUpdateNode] = useState(false);
 
   const leftVariables = useMemo(() => {
-    return variables.filter((variable) => {
+    const HttpHeaders = [
+      { key: 'A-IM', label: 'A-IM' },
+      { key: 'Accept', label: 'Accept' },
+      { key: 'Accept-Charset', label: 'Accept-Charset' },
+      { key: 'Accept-Encoding', label: 'Accept-Encoding' },
+      { key: 'Accept-Language', label: 'Accept-Language' },
+      { key: 'Accept-Datetime', label: 'Accept-Datetime' },
+      { key: 'Access-Control-Request-Method', label: 'Access-Control-Request-Method' },
+      { key: 'Access-Control-Request-Headers', label: 'Access-Control-Request-Headers' },
+      { key: 'Authorization', label: 'Authorization' },
+      { key: 'Cache-Control', label: 'Cache-Control' },
+      { key: 'Connection', label: 'Connection' },
+      { key: 'Content-Length', label: 'Content-Length' },
+      { key: 'Content-Type', label: 'Content-Type' },
+      { key: 'Cookie', label: 'Cookie' },
+      { key: 'Date', label: 'Date' },
+      { key: 'Expect', label: 'Expect' },
+      { key: 'Forwarded', label: 'Forwarded' },
+      { key: 'From', label: 'From' },
+      { key: 'Host', label: 'Host' },
+      { key: 'If-Match', label: 'If-Match' },
+      { key: 'If-Modified-Since', label: 'If-Modified-Since' },
+      { key: 'If-None-Match', label: 'If-None-Match' },
+      { key: 'If-Range', label: 'If-Range' },
+      { key: 'If-Unmodified-Since', label: 'If-Unmodified-Since' },
+      { key: 'Max-Forwards', label: 'Max-Forwards' },
+      { key: 'Origin', label: 'Origin' },
+      { key: 'Pragma', label: 'Pragma' },
+      { key: 'Proxy-Authorization', label: 'Proxy-Authorization' },
+      { key: 'Range', label: 'Range' },
+      { key: 'Referer', label: 'Referer' },
+      { key: 'TE', label: 'TE' },
+      { key: 'User-Agent', label: 'User-Agent' },
+      { key: 'Upgrade', label: 'Upgrade' },
+      { key: 'Via', label: 'Via' },
+      { key: 'Warning', label: 'Warning' },
+      { key: 'Dnt', label: 'Dnt' },
+      { key: 'X-Requested-With', label: 'X-Requested-With' },
+      { key: 'X-CSRF-Token', label: 'X-CSRF-Token' }
+    ];
+
+    return (tabType === TabEnum.headers ? HttpHeaders : variables).filter((variable) => {
       const existVariables = list.map((item) => item.key);
       return !existVariables.includes(variable.key);
     });
-  }, [list, variables]);
+  }, [list, tabType, variables]);
 
   useEffect(() => {
     setList(input.value || []);
@@ -378,16 +433,23 @@ const RenderForm = ({
   };
 
   const handleAddNewProps = (key: string, value: string = '') => {
-    const checkExist = list.find((item) => item.key === key);
-    if (checkExist) {
-      return toast({
-        status: 'warning',
-        title: t('core.module.http.Key already exists')
-      });
-    }
-    if (!key) return;
+    setList((prevList) => {
+      if (!key) {
+        return prevList;
+      }
 
-    setList((prevList) => [...prevList, { key, type: 'string', value }]);
+      const checkExist = prevList.find((item) => item.key === key);
+      if (checkExist) {
+        setUpdateTrigger((prev) => !prev);
+        toast({
+          status: 'warning',
+          title: t('core.module.http.Key already exists')
+        });
+        return prevList;
+      }
+      return [...prevList, { key, type: 'string', value }];
+    });
+
     setShouldUpdateNode(true);
   };
 
@@ -406,7 +468,7 @@ const RenderForm = ({
               <Td p={0} w={'150px'}>
                 <HttpInput
                   hasVariablePlugin={false}
-                  hasDropDownPlugin={true}
+                  hasDropDownPlugin={tabType === TabEnum.headers}
                   setDropdownValue={(value) => {
                     handleKeyChange(index, value);
                     setUpdateTrigger((prev) => !prev);
@@ -450,16 +512,19 @@ const RenderForm = ({
           <Tr>
             <Td p={0} w={'150px'}>
               <HttpInput
-                hasDropDownPlugin={true}
+                hasVariablePlugin={false}
+                hasDropDownPlugin={tabType === TabEnum.headers}
                 setDropdownValue={(val) => {
                   handleAddNewProps(val);
+                  setUpdateTrigger((prev) => !prev);
                 }}
                 placeholder={t('core.module.http.Add props')}
                 value={''}
-                h={40}
                 variables={leftVariables}
+                updateTrigger={updateTrigger}
                 onBlur={(val) => {
                   handleAddNewProps(val);
+                  setUpdateTrigger((prev) => !prev);
                 }}
               />
             </Td>
@@ -490,7 +555,7 @@ const RenderJson = ({
     <Box mt={1}>
       <JSONEditor
         bg={'myGray.50'}
-        height={200}
+        defaultHeight={200}
         resize
         value={input.value}
         placeholder={t('core.module.template.http body placeholder')}

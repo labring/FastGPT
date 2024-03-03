@@ -1,6 +1,6 @@
 import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../config';
-import { replaceValidChars } from '../../chat/utils';
+import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 
 type GetVectorProps = {
   model: VectorModelItemType;
@@ -37,7 +37,7 @@ export async function getVectorsByText({ model, input }: GetVectorProps) {
         }
 
         return {
-          charsLength: replaceValidChars(input).length,
+          tokens: countPromptTokens(input),
           vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
         };
       });

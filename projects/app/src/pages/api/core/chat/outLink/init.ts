@@ -9,7 +9,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { selectShareResponse } from '@/utils/service/core/chat';
+import { selectSimpleChatResponse } from '@/utils/service/core/chat';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
@@ -50,7 +50,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     // pick share response field
     history.forEach((item) => {
-      item.responseData = selectShareResponse({ responseData: item.responseData });
+      item.responseData = selectSimpleChatResponse({ responseData: item.responseData });
     });
 
     jsonRes<InitChatResponse>(res, {

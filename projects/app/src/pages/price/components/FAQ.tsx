@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Flex, Grid } from '@chakra-ui/react';
+import { Box, Flex, Grid } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
 const FAQ = () => {
@@ -15,7 +15,7 @@ const FAQ = () => {
     },
     {
       title: '什么是AI积分？',
-      desc: '每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“AI 积分计算标准”。\n1 字符=1中英文字符和标点符号，会去掉换行和空格符号，计算字符时包含对话上下文与知识库引用。'
+      desc: '每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“AI 积分计算标准”。\nToken计算采用GPT3.5相同公式，1Token≈0.7中文字符≈0.9英文单词，连续出现的字符可能被认为是1个Tokens。'
     },
     {
       title: 'AI积分会过期么？',

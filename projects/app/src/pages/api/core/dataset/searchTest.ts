@@ -58,7 +58,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       extensionBg: datasetSearchExtensionBg
     });
 
-    const { searchRes, charsLength, ...result } = await searchDatasetData({
+    const { searchRes, tokens, ...result } = await searchDatasetData({
       teamId,
       reRankQuery: rewriteQuery,
       queries: concatQueries,
@@ -74,14 +74,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { totalPoints } = pushGenerateVectorUsage({
       teamId,
       tmbId,
-      charsLength,
+      tokens,
       model: dataset.vectorModel,
       source: apikey ? UsageSourceEnum.api : UsageSourceEnum.fastgpt,
 
       ...(aiExtensionResult &&
         extensionModel && {
           extensionModel: extensionModel.name,
-          extensionCharsLength: aiExtensionResult.charsLength
+          extensionTokens: aiExtensionResult.tokens
         })
     });
     if (apikey) {

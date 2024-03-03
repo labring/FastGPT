@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React from 'react';
 import MyModal from '@/components/MyModal';
 import {
   Box,
@@ -11,61 +11,74 @@ import {
   HStack,
   Avatar
 } from '@chakra-ui/react';
-import { AttachmentIcon, CopyIcon, DragHandleIcon } from '@chakra-ui/icons';
-import { putUpdateTeamTags, updateTags } from '@/web/support/user/team/api';
-import { useForm } from 'react-hook-form';
+import { putUpdateTeam } from '@/web/support/user/team/api';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
-import type { TeamTagsSchema } from '@fastgpt/global/support/user/team/type';
+import type { TeamTagItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { RepeatIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useQuery } from '@tanstack/react-query';
+import { getTeamsTags, loadTeamTagsByDomain } from '@/web/support/user/team/api';
 
-const TeamTagsAsync = ({
-  teamsTags,
-  teamInfo,
-  onClose
-}: {
-  teamsTags: Array<TeamTagsSchema>;
-  teamInfo: any;
-  onClose: () => void;
-}) => {
+type FormType = {
+  teamDomain: string;
+  tags: TeamTagItemType[];
+};
+
+const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { toast } = useToast();
-  const [_teamsTags, setTeamTags] = useState<Array<TeamTagsSchema>>(teamsTags);
-
-  const { register, setValue, getValues, handleSubmit } = useForm<any>({
-    defaultValues: { ...teamInfo }
-  });
+  const { userInfo, initUserInfo } = useUserStore();
   const { copyData } = useCopyData();
+
+  const teamInfo = userInfo?.team;
+
+  if (!teamInfo) {
+    onClose();
+    return null;
+  }
+
+  const { register, control, handleSubmit } = useForm<FormType>({
+    defaultValues: {
+      teamDomain: teamInfo.teamDomain,
+      tags: []
+    }
+  });
+  const { fields: teamTags, replace: replaceTeamTags } = useFieldArray({
+    control,
+    name: 'tags'
+  });
+
   const baseUrl = global.feConfigs?.customSharePageDomain || location?.origin;
-  const linkUrl = `${baseUrl}/chat/team?shareTeamId=${teamInfo?._id}${
-    getValues('showHistory') ? '' : '&showHistory=0'
-  }`;
+  const linkUrl = `${baseUrl}/chat/team?teamId=${teamInfo.teamId}&teamToken=`;
 
   // tags Async
-  const { mutate: onclickAsync, isLoading: creating } = useRequest({
-    mutationFn: async (data: any) => {
-      return putUpdateTeamTags({ tagsUrl: data.tagsUrl, teamId: teamInfo?._id });
+  const { mutate: onclickUpdate, isLoading: isUpdating } = useRequest({
+    mutationFn: async (data: FormType) => {
+      return putUpdateTeam({ teamDomain: data.teamDomain, teamId: teamInfo?.teamId });
     },
-    onSuccess(id: string) {
+    onSuccess() {
+      initUserInfo();
       onClose();
     },
-    successToast: t('user.team.Team Tags Async Success'),
     errorToast: t('common.Create Failed')
   });
-  const asyncTags = async () => {
-    console.log('getValues', getValues());
-    const res: Array<TeamTagsSchema> = await updateTags(teamInfo?._id, getValues().tagsUrl);
-    setTeamTags(res);
-    toast({ status: 'success', title: '团队标签同步成功' });
-  };
-  useEffect(() => {
-    console.log('teamInfo', teamInfo);
-  }, []);
+  const { mutate: onclickTagAsync, isLoading: isSyncing } = useRequest({
+    mutationFn: (data: FormType) => loadTeamTagsByDomain(data.teamDomain),
+    onSuccess(res) {
+      replaceTeamTags(res);
+    },
+    successToast: t('support.user.team.Team Tags Async Success')
+  });
 
-  // 获取
+  useQuery(['getTeamsTags'], getTeamsTags, {
+    onSuccess: (data) => {
+      replaceTeamTags(data);
+    }
+  });
+
   return (
     <>
       <MyModal
@@ -80,7 +93,7 @@ const TeamTagsAsync = ({
         overflow={'hidden'}
         title={
           <Box>
-            <Box>{teamInfo?.name}</Box>
+            <Box>{teamInfo?.teamName}</Box>
             <Box color={'myGray.500'} fontSize={'xs'} fontWeight={'normal'}>
               {'填写标签同步链接，点击同步按钮即可同步'}
             </Box>
@@ -98,8 +111,8 @@ const TeamTagsAsync = ({
               autoFocus
               bg={'myWhite.600'}
               placeholder="请输入同步标签"
-              {...register('tagsUrl', {
-                required: t('core.app.error.App name can not be empty')
+              {...register('teamDomain', {
+                required: true
               })}
             />
           </Flex>
@@ -146,7 +159,7 @@ const TeamTagsAsync = ({
               }}
               spacing={1}
             >
-              {_teamsTags.map((item, index) => {
+              {teamTags.map((item, index) => {
                 return (
                   <Tag key={index} mt={2} size={'md'} colorScheme="red" borderRadius="full">
                     <Avatar
@@ -161,7 +174,13 @@ const TeamTagsAsync = ({
                 );
               })}
             </HStack>
-            <Button ml={4} size="md" leftIcon={<RepeatIcon />} onClick={asyncTags}>
+            <Button
+              isLoading={isSyncing}
+              ml={4}
+              size="md"
+              leftIcon={<RepeatIcon />}
+              onClick={handleSubmit((data) => onclickTagAsync(data))}
+            >
               立即同步
             </Button>
           </Flex>
@@ -170,7 +189,7 @@ const TeamTagsAsync = ({
           <Button variant={'whiteBase'} mr={3} onClick={onClose}>
             {t('common.Close')}
           </Button>
-          <Button isLoading={creating} onClick={handleSubmit((data) => onclickAsync(data))}>
+          <Button isLoading={isUpdating} onClick={handleSubmit((data) => onclickUpdate(data))}>
             {t('user.team.Tags Async')}
           </Button>
         </ModalFooter>
