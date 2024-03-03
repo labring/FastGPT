@@ -136,7 +136,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
         />
 
         {/* config */}
-        <Grid gridTemplateColumns={['repeat(3,1fr)']} gridGap={4} my={5}>
+        <Grid gridTemplateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={4} my={5}>
           <Flex {...gridItemStyle}>
             <Box flex={1}>{t('core.app.outLink.Show History')}</Box>
             <Switch {...register('showHistory')} />
