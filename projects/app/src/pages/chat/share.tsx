@@ -22,22 +22,29 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
-import { POST } from '@/web/common/api/request';
 import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import MyBox from '@/components/common/MyBox';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
 
 const OutLink = ({
   shareId,
   chatId,
   showHistory,
-  authToken
+  authToken,
+  appName,
+  appIntro,
+  appAvatar
 }: {
   shareId: string;
   chatId: string;
   showHistory: '0' | '1';
   authToken?: string;
+  appName?: string;
+  appIntro?: string;
+  appAvatar?: string;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -253,7 +260,9 @@ const OutLink = ({
         : { p: [0, 5] })}
     >
       <Head>
-        <title>{chatData.app.name}</title>
+        <title>{appName || chatData.app?.name}</title>
+        <meta name="description" content={appIntro} />
+        <link rel="icon" href={appAvatar || chatData.app?.avatar} />
       </Head>
       <MyBox
         isLoading={isFetching}
@@ -386,12 +395,31 @@ export async function getServerSideProps(context: any) {
   const showHistory = context?.query?.showHistory || '1';
   const authToken = context?.query?.authToken || '';
 
+  const app = await (async () => {
+    try {
+      const app = (await MongoOutLink.findOne(
+        {
+          shareId
+        },
+        'appId'
+      )
+        .populate('appId', 'name avatar intro')
+        .lean()) as OutLinkWithAppType;
+      return app;
+    } catch (error) {
+      return undefined;
+    }
+  })();
+
   return {
     props: {
       shareId,
       chatId,
       showHistory,
       authToken,
+      appName: app?.appId?.name,
+      appAvatar: app?.appId?.avatar,
+      appIntro: app?.appId?.intro,
       ...(await serviceSideProps(context))
     }
   };

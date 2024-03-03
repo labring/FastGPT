@@ -35,7 +35,6 @@ import type {
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { startQueue } from '@/service/utils/tools';
 
 export async function pushDataToTrainingQueue(
   props: {
@@ -48,8 +47,6 @@ export async function pushDataToTrainingQueue(
     vectorModelList: global.vectorModels,
     datasetModelList: global.llmModels
   });
-
-  startQueue();
 
   return result;
 }

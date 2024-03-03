@@ -1,4 +1,3 @@
-import { startQueue } from './utils/tools';
 import { PRICE_SCALE } from '@fastgpt/global/support/wallet/constants';
 import { MongoUser } from '@fastgpt/service/support/user/schema';
 import { connectMongo } from '@fastgpt/service/common/mongo/init';
@@ -9,22 +8,29 @@ import { initVectorStore } from '@fastgpt/service/common/vectorStore/controller'
 import { getInitConfig } from '@/pages/api/common/system/getInitData';
 import { startCron } from './common/system/cron';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { initGlobal } from './common/system';
+import { startMongoWatch } from './common/system/volumnMongoWatch';
+import { startTrainingQueue } from './core/dataset/training/utils';
 
 /**
  * connect MongoDB and init data
  */
 export function connectToDatabase(): Promise<void> {
   return connectMongo({
-    beforeHook: () => {},
+    beforeHook: () => {
+      initGlobal();
+    },
     afterHook: async () => {
-      initVectorStore();
-      // start queue
-      startQueue();
+      startMongoWatch();
+      // cron
+      startCron();
       // init system config
       getInitConfig();
 
-      // cron
-      startCron();
+      // init vector database
+      await initVectorStore();
+      // start queue
+      startTrainingQueue(true);
 
       initRootUser();
     }

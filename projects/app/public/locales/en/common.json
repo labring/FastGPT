@@ -1222,11 +1222,25 @@
         "Sending Code": "Sending"
       },
       "login": {
+        "And": "&",
+        "Email": "Email",
+        "Forget Password": "Forget Password?",
         "Github": "Github",
         "Google": "Google",
+        "Password": "Password",
+        "Password login": "Password login",
         "Phone": "Phone Login",
+        "Phone number": "Phone",
+        "Policy tip": "By using it, you agree with us",
+        "Privacy": "Privacy",
         "Provider error": "Login exception, please try again",
-        "Wechat": "Wechat"
+        "Register": "Register",
+        "Root login": "Log in as the root user",
+        "Root password placeholder": "root password is the environment variable you set",
+        "Terms": "Terms",
+        "Username": "Username",
+        "Wechat": "Wechat",
+        "Wx qr login": "Wechat scan code login"
       },
       "team": {
         "Dataset usage": "Dataset usage",

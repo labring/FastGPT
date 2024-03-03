@@ -16,8 +16,3 @@ export enum OAuthEnum {
   google = 'google',
   wechat = 'wechat'
 }
-
-export enum UserAuthTypeEnum {
-  register = 'register',
-  findPassword = 'findPassword'
-}

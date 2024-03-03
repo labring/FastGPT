@@ -13,14 +13,13 @@ export const checkInvalidChunkAndLock = async ({
   data: DatasetTrainingSchemaType;
 }) => {
   if (err?.response) {
-    addLog.info(`openai error: ${errText}`, {
+    addLog.error(`openai error: ${errText}`, {
       status: err.response?.status,
       statusText: err.response?.statusText,
       data: err.response?.data
     });
   } else {
-    console.log(err);
-    addLog.error(getErrText(err, errText));
+    addLog.error(getErrText(err, errText), err);
   }
 
   if (

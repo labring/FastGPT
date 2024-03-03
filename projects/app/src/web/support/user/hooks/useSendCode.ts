@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback } from 'react';
 import { sendAuthCode } from '@/web/support/user/api';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/constant';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';

@@ -1,6 +1,6 @@
 import React, { useState, useCallback, useEffect } from 'react';
-import { Box, Center, Flex, Spinner, useDisclosure } from '@chakra-ui/react';
-import { PageTypeEnum } from '@/constants/user';
+import { Box, Center, Flex, useDisclosure } from '@chakra-ui/react';
+import { LoginPageTypeEnum } from '@/constants/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
@@ -12,6 +12,8 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';
 import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
+import Loading from '@/components/Loading';
+
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
@@ -20,15 +22,10 @@ const Login = () => {
   const router = useRouter();
   const { lastRoute = '' } = router.query as { lastRoute: string };
   const { feConfigs } = useSystemStore();
-  const [pageType, setPageType] = useState<`${PageTypeEnum}`>();
+  const [pageType, setPageType] = useState<`${LoginPageTypeEnum}`>();
   const { setUserInfo } = useUserStore();
   const { setLastChatId, setLastChatAppId } = useChatStore();
   const { isOpen, onOpen, onClose } = useDisclosure();
-
-  useEffect(() => {
-    if (!feConfigs.oauth) return;
-    setPageType(feConfigs.oauth?.wechat ? PageTypeEnum.wechat : PageTypeEnum.login);
-  }, [feConfigs.oauth, feConfigs.oauth?.wechat]);
 
   const loginSuccess = useCallback(
     (res: ResLogin) => {
@@ -45,12 +42,12 @@ const Login = () => {
     [lastRoute, router, setLastChatId, setLastChatAppId, setUserInfo]
   );
 
-  function DynamicComponent({ type }: { type: `${PageTypeEnum}` }) {
+  function DynamicComponent({ type }: { type: `${LoginPageTypeEnum}` }) {
     const TypeMap = {
-      [PageTypeEnum.login]: LoginForm,
-      [PageTypeEnum.register]: RegisterForm,
-      [PageTypeEnum.forgetPassword]: ForgetPasswordForm,
-      [PageTypeEnum.wechat]: WechatForm
+      [LoginPageTypeEnum.passwordLogin]: LoginForm,
+      [LoginPageTypeEnum.register]: RegisterForm,
+      [LoginPageTypeEnum.forgetPassword]: ForgetPasswordForm,
+      [LoginPageTypeEnum.wechat]: WechatForm
     };
 
     const Component = TypeMap[type];
@@ -58,6 +55,13 @@ const Login = () => {
     return <Component setPageType={setPageType} loginSuccess={loginSuccess} />;
   }
 
+  /* default login type */
+  useEffect(() => {
+    if (!feConfigs.oauth) return;
+    setPageType(
+      feConfigs.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
+    );
+  }, [feConfigs.oauth, feConfigs.oauth?.wechat]);
   useEffect(() => {
     clearToken();
     router.prefetch('/app/list');
@@ -97,8 +101,8 @@ const Login = () => {
             {pageType ? (
               <DynamicComponent type={pageType} />
             ) : (
-              <Center w={'full'} h={'full'}>
-                <Spinner />
+              <Center w={'full'} h={'full'} position={'relative'}>
+                <Loading fixed={false} />
               </Center>
             )}
           </Box>

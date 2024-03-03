@@ -1,7 +1,7 @@
 import { GET, POST, PUT } from '@/web/common/api/request';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { UserAuthTypeEnum } from '@fastgpt/global/support/user/constant';
+import { UserAuthTypeEnum } from '@fastgpt/global/support/user/auth/constants';
 import { UserUpdateParams } from '@/types/user';
 import { UserType } from '@fastgpt/global/support/user/type.d';
 import type {
@@ -9,6 +9,7 @@ import type {
   OauthLoginProps,
   PostLoginProps
 } from '@fastgpt/global/support/user/api.d';
+import { GetWXLoginQRResponse } from '@fastgpt/global/support/user/login/api.d';
 
 export const sendAuthCode = (data: {
   username: string;
@@ -72,7 +73,8 @@ export const loginOut = () => GET('/support/user/account/loginout');
 
 export const putUserInfo = (data: UserUpdateParams) => PUT('/support/user/account/update', data);
 
-export const getWechatQR = () => GET('/proApi/support/user/account/publicWechat/getWechatQR');
+export const getWXLoginQR = () =>
+  GET<GetWXLoginQRResponse>('/proApi/support/user/account/login/wx/getQR');
 
-export const getWechatResult = (data: { code: string }) =>
-  GET(`/proApi/support/user/account/publicWechat/getWechatResult`, data);
+export const getWXLoginResult = (code: string) =>
+  GET<ResLogin>(`/proApi/support/user/account/login/wx/getResult`, { code });

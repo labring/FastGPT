@@ -14,10 +14,6 @@ import {
   ModalBody,
   Input,
   Switch,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
   Link
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';

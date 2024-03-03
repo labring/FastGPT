@@ -1224,11 +1224,25 @@
         "Sending Code": "正在发送"
       },
       "login": {
+        "And": "和",
+        "Email": "邮箱",
+        "Forget Password": "忘记密码?",
         "Github": "Github 登录",
         "Google": "Google 登录",
+        "Password": "密码",
+        "Password login": "密码登录",
         "Phone": "手机号登录",
+        "Phone number": "手机号",
+        "Policy tip": "使用即代表你同意我们的",
+        "Privacy": "隐私政策",
         "Provider error": "登录异常，请重试",
-        "Wechat": "微信登录"
+        "Register": "注册账号",
+        "Root login": "使用root用户登录",
+        "Root password placeholder": "root密码为你设置的环境变量",
+        "Terms": "服务协议",
+        "Username": "用户名",
+        "Wechat": "微信登录",
+        "Wx qr login": "微信扫码登录"
       },
       "team": {
         "Dataset usage": "知识库容量",

@@ -1,5 +1,5 @@
 import Divider from '@/components/core/module/Flow/components/modules/Divider';
-import { PageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/constants/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { AbsoluteCenter, Box, Button, Flex, Image } from '@chakra-ui/react';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
@@ -13,8 +13,8 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
   children: React.ReactNode;
-  setPageType: Dispatch<`${PageTypeEnum}`>;
-  pageType: `${PageTypeEnum}`;
+  setPageType: Dispatch<`${LoginPageTypeEnum}`>;
+  pageType: `${LoginPageTypeEnum}`;
 }
 
 const FormLayout = ({ children, setPageType, pageType }: Props) => {
@@ -46,23 +46,23 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
           }
         ]
       : []),
-    ...(feConfigs?.oauth?.wechat && pageType !== PageTypeEnum.wechat
+    ...(feConfigs?.oauth?.wechat && pageType !== LoginPageTypeEnum.wechat
       ? [
           {
             label: t('support.user.login.Wechat'),
             provider: OAuthEnum.wechat,
             icon: 'common/wechatFill',
-            pageType: PageTypeEnum.wechat
+            pageType: LoginPageTypeEnum.wechat
           }
         ]
       : []),
-    ...(pageType !== PageTypeEnum.login
+    ...(pageType !== LoginPageTypeEnum.passwordLogin
       ? [
           {
-            label: t('support.user.login.Phone'),
-            provider: PageTypeEnum.login,
-            icon: 'common/phoneFill',
-            pageType: PageTypeEnum.login
+            label: t('support.user.login.Password login'),
+            provider: LoginPageTypeEnum.passwordLogin,
+            icon: 'support/account/passwordLogin',
+            pageType: LoginPageTypeEnum.passwordLogin
           }
         ]
       : [])
