@@ -142,7 +142,6 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
             const newOutput = {
               key: data.key,
               label: `提取结果-${data.desc}`,
-              description: '无法提取时不会返回',
               valueType: ModuleIOValueTypeEnum.string,
               type: FlowNodeOutputTypeEnum.source,
               targets: []

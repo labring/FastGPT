@@ -16,6 +16,7 @@ import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getHistories } from '../utils';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import json5 from 'json5';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -64,7 +65,8 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
 
   // remove invalid key
   for (let key in arg) {
-    if (!extractKeys.find((item) => item.key === key)) {
+    const item = extractKeys.find((item) => item.key === key);
+    if (!item) {
       delete arg[key];
     }
     if (arg[key] === '') {
@@ -72,12 +74,20 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     }
   }
 
+  // auto fill required fields
+  extractKeys.forEach((item) => {
+    if (item.required && !arg[item.key]) {
+      arg[item.key] = item.defaultValue || '';
+    }
+  });
+
   // auth fields
   let success = !extractKeys.find((item) => !(item.key in arg));
   // auth empty value
   if (success) {
     for (const key in arg) {
-      if (arg[key] === '') {
+      const item = extractKeys.find((item) => item.key === key);
+      if (!item) {
         success = false;
         break;
       }
@@ -125,14 +135,8 @@ async function toolChoice({
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: `你的任务：
+      value: `你的任务是根据上下文获取适当的 JSON 字符串。要求：
 """
-${description || '根据用户要求获取适当的 JSON 字符串。'}
-"""
-
-要求：
-"""
-- 如果字段为空，你返回空字符串。
 - 字符串不要换行。
 - 结合上下文和当前问题进行获取。
 """
@@ -167,8 +171,7 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
     description,
     parameters: {
       type: 'object',
-      properties,
-      required: extractKeys.filter((item) => item.required).map((item) => item.key)
+      properties
     }
   };
   const tools: any = [
@@ -193,7 +196,7 @@ ${description || '根据用户要求获取适当的 JSON 字符串。'}
 
   const arg: Record<string, any> = (() => {
     try {
-      return JSON.parse(
+      return json5.parse(
         response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '{}'
       );
     } catch (error) {
@@ -225,7 +228,7 @@ async function completions({
         json: extractKeys
           .map(
             (item) =>
-              `{"key":"${item.key}", "description":"${item.desc}", "required":${item.required}${
+              `{"key":"${item.key}", "description":"${item.desc}"${
                 item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
               }}`
           )
@@ -240,7 +243,6 @@ Human: ${content}`
     userKey: user.openaiAccount,
     timeout: 480000
   });
-
   const data = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0.01,
@@ -260,19 +262,14 @@ Human: ${content}`
       arg: {}
     };
 
-  const jsonStr = answer
-    .substring(start, end + 1)
-    .replace(/(\\n|\\)/g, '')
-    .replace(/  /g, '');
-
   try {
     return {
       rawResponse: answer,
       tokens: countMessagesTokens(messages),
-
-      arg: JSON.parse(jsonStr) as Record<string, any>
+      arg: json5.parse(answer) as Record<string, any>
     };
   } catch (error) {
+    console.log(error);
     return {
       rawResponse: answer,
       tokens: countMessagesTokens(messages),

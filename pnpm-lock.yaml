@@ -317,6 +317,9 @@ importers:
       jschardet:
         specifier: ^3.0.0
         version: 3.0.0
+      json5:
+        specifier: ^2.2.3
+        version: 2.2.3
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2

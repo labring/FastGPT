@@ -76,6 +76,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     {
       key: ModuleOutputKeyEnum.failed,
       label: '提取字段缺失',
+      description: '存在一个或多个字段未提取成功。尽管使用了默认值也算缺失。',
       valueType: ModuleIOValueTypeEnum.boolean,
       type: FlowNodeOutputTypeEnum.source,
       targets: []

@@ -415,9 +415,9 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appName: app?.appId?.name,
-      appAvatar: app?.appId?.avatar,
-      appIntro: app?.appId?.intro,
+      appName: app?.appId?.name || '',
+      appAvatar: app?.appId?.avatar || '',
+      appIntro: app?.appId?.intro || '',
       ...(await serviceSideProps(context))
     }
   };

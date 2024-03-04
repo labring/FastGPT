@@ -561,7 +561,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -775,6 +776,8 @@
         "Input description": "可接收知识库搜索的结果。",
         "label": "知识库引用"
       },
+      "Default value": "默认值",
+      "Default value placeholder": "不填则默认返回空字符",
       "Field Description": "字段描述",
       "Field Name": "字段名",
       "Field Type": "字段类型",
@@ -799,7 +802,9 @@
         "Enum Description": "列举出该字段可能的值，每行一个",
         "Enum Value": "枚举值",
         "Field Description Placeholder": "姓名/年龄/sql语句……",
-        "Field Setting Title": "提取字段配置"
+        "Field Setting Title": "提取字段配置",
+        "Required": "必须返回",
+        "Required Description": "即使无法提取该字段，也会使用默认值进行返回"
       },
       "http": {
         "Add props": "添加参数",
