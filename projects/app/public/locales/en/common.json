@@ -939,6 +939,7 @@
         "string": "String"
       },
       "variable": {
+        "External type": "External",
         "add option": "Add Option",
         "input type": "Text",
         "key": "Key",

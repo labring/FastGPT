@@ -561,8 +561,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -941,6 +940,7 @@
         "string": "字符串"
       },
       "variable": {
+        "External type": "外部传入",
         "add option": "添加选项",
         "input type": "文本",
         "key": "变量 key",
