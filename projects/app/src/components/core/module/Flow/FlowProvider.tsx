@@ -178,7 +178,7 @@ export const FlowProvider = ({
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
-          return ModuleIOValueTypeEnum.string;
+          return ModuleIOValueTypeEnum.boolean;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -189,7 +189,7 @@ export const FlowProvider = ({
       const targetType = nodes
         .find((node) => node.id === connect.target)
         ?.data?.inputs.find((input) => input.key === connect.targetHandle)?.valueType;
-
+      console.log(source, targetType);
       if (!sourceType || !targetType) {
         return toast({
           status: 'warning',

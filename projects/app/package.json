@@ -37,6 +37,7 @@
     "immer": "^9.0.19",
     "js-yaml": "^4.1.0",
     "jschardet": "^3.0.0",
+    "json5": "^2.2.3",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
     "mermaid": "^10.2.3",

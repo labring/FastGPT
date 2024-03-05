@@ -57,7 +57,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.extractKeys,
       type: FlowNodeInputTypeEnum.custom,
-      label: '目标字段',
+      label: '',
       valueType: ModuleIOValueTypeEnum.any,
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
       value: [], // {desc: string; key: string; required: boolean; enum: string[]}[]
@@ -76,6 +76,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     {
       key: ModuleOutputKeyEnum.failed,
       label: '提取字段缺失',
+      description: '存在一个或多个字段未提取成功。尽管使用了默认值也算缺失。',
       valueType: ModuleIOValueTypeEnum.boolean,
       type: FlowNodeOutputTypeEnum.source,
       targets: []

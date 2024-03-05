@@ -169,6 +169,8 @@ curl --location --request POST '{{host}}/shareAuth/start' \
 
 响应值与[chat 接口格式相同](/docs/development/openapi/chat/#响应)，仅多了一个`token`。
 
+重点关注：`totalPoints`(总消耗AI积分)，`token`(Token消耗总数)
+
 ```bash
 curl --location --request POST '{{host}}/shareAuth/finish' \
 --header 'Content-Type: application/json' \

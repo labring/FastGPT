@@ -1,3 +1,5 @@
+import { delay } from '@fastgpt/global/common/system/utils';
+import { addLog } from '../../system/log';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
 
@@ -15,10 +17,13 @@ export const connectPg = async (): Promise<Pool> => {
     connectionTimeoutMillis: 20000
   });
 
-  global.pgClient.on('error', (err) => {
+  global.pgClient.on('error', async (err) => {
     console.log(err);
     global.pgClient?.end();
     global.pgClient = null;
+
+    await delay(1000);
+    addLog.info(`Retry connect pg`);
     connectPg();
   });
 
@@ -27,7 +32,12 @@ export const connectPg = async (): Promise<Pool> => {
     console.log('pg connected');
     return global.pgClient;
   } catch (error) {
+    global.pgClient?.end();
     global.pgClient = null;
+
+    await delay(1000);
+    addLog.info(`Retry connect pg`);
+
     return connectPg();
   }
 };
