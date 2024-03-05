@@ -132,11 +132,11 @@ const VariableEdit = ({
             <Table bg={'white'}>
               <Thead>
                 <Tr>
-                  <Th w={'18px !important'} p={0} />
-                  <Th>{t('core.module.variable.variable name')}</Th>
-                  <Th>{t('core.module.variable.key')}</Th>
-                  <Th>{t('common.Require Input')}</Th>
-                  <Th></Th>
+                  <Th w={'18px !important'} p={0} bg={'myGray.50'} />
+                  <Th bg={'myGray.50'}>{t('core.module.variable.variable name')}</Th>
+                  <Th bg={'myGray.50'}>{t('core.module.variable.key')}</Th>
+                  <Th bg={'myGray.50'}>{t('common.Require Input')}</Th>
+                  <Th bg={'myGray.50'}></Th>
                 </Tr>
               </Thead>
               <Tbody>

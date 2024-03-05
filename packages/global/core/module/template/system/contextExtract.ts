@@ -57,7 +57,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     {
       key: ModuleInputKeyEnum.extractKeys,
       type: FlowNodeInputTypeEnum.custom,
-      label: '目标字段',
+      label: '',
       valueType: ModuleIOValueTypeEnum.any,
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
       value: [], // {desc: string; key: string; required: boolean; enum: string[]}[]
