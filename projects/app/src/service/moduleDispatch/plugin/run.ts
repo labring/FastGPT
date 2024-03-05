@@ -11,6 +11,7 @@ import {
 } from '@fastgpt/global/core/module/constants';
 import { getPluginRuntimeById } from '@fastgpt/service/core/plugin/controller';
 import { authPluginCanUse } from '@fastgpt/service/support/permission/auth/plugin';
+import { setEntryEntries } from '../utils';
 
 type RunPluginProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.pluginId]: string;
@@ -61,7 +62,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
     ...props,
-    modules: plugin.modules.map((module) => ({
+    modules: setEntryEntries(plugin.modules).map((module) => ({
       ...module,
       showStatus: false
     })),

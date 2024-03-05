@@ -10,7 +10,6 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { initRunningModuleType } from '../core/modules/constant';
 
 import { dispatchHistory } from './init/history';
 import { dispatchChatInput } from './init/userChatInput';
@@ -29,6 +28,7 @@ import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 import { valueTypeFormat } from './utils';
 import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { dispatchRunTools } from './tools/runTool';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -46,6 +46,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
+  [FlowNodeTypeEnum.tools]: dispatchRunTools,
 
   // none
   [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()
@@ -55,16 +56,16 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
 export async function dispatchModules({
   res,
   modules,
-  histories = [],
   startParams = {},
+  histories = [],
   variables = {},
   user,
   stream = false,
   detail = false,
   ...props
 }: ChatDispatchProps & {
-  modules: ModuleItemType[];
-  startParams?: Record<string, any>;
+  modules: ModuleItemType[]; // app modules
+  startParams?: Record<string, any>; // entry module params
 }) {
   // set sse response headers
   if (stream) {
@@ -80,9 +81,8 @@ export async function dispatchModules({
   };
   const runningModules = loadModules(modules, variables);
 
-  // let storeData: Record<string, any> = {}; // after module used
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
-  let chatAnswerText = ''; // AI answer
+  let chatAnswerText = ''; // The value will be returned to the user
   let chatModuleBills: ChatModuleUsageType[] = [];
   let runningTime = Date.now();
 
@@ -249,7 +249,7 @@ export async function dispatchModules({
     });
   }
   // start process width initInput
-  const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
+  const initModules = runningModules.filter((item) => item.isEntry);
 
   // runningModules.forEach((item) => {
   //   console.log(item);
@@ -293,6 +293,7 @@ function loadModules(
         name: module.name,
         flowType: module.flowType,
         showStatus: module.showStatus,
+        isEntry: module.isEntry,
         inputs: module.inputs
           .filter(
             (item) =>

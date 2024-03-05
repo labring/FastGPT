@@ -3,7 +3,7 @@ import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import type { ModuleItemType, FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { Edge, Node } from 'reactflow';
 import { customAlphabet } from 'nanoid';
-import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/module/template/constants';
 import { adaptRole_Message2Chat } from '@fastgpt/global/core/chat/adapt';
 import { EDGE_TYPE } from '@fastgpt/global/core/module/node/constant';
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';

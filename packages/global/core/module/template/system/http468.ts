@@ -22,8 +22,8 @@ export const HttpModule468: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.httpRequest468,
   avatar: '/imgs/module/http.png',
-  name: 'core.module.template.Http request',
-  intro: 'core.module.template.Http request intro',
+  name: 'HTTP 请求',
+  intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,
   inputs: [
     Input_Template_Switch,

@@ -44,6 +44,9 @@ export type ModuleItemType = {
   showStatus?: boolean;
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
+
+  // runTime field
+  isEntry?: boolean;
 };
 
 /* --------------- function type -------------------- */
@@ -90,6 +93,7 @@ export type RunningModuleItemType = {
   moduleId: ModuleItemType['moduleId'];
   flowType: ModuleItemType['flowType'];
   showStatus?: ModuleItemType['showStatus'];
+  isEntry?: ModuleItemType['isEntry'];
 } & {
   inputs: {
     key: string;

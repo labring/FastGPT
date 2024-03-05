@@ -31,6 +31,7 @@ import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { setEntryEntries } from '@/service/moduleDispatch/utils';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -170,7 +171,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       appId: String(app._id),
       chatId,
       responseChatItemId,
-      modules: app.modules,
+      modules: setEntryEntries(app.modules),
       variables,
       histories: concatHistories,
       startParams: {

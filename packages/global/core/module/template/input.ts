@@ -2,6 +2,7 @@ import type { FlowNodeInputItemType } from '../node/type.d';
 import { DYNAMIC_INPUT_KEY, ModuleInputKeyEnum } from '../constants';
 import { FlowNodeInputTypeEnum } from '../node/constant';
 import { ModuleIOValueTypeEnum } from '../constants';
+import { chatNodeSystemPromptTip } from './tip';
 
 export const Input_Template_Switch: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.switch,
@@ -56,6 +57,28 @@ export const Input_Template_DynamicInput: FlowNodeInputItemType = {
   showTargetInApp: false,
   showTargetInPlugin: true,
   hideInApp: true
+};
+
+export const Input_Template_AiModel: FlowNodeInputItemType = {
+  key: ModuleInputKeyEnum.aiModel,
+  type: FlowNodeInputTypeEnum.selectLLMModel,
+  label: 'core.module.input.label.aiModel',
+  required: true,
+  valueType: ModuleIOValueTypeEnum.string,
+  showTargetInApp: false,
+  showTargetInPlugin: false
+};
+
+export const Input_Template_System_Prompt: FlowNodeInputItemType = {
+  key: ModuleInputKeyEnum.aiSystemPrompt,
+  type: FlowNodeInputTypeEnum.textarea,
+  max: 3000,
+  valueType: ModuleIOValueTypeEnum.string,
+  label: 'core.ai.Prompt',
+  description: chatNodeSystemPromptTip,
+  placeholder: chatNodeSystemPromptTip,
+  showTargetInApp: true,
+  showTargetInPlugin: true
 };
 
 export const Input_Template_Dataset_Quote: FlowNodeInputItemType = {

@@ -11,6 +11,7 @@ import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { dispatchModules } from '@/service/moduleDispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { setEntryEntries } from '@/service/moduleDispatch/utils';
 
 export type Props = {
   history: ChatItemType[];
@@ -60,7 +61,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       tmbId,
       user,
       appId,
-      modules,
+      modules: setEntryEntries(modules),
       variables,
       histories: history,
       startParams: {

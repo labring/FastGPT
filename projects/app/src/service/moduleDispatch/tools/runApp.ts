@@ -11,7 +11,7 @@ import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { getHistories } from '../utils';
+import { getHistories, setEntryEntries } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
@@ -62,7 +62,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
     ...props,
     appId: app.id,
-    modules: appData.modules,
+    modules: setEntryEntries(appData.modules),
     histories: chatHistories,
     startParams: {
       userChatInput
@@ -90,7 +90,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     [ModuleOutputKeyEnum.moduleDispatchBills]: [
       {
         moduleName: appData.name,
-        totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+        totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
       }
     ],
     answerText: answerText,
