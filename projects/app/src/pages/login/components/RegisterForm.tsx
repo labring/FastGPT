@@ -85,7 +85,7 @@ const RegisterForm = ({ setPageType, loginSuccess }: Props) => {
       }
       setRequesting(false);
     },
-    [loginSuccess, toast]
+    [loginSuccess, t, toast]
   );
 
   return (
