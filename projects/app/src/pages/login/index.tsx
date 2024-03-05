@@ -57,11 +57,10 @@ const Login = () => {
 
   /* default login type */
   useEffect(() => {
-    if (!feConfigs.oauth) return;
     setPageType(
-      feConfigs.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
+      feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
     );
-  }, [feConfigs.oauth, feConfigs.oauth?.wechat]);
+  }, [feConfigs.oauth]);
   useEffect(() => {
     clearToken();
     router.prefetch('/app/list');

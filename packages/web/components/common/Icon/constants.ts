@@ -69,6 +69,7 @@ export const iconPaths = {
   'core/app/simpleMode/tts': () => import('./icons/core/app/simpleMode/tts.svg'),
   'core/app/simpleMode/variable': () => import('./icons/core/app/simpleMode/variable.svg'),
   'core/app/ttsFill': () => import('./icons/core/app/ttsFill.svg'),
+  'core/app/variable/external': () => import('./icons/core/app/variable/external.svg'),
   'core/app/variable/input': () => import('./icons/core/app/variable/input.svg'),
   'core/app/variable/select': () => import('./icons/core/app/variable/select.svg'),
   'core/app/variable/textarea': () => import('./icons/core/app/variable/textarea.svg'),

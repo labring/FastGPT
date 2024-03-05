@@ -774,6 +774,8 @@
         "Input description": "",
         "label": "Dataset quote"
       },
+      "Default value": "Default ",
+      "Default value placeholder": "Null characters are returned by default",
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",
@@ -795,10 +797,14 @@
         "Field Edit": "Field Edit"
       },
       "extract": {
+        "Add field": "Add",
         "Enum Description": "Lists the possible values for the field, one per row",
         "Enum Value": "Enum",
         "Field Description Placeholder": "Name/age /sql statement......",
-        "Field Setting Title": "Extract field configuration"
+        "Field Setting Title": "Extract field configuration",
+        "Required": "Required",
+        "Required Description": "Even if the field cannot be extracted, it is returned with the default value",
+        "Target field": "Field"
       },
       "http": {
         "Add props": "Add props",
@@ -939,6 +945,7 @@
         "string": "String"
       },
       "variable": {
+        "External type": "External",
         "add option": "Add Option",
         "input type": "Text",
         "key": "Key",

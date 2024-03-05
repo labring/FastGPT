@@ -116,17 +116,29 @@ export enum ModuleOutputKeyEnum {
 export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
-  select = 'select'
+  select = 'select',
+  external = 'external'
 }
 export const variableMap = {
   [VariableInputEnum.input]: {
-    icon: 'core/app/variable/input'
+    icon: 'core/app/variable/input',
+    title: 'core.module.variable.input type',
+    desc: ''
   },
   [VariableInputEnum.textarea]: {
-    icon: 'core/app/variable/textarea'
+    icon: 'core/app/variable/textarea',
+    title: 'core.module.variable.textarea type',
+    desc: '允许用户最多输入4000字的对话框。'
   },
   [VariableInputEnum.select]: {
-    icon: 'core/app/variable/select'
+    icon: 'core/app/variable/select',
+    title: 'core.module.variable.select type',
+    desc: ''
+  },
+  [VariableInputEnum.external]: {
+    icon: 'core/app/variable/external',
+    title: 'core.module.variable.External type',
+    desc: '可以通过API接口或分享链接的Query传递变量。增加该类型变量的主要目的是用于变量提示。使用例子: 你可以通过分享链接Query中拼接Token，来实现内部系统身份鉴权。'
   }
 };
 
