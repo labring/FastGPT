@@ -38,7 +38,7 @@ import {
 import dynamic from 'next/dynamic';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { setToken } from '@/web/support/user/auth';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { FormDataType, defaultForm } from './EditModal';
 import MyMenu from '@/components/MyMenu';
 import { useConfirm } from '@/web/common/hooks/useConfirm';

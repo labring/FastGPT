@@ -1,12 +1,19 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import type { PagingData } from '@/types/index.d';
 import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+
 import { throttle } from 'lodash';
+import { useToast } from './useToast';
 
 const thresholdVal = 100;
+
+type PagingData<T> = {
+  pageNum: number;
+  pageSize: number;
+  data: T[];
+  total?: number;
+};
 
 export function usePagination<T = any>({
   api,
@@ -40,7 +47,11 @@ export function usePagination<T = any>({
         });
         setPageNum(num);
         res.total !== undefined && setTotal(res.total);
-        setData(res.data);
+        if (type === 'scroll') {
+          setData((prevData) => [...prevData, ...res.data]);
+        } else {
+          setData(res.data);
+        }
         onChange && onChange(num);
       } catch (error: any) {
         toast({
@@ -179,6 +190,7 @@ export function usePagination<T = any>({
     pageSize,
     total,
     data,
+    setData,
     isLoading,
     Pagination,
     ScrollData,

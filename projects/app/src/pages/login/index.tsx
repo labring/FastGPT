@@ -12,7 +12,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';
 import CommunityModal from '@/components/CommunityModal';
 import Script from 'next/script';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));

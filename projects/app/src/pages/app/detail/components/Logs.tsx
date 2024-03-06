@@ -15,7 +15,6 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { usePagination } from '@/web/common/hooks/usePagination';
 import { getAppChatLogs } from '@/web/core/app/api';
 import dayjs from 'dayjs';
 import { ChatSourceMap } from '@fastgpt/global/core/chat/constants';
@@ -27,9 +26,10 @@ import { useQuery } from '@tanstack/react-query';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import Tag from '@/components/Tag';
 import MyModal from '@/components/MyModal';
-import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
 import { addDays } from 'date-fns';
 import MyBox from '@/components/common/MyBox';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();

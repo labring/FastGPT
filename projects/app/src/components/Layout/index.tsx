@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react';
 import { Box, useColorMode, Flex } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { throttle } from 'lodash';
 import { useQuery } from '@tanstack/react-query';

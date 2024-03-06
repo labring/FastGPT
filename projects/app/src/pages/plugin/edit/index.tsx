@@ -10,7 +10,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { getOnePlugin } from '@/web/core/plugin/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { usePluginStore } from '@/web/core/plugin/store/plugin';

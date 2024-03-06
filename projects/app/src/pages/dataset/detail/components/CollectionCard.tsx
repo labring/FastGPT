@@ -32,9 +32,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
 import dayjs from 'dayjs';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useRouter } from 'next/router';
-import { usePagination } from '@/web/common/hooks/usePagination';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyMenu from '@/components/MyMenu';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -64,6 +63,7 @@ import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@/components/common/MyBox';
 import { ImportDataSourceEnum } from './Import';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 
 const WebSiteConfigModal = dynamic(() => import('./Import/WebsiteConfig'), {});
 const FileSourceSelector = dynamic(() => import('./Import/sourceSelector/FileSourceSelector'), {});

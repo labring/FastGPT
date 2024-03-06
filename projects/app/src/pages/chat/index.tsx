@@ -15,7 +15,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);

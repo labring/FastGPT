@@ -9,8 +9,8 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import { UserUpdateParams } from '@/types/user';
 import { langMap, setLngStore } from '@/web/common/utils/i18n';
-import MySelect from '@/components/Select';
 import { useRouter } from 'next/router';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const Individuation = () => {
   const { t, i18n } = useTranslation();

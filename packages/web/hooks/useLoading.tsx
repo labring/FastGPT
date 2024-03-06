@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import LoadingComponent from '@/components/Loading';
+import LoadingComponent from '../components/common/MyLoading';
 
 export const useLoading = (props?: { defaultLoading: boolean }) => {
   const [isLoading, setIsLoading] = useState(props?.defaultLoading || false);

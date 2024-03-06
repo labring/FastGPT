@@ -7,7 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
