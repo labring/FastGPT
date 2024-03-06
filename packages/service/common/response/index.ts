@@ -133,7 +133,10 @@ export function responseWrite({
 
   event && Write(`event: ${event}\n`);
 
-  if (!polish || event !== sseResponseEventEnum.response) {
+  if (
+    !polish ||
+    (event !== sseResponseEventEnum.response && event !== sseResponseEventEnum.answer)
+  ) {
     Write(`data: ${data}\n\n`);
   }
 }

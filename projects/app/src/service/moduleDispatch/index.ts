@@ -188,6 +188,7 @@ export async function dispatchModules({
     if (stream && detail && module.showStatus) {
       responseStatus({
         res,
+        polish,
         name: module.name,
         status: 'running'
       });
