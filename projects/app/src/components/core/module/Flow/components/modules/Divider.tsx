@@ -17,7 +17,7 @@ const Divider = ({ text }: { text?: 'Input' | 'Output' | string }) => {
       borderBottom={theme.borders.base}
       fontSize={'lg'}
     >
-      {text ? t(`common.${text}`) : ''}
+      {text}
     </Box>
   );
 };

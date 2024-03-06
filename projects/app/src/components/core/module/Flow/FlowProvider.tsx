@@ -12,7 +12,10 @@ import type {
   FlowModuleItemType,
   FlowModuleTemplateType
 } from '@fastgpt/global/core/module/type.d';
-import type { FlowNodeChangeProps } from '@fastgpt/global/core/module/node/type';
+import type {
+  FlowNodeChangeProps,
+  FlowNodeInputItemType
+} from '@fastgpt/global/core/module/node/type';
 import React, {
   type SetStateAction,
   type Dispatch,
@@ -26,7 +29,7 @@ import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -34,6 +37,14 @@ import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
+type requestEventType =
+  | 'onChangeNode'
+  | 'onCopyNode'
+  | 'onResetNode'
+  | 'onDelNode'
+  | 'onDelConnect'
+  | 'setNodes';
+
 export type useFlowProviderStoreType = {
   reactFlowWrapper: null | React.RefObject<HTMLDivElement>;
   mode: 'app' | 'plugin';
@@ -57,14 +68,14 @@ export type useFlowProviderStoreType = {
   onDelConnect: (id: string) => void;
   onConnect: ({ connect }: { connect: Connection }) => any;
   initData: (modules: ModuleItemType[]) => void;
+  splitToolInputs: (
+    inputs: FlowNodeInputItemType[],
+    moduleId: string
+  ) => {
+    toolInputs: FlowNodeInputItemType[];
+    commonInputs: FlowNodeInputItemType[];
+  };
 };
-type requestEventType =
-  | 'onChangeNode'
-  | 'onCopyNode'
-  | 'onResetNode'
-  | 'onDelNode'
-  | 'onDelConnect'
-  | 'setNodes';
 
 const StateContext = createContext<useFlowProviderStoreType>({
   reactFlowWrapper: null,
@@ -115,6 +126,15 @@ const StateContext = createContext<useFlowProviderStoreType>({
     throw new Error('Function not implemented.');
   },
   onResetNode: function (e): void {
+    throw new Error('Function not implemented.');
+  },
+  splitToolInputs: function (
+    inputs: FlowNodeInputItemType[],
+    moduleId: string
+  ): {
+    toolInputs: FlowNodeInputItemType[];
+    commonInputs: FlowNodeInputItemType[];
+  } {
     throw new Error('Function not implemented.');
   }
 });
@@ -184,6 +204,9 @@ export const FlowProvider = ({
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion && !type) {
           return ModuleIOValueTypeEnum.boolean;
         }
+        if (source?.flowType === FlowNodeTypeEnum.tools) {
+          return ModuleIOValueTypeEnum.tools;
+        }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
         }
@@ -193,14 +216,14 @@ export const FlowProvider = ({
       const targetType = nodes
         .find((node) => node.id === connect.target)
         ?.data?.inputs.find((input) => input.key === connect.targetHandle)?.valueType;
-      console.log(source, targetType);
-      if (!sourceType || !targetType) {
+
+      if (sourceType === ModuleIOValueTypeEnum.tools && !targetType) {
+      } else if (!sourceType || !targetType) {
         return toast({
           status: 'warning',
           title: t('app.Connection is invalid')
         });
-      }
-      if (
+      } else if (
         sourceType !== ModuleIOValueTypeEnum.any &&
         targetType !== ModuleIOValueTypeEnum.any &&
         sourceType !== targetType
@@ -215,16 +238,13 @@ export const FlowProvider = ({
         addEdge(
           {
             ...connect,
-            type: EDGE_TYPE,
-            data: {
-              onDelete: onDelConnect
-            }
+            type: EDGE_TYPE
           },
           state
         )
       );
     },
-    [nodes, onDelConnect, setEdges, t, toast]
+    [nodes, setEdges, t, toast]
   );
 
   const onDelNode = useCallback(
@@ -359,6 +379,22 @@ export const FlowProvider = ({
     [setNodes]
   );
 
+  /* If the module is connected by a tool, the tool input and the normal input are separated */
+  const splitToolInputs = useCallback(
+    (inputs: FlowNodeInputItemType[], moduleId: string) => {
+      const isToolModule = !!edges.find(
+        (edge) =>
+          edge.targetHandle === ModuleOutputKeyEnum.selectedTools && edge.target === moduleId
+      );
+
+      return {
+        toolInputs: inputs.filter((item) => isToolModule && item.toolDescription),
+        commonInputs: inputs.filter((item) => !isToolModule || !item.toolDescription)
+      };
+    },
+    [edges]
+  );
+
   // reset a node data. delete edge and replace it
   const onResetNode = useCallback(
     ({ id, module }: { id: string; module: FlowModuleTemplateType }) => {
@@ -465,7 +501,8 @@ export const FlowProvider = ({
     onDelEdge,
     onDelConnect,
     onConnect,
-    initData
+    initData,
+    splitToolInputs
   };
 
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;

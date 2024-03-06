@@ -52,7 +52,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       const item = modules[i];
 
       const unconnected = item.inputs.find((input) => {
-        if (!input.required || input.connected) {
+        if (!input.required || input.connected || input.toolDescription) {
           return false;
         }
         if (input.value === undefined || input.value === '' || input.value?.length === 0) {

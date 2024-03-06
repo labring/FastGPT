@@ -6,27 +6,29 @@ import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
+import { useTranslation } from 'next-i18next';
+import { ToolSourceHandle } from '../render/ToolHandle';
+import { Box } from '@chakra-ui/react';
 
 const NodeTools = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
+  const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
+
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      {inputs.length > 0 && (
-        <>
-          <Divider text="Input" />
-          <Container>
-            <RenderInput moduleId={moduleId} flowInputList={inputs} />
-          </Container>
-        </>
-      )}
-      {outputs.length > 0 && (
-        <>
-          <Divider text="Output" />
-          <Container>
-            <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
-          </Container>
-        </>
-      )}
+      <Divider text={t('common.Input')} />
+      <Container>
+        <RenderInput moduleId={moduleId} flowInputList={inputs} />
+      </Container>
+
+      <Divider text={t('common.Output')} />
+      <Container>
+        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
+      </Container>
+      <Box position={'relative'}>
+        <Divider text={t('core.module.template.Tool module')} />
+        <ToolSourceHandle />
+      </Box>
     </NodeCard>
   );
 };

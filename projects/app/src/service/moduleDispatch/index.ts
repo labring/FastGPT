@@ -3,7 +3,10 @@ import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  ChatHistoryItemResType,
+  ToolRunResponseItemType
+} from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -26,9 +29,9 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { valueTypeFormat } from './utils';
+import { checkTheModuleConnectedByTool, valueTypeFormat } from './utils';
 import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
-import { dispatchRunTools } from './tools/runTool';
+import { dispatchRunTools } from './agent/runTool/index';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -84,18 +87,22 @@ export async function dispatchModules({
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAnswerText = ''; // The value will be returned to the user
   let chatModuleBills: ChatModuleUsageType[] = [];
+  let toolRunResponse: ToolRunResponseItemType[] = [];
   let runningTime = Date.now();
 
+  /* Store special response field  */
   function pushStore(
     { inputs = [] }: RunningModuleItemType,
     {
       answerText = '',
       responseData,
-      moduleDispatchBills
+      moduleDispatchBills,
+      toolResponse
     }: {
-      answerText?: string;
-      responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
-      moduleDispatchBills?: ChatModuleUsageType[];
+      [ModuleOutputKeyEnum.answerText]?: string;
+      [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType | ChatHistoryItemResType[];
+      [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleUsageType[];
+      [ModuleOutputKeyEnum.toolResponse]?: ToolRunResponseItemType;
     }
   ) {
     const time = Date.now();
@@ -111,6 +118,9 @@ export async function dispatchModules({
     }
     if (moduleDispatchBills) {
       chatModuleBills = chatModuleBills.concat(moduleDispatchBills);
+    }
+    if (toolResponse) {
+      toolRunResponse.push(toolResponse);
     }
     runningTime = time;
 
@@ -207,6 +217,7 @@ export async function dispatchModules({
       stream,
       detail,
       module,
+      modules,
       params
     };
 
@@ -218,7 +229,7 @@ export async function dispatchModules({
       return {};
     })();
 
-    // format response data. Add modulename and moduletype
+    // format response data. Add modulename and module type
     const formatResponseData = (() => {
       if (!dispatchRes[ModuleOutputKeyEnum.responseData]) return undefined;
       if (Array.isArray(dispatchRes[ModuleOutputKeyEnum.responseData])) {
@@ -250,6 +261,10 @@ export async function dispatchModules({
   }
   // start process width initInput
   const initModules = runningModules.filter((item) => item.isEntry);
+  // reset entry
+  modules.forEach((item) => {
+    item.isEntry = false;
+  });
 
   // runningModules.forEach((item) => {
   //   console.log(item);
@@ -274,7 +289,8 @@ export async function dispatchModules({
   return {
     [ModuleOutputKeyEnum.answerText]: chatAnswerText,
     [ModuleOutputKeyEnum.responseData]: chatResponse,
-    [ModuleOutputKeyEnum.moduleDispatchBills]: chatModuleBills
+    [ModuleOutputKeyEnum.moduleDispatchBills]: chatModuleBills,
+    [ModuleOutputKeyEnum.toolResponse]: toolRunResponse
   };
 }
 
@@ -287,19 +303,35 @@ function loadModules(
     .filter((item) => {
       return ![FlowNodeTypeEnum.userGuide].includes(item.moduleId as any);
     })
-    .map((module) => {
+    .map<RunningModuleItemType>((module) => {
       return {
         moduleId: module.moduleId,
         name: module.name,
+        intro: module.intro,
         flowType: module.flowType,
         showStatus: module.showStatus,
         isEntry: module.isEntry,
         inputs: module.inputs
           .filter(
-            (item) =>
-              item.type === FlowNodeInputTypeEnum.systemInput ||
-              item.connected ||
-              item.value !== undefined
+            /* 
+              1. system input must be save
+              2. connected by source handle
+              3. manual input value or have default value
+              4. For the module connected by the tool, leave the toolDescription input
+            */
+            (item) => {
+              const isTool = checkTheModuleConnectedByTool(modules, module);
+
+              if (isTool && item.toolDescription) {
+                return true;
+              }
+
+              return (
+                item.type === FlowNodeInputTypeEnum.systemInput ||
+                item.connected ||
+                item.value !== undefined
+              );
+            }
           ) // filter unconnected target input
           .map((item) => {
             const replace = ['string'].includes(typeof item.value);

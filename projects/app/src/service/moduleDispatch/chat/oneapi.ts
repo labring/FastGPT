@@ -1,18 +1,25 @@
 import type { NextApiResponse } from 'next';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { filterGptMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type { ChatCompletion, StreamChatType } from '@fastgpt/global/core/ai/type.d';
+import type {
+  ChatCompletion,
+  ChatCompletionMessageParam,
+  StreamChatType
+} from '@fastgpt/global/core/ai/type.d';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import type { ModuleDispatchResponse, ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
-import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
+import {
+  countGptMessagesTokens,
+  countMessagesTokens
+} from '@fastgpt/global/common/string/tiktoken';
+import { adaptChat2GptMessages, adaptGPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { Prompt_QuotePromptList, Prompt_QuoteTemplateList } from '@/global/core/prompt/AIChat';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -90,7 +97,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     });
   }
 
-  const { messages, filterMessages } = getChatMessages({
+  const { filterMessages } = getChatMessages({
     model: modelConstantsData,
     histories: chatHistories,
     quoteText,
@@ -112,7 +119,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     timeout: 480000
   });
 
-  const concatMessages = [
+  const concatMessages: any = [
     ...(modelConstantsData.defaultSystemChatPrompt
       ? [
           {
@@ -122,7 +129,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         ]
       : []),
     ...(await Promise.all(
-      messages.map(async (item) => ({
+      filterMessages.map(async (item) => ({
         ...item,
         content: modelConstantsData.vision
           ? await formatStr2ChatContent(item.content)
@@ -151,7 +158,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     }
   );
 
-  const { answerText, completeMessages } = await (async () => {
+  const { answerText } = await (async () => {
     if (stream) {
       // sse response
       const { answer } = await streamResponse({
@@ -159,35 +166,29 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         detail,
         stream: response
       });
-      // count tokens
-      const completeMessages = filterMessages.concat({
-        obj: ChatRoleEnum.AI,
-        value: answer
-      });
 
       targetResponse({ res, detail, outputs });
 
       return {
-        answerText: answer,
-        completeMessages
+        answerText: answer
       };
     } else {
       const unStreamResponse = response as ChatCompletion;
       const answer = unStreamResponse.choices?.[0]?.message?.content || '';
 
-      const completeMessages = filterMessages.concat({
-        obj: ChatRoleEnum.AI,
-        value: answer
-      });
-
       return {
-        answerText: answer,
-        completeMessages
+        answerText: answer
       };
     }
   })();
 
-  const tokens = countMessagesTokens(completeMessages);
+  const completeMessages = filterMessages.concat({
+    role: ChatCompletionRequestMessageRoleEnum.Assistant,
+    content: answerText
+  });
+  const chatCompleteMessages = adaptGPTMessages2Chats(completeMessages);
+
+  const tokens = countMessagesTokens(chatCompleteMessages);
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
     tokens,
@@ -203,7 +204,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       query: `${userChatInput}`,
       maxToken: max_tokens,
       quoteList: filterQuoteQA,
-      historyPreview: getHistoryPreview(completeMessages),
+      historyPreview: getHistoryPreview(chatCompleteMessages),
       contextTotalLen: completeMessages.length
     },
     [ModuleOutputKeyEnum.moduleDispatchBills]: [
@@ -214,7 +215,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         tokens
       }
     ],
-    history: completeMessages
+    history: chatCompleteMessages
   };
 };
 
@@ -288,15 +289,12 @@ function getChatMessages({
     }
   ];
 
-  const filterMessages = ChatContextFilter({
-    messages,
+  const filterMessages = filterGptMessageByMaxTokens({
+    messages: adaptChat2GptMessages({ messages, reserveId: false }),
     maxTokens: model.maxContext - 300 // filter token. not response maxToken
   });
 
-  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
-
   return {
-    messages: adaptMessages,
     filterMessages
   };
 }
@@ -307,13 +305,13 @@ function getMaxTokens({
 }: {
   maxToken: number;
   model: LLMModelItemType;
-  filterMessages: ChatItemType[];
+  filterMessages: ChatCompletionMessageParam[];
 }) {
   maxToken = Math.min(maxToken, model.maxResponse);
   const tokensLimit = model.maxContext;
 
   /* count response max token */
-  const promptsToken = countMessagesTokens(filterMessages);
+  const promptsToken = countGptMessagesTokens(filterMessages);
   maxToken = promptsToken + maxToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
 
   if (maxToken <= 0) {

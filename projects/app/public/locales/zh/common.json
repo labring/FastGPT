@@ -89,6 +89,7 @@
     "Edit": "编辑",
     "Exit": "退出",
     "Expired Time": "过期时间",
+    "Field": "字段",
     "File": "文件",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
@@ -935,6 +936,9 @@
       "textEditor": {
         "Text Edit": "文本加工"
       },
+      "tool": {
+        "Tool input": "工具输入"
+      },
       "valueType": {
         "any": "任意",
         "boolean": "布尔",
@@ -944,7 +948,8 @@
         "number": "数字",
         "selectApp": "应用选择",
         "selectDataset": "知识库选择",
-        "string": "字符串"
+        "string": "字符串",
+        "tools": "工具调用"
       },
       "variable": {
         "External type": "外部传入",

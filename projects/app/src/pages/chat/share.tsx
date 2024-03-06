@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useShareChatStore } from '@/web/core/chat/storeShareChat';
 import SideBar from '@/components/SideBar';
-import { gptMessage2ChatType } from '@/utils/adapt';
+import { adaptGPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemType, ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import { customAlphabet } from 'nanoid';
@@ -141,7 +141,7 @@ const OutLink = ({
       }));
 
       /* post message to report result */
-      const result: ChatSiteItemType[] = gptMessage2ChatType(prompts).map((item) => ({
+      const result: ChatSiteItemType[] = adaptGPTMessages2Chats(prompts).map((item) => ({
         ...item,
         status: 'finish'
       }));

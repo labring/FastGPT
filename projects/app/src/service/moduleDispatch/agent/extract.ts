@@ -1,5 +1,5 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { filterGptMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -144,7 +144,7 @@ async function toolChoice({
 当前问题: "${content}"`
     }
   ];
-  const filterMessages = ChatContextFilter({
+  const filterMessages = filterGptMessageByMaxTokens({
     messages,
     maxTokens: extractModel.maxContext
   });

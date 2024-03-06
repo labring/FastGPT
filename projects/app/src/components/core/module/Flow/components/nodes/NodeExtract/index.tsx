@@ -35,7 +35,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
 
   return (
     <NodeCard minW={'400px'} {...data}>
-      <Divider text="Input" />
+      <Divider text={t('common.Input')} />
       <Container>
         <RenderInput
           moduleId={moduleId}
@@ -133,7 +133,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
           }}
         />
       </Container>
-      <Divider text="Output" />
+      <Divider text={t('common.Output')} />
       <Container>
         <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>

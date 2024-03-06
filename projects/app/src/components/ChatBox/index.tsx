@@ -36,7 +36,7 @@ import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import { UseFormReturn, useForm } from 'react-hook-form';
-import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { fileDownload } from '@/web/common/file/utils';
 import { htmlTemplate } from '@/constants/common';
 import { useRouter } from 'next/router';
@@ -78,7 +78,7 @@ type generatingMessageProps = { text?: string; name?: string; status?: 'running'
 
 export type StartChatFnProps = {
   chatList: ChatSiteItemType[];
-  messages: ChatMessageItemType[];
+  messages: ChatCompletionMessageParam[];
   controller: AbortController;
   variables: Record<string, any>;
   generatingMessage: (e: generatingMessageProps) => void;

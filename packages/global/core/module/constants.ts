@@ -21,7 +21,10 @@ export enum ModuleIOValueTypeEnum {
 
   // plugin special type
   selectApp = 'selectApp',
-  selectDataset = 'selectDataset'
+  selectDataset = 'selectDataset',
+
+  // tool
+  tools = 'tools'
 }
 
 /* reg: modulename key */
@@ -110,7 +113,11 @@ export enum ModuleOutputKeyEnum {
 
   // tf switch
   resultTrue = 'system_resultTrue',
-  resultFalse = 'system_resultFalse'
+  resultFalse = 'system_resultFalse',
+
+  // tools
+  selectedTools = 'selectedTools',
+  toolResponse = 'toolResponse'
 }
 
 export enum VariableInputEnum {

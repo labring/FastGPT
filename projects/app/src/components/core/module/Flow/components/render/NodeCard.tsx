@@ -1,10 +1,8 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, useTheme, MenuButton } from '@chakra-ui/react';
+import { Box, Flex, MenuButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
-import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -17,6 +15,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import MyMenu from '@/components/MyMenu';
+import { ToolTargetHandle } from './ToolHandle';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -37,10 +36,10 @@ const NodeCard = (props: Props) => {
     flowType,
     inputs,
     selected,
-    forbidMenu
+    forbidMenu,
+    isTool = false
   } = props;
 
-  const theme = useTheme();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
 
@@ -125,7 +124,7 @@ const NodeCard = (props: Props) => {
   return (
     <Box
       minW={minW}
-      maxW={'500px'}
+      maxW={'600px'}
       bg={'white'}
       borderWidth={'1px'}
       borderColor={selected ? 'primary.600' : 'borderColor.base'}
@@ -135,7 +134,8 @@ const NodeCard = (props: Props) => {
         boxShadow: '4'
       }}
     >
-      <Box className="custom-drag-handle" px={4} py={3}>
+      <Box className="custom-drag-handle" px={4} py={3} position={'relative'}>
+        {isTool && <ToolTargetHandle />}
         <Flex alignItems={'center'}>
           <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
           <Box ml={3} fontSize={'lg'}>

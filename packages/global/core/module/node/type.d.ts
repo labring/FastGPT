@@ -28,6 +28,7 @@ export type FlowNodeInputItemType = {
   label: string;
   description?: string;
   required?: boolean;
+  toolDescription?: string; // If this field is not empty, it is entered as a tool
 
   edit?: boolean; // Whether to allow editing
   editField?: EditInputFieldMap;

@@ -38,8 +38,8 @@ export type ChatItemSchema = {
   tmbId: string;
   appId: string;
   time: Date;
-  obj: `${ChatRoleEnum}`;
-  value: string;
+  role: `${ChatRoleEnum}`;
+  content: string;
   userGoodFeedback?: string;
   userBadFeedback?: string;
   customFeedbacks?: string[];
@@ -58,7 +58,7 @@ export type AdminFbkType = {
 /* --------- chat item ---------- */
 export type ChatItemType = {
   dataId?: string;
-  obj: ChatItemSchema['obj'];
+  obj: `${ChatRoleEnum}`;
   value: any;
   userGoodFeedback?: string;
   userBadFeedback?: string;
@@ -149,4 +149,8 @@ export type moduleDispatchResType = {
 export type ChatHistoryItemResType = moduleDispatchResType & {
   moduleType: `${FlowNodeTypeEnum}`;
   moduleName: string;
+};
+export type ToolRunResponseItemType = {
+  moduleId: string;
+  value: Record<string.any>;
 };

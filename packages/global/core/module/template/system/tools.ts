@@ -25,7 +25,7 @@ export const ToolModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.tools,
   flowType: FlowNodeTypeEnum.tools,
   templateType: ModuleTemplateTypeEnum.functionCall,
-  avatar: '/imgs/module/AI.png',
+  avatar: '/imgs/module/tool.svg',
   name: '工具调用',
   intro: '通过AI模型自动选择一个或多个工具进行调用。工具可以是其他功能块，可以是插件。',
   showStatus: true,
@@ -41,5 +41,14 @@ export const ToolModule: FlowModuleTemplateType = {
     Input_Template_History,
     Input_Template_UserChatInput
   ],
-  outputs: [Output_Template_UserChatInput, Output_Template_Finish]
+  outputs: [
+    Output_Template_UserChatInput,
+    {
+      key: ModuleOutputKeyEnum.selectedTools,
+      valueType: ModuleIOValueTypeEnum.any,
+      type: FlowNodeOutputTypeEnum.hidden,
+      targets: []
+    },
+    Output_Template_Finish
+  ]
 };

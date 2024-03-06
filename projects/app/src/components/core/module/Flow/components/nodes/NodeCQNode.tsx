@@ -23,7 +23,7 @@ const NodeCQNode = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
-      <Divider text="Input" />
+      <Divider text={t('common.Input')} />
       <Container>
         <RenderInput
           moduleId={moduleId}

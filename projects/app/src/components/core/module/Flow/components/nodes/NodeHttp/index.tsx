@@ -613,7 +613,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      <Divider text="Input" />
+      <Divider text={t('common.Input')} />
       <Container>
         <RenderInput
           moduleId={moduleId}
@@ -621,7 +621,7 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
           CustomComponent={CustomComponents}
         />
       </Container>
-      <Divider text="Output" />
+      <Divider text={t('common.Output')} />
       <Container>
         <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>

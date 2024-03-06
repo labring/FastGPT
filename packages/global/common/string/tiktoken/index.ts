@@ -2,9 +2,10 @@
 import type { ChatItemType } from '../../../core/chat/type';
 import { Tiktoken } from 'js-tiktoken/lite';
 import { adaptChat2GptMessages } from '../../../core/chat/adapt';
-import { ChatCompletionRequestMessageRoleEnum } from '../../../core/ai/constant';
 import encodingJson from './cl100k_base.json';
-import { ChatMessageItemType } from '../../../core/ai/type';
+import { ChatCompletionMessageParam } from '../../../core/ai/type';
+import { ChatRoleEnum } from '../../../core/chat/constants';
+import { ChatCompletionRequestMessageRoleEnum } from '../../../core/ai/constants';
 
 /* init tikToken obj */
 export function getTikTokenEnc() {
@@ -57,7 +58,7 @@ export const countMessagesTokens = (messages: ChatItemType[], tools?: any) => {
 
   return countGptMessagesTokens(adaptMessages, tools);
 };
-export const countGptMessagesTokens = (messages: ChatMessageItemType[], tools?: any) =>
+export const countGptMessagesTokens = (messages: ChatCompletionMessageParam[], tools?: any) =>
   messages.reduce((sum, item) => sum + countPromptTokens(item.content, item.role, tools), 0);
 
 /* slice messages from top to bottom by maxTokens */

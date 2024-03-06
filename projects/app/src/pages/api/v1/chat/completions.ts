@@ -8,8 +8,9 @@ import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constant
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { dispatchModules } from '@/service/moduleDispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
-import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
-import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import { textAdaptGptResponse } from '@/utils/adapt';
+import { adaptGPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -41,7 +42,7 @@ type FastGptWebChatProps = {
 export type Props = ChatCompletionCreateParams &
   FastGptWebChatProps &
   OutLinkChatAuthProps & {
-    messages: ChatMessageItemType[];
+    messages: ChatCompletionMessageParam[];
     stream?: boolean;
     detail?: boolean;
     variables: Record<string, any>;
@@ -103,7 +104,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     let startTime = Date.now();
 
-    const chatMessages = gptMessage2ChatType(messages);
+    const chatMessages = adaptGPTMessages2Chats(messages);
     if (chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human) {
       chatMessages.pop();
     }

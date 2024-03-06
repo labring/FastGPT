@@ -1,5 +1,5 @@
 import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { filterGptMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -113,7 +113,7 @@ ${systemPrompt}
     }
   ];
 
-  const filterMessages = ChatContextFilter({
+  const filterMessages = filterGptMessageByMaxTokens({
     messages,
     maxTokens: cqModel.maxContext
   });

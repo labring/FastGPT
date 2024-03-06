@@ -1,16 +1,16 @@
 import type { ChatItemType } from '../../core/chat/type.d';
 import { ChatRoleEnum } from '../../core/chat/constants';
-import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constant';
-import type { ChatMessageItemType } from '../../core/ai/type.d';
+import type { ChatCompletionMessageParam } from '../../core/ai/type.d';
+import { ChatCompletionRequestMessageRoleEnum } from '../../core/ai/constants';
 
-const chat2Message = {
+const chat2GPT = {
   [ChatRoleEnum.AI]: ChatCompletionRequestMessageRoleEnum.Assistant,
   [ChatRoleEnum.Human]: ChatCompletionRequestMessageRoleEnum.User,
   [ChatRoleEnum.System]: ChatCompletionRequestMessageRoleEnum.System,
   [ChatRoleEnum.Function]: ChatCompletionRequestMessageRoleEnum.Function,
   [ChatRoleEnum.Tool]: ChatCompletionRequestMessageRoleEnum.Tool
 };
-const message2Chat = {
+const GPT2Chat = {
   [ChatCompletionRequestMessageRoleEnum.System]: ChatRoleEnum.System,
   [ChatCompletionRequestMessageRoleEnum.User]: ChatRoleEnum.Human,
   [ChatCompletionRequestMessageRoleEnum.Assistant]: ChatRoleEnum.AI,
@@ -18,11 +18,8 @@ const message2Chat = {
   [ChatCompletionRequestMessageRoleEnum.Tool]: ChatRoleEnum.Tool
 };
 
-export function adaptRole_Chat2Message(role: `${ChatRoleEnum}`) {
-  return chat2Message[role];
-}
 export function adaptRole_Message2Chat(role: `${ChatCompletionRequestMessageRoleEnum}`) {
-  return message2Chat[role];
+  return GPT2Chat[role];
 }
 
 export const adaptChat2GptMessages = ({
@@ -31,10 +28,19 @@ export const adaptChat2GptMessages = ({
 }: {
   messages: ChatItemType[];
   reserveId: boolean;
-}): ChatMessageItemType[] => {
+}): ChatCompletionMessageParam[] => {
+  // @ts-ignore
   return messages.map((item) => ({
     ...(reserveId && { dataId: item.dataId }),
-    role: chat2Message[item.obj],
-    content: item.value || ''
+    role: chat2GPT[item.obj],
+    content: item.value
+  }));
+};
+
+export const adaptGPTMessages2Chats = (messages: ChatCompletionMessageParam[]): ChatItemType[] => {
+  return messages.map((item) => ({
+    dataId: item.dataId,
+    obj: GPT2Chat[item.role],
+    value: item.content || ''
   }));
 };

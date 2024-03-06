@@ -153,6 +153,15 @@ export async function dispatchDatasetSearch(
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     responseData,
-    moduleDispatchBills
+    moduleDispatchBills,
+    [ModuleOutputKeyEnum.toolResponse]: {
+      moduleId: module.moduleId,
+      value: {
+        searchResult: searchRes.map((item) => ({
+          text: `${item.q}\n${item.a}`.trim(),
+          chunkIndex: item.chunkIndex
+        }))
+      }
+    }
   };
 }

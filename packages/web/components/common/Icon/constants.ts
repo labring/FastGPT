@@ -6,6 +6,7 @@ export const iconPaths = {
   collectionLight: () => import('./icons/collectionLight.svg'),
   collectionSolid: () => import('./icons/collectionSolid.svg'),
   'common/addCircleLight': () => import('./icons/common/addCircleLight.svg'),
+  'common/addLight': () => import('./icons/common/addLight.svg'),
   'common/backFill': () => import('./icons/common/backFill.svg'),
   'common/backLight': () => import('./icons/common/backLight.svg'),
   'common/clearLight': () => import('./icons/common/clearLight.svg'),

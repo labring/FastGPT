@@ -75,5 +75,13 @@ export const FlowValueTypeMap = {
     label: 'core.module.valueType.selectDataset',
     value: ModuleIOValueTypeEnum.selectDataset,
     description: ''
+  },
+  [ModuleIOValueTypeEnum.tools]: {
+    handlerStyle: {
+      background: '#21ba45'
+    },
+    label: 'core.module.valueType.tools',
+    value: ModuleIOValueTypeEnum.tools,
+    description: ''
   }
 };

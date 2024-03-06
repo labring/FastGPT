@@ -7,7 +7,7 @@ import {
 } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
-import { moduleDispatchResType } from '..//chat/type';
+import { ToolRunResponseItemType, moduleDispatchResType } from '..//chat/type';
 import { ChatModuleUsageType } from '../../support/wallet/bill/type';
 
 export type FlowModuleTemplateType = {
@@ -17,6 +17,7 @@ export type FlowModuleTemplateType = {
   avatar?: string;
   name: string;
   intro: string; // template list intro
+  isTool?: boolean; // can be connected by tool
   showStatus?: boolean; // chatting response step status
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -90,6 +91,7 @@ export type ContextExtractAgentItemType = {
 /* -------------- running module -------------- */
 export type RunningModuleItemType = {
   name: ModuleItemType['name'];
+  intro?: ModuleItemType['intro'];
   moduleId: ModuleItemType['moduleId'];
   flowType: ModuleItemType['flowType'];
   showStatus?: ModuleItemType['showStatus'];
@@ -98,14 +100,16 @@ export type RunningModuleItemType = {
   inputs: {
     key: string;
     value?: any;
-    valueType?: `${ModuleIOValueTypeEnum}`;
+    valueType?: FlowNodeInputItemType['valueType'];
+    required?: boolean;
+    toolDescription?: string;
   }[];
   outputs: {
     key: string;
     answer?: boolean;
     response?: boolean;
     value?: any;
-    valueType?: `${ModuleIOValueTypeEnum}`;
+    valueType?: FlowNodeOutputItemType['valueType'];
     targets: {
       moduleId: string;
       key: string;
@@ -130,9 +134,11 @@ export type ChatDispatchProps = {
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
   module: RunningModuleItemType;
+  modules: ModuleItemType[];
   params: T;
 };
 export type ModuleDispatchResponse<T> = T & {
   [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
+  [ModuleOutputKeyEnum.toolResponse]?: ToolRunResponseItemType;
   [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleUsageType[];
 };
