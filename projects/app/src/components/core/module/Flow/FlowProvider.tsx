@@ -177,7 +177,11 @@ export const FlowProvider = ({
     ({ connect }: { connect: Connection }) => {
       const source = nodes.find((node) => node.id === connect.source)?.data;
       const sourceType = (() => {
-        if (source?.flowType === FlowNodeTypeEnum.classifyQuestion) {
+        const type = source?.outputs.find(
+          (output) => output.key === connect.sourceHandle
+        )?.valueType;
+        console.log(type);
+        if (source?.flowType === FlowNodeTypeEnum.classifyQuestion && !type) {
           return ModuleIOValueTypeEnum.boolean;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
