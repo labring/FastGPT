@@ -176,7 +176,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
  */
 function formatSplitText(text: string, rawText: string) {
   text = text.replace(/\\n/g, '\n'); // 将换行符替换为空格
-  const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q|$)/g; // 匹配Q和A的正则表达式
+  const regex = /Q\d+:(\s*)(.*)(\s*)A\d+:(\s*)([\s\S]*?)(?=Q\d|$)/g; // 匹配Q和A的正则表达式
   const matches = text.matchAll(regex); // 获取所有匹配到的结果
 
   const result: PushDatasetDataChunkProps[] = []; // 存储最终的结果
