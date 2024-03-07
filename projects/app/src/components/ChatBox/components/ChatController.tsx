@@ -10,27 +10,7 @@ import { useTranslation } from 'react-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatChatValue2InputType } from '../utils';
 
-const ChatController = ({
-  isChatting,
-  chat,
-  setChatHistories,
-  display,
-  showVoiceIcon,
-  ttsConfig,
-  onReadUserDislike,
-  onCloseUserLike,
-  onMark,
-  onRetry,
-  onDelete,
-  onAddUserDislike,
-  onAddUserLike,
-  ml,
-  mr,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken
-}: OutLinkChatAuthProps & {
+export type ChatControllerProps = {
   isChatting: boolean;
   chat: ChatSiteItemType;
   setChatHistories?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
@@ -43,7 +23,26 @@ const ChatController = ({
   onCloseUserLike?: () => void;
   onAddUserLike?: () => void;
   onAddUserDislike?: () => void;
-} & FlexProps) => {
+};
+
+const ChatController = ({
+  isChatting,
+  chat,
+  setChatHistories,
+  showVoiceIcon,
+  ttsConfig,
+  onReadUserDislike,
+  onCloseUserLike,
+  onMark,
+  onRetry,
+  onDelete,
+  onAddUserDislike,
+  onAddUserLike,
+  shareId,
+  outLinkUid,
+  teamId,
+  teamToken
+}: OutLinkChatAuthProps & ChatControllerProps & FlexProps) => {
   const theme = useTheme();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
@@ -72,7 +71,7 @@ const ChatController = ({
   };
 
   return (
-    <Flex {...controlContainerStyle} ml={ml} mr={mr} display={display}>
+    <Flex {...controlContainerStyle}>
       <MyTooltip label={t('common.Copy')}>
         <MyIcon
           {...controlIconStyle}

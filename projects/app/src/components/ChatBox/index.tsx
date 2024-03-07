@@ -14,7 +14,7 @@ import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Card, Flex, useTheme, Checkbox } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -30,10 +30,8 @@ import {
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './SelectMarkCollection';
 
-import Markdown from '@/components/Markdown';
 import MyTooltip from '../MyTooltip';
 
-import styles from './index.module.scss';
 import { postQuestionGuide } from '@/web/core/ai/api';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import type {
@@ -48,8 +46,8 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { formatChatValue2InputType } from './utils';
+import { textareaMinH } from './constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { MessageCardStyle } from './constants';
 
 import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
@@ -61,8 +59,7 @@ const ChatAvatar = dynamic(() => import('./components/ChatAvatar'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const ChatController = dynamic(() => import('./components/ChatController'));
 const VariableInput = dynamic(() => import('./components/VariableInput'));
-
-const textareaMinH = '22px';
+const ChatItem = dynamic(() => import('./components/ChatItem'));
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -91,7 +88,7 @@ type Props = OutLinkChatAuthProps & {
     [ModuleRunTimerOutputEnum.responseData]: ChatHistoryItemResType[];
     isNewChat?: boolean;
   }>;
-  onDelMessage?: (e: { contentId?: string; index: number }) => void;
+  onDelMessage?: (e: { contentId: string }) => void;
 };
 
 /* 
@@ -508,63 +505,204 @@ const ChatBox = (
 
   // retry input
   const retryInput = useCallback(
-    async (index: number) => {
-      if (!onDelMessage) return;
-      const delHistory = chatHistories.slice(index);
+    (dataId?: string) => {
+      if (!dataId || !onDelMessage) return;
 
-      setLoading(true);
+      return async () => {
+        setLoading(true);
+        const index = chatHistories.findIndex((item) => item.dataId === dataId);
+        const delHistory = chatHistories.slice(index);
 
-      try {
-        await Promise.all(
-          delHistory.map((item, i) => onDelMessage({ contentId: item.dataId, index: index + i }))
-        );
-        setChatHistories((state) => (index === 0 ? [] : state.slice(0, index)));
+        try {
+          await Promise.all(
+            delHistory.map(async (item) => {
+              if (item.dataId) {
+                return onDelMessage({ contentId: item.dataId });
+              }
+            })
+          );
+          setChatHistories((state) => (index === 0 ? [] : state.slice(0, index)));
 
-        sendPrompt({
-          ...formatChatValue2InputType(delHistory[0].value),
-          history: chatHistories.slice(0, index)
-        });
-      } catch (error) {}
-      setLoading(false);
+          sendPrompt({
+            ...formatChatValue2InputType(delHistory[0].value),
+            history: chatHistories.slice(0, index)
+          });
+        } catch (error) {
+          toast({
+            status: 'warning',
+            title: getErrText(error, 'Retry failed')
+          });
+        }
+        setLoading(false);
+      };
     },
-    [chatHistories, onDelMessage, sendPrompt, setLoading]
+    [chatHistories, onDelMessage, sendPrompt, setLoading, toast]
   );
   // delete one message
   const delOneMessage = useCallback(
-    ({ dataId, index }: { dataId?: string; index: number }) => {
-      setChatHistories((state) => state.filter((chat) => chat.dataId !== dataId));
-      onDelMessage?.({
-        contentId: dataId,
-        index
-      });
+    (dataId?: string) => {
+      if (!dataId || !onDelMessage) return;
+      return () => {
+        setChatHistories((state) => state.filter((chat) => chat.dataId !== dataId));
+        onDelMessage({
+          contentId: dataId
+        });
+      };
     },
     [onDelMessage]
   );
+  // admin mark
+  const onMark = useCallback(
+    (chat: ChatSiteItemType, q = '') => {
+      if (!showMarkIcon) return;
 
-  // output data
-  useImperativeHandle(ref, () => ({
-    getChatHistories: () => chatHistories,
-    resetVariables(e) {
-      const defaultVal: Record<string, any> = {};
-      filterVariableModules?.forEach((item) => {
-        defaultVal[item.key] = '';
-      });
+      return () => {
+        if (!chat.dataId) return;
 
-      setValue('variables', e || defaultVal);
+        if (chat.adminFeedback) {
+          setAdminMarkData({
+            chatItemId: chat.dataId,
+            datasetId: chat.adminFeedback.datasetId,
+            collectionId: chat.adminFeedback.collectionId,
+            dataId: chat.adminFeedback.dataId,
+            q: chat.adminFeedback.q || q || '',
+            a: chat.adminFeedback.a
+          });
+        } else {
+          setAdminMarkData({
+            chatItemId: chat.dataId,
+            q,
+            a: formatChatValue2InputType(chat.value).text
+          });
+        }
+      };
     },
-    resetHistory(e) {
-      setVariableInputFinish(!!e.length);
-      setChatHistories(e);
-    },
-    scrollToBottom,
-    sendPrompt: (question: string) => {
-      sendPrompt({
-        text: question
-      });
-    }
-  }));
+    [showMarkIcon]
+  );
+  const onAddUserLike = useCallback(
+    (chat: ChatSiteItemType) => {
+      if (feedbackType !== FeedbackTypeEnum.user || chat.userBadFeedback) return;
+      return () => {
+        if (!chat.dataId || !chatId || !appId) return;
 
-  /* style start */
+        const isGoodFeedback = !!chat.userGoodFeedback;
+        setChatHistories((state) =>
+          state.map((chatItem) =>
+            chatItem.dataId === chat.dataId
+              ? {
+                  ...chatItem,
+                  userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+                }
+              : chatItem
+          )
+        );
+        try {
+          updateChatUserFeedback({
+            appId,
+            chatId,
+            chatItemId: chat.dataId,
+            shareId,
+            outLinkUid,
+            userGoodFeedback: isGoodFeedback ? undefined : 'yes'
+          });
+        } catch (error) {}
+      };
+    },
+    [appId, chatId, feedbackType, outLinkUid, shareId]
+  );
+  const onCloseUserLike = useCallback(
+    (chat: ChatSiteItemType) => {
+      if (feedbackType !== FeedbackTypeEnum.admin) return;
+      return () => {
+        if (!chat.dataId || !chatId || !appId) return;
+        setChatHistories((state) =>
+          state.map((chatItem) =>
+            chatItem.dataId === chat.dataId
+              ? { ...chatItem, userGoodFeedback: undefined }
+              : chatItem
+          )
+        );
+        updateChatUserFeedback({
+          appId,
+          chatId,
+          chatItemId: chat.dataId,
+          userGoodFeedback: undefined
+        });
+      };
+    },
+    [appId, chatId, feedbackType]
+  );
+  const onADdUserDislike = useCallback(
+    (chat: ChatSiteItemType) => {
+      if (feedbackType !== FeedbackTypeEnum.user || chat.userGoodFeedback) {
+        return;
+      }
+      if (chat.userBadFeedback) {
+        return () => {
+          if (!chat.dataId || !chatId || !appId) return;
+          setChatHistories((state) =>
+            state.map((chatItem) =>
+              chatItem.dataId === chat.dataId
+                ? { ...chatItem, userBadFeedback: undefined }
+                : chatItem
+            )
+          );
+          try {
+            updateChatUserFeedback({
+              appId,
+              chatId,
+              chatItemId: chat.dataId,
+              shareId,
+              outLinkUid
+            });
+          } catch (error) {}
+        };
+      } else {
+        return () => setFeedbackId(chat.dataId);
+      }
+    },
+    [appId, chatId, feedbackType, outLinkUid, shareId]
+  );
+  const onReadUserDislike = useCallback(
+    (chat: ChatSiteItemType) => {
+      if (feedbackType !== FeedbackTypeEnum.admin) return;
+      return () => {
+        if (!chat.dataId) return;
+        setReadFeedbackData({
+          chatItemId: chat.dataId || '',
+          content: chat.userBadFeedback || ''
+        });
+      };
+    },
+    [feedbackType]
+  );
+  const onCloseCustomFeedback = useCallback(
+    (chat: ChatSiteItemType, i: number) => {
+      return (e: React.ChangeEvent<HTMLInputElement>) => {
+        if (e.target.checked && appId && chatId && chat.dataId) {
+          closeCustomFeedback({
+            appId,
+            chatId,
+            chatItemId: chat.dataId,
+            index: i
+          });
+          // update dom
+          setChatHistories((state) =>
+            state.map((chatItem) =>
+              chatItem.dataId === chat.dataId
+                ? {
+                    ...chatItem,
+                    customFeedbacks: chatItem.customFeedbacks?.filter((_, index) => index !== i)
+                  }
+                : chatItem
+            )
+          );
+        }
+      };
+    },
+    [appId, chatId]
+  );
+
   const showEmpty = useMemo(
     () =>
       feConfigs?.show_emptyChat &&
@@ -595,7 +733,6 @@ const ChatBox = (
       name: t(chatContent.moduleName || '') || t('common.Loading')
     };
   }, [chatHistories, isChatting, t]);
-  /* style end */
 
   // page change and abort request
   useEffect(() => {
@@ -638,13 +775,28 @@ const ChatBox = (
     };
   }, [resetInputVal, sendPrompt]);
 
-  const onSubmitVariables = useCallback(
-    (data: Record<string, any>) => {
-      setVariableInputFinish(true);
-      onUpdateVariable?.(data);
+  // output data
+  useImperativeHandle(ref, () => ({
+    getChatHistories: () => chatHistories,
+    resetVariables(e) {
+      const defaultVal: Record<string, any> = {};
+      filterVariableModules?.forEach((item) => {
+        defaultVal[item.key] = '';
+      });
+
+      setValue('variables', e || defaultVal);
     },
-    [onUpdateVariable]
-  );
+    resetHistory(e) {
+      setVariableInputFinish(!!e.length);
+      setChatHistories(e);
+    },
+    scrollToBottom,
+    sendPrompt: (question: string) => {
+      sendPrompt({
+        text: question
+      });
+    }
+  }));
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -661,7 +813,10 @@ const ChatBox = (
               variableModules={filterVariableModules}
               variableIsFinish={variableIsFinish}
               chatForm={chatForm}
-              onSubmitVariables={onSubmitVariables}
+              onSubmitVariables={(data) => {
+                setVariableInputFinish(true);
+                onUpdateVariable?.(data);
+              }}
             />
           )}
           {/* chat history */}
@@ -669,304 +824,81 @@ const ChatBox = (
             {chatHistories.map((item, index) => (
               <Box key={item.dataId} py={5}>
                 {item.obj === 'Human' && (
-                  <>
-                    {/* control icon */}
-                    <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
-                      <ChatController
-                        isChatting={isChatting}
-                        chat={item}
-                        onDelete={
-                          onDelMessage
-                            ? () => {
-                                delOneMessage({ dataId: item.dataId, index });
-                              }
-                            : undefined
-                        }
-                        onRetry={() => retryInput(index)}
-                      />
-                      <ChatAvatar src={userAvatar} type={'Human'} />
-                    </Flex>
-                    {/* content */}
-                    <Box mt={['6px', 2]} textAlign={'right'}>
-                      <Card
-                        className="markdown"
-                        {...MessageCardStyle}
-                        bg={'primary.200'}
-                        borderRadius={'8px 0 8px 8px'}
-                        textAlign={'left'}
-                      >
-                        {(() => {
-                          const { text, files } = formatChatValue2InputType(item.value);
-
-                          return (
-                            <>
-                              <Markdown source={text} isChatting={false} />
-                            </>
-                          );
-                        })()}
-                      </Card>
-                    </Box>
-                  </>
+                  <ChatItem
+                    type={item.obj}
+                    avatar={item.obj === 'Human' ? userAvatar : appAvatar}
+                    chat={item}
+                    isChatting={isChatting}
+                    onRetry={retryInput(item.dataId)}
+                    onDelete={delOneMessage(item.dataId)}
+                  />
                 )}
                 {item.obj === 'AI' && (
                   <>
-                    <Flex w={'100%'} alignItems={'center'}>
-                      <ChatAvatar src={appAvatar} type={'AI'} />
-                      {/* control icon */}
-                      <ChatController
-                        isChatting={isChatting}
-                        ml={2}
-                        chat={item}
-                        setChatHistories={setChatHistories}
-                        display={index === chatHistories.length - 1 && isChatting ? 'none' : 'flex'}
-                        showVoiceIcon={showVoiceIcon}
-                        ttsConfig={ttsConfig}
-                        shareId={shareId}
-                        outLinkUid={outLinkUid}
-                        teamId={teamId}
-                        teamToken={teamToken}
-                        onDelete={
-                          onDelMessage
-                            ? () => {
-                                delOneMessage({ dataId: item.dataId, index });
-                              }
-                            : undefined
-                        }
-                        onMark={
-                          showMarkIcon
-                            ? () => {
-                                if (!item.dataId) return;
-                                if (item.adminFeedback) {
-                                  setAdminMarkData({
-                                    chatItemId: item.dataId,
-                                    datasetId: item.adminFeedback.datasetId,
-                                    collectionId: item.adminFeedback.collectionId,
-                                    dataId: item.adminFeedback.dataId,
-                                    q:
-                                      item.adminFeedback.q || chatHistories[index - 1]?.value || '',
-                                    a: item.adminFeedback.a
-                                  });
-                                } else {
-                                  setAdminMarkData({
-                                    chatItemId: item.dataId,
-                                    q: '',
-                                    a: formatChatValue2InputType(item.value).text
-                                  });
-                                }
-                              }
-                            : undefined
-                        }
-                        onAddUserLike={
-                          feedbackType !== FeedbackTypeEnum.user || item.userBadFeedback
-                            ? undefined
-                            : () => {
-                                if (!item.dataId || !chatId || !appId) return;
-
-                                const isGoodFeedback = !!item.userGoodFeedback;
-                                setChatHistories((state) =>
-                                  state.map((chatItem) =>
-                                    chatItem.dataId === item.dataId
-                                      ? {
-                                          ...chatItem,
-                                          userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-                                        }
-                                      : chatItem
-                                  )
-                                );
-                                try {
-                                  updateChatUserFeedback({
-                                    appId,
-                                    chatId,
-                                    chatItemId: item.dataId,
-                                    shareId,
-                                    outLinkUid,
-                                    userGoodFeedback: isGoodFeedback ? undefined : 'yes'
-                                  });
-                                } catch (error) {}
-                              }
-                        }
-                        onCloseUserLike={
-                          feedbackType === FeedbackTypeEnum.admin
-                            ? () => {
-                                if (!item.dataId || !chatId || !appId) return;
-                                setChatHistories((state) =>
-                                  state.map((chatItem) =>
-                                    chatItem.dataId === item.dataId
-                                      ? { ...chatItem, userGoodFeedback: undefined }
-                                      : chatItem
-                                  )
-                                );
-                                updateChatUserFeedback({
-                                  appId,
-                                  chatId,
-                                  chatItemId: item.dataId,
-                                  userGoodFeedback: undefined
-                                });
-                              }
-                            : undefined
-                        }
-                        onAddUserDislike={(() => {
-                          if (feedbackType !== FeedbackTypeEnum.user || item.userGoodFeedback) {
-                            return;
-                          }
-                          if (item.userBadFeedback) {
-                            return () => {
-                              if (!item.dataId || !chatId || !appId) return;
-                              setChatHistories((state) =>
-                                state.map((chatItem) =>
-                                  chatItem.dataId === item.dataId
-                                    ? { ...chatItem, userBadFeedback: undefined }
-                                    : chatItem
-                                )
-                              );
-                              try {
-                                updateChatUserFeedback({
-                                  appId,
-                                  chatId,
-                                  chatItemId: item.dataId,
-                                  shareId,
-                                  outLinkUid
-                                });
-                              } catch (error) {}
-                            };
-                          } else {
-                            return () => setFeedbackId(item.dataId);
-                          }
-                        })()}
-                        onReadUserDislike={
-                          feedbackType === FeedbackTypeEnum.admin
-                            ? () => {
-                                if (!item.dataId) return;
-                                setReadFeedbackData({
-                                  chatItemId: item.dataId || '',
-                                  content: item.userBadFeedback || ''
-                                });
-                              }
-                            : undefined
-                        }
+                    <ChatItem
+                      type={item.obj}
+                      avatar={appAvatar}
+                      chat={item}
+                      isChatting={isChatting}
+                      onRetry={retryInput(item.dataId)}
+                      onDelete={delOneMessage(item.dataId)}
+                      {...(item.obj === 'AI' && {
+                        setChatHistories,
+                        showVoiceIcon,
+                        ttsConfig,
+                        shareId,
+                        outLinkUid,
+                        teamId,
+                        teamToken,
+                        statusBoxData,
+                        isLastChild: index === chatHistories.length - 1,
+                        onMark: onMark(
+                          item,
+                          formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
+                        ),
+                        onAddUserLike: onAddUserLike(item),
+                        onCloseUserLike: onCloseUserLike(item),
+                        onAddUserDislike: onADdUserDislike(item),
+                        onReadUserDislike: onReadUserDislike(item)
+                      })}
+                    >
+                      <ResponseTags
+                        responseData={item.responseData}
+                        showDetail={!shareId && !teamId}
                       />
-                      {/* chatting status */}
-                      {statusBoxData && index === chatHistories.length - 1 && (
-                        <Flex
-                          ml={3}
-                          alignItems={'center'}
-                          px={3}
-                          py={'1px'}
-                          borderRadius="md"
-                          border={theme.borders.base}
-                        >
-                          <Box
-                            className={styles.statusAnimation}
-                            bg={statusBoxData.bg}
-                            w="8px"
-                            h="8px"
-                            borderRadius={'50%'}
-                            mt={'1px'}
-                          ></Box>
-                          <Box ml={2} color={'myGray.600'}>
-                            {statusBoxData.name}
-                          </Box>
-                        </Flex>
-                      )}
-                    </Flex>
-                    {/* content */}
-                    <Box textAlign={'left'} mt={['6px', 2]}>
-                      <Card bg={'white'} {...MessageCardStyle}>
-                        {item.value.map((value, i) => {
-                          const key = `${item.dataId}-ai-${i}`;
-                          if (value.text) {
-                            return (
-                              <Markdown
-                                key={key}
-                                source={value.text.content || ''}
-                                isChatting={index === chatHistories.length - 1 && isChatting}
-                              />
-                            );
-                          }
-                          if (value.tools) {
-                            return (
-                              <Box key={key}>
-                                {value.tools.map((tool) => (
-                                  <Box key={tool.id}>
-                                    <Box>{tool.toolName}</Box>
-                                    <Markdown
-                                      source={`~~~json
-${tool.params}`}
-                                    />
-                                    <Markdown
-                                      source={`~~~json
-${tool.response}`}
-                                    />
-                                  </Box>
-                                ))}
-                              </Box>
-                            );
-                          }
-                        })}
 
-                        <ResponseTags
-                          responseData={item.responseData}
-                          showDetail={!shareId && !teamId}
-                        />
-
-                        {/* custom feedback */}
-                        {item.customFeedbacks && item.customFeedbacks.length > 0 && (
-                          <Box>
-                            <ChatBoxDivider
-                              icon={'core/app/customFeedback'}
-                              text={t('core.app.feedback.Custom feedback')}
-                            />
-                            {item.customFeedbacks.map((text, i) => (
-                              <Box key={`${text}${i}`}>
-                                <MyTooltip label={t('core.app.feedback.close custom feedback')}>
-                                  <Checkbox
-                                    onChange={(e) => {
-                                      if (e.target.checked && appId && chatId && item.dataId) {
-                                        closeCustomFeedback({
-                                          appId,
-                                          chatId,
-                                          chatItemId: item.dataId,
-                                          index: i
-                                        });
-                                        // update dom
-                                        setChatHistories((state) =>
-                                          state.map((chatItem) =>
-                                            chatItem.dataId === item.dataId
-                                              ? {
-                                                  ...chatItem,
-                                                  customFeedbacks: chatItem.customFeedbacks?.filter(
-                                                    (item, index) => index !== i
-                                                  )
-                                                }
-                                              : chatItem
-                                          )
-                                        );
-                                      }
-                                      console.log(e);
-                                    }}
-                                  >
-                                    {text}
-                                  </Checkbox>
-                                </MyTooltip>
-                              </Box>
-                            ))}
-                          </Box>
-                        )}
-                        {/* admin mark content */}
-                        {showMarkIcon && item.adminFeedback && (
-                          <Box fontSize={'sm'}>
-                            <ChatBoxDivider
-                              icon="core/app/markLight"
-                              text={t('core.chat.Admin Mark Content')}
-                            />
-                            <Box whiteSpace={'pre'}>
-                              <Box color={'black'}>{item.adminFeedback.q}</Box>
-                              <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
+                      {/* custom feedback */}
+                      {item.customFeedbacks && item.customFeedbacks.length > 0 && (
+                        <Box>
+                          <ChatBoxDivider
+                            icon={'core/app/customFeedback'}
+                            text={t('core.app.feedback.Custom feedback')}
+                          />
+                          {item.customFeedbacks.map((text, i) => (
+                            <Box key={`${text}${i}`}>
+                              <MyTooltip label={t('core.app.feedback.close custom feedback')}>
+                                <Checkbox onChange={onCloseCustomFeedback(item, i)}>
+                                  {text}
+                                </Checkbox>
+                              </MyTooltip>
                             </Box>
+                          ))}
+                        </Box>
+                      )}
+                      {/* admin mark content */}
+                      {showMarkIcon && item.adminFeedback && (
+                        <Box fontSize={'sm'}>
+                          <ChatBoxDivider
+                            icon="core/app/markLight"
+                            text={t('core.chat.Admin Mark Content')}
+                          />
+                          <Box whiteSpace={'pre'}>
+                            <Box color={'black'}>{item.adminFeedback.q}</Box>
+                            <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
                           </Box>
-                        )}
-                      </Card>
-                    </Box>
+                        </Box>
+                      )}
+                    </ChatItem>
                   </>
                 )}
               </Box>

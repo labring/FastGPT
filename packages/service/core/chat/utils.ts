@@ -6,7 +6,6 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
 
 /* slice chat context by tokens */
 export function filterGPTMessageByMaxTokens({

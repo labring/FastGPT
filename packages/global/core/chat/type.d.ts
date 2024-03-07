@@ -44,7 +44,7 @@ export type ChatItemValueItemType = {
   };
   file?: {
     type: `${ChatFileTypeEnum}`;
-    name: string;
+    name?: string;
     url: string;
   };
   tools?: ToolModuleResponseItemType[];

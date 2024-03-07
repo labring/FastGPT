@@ -1,5 +1,7 @@
 import { BoxProps } from '@chakra-ui/react';
 
+export const textareaMinH = '22px';
+
 export const MessageCardStyle: BoxProps = {
   px: 4,
   py: 3,
@@ -8,7 +10,3 @@ export const MessageCardStyle: BoxProps = {
   display: 'inline-block',
   maxW: ['calc(100% - 25px)', 'calc(100% - 40px)']
 };
-
-export enum StreamResponseTypeEnum {
-  text = 'text'
-}

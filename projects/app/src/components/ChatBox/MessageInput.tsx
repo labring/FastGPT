@@ -8,12 +8,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { customAlphabet } from 'nanoid';
-import { ChatFileTypeEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputType } from './type';
+import { textareaMinH } from './constants';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 type FileItemType = {
@@ -58,15 +59,15 @@ const MessageInput = ({
   const { isPc } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
-  const textareaMinH = '22px';
   const [fileList, setFileList] = useState<FileItemType[]>([]);
   const havInput = !!TextareaDom.current?.value || fileList.length > 0;
 
-  const images: ChatBoxInputType['images'] = useMemo(
+  const images: ChatBoxInputType['files'] = useMemo(
     () =>
       fileList
         .filter((item) => item.type === ChatFileTypeEnum.image)
         .map((item) => ({
+          type: ChatFileTypeEnum.image,
           url: item.src || item.icon
         })),
     [fileList]
@@ -88,7 +89,7 @@ const MessageInput = ({
             maxW: 4329,
             maxH: 4329,
             maxSize: 1024 * 1024 * 5,
-            // 30 day expired.
+            // 7 day expired.
             expiredTime: addDays(new Date(), 7),
             shareId,
             outLinkUid,
@@ -164,7 +165,7 @@ const MessageInput = ({
 
     onSendMessage({
       text: textareaValue.trim(),
-      images
+      files: images
     });
     setFileList([]);
   }, [TextareaDom, images, onSendMessage]);
