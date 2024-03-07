@@ -294,8 +294,8 @@ const OutLink = ({
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
+              confirmClearText={t('core.chat.Confirm to clear history')}
               onClose={onCloseSlider}
-              isTeamShare
               history={histories.map((item, i) => ({
                 id: item.chatId,
                 title: item.title,
@@ -364,7 +364,7 @@ const OutLink = ({
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
-                onUpdateVariable={(e) => { }}
+                onUpdateVariable={(e) => {}}
                 onStartChat={startChat}
                 onDelMessage={(e) =>
                   delOneHistoryItem({ ...e, appId: chatData.appId, chatId, teamId, teamToken })

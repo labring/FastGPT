@@ -80,7 +80,7 @@ const ChatHistorySlider = ({
     placeholder: t('core.chat.Custom History Title Description')
   });
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: t(confirmClearText)
+    content: confirmClearText
   });
 
   const concatHistory = useMemo<HistoryItemType[]>(
@@ -204,14 +204,14 @@ const ChatHistorySlider = ({
                 bg={item.top ? '#E6F6F6 !important' : ''}
                 {...(item.id === activeChatId
                   ? {
-                    backgroundColor: 'primary.50 !important',
-                    color: 'primary.600'
-                  }
-                  : {
-                    onClick: () => {
-                      onChangeChat(item.id);
+                      backgroundColor: 'primary.50 !important',
+                      color: 'primary.600'
                     }
-                  })}
+                  : {
+                      onClick: () => {
+                        onChangeChat(item.id);
+                      }
+                    })}
               >
                 <MyIcon
                   name={item.id === activeChatId ? 'core/chat/chatFill' : 'core/chat/chatLight'}
@@ -286,36 +286,37 @@ const ChatHistorySlider = ({
         )}
         {currentTab === TabEnum.app && !isPc && (
           <>
-            {Array.isArray(apps) && apps.map((item) => (
-              <Flex
-                key={item._id}
-                py={2}
-                px={3}
-                mb={3}
-                borderRadius={'md'}
-                alignItems={'center'}
-                {...(item._id === appId
-                  ? {
-                    backgroundColor: 'primary.50 !important',
-                    color: 'primary.600'
-                  }
-                  : {
-                    onClick: () => {
-                      router.replace({
-                        query: {
-                          appId: item._id
+            {Array.isArray(apps) &&
+              apps.map((item) => (
+                <Flex
+                  key={item._id}
+                  py={2}
+                  px={3}
+                  mb={3}
+                  borderRadius={'md'}
+                  alignItems={'center'}
+                  {...(item._id === appId
+                    ? {
+                        backgroundColor: 'primary.50 !important',
+                        color: 'primary.600'
+                      }
+                    : {
+                        onClick: () => {
+                          router.replace({
+                            query: {
+                              appId: item._id
+                            }
+                          });
+                          onClose();
                         }
-                      });
-                      onClose();
-                    }
-                  })}
-              >
-                <Avatar src={item.avatar} w={'24px'} />
-                <Box ml={2} className={'textEllipsis'}>
-                  {item.name}
-                </Box>
-              </Flex>
-            ))}
+                      })}
+                >
+                  <Avatar src={item.avatar} w={'24px'} />
+                  <Box ml={2} className={'textEllipsis'}>
+                    {item.name}
+                  </Box>
+                </Flex>
+              ))}
           </>
         )}
       </Box>
