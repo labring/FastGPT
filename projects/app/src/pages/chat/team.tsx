@@ -85,7 +85,6 @@ const OutLink = ({
         onMessage: generatingMessage,
         abortCtrl: controller
       });
-      console.log(responseData);
       const newTitle =
         chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
         prompts[1]?.value?.slice(0, 20) ||
@@ -291,10 +290,12 @@ const OutLink = ({
           })(
             <ChatHistorySlider
               appId={appId}
+              apps={myApps}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
               onClose={onCloseSlider}
+              isTeamShare
               history={histories.map((item, i) => ({
                 id: item.chatId,
                 title: item.title,
@@ -363,7 +364,7 @@ const OutLink = ({
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
-                onUpdateVariable={(e) => {}}
+                onUpdateVariable={(e) => { }}
                 onStartChat={startChat}
                 onDelMessage={(e) =>
                   delOneHistoryItem({ ...e, appId: chatData.appId, chatId, teamId, teamToken })

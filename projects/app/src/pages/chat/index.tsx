@@ -277,6 +277,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
             );
           })(
             <ChatHistorySlider
+              apps={myApps}
+              confirmClearText={'core.chat.Confirm to clear history'}
               appId={appId}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
