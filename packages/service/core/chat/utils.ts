@@ -1,4 +1,4 @@
-import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import type {
   ChatCompletionContentPart,
@@ -6,9 +6,10 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { ChatItemType } from '@fastgpt/global/core/chat/type';
 
 /* slice chat context by tokens */
-export function filterGptMessageByMaxTokens({
+export function filterGPTMessageByMaxTokens({
   messages = [],
   maxTokens
 }: {
@@ -18,7 +19,23 @@ export function filterGptMessageByMaxTokens({
   if (!Array.isArray(messages)) {
     return [];
   }
-  const rawTextLen = messages.reduce((sum, item) => sum + (item.content?.length || 0), 0);
+  const rawTextLen = messages.reduce((sum, item) => {
+    if (typeof item.content === 'string') {
+      return sum + item.content.length;
+    }
+    if (Array.isArray(item.content)) {
+      return (
+        sum +
+        item.content.reduce((sum, item) => {
+          if (item.type === 'text') {
+            return sum + item.text.length;
+          }
+          return sum;
+        }, 0)
+      );
+    }
+    return sum;
+  }, 0);
 
   // If the text length is less than half of the maximum token, no calculation is required
   if (rawTextLen < maxTokens * 0.5) {
@@ -67,6 +84,30 @@ export function filterGptMessageByMaxTokens({
 
   return [...systemPrompts, ...chats];
 }
+export const formatGPTMessagesInRequestBefore = (messages: ChatCompletionMessageParam[]) => {
+  return messages
+    .map((item) => {
+      if (!item.content) return;
+      if (typeof item.content === 'string') {
+        return {
+          ...item,
+          content: item.content.trim()
+        };
+      }
+
+      // array
+      if (item.content.length === 0) return;
+      if (item.content.length === 1 && item.content[0].type === 'text') {
+        return {
+          ...item,
+          content: item.content[0].text
+        };
+      }
+
+      return item;
+    })
+    .filter(Boolean) as ChatCompletionMessageParam[];
+};
 
 /**
     string to vision model. Follow the markdown code block rule for interception:

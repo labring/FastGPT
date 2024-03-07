@@ -8,7 +8,7 @@ import ToolMenu from './ToolMenu';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
+import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 
 const ChatHeader = ({
   history,
@@ -33,10 +33,8 @@ const ChatHeader = ({
   const { isPc } = useSystemStore();
   const title = useMemo(
     () =>
-      chatContentReplaceBlock(history[history.length - 2]?.value)?.slice(0, 8) ||
-      appName ||
-      t('core.chat.New Chat'),
-    [appName, history]
+      getChatTitleFromChatMessage(history[history.length - 2], appName || t('core.chat.New Chat')),
+    [appName, history, t]
   );
 
   return (

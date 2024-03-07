@@ -1,5 +1,5 @@
 import React from 'react';
-import { ModalBody, Box, useTheme, Flex, Image } from '@chakra-ui/react';
+import { ModalBody, Box, useTheme } from '@chakra-ui/react';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import MyModal from '../MyModal';
 
@@ -38,7 +38,7 @@ const ContextModal = ({
             position={'relative'}
           >
             <Box fontWeight={'bold'}>{item.obj}</Box>
-            <Box>{item.value}</Box>
+            <Box>{JSON.stringify(item.value)}</Box>
           </Box>
         ))}
       </ModalBody>

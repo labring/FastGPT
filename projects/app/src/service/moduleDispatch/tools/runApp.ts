@@ -10,7 +10,11 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
+} from '@fastgpt/global/core/module/constants';
 import { getHistories, setEntryEntries } from '../utils';
 
 type Props = ModuleDispatchProps<{
@@ -81,13 +85,13 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   ]);
 
   return {
-    [ModuleOutputKeyEnum.responseData]: {
+    [ModuleRunTimerOutputEnum.responseData]: {
       moduleLogo: appData.avatar,
       query: userChatInput,
       textOutput: answerText,
       totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
       {
         moduleName: appData.name,
         totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0)

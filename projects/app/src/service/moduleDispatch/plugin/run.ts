@@ -7,7 +7,8 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import {
   DYNAMIC_INPUT_KEY,
   ModuleInputKeyEnum,
-  ModuleOutputKeyEnum
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
 } from '@fastgpt/global/core/module/constants';
 import { getPluginRuntimeById } from '@fastgpt/service/core/plugin/controller';
 import { authPluginCanUse } from '@fastgpt/service/support/permission/auth/plugin';
@@ -78,7 +79,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   return {
     answerText,
     // responseData, // debug
-    [ModuleOutputKeyEnum.responseData]: {
+    [ModuleRunTimerOutputEnum.responseData]: {
       moduleLogo: plugin.avatar,
       totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
       runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0),
@@ -91,7 +92,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
             })
           : undefined
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
       {
         moduleName: plugin.name,
         totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0),

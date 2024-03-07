@@ -1,6 +1,6 @@
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import { filterGptMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
+import { filterGPTMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import {
   ChatCompletion,
   ChatCompletionMessageToolCall,
@@ -57,7 +57,7 @@ export const runToolWithToolChoice = async (
     };
   });
 
-  const filterMessages = filterGptMessageByMaxTokens({
+  const filterMessages = filterGPTMessageByMaxTokens({
     messages,
     maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
   });
@@ -81,7 +81,6 @@ export const runToolWithToolChoice = async (
       }
     }
   );
-  console.log(JSON.stringify(filterMessages, null, 2));
 
   const { answer, toolCalls } = await (async () => {
     if (stream) {
@@ -125,7 +124,7 @@ export const runToolWithToolChoice = async (
 
         const toolResponse =
           moduleRunResponse.toolResponse.find((item) => item.moduleId === toolModule.moduleId)
-            ?.value || {};
+            ?.response || {};
 
         const toolMsgParams: ChatCompletionToolMessageParam = {
           tool_call_id: tool.id,
@@ -133,6 +132,23 @@ export const runToolWithToolChoice = async (
           name: tool.function.name,
           content: JSON.stringify(toolResponse)
         };
+
+        if (stream) {
+          console.log('2222222');
+          responseWrite({
+            res,
+            event: sseResponseEventEnum.toolResponse,
+            data: JSON.stringify({
+              tool: {
+                id: tool.id,
+                toolName: '',
+                avatar: '',
+                params: '',
+                response: JSON.stringify(toolResponse, null, 2)
+              }
+            })
+          });
+        }
 
         return {
           moduleRunResponse,
@@ -217,8 +233,15 @@ async function streamResponse({
           responseWrite({
             write,
             event: sseResponseEventEnum.toolCall,
-            data: textAdaptGptResponse({
-              text: toolModule.name
+            data: JSON.stringify({
+              tool: {
+                id: toolCall.id,
+                toolName: toolModule.name,
+                avatar: toolModule.avatar,
+                functionName: toolCall.function.name,
+                params: toolCall.function.arguments,
+                response: ''
+              }
             })
           });
           console.log('调用工具');
@@ -231,9 +254,15 @@ async function streamResponse({
         currentTool.function.arguments += arg;
         responseWrite({
           write,
-          event: sseResponseEventEnum.answer,
-          data: textAdaptGptResponse({
-            text: arg
+          event: sseResponseEventEnum.toolParams,
+          data: JSON.stringify({
+            tool: {
+              id: currentTool.id,
+              toolName: '',
+              avatar: '',
+              params: arg,
+              response: ''
+            }
           })
         });
       }

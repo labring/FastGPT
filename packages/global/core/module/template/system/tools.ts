@@ -45,7 +45,7 @@ export const ToolModule: FlowModuleTemplateType = {
     Output_Template_UserChatInput,
     {
       key: ModuleOutputKeyEnum.selectedTools,
-      valueType: ModuleIOValueTypeEnum.any,
+      valueType: ModuleIOValueTypeEnum.tools,
       type: FlowNodeOutputTypeEnum.hidden,
       targets: []
     },

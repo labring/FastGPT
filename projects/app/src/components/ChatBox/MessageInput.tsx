@@ -1,36 +1,31 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback, useState, useTransition } from 'react';
+import React, { useRef, useEffect, useCallback, useState, useTransition, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRouter } from 'next/router';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { customAlphabet } from 'nanoid';
-import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
+import { ChatFileTypeEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { ChatBoxInputType } from './type';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-enum FileTypeEnum {
-  image = 'image',
-  file = 'file'
-}
 type FileItemType = {
   id: string;
   rawFile: File;
-  type: `${FileTypeEnum}`;
+  type: `${ChatFileTypeEnum}`;
   name: string;
   icon: string; // img is base64
   src?: string;
 };
 
 const MessageInput = ({
-  onChange,
   onSendMessage,
   onStop,
   isChatting,
@@ -42,13 +37,12 @@ const MessageInput = ({
   teamId,
   teamToken
 }: OutLinkChatAuthProps & {
-  onChange?: (e: string) => void;
-  onSendMessage: (e: string) => void;
+  onSendMessage: (val: ChatBoxInputType) => void;
   onStop: () => void;
   isChatting: boolean;
   showFileSelector?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
-  resetInputVal: (val: string) => void;
+  resetInputVal: (val: ChatBoxInputType) => void;
 }) => {
   const [, startSts] = useTransition();
 
@@ -68,15 +62,25 @@ const MessageInput = ({
   const [fileList, setFileList] = useState<FileItemType[]>([]);
   const havInput = !!TextareaDom.current?.value || fileList.length > 0;
 
+  const images: ChatBoxInputType['images'] = useMemo(
+    () =>
+      fileList
+        .filter((item) => item.type === ChatFileTypeEnum.image)
+        .map((item) => ({
+          url: item.src || item.icon
+        })),
+    [fileList]
+  );
+
+  /* file selector and upload */
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: 'image/*',
     multiple: true,
     maxCount: 10
   });
-
   const { mutate: uploadFile } = useRequest({
     mutationFn: async (file: FileItemType) => {
-      if (file.type === FileTypeEnum.image) {
+      if (file.type === ChatFileTypeEnum.image) {
         try {
           const src = await compressImgFileAndUpload({
             type: MongoImageTypeEnum.chatImage,
@@ -110,7 +114,6 @@ const MessageInput = ({
     },
     errorToast: t('common.Upload File Failed')
   });
-
   const onSelectFile = useCallback(
     async (files: File[]) => {
       if (!files || files.length === 0) {
@@ -127,7 +130,7 @@ const MessageInput = ({
                   const item = {
                     id: nanoid(),
                     rawFile: file,
-                    type: FileTypeEnum.image,
+                    type: ChatFileTypeEnum.image,
                     name: file.name,
                     icon: reader.result as string
                   };
@@ -141,7 +144,7 @@ const MessageInput = ({
                 resolve({
                   id: nanoid(),
                   rawFile: file,
-                  type: FileTypeEnum.file,
+                  type: ChatFileTypeEnum.file,
                   name: file.name,
                   icon: 'file/pdf'
                 });
@@ -155,23 +158,16 @@ const MessageInput = ({
     [uploadFile]
   );
 
+  /* on send */
   const handleSend = useCallback(async () => {
     const textareaValue = TextareaDom.current?.value || '';
 
-    const images = fileList.filter((item) => item.type === FileTypeEnum.image);
-    const imagesText =
-      images.length === 0
-        ? ''
-        : `\`\`\`${IMG_BLOCK_KEY}
-${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
-\`\`\`
-`;
-
-    const inputMessage = `${imagesText}${textareaValue}`;
-
-    onSendMessage(inputMessage);
+    onSendMessage({
+      text: textareaValue.trim(),
+      images
+    });
     setFileList([]);
-  }, [TextareaDom, fileList, onSendMessage]);
+  }, [TextareaDom, images, onSendMessage]);
 
   useEffect(() => {
     if (!stream) {
@@ -277,7 +273,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                 className="close-icon"
                 display={['', 'none']}
               />
-              {item.type === FileTypeEnum.image && (
+              {item.type === ChatFileTypeEnum.image && (
                 <Image
                   alt={'img'}
                   src={item.icon}
@@ -339,10 +335,6 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
               const textarea = e.target;
               textarea.style.height = textareaMinH;
               textarea.style.height = `${textarea.scrollHeight}px`;
-
-              startSts(() => {
-                onChange?.(textarea.value);
-              });
             }}
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)
@@ -406,7 +398,7 @@ ${images.map((img) => JSON.stringify({ src: img.src })).join('\n')}
                     if (isSpeaking) {
                       return stopSpeak();
                     }
-                    startSpeak(resetInputVal);
+                    startSpeak((text) => resetInputVal({ text }));
                   }}
                 >
                   <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>

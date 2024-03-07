@@ -10,7 +10,7 @@ import { dispatchModules } from '@/service/moduleDispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { adaptGPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -104,7 +104,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     let startTime = Date.now();
 
-    const chatMessages = adaptGPTMessages2Chats(messages);
+    const chatMessages = GPTMessages2Chats(messages);
     if (chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human) {
       chatMessages.pop();
     }
@@ -130,7 +130,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             outLinkUid,
             chatId,
             ip: originIp,
-            question: question.value
+            question: question.value.map((item) => item.text?.content).join('\n')
           });
         }
         // team space chat

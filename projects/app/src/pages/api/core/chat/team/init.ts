@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleRunTimerOutputEnum } from '@fastgpt/global/core/module/constants';
 import type { InitChatResponse, InitTeamChatProps } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -49,7 +49,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId,
       chatId,
       limit: 30,
-      field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${ModuleOutputKeyEnum.responseData}`
+      field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${ModuleRunTimerOutputEnum.responseData}`
     });
 
     // pick share response field

@@ -5,3 +5,8 @@ export enum ChatCompletionRequestMessageRoleEnum {
   'Function' = 'function',
   'Tool' = 'tool'
 }
+
+export enum ChatMessageTypeEnum {
+  text = 'text',
+  image_url = 'image_url'
+}

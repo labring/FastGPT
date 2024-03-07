@@ -92,12 +92,10 @@ export enum ModuleInputKeyEnum {
 
 export enum ModuleOutputKeyEnum {
   // common
-  responseData = 'responseData',
-  moduleDispatchBills = 'moduleDispatchBills',
   userChatInput = 'userChatInput',
   finish = 'finish',
   history = 'history',
-  answerText = 'answerText', //  answer module text key
+  answerText = 'answerText', // module answer. the value will be show and save to history
   success = 'success',
   failed = 'failed',
   text = 'system_text',
@@ -116,8 +114,13 @@ export enum ModuleOutputKeyEnum {
   resultFalse = 'system_resultFalse',
 
   // tools
-  selectedTools = 'selectedTools',
-  toolResponse = 'toolResponse'
+  selectedTools = 'selectedTools'
+}
+export enum ModuleRunTimerOutputEnum {
+  responseData = 'responseData',
+  moduleDispatchBills = 'moduleDispatchBills',
+  toolResponse = 'toolResponse',
+  toolModuleOutput = 'toolModuleOutput'
 }
 
 export enum VariableInputEnum {

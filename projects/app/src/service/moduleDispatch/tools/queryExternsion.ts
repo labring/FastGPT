@@ -3,7 +3,11 @@ import type {
   ModuleDispatchProps,
   ModuleDispatchResponse
 } from '@fastgpt/global/core/module/type.d';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
+} from '@fastgpt/global/core/module/constants';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
@@ -57,14 +61,14 @@ export const dispatchQueryExtension = async ({
   });
 
   return {
-    [ModuleOutputKeyEnum.responseData]: {
+    [ModuleRunTimerOutputEnum.responseData]: {
       totalPoints,
       model: modelName,
       tokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
       {
         moduleName: module.name,
         totalPoints,

@@ -1,11 +1,17 @@
 import { NextApiResponse } from 'next';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleInputKeyEnum,
+  ModuleRunTimerOutputEnum
+} from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import type {
   ChatHistoryItemResType,
-  ToolRunResponseItemType
+  ChatItemValueItemType,
+  ToolModuleResponseItemType,
+  ToolRunResponseItemType,
+  moduleDispatchResType
 } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
@@ -32,6 +38,7 @@ import { dispatchPluginOutput } from './plugin/runOutput';
 import { checkTheModuleConnectedByTool, valueTypeFormat } from './utils';
 import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -85,7 +92,7 @@ export async function dispatchModules({
   const runningModules = loadModules(modules, variables);
 
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
-  let chatAnswerText = ''; // The value will be returned to the user
+  let chatAnswerValue: ChatItemValueItemType[] = []; // The value will be returned to the user
   let chatModuleBills: ChatModuleUsageType[] = [];
   let toolRunResponse: ToolRunResponseItemType[] = [];
   let runningTime = Date.now();
@@ -97,15 +104,34 @@ export async function dispatchModules({
       answerText = '',
       responseData,
       moduleDispatchBills,
-      toolResponse
+      toolResponse,
+      toolModuleOutput
     }: {
       [ModuleOutputKeyEnum.answerText]?: string;
-      [ModuleOutputKeyEnum.responseData]?: ChatHistoryItemResType | ChatHistoryItemResType[];
-      [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleUsageType[];
-      [ModuleOutputKeyEnum.toolResponse]?: ToolRunResponseItemType;
+      [ModuleRunTimerOutputEnum.responseData]?: ChatHistoryItemResType | ChatHistoryItemResType[];
+      [ModuleRunTimerOutputEnum.moduleDispatchBills]?: ChatModuleUsageType[];
+      [ModuleRunTimerOutputEnum.toolResponse]?: ToolRunResponseItemType;
+      [ModuleRunTimerOutputEnum.toolModuleOutput]?: ToolModuleResponseItemType[];
     }
   ) {
     const time = Date.now();
+
+    const isResponseAnswerText =
+      inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
+    if (isResponseAnswerText) {
+      const lastResponse = chatAnswerValue[chatAnswerValue.length - 1];
+      if (lastResponse && lastResponse.type === ChatItemValueTypeEnum.text && lastResponse.text) {
+        lastResponse.text.content += answerText;
+      } else {
+        chatAnswerValue.push({
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: answerText
+          }
+        });
+      }
+    }
+
     if (responseData) {
       if (Array.isArray(responseData)) {
         chatResponse = chatResponse.concat(responseData);
@@ -122,14 +148,18 @@ export async function dispatchModules({
     if (toolResponse) {
       toolRunResponse.push(toolResponse);
     }
-    runningTime = time;
-
-    const isResponseAnswerText =
-      inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
-    if (isResponseAnswerText) {
-      chatAnswerText += answerText;
+    if (toolModuleOutput) {
+      chatAnswerValue.push(
+        ...toolModuleOutput.map((item) => ({
+          type: ChatItemValueTypeEnum.tool,
+          tool: item
+        }))
+      );
     }
+
+    runningTime = time;
   }
+  /* Inject data into module input */
   function moduleInput(module: RunningModuleItemType, data: Record<string, any> = {}) {
     const updateInputValue = (key: string, value: any) => {
       const index = module.inputs.findIndex((item: any) => item.key === key);
@@ -142,6 +172,7 @@ export async function dispatchModules({
 
     return;
   }
+  /* Pass the output of the module to the next stage */
   function moduleOutput(
     module: RunningModuleItemType,
     result: Record<string, any> = {}
@@ -231,15 +262,15 @@ export async function dispatchModules({
 
     // format response data. Add modulename and module type
     const formatResponseData = (() => {
-      if (!dispatchRes[ModuleOutputKeyEnum.responseData]) return undefined;
-      if (Array.isArray(dispatchRes[ModuleOutputKeyEnum.responseData])) {
-        return dispatchRes[ModuleOutputKeyEnum.responseData];
+      if (!dispatchRes[ModuleRunTimerOutputEnum.responseData]) return undefined;
+      if (Array.isArray(dispatchRes[ModuleRunTimerOutputEnum.responseData])) {
+        return dispatchRes[ModuleRunTimerOutputEnum.responseData];
       }
 
       return {
         moduleName: module.name,
         moduleType: module.flowType,
-        ...dispatchRes[ModuleOutputKeyEnum.responseData]
+        ...dispatchRes[ModuleRunTimerOutputEnum.responseData]
       };
     })();
 
@@ -254,9 +285,9 @@ export async function dispatchModules({
         ? params[ModuleOutputKeyEnum.userChatInput]
         : undefined,
       ...dispatchRes,
-      [ModuleOutputKeyEnum.responseData]: formatResponseData,
-      [ModuleOutputKeyEnum.moduleDispatchBills]:
-        dispatchRes[ModuleOutputKeyEnum.moduleDispatchBills]
+      [ModuleRunTimerOutputEnum.responseData]: formatResponseData,
+      [ModuleRunTimerOutputEnum.moduleDispatchBills]:
+        dispatchRes[ModuleRunTimerOutputEnum.moduleDispatchBills]
     });
   }
   // start process width initInput
@@ -287,10 +318,10 @@ export async function dispatchModules({
   }
 
   return {
-    [ModuleOutputKeyEnum.answerText]: chatAnswerText,
-    [ModuleOutputKeyEnum.responseData]: chatResponse,
-    [ModuleOutputKeyEnum.moduleDispatchBills]: chatModuleBills,
-    [ModuleOutputKeyEnum.toolResponse]: toolRunResponse
+    [ModuleOutputKeyEnum.answerText]: chatAnswerValue,
+    [ModuleRunTimerOutputEnum.responseData]: chatResponse,
+    [ModuleRunTimerOutputEnum.moduleDispatchBills]: chatModuleBills,
+    [ModuleRunTimerOutputEnum.toolResponse]: toolRunResponse
   };
 }
 

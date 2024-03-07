@@ -1,6 +1,12 @@
-import { IMG_BLOCK_KEY, FILE_BLOCK_KEY } from './constants';
+import { ChatItemValueTypeEnum } from './constants';
+import { ChatItemType, ChatItemValueItemType } from './type';
 
-export function chatContentReplaceBlock(content: string = '') {
-  const regex = new RegExp(`\`\`\`(${IMG_BLOCK_KEY})\\n([\\s\\S]*?)\`\`\``, 'g');
-  return content.replace(regex, '').trim();
-}
+export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
+  const textMsg = message?.value.find((item) => item.type === ChatItemValueTypeEnum.text);
+
+  if (textMsg?.text?.content) {
+    return textMsg.text.content.slice(0, 20);
+  }
+
+  return defaultValue;
+};

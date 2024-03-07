@@ -6,7 +6,11 @@ import { runToolWithToolChoice } from './toolChoice';
 import { DispatchToolProps, ToolModuleItemType } from './type.d';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
+import {
+  chats2GPTMessages,
+  getSystemPrompt,
+  runtimePrompt2ChatsValue
+} from '@fastgpt/global/core/chat/adapt';
 
 export const dispatchRunTools = async (props: DispatchToolProps) => {
   const {
@@ -49,18 +53,14 @@ export const dispatchRunTools = async (props: DispatchToolProps) => {
   // console.log(toolOutput);
 
   const messages: ChatItemType[] = [
-    ...(systemPrompt
-      ? [
-          {
-            obj: ChatRoleEnum.System,
-            value: systemPrompt
-          }
-        ]
-      : []),
+    ...getSystemPrompt(systemPrompt),
     ...chatHistories,
     {
       obj: ChatRoleEnum.Human,
-      value: userChatInput
+      value: runtimePrompt2ChatsValue({
+        text: userChatInput,
+        files: []
+      })
     }
   ];
 
@@ -70,7 +70,7 @@ export const dispatchRunTools = async (props: DispatchToolProps) => {
         ...props,
         toolModules,
         toolModel,
-        messages: adaptChat2GptMessages({ messages, reserveId: false })
+        messages: chats2GPTMessages({ messages, reserveId: false })
       });
     }
   })();

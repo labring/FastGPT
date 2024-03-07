@@ -1,9 +1,9 @@
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
-import { StartChatFnProps } from '@/components/ChatBox';
+import type { StartChatFnProps } from '@/components/ChatBox/type.d';
 import { getToken } from '@/web/support/user/auth';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleRunTimerOutputEnum } from '@fastgpt/global/core/module/constants';
 import dayjs from 'dayjs';
 import {
   // refer to https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
@@ -19,7 +19,7 @@ type StreamFetchProps = {
 };
 type StreamResponseType = {
   responseText: string;
-  [ModuleOutputKeyEnum.responseData]: ChatHistoryItemResType[];
+  [ModuleRunTimerOutputEnum.responseData]: ChatHistoryItemResType[];
 };
 export const streamFetch = ({
   url = '/api/v1/chat/completions',
@@ -34,7 +34,7 @@ export const streamFetch = ({
 
     // response data
     let responseText = '';
-    let remainTextList: string[] = [];
+    let remainTextList: { event: `${sseResponseEventEnum}`; text: string }[] = [];
     let errMsg = '';
     let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
@@ -60,19 +60,26 @@ export const streamFetch = ({
     function animateResponseText() {
       // abort message
       if (abortCtrl.signal.aborted) {
-        const remainText = remainTextList.join('');
-        onMessage({ text: remainText });
-        responseText += remainText;
+        remainTextList.forEach((item) => {
+          onMessage(item);
+          if (item.event === sseResponseEventEnum.answer) {
+            responseText += item.text;
+          }
+        });
         return finish();
       }
 
       if (remainTextList.length > 0) {
         const fetchCount = Math.max(1, Math.round(remainTextList.length / 60));
-        const fetchText = remainTextList.slice(0, fetchCount).join('');
 
-        onMessage({ text: fetchText });
+        for (let i = 0; i < fetchCount; i++) {
+          const item = remainTextList[i];
+          onMessage(item);
+          if (item.event === sseResponseEventEnum.answer) {
+            responseText += item.text;
+          }
+        }
 
-        responseText += fetchText;
         remainTextList = remainTextList.slice(fetchCount);
       }
 
@@ -151,17 +158,27 @@ export const streamFetch = ({
             const text: string = parseJson?.choices?.[0]?.delta?.content || '';
 
             for (const item of text) {
-              remainTextList.push(item);
+              remainTextList.push({
+                event,
+                text: item
+              });
             }
           } else if (event === sseResponseEventEnum.response) {
             const text: string = parseJson?.choices?.[0]?.delta?.content || '';
-            remainTextList.push(text);
+            remainTextList.push({
+              event,
+              text
+            });
           } else if (
-            event === sseResponseEventEnum.moduleStatus &&
-            parseJson?.name &&
-            parseJson?.status
+            event === sseResponseEventEnum.moduleStatus ||
+            event === sseResponseEventEnum.toolCall ||
+            event === sseResponseEventEnum.toolParams ||
+            event === sseResponseEventEnum.toolResponse
           ) {
-            onMessage(parseJson);
+            onMessage({
+              event,
+              ...parseJson
+            });
           } else if (event === sseResponseEventEnum.appStreamResponse && Array.isArray(parseJson)) {
             responseData = parseJson;
           } else if (event === sseResponseEventEnum.error) {

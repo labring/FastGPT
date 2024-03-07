@@ -1,4 +1,7 @@
-import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  RuntimeUserPromptType,
+  moduleDispatchResType
+} from '@fastgpt/global/core/chat/type.d';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -8,7 +11,11 @@ import type {
 } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum, getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
+} from '@fastgpt/global/core/module/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
@@ -154,9 +161,9 @@ export async function dispatchDatasetSearch(
     quoteQA: searchRes,
     responseData,
     moduleDispatchBills,
-    [ModuleOutputKeyEnum.toolResponse]: {
+    [ModuleRunTimerOutputEnum.toolResponse]: {
       moduleId: module.moduleId,
-      value: {
+      response: {
         searchResult: searchRes.map((item) => ({
           text: `${item.q}\n${item.a}`.trim(),
           chunkIndex: item.chunkIndex

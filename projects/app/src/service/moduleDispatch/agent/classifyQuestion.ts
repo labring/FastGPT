@@ -1,5 +1,5 @@
-import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { filterGptMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { filterGPTMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -8,7 +8,11 @@ import type {
   ClassifyQuestionAgentItemType,
   ModuleDispatchResponse
 } from '@fastgpt/global/core/module/type.d';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
+} from '@fastgpt/global/core/module/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
@@ -72,7 +76,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   return {
     [result.key]: true,
-    [ModuleOutputKeyEnum.responseData]: {
+    [ModuleRunTimerOutputEnum.responseData]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
@@ -81,7 +85,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
       {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
@@ -113,11 +117,11 @@ ${systemPrompt}
     }
   ];
 
-  const filterMessages = filterGptMessageByMaxTokens({
+  const filterMessages = filterGPTMessageByMaxTokens({
     messages,
     maxTokens: cqModel.maxContext
   });
-  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
+  const adaptMessages = chats2GPTMessages({ messages: filterMessages, reserveId: false });
 
   // function body
   const agentFunction = {
@@ -207,7 +211,7 @@ async function completions({
   const data = await ai.chat.completions.create({
     model: cqModel.model,
     temperature: 0.01,
-    messages: adaptChat2GptMessages({ messages, reserveId: false }),
+    messages: chats2GPTMessages({ messages, reserveId: false }),
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';

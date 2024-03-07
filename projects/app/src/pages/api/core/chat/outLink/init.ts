@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import type { InitChatResponse, InitOutLinkChatProps } from '@/global/core/chat/api.d';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { ModuleRunTimerOutputEnum } from '@fastgpt/global/core/module/constants';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatId,
       limit: 30,
       field: `dataId obj value userGoodFeedback userBadFeedback ${
-        shareChat.responseDetail ? `adminFeedback ${ModuleOutputKeyEnum.responseData}` : ''
+        shareChat.responseDetail ? `adminFeedback ${ModuleRunTimerOutputEnum.responseData}` : ''
       } `
     });
 

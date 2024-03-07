@@ -1,9 +1,9 @@
 /* Only the token of gpt-3.5-turbo is used */
 import type { ChatItemType } from '../../../core/chat/type';
 import { Tiktoken } from 'js-tiktoken/lite';
-import { adaptChat2GptMessages } from '../../../core/chat/adapt';
+import { chats2GPTMessages } from '../../../core/chat/adapt';
 import encodingJson from './cl100k_base.json';
-import { ChatCompletionMessageParam } from '../../../core/ai/type';
+import { ChatCompletionMessageParam, ChatCompletionContentPart } from '../../../core/ai/type';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '../../../core/ai/constants';
 
@@ -30,18 +30,33 @@ export function getTikTokenEnc() {
 
 /* count one prompt tokens */
 export function countPromptTokens(
-  prompt = '',
+  prompt: string | ChatCompletionContentPart[] | null | undefined = '',
   role: '' | `${ChatCompletionRequestMessageRoleEnum}` = '',
   tools?: any
 ) {
   const enc = getTikTokenEnc();
+
+  const promptText = (() => {
+    if (!prompt) return '';
+    if (typeof prompt === 'string') return prompt;
+    let promptText = '';
+    prompt.forEach((item) => {
+      if (item.type === 'text') {
+        promptText += item.text;
+      } else if (item.type === 'image_url') {
+        promptText += item.image_url.url;
+      }
+    });
+    return promptText;
+  })();
   const toolText = tools
     ? JSON.stringify(tools)
         .replace('"', '')
         .replace('\n', '')
         .replace(/( ){2,}/g, ' ')
     : '';
-  const text = `${role}\n${prompt}\n${toolText}`.trim();
+
+  const text = `${role}\n${promptText}\n${toolText}`.trim();
 
   try {
     const encodeText = enc.encode(text);
@@ -53,10 +68,10 @@ export function countPromptTokens(
 }
 
 /* count messages tokens */
-export const countMessagesTokens = (messages: ChatItemType[], tools?: any) => {
-  const adaptMessages = adaptChat2GptMessages({ messages, reserveId: true });
+export const countMessagesTokens = (messages: ChatItemType[]) => {
+  const adaptMessages = chats2GPTMessages({ messages, reserveId: true });
 
-  return countGptMessagesTokens(adaptMessages, tools);
+  return countGptMessagesTokens(adaptMessages);
 };
 export const countGptMessagesTokens = (messages: ChatCompletionMessageParam[], tools?: any) =>
   messages.reduce((sum, item) => sum + countPromptTokens(item.content, item.role, tools), 0);
@@ -69,7 +84,7 @@ export function sliceMessagesTB({
   messages: ChatItemType[];
   maxTokens: number;
 }) {
-  const adaptMessages = adaptChat2GptMessages({ messages, reserveId: true });
+  const adaptMessages = chats2GPTMessages({ messages, reserveId: true });
   let reduceTokens = maxTokens;
   let result: ChatItemType[] = [];
 

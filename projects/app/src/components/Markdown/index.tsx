@@ -35,7 +35,13 @@ export enum CodeClassName {
   img = 'img'
 }
 
-const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
+const Markdown = ({
+  source = '',
+  isChatting = false
+}: {
+  source?: string;
+  isChatting?: boolean;
+}) => {
   const components = useMemo<any>(
     () => ({
       img: Image,

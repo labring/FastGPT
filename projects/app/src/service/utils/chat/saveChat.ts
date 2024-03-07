@@ -4,7 +4,7 @@ import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
+import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 type Props = {
@@ -47,10 +47,7 @@ export async function saveChat({
       ...chat?.metadata,
       ...metadata
     };
-    const title =
-      chatContentReplaceBlock(content[0].value).slice(0, 20) ||
-      content[1]?.value?.slice(0, 20) ||
-      'Chat';
+    const title = getChatTitleFromChatMessage(content[0]);
 
     await mongoSessionRun(async (session) => {
       await MongoChatItem.insertMany(

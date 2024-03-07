@@ -2,6 +2,7 @@ import { FlowNodeTypeEnum } from './node/constant';
 import {
   ModuleIOValueTypeEnum,
   ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum,
   ModuleTemplateTypeEnum,
   VariableInputEnum
 } from './constants';
@@ -128,6 +129,7 @@ export type ChatDispatchProps = {
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>;
+  inputFiles?: RuntimeFileType[];
   stream: boolean;
   detail: boolean; // response detail
 };
@@ -138,7 +140,7 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   params: T;
 };
 export type ModuleDispatchResponse<T> = T & {
-  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
-  [ModuleOutputKeyEnum.toolResponse]?: ToolRunResponseItemType;
-  [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleUsageType[];
+  [ModuleRunTimerOutputEnum.responseData]?: moduleDispatchResType;
+  [ModuleRunTimerOutputEnum.toolResponse]?: ToolRunResponseItemType;
+  [ModuleRunTimerOutputEnum.moduleDispatchBills]?: ChatModuleUsageType[];
 };

@@ -8,12 +8,12 @@ import type {
   ChatCompletionToolMessageParam,
   ChatCompletionContentPart
 } from 'openai/resources';
+import { ChatMessageTypeEnum } from './constants';
 
 export type ChatCompletionContentPart = ChatCompletionContentPart;
 export type ChatCompletionCreateParams = ChatCompletionCreateParams;
 export type ChatCompletionMessageParam = ChatCompletionMessageParam & {
   dataId?: string;
-  content: any;
 };
 export type ChatCompletionToolMessageParam = ChatCompletionToolMessageParam & { name: string };
 export type ChatCompletionAssistantToolParam = {
@@ -22,7 +22,10 @@ export type ChatCompletionAssistantToolParam = {
 };
 
 export type ChatCompletion = ChatCompletion;
-export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall;
+export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
+  toolName?: string;
+  toolAvatar?: string;
+};
 export type StreamChatType = Stream<ChatCompletionChunk>;
 
 export type PromptTemplateItem = {

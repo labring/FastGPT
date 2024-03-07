@@ -6,7 +6,8 @@ import type {
 import {
   DYNAMIC_INPUT_KEY,
   ModuleInputKeyEnum,
-  ModuleOutputKeyEnum
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
 } from '@fastgpt/global/core/module/constants';
 import axios from 'axios';
 import { valueTypeFormat } from '../utils';
@@ -99,7 +100,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     }
 
     return {
-      [ModuleOutputKeyEnum.responseData]: {
+      [ModuleRunTimerOutputEnum.responseData]: {
         totalPoints: 0,
         body: formatBody,
         httpResult: response
@@ -111,7 +112,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
 
     return {
       [ModuleOutputKeyEnum.failed]: true,
-      [ModuleOutputKeyEnum.responseData]: {
+      [ModuleRunTimerOutputEnum.responseData]: {
         totalPoints: 0,
         body: formatBody,
         httpResult: { error }

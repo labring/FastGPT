@@ -1,5 +1,5 @@
-import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { filterGptMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { filterGPTMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
@@ -8,7 +8,11 @@ import type {
   ContextExtractAgentItemType,
   ModuleDispatchResponse
 } from '@fastgpt/global/core/module/type';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
+} from '@fastgpt/global/core/module/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -105,7 +109,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [ModuleOutputKeyEnum.failed]: success ? undefined : true,
     [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
-    [ModuleOutputKeyEnum.responseData]: {
+    [ModuleRunTimerOutputEnum.responseData]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: content,
@@ -114,7 +118,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
       {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
@@ -144,11 +148,11 @@ async function toolChoice({
 当前问题: "${content}"`
     }
   ];
-  const filterMessages = filterGptMessageByMaxTokens({
+  const filterMessages = filterGPTMessageByMaxTokens({
     messages,
     maxTokens: extractModel.maxContext
   });
-  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
+  const adaptMessages = chats2GPTMessages({ messages: filterMessages, reserveId: false });
 
   const properties: Record<
     string,
@@ -246,7 +250,7 @@ Human: ${content}`
   const data = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0.01,
-    messages: adaptChat2GptMessages({ messages, reserveId: false }),
+    messages: chats2GPTMessages({ messages, reserveId: false }),
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
