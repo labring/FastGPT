@@ -20,6 +20,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   name: '文本内容提取',
   intro: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
   showStatus: true,
+  isTool: true,
   inputs: [
     Input_Template_Switch,
     Input_Template_AiModel,
@@ -44,7 +45,8 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       required: true,
       valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: true,
-      showTargetInPlugin: true
+      showTargetInPlugin: true,
+      toolDescription: '需要检索的内容'
     },
     {
       key: ModuleInputKeyEnum.extractKeys,

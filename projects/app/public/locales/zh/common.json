@@ -779,6 +779,7 @@
       },
       "Default value": "默认值",
       "Default value placeholder": "不填则默认返回空字符",
+      "Edit intro": "编辑描述",
       "Field Description": "字段描述",
       "Field Name": "字段名",
       "Field Type": "字段类型",

@@ -777,6 +777,7 @@
       },
       "Default value": "Default ",
       "Default value placeholder": "Null characters are returned by default",
+      "Edit intro": "Edit",
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",

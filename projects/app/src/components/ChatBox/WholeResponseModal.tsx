@@ -182,12 +182,6 @@ const ResponseBox = React.memo(function ResponseBox({
               )
             }
           />
-          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
-            <Row
-              label={t('core.chat.response.module quoteList')}
-              rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
-            />
-          )}
         </>
 
         {/* dataset search */}
@@ -213,6 +207,12 @@ const ResponseBox = React.memo(function ResponseBox({
             label={t('support.wallet.usage.Extension result')}
             value={`${activeModule?.extensionResult}`}
           />
+          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+            <Row
+              label={t('core.chat.response.module quoteList')}
+              rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
+            />
+          )}
         </>
 
         {/* classify question */}

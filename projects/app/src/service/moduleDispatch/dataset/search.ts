@@ -122,7 +122,8 @@ export async function dispatchDatasetSearch(
     similarity: usingSimilarityFilter ? similarity : undefined,
     limit,
     searchMode,
-    searchUsingReRank: searchUsingReRank
+    searchUsingReRank: searchUsingReRank,
+    quoteList: searchRes
   };
   const moduleDispatchBills: ChatModuleUsageType[] = [
     {

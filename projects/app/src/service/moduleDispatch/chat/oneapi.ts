@@ -1,14 +1,11 @@
 import type { NextApiResponse } from 'next';
 import {
   filterGPTMessageByMaxTokens,
-  formatGPTMessagesInRequestBefore
+  formatGPTMessagesInRequestBefore,
+  loadChatImgToBase64
 } from '@fastgpt/service/core/chat/utils';
-import type {
-  ChatItemType,
-  RuntimeFileType,
-  RuntimeUserPromptType
-} from '@fastgpt/global/core/chat/type.d';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
@@ -39,7 +36,6 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getLLMModel, ModelTypeEnum } from '@fastgpt/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { formatStr2ChatContent } from '@fastgpt/service/core/chat/utils';
 import {
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
@@ -47,6 +43,7 @@ import {
 } from '@fastgpt/global/core/module/constants';
 import { getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '@fastgpt/global/core/dataset/search/utils';
+import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatModuleProps & {
@@ -83,7 +80,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quotePrompt
     }
   } = props;
-  if (!userChatInput) {
+  if (!userChatInput && inputFiles.length === 0) {
     return Promise.reject('Question is empty');
   }
   stream = stream && isResponseAnswerText;
@@ -97,7 +94,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { filterQuoteQA, quoteText } = filterQuote({
+  const { quoteText } = filterQuote({
     quoteQA,
     model: modelConstantsData,
     quoteTemplate
@@ -122,6 +119,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     inputFiles,
     systemPrompt
   });
+
   const { max_tokens } = await getMaxTokens({
     model: modelConstantsData,
     maxToken,
@@ -152,6 +150,19 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject('core.chat.error.Messages empty');
   }
 
+  const loadMessages = await Promise.all(
+    concatMessages.map(async (item) => {
+      if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
+        return {
+          ...item,
+          content: await loadChatImgToBase64(item.content)
+        };
+      } else {
+        return item;
+      }
+    })
+  );
+
   const response = await ai.chat.completions.create(
     {
       ...modelConstantsData?.defaultConfig,
@@ -159,7 +170,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature,
       max_tokens,
       stream,
-      messages: concatMessages
+      messages: loadMessages
     },
     {
       headers: {
@@ -191,7 +202,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       };
     }
   })();
-  console.log(answerText);
 
   const completeMessages = filterMessages.concat({
     role: ChatCompletionRequestMessageRoleEnum.Assistant,
@@ -214,7 +224,6 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       tokens,
       query: `${userChatInput}`,
       maxToken: max_tokens,
-      quoteList: filterQuoteQA,
       historyPreview: getHistoryPreview(chatCompleteMessages),
       contextTotalLen: completeMessages.length
     },
@@ -276,7 +285,7 @@ function getChatMessages({
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
-  inputFiles: RuntimeFileType[];
+  inputFiles: UserChatItemValueItemType['file'][];
   model: LLMModelItemType;
 }) {
   const replaceInputValue = quoteText
@@ -390,25 +399,4 @@ async function streamResponse({
   }
 
   return { answer };
-}
-
-function getHistoryPreview(completeMessages: ChatItemType[]): {
-  obj: `${ChatRoleEnum}`;
-  value: string;
-}[] {
-  return completeMessages.map((item, i) => {
-    if (item.obj === ChatRoleEnum.System || i >= completeMessages.length - 2) {
-      return {
-        obj: item.obj,
-        value: item.value?.[0]?.text?.content || ''
-      };
-    }
-
-    const content = item.value.find((item) => item.text?.content)?.text?.content || '';
-
-    return {
-      obj: item.obj,
-      value: content.length > 15 ? `${content.slice(0, 15)}...` : content
-    };
-  });
 }

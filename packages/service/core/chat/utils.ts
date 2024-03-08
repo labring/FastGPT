@@ -220,3 +220,21 @@ export async function formatStr2ChatContent(str: string) {
 
   return content ? content : null;
 }
+
+export const loadChatImgToBase64 = async (content: string | ChatCompletionContentPart[]) => {
+  if (typeof content === 'string') {
+    return content;
+  }
+  return Promise.all(
+    content.map(async (item) => {
+      if (item.type === 'text') return item;
+      // load image
+      const response = await axios.get(item.image_url.url, {
+        responseType: 'arraybuffer'
+      });
+      const base64 = Buffer.from(response.data).toString('base64');
+      item.image_url.url = `data:${response.headers['content-type']};base64,${base64}`;
+      return item;
+    })
+  );
+};

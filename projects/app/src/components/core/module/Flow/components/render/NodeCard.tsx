@@ -1,12 +1,18 @@
 import React, { useMemo } from 'react';
-import { Box, Flex, MenuButton } from '@chakra-ui/react';
+import { Box, Button, Flex, MenuButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { onChangeNode, onCopyNode, onResetNode, onDelNode } from '../../FlowProvider';
+import {
+  onChangeNode,
+  onCopyNode,
+  onResetNode,
+  onDelNode,
+  useFlowProviderStore
+} from '../../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -16,6 +22,7 @@ import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import MyMenu from '@/components/MyMenu';
 import { ToolTargetHandle } from './ToolHandle';
+import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -42,6 +49,12 @@ const NodeCard = (props: Props) => {
 
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
+  const { nodes, splitToolInputs } = useFlowProviderStore();
+  const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
+    title: t('core.module.Edit intro'),
+    tip: '调整该模块会对工具调用时机有影响。\n你可以通过精确的描述该模块功能，引导模型进行工具调用。',
+    canEmpty: false
+  });
 
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
@@ -121,6 +134,15 @@ const NodeCard = (props: Props) => {
     [flowType, inputs, moduleId, name, onOpenModal, openConfirm, setLoading, t, toast]
   );
 
+  const showToolHandle = useMemo(
+    () => isTool && !!nodes.find((item) => item.data?.flowType === FlowNodeTypeEnum.tools),
+    [isTool, nodes]
+  );
+  const moduleIsTool = useMemo(() => {
+    const { isTool } = splitToolInputs([], moduleId);
+    return isTool;
+  }, [moduleId, splitToolInputs]);
+
   return (
     <Box
       minW={minW}
@@ -135,7 +157,7 @@ const NodeCard = (props: Props) => {
       }}
     >
       <Box className="custom-drag-handle" px={4} py={3} position={'relative'}>
-        {isTool && <ToolTargetHandle />}
+        {showToolHandle && <ToolTargetHandle />}
         <Flex alignItems={'center'}>
           <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
           <Box ml={3} fontSize={'lg'}>
@@ -163,12 +185,36 @@ const NodeCard = (props: Props) => {
             />
           )}
         </Flex>
-        <Box fontSize={'xs'} color={'myGray.600'}>
-          {t(intro)}
-        </Box>
+        <Flex alignItems={'flex-end'} py={1}>
+          <Box fontSize={'xs'} color={'myGray.600'} flex={'1 0 0'}>
+            {t(intro)}
+          </Box>
+          {moduleIsTool && (
+            <Button
+              size={'xs'}
+              variant={'whiteBase'}
+              onClick={() => {
+                onOpenIntroModal({
+                  defaultVal: intro,
+                  onSuccess(e) {
+                    onChangeNode({
+                      moduleId,
+                      type: 'attr',
+                      key: 'intro',
+                      value: e
+                    });
+                  }
+                });
+              }}
+            >
+              {t('core.module.Edit intro')}
+            </Button>
+          )}
+        </Flex>
       </Box>
       {children}
-      <EditTitleModal />
+      <EditTitleModal maxLength={20} />
+      {moduleIsTool && <EditIntroModal maxLength={500} />}
       <ConfirmModal />
     </Box>
   );

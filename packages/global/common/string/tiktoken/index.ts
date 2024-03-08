@@ -3,7 +3,11 @@ import type { ChatItemType } from '../../../core/chat/type';
 import { Tiktoken } from 'js-tiktoken/lite';
 import { chats2GPTMessages } from '../../../core/chat/adapt';
 import encodingJson from './cl100k_base.json';
-import { ChatCompletionMessageParam, ChatCompletionContentPart } from '../../../core/ai/type';
+import {
+  ChatCompletionMessageParam,
+  ChatCompletionContentPart,
+  ChatCompletionMessageToolCall
+} from '../../../core/ai/type';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '../../../core/ai/constants';
 
@@ -35,7 +39,6 @@ export function countPromptTokens(
   tools?: any
 ) {
   const enc = getTikTokenEnc();
-
   const promptText = (() => {
     if (!prompt) return '';
     if (typeof prompt === 'string') return prompt;
@@ -73,8 +76,24 @@ export const countMessagesTokens = (messages: ChatItemType[]) => {
 
   return countGptMessagesTokens(adaptMessages);
 };
-export const countGptMessagesTokens = (messages: ChatCompletionMessageParam[], tools?: any) =>
-  messages.reduce((sum, item) => sum + countPromptTokens(item.content, item.role, tools), 0);
+export const countGptMessagesTokens = (messages: ChatCompletionMessageParam[]) =>
+  messages.reduce((sum, item) => {
+    // @ts-ignore
+    const toolCalls = (item.tool_calls as ChatCompletionMessageToolCall[]) || [];
+    const toolCallsPrompt = toolCalls?.map((item) => item?.function?.arguments)?.join('') || '';
+    const contentPrompt = (() => {
+      if (!item.content) return '';
+      if (typeof item.content === 'string') return item.content;
+      return item.content
+        .map((item) => {
+          if (item.type === 'text') return item.text;
+          return '';
+        })
+        .join('');
+    })();
+
+    return sum + countPromptTokens(`${contentPrompt}${toolCallsPrompt}`, item.role);
+  }, 0);
 
 /* slice messages from top to bottom by maxTokens */
 export function sliceMessagesTB({

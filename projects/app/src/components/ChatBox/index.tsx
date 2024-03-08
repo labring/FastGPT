@@ -14,12 +14,12 @@ import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Flex, useTheme, Checkbox } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Checkbox, Button } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { ModuleRunTimerOutputEnum, VariableInputEnum } from '@fastgpt/global/core/module/constants';
-import { useForm } from 'react-hook-form';
+import { useFieldArray, useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
@@ -38,13 +38,15 @@ import type {
   generatingMessageProps,
   StartChatFnProps,
   ComponentRef,
-  ChatBoxInputType
+  ChatBoxInputType,
+  UserInputFileItemType,
+  ChatBoxInputFormType
 } from './type.d';
 import MessageInput from './MessageInput';
 import ChatBoxDivider from '../core/chat/Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
@@ -55,9 +57,7 @@ const FeedbackModal = dynamic(() => import('./FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
 const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 const Empty = dynamic(() => import('./components/Empty'));
-const ChatAvatar = dynamic(() => import('./components/ChatAvatar'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
-const ChatController = dynamic(() => import('./components/ChatController'));
 const VariableInput = dynamic(() => import('./components/VariableInput'));
 const ChatItem = dynamic(() => import('./components/ChatItem'));
 
@@ -123,7 +123,6 @@ const ChatBox = (
   ref: ForwardedRef<ComponentRef>
 ) => {
   const ChatBoxRef = useRef<HTMLDivElement>(null);
-  const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -159,17 +158,18 @@ const ChatBox = (
   );
 
   // compute variable input is finish.
-  const chatForm = useForm<{
-    variables: Record<string, any>;
-  }>({
+  const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
-      variables: {}
+      input: '',
+      files: [],
+      variables: {},
+      chatStarted: false
     }
   });
-  const { setValue, watch, handleSubmit } = chatForm;
+  const { setValue, watch, handleSubmit, control } = chatForm;
   const variables = watch('variables');
+  const chatStarted = watch('chatStarted');
 
-  const [variableInputFinish, setVariableInputFinish] = useState(false); // clicked start chat button
   const variableIsFinish = useMemo(() => {
     if (!filterVariableModules || filterVariableModules.length === 0 || chatHistories.length > 0)
       return true;
@@ -181,8 +181,8 @@ const ChatBox = (
       }
     }
 
-    return variableInputFinish;
-  }, [chatHistories.length, variableInputFinish, filterVariableModules, variables]);
+    return chatStarted;
+  }, [filterVariableModules, chatHistories.length, chatStarted, variables]);
 
   // 滚动到底部
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -211,7 +211,9 @@ const ChatBox = (
       setChatHistories((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
-          const lastValue = { ...item.value[item.value.length - 1] };
+          const lastValue: ChatSiteItemType['value'][0] = JSON.parse(
+            JSON.stringify(item.value[item.value.length - 1])
+          );
 
           if (event === sseResponseEventEnum.moduleStatus && status) {
             return {
@@ -249,7 +251,12 @@ const ChatBox = (
                   ? item.value.slice(0, -1).concat(val)
                   : item.value.concat(val)
             };
-          } else if (event === sseResponseEventEnum.toolParams && tool && lastValue?.tools) {
+          } else if (
+            event === sseResponseEventEnum.toolParams &&
+            tool &&
+            lastValue.type === ChatItemValueTypeEnum.tool &&
+            lastValue?.tools
+          ) {
             lastValue.tools = lastValue.tools.map((item) => {
               if (item.id === tool.id) {
                 item.params += tool.params;
@@ -260,16 +267,22 @@ const ChatBox = (
               ...item,
               value: item.value.slice(0, -1).concat(lastValue)
             };
-          } else if (event === sseResponseEventEnum.toolResponse && tool && lastValue?.tools) {
-            lastValue.tools = lastValue.tools.map((item) => {
-              if (item.id === tool.id) {
-                item.response += tool.response;
-              }
-              return item;
-            });
+          } else if (event === sseResponseEventEnum.toolResponse && tool) {
+            // replace tool response
             return {
               ...item,
-              value: item.value.slice(0, -1).concat(lastValue)
+              value: item.value.map((val) => {
+                if (val.type === ChatItemValueTypeEnum.tool && val.tools) {
+                  const tools = val.tools.map((item) =>
+                    item.id === tool.id ? { ...item, response: tool.response } : item
+                  );
+                  return {
+                    ...val,
+                    tools
+                  };
+                }
+                return val;
+              })
             };
           }
 
@@ -282,18 +295,23 @@ const ChatBox = (
   );
 
   // 重置输入内容
-  const resetInputVal = useCallback(({ text = '' }: ChatBoxInputType) => {
-    if (!TextareaDom.current) return;
+  const resetInputVal = useCallback(
+    ({ text = '', files = [] }: ChatBoxInputType) => {
+      if (!TextareaDom.current) return;
+      console.log(text, files, 'reset');
+      setValue('files', files);
+      setValue('input', text);
 
-    setTimeout(() => {
-      /* 回到最小高度 */
-      if (TextareaDom.current) {
-        TextareaDom.current.value = text;
-        TextareaDom.current.style.height =
-          text === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
-      }
-    }, 100);
-  }, []);
+      setTimeout(() => {
+        /* 回到最小高度 */
+        if (TextareaDom.current) {
+          TextareaDom.current.style.height =
+            text === '' ? textareaMinH : `${TextareaDom.current.scrollHeight}px`;
+        }
+      }, 100);
+    },
+    [setValue]
+  );
 
   // create question guide
   const createQuestionGuide = useCallback(
@@ -364,7 +382,11 @@ const ChatBox = (
             value: [
               ...files.map((file) => ({
                 type: ChatItemValueTypeEnum.file,
-                file
+                file: {
+                  type: file.type,
+                  name: file.name,
+                  url: file.url || ''
+                }
               })),
               ...(text
                 ? [
@@ -409,7 +431,7 @@ const ChatBox = (
           chatController.current = abortSignal;
 
           const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
-
+          console.log(messages, '---------');
           const {
             responseData,
             responseText,
@@ -689,7 +711,7 @@ const ChatBox = (
           // update dom
           setChatHistories((state) =>
             state.map((chatItem) =>
-              chatItem.dataId === chat.dataId
+              chatItem.obj === ChatRoleEnum.AI && chatItem.dataId === chat.dataId
                 ? {
                     ...chatItem,
                     customFeedbacks: chatItem.customFeedbacks?.filter((_, index) => index !== i)
@@ -737,7 +759,7 @@ const ChatBox = (
   // page change and abort request
   useEffect(() => {
     isNewChatReplace.current = false;
-    setQuestionGuide([]);
+    setQuestionGuide(['你好', '那是谁', '哈哈哈']);
     return () => {
       chatController.current?.abort('leave');
       if (!isNewChatReplace.current) {
@@ -787,7 +809,7 @@ const ChatBox = (
       setValue('variables', e || defaultVal);
     },
     resetHistory(e) {
-      setVariableInputFinish(!!e.length);
+      setValue('chatStarted', e.length > 0);
       setChatHistories(e);
     },
     scrollToBottom,
@@ -814,7 +836,7 @@ const ChatBox = (
               variableIsFinish={variableIsFinish}
               chatForm={chatForm}
               onSubmitVariables={(data) => {
-                setVariableInputFinish(true);
+                setValue('chatStarted', true);
                 onUpdateVariable?.(data);
               }}
             />
@@ -852,6 +874,7 @@ const ChatBox = (
                         teamToken,
                         statusBoxData,
                         isLastChild: index === chatHistories.length - 1,
+                        questionGuides,
                         onMark: onMark(
                           item,
                           formatChatValue2InputType(chatHistories[index - 1]?.value)?.text
@@ -919,6 +942,7 @@ const ChatBox = (
           outLinkUid={outLinkUid}
           teamId={teamId}
           teamToken={teamToken}
+          chatForm={chatForm}
         />
       )}
       {/* user feedback modal */}

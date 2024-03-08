@@ -28,7 +28,7 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
     <Box
       position={'absolute'}
       top={'50%'}
-      right={'-18px'}
+      right={'-20px'}
       transform={'translate(50%,-50%)'}
       {...props}
     >

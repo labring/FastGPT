@@ -37,8 +37,8 @@ export type ChatWithAppSchema = Omit<ChatSchema, 'appId'> & {
   appId: AppSchema;
 };
 
-export type ChatItemValueItemType = {
-  type: `${ChatItemValueTypeEnum}`;
+export type UserChatItemValueItemType = {
+  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.file;
   text?: {
     content: string;
   };
@@ -47,10 +47,43 @@ export type ChatItemValueItemType = {
     name?: string;
     url: string;
   };
+};
+export type UserChatItemType = {
+  obj: ChatRoleEnum.Human;
+  value: UserChatItemValueItemType[];
+};
+export type SystemChatItemValueItemType = {
+  type: ChatItemValueTypeEnum.text;
+  text?: {
+    content: string;
+  };
+};
+export type SystemChatItemType = {
+  obj: ChatRoleEnum.System;
+  value: SystemChatItemValueItemType[];
+};
+export type AIChatItemValueItemType = {
+  type: ChatItemValueTypeEnum.text | ChatItemValueTypeEnum.tool;
+  text?: {
+    content: string;
+  };
   tools?: ToolModuleResponseItemType[];
 };
+export type AIChatItemType = {
+  obj: ChatRoleEnum.AI;
+  value: AIChatItemValueItemType[];
+  userGoodFeedback?: string;
+  userBadFeedback?: string;
+  customFeedbacks?: string[];
+  adminFeedback?: AdminFbkType;
+  [ModuleRunTimerOutputEnum.responseData]?: ChatHistoryItemResType[];
+};
+export type ChatItemValueItemType =
+  | UserChatItemValueItemType
+  | SystemChatItemValueItemType
+  | AIChatItemValueItemType;
 
-export type ChatItemSchema = {
+export type ChatItemSchema = ChatItemValueItemType & {
   dataId: string;
   chatId: string;
   userId: string;
@@ -58,13 +91,6 @@ export type ChatItemSchema = {
   tmbId: string;
   appId: string;
   time: Date;
-  obj: `${ChatRoleEnum}`;
-  value: ChatItemValueItemType[];
-  userGoodFeedback?: string;
-  userBadFeedback?: string;
-  customFeedbacks?: string[];
-  adminFeedback?: AdminFbkType;
-  [ModuleRunTimerOutputEnum.responseData]?: ChatHistoryItemResType[];
 };
 
 export type AdminFbkType = {
@@ -82,8 +108,8 @@ export type ChatItemType = {
   value: ChatItemValueItemType[];
   userGoodFeedback?: string;
   userBadFeedback?: string;
-  customFeedbacks?: ChatItemSchema['customFeedbacks'];
-  adminFeedback?: ChatItemSchema['feedback'];
+  customFeedbacks?: AIChatItemType['customFeedbacks'];
+  adminFeedback?: AIChatItemType['feedback'];
   [ModuleRunTimerOutputEnum.responseData]?: ChatHistoryItemResType[];
 };
 
@@ -179,19 +205,14 @@ export type ToolRunResponseItemType = {
 export type ToolModuleResponseItemType = {
   id: string;
   toolName: string; // tool name
-  avatar: string;
+  toolAvatar: string;
   params: string; // tool params
   response: string;
   functionName: string;
 };
 
 /* dispatch run time */
-export type RuntimeFileType = {
-  type: `${ChatFileTypeEnum}`;
-  name: string;
-  url: string; // image url or file path
-};
 export type RuntimeUserPromptType = {
-  files?: RuntimeFileType[];
+  files?: UserChatItemValueItemType['file'][];
   text: string;
 };

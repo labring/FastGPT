@@ -10,7 +10,7 @@ import { dispatchModules } from '@/service/moduleDispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -115,6 +115,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('Question is empty');
     }
 
+    const { text, files } = chatValue2RuntimePrompt(question.value);
+
     /* 
       1. auth app permission
       2. auth balance
@@ -130,7 +132,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             outLinkUid,
             chatId,
             ip: originIp,
-            question: question.value.map((item) => item.text?.content).join('\n')
+            question: text
           });
         }
         // team space chat
@@ -163,7 +165,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
-    const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
+    const { responseData, moduleDispatchBills, assistantResponse } = await dispatchModules({
       res,
       mode: 'chat',
       user,
@@ -174,9 +176,10 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       responseChatItemId,
       modules: setEntryEntries(app.modules),
       variables,
+      inputFiles: files,
       histories: concatHistories,
       startParams: {
-        userChatInput: question.value
+        userChatInput: text
       },
       stream,
       detail
@@ -211,7 +214,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           {
             dataId: responseChatItemId,
             obj: ChatRoleEnum.AI,
-            value: answerText,
+            value: assistantResponse,
             responseData
           }
         ],
@@ -258,7 +261,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: answerText },
+            message: { role: 'assistant', content: assistantResponse },
             finish_reason: 'stop',
             index: 0
           }

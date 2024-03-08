@@ -1,13 +1,13 @@
 import React from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
-import { ChatItemType } from '@fastgpt/global/core/chat/type';
+import { moduleDispatchResType } from '@fastgpt/global/core/chat/type';
 import MyModal from '../MyModal';
 
 const ContextModal = ({
   context = [],
   onClose
 }: {
-  context: ChatItemType[];
+  context: moduleDispatchResType['historyPreview'];
   onClose: () => void;
 }) => {
   const theme = useTheme();

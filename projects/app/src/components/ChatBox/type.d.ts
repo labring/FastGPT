@@ -15,9 +15,25 @@ export type generatingMessageProps = {
   tool?: ToolModuleResponseItemType;
 };
 
+export type UserInputFileItemType = {
+  id: string;
+  rawFile: File;
+  type: `${ChatFileTypeEnum}`;
+  name: string;
+  icon: string; // img is base64
+  url?: string;
+};
+
+export type ChatBoxInputFormType = {
+  input: string;
+  files: UserInputFileItemType[];
+  variables: Record<string, any>;
+  chatStarted: boolean;
+};
+
 export type ChatBoxInputType = {
   text?: string;
-  files?: ChatItemValueItemType['file'][];
+  files?: UserInputFileItemType[];
 };
 
 export type StartChatFnProps = {

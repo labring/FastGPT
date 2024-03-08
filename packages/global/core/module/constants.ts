@@ -117,9 +117,10 @@ export enum ModuleOutputKeyEnum {
   selectedTools = 'selectedTools'
 }
 export enum ModuleRunTimerOutputEnum {
-  responseData = 'responseData',
+  responseData = 'responseData', // flow step response detail
   moduleDispatchBills = 'moduleDispatchBills',
-  toolResponse = 'toolResponse',
+  toolResponse = 'toolResponse', // tool response
+  assistantResponse = 'assistantResponse', // assistant response
   toolModuleOutput = 'toolModuleOutput'
 }
 

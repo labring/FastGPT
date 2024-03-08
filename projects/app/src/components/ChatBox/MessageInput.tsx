@@ -1,7 +1,7 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback, useState, useTransition, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,18 +13,10 @@ import { addDays } from 'date-fns';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { ChatBoxInputType } from './type';
+import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from './type';
 import { textareaMinH } from './constants';
+import { UseFormReturn, useFieldArray } from 'react-hook-form';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-
-type FileItemType = {
-  id: string;
-  rawFile: File;
-  type: `${ChatFileTypeEnum}`;
-  name: string;
-  icon: string; // img is base64
-  src?: string;
-};
 
 const MessageInput = ({
   onSendMessage,
@@ -36,7 +28,8 @@ const MessageInput = ({
   shareId,
   outLinkUid,
   teamId,
-  teamToken
+  teamToken,
+  chatForm
 }: OutLinkChatAuthProps & {
   onSendMessage: (val: ChatBoxInputType) => void;
   onStop: () => void;
@@ -44,8 +37,20 @@ const MessageInput = ({
   showFileSelector?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
+  chatForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
-  const [, startSts] = useTransition();
+  const { setValue, watch, control } = chatForm;
+  const inputValue = watch('input');
+  const {
+    update: updateFile,
+    remove: removeFile,
+    fields: fileList,
+    append: appendFile,
+    replace: replaceFile
+  } = useFieldArray({
+    control,
+    name: 'files'
+  });
 
   const {
     isSpeaking,
@@ -59,19 +64,8 @@ const MessageInput = ({
   const { isPc } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
-  const [fileList, setFileList] = useState<FileItemType[]>([]);
-  const havInput = !!TextareaDom.current?.value || fileList.length > 0;
 
-  const images: ChatBoxInputType['files'] = useMemo(
-    () =>
-      fileList
-        .filter((item) => item.type === ChatFileTypeEnum.image)
-        .map((item) => ({
-          type: ChatFileTypeEnum.image,
-          url: item.src || item.icon
-        })),
-    [fileList]
-  );
+  const havInput = !!inputValue || fileList.length > 0;
 
   /* file selector and upload */
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
@@ -80,10 +74,10 @@ const MessageInput = ({
     maxCount: 10
   });
   const { mutate: uploadFile } = useRequest({
-    mutationFn: async (file: FileItemType) => {
+    mutationFn: async ({ file, fileIndex }: { file: UserInputFileItemType; fileIndex: number }) => {
       if (file.type === ChatFileTypeEnum.image) {
         try {
-          const src = await compressImgFileAndUpload({
+          const url = await compressImgFileAndUpload({
             type: MongoImageTypeEnum.chatImage,
             file: file.rawFile,
             maxW: 4329,
@@ -96,18 +90,12 @@ const MessageInput = ({
             teamId,
             teamToken
           });
-          setFileList((state) =>
-            state.map((item) =>
-              item.id === file.id
-                ? {
-                    ...item,
-                    src: `${location.origin}${src}`
-                  }
-                : item
-            )
-          );
+          updateFile(fileIndex, {
+            ...file,
+            url: `${location.origin}${url}`
+          });
         } catch (error) {
-          setFileList((state) => state.filter((item) => item.id !== file.id));
+          removeFile(fileIndex);
           console.log(error);
           return Promise.reject(error);
         }
@@ -123,7 +111,7 @@ const MessageInput = ({
       const loadFiles = await Promise.all(
         files.map(
           (file) =>
-            new Promise<FileItemType>((resolve, reject) => {
+            new Promise<UserInputFileItemType>((resolve, reject) => {
               if (file.type.includes('image')) {
                 const reader = new FileReader();
                 reader.readAsDataURL(file);
@@ -135,7 +123,6 @@ const MessageInput = ({
                     name: file.name,
                     icon: reader.result as string
                   };
-                  uploadFile(item);
                   resolve(item);
                 };
                 reader.onerror = () => {
@@ -153,10 +140,16 @@ const MessageInput = ({
             })
         )
       );
+      appendFile(loadFiles);
 
-      setFileList((state) => [...state, ...loadFiles]);
+      loadFiles.forEach((file, i) =>
+        uploadFile({
+          file,
+          fileIndex: i + fileList.length
+        })
+      );
     },
-    [uploadFile]
+    [appendFile, fileList.length, uploadFile]
   );
 
   /* on send */
@@ -165,10 +158,10 @@ const MessageInput = ({
 
     onSendMessage({
       text: textareaValue.trim(),
-      files: images
+      files: fileList
     });
-    setFileList([]);
-  }, [TextareaDom, images, onSendMessage]);
+    replaceFile([]);
+  }, [TextareaDom, fileList, onSendMessage, replaceFile]);
 
   useEffect(() => {
     if (!stream) {
@@ -228,7 +221,7 @@ const MessageInput = ({
 
         {/* file preview */}
         <Flex wrap={'wrap'} px={[2, 4]} userSelect={'none'}>
-          {fileList.map((item) => (
+          {fileList.map((item, index) => (
             <Box
               key={item.id}
               border={'1px solid rgba(0,0,0,0.12)'}
@@ -237,11 +230,11 @@ const MessageInput = ({
               rounded={'md'}
               position={'relative'}
               _hover={{
-                '.close-icon': { display: item.src ? 'block' : 'none' }
+                '.close-icon': { display: item.url ? 'block' : 'none' }
               }}
             >
               {/* uploading */}
-              {!item.src && (
+              {!item.url && (
                 <Flex
                   position={'absolute'}
                   alignItems={'center'}
@@ -269,7 +262,7 @@ const MessageInput = ({
                 right={'-8px'}
                 top={'-8px'}
                 onClick={() => {
-                  setFileList((state) => state.filter((file) => file.id !== item.id));
+                  removeFile(index);
                 }}
                 className="close-icon"
                 display={['', 'none']}
@@ -332,10 +325,12 @@ const MessageInput = ({
             boxShadow={'none !important'}
             color={'myGray.900'}
             isDisabled={isSpeaking}
+            value={inputValue}
             onChange={(e) => {
               const textarea = e.target;
               textarea.style.height = textareaMinH;
               textarea.style.height = `${textarea.scrollHeight}px`;
+              setValue('input', textarea.value);
             }}
             onKeyDown={(e) => {
               // enter send.(pc or iframe && enter and unPress shift)

@@ -1,20 +1,35 @@
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleOutputKeyEnum,
+  ModuleRunTimerOutputEnum
+} from '@fastgpt/global/core/module/constants';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { getLLMModel } from '@fastgpt/service/core/ai/model';
+import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
-import { DispatchToolProps, ToolModuleItemType } from './type.d';
+import {
+  DispatchToolModuleProps,
+  DispatchToolModuleResponse,
+  RunToolResponse,
+  ToolModuleItemType
+} from './type.d';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
+  GPTMessages2Chats,
   chats2GPTMessages,
   getSystemPrompt,
   runtimePrompt2ChatsValue
 } from '@fastgpt/global/core/chat/adapt';
+import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 
-export const dispatchRunTools = async (props: DispatchToolProps) => {
+export const dispatchRunTools = async (
+  props: DispatchToolModuleProps
+): Promise<DispatchToolModuleResponse> => {
+  const startTime = Date.now();
+
   const {
-    module: { outputs },
+    module: { name, flowType, outputs },
     modules,
     histories,
     params: { model, systemPrompt, userChatInput, history = 6 }
@@ -64,7 +79,11 @@ export const dispatchRunTools = async (props: DispatchToolProps) => {
     }
   ];
 
-  const result = await (async () => {
+  const {
+    responseData,
+    totalTokens,
+    completeMessages = []
+  } = await (async () => {
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
@@ -73,6 +92,38 @@ export const dispatchRunTools = async (props: DispatchToolProps) => {
         messages: chats2GPTMessages({ messages, reserveId: false })
       });
     }
+    return {
+      responseData: [],
+      totalTokens: 0
+    };
   })();
-  return {};
+
+  const { totalPoints, modelName } = formatModelChars2Points({
+    model,
+    tokens: totalTokens,
+    modelType: ModelTypeEnum.llm
+  });
+
+  const adaptMessages = GPTMessages2Chats(completeMessages);
+  const startIndex = adaptMessages.findLastIndex((item) => item.obj === ChatRoleEnum.Human);
+  const assistantResponse = adaptMessages.slice(startIndex + 1);
+
+  return {
+    [ModuleRunTimerOutputEnum.assistantResponse]: assistantResponse
+      .map((item) => item.value)
+      .flat(),
+    [ModuleRunTimerOutputEnum.responseData]: [
+      {
+        moduleName: name,
+        moduleType: flowType,
+        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
+        tokens: totalTokens,
+        totalPoints,
+        model: modelName,
+        query: userChatInput,
+        historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false))
+      }
+    ].concat(responseData),
+    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [] // 聚合
+  };
 };

@@ -4,7 +4,11 @@ import {
   ModuleRunTimerOutputEnum
 } from '@fastgpt/global/core/module/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type {
+  ChatDispatchProps,
+  ModuleDispatchResponse,
+  RunningModuleItemType
+} from '@fastgpt/global/core/module/type.d';
 import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import type {
   ChatHistoryItemResType,
@@ -39,6 +43,7 @@ import { checkTheModuleConnectedByTool, valueTypeFormat } from './utils';
 import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { DispatchFlowModuleResponse } from './type';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -76,7 +81,7 @@ export async function dispatchModules({
 }: ChatDispatchProps & {
   modules: ModuleItemType[]; // app modules
   startParams?: Record<string, any>; // entry module params
-}) {
+}): Promise<DispatchFlowModuleResponse> {
   // set sse response headers
   if (stream) {
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
@@ -92,7 +97,7 @@ export async function dispatchModules({
   const runningModules = loadModules(modules, variables);
 
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
-  let chatAnswerValue: ChatItemValueItemType[] = []; // The value will be returned to the user
+  let chatAssistantResponse: ChatItemValueItemType[] = []; // The value will be returned to the user
   let chatModuleBills: ChatModuleUsageType[] = [];
   let toolRunResponse: ToolRunResponseItemType[] = [];
   let runningTime = Date.now();
@@ -105,32 +110,18 @@ export async function dispatchModules({
       responseData,
       moduleDispatchBills,
       toolResponse,
-      toolModuleOutput
+      toolModuleOutput,
+      assistantResponse
     }: {
       [ModuleOutputKeyEnum.answerText]?: string;
       [ModuleRunTimerOutputEnum.responseData]?: ChatHistoryItemResType | ChatHistoryItemResType[];
       [ModuleRunTimerOutputEnum.moduleDispatchBills]?: ChatModuleUsageType[];
       [ModuleRunTimerOutputEnum.toolResponse]?: ToolRunResponseItemType;
       [ModuleRunTimerOutputEnum.toolModuleOutput]?: ToolModuleResponseItemType[];
+      [ModuleRunTimerOutputEnum.assistantResponse]?: ChatItemValueItemType[]; // tool module, save the response value
     }
   ) {
     const time = Date.now();
-
-    const isResponseAnswerText =
-      inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
-    if (isResponseAnswerText) {
-      const lastResponse = chatAnswerValue[chatAnswerValue.length - 1];
-      if (lastResponse && lastResponse.type === ChatItemValueTypeEnum.text && lastResponse.text) {
-        lastResponse.text.content += answerText;
-      } else {
-        chatAnswerValue.push({
-          type: ChatItemValueTypeEnum.text,
-          text: {
-            content: answerText
-          }
-        });
-      }
-    }
 
     if (responseData) {
       if (Array.isArray(responseData)) {
@@ -148,13 +139,29 @@ export async function dispatchModules({
     if (toolResponse) {
       toolRunResponse.push(toolResponse);
     }
+    // save tool run result
     if (toolModuleOutput) {
-      chatAnswerValue.push(
+      chatAssistantResponse.push(
         ...toolModuleOutput.map((item) => ({
           type: ChatItemValueTypeEnum.tool,
           tool: item
         }))
       );
+    }
+    if (assistantResponse) {
+      chatAssistantResponse.push(...assistantResponse);
+    }
+
+    // save assistant text response
+    const isResponseAnswerText =
+      inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
+    if (answerText && isResponseAnswerText) {
+      chatAssistantResponse.push({
+        type: ChatItemValueTypeEnum.text,
+        text: {
+          content: answerText
+        }
+      });
     }
 
     runningTime = time;
@@ -297,10 +304,6 @@ export async function dispatchModules({
     item.isEntry = false;
   });
 
-  // runningModules.forEach((item) => {
-  //   console.log(item);
-  // });
-
   initModules.map((module) =>
     moduleInput(module, {
       ...startParams,
@@ -318,9 +321,10 @@ export async function dispatchModules({
   }
 
   return {
-    [ModuleOutputKeyEnum.answerText]: chatAnswerValue,
     [ModuleRunTimerOutputEnum.responseData]: chatResponse,
     [ModuleRunTimerOutputEnum.moduleDispatchBills]: chatModuleBills,
+    [ModuleRunTimerOutputEnum.assistantResponse]:
+      concatAssistantResponseAnswerText(chatAssistantResponse),
     [ModuleRunTimerOutputEnum.toolResponse]: toolRunResponse
   };
 }
@@ -419,3 +423,22 @@ export function getSystemVariable({ timezone }: { timezone: string }) {
     cTime: getSystemTime(timezone)
   };
 }
+
+export const concatAssistantResponseAnswerText = (response: ChatItemValueItemType[]) => {
+  const result: ChatItemValueItemType[] = [];
+  // 合并连续的text
+  for (let i = 0; i < response.length; i++) {
+    const item = response[i];
+    if (item.type === ChatItemValueTypeEnum.text) {
+      let text = item.text?.content || '';
+      const lastItem = result[result.length - 1];
+      if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
+        lastItem.text.content += text;
+        continue;
+      }
+    }
+    result.push(item);
+  }
+
+  return result;
+};

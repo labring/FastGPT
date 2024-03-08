@@ -8,6 +8,7 @@ import { MessageCardStyle } from '../constants';
 import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { ChatBoxInputFormType } from '../type.d';
 
 const VariableInput = ({
   appAvatar,
@@ -20,9 +21,7 @@ const VariableInput = ({
   variableModules: VariableItemType[];
   variableIsFinish: boolean;
   onSubmitVariables: (e: Record<string, any>) => void;
-  chatForm: UseFormReturn<{
-    variables: Record<string, any>;
-  }>;
+  chatForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);

@@ -1,5 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import {
+  moduleDispatchResType,
+  type ChatHistoryItemResType
+} from '@fastgpt/global/core/chat/type.d';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { Flex, BoxProps, useDisclosure, useTheme, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -17,6 +20,9 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
 const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
 const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
+
+const isLLMNode = (item: ChatHistoryItemResType) =>
+  item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
 const ResponseTags = ({
   responseData = [],
@@ -36,7 +42,8 @@ const ResponseTags = ({
       sourceName: string;
     };
   }>();
-  const [contextModalData, setContextModalData] = useState<ChatItemType[]>();
+  const [contextModalData, setContextModalData] =
+    useState<moduleDispatchResType['historyPreview']>();
   const {
     isOpen: isOpenWholeModal,
     onOpen: onOpenWholeModal,
@@ -44,18 +51,19 @@ const ResponseTags = ({
   } = useDisclosure();
 
   const {
-    chatAccount,
+    llmModuleAccount,
     quoteList = [],
     sourceList = [],
     historyPreview = [],
     runningTime = 0
   } = useMemo(() => {
-    const chatData = responseData.find((item) => item.moduleType === FlowNodeTypeEnum.chatNode);
+    const chatData = responseData.find(isLLMNode);
     const quoteList = responseData
-      .filter((item) => item.moduleType === FlowNodeTypeEnum.chatNode)
+      .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
       .map((item) => item.quoteList)
       .flat()
       .filter(Boolean) as SearchDataResponseItemType[];
+
     const sourceList = quoteList.reduce(
       (acc: Record<string, SearchDataResponseItemType[]>, cur) => {
         if (!acc[cur.collectionId]) {
@@ -67,8 +75,7 @@ const ResponseTags = ({
     );
 
     return {
-      chatAccount: responseData.filter((item) => item.moduleType === FlowNodeTypeEnum.chatNode)
-        .length,
+      llmModuleAccount: responseData.filter(isLLMNode).length,
       quoteList,
       sourceList: Object.values(sourceList)
         .flat()
@@ -148,7 +155,7 @@ const ResponseTags = ({
               </Tag>
             </MyTooltip>
           )}
-          {chatAccount === 1 && (
+          {llmModuleAccount === 1 && (
             <>
               {historyPreview.length > 0 && (
                 <MyTooltip label={'点击查看完整对话记录'}>
@@ -164,7 +171,7 @@ const ResponseTags = ({
               )}
             </>
           )}
-          {chatAccount > 1 && (
+          {llmModuleAccount > 1 && (
             <Tag colorSchema="blue" {...TagStyles}>
               多组 AI 对话
             </Tag>

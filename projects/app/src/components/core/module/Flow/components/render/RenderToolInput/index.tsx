@@ -32,7 +32,6 @@ const RenderToolInput = ({
   canEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  console.log(inputs);
 
   return (
     <>

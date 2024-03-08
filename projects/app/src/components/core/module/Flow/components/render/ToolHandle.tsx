@@ -12,7 +12,7 @@ export const ToolTargetHandle = ({ ...props }: ToolHandleProps) => {
   const valueTypeMap = FlowValueTypeMap[ModuleIOValueTypeEnum.tools];
 
   return (
-    <Box position={'absolute'} top={'-5px'} left={'50%'} {...props}>
+    <Box position={'absolute'} left={'50%'} transform={'translate(-17px,-10px)'} {...props}>
       <MyTooltip
         label={t('app.module.type', {
           type: t(valueTypeMap?.label),
@@ -27,7 +27,7 @@ export const ToolTargetHandle = ({ ...props }: ToolHandleProps) => {
             borderRadius: '0',
             backgroundColor: 'transparent',
             transformOrigin: 'center',
-            transform: 'translate(-100%,2px) rotate(45deg)'
+            transform: 'rotate(45deg)'
           }}
           type="target"
           id={ModuleOutputKeyEnum.selectedTools}
@@ -44,7 +44,7 @@ export const ToolSourceHandle = ({ ...props }: ToolHandleProps) => {
   const valueTypeMap = FlowValueTypeMap[ModuleIOValueTypeEnum.tools];
 
   return (
-    <Box position={'absolute'} bottom={'-5px'} left={'50%'} {...props}>
+    <Box position={'absolute'} left={'50%'} transform={'translate(-16px,-14px)'} {...props}>
       <MyTooltip
         label={t('app.module.type', {
           type: t(valueTypeMap?.label),
@@ -59,7 +59,7 @@ export const ToolSourceHandle = ({ ...props }: ToolHandleProps) => {
             borderRadius: '0',
             backgroundColor: 'transparent',
             transformOrigin: 'center',
-            transform: 'translate(-100%,2px) rotate(45deg)'
+            transform: 'rotate(45deg)'
           }}
           type="source"
           id={ModuleOutputKeyEnum.selectedTools}

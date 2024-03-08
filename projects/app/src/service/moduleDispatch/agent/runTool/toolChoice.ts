@@ -15,16 +15,25 @@ import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant'
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { dispatchModules } from '../../index';
-import { DispatchToolProps, ToolModuleItemType } from './type.d';
+import { DispatchToolModuleProps, RunToolResponse, ToolModuleItemType } from './type.d';
 import json5 from 'json5';
+import { ModuleRunTimerOutputEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchFlowModuleResponse } from '../../type';
+import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+
+type ToolRunResponseType = {
+  moduleRunResponse: DispatchFlowModuleResponse;
+  toolMsgParams: ChatCompletionToolMessageParam;
+}[];
 
 export const runToolWithToolChoice = async (
-  props: DispatchToolProps & {
+  props: DispatchToolModuleProps & {
     messages: ChatCompletionMessageParam[];
     toolModules: ToolModuleItemType[];
     toolModel: LLMModelItemType;
-  }
-) => {
+  },
+  response?: RunToolResponse
+): Promise<RunToolResponse> => {
   const { toolModel, toolModules, messages, res, modules, stream } = props;
 
   const tools: any = toolModules.map((module) => {
@@ -62,10 +71,11 @@ export const runToolWithToolChoice = async (
     maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
   });
 
+  /* Run llm */
   const ai = getAIApi({
     timeout: 480000
   });
-  const response = await ai.chat.completions.create(
+  const aiResponse = await ai.chat.completions.create(
     {
       ...toolModel?.defaultConfig,
       model: toolModel.model,
@@ -87,18 +97,19 @@ export const runToolWithToolChoice = async (
       return streamResponse({
         res,
         toolModules,
-        stream: response
+        stream: aiResponse
       });
     } else {
-      const aiResponse = response as ChatCompletion;
+      const result = aiResponse as ChatCompletion;
       return {
-        answer: aiResponse.choices?.[0]?.message?.content || '',
-        toolCalls: aiResponse.choices?.[0]?.message?.tool_calls || []
+        answer: result.choices?.[0]?.message?.content || '',
+        toolCalls: result.choices?.[0]?.message?.tool_calls || []
       };
     }
   })();
 
-  const toolModulesRunResponse = (
+  // Run the selected tool.
+  const toolsRunResponse = (
     await Promise.all(
       toolCalls.map(async (tool) => {
         const toolModule = toolModules.find((module) => module.moduleId === tool.function?.name);
@@ -134,7 +145,6 @@ export const runToolWithToolChoice = async (
         };
 
         if (stream) {
-          console.log('2222222');
           responseWrite({
             res,
             event: sseResponseEventEnum.toolResponse,
@@ -142,7 +152,7 @@ export const runToolWithToolChoice = async (
               tool: {
                 id: tool.id,
                 toolName: '',
-                avatar: '',
+                toolAvatar: '',
                 params: '',
                 response: JSON.stringify(toolResponse, null, 2)
               }
@@ -156,29 +166,53 @@ export const runToolWithToolChoice = async (
         };
       })
     )
-  ).filter(Boolean);
+  ).filter(Boolean) as ToolRunResponseType;
+
+  const flatToolsResponseData = toolsRunResponse
+    .map((item) => item.moduleRunResponse.responseData)
+    .flat();
 
   if (toolCalls.length > 0) {
+    // Run the tool, combine its results, and perform another round of AI calls
+
     const assistantToolMsgParams: ChatCompletionAssistantToolParam = {
       role: 'assistant',
       tool_calls: toolCalls
     };
     const concatToolMessages = [
       ...filterMessages,
-      assistantToolMsgParams,
-      ...toolModulesRunResponse.map((item) => item?.toolMsgParams)
+      assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
 
-    await runToolWithToolChoice({
-      ...props,
-      messages: concatToolMessages
+    const tokens = countGptMessagesTokens(concatToolMessages);
+
+    return runToolWithToolChoice(
+      {
+        ...props,
+        messages: [...concatToolMessages, ...toolsRunResponse.map((item) => item?.toolMsgParams)]
+      },
+      {
+        responseData: response
+          ? response.responseData.concat(flatToolsResponseData)
+          : flatToolsResponseData,
+        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens
+      }
+    );
+  } else {
+    // No tool is invoked, indicating that the process is over
+    const completeMessages = filterMessages.concat({
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      content: answer
     });
+
+    const tokens = countGptMessagesTokens(completeMessages);
+
+    return {
+      [ModuleRunTimerOutputEnum.responseData]: response?.responseData || [],
+      totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+      completeMessages
+    };
   }
-
-  // done
-  console.log('结束了');
-
-  // console.log(answer, toolCalls);
 };
 
 async function streamResponse({
@@ -218,9 +252,10 @@ async function streamResponse({
         })
       });
     } else if (responseChoice.tool_calls?.[0]) {
-      // 流响应中,每次只会返回一个工具.
-      if (responseChoice.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
-        const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls?.[0];
+      const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls[0];
+
+      // 流响应中,每次只会返回一个工具. 如果带了 id，说明是执行一个工具
+      if (toolCall.id) {
         const toolModule = toolModules.find(
           (module) => module.moduleId === toolCall.function?.name
         );
@@ -229,7 +264,11 @@ async function streamResponse({
           if (toolCall.function?.arguments === undefined) {
             toolCall.function.arguments = '';
           }
-          toolCalls.push(toolCall);
+          toolCalls.push({
+            ...toolCall,
+            toolName: toolModule.name,
+            toolAvatar: toolModule.avatar
+          });
           responseWrite({
             write,
             event: sseResponseEventEnum.toolCall,
@@ -237,14 +276,13 @@ async function streamResponse({
               tool: {
                 id: toolCall.id,
                 toolName: toolModule.name,
-                avatar: toolModule.avatar,
+                toolAvatar: toolModule.avatar,
                 functionName: toolCall.function.name,
                 params: toolCall.function.arguments,
                 response: ''
               }
             })
           });
-          console.log('调用工具');
         }
       }
       /* arg 插入最后一个工具的参数里 */
@@ -259,7 +297,7 @@ async function streamResponse({
             tool: {
               id: currentTool.id,
               toolName: '',
-              avatar: '',
+              toolAvatar: '',
               params: arg,
               response: ''
             }

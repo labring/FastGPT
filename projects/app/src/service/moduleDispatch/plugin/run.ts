@@ -18,9 +18,7 @@ type RunPluginProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.pluginId]: string;
   [key: string]: any;
 }>;
-type RunPluginResponse = ModuleDispatchResponse<{
-  [ModuleOutputKeyEnum.answerText]: string;
-}>;
+type RunPluginResponse = ModuleDispatchResponse<{}>;
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
@@ -61,7 +59,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return params;
   })();
 
-  const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
+  const { responseData, moduleDispatchBills, assistantResponse } = await dispatchModules({
     ...props,
     modules: setEntryEntries(plugin.modules).map((module) => ({
       ...module,
@@ -77,12 +75,11 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   }
 
   return {
-    answerText,
+    assistantResponse,
     // responseData, // debug
     [ModuleRunTimerOutputEnum.responseData]: {
       moduleLogo: plugin.avatar,
       totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
-      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0),
       pluginOutput: output?.pluginOutput,
       pluginDetail:
         mode === 'test' && plugin.teamId === teamId

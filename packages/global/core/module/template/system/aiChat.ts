@@ -29,6 +29,7 @@ export const AiChatModule: FlowModuleTemplateType = {
   name: 'AI 对话',
   intro: 'AI 大模型对话',
   showStatus: true,
+  isTool: true,
   inputs: [
     Input_Template_Switch,
     Input_Template_AiModel,
@@ -98,7 +99,7 @@ export const AiChatModule: FlowModuleTemplateType = {
       placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
-    Input_Template_UserChatInput,
+    { ...Input_Template_UserChatInput, toolDescription: '用户问题' },
     Input_Template_Dataset_Quote
   ],
   outputs: [

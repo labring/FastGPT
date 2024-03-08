@@ -1,11 +1,29 @@
-import { Box, BoxProps, Card, Flex, useTheme } from '@chakra-ui/react';
+import {
+  Box,
+  BoxProps,
+  Card,
+  Flex,
+  useTheme,
+  Accordion,
+  AccordionItem,
+  AccordionButton,
+  AccordionPanel,
+  AccordionIcon,
+  Button,
+  Image,
+  Grid
+} from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
 import { formatChatValue2InputType } from '../utils';
-import Markdown from '@/components/Markdown';
+import Markdown, { CodeClassName } from '@/components/Markdown';
 import styles from '../index.module.scss';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import MdImage from '@/components/Markdown/img/Image';
+import FilesBlock from './FilesBox';
 
 const ChatItem = ({
   type,
@@ -13,6 +31,7 @@ const ChatItem = ({
   statusBoxData,
   children,
   isLastChild,
+  questionGuides = [],
   ...chatControllerProps
 }: {
   type: 'Human' | 'AI';
@@ -22,6 +41,7 @@ const ChatItem = ({
     name: string;
   };
   isLastChild?: boolean;
+  questionGuides?: string[];
   children?: React.ReactNode;
 } & ChatControllerProps) => {
   const theme = useTheme();
@@ -47,55 +67,88 @@ const ChatItem = ({
 
   const ContentCard = useMemo(() => {
     if (type === 'Human') {
-      const { text, files } = formatChatValue2InputType(chat.value);
+      const { text, files = [] } = formatChatValue2InputType(chat.value);
 
       return (
         <>
+          {files.length > 0 && <FilesBlock files={files} />}
           <Markdown source={text} isChatting={false} />
         </>
       );
     }
     /* AI */
     return (
-      <>
+      <Flex flexDirection={'column'} gap={2}>
         {chat.value.map((value, i) => {
           const key = `${chat.dataId}-ai-${i}`;
           if (value.text) {
-            return (
-              <Markdown
-                key={key}
-                source={value.text.content || ''}
-                isChatting={isLastChild && isChatting}
-              />
-            );
+            let source = value.text?.content || '';
+
+            if (isLastChild && !isChatting && questionGuides.length > 0) {
+              source = `${source}
+\`\`\`${CodeClassName.questionGuide}
+${JSON.stringify(questionGuides)}`;
+            }
+
+            return <Markdown key={key} source={source} isChatting={isLastChild && isChatting} />;
           }
-          if (value.tools) {
+          if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
             return (
               <Box key={key}>
-                {value.tools.map((tool) => (
-                  <Box key={tool.id}>
-                    <Box>{tool.toolName}</Box>
-                    {tool.params && (
-                      <Markdown
-                        source={`~~~json
+                {value.tools.map((tool) => {
+                  return (
+                    <Box key={tool.id}>
+                      <Accordion allowToggle>
+                        <AccordionItem borderTop={'none'} borderBottom={'none'}>
+                          <AccordionButton
+                            w={'auto'}
+                            bg={'white'}
+                            borderRadius={'md'}
+                            borderWidth={'1px'}
+                            borderColor={'myGray.200'}
+                            boxShadow={'1'}
+                          >
+                            <Image src={tool.toolAvatar} alt={''} w={'14px'} mr={2} />
+                            <Box mr={1}>{tool.toolName}</Box>
+                            {isChatting && !tool.response && (
+                              <MyIcon name={'common/loading'} w={'14px'} />
+                            )}
+                            <AccordionIcon color={'myGray.600'} ml={5} />
+                          </AccordionButton>
+                          <AccordionPanel
+                            py={0}
+                            px={0}
+                            mt={2}
+                            borderRadius={'md'}
+                            overflow={'hidden'}
+                            maxH={'500px'}
+                            overflowY={'auto'}
+                          >
+                            {tool.params && (
+                              <Markdown
+                                source={`~~~json
 ${tool.params}`}
-                      />
-                    )}
-                    {tool.response && (
-                      <Markdown
-                        source={`~~~json
+                              />
+                            )}
+                            {tool.response && (
+                              <Markdown
+                                source={`~~~json
 ${tool.response}`}
-                      />
-                    )}
-                  </Box>
-                ))}
+                              />
+                            )}
+                          </AccordionPanel>
+                        </AccordionItem>
+                      </Accordion>
+                    </Box>
+                  );
+                })}
               </Box>
             );
           }
         })}
-      </>
+      </Flex>
     );
-  }, [chat.dataId, chat.value, isChatting, isLastChild, type]);
+  }, [chat.dataId, chat.value, isChatting, isLastChild, questionGuides, type]);
 
   return (
     <>

@@ -72,6 +72,7 @@ export type useFlowProviderStoreType = {
     inputs: FlowNodeInputItemType[],
     moduleId: string
   ) => {
+    isTool: boolean;
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
   };
@@ -132,6 +133,7 @@ const StateContext = createContext<useFlowProviderStoreType>({
     inputs: FlowNodeInputItemType[],
     moduleId: string
   ): {
+    isTool: boolean;
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
   } {
@@ -382,14 +384,15 @@ export const FlowProvider = ({
   /* If the module is connected by a tool, the tool input and the normal input are separated */
   const splitToolInputs = useCallback(
     (inputs: FlowNodeInputItemType[], moduleId: string) => {
-      const isToolModule = !!edges.find(
+      const isTool = !!edges.find(
         (edge) =>
           edge.targetHandle === ModuleOutputKeyEnum.selectedTools && edge.target === moduleId
       );
 
       return {
-        toolInputs: inputs.filter((item) => isToolModule && item.toolDescription),
-        commonInputs: inputs.filter((item) => !isToolModule || !item.toolDescription)
+        isTool,
+        toolInputs: inputs.filter((item) => isTool && item.toolDescription),
+        commonInputs: inputs.filter((item) => !isTool || !item.toolDescription)
       };
     },
     [edges]

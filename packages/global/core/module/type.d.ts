@@ -8,7 +8,12 @@ import {
 } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
-import { ToolRunResponseItemType, moduleDispatchResType } from '..//chat/type';
+import {
+  ChatItemValueItemType,
+  ToolRunResponseItemType,
+  UserChatItemValueItemType,
+  moduleDispatchResType
+} from '..//chat/type';
 import { ChatModuleUsageType } from '../../support/wallet/bill/type';
 
 export type FlowModuleTemplateType = {
@@ -129,7 +134,7 @@ export type ChatDispatchProps = {
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>;
-  inputFiles?: RuntimeFileType[];
+  inputFiles?: UserChatItemValueItemType['file'][];
   stream: boolean;
   detail: boolean; // response detail
 };
@@ -139,8 +144,9 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   modules: ModuleItemType[];
   params: T;
 };
-export type ModuleDispatchResponse<T> = T & {
-  [ModuleRunTimerOutputEnum.responseData]?: moduleDispatchResType;
+export type ModuleDispatchResponse<T> = {
+  [ModuleRunTimerOutputEnum.responseData]?: moduleDispatchResType | moduleDispatchResType[];
   [ModuleRunTimerOutputEnum.toolResponse]?: ToolRunResponseItemType;
+  [ModuleRunTimerOutputEnum.assistantResponse]?: ChatItemValueItemType[];
   [ModuleRunTimerOutputEnum.moduleDispatchBills]?: ChatModuleUsageType[];
-};
+} & T;
