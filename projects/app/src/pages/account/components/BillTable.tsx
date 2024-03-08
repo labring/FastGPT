@@ -19,18 +19,19 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tool
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import MySelect from '@/components/Select';
 import {
   BillTypeEnum,
   billPayWayMap,
   billStatusMap,
   billTypeMap
 } from '@fastgpt/global/support/wallet/bill/constants';
-import { usePagination } from '@/web/common/hooks/usePagination';
+// import { usePagination } from '@/web/common/hooks/usePagination';
 import MyBox from '@/components/common/MyBox';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import MyModal from '@/components/MyModal';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyModal from '@fastgpt/web/components/common/CustomModal';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 
 const BillTable = () => {
   const { t } = useTranslation();

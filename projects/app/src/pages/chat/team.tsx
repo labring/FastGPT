@@ -85,7 +85,6 @@ const OutLink = ({
         onMessage: generatingMessage,
         abortCtrl: controller
       });
-      console.log(responseData);
       const newTitle =
         chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
         prompts[1]?.value?.slice(0, 20) ||
@@ -291,9 +290,11 @@ const OutLink = ({
           })(
             <ChatHistorySlider
               appId={appId}
+              apps={myApps}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}
               activeChatId={chatId}
+              confirmClearText={t('core.chat.Confirm to clear history')}
               onClose={onCloseSlider}
               history={histories.map((item, i) => ({
                 id: item.chatId,

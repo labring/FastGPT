@@ -19,7 +19,6 @@ import {
   TableContainer,
   Button
 } from '@chakra-ui/react';
-import MySelect from '@/components/Select';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { onChangeNode, useFlowProviderStore } from '../../../FlowProvider';
 import { useTranslation } from 'next-i18next';
@@ -38,6 +37,7 @@ import {
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 const OpenApiImportModal = dynamic(() => import('./OpenApiImportModal'));
 
 enum TabEnum {

@@ -14,7 +14,7 @@ import {
 import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getTeamPlans } from '@/web/support/user/team/api';
 import { subTypeMap, standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';

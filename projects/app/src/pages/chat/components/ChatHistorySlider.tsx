@@ -20,8 +20,8 @@ import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useQuery } from '@tanstack/react-query';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 type HistoryItemType = {
@@ -41,6 +41,8 @@ const ChatHistorySlider = ({
   appName,
   appAvatar,
   history,
+  apps = [],
+  confirmClearText,
   activeChatId,
   onChangeChat,
   onDelHistory,
@@ -54,6 +56,8 @@ const ChatHistorySlider = ({
   appAvatar: string;
   history: HistoryItemType[];
   activeChatId: string;
+  apps?: AppListItemType[];
+  confirmClearText: string;
   onChangeChat: (chatId?: string) => void;
   onDelHistory: (e: { chatId: string }) => void;
   onClearHistory: () => void;
@@ -65,22 +69,18 @@ const ChatHistorySlider = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { isPc } = useSystemStore();
-  const { myApps, loadMyApps } = useAppStore();
   const { userInfo } = useUserStore();
 
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
 
-  const isShare = useMemo(() => !appId || !userInfo, [appId, userInfo]);
-
+  const showApps = apps?.length > 0;
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('core.chat.Custom History Title'),
     placeholder: t('core.chat.Custom History Title Description')
   });
   const { openConfirm, ConfirmModal } = useConfirm({
-    content: isShare
-      ? t('core.chat.Confirm to clear share chat history')
-      : t('core.chat.Confirm to clear history')
+    content: confirmClearText
   });
 
   const concatHistory = useMemo<HistoryItemType[]>(
@@ -92,11 +92,11 @@ const ChatHistorySlider = ({
   );
 
   useQuery(['init'], () => {
-    if (isShare) {
+    if (!showApps) {
       setCurrentTab(TabEnum.history);
       return null;
     }
-    return loadMyApps(false);
+    return;
   });
 
   const canRouteToDetail = useMemo(
@@ -140,7 +140,7 @@ const ChatHistorySlider = ({
 
       {/* menu */}
       <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5} alignItems={'center'}>
-        {!isPc && !isShare && (
+        {!isPc && appId && (
           <Tabs
             w={'120px'}
             mr={2}
@@ -165,7 +165,7 @@ const ChatHistorySlider = ({
           {t('core.chat.New Chat')}
         </Button>
 
-        {(isPc || isShare) && (
+        {(isPc || !showApps) && (
           <IconButton
             ml={3}
             h={'100%'}
@@ -286,36 +286,37 @@ const ChatHistorySlider = ({
         )}
         {currentTab === TabEnum.app && !isPc && (
           <>
-            {myApps.map((item) => (
-              <Flex
-                key={item._id}
-                py={2}
-                px={3}
-                mb={3}
-                borderRadius={'md'}
-                alignItems={'center'}
-                {...(item._id === appId
-                  ? {
-                      backgroundColor: 'primary.50 !important',
-                      color: 'primary.600'
-                    }
-                  : {
-                      onClick: () => {
-                        router.replace({
-                          query: {
-                            appId: item._id
-                          }
-                        });
-                        onClose();
+            {Array.isArray(apps) &&
+              apps.map((item) => (
+                <Flex
+                  key={item._id}
+                  py={2}
+                  px={3}
+                  mb={3}
+                  borderRadius={'md'}
+                  alignItems={'center'}
+                  {...(item._id === appId
+                    ? {
+                        backgroundColor: 'primary.50 !important',
+                        color: 'primary.600'
                       }
-                    })}
-              >
-                <Avatar src={item.avatar} w={'24px'} />
-                <Box ml={2} className={'textEllipsis'}>
-                  {item.name}
-                </Box>
-              </Flex>
-            ))}
+                    : {
+                        onClick: () => {
+                          router.replace({
+                            query: {
+                              appId: item._id
+                            }
+                          });
+                          onClose();
+                        }
+                      })}
+                >
+                  <Avatar src={item.avatar} w={'24px'} />
+                  <Box ml={2} className={'textEllipsis'}>
+                    {item.name}
+                  </Box>
+                </Flex>
+              ))}
           </>
         )}
       </Box>

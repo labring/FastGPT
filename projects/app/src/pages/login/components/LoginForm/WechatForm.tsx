@@ -9,7 +9,7 @@ import { useRouter } from 'next/router';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import FormLayout from './components/FormLayout';
 import { useTranslation } from 'next-i18next';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 interface Props {
   loginSuccess: (e: ResLogin) => void;

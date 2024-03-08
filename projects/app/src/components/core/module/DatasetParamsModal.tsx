@@ -26,9 +26,9 @@ import MyRadio from '@/components/common/MyRadio';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Tabs from '@/components/Tabs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import SelectAiModel from '@/components/Select/SelectAiModel';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import SelectAiModel from '@/components/Select/SelectAiModel';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;

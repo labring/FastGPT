@@ -19,6 +19,7 @@ export type BillSchemaType = {
     datasetSize?: number;
     extraPoints?: number;
   };
+  username: string;
 };
 
 export type ChatModuleUsageType = {

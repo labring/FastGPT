@@ -1,12 +1,19 @@
 import { useRef, useState, useCallback, useMemo, useEffect } from 'react';
-import type { PagingData } from '@/types/index.d';
 import { IconButton, Flex, Box, Input } from '@chakra-ui/react';
 import { ArrowBackIcon, ArrowForwardIcon } from '@chakra-ui/icons';
 import { useMutation } from '@tanstack/react-query';
-import { useToast } from '@fastgpt/web/hooks/useToast';
+
 import { throttle } from 'lodash';
+import { useToast } from './useToast';
 
 const thresholdVal = 100;
+
+type PagingData<T> = {
+  pageNum: number;
+  pageSize: number;
+  data: T[];
+  total?: number;
+};
 
 export function usePagination<T = any>({
   api,
@@ -14,7 +21,8 @@ export function usePagination<T = any>({
   params = {},
   defaultRequest = true,
   type = 'button',
-  onChange
+  onChange,
+  elementRef
 }: {
   api: (data: any) => any;
   pageSize?: number;
@@ -22,12 +30,18 @@ export function usePagination<T = any>({
   defaultRequest?: boolean;
   type?: 'button' | 'scroll';
   onChange?: (pageNum: number) => void;
+  elementRef?: React.RefObject<HTMLDivElement>;
 }) {
-  const elementRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const [pageNum, setPageNum] = useState(1);
+  const pageNumRef = useRef(pageNum);
+  pageNumRef.current = pageNum;
   const [total, setTotal] = useState(0);
+  const totalRef = useRef(total);
+  totalRef.current = total;
   const [data, setData] = useState<T[]>([]);
+  const dataLengthRef = useRef(data.length);
+  dataLengthRef.current = data.length;
   const maxPage = useMemo(() => Math.ceil(total / pageSize) || 1, [pageSize, total]);
 
   const { mutate, isLoading } = useMutation({
@@ -40,7 +54,11 @@ export function usePagination<T = any>({
         });
         setPageNum(num);
         res.total !== undefined && setTotal(res.total);
-        setData(res.data);
+        if (type === 'scroll') {
+          setData((prevData) => [...prevData, ...res.data]);
+        } else {
+          setData(res.data);
+        }
         onChange && onChange(num);
       } catch (error: any) {
         toast({
@@ -147,7 +165,7 @@ export function usePagination<T = any>({
   );
 
   useEffect(() => {
-    if (!elementRef.current || type !== 'scroll') return;
+    if (!elementRef?.current || type !== 'scroll') return;
 
     const scrolling = throttle((e: Event) => {
       const element = e.target as HTMLDivElement;
@@ -159,16 +177,23 @@ export function usePagination<T = any>({
       // 内容总高度
       const scrollHeight = element.scrollHeight;
       // 判断是否滚动到底部
-      if (scrollTop + clientHeight + thresholdVal >= scrollHeight) {
-        mutate(pageNum + 1);
+      if (
+        scrollTop + clientHeight + thresholdVal >= scrollHeight &&
+        dataLengthRef.current < totalRef.current
+      ) {
+        mutate(pageNumRef.current + 1);
       }
     }, 100);
-    elementRef.current.addEventListener('scroll', scrolling);
-    return () => {
-      // eslint-disable-next-line react-hooks/exhaustive-deps
-      elementRef.current?.removeEventListener('scroll', scrolling);
+
+    const handleScroll = (e: Event) => {
+      scrolling(e);
     };
-  }, [elementRef, mutate, pageNum, type]);
+
+    elementRef.current.addEventListener('scroll', handleScroll);
+    return () => {
+      elementRef.current?.removeEventListener('scroll', handleScroll);
+    };
+  }, [elementRef, mutate, pageNum, type, total, data.length]);
 
   useEffect(() => {
     defaultRequest && mutate(1);
@@ -179,6 +204,7 @@ export function usePagination<T = any>({
     pageSize,
     total,
     data,
+    setData,
     isLoading,
     Pagination,
     ScrollData,
