@@ -108,11 +108,6 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 ```bash
 # 进入项目目录
 cd 项目目录
-# 创建 mongo 密钥
-openssl rand -base64 756 > ./mongodb.key
-# 600不行可以用chmod 999
-chmod 600 ./mongodb.key
-chown 999:root ./mongodb.key
 # 启动容器
 docker-compose pull
 docker-compose up -d
@@ -128,7 +123,7 @@ docker ps
 # 进入容器
 docker exec -it mongo bash
 
-# 连接数据库
+# 连接数据库（这里要填Mongo的用户名和密码）
 mongo -u myname -p mypassword --authenticationDatabase admin
 
 # 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin => MONGODB_URI=mongodb://myname:mypassword@ip:27017/fastgpt?authSource=admin）
@@ -142,8 +137,58 @@ rs.initiate({
 rs.status()
 ```
 
+**关于 host: "mongo:27017" 说明**
+
+1. mongo:27017 代表指向同一个 docker 网络的 mongo 容器的 27017 服务。因此，如果使用该参数，外网是无法访问到数据库的。
+2. ip:27017 （ip替换成公网IP）：代表通过你的公网IP进行访问。如果用该方法，同时需要修改 docker-compose 中 mongo 的连接参数，因为默认是用 `mongo:27017` 进行连接。
+
 ## 五、访问 FastGPT
 
 目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 
 如果需要域名访问，请自行安装并配置 Nginx。
+
+
+## FAQ
+
+### Mongo 启动失败
+
+docker-compose 示例优化 Mongo 副本集参数，不需要手动创建再挂载。如果无法启动，可以尝试更换下面的脚本：
+
+1. 终端中执行：
+
+```bash
+openssl rand -base64 756 > ./mongodb.key
+chmod 600 ./mongodb.key
+chown 999:root ./mongodb.key
+```
+
+2. 修改 docker-compose.yml：
+  
+```yml
+mongo:
+  #  image: mongo:5.0.18
+  # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+  container_name: mongo
+  ports:
+    - 27017:27017
+  networks:
+    - fastgpt
+  command: mongod --keyFile /data/mongodb.key --replSet rs0
+  environment:
+    # 默认的用户名和密码，只有首次允许有效
+    - MONGO_INITDB_ROOT_USERNAME=myname
+    - MONGO_INITDB_ROOT_PASSWORD=mypassword
+  volumes:
+    - ./mongo/data:/data/db
+    - ./mongodb.key:/data/mongodb.key
+```
+
+3. 重启服务
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+4. 进入容器执行副本集合初始化（看上方）

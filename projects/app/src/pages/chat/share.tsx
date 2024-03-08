@@ -298,6 +298,7 @@ const OutLink = ({
               <ChatHistorySlider
                 appName={chatData.app.name}
                 appAvatar={chatData.app.avatar}
+                confirmClearText={t('core.chat.Confirm to clear share chat history')}
                 activeChatId={chatId}
                 history={histories.map((item) => ({
                   id: item.chatId,

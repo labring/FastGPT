@@ -13,7 +13,6 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import { DYNAMIC_INPUT_KEY, ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
-import MySelect from '@/components/Select';
 import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
 import {
   FlowNodeInputTypeEnum,
@@ -21,6 +20,7 @@ import {
 } from '@fastgpt/global/core/module/node/constant';
 import { EditInputFieldMap, EditNodeFieldType } from '@fastgpt/global/core/module/node/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const FieldEditModal = ({
   editField = {

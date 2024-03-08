@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
 import { useTranslation } from 'next-i18next';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const SelectAppModal = ({

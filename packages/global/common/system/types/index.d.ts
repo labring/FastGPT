@@ -63,6 +63,8 @@ export type SystemEnvType = {
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgHNSWEfSearch: number;
+  oneapiUrl?: string;
+  chatApiKey?: string;
 };
 
 // declare global {

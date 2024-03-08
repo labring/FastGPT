@@ -46,8 +46,13 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 ### 页面崩溃
 
 1. 关闭翻译
-2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。（95%）
+2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。（95%情况，可以F12打开控制台，看具体的空指针情况）
 3. 某些api不兼容问题（较少）
+
+### 开启内容补全后，响应速度变慢
+
+1. 问题补全需要经过一轮AI生成。
+2. 会进行3~5轮的查询，如果数据库性能不足，会有明显影响。
 
 ## 私有部署问题
 
@@ -80,7 +85,7 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 
 ### 如何自定义配置文件？
 
-修改`config.json`文件，并执行`docker-compose up -d`重起容器。具体配置，参考[配置详解](/docs/development/configuration)。
+修改`config.json`文件，并执行`docker-compose down`再执行`docker-compose up -d`重起容器。具体配置，参考[配置详解](/docs/development/configuration)。
 
 ### 如何检查自定义配置文件是否挂载
 
@@ -92,6 +97,12 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 1. 挂载目录不正确
 2. 配置文件不正确，日志中会提示`invalid json`，配置文件需要是标准的 JSON 文件。
 3. 修改后，没有`docker-compose down`再`docker-compose up -d`，restart是不会重新挂载文件的。
+
+### 如何检查环境变量是否正常加载
+
+1. `docker exec -it fastgpt sh` 进入 FastGPT 容器。
+2. 直接输入`env`命令查看所有环境变量。
+
 
 ### 为什么无法连接`本地模型`镜像。
 

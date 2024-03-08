@@ -4,13 +4,13 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Box, Button, Flex, ModalBody, useDisclosure, Image } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
-import MySelect from '@/components/Select';
 import { TTSTypeEnum } from '@/constants/app';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@/components/MyModal';
 import MySlider from '@/components/Slider';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const TTSSelect = ({
   value,

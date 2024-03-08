@@ -1,8 +1,8 @@
 import React, { useCallback, useEffect } from 'react';
 import type { RenderInputProps } from '../type';
 import { onChangeNode } from '../../../../FlowProvider';
-import SelectAiModel from '@/components/Select/SelectAiModel';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import SelectAiModel from '@/components/Select/SelectAiModel';
 
 const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) => {
   const { llmModelList } = useSystemStore();

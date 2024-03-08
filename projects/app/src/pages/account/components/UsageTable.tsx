@@ -14,21 +14,23 @@ import {
 import { UsageSourceEnum, UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
 import { getUserUsages } from '@/web/support/wallet/usage/api';
 import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
-import { usePagination } from '@/web/common/hooks/usePagination';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import dayjs from 'dayjs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import DateRangePicker, { type DateRangeType } from '@/components/DateRangePicker';
+import DateRangePicker, {
+  type DateRangeType
+} from '@fastgpt/web/components/common/DateRangePicker';
 import { addDays } from 'date-fns';
 import dynamic from 'next/dynamic';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
-import MySelect from '@/components/Select';
 import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import Avatar from '@/components/Avatar';
-import { formatNumber } from '../../../../../../packages/global/common/math/tools';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 const UsageDetail = dynamic(() => import('./UsageDetail'));
 
 const UsageTable = () => {
