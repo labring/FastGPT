@@ -124,7 +124,7 @@ docker ps
 docker exec -it mongo bash
 
 # 连接数据库（这里要填Mongo的用户名和密码）
-mongo -u myname -p mypassword --authenticationDatabase admin
+mongo -u myusername -p mypassword --authenticationDatabase admin
 
 # 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin => MONGODB_URI=mongodb://myname:mypassword@ip:27017/fastgpt?authSource=admin）
 rs.initiate({
