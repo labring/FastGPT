@@ -85,7 +85,6 @@ export const HttpModule468: FlowModuleTemplateType = {
       ...Input_Template_AddInputParam,
       editField: {
         key: true,
-        name: true,
         description: true,
         required: true,
         dataType: true
@@ -106,7 +105,6 @@ export const HttpModule468: FlowModuleTemplateType = {
       ...Output_Template_AddOutput,
       editField: {
         key: true,
-        name: true,
         description: true,
         dataType: true
       },

@@ -4,6 +4,7 @@ import { ChatRoleEnum, ChatSourceEnum, ChatStatusEnum } from './constants';
 import { FlowNodeTypeEnum } from '../module/node/constant';
 import { ModuleOutputKeyEnum } from '../module/constants';
 import { AppSchema } from '../app/type';
+import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 
 export type ChatSchema = {
@@ -72,6 +73,13 @@ export type ChatSiteItemType = ChatItemType & {
   ttsBuffer?: Uint8Array;
 };
 
+/* --------- team chat --------- */
+export type ChatAppListSchema = {
+  apps: AppType[];
+  teamInfo: teamInfoSchema;
+  uid?: string;
+};
+
 /* ---------- history ------------- */
 export type HistoryItemType = {
   chatId: string;
@@ -88,15 +96,15 @@ export type ChatHistoryItemType = HistoryItemType & {
 export type moduleDispatchResType = {
   // common
   moduleLogo?: string;
-  price?: number;
   runningTime?: number;
-  inputTokens?: number;
-  outputTokens?: number;
-  charsLength?: number;
-  model?: string;
   query?: string;
-  contextTotalLen?: number;
   textOutput?: string;
+
+  // bill
+  tokens?: number;
+  model?: string;
+  contextTotalLen?: number;
+  totalPoints?: number;
 
   // chat
   temperature?: number;
@@ -111,6 +119,7 @@ export type moduleDispatchResType = {
   searchUsingReRank?: boolean;
   extensionModel?: string;
   extensionResult?: string;
+  extensionTokens?: number;
 
   // cq
   cqList?: ClassifyQuestionAgentItemType[];

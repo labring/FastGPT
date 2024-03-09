@@ -1,0 +1,9 @@
+.contentEditable {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  overflow: auto;
+  padding-left: 8px;
+  position: relative;
+}

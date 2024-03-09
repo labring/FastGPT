@@ -14,22 +14,54 @@ export const datasetSearchQueryExtension = async ({
   extensionBg?: string;
   histories?: ChatItemType[];
 }) => {
-  // concat query
-  let queries = [query];
-  let rewriteQuery =
-    histories.length > 0
-      ? `${histories
-          .map((item) => {
-            return `${item.obj}: ${item.value}`;
-          })
-          .join('\n')}
-    Human: ${query}
-    `
-      : query;
+  const filterSamQuery = (queries: string[]) => {
+    const set = new Set<string>();
+    const filterSameQueries = queries.filter((item) => {
+      // 删除所有的标点符号与空格等，只对文本进行比较
+      const str = hashStr(item.replace(/[^\p{L}\p{N}]/gu, ''));
+      if (set.has(str)) return false;
+      set.add(str);
+      return true;
+    });
+
+    return filterSameQueries;
+  };
+
+  let { queries, rewriteQuery, alreadyExtension } = (() => {
+    // concat query
+    let rewriteQuery =
+      histories.length > 0
+        ? `${histories
+            .map((item) => {
+              return `${item.obj}: ${item.value}`;
+            })
+            .join('\n')}
+  Human: ${query}
+  `
+        : query;
+
+    /* if query already extension, direct parse */
+    try {
+      const jsonParse = JSON.parse(query);
+      const queries: string[] = Array.isArray(jsonParse) ? filterSamQuery(jsonParse) : [query];
+      const alreadyExtension = Array.isArray(jsonParse);
+      return {
+        queries,
+        rewriteQuery: alreadyExtension ? queries.join('\n') : rewriteQuery,
+        alreadyExtension: alreadyExtension
+      };
+    } catch (error) {
+      return {
+        queries: [query],
+        rewriteQuery,
+        alreadyExtension: false
+      };
+    }
+  })();
 
   // ai extension
   const aiExtensionResult = await (async () => {
-    if (!extensionModel) return;
+    if (!extensionModel || alreadyExtension) return;
     const result = await queryExtension({
       chatBg: extensionBg,
       query,
@@ -39,23 +71,13 @@ export const datasetSearchQueryExtension = async ({
     if (result.extensionQueries?.length === 0) return;
     return result;
   })();
-
   if (aiExtensionResult) {
-    queries = queries.concat(aiExtensionResult.extensionQueries);
+    queries = filterSamQuery(queries.concat(aiExtensionResult.extensionQueries));
     rewriteQuery = queries.join('\n');
   }
 
-  const set = new Set<string>();
-  const filterSameQueries = queries.filter((item) => {
-    // 删除所有的标点符号与空格等，只对文本进行比较
-    const str = hashStr(item.replace(/[^\p{L}\p{N}]/gu, ''));
-    if (set.has(str)) return false;
-    set.add(str);
-    return true;
-  });
-
   return {
-    concatQueries: filterSameQueries,
+    concatQueries: queries,
     rewriteQuery,
     aiExtensionResult
   };

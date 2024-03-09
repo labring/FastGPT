@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { Box, Button, Table, Thead, Tbody, Tr, Th, Td, TableContainer } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  Flex
+} from '@chakra-ui/react';
 import { NodeProps } from 'reactflow';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { useTranslation } from 'next-i18next';
@@ -36,75 +47,87 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
             }: {
               value?: ContextExtractAgentItemType[];
             }) => (
-              <Box pt={2}>
-                <Box position={'absolute'} top={0} right={0}>
+              <Box>
+                <Flex alignItems={'center'}>
+                  <Box flex={'1 0 0'}>{t('core.module.extract.Target field')}</Box>
                   <Button
+                    size={'sm'}
                     variant={'whitePrimary'}
                     leftIcon={<AddIcon fontSize={'10px'} />}
                     onClick={() => setEditExtractField(defaultField)}
                   >
-                    新增字段
+                    {t('core.module.extract.Add field')}
                   </Button>
-                </Box>
-                <TableContainer>
-                  <Table>
-                    <Thead>
-                      <Tr>
-                        <Th>字段 key</Th>
-                        <Th>字段描述</Th>
-                        <Th>必须</Th>
-                        <Th></Th>
-                      </Tr>
-                    </Thead>
-                    <Tbody>
-                      {extractKeys.map((item, index) => (
-                        <Tr
-                          key={index}
-                          position={'relative'}
-                          whiteSpace={'pre-wrap'}
-                          wordBreak={'break-all'}
-                        >
-                          <Td>{item.key}</Td>
-                          <Td>{item.desc}</Td>
-                          <Td>{item.required ? '✔' : ''}</Td>
-                          <Td whiteSpace={'nowrap'}>
-                            <MyIcon
-                              mr={3}
-                              name={'common/settingLight'}
-                              w={'16px'}
-                              cursor={'pointer'}
-                              onClick={() => {
-                                setEditExtractField(item);
-                              }}
-                            />
-                            <MyIcon
-                              name={'delete'}
-                              w={'16px'}
-                              cursor={'pointer'}
-                              onClick={() => {
-                                onChangeNode({
-                                  moduleId,
-                                  type: 'updateInput',
-                                  key: ModuleInputKeyEnum.extractKeys,
-                                  value: {
-                                    ...props,
-                                    value: extractKeys.filter((extract) => item.key !== extract.key)
-                                  }
-                                });
-
-                                onChangeNode({
-                                  moduleId,
-                                  type: 'delOutput',
-                                  key: item.key
-                                });
-                              }}
-                            />
-                          </Td>
+                </Flex>
+                <Box
+                  mt={2}
+                  borderRadius={'md'}
+                  overflow={'hidden'}
+                  borderWidth={'1px'}
+                  borderBottom="none"
+                >
+                  <TableContainer>
+                    <Table bg={'white'}>
+                      <Thead>
+                        <Tr>
+                          <Th bg={'myGray.50'}>字段 key</Th>
+                          <Th bg={'myGray.50'}>字段描述</Th>
+                          <Th bg={'myGray.50'}>必须</Th>
+                          <Th bg={'myGray.50'}></Th>
                         </Tr>
-                      ))}
-                    </Tbody>
-                  </Table>
-                </TableContainer>
+                      </Thead>
+                      <Tbody>
+                        {extractKeys.map((item, index) => (
+                          <Tr
+                            key={index}
+                            position={'relative'}
+                            whiteSpace={'pre-wrap'}
+                            wordBreak={'break-all'}
+                          >
+                            <Td>{item.key}</Td>
+                            <Td>{item.desc}</Td>
+                            <Td>{item.required ? '✔' : ''}</Td>
+                            <Td whiteSpace={'nowrap'}>
+                              <MyIcon
+                                mr={3}
+                                name={'common/settingLight'}
+                                w={'16px'}
+                                cursor={'pointer'}
+                                onClick={() => {
+                                  setEditExtractField(item);
+                                }}
+                              />
+                              <MyIcon
+                                name={'delete'}
+                                w={'16px'}
+                                cursor={'pointer'}
+                                onClick={() => {
+                                  onChangeNode({
+                                    moduleId,
+                                    type: 'updateInput',
+                                    key: ModuleInputKeyEnum.extractKeys,
+                                    value: {
+                                      ...props,
+                                      value: extractKeys.filter(
+                                        (extract) => item.key !== extract.key
+                                      )
+                                    }
+                                  });
+
+                                  onChangeNode({
+                                    moduleId,
+                                    type: 'delOutput',
+                                    key: item.key
+                                  });
+                                }}
+                              />
+                            </Td>
+                          </Tr>
+                        ))}
+                      </Tbody>
+                    </Table>
+                  </TableContainer>
+                </Box>
               </Box>
             )
           }}
@@ -142,7 +165,6 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
             const newOutput = {
               key: data.key,
               label: `提取结果-${data.desc}`,
-              description: '无法提取时不会返回',
               valueType: ModuleIOValueTypeEnum.string,
               type: FlowNodeOutputTypeEnum.source,
               targets: []

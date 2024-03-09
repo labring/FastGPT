@@ -4,7 +4,7 @@ import Script from 'next/script';
 import Head from 'next/head';
 import { ChakraProvider, ColorModeScript } from '@chakra-ui/react';
 import Layout from '@/components/Layout';
-import { theme } from '@/web/styles/theme';
+import { theme } from '@fastgpt/web/styles/theme';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import NProgress from 'nprogress'; //nprogress module
 import Router from 'next/router';

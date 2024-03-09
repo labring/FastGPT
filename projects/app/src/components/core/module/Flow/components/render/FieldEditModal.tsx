@@ -13,7 +13,6 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import { DYNAMIC_INPUT_KEY, ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
-import MySelect from '@/components/Select';
 import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
 import {
   FlowNodeInputTypeEnum,
@@ -21,6 +20,7 @@ import {
 } from '@fastgpt/global/core/module/node/constant';
 import { EditInputFieldMap, EditNodeFieldType } from '@fastgpt/global/core/module/node/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const FieldEditModal = ({
   editField = {
@@ -93,47 +93,38 @@ const FieldEditModal = ({
   const { register, getValues, setValue, handleSubmit, watch } = useForm<EditNodeFieldType>({
     defaultValues: defaultField
   });
+  const inputType = watch('inputType');
+  const outputType = watch('outputType');
+  const valueType = watch('valueType');
   const [refresh, setRefresh] = useState(false);
 
   const showDataTypeSelect = useMemo(() => {
     if (!editField.dataType) return false;
-    const inputType = getValues('inputType');
-    const outputType = getValues('outputType');
-
     if (inputType === FlowNodeInputTypeEnum.target) return true;
-
     if (outputType === FlowNodeOutputTypeEnum.source) return true;
 
     return false;
-  }, [editField.dataType, getValues, refresh]);
+  }, [editField.dataType, inputType, outputType]);
 
   const showRequired = useMemo(() => {
-    const inputType = getValues('inputType');
-    const valueType = getValues('valueType');
     if (inputType === FlowNodeInputTypeEnum.addInputParam) return false;
 
     return editField.required;
-  }, [editField.required, getValues, refresh]);
+  }, [editField.required, inputType]);
 
   const showNameInput = useMemo(() => {
-    const inputType = getValues('inputType');
-
     return editField.name;
-  }, [editField.name, getValues, refresh]);
+  }, [editField.name]);
 
   const showKeyInput = useMemo(() => {
-    const inputType = getValues('inputType');
-    const valueType = getValues('valueType');
     if (inputType === FlowNodeInputTypeEnum.addInputParam) return false;
 
     return editField.key;
-  }, [editField.key, getValues, refresh]);
+  }, [editField.key, inputType]);
 
   const showDescriptionInput = useMemo(() => {
-    const inputType = getValues('inputType');
-
     return editField.description;
-  }, [editField.description, getValues, refresh]);
+  }, [editField.description]);
 
   return (
     <MyModal
@@ -209,7 +200,18 @@ const FieldEditModal = ({
         {showKeyInput && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Field key')}</Box>
-            <Input placeholder="appointment/sql" {...register('key', { required: true })} />
+            <Input
+              placeholder="appointment/sql"
+              {...register('key', {
+                required: true,
+                onChange: (e) => {
+                  const value = e.target.value;
+                  if (!showNameInput) {
+                    setValue('label', value);
+                  }
+                }
+              })}
+            />
           </Flex>
         )}
         {showDescriptionInput && (

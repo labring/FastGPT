@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Box,
   Flex,
@@ -46,7 +46,7 @@ function DataProcess({
     maxChunkSize,
     totalChunkChars,
     totalChunks,
-    predictPrice,
+    predictPoints,
     showRePreview,
     splitSources2Chunks,
     priceTip
@@ -59,6 +59,15 @@ function DataProcess({
     onOpen: onOpenCustomPrompt,
     onClose: onCloseCustomPrompt
   } = useDisclosure();
+
+  const trainingModeList = useMemo(() => {
+    const list = Object.entries(TrainingTypeMap);
+
+    return list.filter(([key, value]) => {
+      if (feConfigs?.isPlus) return true;
+      return value.isPlus;
+    });
+  }, [feConfigs?.isPlus]);
 
   useEffect(() => {
     if (showPreviewChunks) {
@@ -79,7 +88,7 @@ function DataProcess({
             {t('core.dataset.import.Training mode')}
           </Box>
           <LeftRadio
-            list={Object.entries(TrainingTypeMap).map(([key, value]) => ({
+            list={trainingModeList.map(([key, value]) => ({
               title: t(value.label),
               value: key,
               tooltip: t(value.tooltip)
@@ -91,7 +100,7 @@ function DataProcess({
               setValue('mode', e);
               setRefresh(!refresh);
             }}
-            gridTemplateColumns={'1fr 1fr'}
+            gridTemplateColumns={'repeat(3,1fr)'}
             defaultBg="white"
             activeBg="white"
           />
@@ -275,7 +284,7 @@ function DataProcess({
             {feConfigs?.show_pay && (
               <MyTooltip label={priceTip}>
                 <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
-                  {t('core.dataset.import.Estimated Price', { amount: predictPrice, unit: '元' })}
+                  {t('core.dataset.import.Estimated points', { points: predictPoints })}
                 </Tag>
               </MyTooltip>
             )}

@@ -12,14 +12,13 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
-import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -53,8 +52,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     // 2. check dataset limit
     await checkDatasetLimit({
       teamId,
-      insertLen: predictDataLimitLength(trainingType, chunks),
-      standardPlans: getStandardSubPlan()
+      insertLen: predictDataLimitLength(trainingType, chunks)
     });
 
     // 3. create collection and training bill
@@ -74,11 +72,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         hashRawText: hashStr(text),
         rawTextLength: text.length
       }),
-      createTrainingBill({
+      createTrainingUsage({
         teamId,
         tmbId,
         appName: name,
-        billSource: BillSourceEnum.training,
+        billSource: UsageSourceEnum.training,
         vectorModel: getVectorModel(dataset.vectorModel)?.name,
         agentModel: getLLMModel(dataset.agentModel)?.name
       })

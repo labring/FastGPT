@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
-import { Flex, BoxProps, useDisclosure, Image, useTheme, Box } from '@chakra-ui/react';
+import { Flex, BoxProps, useDisclosure, useTheme, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
@@ -20,10 +20,10 @@ const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: 
 
 const ResponseTags = ({
   responseData = [],
-  isShare
+  showDetail
 }: {
   responseData?: ChatHistoryItemResType[];
-  isShare: boolean;
+  showDetail: boolean;
 }) => {
   const theme = useTheme();
   const { isPc } = useSystemStore();
@@ -76,13 +76,13 @@ const ResponseTags = ({
           sourceName: item.sourceName,
           sourceId: item.sourceId,
           icon: getSourceNameIcon({ sourceId: item.sourceId, sourceName: item.sourceName }),
-          canReadQuote: !isShare || strIsLink(item.sourceId),
+          canReadQuote: showDetail || strIsLink(item.sourceId),
           collectionId: item.collectionId
         })),
       historyPreview: chatData?.historyPreview,
       runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
-  }, [isShare, responseData]);
+  }, [showDetail, responseData]);
 
   const TagStyles: BoxProps = {
     mr: 2,
@@ -134,7 +134,7 @@ const ResponseTags = ({
           </Flex>
         </>
       )}
-      {!isShare && (
+      {showDetail && (
         <Flex alignItems={'center'} mt={3} flexWrap={'wrap'}>
           {quoteList.length > 0 && (
             <MyTooltip label="查看引用">
@@ -187,7 +187,7 @@ const ResponseTags = ({
       {!!quoteModalData && (
         <QuoteModal
           {...quoteModalData}
-          isShare={isShare}
+          showDetail={showDetail}
           onClose={() => setQuoteModalData(undefined)}
         />
       )}
@@ -195,7 +195,11 @@ const ResponseTags = ({
         <ContextModal context={contextModalData} onClose={() => setContextModalData(undefined)} />
       )}
       {isOpenWholeModal && (
-        <WholeResponseModal response={responseData} isShare={isShare} onClose={onCloseWholeModal} />
+        <WholeResponseModal
+          response={responseData}
+          showDetail={showDetail}
+          onClose={onCloseWholeModal}
+        />
       )}
     </>
   );

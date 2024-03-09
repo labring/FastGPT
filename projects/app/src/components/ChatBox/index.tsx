@@ -53,7 +53,6 @@ import type { AdminMarkType } from './SelectMarkCollection';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import Markdown, { CodeClassName } from '@/components/Markdown';
-import MySelect from '@/components/Select';
 import MyTooltip from '../MyTooltip';
 import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
@@ -68,6 +67,8 @@ import type { AppTTSConfigType, VariableItemType } from '@fastgpt/global/core/mo
 import MessageInput from './MessageInput';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import ChatBoxDivider from '../core/chat/Divider';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
@@ -106,7 +107,7 @@ const MessageCardStyle: BoxProps = {
   maxW: ['calc(100% - 25px)', 'calc(100% - 40px)']
 };
 
-type Props = {
+type Props = OutLinkChatAuthProps & {
   feedbackType?: `${FeedbackTypeEnum}`;
   showMarkIcon?: boolean; // admin mark dataset
   showVoiceIcon?: boolean;
@@ -120,8 +121,6 @@ type Props = {
   // not chat test params
   appId?: string;
   chatId?: string;
-  shareId?: string;
-  outLinkUid?: string;
 
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
@@ -147,6 +146,8 @@ const ChatBox = (
     chatId,
     shareId,
     outLinkUid,
+    teamId,
+    teamToken,
     onUpdateVariable,
     onStartChat,
     onDelMessage
@@ -185,6 +186,10 @@ const ChatBox = (
     () => splitGuideModule(userGuideModule),
     [userGuideModule]
   );
+  const filterVariableModules = useMemo(
+    () => variableModules.filter((item) => item.type !== VariableInputEnum.external),
+    [variableModules]
+  );
 
   // compute variable input is finish.
   const chatForm = useForm<{
@@ -199,17 +204,18 @@ const ChatBox = (
 
   const [variableInputFinish, setVariableInputFinish] = useState(false); // clicked start chat button
   const variableIsFinish = useMemo(() => {
-    if (!variableModules || variableModules.length === 0 || chatHistory.length > 0) return true;
+    if (!filterVariableModules || filterVariableModules.length === 0 || chatHistory.length > 0)
+      return true;
 
-    for (let i = 0; i < variableModules.length; i++) {
-      const item = variableModules[i];
+    for (let i = 0; i < filterVariableModules.length; i++) {
+      const item = filterVariableModules[i];
       if (item.required && !variables[item.key]) {
         return false;
       }
     }
 
     return variableInputFinish;
-  }, [chatHistory.length, variableInputFinish, variableModules, variables]);
+  }, [chatHistory.length, variableInputFinish, filterVariableModules, variables]);
 
   // 滚动到底部
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -286,7 +292,10 @@ const ChatBox = (
         const result = await postQuestionGuide(
           {
             messages: adaptChat2GptMessages({ messages: history, reserveId: false }).slice(-6),
-            shareId
+            shareId,
+            outLinkUid,
+            teamId,
+            teamToken
           },
           abortSignal
         );
@@ -298,7 +307,7 @@ const ChatBox = (
         }
       } catch (error) {}
     },
-    [questionGuide, shareId]
+    [questionGuide, shareId, outLinkUid, teamId, teamToken]
   );
 
   /**
@@ -396,7 +405,6 @@ const ChatBox = (
               };
             })
           );
-
           setTimeout(() => {
             createQuestionGuide({
               history: newChatList.map((item, i) =>
@@ -492,7 +500,7 @@ const ChatBox = (
     getChatHistories: () => chatHistory,
     resetVariables(e) {
       const defaultVal: Record<string, any> = {};
-      variableModules?.forEach((item) => {
+      filterVariableModules?.forEach((item) => {
         defaultVal[item.key] = '';
       });
 
@@ -516,13 +524,13 @@ const ChatBox = (
       feConfigs?.show_emptyChat &&
       showEmptyIntro &&
       chatHistory.length === 0 &&
-      !variableModules?.length &&
+      !filterVariableModules?.length &&
       !welcomeText,
     [
       chatHistory.length,
       feConfigs?.show_emptyChat,
       showEmptyIntro,
-      variableModules?.length,
+      filterVariableModules?.length,
       welcomeText
     ]
   );
@@ -601,10 +609,10 @@ const ChatBox = (
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeText appAvatar={appAvatar} welcomeText={welcomeText} />}
           {/* variable input */}
-          {!!variableModules?.length && (
+          {!!filterVariableModules?.length && (
             <VariableInput
               appAvatar={appAvatar}
-              variableModules={variableModules}
+              variableModules={filterVariableModules}
               variableIsFinish={variableIsFinish}
               chatForm={chatForm}
               onSubmitVariables={onSubmitVariables}
@@ -619,6 +627,7 @@ const ChatBox = (
                     {/* control icon */}
                     <Flex w={'100%'} alignItems={'center'} justifyContent={'flex-end'}>
                       <ChatControllerComponent
+                        isChatting={isChatting}
                         chat={item}
                         onDelete={
                           onDelMessage
@@ -651,12 +660,17 @@ const ChatBox = (
                       <ChatAvatar src={appAvatar} type={'AI'} />
                       {/* control icon */}
                       <ChatControllerComponent
+                        isChatting={isChatting}
                         ml={2}
                         chat={item}
                         setChatHistory={setChatHistory}
                         display={index === chatHistory.length - 1 && isChatting ? 'none' : 'flex'}
                         showVoiceIcon={showVoiceIcon}
                         ttsConfig={ttsConfig}
+                        shareId={shareId}
+                        outLinkUid={outLinkUid}
+                        teamId={teamId}
+                        teamToken={teamToken}
                         onDelete={
                           onDelMessage
                             ? () => {
@@ -826,7 +840,10 @@ const ChatBox = (
                           isChatting={index === chatHistory.length - 1 && isChatting}
                         />
 
-                        <ResponseTags responseData={item.responseData} isShare={!!shareId} />
+                        <ResponseTags
+                          responseData={item.responseData}
+                          showDetail={!shareId && !teamId}
+                        />
 
                         {/* custom feedback */}
                         {item.customFeedbacks && item.customFeedbacks.length > 0 && (
@@ -906,6 +923,10 @@ const ChatBox = (
           TextareaDom={TextareaDom}
           resetInputVal={resetInputVal}
           showFileSelector={showFileSelector}
+          shareId={shareId}
+          outLinkUid={outLinkUid}
+          teamId={teamId}
+          teamToken={teamToken}
         />
       )}
       {/* user feedback modal */}
@@ -1233,6 +1254,7 @@ function Empty() {
 }
 
 const ChatControllerComponent = React.memo(function ChatControllerComponent({
+  isChatting,
   chat,
   setChatHistory,
   display,
@@ -1246,8 +1268,13 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
   onAddUserDislike,
   onAddUserLike,
   ml,
-  mr
-}: {
+  mr,
+  shareId,
+  outLinkUid,
+  teamId,
+  teamToken
+}: OutLinkChatAuthProps & {
+  isChatting: boolean;
   chat: ChatSiteItemType;
   setChatHistory?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   showVoiceIcon?: boolean;
@@ -1264,7 +1291,11 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
   const { t } = useTranslation();
   const { copyData } = useCopyData();
   const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({
-    ttsConfig
+    ttsConfig,
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken
   });
   const controlIconStyle = {
     w: '14px',
@@ -1293,7 +1324,7 @@ const ChatControllerComponent = React.memo(function ChatControllerComponent({
           onClick={() => copyData(chat.value)}
         />
       </MyTooltip>
-      {!!onDelete && (
+      {!!onDelete && !isChatting && (
         <>
           {onRetry && (
             <MyTooltip label={t('core.chat.retry')}>

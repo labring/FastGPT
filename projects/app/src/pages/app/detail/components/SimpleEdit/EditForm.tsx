@@ -31,11 +31,10 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
 import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
-import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
-import SelectAiModel from '@/components/Select/SelectAiModel';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import SelectAiModel from '@/components/Select/SelectAiModel';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));

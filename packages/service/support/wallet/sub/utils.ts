@@ -1,87 +1,147 @@
-import { SubTypeEnum } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  StandardSubLevelEnum,
+  SubModeEnum,
+  SubStatusEnum,
+  SubTypeEnum
+} from '@fastgpt/global/support/wallet/sub/constants';
 import { MongoTeamSub } from './schema';
-import { addHours } from 'date-fns';
-import { FeTeamSubType, StandSubPlanLevelMapType } from '@fastgpt/global/support/wallet/sub/type.d';
+import { FeTeamPlanStatusType } from '@fastgpt/global/support/wallet/sub/type.d';
 import { getVectorCountByTeamId } from '../../../common/vectorStore/controller';
+import dayjs from 'dayjs';
+import { ClientSession } from '../../../common/mongo';
+import { addMonths } from 'date-fns';
 
-/* get team dataset max size */
-export const getTeamDatasetMaxSize = async ({
-  teamId,
-  standardPlans
-}: {
-  teamId: string;
-  standardPlans?: StandSubPlanLevelMapType;
-}) => {
-  if (!standardPlans) {
-    return {
-      maxSize: Infinity,
-      sub: null
-    };
-  }
+export const getStandardPlans = () => {
+  return global?.subPlans?.standard;
+};
+export const getStandardPlan = (level: `${StandardSubLevelEnum}`) => {
+  return global.subPlans?.standard?.[level];
+};
 
-  const plans = await MongoTeamSub.find({
-    teamId,
-    expiredTime: { $gte: addHours(new Date(), -3) }
-  }).lean();
-
-  const standard = plans.find((plan) => plan.type === SubTypeEnum.standard);
-  const extraDatasetSize = plans.find((plan) => plan.type === SubTypeEnum.extraDatasetSize);
-
-  const standardMaxDatasetSize =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[standard.currentSubLevel]?.maxDatasetSize || Infinity
-      : Infinity;
-  const totalDatasetSize =
-    standardMaxDatasetSize + (extraDatasetSize?.currentExtraDatasetSize || 0);
+export const getTeamStandPlan = async ({ teamId }: { teamId: string }) => {
+  const standardPlans = global.subPlans?.standard;
+  const standard = await MongoTeamSub.findOne({ teamId, type: SubTypeEnum.standard }).lean();
 
   return {
-    maxSize: totalDatasetSize,
-    sub: extraDatasetSize
+    [SubTypeEnum.standard]: standard,
+    standardConstants:
+      standard?.currentSubLevel && standardPlans
+        ? standardPlans[standard.currentSubLevel]
+        : undefined
   };
 };
 
-export const getTeamSubPlanStatus = async ({
+export const initTeamStandardPlan2Free = async ({
   teamId,
-  standardPlans
+  session
 }: {
   teamId: string;
-  standardPlans?: StandSubPlanLevelMapType;
-}): Promise<FeTeamSubType> => {
+  session?: ClientSession;
+}) => {
+  const freePoints = global?.subPlans?.standard?.free?.totalPoints || 100;
+
+  const teamStandardSub = await MongoTeamSub.findOne({ teamId, type: SubTypeEnum.standard });
+
+  if (teamStandardSub) {
+    teamStandardSub.status = SubStatusEnum.active;
+    teamStandardSub.currentMode = SubModeEnum.month;
+    teamStandardSub.nextMode = SubModeEnum.month;
+    teamStandardSub.startTime = new Date();
+    teamStandardSub.expiredTime = addMonths(new Date(), 1);
+
+    teamStandardSub.currentSubLevel = StandardSubLevelEnum.free;
+    teamStandardSub.nextSubLevel = StandardSubLevelEnum.free;
+
+    teamStandardSub.price = 0;
+    teamStandardSub.pointPrice = 0;
+
+    teamStandardSub.totalPoints = freePoints;
+    teamStandardSub.surplusPoints =
+      teamStandardSub.surplusPoints && teamStandardSub.surplusPoints < 0
+        ? teamStandardSub.surplusPoints + freePoints
+        : freePoints;
+    return teamStandardSub.save({ session });
+  }
+
+  return MongoTeamSub.create(
+    [
+      {
+        teamId,
+        type: SubTypeEnum.standard,
+        status: SubStatusEnum.active,
+        currentMode: SubModeEnum.month,
+        nextMode: SubModeEnum.month,
+        startTime: new Date(),
+        expiredTime: addMonths(new Date(), 1),
+        price: 0,
+        pointPrice: 0,
+
+        currentSubLevel: StandardSubLevelEnum.free,
+        nextSubLevel: StandardSubLevelEnum.free,
+
+        totalPoints: freePoints,
+        surplusPoints: freePoints
+      }
+    ],
+    { session }
+  );
+};
+
+export const getTeamPlanStatus = async ({
+  teamId
+}: {
+  teamId: string;
+}): Promise<FeTeamPlanStatusType> => {
+  const standardPlans = global.subPlans?.standard;
+
   const [plans, usedDatasetSize] = await Promise.all([
     MongoTeamSub.find({ teamId }).lean(),
     getVectorCountByTeamId(teamId)
   ]);
 
   const standard = plans.find((plan) => plan.type === SubTypeEnum.standard);
-  const extraDatasetSize = plans.find((plan) => plan.type === SubTypeEnum.extraDatasetSize);
-  const extraPoints = plans.find((plan) => plan.type === SubTypeEnum.extraPoints);
+  const extraDatasetSize = plans.filter((plan) => plan.type === SubTypeEnum.extraDatasetSize);
+  const extraPoints = plans.filter((plan) => plan.type === SubTypeEnum.extraPoints);
+
+  // Free user, first login after expiration. The free subscription plan will be reset
+  if (
+    standard &&
+    standard.expiredTime &&
+    standard.currentSubLevel === StandardSubLevelEnum.free &&
+    dayjs(standard.expiredTime).isBefore(new Date())
+  ) {
+    console.log('Init free stand plan', { teamId });
+    await initTeamStandardPlan2Free({ teamId });
+    return getTeamPlanStatus({ teamId });
+  }
+
+  const totalPoints = standardPlans
+    ? (standard?.totalPoints || 0) +
+      extraPoints.reduce((acc, cur) => acc + (cur.totalPoints || 0), 0)
+    : Infinity;
+  const surplusPoints =
+    (standard?.surplusPoints || 0) +
+    extraPoints.reduce((acc, cur) => acc + (cur.surplusPoints || 0), 0);
 
   const standardMaxDatasetSize =
     standard?.currentSubLevel && standardPlans
       ? standardPlans[standard.currentSubLevel]?.maxDatasetSize || Infinity
       : Infinity;
   const totalDatasetSize =
-    standardMaxDatasetSize + (extraDatasetSize?.currentExtraDatasetSize || 0);
-
-  const standardMaxPoints =
-    standard?.currentSubLevel && standardPlans
-      ? standardPlans[standard.currentSubLevel]?.totalPoints || Infinity
-      : Infinity;
-  const totalPoints = standardMaxPoints + (extraPoints?.currentExtraPoints || 0);
-
-  const surplusPoints = (standard?.surplusPoints || 0) + (extraPoints?.surplusPoints || 0);
+    standardMaxDatasetSize +
+    extraDatasetSize.reduce((acc, cur) => acc + (cur.currentExtraDatasetSize || 0), 0);
 
   return {
     [SubTypeEnum.standard]: standard,
-    [SubTypeEnum.extraDatasetSize]: extraDatasetSize,
-    [SubTypeEnum.extraPoints]: extraPoints,
+    standardConstants:
+      standard?.currentSubLevel && standardPlans
+        ? standardPlans[standard.currentSubLevel]
+        : undefined,
 
-    standardMaxDatasetSize,
-    datasetMaxSize: totalDatasetSize,
-    usedDatasetSize,
-
-    standardMaxPoints,
     totalPoints,
-    usedPoints: totalPoints - surplusPoints
+    usedPoints: totalPoints - surplusPoints,
+
+    datasetMaxSize: totalDatasetSize,
+    usedDatasetSize
   };
 };

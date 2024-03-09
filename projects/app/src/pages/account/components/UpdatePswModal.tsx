@@ -56,8 +56,8 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
             {...register('newPsw', {
               required: true,
               maxLength: {
-                value: 20,
-                message: '密码最少 4 位最多 20 位'
+                value: 60,
+                message: '密码最少 4 位最多 60 位'
               }
             })}
           ></Input>
@@ -70,8 +70,8 @@ const UpdatePswModal = ({ onClose }: { onClose: () => void }) => {
             {...register('confirmPsw', {
               required: true,
               maxLength: {
-                value: 20,
-                message: '密码最少 4 位最多 20 位'
+                value: 60,
+                message: '密码最少 4 位最多 60 位'
               }
             })}
           ></Input>

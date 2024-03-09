@@ -3,7 +3,7 @@ import { sseResponseEventEnum } from './constant';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { addLog } from '../system/log';
 import { clearCookie } from '../../support/permission/controller';
-import { replaceSensitiveLink } from '@fastgpt/global/common/string/tools';
+import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -53,7 +53,7 @@ export const jsonRes = <T = any>(
   res.status(code).json({
     code,
     statusText: '',
-    message: replaceSensitiveLink(message || msg),
+    message: replaceSensitiveText(message || msg),
     data: data !== undefined ? data : null
   });
 };
@@ -91,7 +91,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
   responseWrite({
     res,
     event: sseResponseEventEnum.error,
-    data: JSON.stringify({ message: replaceSensitiveLink(msg) })
+    data: JSON.stringify({ message: replaceSensitiveText(msg) })
   });
 };
 

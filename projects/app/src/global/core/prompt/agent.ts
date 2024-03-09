@@ -15,16 +15,19 @@ $$
 i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
 $$
 `,
-  fixedText: `Finally, you need to return multiple Q&A pairs in the following format:
-Q1: Question.
-A1: Answer.
+  fixedText: `最后，你需要按下面的格式返回多个问题和答案:
+Q1: 问题。
+A1: 答案。
 Q2:
 A2:
-……
 
-<context>
+------
+
+我们开始吧!
+
+<Context>
 {{text}}
-</context>
+<context/>
 `
 };
 
@@ -33,13 +36,13 @@ export const Prompt_ExtractJson = `You can extract specified JSON information fr
 {{description}}
 </Extraction Requirements>
 
-<Field Descriptions>
-1. The following JSON strings adhere to the rules of JSON Schema.
-2. Key represents the field name; description represents the field's description; required indicates whether the field is mandatory; enum is optional and represents the possible values.
-3. If the field content is empty, you can return an empty string.
+<字段说明>
+1. 下面的 JSON 字符串均按照 JSON Schema 的规则描述。
+2. key 代表字段名；description 代表字段的描述；required 代表字段是否必须；enum 是可选值，代表可选的 value。
+3. 如果字段内容为空，你可以返回空字符串。
 
 {{json}}
-</Field Descriptions>
+</字段说明>
 
 <Conversation Records>
 {{text}}

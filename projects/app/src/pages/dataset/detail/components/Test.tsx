@@ -33,7 +33,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import dynamic from 'next/dynamic';
 import { useForm } from 'react-hook-form';
-import MySelect from '@/components/Select';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileDownload } from '@/web/common/file/utils';
 import { readCsvContent } from '@fastgpt/web/common/file/read/csv';

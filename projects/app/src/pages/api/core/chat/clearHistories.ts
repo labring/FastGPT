@@ -7,19 +7,31 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { ClearHistoriesProps } from '@/global/core/chat/api';
 import { authOutLink } from '@/service/support/permission/auth/outLink';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
+import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 
 /* clear chat history */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, shareId, outLinkUid } = req.query as ClearHistoriesProps;
+    const { appId, shareId, outLinkUid, teamId, teamToken } = req.query as ClearHistoriesProps;
+
+    let chatAppId = appId;
 
     const match = await (async () => {
       if (shareId && outLinkUid) {
-        const { uid } = await authOutLink({ shareId, outLinkUid });
+        const { appId, uid } = await authOutLink({ shareId, outLinkUid });
 
+        chatAppId = appId;
         return {
           shareId,
+          outLinkUid: uid
+        };
+      }
+      if (teamId && teamToken) {
+        const { uid } = await authTeamSpaceToken({ teamId, teamToken });
+        return {
+          teamId,
+          appId,
           outLinkUid: uid
         };
       }
@@ -41,11 +53,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const idList = list.map((item) => item.chatId);
 
     await MongoChatItem.deleteMany({
-      appId,
+      appId: chatAppId,
       chatId: { $in: idList }
     });
     await MongoChat.deleteMany({
-      appId,
+      appId: chatAppId,
       chatId: { $in: idList }
     });
 

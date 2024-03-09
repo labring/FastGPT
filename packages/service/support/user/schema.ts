@@ -1,7 +1,7 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { PRICE_SCALE } from '@fastgpt/global/support/wallet/bill/constants';
+import { PRICE_SCALE } from '@fastgpt/global/support/wallet/constants';
 import type { UserModelSchema } from '@fastgpt/global/support/user/type';
 import { UserStatusEnum, userStatusMap } from '@fastgpt/global/support/user/constant';
 
@@ -63,6 +63,8 @@ const UserSchema = new Schema({
 });
 
 try {
+  // login
+  UserSchema.index({ username: 1, password: 1 });
   UserSchema.index({ createTime: -1 });
 } catch (error) {
   console.log(error);

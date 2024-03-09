@@ -1,6 +1,6 @@
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import React, { useEffect } from 'react';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useRouter } from 'next/router';
 
 const index = () => {

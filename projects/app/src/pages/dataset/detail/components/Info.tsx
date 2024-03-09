@@ -13,10 +13,10 @@ import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
-import MySelect from '@/components/Select';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();

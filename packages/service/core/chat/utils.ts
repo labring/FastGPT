@@ -1,7 +1,6 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
-import { countMessagesTokens, countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
-import { adaptRole_Chat2Message } from '@fastgpt/global/core/chat/adapt';
+import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import type { ChatCompletionContentPart } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 
@@ -29,26 +28,34 @@ export function ChatContextFilter({
   const chatPrompts: ChatItemType[] = messages.slice(chatStartIndex);
 
   // reduce token of systemPrompt
-  maxTokens -= countMessagesTokens({
-    messages: systemPrompts
-  });
+  maxTokens -= countMessagesTokens(systemPrompts);
 
-  // 根据 tokens 截断内容
-  const chats: ChatItemType[] = [];
+  // Save the last chat prompt(question)
+  const question = chatPrompts.pop();
+  if (!question) {
+    return systemPrompts;
+  }
+  const chats: ChatItemType[] = [question];
 
-  // 从后往前截取对话内容
-  for (let i = chatPrompts.length - 1; i >= 0; i--) {
-    const item = chatPrompts[i];
-    chats.unshift(item);
+  // 从后往前截取对话内容, 每次需要截取2个
+  while (1) {
+    const assistant = chatPrompts.pop();
+    const user = chatPrompts.pop();
+    if (!assistant || !user) {
+      break;
+    }
 
-    const tokens = countPromptTokens(item.value, adaptRole_Chat2Message(item.obj));
+    const tokens = countMessagesTokens([assistant, user]);
     maxTokens -= tokens;
+    /* 整体 tokens 超出范围，截断  */
+    if (maxTokens < 0) {
+      break;
+    }
 
-    /* 整体 tokens 超出范围, system必须保留 */
-    if (maxTokens <= 0) {
-      if (chats.length > 1) {
-        chats.shift();
-      }
+    chats.unshift(assistant);
+    chats.unshift(user);
+
+    if (chatPrompts.length === 0) {
       break;
     }
   }

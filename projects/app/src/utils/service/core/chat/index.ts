@@ -1,13 +1,14 @@
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
-export const selectShareResponse = ({
+export const selectSimpleChatResponse = ({
   responseData = []
 }: {
   responseData?: ChatHistoryItemResType[];
 }) => {
   const filedList = ['quoteList', 'moduleType'];
   const filterModuleTypeList: any[] = [FlowNodeTypeEnum.chatNode];
+
   return responseData
     .filter((item) => filterModuleTypeList.includes(item.moduleType))
     .map((item) => {

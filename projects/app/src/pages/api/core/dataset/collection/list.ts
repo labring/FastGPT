@@ -8,9 +8,9 @@ import type { GetDatasetCollectionsProps } from '@/global/core/api/datasetReq';
 import { PagingData } from '@/types';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { startQueue } from '@/service/utils/tools';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { DatasetDataCollectionName } from '@fastgpt/service/core/dataset/data/schema';
+import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -158,7 +158,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     );
 
     if (data.find((item) => item.trainingAmount > 0)) {
-      startQueue();
+      startTrainingQueue();
     }
 
     // count collections

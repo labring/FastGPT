@@ -15,7 +15,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useQuery } from '@tanstack/react-query';
 import { streamFetch } from '@/web/common/api/fetch';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
@@ -128,6 +128,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     },
     [appId, chatId, histories, pushHistory, router, setChatData, t, updateHistory]
   );
+
+  useQuery(['loadModels'], () => loadMyApps(false));
 
   // get chat app info
   const loadChatInfo = useCallback(
@@ -251,7 +253,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-          <SliderApps appId={appId} />
+          <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 
@@ -275,6 +277,8 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
             );
           })(
             <ChatHistorySlider
+              apps={myApps}
+              confirmClearText={t('core.chat.Confirm to clear history')}
               appId={appId}
               appName={chatData.app.name}
               appAvatar={chatData.app.avatar}

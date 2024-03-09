@@ -1,5 +1,7 @@
-import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type {
+  ModuleDispatchProps,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type.d';
 import {
   DYNAMIC_INPUT_KEY,
   ModuleInputKeyEnum,
@@ -8,6 +10,7 @@ import {
 import axios from 'axios';
 import { valueTypeFormat } from '../utils';
 import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
+import { addLog } from '@fastgpt/service/common/system/log';
 
 type PropsArrType = {
   key: string;
@@ -24,11 +27,10 @@ type HttpRequestProps = ModuleDispatchProps<{
   [DYNAMIC_INPUT_KEY]: Record<string, any>;
   [key: string]: any;
 }>;
-type HttpResponse = {
+type HttpResponse = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.failed]?: boolean;
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
   [key: string]: any;
-};
+}>;
 
 const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
@@ -38,7 +40,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     chatId,
     responseChatItemId,
     variables,
-    outputs,
+    module: { outputs },
     histories,
     params: {
       system_httpMethod: httpMethod = 'POST',
@@ -119,8 +121,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
 
     return {
-      responseData: {
-        price: 0,
+      [ModuleOutputKeyEnum.responseData]: {
+        totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
@@ -129,14 +131,15 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       ...results
     };
   } catch (error) {
+    addLog.error('Http request error', error);
     return {
       [ModuleOutputKeyEnum.failed]: true,
-      responseData: {
-        price: 0,
+      [ModuleOutputKeyEnum.responseData]: {
+        totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
-        httpResult: { error }
+        httpResult: { error: formatHttpError(error) }
       }
     };
   }
@@ -277,4 +280,15 @@ function removeUndefinedSign(obj: Record<string, any>) {
     }
   }
   return obj;
+}
+function formatHttpError(error: any) {
+  return {
+    message: error?.message,
+    name: error?.name,
+    method: error?.config?.method,
+    baseURL: error?.config?.baseURL,
+    url: error?.config?.url,
+    code: error?.code,
+    status: error?.status
+  };
 }

@@ -3,12 +3,12 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { ModalCloseButton, ModalBody, Box, ModalFooter, Button } from '@chakra-ui/react';
 import TagTextarea from '@/components/common/Textarea/TagTextarea';
-import MySelect from '@/components/Select';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postInviteTeamMember } from '@/web/support/user/team/api';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import type { InviteMemberResponse } from '@fastgpt/global/support/user/team/controller.d';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const InviteModal = ({
   teamId,

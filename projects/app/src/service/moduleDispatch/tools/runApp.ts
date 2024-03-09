@@ -1,5 +1,8 @@
 import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type {
+  ModuleDispatchProps,
+  ModuleDispatchResponse
+} from '@fastgpt/global/core/module/type.d';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import { dispatchModules } from '../index';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -15,21 +18,21 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   app: SelectAppItemType;
 }>;
-type Response = {
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType[];
+type Response = ModuleDispatchResponse<{
   [ModuleOutputKeyEnum.answerText]: string;
   [ModuleOutputKeyEnum.history]: ChatItemType[];
-};
+}>;
 
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     res,
-    user,
+    teamId,
     stream,
     detail,
     histories,
     params: { userChatInput, history, app }
   } = props;
+  let start = Date.now();
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
@@ -37,7 +40,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const appData = await MongoApp.findOne({
     _id: app.id,
-    teamId: user.team.teamId
+    teamId
   });
 
   if (!appData) {
@@ -56,7 +59,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const chatHistories = getHistories(history, histories);
 
-  const { responseData, answerText } = await dispatchModules({
+  const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
     ...props,
     appId: app.id,
     modules: appData.modules,
@@ -78,7 +81,18 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   ]);
 
   return {
-    responseData,
+    [ModuleOutputKeyEnum.responseData]: {
+      moduleLogo: appData.avatar,
+      query: userChatInput,
+      textOutput: answerText,
+      totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+    },
+    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+      {
+        moduleName: appData.name,
+        totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+      }
+    ],
     answerText: answerText,
     history: completeMessages
   };

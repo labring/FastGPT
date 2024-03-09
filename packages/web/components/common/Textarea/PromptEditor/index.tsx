@@ -1,8 +1,8 @@
 import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
-import MyModal from '../../MyModal';
+import MyModal from '../../CustomModal';
 import { useTranslation } from 'next-i18next';
 import { $getRoot, EditorState, type LexicalEditor } from 'lexical';
 import { EditorVariablePickerType } from './type.d';

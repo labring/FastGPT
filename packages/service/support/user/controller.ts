@@ -2,7 +2,6 @@ import { UserType } from '@fastgpt/global/support/user/type';
 import { MongoUser } from './schema';
 import { getTmbInfoByTmbId, getUserDefaultTeam } from './team/controller';
 import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
-import { UserErrEnum } from '@fastgpt/global/common/error/code/user';
 
 export async function authUserExist({ userId, username }: { userId?: string; username?: string }) {
   if (userId) {
@@ -46,23 +45,4 @@ export async function getUserDetail({
     openaiAccount: user.openaiAccount,
     team: tmb
   };
-}
-
-export async function getUserAndAuthBalance({
-  tmbId,
-  minBalance
-}: {
-  tmbId: string;
-  minBalance?: number;
-}) {
-  const user = await getUserDetail({ tmbId });
-
-  if (!user) {
-    return Promise.reject(UserErrEnum.unAuthUser);
-  }
-  if (minBalance !== undefined && user.team.balance < minBalance) {
-    return Promise.reject(UserErrEnum.balanceNotEnough);
-  }
-
-  return user;
 }

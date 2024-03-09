@@ -8,11 +8,13 @@ import {
   UpdateTeamMemberProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
+import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
 import {
   TeamItemType,
   TeamMemberItemType,
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type.d';
+import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wallet/sub/type';
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
@@ -40,9 +42,20 @@ export const updateInviteResult = (data: UpdateInviteProps) =>
 export const delLeaveTeam = (teamId: string) =>
   DELETE('/proApi/support/user/team/member/leave', { teamId });
 
+/* --------------- team tags ---------------- */
+export const getTeamsTags = () => GET<TeamTagSchema[]>(`/proApi/support/user/team/tag/list`);
+export const loadTeamTagsByDomain = (domain: string) =>
+  GET<TeamTagItemType[]>(`/proApi/support/user/team/tag/async`, { domain });
+
 /* team limit */
 export const checkTeamExportDatasetLimit = (datasetId: string) =>
   GET(`/support/user/team/limit/exportDatasetLimit`, { datasetId });
 export const checkTeamWebSyncLimit = () => GET(`/support/user/team/limit/webSyncLimit`);
 export const checkTeamDatasetSizeLimit = (size: number) =>
   GET(`/support/user/team/limit/datasetSizeLimit`, { size });
+
+/* plans */
+export const getTeamPlanStatus = () =>
+  GET<FeTeamPlanStatusType>(`/support/user/team/plan/getTeamPlanStatus`, { maxQuantity: 1 });
+export const getTeamPlans = () =>
+  GET<TeamSubSchema[]>(`/proApi/support/user/team/plan/getTeamPlans`);

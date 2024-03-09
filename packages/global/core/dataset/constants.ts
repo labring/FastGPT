@@ -71,45 +71,29 @@ export const DatasetCollectionSyncResultMap = {
 };
 
 /* ------------ data -------------- */
-export enum DatasetDataIndexTypeEnum {
-  chunk = 'chunk',
-  qa = 'qa',
-  summary = 'summary',
-  hypothetical = 'hypothetical',
-  custom = 'custom'
-}
-export const DatasetDataIndexTypeMap = {
-  [DatasetDataIndexTypeEnum.chunk]: {
-    name: 'dataset.data.indexes.chunk'
-  },
-  [DatasetDataIndexTypeEnum.summary]: {
-    name: 'dataset.data.indexes.summary'
-  },
-  [DatasetDataIndexTypeEnum.hypothetical]: {
-    name: 'dataset.data.indexes.hypothetical'
-  },
-  [DatasetDataIndexTypeEnum.qa]: {
-    name: 'dataset.data.indexes.qa'
-  },
-  [DatasetDataIndexTypeEnum.custom]: {
-    name: 'dataset.data.indexes.custom'
-  }
-};
 
 /* ------------ training -------------- */
 export enum TrainingModeEnum {
   chunk = 'chunk',
+  auto = 'auto',
   qa = 'qa'
 }
 
 export const TrainingTypeMap = {
   [TrainingModeEnum.chunk]: {
     label: 'core.dataset.training.Chunk mode',
-    tooltip: 'core.dataset.import.Chunk Split Tip'
+    tooltip: 'core.dataset.import.Chunk Split Tip',
+    isPlus: true
+  },
+  [TrainingModeEnum.auto]: {
+    label: 'core.dataset.training.Auto mode',
+    tooltip: 'core.dataset.training.Auto mode Tip',
+    isPlus: true
   },
   [TrainingModeEnum.qa]: {
     label: 'core.dataset.training.QA mode',
-    tooltip: 'core.dataset.import.QA Import Tip'
+    tooltip: 'core.dataset.import.QA Import Tip',
+    isPlus: true
   }
 };
 

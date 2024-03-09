@@ -12,9 +12,9 @@ import {
   DatasetCollectionTypeEnum
 } from '@fastgpt/global/core/dataset/constants';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
-import { createTrainingBill } from '@fastgpt/service/support/wallet/bill/controller';
-import { BillSourceEnum } from '@fastgpt/global/support/wallet/bill/constants';
-import { getLLMModel, getVectorModel } from '@/service/core/ai/model';
+import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
+import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
+import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
@@ -56,11 +56,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await mongoSessionRun(async (session) => {
       // create training bill
-      const { billId } = await createTrainingBill({
+      const { billId } = await createTrainingUsage({
         teamId: collection.teamId,
         tmbId,
         appName: 'core.dataset.collection.Sync Collection',
-        billSource: BillSourceEnum.training,
+        billSource: UsageSourceEnum.training,
         vectorModel: vectorModelData.name,
         agentModel: agentModelData.name,
         session

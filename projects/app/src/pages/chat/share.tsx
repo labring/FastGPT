@@ -22,25 +22,37 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
-import { POST } from '@/web/common/api/request';
 import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import MyBox from '@/components/common/MyBox';
+import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
+import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
 
 const OutLink = ({
-  shareId,
-  chatId,
-  showHistory,
-  authToken
+  appName,
+  appIntro,
+  appAvatar
 }: {
-  shareId: string;
-  chatId: string;
-  showHistory: '0' | '1';
-  authToken?: string;
+  appName?: string;
+  appIntro?: string;
+  appAvatar?: string;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const {
+    shareId = '',
+    chatId = '',
+    showHistory = '1',
+    authToken,
+    ...customVariables
+  } = router.query as {
+    shareId: string;
+    chatId: string;
+    showHistory: '0' | '1';
+    authToken: string;
+    [key: string]: string;
+  };
   const { toast } = useToast();
   const { isOpen: isOpenSlider, onClose: onCloseSlider, onOpen: onOpenSlider } = useDisclosure();
   const { isPc } = useSystemStore();
@@ -49,11 +61,7 @@ const OutLink = ({
   const initSign = useRef(false);
   const [isEmbed, setIdEmbed] = useState(true);
 
-  const {
-    localUId,
-    shareChatHistory, // abandon
-    clearLocalHistory // abandon
-  } = useShareChatStore();
+  const { localUId } = useShareChatStore();
   const {
     histories,
     loadHistories,
@@ -76,7 +84,10 @@ const OutLink = ({
       const { responseText, responseData } = await streamFetch({
         data: {
           messages: prompts,
-          variables,
+          variables: {
+            ...customVariables,
+            ...variables
+          },
           shareId,
           chatId: completionChatId,
           outLinkUid
@@ -150,7 +161,19 @@ const OutLink = ({
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [chatId, shareId, outLinkUid, setChatData, appId, pushHistory, router, histories, updateHistory]
+    [
+      chatId,
+      customVariables,
+      shareId,
+      outLinkUid,
+      t,
+      setChatData,
+      appId,
+      pushHistory,
+      router,
+      histories,
+      updateHistory
+    ]
   );
 
   const loadChatInfo = useCallback(
@@ -235,28 +258,6 @@ const OutLink = ({
     setIdEmbed(window !== top);
   }, []);
 
-  // todo:4.6.4 init: update local chat history, add outLinkUid
-  useEffect(() => {
-    const activeHistory = shareChatHistory.filter((item) => !item.delete);
-    if (!localUId || !shareId || activeHistory.length === 0) return;
-    (async () => {
-      try {
-        await POST('/core/chat/initLocalShareHistoryV464', {
-          shareId,
-          outLinkUid: localUId,
-          chatIds: shareChatHistory.map((item) => item.chatId)
-        });
-        clearLocalHistory();
-        // router.reload();
-      } catch (error) {
-        toast({
-          status: 'warning',
-          title: getErrText(error, t('core.shareChat.Init Error'))
-        });
-      }
-    })();
-  }, [clearLocalHistory, localUId, router, shareChatHistory, shareId, t, toast]);
-
   return (
     <PageContainer
       {...(isEmbed
@@ -264,7 +265,9 @@ const OutLink = ({
         : { p: [0, 5] })}
     >
       <Head>
-        <title>{chatData.app.name}</title>
+        <title>{appName || chatData.app?.name}</title>
+        <meta name="description" content={appIntro} />
+        <link rel="icon" href={appAvatar || chatData.app?.avatar} />
       </Head>
       <MyBox
         isLoading={isFetching}
@@ -295,6 +298,7 @@ const OutLink = ({
               <ChatHistorySlider
                 appName={chatData.app.name}
                 appAvatar={chatData.app.avatar}
+                confirmClearText={t('core.chat.Confirm to clear share chat history')}
                 activeChatId={chatId}
                 history={histories.map((item) => ({
                   id: item.chatId,
@@ -393,16 +397,28 @@ const OutLink = ({
 
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
-  const chatId = context?.query?.chatId || '';
-  const showHistory = context?.query?.showHistory || '1';
-  const authToken = context?.query?.authToken || '';
+
+  const app = await (async () => {
+    try {
+      const app = (await MongoOutLink.findOne(
+        {
+          shareId
+        },
+        'appId'
+      )
+        .populate('appId', 'name avatar intro')
+        .lean()) as OutLinkWithAppType;
+      return app;
+    } catch (error) {
+      return undefined;
+    }
+  })();
 
   return {
     props: {
-      shareId,
-      chatId,
-      showHistory,
-      authToken,
+      appName: app?.appId?.name || '',
+      appAvatar: app?.appId?.avatar || '',
+      appIntro: app?.appId?.intro || '',
       ...(await serviceSideProps(context))
     }
   };

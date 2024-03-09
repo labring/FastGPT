@@ -54,11 +54,37 @@ ACCESS_TOKEN=mytoken
 ```
 
 **运行命令示例**
-
+- 无需GPU环境，使用CPU运行
 ```sh
 docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.1
 ```
 
+- 需要CUDA 11.7环境
+```sh
+docker run -d --gpus all --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.1
+```
+
+**docker-compose.yml示例**
+```
+version: "3"
+services:
+  reranker:
+    image: luanshaotong/reranker:v0.1
+    container_name: reranker
+    # GPU运行环境，如果宿主机未安装，将deploy配置隐藏即可
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+    ports:
+      - 6006:6006
+    environment:
+      - ACCESS_TOKEN=mytoken
+
+```
 ## 接入 FastGPT
 
 参考 [ReRank模型接入](/docs/development/configuration/#rerank-接入)，host 变量为部署的域名。

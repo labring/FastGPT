@@ -13,31 +13,33 @@ import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { pushChatBill } from '@/service/support/wallet/bill/push';
+import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { authOutLinkChatStart } from '@/service/support/permission/auth/outLink';
-import { pushResult2Remote, updateOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
+import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/outLink/tools';
 import requestIp from 'request-ip';
-import { getBillSourceByAuthType } from '@fastgpt/global/support/wallet/bill/tools';
-
-import { selectShareResponse } from '@/utils/service/core/chat';
+import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
+import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
+import { selectSimpleChatResponse } from '@/utils/service/core/chat';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
-import { getUserAndAuthBalance } from '@fastgpt/service/support/user/controller';
+import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { autChatCrud } from '@/service/support/permission/auth/chat';
+import { UserModelSchema } from '@fastgpt/global/support/user/type';
+import { AppSchema } from '@fastgpt/global/core/app/type';
+import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
+import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
+import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
   appId?: string;
 };
-type FastGptShareChatProps = {
-  shareId?: string;
-  outLinkUid?: string;
-};
+
 export type Props = ChatCompletionCreateParams &
   FastGptWebChatProps &
-  FastGptShareChatProps & {
+  OutLinkChatAuthProps & {
     messages: ChatMessageItemType[];
     stream?: boolean;
     detail?: boolean;
@@ -46,6 +48,18 @@ export type Props = ChatCompletionCreateParams &
 export type ChatResponseType = {
   newChatId: string;
   quoteLen?: number;
+};
+
+type AuthResponseType = {
+  teamId: string;
+  tmbId: string;
+  user: UserModelSchema;
+  app: AppSchema;
+  responseDetail?: boolean;
+  authType: `${AuthUserTypeEnum}`;
+  apikey?: string;
+  canWrite: boolean;
+  outLinkUserId?: string;
 };
 
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -60,14 +74,17 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   const {
     chatId,
     appId,
+    // share chat
     shareId,
     outLinkUid,
+    // team chat
+    teamId: spaceTeamId,
+    teamToken,
     stream = false,
     detail = false,
     messages = [],
     variables = {}
   } = req.body as Props;
-
   try {
     const originIp = requestIp.getClientIp(req);
 
@@ -96,103 +113,42 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       throw new Error('Question is empty');
     }
 
-    /* auth app permission */
-    const { user, app, responseDetail, authType, apikey, canWrite, uid } = await (async () => {
-      if (shareId && outLinkUid) {
-        const { user, appId, authType, responseDetail, uid } = await authOutLinkChatStart({
-          shareId,
-          ip: originIp,
-          outLinkUid,
-          question: question.value
+    /* 
+      1. auth app permission
+      2. auth balance
+      3. get app
+      4. parse outLink token
+    */
+    const { teamId, tmbId, user, app, responseDetail, authType, apikey, canWrite, outLinkUserId } =
+      await (async () => {
+        // share chat
+        if (shareId && outLinkUid) {
+          return authShareChat({
+            shareId,
+            outLinkUid,
+            chatId,
+            ip: originIp,
+            question: question.value
+          });
+        }
+        // team space chat
+        if (spaceTeamId && appId && teamToken) {
+          return authTeamSpaceChat({
+            teamId: spaceTeamId,
+            teamToken,
+            appId,
+            chatId
+          });
+        }
+
+        /* parse req: api or token */
+        return authHeaderRequest({
+          req,
+          appId,
+          chatId,
+          detail
         });
-        const app = await MongoApp.findById(appId);
-
-        if (!app) {
-          return Promise.reject('app is empty');
-        }
-
-        return {
-          user,
-          app,
-          responseDetail,
-          apikey: '',
-          authType,
-          canWrite: false,
-          uid
-        };
-      }
-
-      const {
-        appId: apiKeyAppId,
-        tmbId,
-        authType,
-        apikey
-      } = await authCert({
-        req,
-        authToken: true,
-        authApiKey: true
-      });
-
-      const user = await getUserAndAuthBalance({
-        tmbId,
-        minBalance: 0
-      });
-
-      // openapi key
-      if (authType === AuthUserTypeEnum.apikey) {
-        if (!apiKeyAppId) {
-          return Promise.reject(
-            'Key is error. You need to use the app key rather than the account key.'
-          );
-        }
-        const app = await MongoApp.findById(apiKeyAppId);
-
-        if (!app) {
-          return Promise.reject('app is empty');
-        }
-
-        return {
-          user,
-          app,
-          responseDetail: detail,
-          apikey,
-          authType,
-          canWrite: true
-        };
-      }
-
-      // token auth
-      if (!appId) {
-        return Promise.reject('appId is empty');
-      }
-      const { app, canWrite } = await authApp({
-        req,
-        authToken: true,
-        appId,
-        per: 'r'
-      });
-
-      return {
-        user,
-        app,
-        responseDetail: detail,
-        apikey,
-        authType,
-        canWrite: canWrite || false
-      };
-    })();
-
-    // auth chat permission
-    await autChatCrud({
-      req,
-      authToken: true,
-      authApiKey: true,
-      appId: app._id,
-      chatId,
-      shareId,
-      outLinkUid,
-      per: 'w'
-    });
+      })();
 
     // get and concat history
     const { history } = await getChatItems({
@@ -205,12 +161,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
-    const { responseData, answerText } = await dispatchModules({
+    const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
       res,
       mode: 'chat',
       user,
-      teamId: String(user.team.teamId),
-      tmbId: String(user.team.tmbId),
+      teamId: String(teamId),
+      tmbId: String(tmbId),
       appId: String(app._id),
       chatId,
       responseChatItemId,
@@ -226,21 +182,25 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     // save chat
     if (chatId) {
+      const isOwnerUse = !shareId && !spaceTeamId && String(tmbId) === String(app.tmbId);
       await saveChat({
         chatId,
         appId: app._id,
-        teamId: user.team.teamId,
-        tmbId: user.team.tmbId,
+        teamId,
+        tmbId: tmbId,
         variables,
-        updateUseTime: !shareId && String(user.team.tmbId) === String(app.tmbId), // owner update use time
+        updateUseTime: isOwnerUse, // owner update use time
         shareId,
-        outLinkUid: uid,
+        outLinkUid: outLinkUserId,
         source: (() => {
           if (shareId) {
             return ChatSourceEnum.share;
           }
           if (authType === 'apikey') {
             return ChatSourceEnum.api;
+          }
+          if (spaceTeamId) {
+            return ChatSourceEnum.team;
           }
           return ChatSourceEnum.online;
         })(),
@@ -262,7 +222,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = canWrite ? responseData : selectShareResponse({ responseData });
+    const feResponseData = canWrite ? responseData : selectSimpleChatResponse({ responseData });
 
     if (stream) {
       responseWrite({
@@ -305,29 +265,29 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // add record
-    const { total } = pushChatBill({
+    const { totalPoints } = pushChatUsage({
       appName: app.name,
       appId: app._id,
-      teamId: user.team.teamId,
-      tmbId: user.team.tmbId,
-      source: getBillSourceByAuthType({ shareId, authType }),
-      response: responseData
+      teamId,
+      tmbId: tmbId,
+      source: getUsageSourceByAuthType({ shareId, authType }),
+      moduleDispatchBills
     });
 
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, responseData });
-      updateOutLinkUsage({
+      pushResult2Remote({ outLinkUid, shareId, appName: app.name, responseData });
+      addOutLinkUsage({
         shareId,
-        total
+        totalPoints
       });
     }
     if (apikey) {
       updateApiKeyUsage({
         apikey,
-        usage: total
+        totalPoints
       });
     }
-  } catch (err: any) {
+  } catch (err) {
     if (stream) {
       sseErrRes(res, err);
       res.end();
@@ -344,4 +304,163 @@ export const config = {
   api: {
     responseLimit: '20mb'
   }
+};
+
+const authShareChat = async ({
+  chatId,
+  ...data
+}: AuthOutLinkChatProps & {
+  shareId: string;
+  chatId?: string;
+}): Promise<AuthResponseType> => {
+  const { teamId, tmbId, user, appId, authType, responseDetail, uid } =
+    await authOutLinkChatStart(data);
+  const app = await MongoApp.findById(appId).lean();
+
+  if (!app) {
+    return Promise.reject('app is empty');
+  }
+
+  // get chat
+  const chat = await MongoChat.findOne({ appId, chatId }).lean();
+  if (chat && (chat.shareId !== data.shareId || chat.outLinkUid !== uid)) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
+  return {
+    teamId,
+    tmbId,
+    user,
+    app,
+    responseDetail,
+    apikey: '',
+    authType,
+    canWrite: false,
+    outLinkUserId: uid
+  };
+};
+const authTeamSpaceChat = async ({
+  appId,
+  teamId,
+  teamToken,
+  chatId
+}: {
+  appId: string;
+  teamId: string;
+  teamToken: string;
+  chatId?: string;
+}): Promise<AuthResponseType> => {
+  const { uid } = await authTeamSpaceToken({
+    teamId,
+    teamToken
+  });
+
+  const app = await MongoApp.findById(appId).lean();
+  if (!app) {
+    return Promise.reject('app is empty');
+  }
+
+  const [chat, { user }] = await Promise.all([
+    MongoChat.findOne({ appId, chatId }).lean(),
+    getUserChatInfoAndAuthTeamPoints(app.tmbId)
+  ]);
+
+  if (chat && (String(chat.teamId) !== teamId || chat.outLinkUid !== uid)) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
+  return {
+    teamId,
+    tmbId: app.tmbId,
+    user,
+    app,
+    responseDetail: true,
+    authType: AuthUserTypeEnum.outLink,
+    apikey: '',
+    canWrite: false,
+    outLinkUserId: uid
+  };
+};
+const authHeaderRequest = async ({
+  req,
+  appId,
+  chatId,
+  detail
+}: {
+  req: NextApiRequest;
+  appId?: string;
+  chatId?: string;
+  detail?: boolean;
+}): Promise<AuthResponseType> => {
+  const {
+    appId: apiKeyAppId,
+    teamId,
+    tmbId,
+    authType,
+    apikey,
+    canWrite: apiKeyCanWrite
+  } = await authCert({
+    req,
+    authToken: true,
+    authApiKey: true
+  });
+
+  const { app, canWrite } = await (async () => {
+    if (authType === AuthUserTypeEnum.apikey) {
+      if (!apiKeyAppId) {
+        return Promise.reject(
+          'Key is error. You need to use the app key rather than the account key.'
+        );
+      }
+      const app = await MongoApp.findById(apiKeyAppId);
+
+      if (!app) {
+        return Promise.reject('app is empty');
+      }
+
+      appId = String(app._id);
+
+      return {
+        app,
+        canWrite: apiKeyCanWrite
+      };
+    } else {
+      // token auth
+      if (!appId) {
+        return Promise.reject('appId is empty');
+      }
+      const { app, canWrite } = await authApp({
+        req,
+        authToken: true,
+        appId,
+        per: 'r'
+      });
+
+      return {
+        app,
+
+        canWrite: canWrite
+      };
+    }
+  })();
+
+  const [{ user }, chat] = await Promise.all([
+    getUserChatInfoAndAuthTeamPoints(tmbId),
+    MongoChat.findOne({ appId, chatId }).lean()
+  ]);
+
+  if (chat && (String(chat.teamId) !== teamId || String(chat.tmbId) !== tmbId)) {
+    return Promise.reject(ChatErrEnum.unAuthChat);
+  }
+
+  return {
+    teamId,
+    tmbId,
+    user,
+    app,
+    responseDetail: detail,
+    apikey,
+    authType,
+    canWrite
+  };
 };

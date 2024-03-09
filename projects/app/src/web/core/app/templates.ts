@@ -121,13 +121,13 @@ export const appTemplates: (AppItemType & {
           },
           {
             key: 'model',
-            type: 'selectChatModel',
+            type: 'selectLLMModel',
             label: 'core.module.input.label.aiModel',
             required: true,
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             connected: false
           },
           {
@@ -569,7 +569,7 @@ export const appTemplates: (AppItemType & {
           },
           {
             key: 'model',
-            type: 'selectChatModel',
+            type: 'selectLLMModel',
             label: 'core.module.input.label.aiModel',
             required: true,
             valueType: 'string',
@@ -882,13 +882,13 @@ export const appTemplates: (AppItemType & {
           },
           {
             key: 'model',
-            type: 'selectChatModel',
+            type: 'selectLLMModel',
             label: 'core.module.input.label.aiModel',
             required: true,
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
-            value: 'gpt-3.5-turbo-16k',
+            value: 'gpt-3.5-turbo',
             connected: false
           },
           {
@@ -1115,7 +1115,7 @@ export const appTemplates: (AppItemType & {
           },
           {
             key: 'model',
-            type: 'selectCQModel',
+            type: 'selectLLMModel',
             valueType: 'string',
             label: 'core.module.input.label.Classify model',
             required: true,
@@ -1345,7 +1345,7 @@ export const appTemplates: (AppItemType & {
           },
           {
             key: 'model',
-            type: 'selectChatModel',
+            type: 'selectLLMModel',
             label: 'core.module.input.label.aiModel',
             required: true,
             valueType: 'string',

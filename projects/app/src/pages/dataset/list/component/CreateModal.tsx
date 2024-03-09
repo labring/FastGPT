@@ -13,12 +13,12 @@ import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@/components/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
-import MySelect from '@/components/Select';
 import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();

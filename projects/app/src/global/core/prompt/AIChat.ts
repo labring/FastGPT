@@ -4,41 +4,37 @@ export const Prompt_QuoteTemplateList: PromptTemplateItem[] = [
   {
     title: '标准模板',
     desc: '标准提示词，用于结构不固定的知识库。',
-    value: `<data>
-{{q}}
-{{a}}    
-</data>`
+    value: `{{q}}
+{{a}}`
   },
   {
     title: '问答模板',
     desc: '适合 QA 问答结构的知识库，可以让AI较为严格的按预设内容回答',
     value: `<QA>
-<Question>
+<问题>
 {{q}}
 </Question>
 <Answer>
 {{a}}
-</Answer>
+</答案>
 </QA>`
   },
   {
     title: '标准严格模板',
     desc: '在标准模板基础上，对模型的回答做更严格的要求。',
-    value: `<data>
-{{q}}
-{{a}}    
-</data>`
+    value: `{{q}}
+{{a}}`
   },
   {
     title: '严格问答模板',
     desc: '在问答模板基础上，对模型的回答做更严格的要求。',
     value: `<QA>
-<Question>
+<问题>
 {{q}}
 </Question>
 <Answer>
 {{a}}
-</Answer>
+</答案>
 </QA>`
   }
 ];
@@ -47,24 +43,29 @@ export const Prompt_QuotePromptList: PromptTemplateItem[] = [
   {
     title: '标准模板',
     desc: '',
-    value: `Use the content within the <data></data> tags as your knowledge:
+    value: `使用 <data></data> 标记中的内容作为你的知识:
 
+<Data>
 {{quote}}
+</Data>
 
-Response Requirements:
-- If you are unsure of the answer, seek clarification.
-- Avoid mentioning that your knowledge is obtained from <data></data>.
-- Ensure that your answer aligns with the description in the <data></data>.
+回答要求：
+- 如果你不清楚答案，你需要澄清。
+- 避免提及你是从 <data></data> 获取的知识。
+- 保持答案与 <data></data> 中描述的一致。
+- 使用 Markdown 语法优化回答格式。
+- 使用与问题相同的语言回答。
 
-Question: """{{question}}"""`
-
+问题:"""{{question}}"""`
   },
   {
     title: '问答模板',
     desc: '',
     value: `Use the Q&A pairs within <QA></QA> tags for responses.
 
+<QA>
 {{quote}}
+</QA>
 
 Answer Requirements:
 - Choose one or more Q&A pairs to respond to.
@@ -79,43 +80,41 @@ $$
 Question:"""{{question}}"""`
   },
   {
-    "title": "标准严格模板",
-    "desc": "",
-    "value": `Forget the knowledge you already have; only use the content within <data></data> tags as your knowledge:
-  
-  {{quote}}
-  
-  Thinking process:
-  1. Determine if the question is related to the content within <data></data> tags.
-  2. If relevant, respond according to the following requirements.
-  3. If not relevant, decline to answer the question directly.
-  
-  Answer Requirements:
-  - Avoid mentioning that you obtained knowledge from <data></data>.
-  - Ensure that the answer aligns with the description within <data></data>.
-- All Mathematical symbols and formulas must be expressed in the following LaTex format. Inline format $g_{\\mu\\nu}$ and display format: 
-$$
-i\\hbar \\frac{\\partial}{\\partial t}\\left|\\Psi(t)\\right>=H\\left|\\Psi(t)\\right>
-$$
-  
-  Question: """{{question}}"""`
+    title: '标准严格模板',
+    desc: '',
+    value: `忘记你已有的知识，仅使用 <data></data> 标记中的内容作为你的知识:
+
+{{quote}}
+
+思考流程：
+1. 判断问题是否与 <data></data> 标记中的内容有关。
+2. 如果有关，你按下面的要求回答。
+3. 如果无关，你直接拒绝回答本次问题。
+
+回答要求：
+- 避免提及你是从 <data></data> 获取的知识。
+- 保持答案与 <data></data> 中描述的一致。
+- 使用 Markdown 语法优化回答格式。
+- 使用与问题相同的语言回答。
+
+问题:"""{{question}}"""`
   },
   {
-    "title": "严格问答模板",
-    "desc": "",
-    "value": `Forget the knowledge you already have; only use the Q&A pairs within <QA></QA> tags to respond.
-  
-  {{quote}}
-  
-  Thinking process:
-  1. Determine if the question is related to the content within <QA></QA> tags.
-  2. If not, decline to answer the question directly.
-  3. Check for similar or identical questions.
-  4. If there are identical questions, provide the corresponding answers.
-  5. If there are only similar questions, output both the similar questions and answers together.
-  
-  Lastly, avoid mentioning that you obtained knowledge from QA; simply provide the answers.
-  
-  Question: """{{question}}"""`
-  }  
+    title: '严格问答模板',
+    desc: '',
+    value: `忘记你已有的知识，仅使用 <QA></QA> 标记中的问答对进行回答。
+
+{{quote}}
+
+思考流程：
+1. 判断问题是否与 <QA></QA> 标记中的内容有关。
+2. 如果无关，你直接拒绝回答本次问题。
+3. 判断是否有相近或相同的问题。
+4. 如果有相同的问题，直接输出对应答案。
+5. 如果只有相近的问题，请把相近的问题和答案一起输出。
+
+最后，避免提及你是从 QA 获取的知识，只需要回复答案。
+
+问题:"""{{question}}"""`
+  }
 ];

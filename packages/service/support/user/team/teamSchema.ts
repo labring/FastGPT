@@ -25,9 +25,8 @@ const TeamSchema = new Schema({
     type: Number,
     default: 0
   },
-  maxSize: {
-    type: Number,
-    default: 3
+  teamDomain: {
+    type: String
   },
   limit: {
     lastExportDatasetTime: {

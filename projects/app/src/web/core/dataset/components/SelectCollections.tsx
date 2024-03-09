@@ -1,26 +1,16 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import ParentPaths from '@/components/common/ParentPaths';
-import { useLoading } from '@/web/common/hooks/useLoading';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import {
-  Box,
-  Flex,
-  ModalFooter,
-  Button,
-  useTheme,
-  Grid,
-  Card,
-  Image,
-  ModalBody
-} from '@chakra-ui/react';
+import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getCollectionIcon } from '@fastgpt/global/core/dataset/utils';
 import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 
 const SelectCollections = ({
   datasetId,

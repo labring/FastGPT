@@ -18,15 +18,15 @@ import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { getPromotionInitData, getPromotionRecords } from '@/web/support/activity/promotion/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useLoading } from '@/web/common/hooks/useLoading';
 
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { usePagination } from '@/web/common/hooks/usePagination';
 import type { PromotionRecordType } from '@/global/support/api/userRes.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 
 const Promotion = () => {
   const { t } = useTranslation();

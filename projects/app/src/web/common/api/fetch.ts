@@ -34,7 +34,7 @@ export const streamFetch = ({
 
     // response data
     let responseText = '';
-    let remainText = '';
+    let remainTextList: string[] = [];
     let errMsg = '';
     let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
@@ -60,22 +60,23 @@ export const streamFetch = ({
     function animateResponseText() {
       // abort message
       if (abortCtrl.signal.aborted) {
+        const remainText = remainTextList.join('');
         onMessage({ text: remainText });
         responseText += remainText;
         return finish();
       }
 
-      if (remainText) {
-        const fetchCount = Math.max(1, Math.round(remainText.length / 60));
-        const fetchText = remainText.slice(0, fetchCount);
+      if (remainTextList.length > 0) {
+        const fetchCount = Math.max(1, Math.round(remainTextList.length / 60));
+        const fetchText = remainTextList.slice(0, fetchCount).join('');
 
         onMessage({ text: fetchText });
 
         responseText += fetchText;
-        remainText = remainText.slice(fetchCount);
+        remainTextList = remainTextList.slice(fetchCount);
       }
 
-      if (finished && !remainText) {
+      if (finished && remainTextList.length === 0) {
         return finish();
       }
 
@@ -125,7 +126,10 @@ export const streamFetch = ({
             try {
               failedFinish(await res.clone().json());
             } catch {
-              failedFinish(await res.clone().text());
+              const errText = await res.clone().text();
+              if (!errText.startsWith('event: error')) {
+                failedFinish();
+              }
             }
           }
         },
@@ -145,11 +149,13 @@ export const streamFetch = ({
 
           if (event === sseResponseEventEnum.answer) {
             const text: string = parseJson?.choices?.[0]?.delta?.content || '';
-            remainText += text;
+
+            for (const item of text) {
+              remainTextList.push(item);
+            }
           } else if (event === sseResponseEventEnum.response) {
             const text: string = parseJson?.choices?.[0]?.delta?.content || '';
-            onMessage({ text });
-            responseText += text;
+            remainTextList.push(text);
           } else if (
             event === sseResponseEventEnum.moduleStatus &&
             parseJson?.name &&

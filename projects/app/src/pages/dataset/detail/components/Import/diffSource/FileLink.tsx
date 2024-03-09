@@ -11,7 +11,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { LinkCollectionIcon } from '@fastgpt/global/core/dataset/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getDocPath } from '@/web/common/system/doc';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />

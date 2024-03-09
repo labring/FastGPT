@@ -1,11 +1,11 @@
 import React, { useState, useRef, useCallback } from 'react';
-import { Box, Flex, Card, Grid, Input } from '@chakra-ui/react';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { Box, Flex, Grid } from '@chakra-ui/react';
 import { getShareModelList, triggerModelCollection } from '@/web/core/app/api';
-import { usePagination } from '@/web/common/hooks/usePagination';
 import type { ShareAppItem } from '@/types/app';
 import ShareModelList from './components/list';
 import { serviceSideProps } from '@/web/common/utils/i18n';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 
 const modelList = () => {
   const { Loading } = useLoading();
