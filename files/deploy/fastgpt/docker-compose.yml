@@ -62,8 +62,8 @@ services:
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
       - FILE_TOKEN_KEY=filetoken
-      # mongo 配置，不需要改. 用户名myname,密码mypassword。
-      - MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin
+      # mongo 配置，不需要改. 用户名myusername,密码mypassword。
+      - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       # pg配置. 不需要改
       - PG_URL=postgresql://username:password@pg:5432/postgres
     volumes:
