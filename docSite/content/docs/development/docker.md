@@ -177,7 +177,7 @@ mongo:
   command: mongod --keyFile /data/mongodb.key --replSet rs0
   environment:
     # 默认的用户名和密码，只有首次允许有效
-    - MONGO_INITDB_ROOT_USERNAME=myname
+    - MONGO_INITDB_ROOT_USERNAME=myusername
     - MONGO_INITDB_ROOT_PASSWORD=mypassword
   volumes:
     - ./mongo/data:/data/db
