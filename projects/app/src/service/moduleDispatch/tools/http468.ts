@@ -41,7 +41,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     chatId,
     responseChatItemId,
     variables,
-    module: { outputs },
+    module: { moduleId, outputs },
     histories,
     params: {
       system_httpMethod: httpMethod = 'POST',
@@ -126,6 +126,10 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
         httpResult: rawResponse
+      },
+      [ModuleRunTimerOutputEnum.toolResponse]: {
+        moduleId,
+        response: results
       },
       ...results
     };

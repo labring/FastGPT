@@ -6,7 +6,7 @@ import { AppTTSConfigType } from '@fastgpt/global/core/module/type';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import React from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatChatValue2InputType } from '../utils';
 

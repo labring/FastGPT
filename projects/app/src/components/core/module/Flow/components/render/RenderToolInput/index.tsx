@@ -15,12 +15,12 @@ import {
   TableContainer,
   Flex
 } from '@chakra-ui/react';
-import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import dynamic from 'next/dynamic';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { AddIcon } from '@chakra-ui/icons';
+import dynamic from 'next/dynamic';
+import { defaultEditFormData } from './constants';
+import { onChangeNode } from '../../../FlowProvider';
+const EditFieldModal = dynamic(() => import('./EditFieldModal'));
 
 const RenderToolInput = ({
   moduleId,
@@ -32,6 +32,7 @@ const RenderToolInput = ({
   canEdit?: boolean;
 }) => {
   const { t } = useTranslation();
+  const [editField, setEditField] = React.useState<FlowNodeInputItemType>();
 
   return (
     <>
@@ -46,6 +47,7 @@ const RenderToolInput = ({
             _hover={{
               bg: 'myGray.150'
             }}
+            onClick={() => setEditField(defaultEditFormData)}
           >
             {t('core.module.extract.Add field')}
           </Button>
@@ -75,8 +77,26 @@ const RenderToolInput = ({
                   <Td>{item.required ? '✔' : ''}</Td>
                   {canEdit && (
                     <Td whiteSpace={'nowrap'}>
-                      <MyIcon mr={3} name={'common/settingLight'} w={'16px'} cursor={'pointer'} />
-                      <MyIcon name={'delete'} w={'16px'} cursor={'pointer'} onClick={() => {}} />
+                      <MyIcon
+                        mr={3}
+                        name={'common/settingLight'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() => setEditField(item)}
+                      />
+                      <MyIcon
+                        name={'delete'}
+                        w={'16px'}
+                        cursor={'pointer'}
+                        onClick={() => {
+                          onChangeNode({
+                            moduleId,
+                            type: 'delInput',
+                            key: item.key,
+                            value: ''
+                          });
+                        }}
+                      />
                     </Td>
                   )}
                 </Tr>
@@ -85,6 +105,14 @@ const RenderToolInput = ({
           </Table>
         </TableContainer>
       </Box>
+
+      {!!editField && (
+        <EditFieldModal
+          defaultValue={editField}
+          moduleId={moduleId}
+          onClose={() => setEditField(undefined)}
+        />
+      )}
     </>
   );
 };

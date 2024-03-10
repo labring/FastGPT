@@ -29,7 +29,11 @@ import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleIOValueTypeEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleIOValueTypeEnum,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum
+} from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -392,7 +396,10 @@ export const FlowProvider = ({
       return {
         isTool,
         toolInputs: inputs.filter((item) => isTool && item.toolDescription),
-        commonInputs: inputs.filter((item) => !isTool || !item.toolDescription)
+        commonInputs: inputs.filter((item) => {
+          if (!isTool) return true;
+          return !item.toolDescription && item.key !== ModuleInputKeyEnum.switch;
+        })
       };
     },
     [edges]
