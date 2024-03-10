@@ -29,7 +29,7 @@ export const AiChatModule: FlowModuleTemplateType = {
   name: 'AI 对话',
   intro: 'AI 大模型对话',
   showStatus: true,
-  isTool: true,
+  // isTool: true,
   inputs: [
     Input_Template_Switch,
     Input_Template_AiModel,
