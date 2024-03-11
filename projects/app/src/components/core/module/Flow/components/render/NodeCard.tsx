@@ -72,6 +72,7 @@ const NodeCard = (props: Props) => {
             {
               icon: 'common/refreshLight',
               label: t('plugin.Synchronous version'),
+              variant: 'whiteBase',
               onClick: () => {
                 const pluginId = inputs.find(
                   (item) => item.key === ModuleInputKeyEnum.pluginId
@@ -100,6 +101,7 @@ const NodeCard = (props: Props) => {
             {
               icon: 'edit',
               label: t('common.Rename'),
+              variant: 'whiteBase',
               onClick: () =>
                 onOpenModal({
                   defaultVal: name,
@@ -123,11 +125,13 @@ const NodeCard = (props: Props) => {
       {
         icon: 'copy',
         label: t('common.Copy'),
+        variant: 'whiteBase',
         onClick: () => onCopyNode(moduleId)
       },
       {
         icon: 'delete',
         label: t('common.Delete'),
+        variant: 'whiteDanger',
         onClick: () => onDelNode(moduleId)
       }
     ],
@@ -153,7 +157,10 @@ const NodeCard = (props: Props) => {
       borderRadius={'md'}
       boxShadow={'1'}
       _hover={{
-        boxShadow: '4'
+        boxShadow: '4',
+        '& .controller-menu': {
+          display: 'flex'
+        }
       }}
     >
       <Box className="custom-drag-handle" px={4} py={3} position={'relative'}>
@@ -163,28 +170,35 @@ const NodeCard = (props: Props) => {
           <Box ml={3} fontSize={'lg'}>
             {t(name)}
           </Box>
-          <Box flex={1} />
-          {!forbidMenu && (
-            <MyMenu
-              offset={[-60, 5]}
-              width={120}
-              Button={
-                <MenuButton
-                  className={'nodrag'}
-                  _hover={{ bg: 'myWhite.600' }}
-                  cursor={'pointer'}
-                  borderRadius={'md'}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                  }}
-                >
-                  <MyIcon name={'more'} w={'14px'} p={2} />
-                </MenuButton>
-              }
-              menuList={menuList}
-            />
-          )}
         </Flex>
+        {!forbidMenu && (
+          <Box
+            className="controller-menu"
+            display={'none'}
+            flexDirection={'column'}
+            gap={3}
+            position={'absolute'}
+            top={'-20px'}
+            right={'-120px'}
+            pl={'80px'}
+            pr={'40px'}
+            pb={'20px'}
+            pt={'20px'}
+          >
+            {menuList.map((item) => (
+              <Box key={item.icon}>
+                <Button
+                  size={'xs'}
+                  variant={item.variant}
+                  leftIcon={<MyIcon name={item.icon as any} w={'12px'} />}
+                  onClick={item.onClick}
+                >
+                  {item.label}
+                </Button>
+              </Box>
+            ))}
+          </Box>
+        )}
         <Flex alignItems={'flex-end'} py={1}>
           <Box fontSize={'xs'} color={'myGray.600'} flex={'1 0 0'}>
             {t(intro)}

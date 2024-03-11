@@ -42,6 +42,8 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
           style={{
             width: '14px',
             height: '14px',
+            borderWidth: '3.5px',
+            backgroundColor: 'white',
             ...valueStyle
           }}
           type="source"

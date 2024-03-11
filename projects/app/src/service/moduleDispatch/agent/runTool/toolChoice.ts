@@ -70,6 +70,7 @@ export const runToolWithToolChoice = async (
     messages,
     maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
   });
+
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
@@ -136,7 +137,7 @@ export const runToolWithToolChoice = async (
           tool_call_id: tool.id,
           role: ChatCompletionRequestMessageRoleEnum.Tool,
           name: tool.function.name,
-          content: JSON.stringify(moduleRunResponse.toolResponse)
+          content: JSON.stringify(moduleRunResponse.toolResponse, null, 2)
         };
 
         if (stream) {

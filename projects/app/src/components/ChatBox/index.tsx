@@ -14,12 +14,12 @@ import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Flex, useTheme, Checkbox, Button } from '@chakra-ui/react';
+import { Box, Flex, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { ModuleRunTimerOutputEnum, VariableInputEnum } from '@fastgpt/global/core/module/constants';
-import { useFieldArray, useForm } from 'react-hook-form';
+import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
@@ -39,7 +39,6 @@ import type {
   StartChatFnProps,
   ComponentRef,
   ChatBoxInputType,
-  UserInputFileItemType,
   ChatBoxInputFormType
 } from './type.d';
 import MessageInput from './MessageInput';
@@ -50,6 +49,7 @@ import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/c
 import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
@@ -59,7 +59,6 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInput = dynamic(() => import('./components/VariableInput'));
-const ChatItem = dynamic(() => import('./components/ChatItem'));
 
 enum FeedbackTypeEnum {
   user = 'user',
@@ -757,7 +756,7 @@ const ChatBox = (
   // page change and abort request
   useEffect(() => {
     isNewChatReplace.current = false;
-    setQuestionGuide(['你好', '那是谁', '哈哈哈']);
+    setQuestionGuide([]);
     return () => {
       chatController.current?.abort('leave');
       if (!isNewChatReplace.current) {
@@ -860,7 +859,6 @@ const ChatBox = (
                       avatar={appAvatar}
                       chat={item}
                       isChatting={isChatting}
-                      onRetry={retryInput(item.dataId)}
                       onDelete={delOneMessage(item.dataId)}
                       {...(item.obj === 'AI' && {
                         setChatHistories,

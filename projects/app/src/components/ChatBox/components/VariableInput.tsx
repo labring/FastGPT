@@ -34,7 +34,14 @@ const VariableInput = ({
       <ChatAvatar src={appAvatar} type={'AI'} />
       {/* message */}
       <Box textAlign={'left'}>
-        <Card order={2} mt={2} bg={'white'} w={'400px'} {...MessageCardStyle}>
+        <Card
+          order={2}
+          mt={2}
+          w={'400px'}
+          {...MessageCardStyle}
+          bg={'white'}
+          boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
+        >
           {variableModules.map((item) => (
             <Box key={item.id} mb={4}>
               <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>

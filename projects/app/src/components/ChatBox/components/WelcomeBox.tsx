@@ -11,7 +11,13 @@ const WelcomeBox = ({ appAvatar, welcomeText }: { appAvatar?: string; welcomeTex
       <ChatAvatar src={appAvatar} type={'AI'} />
       {/* message */}
       <Box textAlign={'left'}>
-        <Card order={2} mt={2} {...MessageCardStyle} bg={'white'}>
+        <Card
+          order={2}
+          mt={2}
+          {...MessageCardStyle}
+          bg={'white'}
+          boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
+        >
           <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
         </Card>
       </Box>

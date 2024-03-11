@@ -71,7 +71,7 @@ export async function dispatchDatasetSearch(
   if (!userChatInput) {
     return Promise.reject('core.chat.error.User input empty');
   }
-  console.log(userChatInput);
+
   // query extension
   const extensionModel =
     datasetSearchUsingExtensionQuery && datasetSearchExtensionModel

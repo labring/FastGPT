@@ -98,6 +98,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         borderBottom={theme.borders.base}
         alignItems={'center'}
         userSelect={'none'}
+        bg={'myGray.25'}
       >
         <IconButton
           size={'smSquare'}

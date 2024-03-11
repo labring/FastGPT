@@ -1,6 +1,6 @@
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useAudioPlay } from '@/web/common/utils/voice';
-import { Flex, FlexProps, Image, useTheme } from '@chakra-ui/react';
+import { Flex, FlexProps, Image, css, useTheme } from '@chakra-ui/react';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import { AppTTSConfigType } from '@fastgpt/global/core/module/type';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
@@ -56,12 +56,9 @@ const ChatController = ({
   const controlIconStyle = {
     w: '14px',
     cursor: 'pointer',
-    p: 1,
+    p: '5px',
     bg: 'white',
-    borderRadius: 'md',
-    boxShadow: '0 0 5px rgba(0,0,0,0.1)',
-    border: theme.borders.base,
-    mr: 3
+    borderRight: theme.borders.base
   };
   const controlContainerStyle = {
     className: 'control',
@@ -71,7 +68,19 @@ const ChatController = ({
   };
 
   return (
-    <Flex {...controlContainerStyle}>
+    <Flex
+      {...controlContainerStyle}
+      borderRadius={'sm'}
+      overflow={'hidden'}
+      border={theme.borders.base}
+      // 最后一个子元素，没有border
+      css={css({
+        '& > *:last-child, & > *:last-child svg': {
+          borderRight: 'none',
+          borderRadius: 'md'
+        }
+      })}
+    >
       <MyTooltip label={t('common.Copy')}>
         <MyIcon
           {...controlIconStyle}
@@ -109,17 +118,17 @@ const ChatController = ({
             <MyIcon {...controlIconStyle} name={'common/loading'} />
           </MyTooltip>
         ) : audioPlaying ? (
-          <Flex alignItems={'center'} mr={2}>
+          <Flex alignItems={'center'}>
             <MyTooltip label={t('core.chat.tts.Stop Speech')}>
               <MyIcon
                 {...controlIconStyle}
-                mr={1}
+                borderRight={'none'}
                 name={'core/chat/stopSpeech'}
                 color={'#E74694'}
                 onClick={() => cancelAudio()}
               />
             </MyTooltip>
-            <Image src="/icon/speaking.gif" w={'23px'} alt={''} />
+            <Image src="/icon/speaking.gif" w={'23px'} alt={''} borderRight={theme.borders.base} />
           </Flex>
         ) : (
           <MyTooltip label={t('core.app.TTS')}>

@@ -22,7 +22,6 @@ import Markdown, { CodeClassName } from '@/components/Markdown';
 import styles from '../index.module.scss';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import MdImage from '@/components/Markdown/img/Image';
 import FilesBlock from './FilesBox';
 
 const ChatItem = ({
@@ -49,19 +48,17 @@ const ChatItem = ({
     type === 'Human'
       ? {
           order: 0,
-          ml: 0,
           borderRadius: '8px 0 8px 8px',
           justifyContent: 'flex-end',
           textAlign: 'right',
-          bg: 'primary.200'
+          bg: 'primary.100'
         }
       : {
           order: 1,
-          ml: 2,
           borderRadius: '0 8px 8px 8px',
           justifyContent: 'flex-start',
           textAlign: 'left',
-          bg: 'white'
+          bg: 'myGray.50'
         };
   const { chat, isChatting } = chatControllerProps;
 
@@ -107,6 +104,10 @@ ${JSON.stringify(questionGuides)}`;
                             borderWidth={'1px'}
                             borderColor={'myGray.200'}
                             boxShadow={'1'}
+                            _hover={{
+                              bg: 'auto',
+                              color: 'primary.600'
+                            }}
                           >
                             <Image src={tool.toolAvatar} alt={''} w={'14px'} mr={2} />
                             <Box mr={1}>{tool.toolName}</Box>
@@ -118,7 +119,7 @@ ${JSON.stringify(questionGuides)}`;
                           <AccordionPanel
                             py={0}
                             px={0}
-                            mt={2}
+                            mt={0}
                             borderRadius={'md'}
                             overflow={'hidden'}
                             maxH={'500px'}
@@ -126,13 +127,13 @@ ${JSON.stringify(questionGuides)}`;
                           >
                             {tool.params && (
                               <Markdown
-                                source={`~~~json
+                                source={`~~~json#Input
 ${tool.params}`}
                               />
                             )}
                             {tool.response && (
                               <Markdown
-                                source={`~~~json
+                                source={`~~~json#Response
 ${tool.response}`}
                               />
                             )}
@@ -153,7 +154,7 @@ ${tool.response}`}
   return (
     <>
       {/* control icon */}
-      <Flex w={'100%'} alignItems={'center'} justifyContent={styleMap.justifyContent}>
+      <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === 'AI' && isLastChild ? null : (
           <Box order={styleMap.order} ml={styleMap.ml}>
             <ChatController {...chatControllerProps} />
