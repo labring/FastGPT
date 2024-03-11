@@ -29,7 +29,7 @@ const NodeTools = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
         <Box borderBottomLeftRadius={'md'} borderBottomRadius={'md'} overflow={'hidden'}>
           <Divider showBorderBottom={false} text={t('core.module.template.Tool module')} />
         </Box>
-        <ToolSourceHandle />
+        <ToolSourceHandle moduleId={moduleId} />
       </Box>
     </NodeCard>
   );

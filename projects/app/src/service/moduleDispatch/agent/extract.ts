@@ -1,8 +1,11 @@
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { filterGPTMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  countGptMessagesTokens,
+  countMessagesTokens
+} from '@fastgpt/global/common/string/tiktoken';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type {
   ContextExtractAgentItemType,
@@ -21,6 +24,8 @@ import { getHistories } from '../utils';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import json5 from 'json5';
+import { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -148,11 +153,11 @@ async function toolChoice({
 当前问题: "${content}"`
     }
   ];
+  const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
   const filterMessages = filterGPTMessageByMaxTokens({
-    messages,
+    messages: adaptMessages,
     maxTokens: extractModel.maxContext
   });
-  const adaptMessages = chats2GPTMessages({ messages: filterMessages, reserveId: false });
 
   const properties: Record<
     string,
@@ -178,7 +183,7 @@ async function toolChoice({
       properties
     }
   };
-  const tools: any = [
+  const tools: ChatCompletionTool[] = [
     {
       type: 'function',
       function: agentFunction
@@ -193,7 +198,7 @@ async function toolChoice({
   const response = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0,
-    messages: [...adaptMessages],
+    messages: filterMessages,
     tools,
     tool_choice: { type: 'function', function: { name: agentFunName } }
   });
@@ -211,9 +216,17 @@ async function toolChoice({
     }
   })();
 
+  const completeMessages: ChatCompletionMessageParam[] = [
+    ...filterMessages,
+    {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      tool_calls: response.choices?.[0]?.message?.tool_calls
+    }
+  ];
+
   return {
     rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
-    tokens: countMessagesTokens(messages, tools),
+    tokens: countGptMessagesTokens(completeMessages, tools),
     arg
   };
 }
@@ -227,19 +240,26 @@ async function completions({
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
-        description,
-        json: extractKeys
-          .map(
-            (item) =>
-              `{"key":"${item.key}", "description":"${item.desc}"${
-                item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
-              }}`
-          )
-          .join('\n'),
-        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
-Human: ${content}`
-      })
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
+              description,
+              json: extractKeys
+                .map(
+                  (item) =>
+                    `{"key":"${item.key}", "description":"${item.desc}"${
+                      item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
+                    }}`
+                )
+                .join('\n'),
+              text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
+      Human: ${content}`
+            })
+          }
+        }
+      ]
     }
   ];
 

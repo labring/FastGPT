@@ -17,7 +17,7 @@ export type generatingMessageProps = {
 
 export type UserInputFileItemType = {
   id: string;
-  rawFile: File;
+  rawFile?: File;
   type: `${ChatFileTypeEnum}`;
   name: string;
   icon: string; // img is base64

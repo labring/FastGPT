@@ -102,6 +102,7 @@ export const dispatchRunTools = async (
   });
 
   const adaptMessages = GPTMessages2Chats(completeMessages);
+  //@ts-ignore
   const startIndex = adaptMessages.findLastIndex((item) => item.obj === ChatRoleEnum.Human);
   const assistantResponse = adaptMessages.slice(startIndex + 1);
 

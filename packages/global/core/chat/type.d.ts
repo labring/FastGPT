@@ -83,7 +83,7 @@ export type ChatItemValueItemType =
   | SystemChatItemValueItemType
   | AIChatItemValueItemType;
 
-export type ChatItemSchema = ChatItemValueItemType & {
+export type ChatItemSchema = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
   dataId: string;
   chatId: string;
   userId: string;

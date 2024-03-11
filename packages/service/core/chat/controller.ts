@@ -26,6 +26,7 @@ export async function getChatItems({
   history.reverse();
 
   history.forEach((item) => {
+    // @ts-ignore
     item.value = adaptStringValue(item.value);
   });
 

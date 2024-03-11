@@ -16,6 +16,7 @@ import {
   ModuleRunTimerOutputEnum
 } from '@fastgpt/global/core/module/constants';
 import { getHistories, setEntryEntries } from '../utils';
+import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
@@ -34,6 +35,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     stream,
     detail,
     histories,
+    inputFiles,
     params: { userChatInput, history, app }
   } = props;
   let start = Date.now();
@@ -63,12 +65,13 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const chatHistories = getHistories(history, histories);
 
-  const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
+  const { responseData, moduleDispatchBills, assistantResponse } = await dispatchModules({
     ...props,
     appId: app.id,
     modules: setEntryEntries(appData.modules),
     runtimeModules: undefined, // must reset
     histories: chatHistories,
+    inputFiles,
     startParams: {
       userChatInput
     }
@@ -77,19 +80,24 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
-      value: userChatInput
+      value: runtimePrompt2ChatsValue({
+        files: inputFiles,
+        text: userChatInput
+      })
     },
     {
       obj: ChatRoleEnum.AI,
-      value: answerText
+      value: assistantResponse
     }
   ]);
+
+  const { text } = chatValue2RuntimePrompt(assistantResponse);
 
   return {
     [ModuleRunTimerOutputEnum.responseData]: {
       moduleLogo: appData.avatar,
       query: userChatInput,
-      textOutput: answerText,
+      textOutput: text,
       totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
     },
     [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
@@ -98,7 +106,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
         totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
       }
     ],
-    answerText: answerText,
+    answerText: text,
     history: completeMessages
   };
 };

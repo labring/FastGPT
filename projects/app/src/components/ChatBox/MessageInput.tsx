@@ -75,7 +75,7 @@ const MessageInput = ({
   });
   const { mutate: uploadFile } = useRequest({
     mutationFn: async ({ file, fileIndex }: { file: UserInputFileItemType; fileIndex: number }) => {
-      if (file.type === ChatFileTypeEnum.image) {
+      if (file.type === ChatFileTypeEnum.image && file.rawFile) {
         try {
           const url = await compressImgFileAndUpload({
             type: MongoImageTypeEnum.chatImage,
