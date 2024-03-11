@@ -27,7 +27,7 @@ llm模型全部合并
   },
   "llmModels": [
     {
-      "model": "gpt-3.5-turbo-1106", // 模型名
+      "model": "gpt-3.5-turbo", // 模型名
       "name": "gpt-3.5-turbo", // 别名
       "maxContext": 16000, // 最大上下文
       "maxResponse": 4000, // 最大回复
@@ -37,6 +37,10 @@ llm模型全部合并
       "censor": false,
       "vision": false, // 是否支持图片输入
       "datasetProcess": false, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "useInToolCall": true,
+      "usedInQueryExtension": true,
       "toolChoice": true, // 是否支持工具选择
       "functionCall": false, // 是否支持函数调用
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
@@ -55,6 +59,10 @@ llm模型全部合并
       "censor": false,
       "vision": false,
       "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "useInToolCall": true,
+      "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",
@@ -73,6 +81,10 @@ llm模型全部合并
       "censor": false,
       "vision": false,
       "datasetProcess": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "useInToolCall": true,
+      "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",
@@ -91,6 +103,10 @@ llm模型全部合并
       "censor": false,
       "vision": true,
       "datasetProcess": false,
+      "usedInClassify": false,
+      "usedInExtractFields": false,
+      "useInToolCall": false,
+      "usedInQueryExtension": false,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",

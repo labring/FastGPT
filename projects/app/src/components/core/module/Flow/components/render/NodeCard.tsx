@@ -20,7 +20,6 @@ import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
-import MyMenu from '@/components/MyMenu';
 import { ToolTargetHandle } from './ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 
@@ -173,7 +172,7 @@ const NodeCard = (props: Props) => {
         </Flex>
         {!forbidMenu && (
           <Box
-            className="controller-menu"
+            className="nodrag controller-menu"
             display={'none'}
             flexDirection={'column'}
             gap={3}

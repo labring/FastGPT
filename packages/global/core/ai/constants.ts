@@ -10,3 +10,18 @@ export enum ChatMessageTypeEnum {
   text = 'text',
   image_url = 'image_url'
 }
+
+export enum LLMModelTypeEnum {
+  all = 'all',
+  classify = 'classify',
+  extractFields = 'extractFields',
+  toolCall = 'toolCall',
+  queryExtension = 'queryExtension'
+}
+export const llmModelTypeFilterMap = {
+  [LLMModelTypeEnum.all]: 'model',
+  [LLMModelTypeEnum.classify]: 'usedInClassify',
+  [LLMModelTypeEnum.extractFields]: 'usedInExtractFields',
+  [LLMModelTypeEnum.toolCall]: 'usedInToolCall',
+  [LLMModelTypeEnum.queryExtension]: 'usedInQueryExtension'
+};

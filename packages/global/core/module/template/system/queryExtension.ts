@@ -13,9 +13,11 @@ import {
 import {
   Input_Template_History,
   Input_Template_Switch,
-  Input_Template_UserChatInput
+  Input_Template_UserChatInput,
+  Input_Template_AiModel
 } from '../input';
 import { Output_Template_UserChatInput } from '../output';
+import { LLMModelTypeEnum } from '../../../ai/constants';
 
 export const AiQueryExtension: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
@@ -29,13 +31,8 @@ export const AiQueryExtension: FlowModuleTemplateType = {
   inputs: [
     Input_Template_Switch,
     {
-      key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectLLMModel,
-      label: 'core.module.input.label.aiModel',
-      required: true,
-      valueType: ModuleIOValueTypeEnum.string,
-      showTargetInApp: false,
-      showTargetInPlugin: false
+      ...Input_Template_AiModel,
+      llmModelType: LLMModelTypeEnum.queryExtension
     },
     {
       key: ModuleInputKeyEnum.aiSystemPrompt,

@@ -13,6 +13,7 @@ import {
 } from '../input';
 import { Output_Template_UserChatInput } from '../output';
 import { Input_Template_System_Prompt } from '../input';
+import { LLMModelTypeEnum } from '../../../ai/constants';
 
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
@@ -24,7 +25,10 @@ export const ClassifyQuestionModule: FlowModuleTemplateType = {
   showStatus: true,
   inputs: [
     Input_Template_Switch,
-    Input_Template_AiModel,
+    {
+      ...Input_Template_AiModel,
+      llmModelType: LLMModelTypeEnum.classify
+    },
     {
       ...Input_Template_System_Prompt,
       label: 'core.module.input.label.Background',

@@ -11,6 +11,7 @@ import {
   ModuleTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_AiModel, Input_Template_History, Input_Template_Switch } from '../input';
+import { LLMModelTypeEnum } from '../../../ai/constants';
 
 export const ContextExtractModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
@@ -23,7 +24,10 @@ export const ContextExtractModule: FlowModuleTemplateType = {
   isTool: true,
   inputs: [
     Input_Template_Switch,
-    Input_Template_AiModel,
+    {
+      ...Input_Template_AiModel,
+      llmModelType: LLMModelTypeEnum.extractFields
+    },
     {
       key: ModuleInputKeyEnum.description,
       type: FlowNodeInputTypeEnum.textarea,

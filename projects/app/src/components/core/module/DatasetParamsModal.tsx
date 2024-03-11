@@ -86,10 +86,12 @@ const DatasetParamsModal = ({
   const cfbBgDesc = watch('datasetSearchExtensionBg');
 
   const chatModelSelectList = (() =>
-    llmModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
+    llmModelList
+      .filter((model) => model.usedInQueryExtension)
+      .map((item) => ({
+        value: item.model,
+        label: item.name
+      })))();
 
   const searchModeList = useMemo(() => {
     const list = Object.values(DatasetSearchModeMap);

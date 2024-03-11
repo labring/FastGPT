@@ -2,6 +2,7 @@ import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from 
 import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
 import { SelectedDatasetType } from '../api';
 import { EditInputFieldMap, EditOutputFieldMap } from './type';
+import { LLMModelTypeEnum } from '../../ai/constants';
 
 export type FlowNodeChangeProps = {
   moduleId: string;
@@ -50,6 +51,8 @@ export type FlowNodeInputItemType = {
   step?: number; // slider
   max?: number; // slider, number input
   min?: number; // slider, number input
+
+  llmModelType?: `${LLMModelTypeEnum}`;
 };
 
 export type FlowNodeOutputTargetItemType = {
