@@ -21,8 +21,24 @@ import { formatChatValue2InputType } from '../utils';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import styles from '../index.module.scss';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
+import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+
+const colorMap = {
+  [ChatStatusEnum.loading]: {
+    bg: 'myGray.100',
+    color: 'myGray.600'
+  },
+  [ChatStatusEnum.running]: {
+    bg: 'green.50',
+    color: 'green.700'
+  },
+  [ChatStatusEnum.finish]: {
+    bg: 'green.50',
+    color: 'green.700'
+  }
+};
 
 const ChatItem = ({
   type,
@@ -36,7 +52,7 @@ const ChatItem = ({
   type: 'Human' | 'AI';
   avatar?: string;
   statusBoxData?: {
-    bg: string;
+    status: `${ChatStatusEnum}`;
     name: string;
   };
   isLastChild?: boolean;
@@ -151,6 +167,11 @@ ${tool.response}`}
     );
   }, [chat.dataId, chat.value, isChatting, isLastChild, questionGuides, type]);
 
+  const chatStatusMap = useMemo(() => {
+    if (!statusBoxData?.status) return;
+    return colorMap[statusBoxData.status];
+  }, [statusBoxData?.status]);
+
   return (
     <>
       {/* control icon */}
@@ -161,23 +182,17 @@ ${tool.response}`}
           </Box>
         )}
         <ChatAvatar src={avatar} type={type} />
-        {!!statusBoxData && isLastChild && (
-          <Flex
-            ml={3}
-            alignItems={'center'}
-            px={3}
-            py={'1px'}
-            borderRadius="md"
-            border={theme.borders.base}
-          >
+
+        {!!chatStatusMap && statusBoxData && isLastChild && (
+          <Flex alignItems={'center'} px={3} py={'1.5px'} borderRadius="md" bg={chatStatusMap.bg}>
             <Box
               className={styles.statusAnimation}
-              bg={statusBoxData.bg}
+              bg={chatStatusMap.color}
               w="8px"
               h="8px"
               borderRadius={'50%'}
               mt={'1px'}
-            ></Box>
+            />
             <Box ml={2} color={'myGray.600'}>
               {statusBoxData.name}
             </Box>

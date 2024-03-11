@@ -741,17 +741,12 @@ const ChatBox = (
     ]
   );
   const statusBoxData = useMemo(() => {
-    const colorMap = {
-      loading: 'myGray.700',
-      running: '#67c13b',
-      finish: 'primary.500'
-    };
     if (!isChatting) return;
     const chatContent = chatHistories[chatHistories.length - 1];
     if (!chatContent) return;
 
     return {
-      bg: colorMap[chatContent.status] || colorMap.loading,
+      status: chatContent.status || 'loading',
       name: t(chatContent.moduleName || '') || t('common.Loading')
     };
   }, [chatHistories, isChatting, t]);
