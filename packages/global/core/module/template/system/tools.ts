@@ -1,18 +1,12 @@
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '../../node/constant';
+import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
-  ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
   ModuleTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_AiModel,
-  Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_Switch,
   Input_Template_System_Prompt,
@@ -20,6 +14,7 @@ import {
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
 import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
+import { LLMModelTypeEnum } from '../../../ai/constants';
 
 export const ToolModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.tools,
@@ -31,7 +26,10 @@ export const ToolModule: FlowModuleTemplateType = {
   showStatus: true,
   inputs: [
     Input_Template_Switch,
-    Input_Template_AiModel,
+    {
+      ...Input_Template_AiModel,
+      llmModelType: LLMModelTypeEnum.toolCall
+    },
     {
       ...Input_Template_System_Prompt,
       label: 'core.ai.Prompt',

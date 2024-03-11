@@ -23,7 +23,8 @@ import React, {
   useCallback,
   createContext,
   useRef,
-  useEffect
+  useEffect,
+  useMemo
 } from 'react';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
@@ -80,6 +81,7 @@ export type useFlowProviderStoreType = {
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
   };
+  hasToolNode: boolean;
 };
 
 const StateContext = createContext<useFlowProviderStoreType>({
@@ -142,7 +144,8 @@ const StateContext = createContext<useFlowProviderStoreType>({
     commonInputs: FlowNodeInputItemType[];
   } {
     throw new Error('Function not implemented.');
-  }
+  },
+  hasToolNode: false
 });
 export const useFlowProviderStore = () => useContext(StateContext);
 
@@ -160,6 +163,10 @@ export const FlowProvider = ({
   const { toast } = useToast();
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const hasToolNode = useMemo(() => {
+    return !!nodes.find((node) => node.data.flowType === FlowNodeTypeEnum.tools);
+  }, [nodes]);
 
   const onFixView = useCallback(() => {
     const btn = document.querySelector('.react-flow__controls-fitview') as HTMLButtonElement;
@@ -515,7 +522,8 @@ export const FlowProvider = ({
     onDelConnect,
     onConnect,
     initData,
-    splitToolInputs
+    splitToolInputs,
+    hasToolNode
   };
 
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;
