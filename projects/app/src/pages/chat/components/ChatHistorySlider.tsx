@@ -304,6 +304,7 @@ const ChatHistorySlider = ({
                         onClick: () => {
                           router.replace({
                             query: {
+                              ...router.query,
                               appId: item._id
                             }
                           });
