@@ -61,7 +61,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     appId,
     chatId,
     responseChatItemId,
-    variables,
+    ...variables,
     histories: histories.slice(0, 10),
     ...body
   };
@@ -71,22 +71,20 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     try {
       if (!httpHeader || httpHeader.length === 0) return {};
       // array
-      return httpHeader.reduce((acc, item) => {
-        item.key = replaceVariable(item.key, concatVariables);
-        item.value = replaceVariable(item.value, concatVariables);
-        // @ts-ignore
-        acc[item.key] = valueTypeFormat(item.value, 'string');
+      return httpHeader.reduce((acc: Record<string, string>, item) => {
+        const key = replaceVariable(item.key, concatVariables);
+        const value = replaceVariable(item.value, concatVariables);
+        acc[key] = valueTypeFormat(value, 'string');
         return acc;
       }, {});
     } catch (error) {
       return Promise.reject('Header 为非法 JSON 格式');
     }
   })();
-  const params = httpParams.reduce((acc, item) => {
-    item.key = replaceVariable(item.key, concatVariables);
-    item.value = replaceVariable(item.value, concatVariables);
-    // @ts-ignore
-    acc[item.key] = valueTypeFormat(item.value, 'string');
+  const params = httpParams.reduce((acc: Record<string, string>, item) => {
+    const key = replaceVariable(item.key, concatVariables);
+    const value = replaceVariable(item.value, concatVariables);
+    acc[key] = valueTypeFormat(value, 'string');
     return acc;
   }, {});
   const requestBody = await (() => {
@@ -101,7 +99,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
     }
   })();
-  // console.log(params, requestBody, headers);
+  // console.log(params, requestBody, headers, concatVariables);
 
   try {
     const { formatResponse, rawResponse } = await fetchData({
