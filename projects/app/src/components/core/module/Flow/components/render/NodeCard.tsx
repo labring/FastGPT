@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, Button, Flex, MenuButton } from '@chakra-ui/react';
+import { Box, Button, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -64,8 +64,17 @@ const NodeCard = (props: Props) => {
     content: t('module.Confirm Sync Plugin')
   });
 
-  const menuList = useMemo(
-    () => [
+  const showToolHandle = useMemo(
+    () => isTool && !!nodes.find((item) => item.data?.flowType === FlowNodeTypeEnum.tools),
+    [isTool, nodes]
+  );
+  const moduleIsTool = useMemo(() => {
+    const { isTool } = splitToolInputs([], moduleId);
+    return isTool;
+  }, [moduleId, splitToolInputs]);
+
+  const Header = useMemo(() => {
+    const menuList = [
       ...(flowType === FlowNodeTypeEnum.pluginModule
         ? [
             {
@@ -133,35 +142,9 @@ const NodeCard = (props: Props) => {
         variant: 'whiteDanger',
         onClick: () => onDelNode(moduleId)
       }
-    ],
-    [flowType, inputs, moduleId, name, onOpenModal, openConfirm, setLoading, t, toast]
-  );
+    ];
 
-  const showToolHandle = useMemo(
-    () => isTool && !!nodes.find((item) => item.data?.flowType === FlowNodeTypeEnum.tools),
-    [isTool, nodes]
-  );
-  const moduleIsTool = useMemo(() => {
-    const { isTool } = splitToolInputs([], moduleId);
-    return isTool;
-  }, [moduleId, splitToolInputs]);
-
-  return (
-    <Box
-      minW={minW}
-      maxW={'600px'}
-      bg={'white'}
-      borderWidth={'1px'}
-      borderColor={selected ? 'primary.600' : 'borderColor.base'}
-      borderRadius={'md'}
-      boxShadow={'1'}
-      _hover={{
-        boxShadow: '4',
-        '& .controller-menu': {
-          display: 'flex'
-        }
-      }}
-    >
+    return (
       <Box className="custom-drag-handle" px={4} py={3} position={'relative'}>
         {showToolHandle && <ToolTargetHandle moduleId={moduleId} />}
         <Flex alignItems={'center'}>
@@ -226,10 +209,54 @@ const NodeCard = (props: Props) => {
           )}
         </Flex>
       </Box>
+    );
+  }, [
+    avatar,
+    flowType,
+    forbidMenu,
+    inputs,
+    intro,
+    moduleId,
+    moduleIsTool,
+    name,
+    onOpenIntroModal,
+    onOpenModal,
+    openConfirm,
+    setLoading,
+    showToolHandle,
+    t,
+    toast
+  ]);
+
+  const RenderModal = useMemo(() => {
+    return (
+      <>
+        <EditTitleModal maxLength={20} />
+        {moduleIsTool && <EditIntroModal maxLength={500} />}
+        <ConfirmModal />
+      </>
+    );
+  }, [ConfirmModal, EditIntroModal, EditTitleModal, moduleIsTool]);
+
+  return (
+    <Box
+      minW={minW}
+      maxW={'600px'}
+      bg={'white'}
+      borderWidth={'1px'}
+      borderColor={selected ? 'primary.600' : 'borderColor.base'}
+      borderRadius={'md'}
+      boxShadow={'1'}
+      _hover={{
+        boxShadow: '4',
+        '& .controller-menu': {
+          display: 'flex'
+        }
+      }}
+    >
+      {Header}
       {children}
-      <EditTitleModal maxLength={20} />
-      {moduleIsTool && <EditIntroModal maxLength={500} />}
-      <ConfirmModal />
+      {RenderModal}
     </Box>
   );
 };
