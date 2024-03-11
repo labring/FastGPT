@@ -179,9 +179,10 @@ const NodeCard = (props: Props) => {
             gap={3}
             position={'absolute'}
             top={'-20px'}
-            right={'-120px'}
-            pl={'80px'}
-            pr={'40px'}
+            right={0}
+            transform={'translateX(90%)'}
+            pl={'17px'}
+            pr={'10px'}
             pb={'20px'}
             pt={'20px'}
           >

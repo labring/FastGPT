@@ -67,6 +67,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     ...props,
     appId: app.id,
     modules: setEntryEntries(appData.modules),
+    runtimeModules: undefined, // must reset
     histories: chatHistories,
     startParams: {
       userChatInput

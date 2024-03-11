@@ -6,7 +6,8 @@ import encodingJson from './cl100k_base.json';
 import {
   ChatCompletionMessageParam,
   ChatCompletionContentPart,
-  ChatCompletionMessageToolCall
+  ChatCompletionMessageToolCall,
+  ChatCompletionTool
 } from '../../../core/ai/type';
 import { ChatRoleEnum } from '../../../core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '../../../core/ai/constants';
@@ -35,8 +36,7 @@ export function getTikTokenEnc() {
 /* count one prompt tokens */
 export function countPromptTokens(
   prompt: string | ChatCompletionContentPart[] | null | undefined = '',
-  role: '' | `${ChatCompletionRequestMessageRoleEnum}` = '',
-  tools?: any
+  role: '' | `${ChatCompletionRequestMessageRoleEnum}` = ''
 ) {
   const enc = getTikTokenEnc();
   const promptText = (() => {
@@ -52,14 +52,8 @@ export function countPromptTokens(
     });
     return promptText;
   })();
-  const toolText = tools
-    ? JSON.stringify(tools)
-        .replace('"', '')
-        .replace('\n', '')
-        .replace(/( ){2,}/g, ' ')
-    : '';
 
-  const text = `${role}\n${promptText}\n${toolText}`.trim();
+  const text = `${role}\n${promptText}`.trim();
 
   try {
     const encodeText = enc.encode(text);
@@ -69,6 +63,20 @@ export function countPromptTokens(
     return text.length;
   }
 }
+export const countToolsTokens = (tools?: ChatCompletionTool[]) => {
+  if (!tools || tools.length === 0) return 0;
+
+  const enc = getTikTokenEnc();
+
+  const toolText = tools
+    ? JSON.stringify(tools)
+        .replace('"', '')
+        .replace('\n', '')
+        .replace(/( ){2,}/g, ' ')
+    : '';
+
+  return enc.encode(toolText).length;
+};
 
 /* count messages tokens */
 export const countMessagesTokens = (messages: ChatItemType[]) => {
@@ -76,7 +84,10 @@ export const countMessagesTokens = (messages: ChatItemType[]) => {
 
   return countGptMessagesTokens(adaptMessages);
 };
-export const countGptMessagesTokens = (messages: ChatCompletionMessageParam[]) =>
+export const countGptMessagesTokens = (
+  messages: ChatCompletionMessageParam[],
+  tools?: ChatCompletionTool[]
+) =>
   messages.reduce((sum, item) => {
     // @ts-ignore
     const toolCalls = (item.tool_calls as ChatCompletionMessageToolCall[]) || [];
@@ -93,7 +104,7 @@ export const countGptMessagesTokens = (messages: ChatCompletionMessageParam[]) =
     })();
 
     return sum + countPromptTokens(`${contentPrompt}${toolCallsPrompt}`, item.role);
-  }, 0);
+  }, 0) + countToolsTokens(tools);
 
 /* slice messages from top to bottom by maxTokens */
 export function sliceMessagesTB({

@@ -206,7 +206,7 @@ export const FlowProvider = ({
         const type = source?.outputs.find(
           (output) => output.key === connect.sourceHandle
         )?.valueType;
-        console.log(type);
+
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion && !type) {
           return ModuleIOValueTypeEnum.boolean;
         }
@@ -223,7 +223,10 @@ export const FlowProvider = ({
         .find((node) => node.id === connect.target)
         ?.data?.inputs.find((input) => input.key === connect.targetHandle)?.valueType;
 
-      if (sourceType === ModuleIOValueTypeEnum.tools && !targetType) {
+      if (
+        connect.sourceHandle === ModuleOutputKeyEnum.selectedTools &&
+        connect.targetHandle === ModuleOutputKeyEnum.selectedTools
+      ) {
       } else if (!sourceType || !targetType) {
         return toast({
           status: 'warning',

@@ -6,12 +6,14 @@ import type {
   ChatCompletionChunk,
   ChatCompletionMessageParam,
   ChatCompletionToolMessageParam,
-  ChatCompletionContentPart
+  ChatCompletionContentPart,
+  ChatCompletionTool
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
 
 export type ChatCompletionContentPart = ChatCompletionContentPart;
 export type ChatCompletionCreateParams = ChatCompletionCreateParams;
+export type ChatCompletionTool = ChatCompletionTool;
 export type ChatCompletionMessageParam = ChatCompletionMessageParam & {
   dataId?: string;
 };

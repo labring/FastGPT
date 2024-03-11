@@ -220,7 +220,10 @@ const ChatBox = (
               status,
               moduleName: name
             };
-          } else if (event === sseResponseEventEnum.answer && text) {
+          } else if (
+            (event === sseResponseEventEnum.answer || event === sseResponseEventEnum.response) &&
+            text
+          ) {
             if (!lastValue || !lastValue.text) {
               return {
                 ...item,

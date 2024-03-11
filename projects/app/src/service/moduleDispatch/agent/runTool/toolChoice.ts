@@ -7,7 +7,8 @@ import {
   StreamChatType,
   ChatCompletionToolMessageParam,
   ChatCompletionAssistantToolParam,
-  ChatCompletionMessageParam
+  ChatCompletionMessageParam,
+  ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { NextApiResponse } from 'next';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
@@ -36,7 +37,7 @@ export const runToolWithToolChoice = async (
 ): Promise<RunToolResponse> => {
   const { toolModel, toolModules, messages, res, runtimeModules, stream } = props;
 
-  const tools: any = toolModules.map((module) => {
+  const tools: ChatCompletionTool[] = toolModules.map((module) => {
     const properties: Record<
       string,
       {
@@ -168,9 +169,8 @@ export const runToolWithToolChoice = async (
     .map((item) => item.moduleRunResponse.responseData)
     .flat();
 
-  if (toolCalls.length > 0) {
+  if (toolCalls.length > 0 && !res.closed) {
     // Run the tool, combine its results, and perform another round of AI calls
-
     const assistantToolMsgParams: ChatCompletionAssistantToolParam = {
       role: 'assistant',
       tool_calls: toolCalls
@@ -180,7 +180,7 @@ export const runToolWithToolChoice = async (
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
 
-    const tokens = countGptMessagesTokens(concatToolMessages);
+    const tokens = countGptMessagesTokens(concatToolMessages, tools);
 
     return runToolWithToolChoice(
       {
@@ -201,7 +201,7 @@ export const runToolWithToolChoice = async (
       content: answer
     });
 
-    const tokens = countGptMessagesTokens(completeMessages);
+    const tokens = countGptMessagesTokens(completeMessages, tools);
 
     return {
       [ModuleRunTimerOutputEnum.responseData]: response?.responseData || [],
@@ -235,7 +235,7 @@ async function streamResponse({
     }
 
     const responseChoice = part.choices?.[0]?.delta;
-
+    // console.log(JSON.stringify(responseChoice, null, 2));
     if (responseChoice.content) {
       const content = responseChoice?.content || '';
       textAnswer += content;

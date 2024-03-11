@@ -63,8 +63,7 @@ const ChatController = ({
   const controlContainerStyle = {
     className: 'control',
     color: 'myGray.400',
-    display: 'flex',
-    pl: 1
+    display: 'flex'
   };
 
   return (

@@ -66,6 +66,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
       ...module,
       showStatus: false
     })),
+    runtimeModules: undefined, // must reset
     startParams
   });
 
