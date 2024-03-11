@@ -127,10 +127,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         headers: Object.keys(headers).length > 0 ? headers : undefined,
         httpResult: rawResponse
       },
-      [ModuleRunTimerOutputEnum.toolResponse]: {
-        moduleId,
-        response: results
-      },
+      [ModuleRunTimerOutputEnum.toolResponse]: results,
       ...results
     };
   } catch (error) {

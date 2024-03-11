@@ -34,7 +34,7 @@ export const runToolWithToolChoice = async (
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { toolModel, toolModules, messages, res, modules, stream } = props;
+  const { toolModel, toolModules, messages, res, runtimeModules, stream } = props;
 
   const tools: any = toolModules.map((module) => {
     const properties: Record<
@@ -70,7 +70,6 @@ export const runToolWithToolChoice = async (
     messages,
     maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
   });
-
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
@@ -126,22 +125,18 @@ export const runToolWithToolChoice = async (
 
         const moduleRunResponse = await dispatchModules({
           ...props,
-          modules: modules.map((module) => ({
+          runtimeModules: runtimeModules.map((module) => ({
             ...module,
             isEntry: module.moduleId === toolModule.moduleId
           })),
           startParams
         });
 
-        const toolResponse =
-          moduleRunResponse.toolResponse.find((item) => item.moduleId === toolModule.moduleId)
-            ?.response || {};
-
         const toolMsgParams: ChatCompletionToolMessageParam = {
           tool_call_id: tool.id,
           role: ChatCompletionRequestMessageRoleEnum.Tool,
           name: tool.function.name,
-          content: JSON.stringify(toolResponse)
+          content: JSON.stringify(moduleRunResponse.toolResponse)
         };
 
         if (stream) {
@@ -154,7 +149,7 @@ export const runToolWithToolChoice = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: JSON.stringify(toolResponse, null, 2)
+                response: JSON.stringify(moduleRunResponse.toolResponse, null, 2)
               }
             })
           });

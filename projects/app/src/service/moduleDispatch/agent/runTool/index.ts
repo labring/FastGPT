@@ -2,7 +2,7 @@ import {
   ModuleOutputKeyEnum,
   ModuleRunTimerOutputEnum
 } from '@fastgpt/global/core/module/constants';
-import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type { ModuleItemType, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
@@ -30,7 +30,7 @@ export const dispatchRunTools = async (
 
   const {
     module: { name, flowType, outputs },
-    modules,
+    runtimeModules,
     histories,
     params: { model, systemPrompt, userChatInput, history = 6 }
   } = props;
@@ -52,20 +52,17 @@ export const dispatchRunTools = async (
   // Gets the module to which the tool is connected
   const toolModules = targets
     .map((item) => {
-      const tool = modules.find((module) => module.moduleId === item.moduleId);
+      const tool = runtimeModules.find((module) => module.moduleId === item.moduleId);
       return tool;
     })
     .filter(Boolean)
     .map<ToolModuleItemType>((tool) => {
-      // console.log(tool?.inputs);
       const toolParams = tool?.inputs.filter((input) => !!input.toolDescription) || [];
       return {
-        ...(tool as ModuleItemType),
+        ...(tool as RunningModuleItemType),
         toolParams
       };
     });
-
-  // console.log(toolOutput);
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt(systemPrompt),

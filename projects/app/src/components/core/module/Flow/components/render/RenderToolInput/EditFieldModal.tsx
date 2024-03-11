@@ -87,11 +87,11 @@ const EditFieldModal = ({
     <MyModal isOpen iconSrc="modal/edit" title={'工具字段参数配置'} onClose={onClose}>
       <ModalBody>
         <Flex alignItems={'center'} mb={5}>
-          <Box flex={'0 0 90px'}>{t('common.Require Input')}</Box>
+          <Box flex={'0 0 80px'}>{t('common.Require Input')}</Box>
           <Switch {...register('required')} />
         </Flex>
         <Flex alignItems={'center'} mb={5}>
-          <Box flex={'0 0 90px'}>{'字段类型'}</Box>
+          <Box flex={'0 0 80px'}>{'字段类型'}</Box>
           <Box flex={'1 0 0'}>
             <MySelect
               list={selectTypeList.current}
@@ -103,20 +103,22 @@ const EditFieldModal = ({
           </Box>
         </Flex>
         <Flex alignItems={'center'} mb={5}>
-          <Box flex={'0 0 90px'}>{'字段名(英文)'}</Box>
+          <Box flex={'0 0 80px'}>{'字段key'}</Box>
           <Input
+            bg={'myGray.50'}
             {...register('key', {
               required: true,
               pattern: {
                 value: /^[a-zA-Z]+[0-9]*$/,
-                message: '字段名必须是纯英文字母或数字，并且不能以数字开头。'
+                message: '字段key必须是纯英文字母或数字，并且不能以数字开头。'
               }
             })}
           />
         </Flex>
         <Box mb={5}>
-          <Box flex={'0 0 90px'}>{'字段描述'}</Box>
+          <Box flex={'0 0 80px'}>{'字段描述'}</Box>
           <Textarea
+            bg={'myGray.50'}
             rows={5}
             {...register('toolDescription', {
               required: true

@@ -97,12 +97,13 @@ export type ContextExtractAgentItemType = {
 /* -------------- running module -------------- */
 export type RunningModuleItemType = {
   name: ModuleItemType['name'];
+  avatar: ModuleItemType['avatar'];
   intro?: ModuleItemType['intro'];
   moduleId: ModuleItemType['moduleId'];
   flowType: ModuleItemType['flowType'];
   showStatus?: ModuleItemType['showStatus'];
   isEntry?: ModuleItemType['isEntry'];
-} & {
+
   inputs: {
     key: string;
     value?: any;
@@ -141,7 +142,7 @@ export type ChatDispatchProps = {
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
   module: RunningModuleItemType;
-  modules: ModuleItemType[];
+  runtimeModules: RunningModuleItemType[];
   params: T;
 };
 export type ModuleDispatchResponse<T> = {

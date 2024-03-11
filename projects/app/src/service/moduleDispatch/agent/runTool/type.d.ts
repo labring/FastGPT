@@ -9,7 +9,6 @@ import { ModuleDispatchResponse } from '@fastgpt/global/core/module/type';
 import type {
   ModuleDispatchProps,
   ModuleDispatchResponse,
-  ModuleItemType,
   RunningModuleItemType
 } from '@fastgpt/global/core/module/type.d';
 
@@ -26,6 +25,6 @@ export type RunToolResponse = {
   totalTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
 };
-export type ToolModuleItemType = ModuleItemType & {
-  toolParams: FlowNodeInputItemType[];
+export type ToolModuleItemType = RunningModuleItemType & {
+  toolParams: RunningModuleItemType['inputs'];
 };

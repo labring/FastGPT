@@ -71,7 +71,7 @@ export async function dispatchDatasetSearch(
   if (!userChatInput) {
     return Promise.reject('core.chat.error.User input empty');
   }
-
+  console.log(userChatInput);
   // query extension
   const extensionModel =
     datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
@@ -162,14 +162,9 @@ export async function dispatchDatasetSearch(
     quoteQA: searchRes,
     responseData,
     moduleDispatchBills,
-    [ModuleRunTimerOutputEnum.toolResponse]: {
-      moduleId: module.moduleId,
-      response: {
-        searchResult: searchRes.map((item) => ({
-          text: `${item.q}\n${item.a}`.trim(),
-          chunkIndex: item.chunkIndex
-        }))
-      }
-    }
+    [ModuleRunTimerOutputEnum.toolResponse]: searchRes.map((item) => ({
+      text: `${item.q}\n${item.a}`.trim(),
+      chunkIndex: item.chunkIndex
+    }))
   };
 }

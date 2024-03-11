@@ -25,6 +25,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     mode,
     teamId,
     tmbId,
+    module,
     params: { pluginId, ...data }
   } = props;
 
@@ -97,6 +98,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
         tokens: 0
       }
     ],
+    [ModuleRunTimerOutputEnum.toolResponse]: output?.pluginOutput ? output.pluginOutput : {},
     ...(output ? output.pluginOutput : {})
   };
 };

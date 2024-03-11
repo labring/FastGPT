@@ -75,6 +75,7 @@ export type FlowNodeOutputItemType = {
 export type EditInputFieldMap = EditOutputFieldMap & {
   inputType?: boolean;
   required?: boolean;
+  isToolInput?: boolean;
 };
 export type EditOutputFieldMap = {
   name?: boolean;
@@ -90,6 +91,7 @@ export type EditNodeFieldType = {
   label?: string;
   description?: string;
   valueType?: `${ModuleIOValueTypeEnum}`;
+  isToolInput?: boolean;
 };
 
 /* ------------- item type --------------- */

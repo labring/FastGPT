@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { NodeProps } from 'reactflow';
 import NodeCard from '../render/NodeCard';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
@@ -16,6 +16,11 @@ const NodeSimple = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const { moduleId, inputs, outputs } = data;
   const { toolInputs, commonInputs } = splitToolInputs(inputs, moduleId);
 
+  const filterHiddenInputs = useMemo(
+    () => commonInputs.filter((item) => item.type !== 'hidden'),
+    [commonInputs]
+  );
+
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
       {toolInputs.length > 0 && (
@@ -26,7 +31,7 @@ const NodeSimple = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
           </Container>
         </>
       )}
-      {commonInputs.length > 0 && (
+      {filterHiddenInputs.length > 0 && (
         <>
           <Divider text={t('common.Input')} />
           <Container>

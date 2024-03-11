@@ -157,7 +157,7 @@ const NodeCard = (props: Props) => {
       }}
     >
       <Box className="custom-drag-handle" px={4} py={3} position={'relative'}>
-        {showToolHandle && <ToolTargetHandle />}
+        {showToolHandle && <ToolTargetHandle moduleId={moduleId} />}
         <Flex alignItems={'center'}>
           <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
           <Box ml={3} fontSize={'lg'}>

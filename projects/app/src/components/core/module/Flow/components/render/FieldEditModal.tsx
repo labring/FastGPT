@@ -95,7 +95,6 @@ const FieldEditModal = ({
   });
   const inputType = watch('inputType');
   const outputType = watch('outputType');
-  const valueType = watch('valueType');
   const [refresh, setRefresh] = useState(false);
 
   const showDataTypeSelect = useMemo(() => {
@@ -167,6 +166,12 @@ const FieldEditModal = ({
             <Switch {...register('required')} />
           </Flex>
         )}
+        {editField.isToolInput && (
+          <Flex alignItems={'center'} mb={5}>
+            <Box flex={'0 0 70px'}>工具参数</Box>
+            <Switch {...register('isToolInput')} />
+          </Flex>
+        )}
         {showDataTypeSelect && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Data Type')}</Box>
@@ -194,13 +199,18 @@ const FieldEditModal = ({
         {showNameInput && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Field Name')}</Box>
-            <Input placeholder="预约字段/sql语句……" {...register('label', { required: true })} />
+            <Input
+              bg={'myGray.50'}
+              placeholder="预约字段/sql语句……"
+              {...register('label', { required: true })}
+            />
           </Flex>
         )}
         {showKeyInput && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Field key')}</Box>
             <Input
+              bg={'myGray.50'}
               placeholder="appointment/sql"
               {...register('key', {
                 required: true,
@@ -215,10 +225,15 @@ const FieldEditModal = ({
           </Flex>
         )}
         {showDescriptionInput && (
-          <Flex mb={5} alignItems={'flex-start'}>
+          <Box mb={5} alignItems={'flex-start'}>
             <Box flex={'0 0 70px'}>{t('core.module.Field Description')}</Box>
-            <Textarea placeholder={t('common.choosable')} rows={3} {...register('description')} />
-          </Flex>
+            <Textarea
+              bg={'myGray.50'}
+              placeholder={t('common.choosable')}
+              rows={5}
+              {...register('description')}
+            />
+          </Box>
         )}
       </ModalBody>
 

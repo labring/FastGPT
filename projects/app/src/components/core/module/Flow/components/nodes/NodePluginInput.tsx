@@ -15,6 +15,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import SourceHandle from '../render/SourceHandle';
 import type {
+  EditInputFieldMap,
   EditNodeFieldType,
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -32,13 +33,14 @@ const defaultCreateField: EditNodeFieldType = {
   valueType: ModuleIOValueTypeEnum.string,
   required: true
 };
-const createEditField = {
+const createEditField: EditInputFieldMap = {
   key: true,
   name: true,
   description: true,
   required: true,
   dataType: true,
-  inputType: true
+  inputType: true,
+  isToolInput: true
 };
 
 const NodePluginInput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
@@ -73,7 +75,8 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
                   key: item.key,
                   label: item.label,
                   description: item.description,
-                  required: item.required
+                  required: item.required,
+                  isToolInput: !!item.toolDescription
                 })
               }
             />
@@ -148,6 +151,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
                 type: data.inputType,
                 required: data.required,
                 description: data.description,
+                toolDescription: data.isToolInput ? data.description : undefined,
                 edit: true,
                 editField: createEditField
               }
@@ -191,6 +195,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
               required: data.required,
               label: data.label,
               description: data.description,
+              toolDescription: data.isToolInput ? data.description : undefined,
               ...(data.inputType === FlowNodeInputTypeEnum.addInputParam
                 ? {
                     editField: {
@@ -218,7 +223,7 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
               key: data.key,
               label: data.label
             };
-
+            console.log(data);
             if (changeKey) {
               onChangeNode({
                 moduleId,

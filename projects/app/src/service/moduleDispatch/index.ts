@@ -70,7 +70,8 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
 /* running */
 export async function dispatchModules({
   res,
-  modules,
+  modules = [],
+  runtimeModules,
   startParams = {},
   histories = [],
   variables = {},
@@ -79,7 +80,8 @@ export async function dispatchModules({
   detail = false,
   ...props
 }: ChatDispatchProps & {
-  modules: ModuleItemType[]; // app modules
+  modules?: ModuleItemType[]; // app modules
+  runtimeModules?: RunningModuleItemType[];
   startParams?: Record<string, any>; // entry module params
 }): Promise<DispatchFlowModuleResponse> {
   // set sse response headers
@@ -94,7 +96,7 @@ export async function dispatchModules({
     ...getSystemVariable({ timezone: user.timezone }),
     ...variables
   };
-  const runningModules = loadModules(modules, variables);
+  const runningModules = runtimeModules ? runtimeModules : loadModules(modules, variables);
 
   let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: ChatItemValueItemType[] = []; // The value will be returned to the user
@@ -137,7 +139,11 @@ export async function dispatchModules({
       chatModuleBills = chatModuleBills.concat(moduleDispatchBills);
     }
     if (toolResponse) {
-      toolRunResponse.push(toolResponse);
+      if (Array.isArray(toolResponse) && toolResponse.length > 0) {
+        toolRunResponse.push(toolResponse);
+      } else if (Object.keys(toolResponse).length > 0) {
+        toolRunResponse.push(toolResponse);
+      }
     }
     // save tool run result
     if (toolModuleOutput) {
@@ -255,7 +261,7 @@ export async function dispatchModules({
       stream,
       detail,
       module,
-      modules,
+      runtimeModules: runningModules,
       params
     };
 
@@ -342,6 +348,7 @@ function loadModules(
       return {
         moduleId: module.moduleId,
         name: module.name,
+        avatar: module.avatar,
         intro: module.intro,
         flowType: module.flowType,
         showStatus: module.showStatus,
@@ -375,7 +382,9 @@ function loadModules(
               key: item.key,
               // variables replace
               value: replace ? replaceVariable(item.value, variables) : item.value,
-              valueType: item.valueType
+              valueType: item.valueType,
+              required: item.required,
+              toolDescription: item.toolDescription
             };
           }),
         outputs: module.outputs

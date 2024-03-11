@@ -298,7 +298,6 @@ const ChatBox = (
   const resetInputVal = useCallback(
     ({ text = '', files = [] }: ChatBoxInputType) => {
       if (!TextareaDom.current) return;
-      console.log(text, files, 'reset');
       setValue('files', files);
       setValue('input', text);
 
@@ -431,7 +430,6 @@ const ChatBox = (
           chatController.current = abortSignal;
 
           const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
-          console.log(messages, '---------');
           const {
             responseData,
             responseText,
