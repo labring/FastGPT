@@ -89,6 +89,7 @@
     "Edit": "编辑",
     "Exit": "退出",
     "Expired Time": "过期时间",
+    "Field": "字段",
     "File": "文件",
     "Filed is repeat": "",
     "Filed is repeated": "字段重复了",
@@ -444,9 +445,11 @@
       "response": {
         "Complete Response": "完整响应",
         "Extension model": "问题优化模型",
-        "Plugin Resonse Detail": "插件详情",
+        "Plugin response detail": "插件详情",
         "Read complete response": "查看详情",
         "Read complete response tips": "点击查看详细流程",
+        "Tool call response detail": "工具运行详情",
+        "Tool call tokens": "工具调用Tokens消耗",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",
@@ -778,10 +781,11 @@
       },
       "Default value": "默认值",
       "Default value placeholder": "不填则默认返回空字符",
+      "Edit intro": "编辑描述",
       "Field Description": "字段描述",
       "Field Name": "字段名",
       "Field Type": "字段类型",
-      "Field key": "字段 Key",
+      "Field key": "字段Key",
       "Http request props": "请求参数",
       "Http request settings": "请求配置",
       "Input Type": "输入类型",
@@ -935,6 +939,9 @@
       "textEditor": {
         "Text Edit": "文本加工"
       },
+      "tool": {
+        "Tool input": "工具输入"
+      },
       "valueType": {
         "any": "任意",
         "boolean": "布尔",
@@ -944,7 +951,8 @@
         "number": "数字",
         "selectApp": "应用选择",
         "selectDataset": "知识库选择",
-        "string": "字符串"
+        "string": "字符串",
+        "tools": "工具调用"
       },
       "variable": {
         "External type": "外部传入",

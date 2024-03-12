@@ -1,52 +1,10 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
 import type { ModuleItemType, FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { Edge, Node } from 'reactflow';
 import { customAlphabet } from 'nanoid';
-import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
-import { adaptRole_Message2Chat } from '@fastgpt/global/core/chat/adapt';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/module/template/constants';
 import { EDGE_TYPE } from '@fastgpt/global/core/module/node/constant';
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
-import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constant';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-
-export const gptMessage2ChatType = (messages: ChatMessageItemType[]): ChatItemType[] => {
-  return messages.map((item) => ({
-    dataId: item.dataId,
-    obj: adaptRole_Message2Chat(item.role),
-    value: item.content || ''
-  }));
-};
-
-export const textAdaptGptResponse = ({
-  text,
-  model = '',
-  finish_reason = null,
-  extraData = {}
-}: {
-  model?: string;
-  text: string | null;
-  finish_reason?: null | 'stop';
-  extraData?: Object;
-}) => {
-  return JSON.stringify({
-    ...extraData,
-    id: '',
-    object: '',
-    created: 0,
-    model,
-    choices: [
-      {
-        delta:
-          text === null
-            ? {}
-            : { role: ChatCompletionRequestMessageRoleEnum.Assistant, content: text },
-        index: 0,
-        finish_reason
-      }
-    ]
-  });
-};
 
 export const appModule2FlowNode = ({
   item

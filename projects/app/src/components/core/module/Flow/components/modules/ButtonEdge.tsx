@@ -3,6 +3,7 @@ import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactfl
 import { onDelConnect, useFlowProviderStore } from '../../FlowProvider';
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const ButtonEdge = (props: EdgeProps) => {
   const { nodes } = useFlowProviderStore();
@@ -15,6 +16,8 @@ const ButtonEdge = (props: EdgeProps) => {
     sourcePosition,
     targetPosition,
     selected,
+    sourceHandleId,
+    animated,
     style = {}
   } = props;
 
@@ -33,6 +36,8 @@ const ButtonEdge = (props: EdgeProps) => {
     targetY,
     targetPosition
   });
+
+  const isToolEdge = sourceHandleId === ModuleOutputKeyEnum.selectedTools;
 
   const memoEdgeLabel = useMemo(() => {
     return (
@@ -60,29 +65,31 @@ const ButtonEdge = (props: EdgeProps) => {
           <MyIcon
             name="closeSolid"
             w={'100%'}
-            color={active ? 'primary.800' : 'myGray.400'}
+            color={active ? 'primary.700' : 'myGray.400'}
           ></MyIcon>
         </Flex>
-        <Flex
-          alignItems={'center'}
-          justifyContent={'center'}
-          position={'absolute'}
-          transform={`translate(-78%, -50%) translate(${targetX}px,${targetY}px)`}
-          pointerEvents={'all'}
-          w={'16px'}
-          h={'16px'}
-          bg={'white'}
-          zIndex={active ? 1000 : 0}
-        >
-          <MyIcon
-            name={'common/rightArrowLight'}
-            w={'100%'}
-            color={active ? 'primary.800' : 'myGray.400'}
-          ></MyIcon>
-        </Flex>
+        {!isToolEdge && (
+          <Flex
+            alignItems={'center'}
+            justifyContent={'center'}
+            position={'absolute'}
+            transform={`translate(-78%, -50%) translate(${targetX}px,${targetY}px)`}
+            pointerEvents={'all'}
+            w={'16px'}
+            h={'16px'}
+            bg={'white'}
+            zIndex={active ? 1000 : 0}
+          >
+            <MyIcon
+              name={'common/rightArrowLight'}
+              w={'100%'}
+              color={active ? 'primary.700' : 'myGray.400'}
+            ></MyIcon>
+          </Flex>
+        )}
       </EdgeLabelRenderer>
     );
-  }, [id, labelX, labelY, active, targetX, targetY]);
+  }, [labelX, labelY, active, isToolEdge, targetX, targetY, id]);
 
   const memoBezierEdge = useMemo(() => {
     const edgeStyle: React.CSSProperties = {
@@ -96,7 +103,7 @@ const ButtonEdge = (props: EdgeProps) => {
     };
 
     return <BezierEdge {...props} style={edgeStyle} />;
-  }, [props, active, style]);
+  }, [style, active, props]);
 
   return (
     <>

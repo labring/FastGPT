@@ -1,14 +1,15 @@
-import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
-import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { filterGPTMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
+import {
+  countGptMessagesTokens,
+  countMessagesTokens
+} from '@fastgpt/global/common/string/tiktoken';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type {
-  ClassifyQuestionAgentItemType,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
@@ -16,6 +17,13 @@ import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import {
+  ChatCompletionCreateParams,
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -24,9 +32,10 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
-type CQResponse = ModuleDispatchResponse<{
+type CQResponse = DispatchNodeResultType<{
   [key: string]: any;
 }>;
+type ActionProps = Props & { cqModel: LLMModelItemType };
 
 const agentFunName = 'classify_question';
 
@@ -55,6 +64,13 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
         cqModel
       });
     }
+    if (cqModel.functionCall) {
+      return functionCall({
+        ...props,
+        histories: chatHistories,
+        cqModel
+      });
+    }
     return completions({
       ...props,
       histories: chatHistories,
@@ -72,7 +88,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   return {
     [result.key]: true,
-    [ModuleOutputKeyEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
@@ -81,7 +97,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
@@ -92,37 +108,43 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   };
 };
 
-async function toolChoice({
-  user,
+const getFunctionCallSchema = ({
   cqModel,
   histories,
   params: { agents, systemPrompt, userChatInput }
-}: Props & { cqModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: systemPrompt
-        ? `<背景知识>
-${systemPrompt}
-</背景知识>
-
-问题: "${userChatInput}"
-      `
-        : userChatInput
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: systemPrompt
+              ? `<背景知识>
+    ${systemPrompt}
+    </背景知识>
+    
+    问题: "${userChatInput}"
+          `
+              : userChatInput
+          }
+        }
+      ]
     }
   ];
 
-  const filterMessages = ChatContextFilter({
-    messages,
+  const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
+  const filterMessages = filterGPTMessageByMaxTokens({
+    messages: adaptMessages,
     maxTokens: cqModel.maxContext
   });
-  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: '根据对话记录及背景知识，对问题进行分类，并返回对应的类型字段',
+    description: '结合对话记录及背景知识，对问题进行分类，并返回对应的类型字段',
     parameters: {
       type: 'object',
       properties: {
@@ -137,7 +159,19 @@ ${systemPrompt}
       required: ['type']
     }
   };
-  const tools: any = [
+
+  return {
+    agentFunction,
+    filterMessages
+  };
+};
+
+const toolChoice = async (props: ActionProps) => {
+  const { user, cqModel } = props;
+
+  const { agentFunction, filterMessages } = getFunctionCallSchema(props);
+  // function body
+  const tools: ChatCompletionTool[] = [
     {
       type: 'function',
       function: agentFunction
@@ -152,7 +186,7 @@ ${systemPrompt}
   const response = await ai.chat.completions.create({
     model: cqModel.model,
     temperature: 0,
-    messages: adaptMessages,
+    messages: filterMessages,
     tools,
     tool_choice: { type: 'function', function: { name: agentFunName } }
   });
@@ -161,13 +195,19 @@ ${systemPrompt}
     const arg = JSON.parse(
       response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || ''
     );
+    const completeMessages: ChatCompletionMessageParam[] = [
+      ...filterMessages,
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        tool_calls: response.choices?.[0]?.message?.tool_calls
+      }
+    ];
 
     return {
       arg,
-      tokens: countMessagesTokens(messages, tools)
+      tokens: countGptMessagesTokens(completeMessages, tools)
     };
   } catch (error) {
-    console.log(agentFunction.parameters);
     console.log(response.choices?.[0]?.message);
 
     console.log('Your model may not support toll_call', error);
@@ -177,25 +217,79 @@ ${systemPrompt}
       tokens: 0
     };
   }
-}
+};
 
-async function completions({
+const functionCall = async (props: ActionProps) => {
+  const { user, cqModel } = props;
+
+  const { agentFunction, filterMessages } = getFunctionCallSchema(props);
+  const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
+
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
+
+  const response = await ai.chat.completions.create({
+    model: cqModel.model,
+    temperature: 0,
+    messages: filterMessages,
+    function_call: {
+      name: agentFunName
+    },
+    functions
+  });
+
+  try {
+    const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
+    const completeMessages: ChatCompletionMessageParam[] = [
+      ...filterMessages,
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        function_call: response.choices?.[0]?.message?.function_call
+      }
+    ];
+
+    return {
+      arg,
+      tokens: countGptMessagesTokens(completeMessages, undefined, functions)
+    };
+  } catch (error) {
+    console.log(response.choices?.[0]?.message);
+
+    console.log('Your model may not support toll_call', error);
+
+    return {
+      arg: {},
+      tokens: 0
+    };
+  }
+};
+
+const completions = async ({
   cqModel,
   user,
   histories,
   params: { agents, systemPrompt = '', userChatInput }
-}: Props & { cqModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(cqModel.customCQPrompt || Prompt_CQJson, {
-        systemPrompt: systemPrompt || 'null',
-        typeList: agents
-          .map((item) => `{"questionType": "${item.value}", "typeId": "${item.key}"}`)
-          .join('\n'),
-        history: histories.map((item) => `${item.obj}:${item.value}`).join('\n'),
-        question: userChatInput
-      })
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: replaceVariable(cqModel.customCQPrompt || Prompt_CQJson, {
+              systemPrompt: systemPrompt || 'null',
+              typeList: agents
+                .map((item) => `{"questionType": "${item.value}", "typeId": "${item.key}"}`)
+                .join('\n'),
+              history: histories.map((item) => `${item.obj}:${item.value}`).join('\n'),
+              question: userChatInput
+            })
+          }
+        }
+      ]
     }
   ];
 
@@ -207,7 +301,7 @@ async function completions({
   const data = await ai.chat.completions.create({
     model: cqModel.model,
     temperature: 0.01,
-    messages: adaptChat2GptMessages({ messages, reserveId: false }),
+    messages: chats2GPTMessages({ messages, reserveId: false }),
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
@@ -219,4 +313,4 @@ async function completions({
     tokens: countMessagesTokens(messages),
     arg: { type: id }
   };
-}
+};

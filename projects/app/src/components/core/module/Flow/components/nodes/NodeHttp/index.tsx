@@ -38,6 +38,7 @@ import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textare
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import RenderToolInput from '../../render/RenderToolInput';
 const OpenApiImportModal = dynamic(() => import('./OpenApiImportModal'));
 
 enum TabEnum {
@@ -137,12 +138,12 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   return (
     <Box>
       <Box mb={2} display={'flex'} justifyContent={'space-between'}>
-        <span>{t('core.module.Http request settings')}</span>
-        <span>
+        <Box>{t('core.module.Http request settings')}</Box>
+        <Box>
           <OpenApiImportModal moduleId={moduleId} inputs={inputs}>
             <Button variant={'link'}>{t('core.module.http.OpenAPI import')}</Button>
           </OpenApiImportModal>
-        </span>
+        </Box>
       </Box>
       <Flex alignItems={'center'} className="nodrag">
         <MySelect
@@ -252,7 +253,7 @@ function RenderHttpProps({
     ];
     const moduleVariables = formatEditorVariablePickerIcon(
       inputs
-        .filter((input) => input.edit)
+        .filter((input) => input.edit || input.toolDescription)
         .map((item) => ({
           key: item.key,
           label: item.label
@@ -593,6 +594,8 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 const NodeHttp = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
+  const { splitToolInputs, hasToolNode } = useFlowProviderStore();
+  const { toolInputs, commonInputs } = splitToolInputs(inputs, moduleId);
 
   const CustomComponents = useMemo(
     () => ({
@@ -613,18 +616,30 @@ const NodeHttp = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
-      <Divider text="Input" />
-      <Container>
-        <RenderInput
-          moduleId={moduleId}
-          flowInputList={inputs}
-          CustomComponent={CustomComponents}
-        />
-      </Container>
-      <Divider text="Output" />
-      <Container>
-        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
-      </Container>
+      {hasToolNode && (
+        <>
+          <Divider text={t('core.module.tool.Tool input')} />
+          <Container>
+            <RenderToolInput moduleId={moduleId} inputs={toolInputs} canEdit />
+          </Container>
+        </>
+      )}
+      <>
+        <Divider text={t('common.Input')} />
+        <Container>
+          <RenderInput
+            moduleId={moduleId}
+            flowInputList={commonInputs}
+            CustomComponent={CustomComponents}
+          />
+        </Container>
+      </>
+      <>
+        <Divider text={t('common.Output')} />
+        <Container>
+          <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
+        </Container>
+      </>
     </NodeCard>
   );
 };

@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/module';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import type { InitChatResponse, InitTeamChatProps } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
@@ -12,7 +12,8 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { selectSimpleChatResponse } from '@/utils/service/core/chat';
+import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -49,12 +50,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId,
       chatId,
       limit: 30,
-      field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${ModuleOutputKeyEnum.responseData}`
+      field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
     });
 
     // pick share response field
     history.forEach((item) => {
-      item.responseData = selectSimpleChatResponse({ responseData: item.responseData });
+      if (item.obj === ChatRoleEnum.AI) {
+        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
+      }
     });
 
     jsonRes<InitChatResponse>(res, {

@@ -1,30 +1,25 @@
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
-import { dispatchModules } from '../index';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import {
-  DYNAMIC_INPUT_KEY,
-  ModuleInputKeyEnum,
-  ModuleOutputKeyEnum
-} from '@fastgpt/global/core/module/constants';
+import { DYNAMIC_INPUT_KEY, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { getPluginRuntimeById } from '@fastgpt/service/core/plugin/controller';
 import { authPluginCanUse } from '@fastgpt/service/support/permission/auth/plugin';
+import { setEntryEntries } from '../utils';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type RunPluginProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.pluginId]: string;
   [key: string]: any;
 }>;
-type RunPluginResponse = ModuleDispatchResponse<{
-  [ModuleOutputKeyEnum.answerText]: string;
-}>;
+type RunPluginResponse = DispatchNodeResultType<{}>;
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
     mode,
     teamId,
     tmbId,
+    module,
     params: { pluginId, ...data }
   } = props;
 
@@ -59,45 +54,46 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return params;
   })();
 
-  const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
+  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    modules: plugin.modules.map((module) => ({
+    modules: setEntryEntries(plugin.modules).map((module) => ({
       ...module,
       showStatus: false
     })),
+    runtimeModules: undefined, // must reset
     startParams
   });
 
-  const output = responseData.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
+  const output = flowResponses.find((item) => item.moduleType === FlowNodeTypeEnum.pluginOutput);
 
   if (output) {
     output.moduleLogo = plugin.avatar;
   }
 
   return {
-    answerText,
+    assistantResponses,
     // responseData, // debug
-    [ModuleOutputKeyEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: plugin.avatar,
-      totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
-      runningTime: responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0),
+      totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
       pluginOutput: output?.pluginOutput,
       pluginDetail:
         mode === 'test' && plugin.teamId === teamId
-          ? responseData.filter((item) => {
+          ? flowResponses.filter((item) => {
               const filterArr = [FlowNodeTypeEnum.pluginOutput];
               return !filterArr.includes(item.moduleType as any);
             })
           : undefined
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: plugin.name,
-        totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
+        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0),
         model: plugin.name,
         tokens: 0
       }
     ],
+    [DispatchNodeResponseKeyEnum.toolResponses]: output?.pluginOutput ? output.pluginOutput : {},
     ...(output ? output.pluginOutput : {})
   };
 };

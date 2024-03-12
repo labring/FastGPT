@@ -89,6 +89,7 @@
     "Edit": "Edit",
     "Exit": "Exit",
     "Expired Time": "Expired",
+    "Field": "Field",
     "File": "File",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
@@ -409,7 +410,7 @@
       "Speaking": "I'm listening...",
       "Start Chat": "Start Chat",
       "Stop Speak": "Stop Speak",
-      "Type a message": "Input problem",
+      "Type a message": "Enter your question here",
       "Unpin": "Unpin",
       "You need to a chat app": "You don't have apps available",
       "error": {
@@ -444,9 +445,11 @@
       "response": {
         "Complete Response": "Complete Response",
         "Extension model": "Extension model",
-        "Plugin Resonse Detail": "Plugin Detail",
+        "Plugin response detail": "Plugin Detail",
         "Read complete response": "Read Detail",
         "Read complete response tips": "Click to see the detailed process",
+        "Tool call response detail": "Tool call detail",
+        "Tool call tokens": "Tool call tokens",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",
@@ -776,6 +779,7 @@
       },
       "Default value": "Default ",
       "Default value placeholder": "Null characters are returned by default",
+      "Edit intro": "Edit",
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",
@@ -933,6 +937,9 @@
       "textEditor": {
         "Text Edit": "Text Edit"
       },
+      "tool": {
+        "Tool input": "Tool input"
+      },
       "valueType": {
         "any": "Any",
         "boolean": "Boolean",
@@ -942,7 +949,8 @@
         "number": "Number",
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",
-        "string": "String"
+        "string": "String",
+        "tools": "tools"
       },
       "variable": {
         "External type": "External",

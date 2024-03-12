@@ -7,7 +7,8 @@ import {
   ModalCloseButton,
   ModalContentProps,
   Box,
-  Image
+  Image,
+  useMediaQuery
 } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 
@@ -31,12 +32,14 @@ const CustomModal = ({
   maxW = ['90vw', '600px'],
   ...props
 }: MyModalProps) => {
+  const [isPc] = useMediaQuery('(min-width: 900px)');
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={() => onClose && onClose()}
       autoFocus={false}
-      isCentered={isCentered}
+      isCentered={isPc ? isCentered : true}
     >
       <ModalOverlay />
       <ModalContent

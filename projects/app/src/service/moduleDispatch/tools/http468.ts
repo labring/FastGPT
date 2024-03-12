@@ -1,16 +1,15 @@
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import {
   DYNAMIC_INPUT_KEY,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum
 } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import axios from 'axios';
 import { valueTypeFormat } from '../utils';
 import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
 import { addLog } from '@fastgpt/service/common/system/log';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type PropsArrType = {
   key: string;
@@ -27,7 +26,7 @@ type HttpRequestProps = ModuleDispatchProps<{
   [DYNAMIC_INPUT_KEY]: Record<string, any>;
   [key: string]: any;
 }>;
-type HttpResponse = ModuleDispatchResponse<{
+type HttpResponse = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.failed]?: boolean;
   [key: string]: any;
 }>;
@@ -40,7 +39,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     chatId,
     responseChatItemId,
     variables,
-    module: { outputs },
+    module: { moduleId, outputs },
     histories,
     params: {
       system_httpMethod: httpMethod = 'POST',
@@ -119,20 +118,22 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
 
     return {
-      [ModuleOutputKeyEnum.responseData]: {
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
         headers: Object.keys(headers).length > 0 ? headers : undefined,
         httpResult: rawResponse
       },
+      [DispatchNodeResponseKeyEnum.toolResponses]: results,
+      [ModuleOutputKeyEnum.httpRawResponse]: rawResponse,
       ...results
     };
   } catch (error) {
     addLog.error('Http request error', error);
     return {
       [ModuleOutputKeyEnum.failed]: true,
-      [ModuleOutputKeyEnum.responseData]: {
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         params: Object.keys(params).length > 0 ? params : undefined,
         body: Object.keys(requestBody).length > 0 ? requestBody : undefined,

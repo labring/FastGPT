@@ -1,6 +1,7 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { MongoChatItem } from './chatItemSchema';
 import { addLog } from '../../common/system/log';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 
 export async function getChatItems({
   appId,
@@ -24,8 +25,27 @@ export async function getChatItems({
 
   history.reverse();
 
+  history.forEach((item) => {
+    // @ts-ignore
+    item.value = adaptStringValue(item.value);
+  });
+
   return { history };
 }
+/* 临时适配旧的对话记录,清洗完数据后可删除（4.30刪除） */
+export const adaptStringValue = (value: any): ChatItemValueItemType[] => {
+  if (typeof value === 'string') {
+    return [
+      {
+        type: ChatItemValueTypeEnum.text,
+        text: {
+          content: value
+        }
+      }
+    ];
+  }
+  return value;
+};
 
 export const addCustomFeedbacks = async ({
   appId,

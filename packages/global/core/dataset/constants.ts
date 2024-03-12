@@ -83,17 +83,17 @@ export const TrainingTypeMap = {
   [TrainingModeEnum.chunk]: {
     label: 'core.dataset.training.Chunk mode',
     tooltip: 'core.dataset.import.Chunk Split Tip',
-    isPlus: true
+    openSource: true
   },
   [TrainingModeEnum.auto]: {
     label: 'core.dataset.training.Auto mode',
     tooltip: 'core.dataset.training.Auto mode Tip',
-    isPlus: true
+    openSource: false
   },
   [TrainingModeEnum.qa]: {
     label: 'core.dataset.training.QA mode',
     tooltip: 'core.dataset.import.QA Import Tip',
-    isPlus: true
+    openSource: true
   }
 };
 

@@ -17,7 +17,7 @@ const RenderList: {
   }
 ];
 
-const RenderOutput = ({
+const RenderToolOutput = ({
   moduleId,
   flowOutputList
 }: {
@@ -77,4 +77,4 @@ const RenderOutput = ({
   );
 };
 
-export default React.memo(RenderOutput);
+export default React.memo(RenderToolOutput);

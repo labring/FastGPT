@@ -12,7 +12,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
-import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
+import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { flowNode2Modules, filterExportModules } from '@/components/core/module/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -42,17 +42,18 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   });
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { updateAppDetail } = useAppStore();
+  const { nodes, edges, splitToolInputs } = useFlowProviderStore();
 
   const flow2ModulesAndCheck = useCallback(async () => {
-    const { nodes, edges } = await getFlowStore();
-
     const modules = flowNode2Modules({ nodes, edges });
     // check required connect
     for (let i = 0; i < modules.length; i++) {
       const item = modules[i];
 
+      const { isTool } = splitToolInputs(item.inputs, item.moduleId);
+
       const unconnected = item.inputs.find((input) => {
-        if (!input.required || input.connected) {
+        if (!input.required || input.connected || (isTool && input.toolDescription)) {
           return false;
         }
         if (input.value === undefined || input.value === '' || input.value?.length === 0) {
@@ -72,7 +73,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       }
     }
     return modules;
-  }, [t, toast]);
+  }, [edges, nodes, splitToolInputs, t, toast]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
     mutationFn: async (modules: ModuleItemType[]) => {
@@ -97,6 +98,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         borderBottom={theme.borders.base}
         alignItems={'center'}
         userSelect={'none'}
+        bg={'myGray.25'}
       >
         <IconButton
           size={'smSquare'}
