@@ -114,7 +114,10 @@ export enum ModuleOutputKeyEnum {
   resultFalse = 'system_resultFalse',
 
   // tools
-  selectedTools = 'selectedTools'
+  selectedTools = 'selectedTools',
+
+  // http
+  httpRawResponse = 'httpRawResponse'
 }
 
 export enum VariableInputEnum {

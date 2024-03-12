@@ -5,9 +5,9 @@ import {
 } from '../../node/constant';
 import { FlowModuleTemplateType } from '../../type';
 import {
-  DYNAMIC_INPUT_KEY,
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
+  ModuleOutputKeyEnum,
   ModuleTemplateTypeEnum
 } from '../../constants';
 import {
@@ -100,6 +100,14 @@ export const HttpModule468: FlowModuleTemplateType = {
   ],
   outputs: [
     Output_Template_Finish,
+    {
+      key: ModuleOutputKeyEnum.httpRawResponse,
+      label: '原始响应',
+      description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
+      valueType: ModuleIOValueTypeEnum.any,
+      type: FlowNodeOutputTypeEnum.source,
+      targets: []
+    },
     {
       ...Output_Template_AddOutput,
       editField: {

@@ -126,6 +126,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         httpResult: rawResponse
       },
       [DispatchNodeResponseKeyEnum.toolResponses]: results,
+      [ModuleOutputKeyEnum.httpRawResponse]: rawResponse,
       ...results
     };
   } catch (error) {
