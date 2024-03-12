@@ -44,8 +44,8 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   show_git: false,
   // docUrl: 'https://doc.fastgpt.in',
   // openAPIDocUrl: 'https://doc.fastgpt.in/docs/development/openapi',
-  systemTitle: '尚研喵',
-  systemSubTitle: '大模型应用平台',
+  systemTitle: 'LLM Studio',
+  systemSubTitle: '金融大模型应用平台',
   // concatMd:
   //   '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://doc.fastgpt.in/wechat-fastgpt.webp)',
   limit: {

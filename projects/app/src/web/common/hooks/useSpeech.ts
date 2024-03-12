@@ -106,7 +106,9 @@ export const useSpeech = (props?: { shareId?: string }) => {
       };
 
       mediaRecorder.current.start();
-    } catch (error) {}
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   const stopSpeak = () => {

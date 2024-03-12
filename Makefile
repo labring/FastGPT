@@ -8,7 +8,6 @@ IMAGE_TAG = mickeyzhoudocker/${IMAGE_NAME}:${IMAGE_VERSION}
 install: 
 	pnpm i
 
-
 build_image:
 	docker build -t ${IMAGE_TAG} --platform linux/amd64 --build-arg name=app --build-arg proxy=taobao .
 

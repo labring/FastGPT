@@ -69,9 +69,12 @@ const Login = () => {
         // bg={`url('/icon/login-bg.svg') no-repeat`}
         // backgroundSize={'cover'}
         bgGradient={[
-          'linear(to-tr, teal.300, yellow.400)',
-          'linear(to-t, blue.200, teal.500)',
-          'linear(to-b, orange.100, purple.300)'
+          // 'linear(to-tr, teal.300, yellow.400)',
+          // 'linear(to-t, blue.200, teal.500)',
+          // 'linear(to-b, orange.100, purple.300)'
+          'linear(to-tr, white, #a6defa)',
+          'linear(to-t, #5bc9f8, #35bef7)',
+          'linear(to-b, #80d4f9, white)'
         ]}
         userSelect={'none'}
         h={'100%'}

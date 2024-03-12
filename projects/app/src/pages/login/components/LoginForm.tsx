@@ -119,9 +119,15 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
         >
           <Avatar src={LOGO_ICON} w={'30px'} />
         </Flex>
-        <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
-          {feConfigs?.systemTitle}
-        </Box>
+
+        <Flex direction={'column'}>
+          <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
+            {feConfigs?.systemTitle}
+          </Box>
+          <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'normal'}>
+            {feConfigs?.systemSubTitle}
+          </Box>
+        </Flex>
       </Flex>
       <Box
         mt={'42px'}
