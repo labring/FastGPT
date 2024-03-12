@@ -22,6 +22,8 @@ export type RunningModuleItemType = {
   }[];
   outputs: {
     key: string;
+    required?: boolean;
+    defaultValue?: any;
     answer?: boolean;
     response?: boolean;
     value?: any;

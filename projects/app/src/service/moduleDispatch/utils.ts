@@ -1,9 +1,5 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import {
-  DYNAMIC_INPUT_KEY,
-  ModuleIOValueTypeEnum,
-  ModuleOutputKeyEnum
-} from '@fastgpt/global/core/module/constants';
+import { ModuleIOValueTypeEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 

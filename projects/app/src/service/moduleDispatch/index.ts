@@ -262,6 +262,13 @@ export async function dispatchWorkFlow({
       };
     })();
 
+    // Add output default value
+    module.outputs.forEach((item) => {
+      if (!item.required) return;
+      if (dispatchRes[item.key] !== undefined) return;
+      dispatchRes[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    });
+
     // Pass userChatInput
     const hasUserChatInputTarget = !!module.outputs.find(
       (item) => item.key === ModuleOutputKeyEnum.userChatInput
@@ -365,6 +372,8 @@ function loadModules(
         outputs: module.outputs
           .map((item) => ({
             key: item.key,
+            required: item.required,
+            defaultValue: item.defaultValue,
             answer: item.key === ModuleOutputKeyEnum.answerText,
             value: undefined,
             valueType: item.valueType,

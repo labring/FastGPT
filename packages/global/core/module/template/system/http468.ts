@@ -87,7 +87,6 @@ export const HttpModule468: FlowModuleTemplateType = {
       editField: {
         key: true,
         description: true,
-        required: true,
         dataType: true
       },
       defaultEditField: {
@@ -95,8 +94,7 @@ export const HttpModule468: FlowModuleTemplateType = {
         key: '',
         description: '',
         inputType: FlowNodeInputTypeEnum.target,
-        valueType: ModuleIOValueTypeEnum.string,
-        required: true
+        valueType: ModuleIOValueTypeEnum.string
       }
     }
   ],
@@ -107,7 +105,8 @@ export const HttpModule468: FlowModuleTemplateType = {
       editField: {
         key: true,
         description: true,
-        dataType: true
+        dataType: true,
+        defaultValue: true
       },
       defaultEditField: {
         label: '',

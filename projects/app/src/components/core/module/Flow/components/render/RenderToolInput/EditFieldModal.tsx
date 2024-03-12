@@ -91,7 +91,7 @@ const EditFieldModal = ({
           <Switch {...register('required')} />
         </Flex>
         <Flex alignItems={'center'} mb={5}>
-          <Box flex={'0 0 80px'}>{'字段类型'}</Box>
+          <Box flex={'0 0 80px'}>{t('core.module.Field key')}</Box>
           <Box flex={'1 0 0'}>
             <MySelect
               list={selectTypeList.current}
@@ -116,7 +116,7 @@ const EditFieldModal = ({
           />
         </Flex>
         <Box mb={5}>
-          <Box flex={'0 0 80px'}>{'字段描述'}</Box>
+          <Box flex={'0 0 80px'}>{t('core.module.Field Description')}</Box>
           <Textarea
             bg={'myGray.50'}
             rows={5}
