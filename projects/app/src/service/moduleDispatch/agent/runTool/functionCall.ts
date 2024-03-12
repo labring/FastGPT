@@ -113,17 +113,23 @@ export const runToolWithFunctionCall = async (
       });
     } else {
       const result = aiResponse as ChatCompletion;
-      const functionCall = result.choices?.[0]?.message?.function_call;
+      const function_call = result.choices?.[0]?.message?.function_call;
+      const toolModule = toolModules.find((module) => module.moduleId === function_call?.name);
+
+      const toolCalls = function_call
+        ? [
+            {
+              ...function_call,
+              id: getNanoid(),
+              toolName: toolModule?.name,
+              toolAvatar: toolModule?.avatar
+            }
+          ]
+        : [];
+
       return {
         answer: result.choices?.[0]?.message?.content || '',
-        functionCalls: functionCall
-          ? [
-              {
-                ...functionCall,
-                id: getNanoid()
-              }
-            ]
-          : []
+        functionCalls: toolCalls
       };
     }
   })();
@@ -192,10 +198,7 @@ export const runToolWithFunctionCall = async (
     // Run the tool, combine its results, and perform another round of AI calls
     const assistantToolMsgParams: ChatCompletionAssistantMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      function_call: {
-        name: functionCall.name,
-        arguments: functionCall.arguments
-      }
+      function_call: functionCall
     };
     const concatToolMessages = [
       ...filterMessages,
@@ -206,7 +209,7 @@ export const runToolWithFunctionCall = async (
 
     // console.log(tokens, 'tool');
 
-    if (detail) {
+    if (stream && detail) {
       responseWriteNodeStatus({
         res,
         name: module.name

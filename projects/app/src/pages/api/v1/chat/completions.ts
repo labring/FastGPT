@@ -258,6 +258,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
       res.end();
     } else {
+      const responseContent = (() => {
+        if (assistantResponses.length === 0) return '';
+        if (assistantResponses.length === 1 && assistantResponses[0].text?.content)
+          return assistantResponses[0].text?.content;
+        return assistantResponses;
+      })();
       res.json({
         ...(detail ? { responseData: feResponseData } : {}),
         id: chatId || '',
@@ -265,7 +271,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: assistantResponses },
+            message: { role: 'assistant', content: responseContent },
             finish_reason: 'stop',
             index: 0
           }

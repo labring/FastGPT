@@ -7,6 +7,8 @@ import type {
 import { ChatFileTypeEnum, ChatItemValueTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
 import type {
   ChatCompletionContentPart,
+  ChatCompletionFunctionMessageParam,
+  ChatCompletionMessageFunctionCall,
   ChatCompletionMessageParam,
   ChatCompletionMessageToolCall,
   ChatCompletionToolMessageParam
@@ -211,6 +213,30 @@ export const GPTMessages2Chats = (
               };
             })
           });
+        } else if (item.function_call && reserveTool) {
+          const functionCall = item.function_call as ChatCompletionMessageFunctionCall;
+          const functionResponse = messages.find(
+            (msg) =>
+              msg.role === ChatCompletionRequestMessageRoleEnum.Function &&
+              msg.name === item.function_call?.name
+          ) as ChatCompletionFunctionMessageParam;
+
+          if (functionResponse) {
+            value.push({
+              //@ts-ignore
+              type: ChatItemValueTypeEnum.tool,
+              tools: [
+                {
+                  id: functionCall.id || '',
+                  toolName: functionCall.toolName || '',
+                  toolAvatar: functionCall.toolAvatar || '',
+                  functionName: functionCall.name,
+                  params: functionCall.arguments,
+                  response: functionResponse.content || ''
+                }
+              ]
+            });
+          }
         }
       }
 

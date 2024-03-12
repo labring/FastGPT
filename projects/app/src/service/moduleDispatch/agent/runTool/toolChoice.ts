@@ -115,9 +115,21 @@ export const runToolWithToolChoice = async (
       });
     } else {
       const result = aiResponse as ChatCompletion;
+      const calls = result.choices?.[0]?.message?.tool_calls || [];
+
+      // 加上name和avatar
+      const toolCalls = calls.map((tool) => {
+        const toolModule = toolModules.find((module) => module.moduleId === tool.function?.name);
+        return {
+          ...tool,
+          toolName: toolModule?.name || '',
+          toolAvatar: toolModule?.avatar || ''
+        };
+      });
+
       return {
         answer: result.choices?.[0]?.message?.content || '',
-        toolCalls: result.choices?.[0]?.message?.tool_calls || []
+        toolCalls: toolCalls
       };
     }
   })();
@@ -204,7 +216,7 @@ export const runToolWithToolChoice = async (
     // );
     // console.log(tokens, 'tool');
 
-    if (detail) {
+    if (stream && detail) {
       responseWriteNodeStatus({
         res,
         name: module.name
