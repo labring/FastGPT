@@ -8,7 +8,7 @@ import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { dispatchModules } from '@/service/moduleDispatch';
+import { dispatchWorkFlow } from '@/service/moduleDispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { setEntryEntries } from '@/service/moduleDispatch/utils';
@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { text, files } = chatValue2RuntimePrompt(prompt);
 
     /* start process */
-    const { responseData, moduleDispatchBills } = await dispatchModules({
+    const { flowResponses, flowUsages } = await dispatchWorkFlow({
       res,
       mode: 'test',
       teamId,
@@ -83,7 +83,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     responseWrite({
       res,
       event: sseResponseEventEnum.appStreamResponse,
-      data: JSON.stringify(responseData)
+      data: JSON.stringify(flowResponses)
     });
     res.end();
 
@@ -93,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       teamId,
       tmbId,
       source: UsageSourceEnum.fastgpt,
-      moduleDispatchBills
+      flowUsages
     });
   } catch (err: any) {
     res.status(500);

@@ -1,7 +1,8 @@
 import { ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
-import { ChatItemType } from './type';
+import { ChatItemType } from './type.d';
 
 export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
+  // @ts-ignore
   const textMsg = message?.value.find((item) => item.type === ChatItemValueTypeEnum.text);
 
   if (textMsg?.text?.content) {

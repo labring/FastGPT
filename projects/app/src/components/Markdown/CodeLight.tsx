@@ -297,7 +297,6 @@ const CodeLight = ({
 }) => {
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  console.log(match, '----');
 
   if (!inline) {
     const codeBoxName = useMemo(() => {

@@ -1,21 +1,14 @@
 import { NextApiResponse } from 'next';
-import {
-  ModuleInputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import type { ChatDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type { RunningModuleItemType } from '@fastgpt/global/core/module/runtime/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import type {
-  ChatDispatchProps,
-  ModuleDispatchResponse,
-  RunningModuleItemType
-} from '@fastgpt/global/core/module/type.d';
-import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import type {
+  AIChatItemValueItemType,
   ChatHistoryItemResType,
-  ChatItemValueItemType,
-  ToolModuleResponseItemType,
-  ToolRunResponseItemType,
-  moduleDispatchResType
+  ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
@@ -40,10 +33,10 @@ import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
 import { checkTheModuleConnectedByTool, valueTypeFormat } from './utils';
-import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
-import { DispatchFlowModuleResponse } from './type';
+import { DispatchFlowResponse } from './type';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -68,7 +61,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
 };
 
 /* running */
-export async function dispatchModules({
+export async function dispatchWorkFlow({
   res,
   modules = [],
   runtimeModules,
@@ -83,7 +76,7 @@ export async function dispatchModules({
   modules?: ModuleItemType[]; // app modules
   runtimeModules?: RunningModuleItemType[];
   startParams?: Record<string, any>; // entry module params
-}): Promise<DispatchFlowModuleResponse> {
+}): Promise<DispatchFlowResponse> {
   // set sse response headers
   if (stream) {
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
@@ -98,9 +91,9 @@ export async function dispatchModules({
   };
   const runningModules = runtimeModules ? runtimeModules : loadModules(modules, variables);
 
-  let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
-  let chatAssistantResponse: ChatItemValueItemType[] = []; // The value will be returned to the user
-  let chatModuleBills: ChatModuleUsageType[] = [];
+  let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
+  let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
+  let chatNodeUsages: ChatNodeUsageType[] = [];
   let toolRunResponse: ToolRunResponseItemType[] = [];
   let runningTime = Date.now();
 
@@ -110,64 +103,51 @@ export async function dispatchModules({
     {
       answerText = '',
       responseData,
-      moduleDispatchBills,
-      toolResponse,
-      toolModuleOutput,
-      assistantResponse
+      nodeDispatchUsages,
+      toolResponses,
+      assistantResponses
     }: {
       [ModuleOutputKeyEnum.answerText]?: string;
-      [ModuleRunTimerOutputEnum.responseData]?: ChatHistoryItemResType | ChatHistoryItemResType[];
-      [ModuleRunTimerOutputEnum.moduleDispatchBills]?: ChatModuleUsageType[];
-      [ModuleRunTimerOutputEnum.toolResponse]?: ToolRunResponseItemType;
-      [ModuleRunTimerOutputEnum.toolModuleOutput]?: ToolModuleResponseItemType[];
-      [ModuleRunTimerOutputEnum.assistantResponse]?: ChatItemValueItemType[]; // tool module, save the response value
+      [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[];
+      [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType;
+      [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // tool module, save the response value
     }
   ) {
     const time = Date.now();
 
     if (responseData) {
-      if (Array.isArray(responseData)) {
-        chatResponse = chatResponse.concat(responseData);
-      } else {
-        chatResponse.push({
-          ...responseData,
-          runningTime: +((time - runningTime) / 1000).toFixed(2)
-        });
+      chatResponses.push({
+        ...responseData,
+        runningTime: +((time - runningTime) / 1000).toFixed(2)
+      });
+    }
+    if (nodeDispatchUsages) {
+      chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
+    }
+    if (toolResponses) {
+      if (Array.isArray(toolResponses) && toolResponses.length > 0) {
+        toolRunResponse.push(toolResponses);
+      } else if (Object.keys(toolResponses).length > 0) {
+        toolRunResponse.push(toolResponses);
       }
     }
-    if (moduleDispatchBills) {
-      chatModuleBills = chatModuleBills.concat(moduleDispatchBills);
-    }
-    if (toolResponse) {
-      if (Array.isArray(toolResponse) && toolResponse.length > 0) {
-        toolRunResponse.push(toolResponse);
-      } else if (Object.keys(toolResponse).length > 0) {
-        toolRunResponse.push(toolResponse);
-      }
-    }
-    // save tool run result
-    if (toolModuleOutput) {
-      chatAssistantResponse.push(
-        ...toolModuleOutput.map((item) => ({
-          type: ChatItemValueTypeEnum.tool,
-          tool: item
-        }))
-      );
-    }
-    if (assistantResponse) {
-      chatAssistantResponse.push(...assistantResponse);
+    if (assistantResponses) {
+      chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
     }
 
     // save assistant text response
-    const isResponseAnswerText =
-      inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
-    if (answerText && isResponseAnswerText) {
-      chatAssistantResponse.push({
-        type: ChatItemValueTypeEnum.text,
-        text: {
-          content: answerText
-        }
-      });
+    if (answerText) {
+      const isResponseAnswerText =
+        inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
+      if (isResponseAnswerText) {
+        chatAssistantResponse.push({
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: answerText
+          }
+        });
+      }
     }
 
     runningTime = time;
@@ -274,16 +254,12 @@ export async function dispatchModules({
     })();
 
     // format response data. Add modulename and module type
-    const formatResponseData = (() => {
-      if (!dispatchRes[ModuleRunTimerOutputEnum.responseData]) return undefined;
-      if (Array.isArray(dispatchRes[ModuleRunTimerOutputEnum.responseData])) {
-        return dispatchRes[ModuleRunTimerOutputEnum.responseData];
-      }
-
+    const formatResponseData: ChatHistoryItemResType = (() => {
+      if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
       return {
         moduleName: module.name,
         moduleType: module.flowType,
-        ...dispatchRes[ModuleRunTimerOutputEnum.responseData]
+        ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]
       };
     })();
 
@@ -298,9 +274,9 @@ export async function dispatchModules({
         ? params[ModuleOutputKeyEnum.userChatInput]
         : undefined,
       ...dispatchRes,
-      [ModuleRunTimerOutputEnum.responseData]: formatResponseData,
-      [ModuleRunTimerOutputEnum.moduleDispatchBills]:
-        dispatchRes[ModuleRunTimerOutputEnum.moduleDispatchBills]
+      [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData,
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
+        dispatchRes[DispatchNodeResponseKeyEnum.nodeDispatchUsages]
     });
   }
   // start process width initInput
@@ -327,11 +303,11 @@ export async function dispatchModules({
   }
 
   return {
-    [ModuleRunTimerOutputEnum.responseData]: chatResponse,
-    [ModuleRunTimerOutputEnum.moduleDispatchBills]: chatModuleBills,
-    [ModuleRunTimerOutputEnum.assistantResponse]:
+    flowResponses: chatResponses,
+    flowUsages: chatNodeUsages,
+    [DispatchNodeResponseKeyEnum.assistantResponses]:
       concatAssistantResponseAnswerText(chatAssistantResponse),
-    [ModuleRunTimerOutputEnum.toolResponse]: toolRunResponse
+    [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse
   };
 }
 
@@ -433,8 +409,8 @@ export function getSystemVariable({ timezone }: { timezone: string }) {
   };
 }
 
-export const concatAssistantResponseAnswerText = (response: ChatItemValueItemType[]) => {
-  const result: ChatItemValueItemType[] = [];
+export const concatAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
+  const result: AIChatItemValueItemType[] = [];
   // 合并连续的text
   for (let i = 0; i < response.length; i++) {
     const item = response[i];

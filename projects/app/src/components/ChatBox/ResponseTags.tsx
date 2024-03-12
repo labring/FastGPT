@@ -1,8 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import {
-  moduleDispatchResType,
-  type ChatHistoryItemResType
-} from '@fastgpt/global/core/chat/type.d';
+import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import { DispatchNodeResponseType } from '@fastgpt/global/core/module/runtime/type.d';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { Flex, BoxProps, useDisclosure, useTheme, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
@@ -43,7 +41,7 @@ const ResponseTags = ({
     };
   }>();
   const [contextModalData, setContextModalData] =
-    useState<moduleDispatchResType['historyPreview']>();
+    useState<DispatchNodeResponseType['historyPreview']>();
   const {
     isOpen: isOpenWholeModal,
     onOpen: onOpenWholeModal,
@@ -158,7 +156,7 @@ const ResponseTags = ({
           {llmModuleAccount === 1 && (
             <>
               {historyPreview.length > 0 && (
-                <MyTooltip label={'点击查看完整对话记录'}>
+                <MyTooltip label={'点击查看上下文预览'}>
                   <Tag
                     colorSchema="green"
                     cursor={'pointer'}

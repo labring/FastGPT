@@ -1,4 +1,8 @@
-import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  AIChatItemType,
+  ChatItemType,
+  UserChatItemType
+} from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -17,7 +21,7 @@ type Props = {
   source: `${ChatSourceEnum}`;
   shareId?: string;
   outLinkUid?: string;
-  content: [ChatItemType, ChatItemType];
+  content: [UserChatItemType & { dataId?: string }, AIChatItemType & { dataId?: string }];
   metadata?: Record<string, any>;
 };
 

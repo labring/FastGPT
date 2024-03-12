@@ -1,17 +1,14 @@
-import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import {
   DYNAMIC_INPUT_KEY,
   ModuleInputKeyEnum,
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
+  ModuleOutputKeyEnum
 } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import axios from 'axios';
 import { valueTypeFormat } from '../utils';
 import { SERVICE_LOCAL_HOST } from '@fastgpt/service/common/system/tools';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.abandon_httpUrl]: string;
@@ -20,7 +17,7 @@ type HttpRequestProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.httpHeaders]: string;
   [key: string]: any;
 }>;
-type HttpResponse = ModuleDispatchResponse<{
+type HttpResponse = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.failed]?: boolean;
   [key: string]: any;
 }>;
@@ -100,7 +97,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
     }
 
     return {
-      [ModuleRunTimerOutputEnum.responseData]: {
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         body: formatBody,
         httpResult: response
@@ -112,7 +109,7 @@ export const dispatchHttpRequest = async (props: HttpRequestProps): Promise<Http
 
     return {
       [ModuleOutputKeyEnum.failed]: true,
-      [ModuleRunTimerOutputEnum.responseData]: {
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
         totalPoints: 0,
         body: formatBody,
         httpResult: { error }

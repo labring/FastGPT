@@ -1,15 +1,16 @@
 import {
+  AIChatItemValueItemType,
   ChatHistoryItemResType,
   ChatItemValueItemType,
-  ToolRunResponseItemType,
-  moduleDispatchResType
+  ToolRunResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { ModuleRunTimerOutputEnum } from '@fastgpt/global/core/module/constants';
-import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
-export type DispatchFlowModuleResponse = {
-  [ModuleRunTimerOutputEnum.responseData]: ChatHistoryItemResType[];
-  [ModuleRunTimerOutputEnum.moduleDispatchBills]: ChatModuleUsageType[];
-  [ModuleRunTimerOutputEnum.toolResponse]: ToolRunResponseItemType[];
-  [ModuleRunTimerOutputEnum.assistantResponse]: ChatItemValueItemType[];
+export type DispatchFlowResponse = {
+  flowResponses: ChatHistoryItemResType[];
+  flowUsages: ChatNodeUsageType[];
+  // [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: ChatNodeUsageType[];
+  [DispatchNodeResponseKeyEnum.toolResponses]: ToolRunResponseItemType[];
+  [DispatchNodeResponseKeyEnum.assistantResponses]: AIChatItemValueItemType[];
 };

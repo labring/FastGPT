@@ -7,15 +7,9 @@ import {
 } from '@fastgpt/global/common/string/tiktoken';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type {
-  ContextExtractAgentItemType,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type';
-import {
-  ModuleInputKeyEnum,
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -26,6 +20,7 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import json5 from 'json5';
 import { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -34,7 +29,7 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.description]: string;
   [ModuleInputKeyEnum.aiModel]: string;
 }>;
-type Response = ModuleDispatchResponse<{
+type Response = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.success]?: boolean;
   [ModuleOutputKeyEnum.failed]?: boolean;
   [ModuleOutputKeyEnum.contextExtractFields]: string;
@@ -114,7 +109,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [ModuleOutputKeyEnum.failed]: success ? undefined : true,
     [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
-    [ModuleRunTimerOutputEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: content,
@@ -123,7 +118,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
     },
-    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,

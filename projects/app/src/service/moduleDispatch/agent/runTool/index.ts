@@ -1,17 +1,13 @@
-import {
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
-import type { ModuleItemType, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import type {
+  DispatchNodeResultType,
+  RunningModuleItemType
+} from '@fastgpt/global/core/module/runtime/type';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
-import {
-  DispatchToolModuleProps,
-  DispatchToolModuleResponse,
-  RunToolResponse,
-  ToolModuleItemType
-} from './type.d';
+import { DispatchToolModuleProps, ToolModuleItemType } from './type.d';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -23,13 +19,11 @@ import {
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 
-export const dispatchRunTools = async (
-  props: DispatchToolModuleProps
-): Promise<DispatchToolModuleResponse> => {
-  const startTime = Date.now();
+type Response = DispatchNodeResultType<{}>;
 
+export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    module: { name, flowType, outputs },
+    module: { name, outputs },
     runtimeModules,
     histories,
     params: { model, systemPrompt, userChatInput, history = 6 }
@@ -77,7 +71,7 @@ export const dispatchRunTools = async (
   ];
 
   const {
-    responseData,
+    dispatchFlowResponse,
     totalTokens,
     completeMessages = []
   } = await (async () => {
@@ -90,8 +84,9 @@ export const dispatchRunTools = async (
       });
     }
     return {
-      responseData: [],
-      totalTokens: 0
+      dispatchFlowResponse: [],
+      totalTokens: 0,
+      completeMessages: []
     };
   })();
 
@@ -106,22 +101,36 @@ export const dispatchRunTools = async (
   const startIndex = adaptMessages.findLastIndex((item) => item.obj === ChatRoleEnum.Human);
   const assistantResponse = adaptMessages.slice(startIndex + 1);
 
+  // flat child tool response
+  const childToolResponse = dispatchFlowResponse.map((item) => item.flowResponses).flat();
+
+  // concat tool usage
+  const totalPointsUsage =
+    totalPoints +
+    dispatchFlowResponse.reduce((sum, item) => {
+      const childrenTotal = item.flowUsages.reduce((sum, item) => sum + item.totalPoints, 0);
+      return sum + childrenTotal;
+    }, 0);
+
   return {
-    [ModuleRunTimerOutputEnum.assistantResponse]: assistantResponse
+    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponse
       .map((item) => item.value)
       .flat(),
-    [ModuleRunTimerOutputEnum.responseData]: [
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
+      totalPoints: totalPointsUsage,
+      toolCallTokens: totalTokens,
+      model: modelName,
+      query: userChatInput,
+      historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false)),
+      toolDetail: childToolResponse
+    },
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
-        moduleType: flowType,
-        runningTime: +((Date.now() - startTime) / 1000).toFixed(2),
-        tokens: totalTokens,
-        totalPoints,
+        totalPoints: totalPoints,
         model: modelName,
-        query: userChatInput,
-        historyPreview: getHistoryPreview(GPTMessages2Chats(completeMessages, false))
+        tokens: totalTokens
       }
-    ].concat(responseData),
-    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [] // 聚合
+    ]
   };
 };

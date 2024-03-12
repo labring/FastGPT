@@ -3,7 +3,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { StartChatFnProps } from '@/components/ChatBox/type.d';
 import { getToken } from '@/web/support/user/auth';
-import { ModuleRunTimerOutputEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import dayjs from 'dayjs';
 import {
   // refer to https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
@@ -19,7 +19,7 @@ type StreamFetchProps = {
 };
 type StreamResponseType = {
   responseText: string;
-  [ModuleRunTimerOutputEnum.responseData]: ChatHistoryItemResType[];
+  [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
 };
 export const streamFetch = ({
   url = '/api/v1/chat/completions',

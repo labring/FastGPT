@@ -18,7 +18,8 @@ import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/u
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '@/service/common/censor';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModuleDispatchResponse, ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 import {
   countGptMessagesTokens,
   countMessagesTokens
@@ -36,11 +37,8 @@ import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
 import { getLLMModel, ModelTypeEnum } from '@fastgpt/service/core/ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import {
-  ModuleInputKeyEnum,
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '@fastgpt/global/core/dataset/search/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
@@ -52,7 +50,7 @@ export type ChatProps = ModuleDispatchProps<
     [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
-export type ChatResponse = ModuleDispatchResponse<{
+export type ChatResponse = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.answerText]: string;
   [ModuleOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -218,7 +216,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
 
   return {
     answerText,
-    [ModuleRunTimerOutputEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       tokens,
@@ -227,7 +225,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       historyPreview: getHistoryPreview(chatCompleteMessages),
       contextTotalLen: completeMessages.length
     },
-    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,

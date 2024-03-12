@@ -9,10 +9,8 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { appCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
-import {
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 
 export const ChatItemCollectionName = 'chatitems';
 
@@ -78,7 +76,7 @@ const ChatItemSchema = new Schema({
       a: String
     }
   },
-  [ModuleRunTimerOutputEnum.responseData]: {
+  [DispatchNodeResponseKeyEnum.nodeResponse]: {
     type: Array,
     default: []
   }

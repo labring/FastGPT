@@ -10,7 +10,12 @@ import React, {
 } from 'react';
 import Script from 'next/script';
 import { throttle } from 'lodash';
-import type { ChatSiteItemType } from '@fastgpt/global/core/chat/type.d';
+import type {
+  AIChatItemType,
+  AIChatItemValueItemType,
+  ChatSiteItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type.d';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -18,7 +23,8 @@ import { Box, Flex, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { ModuleRunTimerOutputEnum, VariableInputEnum } from '@fastgpt/global/core/module/constants';
+import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -84,7 +90,7 @@ type Props = OutLinkChatAuthProps & {
   onUpdateVariable?: (e: Record<string, any>) => void;
   onStartChat?: (e: StartChatFnProps) => Promise<{
     responseText: string;
-    [ModuleRunTimerOutputEnum.responseData]: ChatHistoryItemResType[];
+    [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
     isNewChat?: boolean;
   }>;
   onDelMessage?: (e: { contentId: string }) => void;
@@ -210,7 +216,9 @@ const ChatBox = (
       setChatHistories((state) =>
         state.map((item, index) => {
           if (index !== state.length - 1) return item;
-          const lastValue: ChatSiteItemType['value'][0] = JSON.parse(
+          if (item.obj !== ChatRoleEnum.AI) return item;
+
+          const lastValue: AIChatItemValueItemType = JSON.parse(
             JSON.stringify(item.value[item.value.length - 1])
           );
 
@@ -225,14 +233,15 @@ const ChatBox = (
             text
           ) {
             if (!lastValue || !lastValue.text) {
+              const newValue: AIChatItemValueItemType = {
+                type: ChatItemValueTypeEnum.text,
+                text: {
+                  content: text
+                }
+              };
               return {
                 ...item,
-                value: item.value.concat({
-                  type: ChatItemValueTypeEnum.text,
-                  text: {
-                    content: text
-                  }
-                })
+                value: item.value.concat(newValue)
               };
             } else {
               lastValue.text.content += text;
@@ -242,7 +251,7 @@ const ChatBox = (
               };
             }
           } else if (event === sseResponseEventEnum.toolCall && tool) {
-            const val = {
+            const val: AIChatItemValueItemType = {
               type: ChatItemValueTypeEnum.tool,
               tools: [tool]
             };
@@ -379,7 +388,7 @@ const ChatBox = (
           ...history,
           {
             dataId: getNanoid(24),
-            obj: 'Human',
+            obj: ChatRoleEnum.Human,
             value: [
               ...files.map((file) => ({
                 type: ChatItemValueTypeEnum.file,
@@ -399,12 +408,12 @@ const ChatBox = (
                     }
                   ]
                 : [])
-            ],
+            ] as UserChatItemValueItemType[],
             status: 'finish'
           },
           {
             dataId: getNanoid(24),
-            obj: 'AI',
+            obj: ChatRoleEnum.AI,
             value: [
               {
                 type: ChatItemValueTypeEnum.text,
@@ -437,13 +446,7 @@ const ChatBox = (
             responseText,
             isNewChat = false
           } = await onStartChat({
-            chatList: newChatList.map((item) => ({
-              dataId: item.dataId,
-              obj: item.obj,
-              value: item.value,
-              status: item.status,
-              moduleName: item.moduleName
-            })),
+            chatList: newChatList,
             messages,
             controller: abortSignal,
             generatingMessage,
@@ -576,7 +579,7 @@ const ChatBox = (
   // admin mark
   const onMark = useCallback(
     (chat: ChatSiteItemType, q = '') => {
-      if (!showMarkIcon) return;
+      if (!showMarkIcon || chat.obj !== ChatRoleEnum.AI) return;
 
       return () => {
         if (!chat.dataId) return;
@@ -603,7 +606,12 @@ const ChatBox = (
   );
   const onAddUserLike = useCallback(
     (chat: ChatSiteItemType) => {
-      if (feedbackType !== FeedbackTypeEnum.user || chat.userBadFeedback) return;
+      if (
+        feedbackType !== FeedbackTypeEnum.user ||
+        chat.obj !== ChatRoleEnum.AI ||
+        chat.userBadFeedback
+      )
+        return;
       return () => {
         if (!chat.dataId || !chatId || !appId) return;
 
@@ -656,7 +664,11 @@ const ChatBox = (
   );
   const onADdUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
-      if (feedbackType !== FeedbackTypeEnum.user || chat.userGoodFeedback) {
+      if (
+        feedbackType !== FeedbackTypeEnum.user ||
+        chat.obj !== ChatRoleEnum.AI ||
+        chat.userGoodFeedback
+      ) {
         return;
       }
       if (chat.userBadFeedback) {
@@ -687,7 +699,7 @@ const ChatBox = (
   );
   const onReadUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
-      if (feedbackType !== FeedbackTypeEnum.admin) return;
+      if (feedbackType !== FeedbackTypeEnum.admin || chat.obj !== ChatRoleEnum.AI) return;
       return () => {
         if (!chat.dataId) return;
         setReadFeedbackData({

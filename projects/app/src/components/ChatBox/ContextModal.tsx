@@ -1,13 +1,13 @@
 import React from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
-import { moduleDispatchResType } from '@fastgpt/global/core/chat/type';
 import MyModal from '../MyModal';
+import { DispatchNodeResponseType } from '@fastgpt/global/core/module/runtime/type.d';
 
 const ContextModal = ({
   context = [],
   onClose
 }: {
-  context: moduleDispatchResType['historyPreview'];
+  context: DispatchNodeResponseType['historyPreview'];
   onClose: () => void;
 }) => {
   const theme = useTheme();
@@ -17,7 +17,7 @@ const ContextModal = ({
       isOpen={true}
       onClose={onClose}
       iconSrc="/imgs/modal/chatHistory.svg"
-      title={`完整对话记录(${context.length}条)`}
+      title={`上下文预览(${context.length}条)`}
       h={['90vh', '80vh']}
       minW={['90vw', '600px']}
       isCentered

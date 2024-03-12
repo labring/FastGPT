@@ -7,15 +7,9 @@ import {
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type {
-  ClassifyQuestionAgentItemType,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
-import {
-  ModuleInputKeyEnum,
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
+import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/module/type.d';
+import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_CQJson } from '@/global/core/prompt/agent';
@@ -25,6 +19,7 @@ import { getHistories } from '../utils';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -33,7 +28,7 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.agents]: ClassifyQuestionAgentItemType[];
 }>;
-type CQResponse = ModuleDispatchResponse<{
+type CQResponse = DispatchNodeResultType<{
   [key: string]: any;
 }>;
 
@@ -81,7 +76,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
 
   return {
     [result.key]: true,
-    [ModuleRunTimerOutputEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: userChatInput,
@@ -90,7 +85,7 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
       cqResult: result.value,
       contextTotalLen: chatHistories.length + 2
     },
-    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,

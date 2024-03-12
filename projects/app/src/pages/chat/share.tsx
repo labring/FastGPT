@@ -25,7 +25,7 @@ import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import MyBox from '@/components/common/MyBox';
 import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
@@ -143,8 +143,9 @@ const OutLink = ({
         ...item,
         status: 'finish'
       }));
-      // result[1].value = responseText;
-      result[1].responseData = responseData;
+      if (result[1].obj === ChatRoleEnum.AI) {
+        result[1].responseData = responseData;
+      }
 
       window.top?.postMessage(
         {

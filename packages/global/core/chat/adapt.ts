@@ -1,4 +1,9 @@
-import type { ChatItemType, RuntimeUserPromptType } from '../../core/chat/type.d';
+import type {
+  ChatItemType,
+  ChatItemValueItemType,
+  RuntimeUserPromptType,
+  UserChatItemType
+} from '../../core/chat/type.d';
 import { ChatFileTypeEnum, ChatItemValueTypeEnum, ChatRoleEnum } from '../../core/chat/constants';
 import type {
   ChatCompletionContentPart,
@@ -49,10 +54,7 @@ export const chats2GPTMessages = ({
               text: item.text?.content || ''
             };
           }
-          if (
-            item.type === ChatItemValueTypeEnum.file &&
-            item.file?.type === ChatFileTypeEnum.image
-          ) {
+          if (item.type === 'file' && item.file?.type === ChatFileTypeEnum.image) {
             return {
               type: 'image_url',
               image_url: {
@@ -126,15 +128,22 @@ export const GPTMessages2Chats = (
   return messages
     .map((item) => {
       const value: ChatItemType['value'] = [];
+      const obj = GPT2Chat[item.role];
 
-      if (item.role === ChatCompletionRequestMessageRoleEnum.System) {
+      if (
+        obj === ChatRoleEnum.System &&
+        item.role === ChatCompletionRequestMessageRoleEnum.System
+      ) {
         value.push({
           type: ChatItemValueTypeEnum.text,
           text: {
             content: item.content
           }
         });
-      } else if (item.role === ChatCompletionRequestMessageRoleEnum.User) {
+      } else if (
+        obj === ChatRoleEnum.Human &&
+        item.role === ChatCompletionRequestMessageRoleEnum.User
+      ) {
         if (typeof item.content === 'string') {
           value.push({
             type: ChatItemValueTypeEnum.text,
@@ -153,7 +162,8 @@ export const GPTMessages2Chats = (
               });
             } else if (item.type === 'image_url') {
               value.push({
-                type: ChatItemValueTypeEnum.file,
+                //@ts-ignore
+                type: 'file',
                 file: {
                   type: ChatFileTypeEnum.image,
                   name: '',
@@ -164,7 +174,10 @@ export const GPTMessages2Chats = (
           });
           // @ts-ignore
         }
-      } else if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+      } else if (
+        obj === ChatRoleEnum.AI &&
+        item.role === ChatCompletionRequestMessageRoleEnum.Assistant
+      ) {
         if (item.content && typeof item.content === 'string') {
           value.push({
             type: ChatItemValueTypeEnum.text,
@@ -176,6 +189,7 @@ export const GPTMessages2Chats = (
           // save tool calls
           const toolCalls = item.tool_calls as ChatCompletionMessageToolCall[];
           value.push({
+            //@ts-ignore
             type: ChatItemValueTypeEnum.tool,
             tools: toolCalls.map((tool) => {
               let toolResponse =
@@ -202,20 +216,20 @@ export const GPTMessages2Chats = (
 
       return {
         dataId: item.dataId,
-        obj: GPT2Chat[item.role],
+        obj,
         value
-      };
+      } as ChatItemType;
     })
     .filter((item) => item.value.length > 0);
 };
 
-export const chatValue2RuntimePrompt = (value: ChatItemType['value']): RuntimeUserPromptType => {
+export const chatValue2RuntimePrompt = (value: ChatItemValueItemType[]): RuntimeUserPromptType => {
   const prompt: RuntimeUserPromptType = {
     files: [],
     text: ''
   };
   value.forEach((item) => {
-    if (item.type === ChatItemValueTypeEnum.file && item.file) {
+    if (item.type === 'file' && item.file) {
       prompt.files?.push(item.file);
     } else if (item.text) {
       prompt.text += item.text.content;
@@ -224,8 +238,10 @@ export const chatValue2RuntimePrompt = (value: ChatItemType['value']): RuntimeUs
   return prompt;
 };
 
-export const runtimePrompt2ChatsValue = (prompt: RuntimeUserPromptType): ChatItemType['value'] => {
-  const value: ChatItemType['value'] = [];
+export const runtimePrompt2ChatsValue = (
+  prompt: RuntimeUserPromptType
+): UserChatItemType['value'] => {
+  const value: UserChatItemType['value'] = [];
   if (prompt.files) {
     prompt.files.forEach((file) => {
       value.push({
@@ -245,7 +261,7 @@ export const runtimePrompt2ChatsValue = (prompt: RuntimeUserPromptType): ChatIte
   return value;
 };
 
-export const getSystemPrompt = (prompt?: string) => {
+export const getSystemPrompt = (prompt?: string): ChatItemType[] => {
   if (!prompt) return [];
   return [
     {

@@ -9,6 +9,7 @@ import React from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatChatValue2InputType } from '../utils';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 export type ChatControllerProps = {
   isChatting: boolean;
@@ -167,62 +168,66 @@ const ChatController = ({
           />
         </MyTooltip>
       )}
-      {!!onCloseUserLike && chat.userGoodFeedback && (
-        <MyTooltip label={t('core.chat.feedback.Close User Like')}>
-          <MyIcon
-            {...controlIconStyle}
-            color={'white'}
-            bg={'green.500'}
-            fontWeight={'bold'}
-            name={'core/chat/feedback/goodLight'}
-            onClick={onCloseUserLike}
-          />
-        </MyTooltip>
-      )}
-      {!!onReadUserDislike && chat.userBadFeedback && (
-        <MyTooltip label={t('core.chat.feedback.Read User dislike')}>
-          <MyIcon
-            {...controlIconStyle}
-            color={'white'}
-            bg={'#FC9663'}
-            fontWeight={'bold'}
-            name={'core/chat/feedback/badLight'}
-            onClick={onReadUserDislike}
-          />
-        </MyTooltip>
-      )}
-      {!!onAddUserLike && (
-        <MyIcon
-          {...controlIconStyle}
-          {...(!!chat.userGoodFeedback
-            ? {
-                color: 'white',
-                bg: 'green.500',
-                fontWeight: 'bold'
-              }
-            : {
-                _hover: { color: 'green.600' }
-              })}
-          name={'core/chat/feedback/goodLight'}
-          onClick={onAddUserLike}
-        />
-      )}
-      {!!onAddUserDislike && (
-        <MyIcon
-          {...controlIconStyle}
-          {...(!!chat.userBadFeedback
-            ? {
-                color: 'white',
-                bg: '#FC9663',
-                fontWeight: 'bold',
-                onClick: onAddUserDislike
-              }
-            : {
-                _hover: { color: '#FB7C3C' },
-                onClick: onAddUserDislike
-              })}
-          name={'core/chat/feedback/badLight'}
-        />
+      {chat.obj === ChatRoleEnum.AI && (
+        <>
+          {!!onCloseUserLike && chat.userGoodFeedback && (
+            <MyTooltip label={t('core.chat.feedback.Close User Like')}>
+              <MyIcon
+                {...controlIconStyle}
+                color={'white'}
+                bg={'green.500'}
+                fontWeight={'bold'}
+                name={'core/chat/feedback/goodLight'}
+                onClick={onCloseUserLike}
+              />
+            </MyTooltip>
+          )}
+          {!!onReadUserDislike && chat.userBadFeedback && (
+            <MyTooltip label={t('core.chat.feedback.Read User dislike')}>
+              <MyIcon
+                {...controlIconStyle}
+                color={'white'}
+                bg={'#FC9663'}
+                fontWeight={'bold'}
+                name={'core/chat/feedback/badLight'}
+                onClick={onReadUserDislike}
+              />
+            </MyTooltip>
+          )}
+          {!!onAddUserLike && (
+            <MyIcon
+              {...controlIconStyle}
+              {...(!!chat.userGoodFeedback
+                ? {
+                    color: 'white',
+                    bg: 'green.500',
+                    fontWeight: 'bold'
+                  }
+                : {
+                    _hover: { color: 'green.600' }
+                  })}
+              name={'core/chat/feedback/goodLight'}
+              onClick={onAddUserLike}
+            />
+          )}
+          {!!onAddUserDislike && (
+            <MyIcon
+              {...controlIconStyle}
+              {...(!!chat.userBadFeedback
+                ? {
+                    color: 'white',
+                    bg: '#FC9663',
+                    fontWeight: 'bold',
+                    onClick: onAddUserDislike
+                  }
+                : {
+                    _hover: { color: '#FB7C3C' },
+                    onClick: onAddUserDislike
+                  })}
+              name={'core/chat/feedback/badLight'}
+            />
+          )}
+        </>
       )}
     </Flex>
   );

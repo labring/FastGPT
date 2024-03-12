@@ -3,7 +3,7 @@ import { ModelTypeEnum } from '@fastgpt/service/core/ai/model';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { createUsage, concatUsage } from './controller';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
-import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 
 export const pushChatUsage = ({
   appName,
@@ -11,16 +11,16 @@ export const pushChatUsage = ({
   teamId,
   tmbId,
   source,
-  moduleDispatchBills
+  flowUsages
 }: {
   appName: string;
   appId: string;
   teamId: string;
   tmbId: string;
   source: `${UsageSourceEnum}`;
-  moduleDispatchBills: ChatModuleUsageType[];
+  flowUsages: ChatNodeUsageType[];
 }) => {
-  const totalPoints = moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
+  const totalPoints = flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0);
 
   createUsage({
     teamId,
@@ -29,7 +29,7 @@ export const pushChatUsage = ({
     appId,
     totalPoints,
     source,
-    list: moduleDispatchBills.map((item) => ({
+    list: flowUsages.map((item) => ({
       moduleName: item.moduleName,
       amount: item.totalPoints || 0,
       model: item.model,

@@ -15,15 +15,14 @@ import { responseWrite, responseWriteController } from '@fastgpt/service/common/
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { dispatchModules } from '../../index';
+import { dispatchWorkFlow } from '../../index';
 import { DispatchToolModuleProps, RunToolResponse, ToolModuleItemType } from './type.d';
 import json5 from 'json5';
-import { ModuleRunTimerOutputEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchFlowModuleResponse } from '../../type';
+import { DispatchFlowResponse } from '../../type';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 
 type ToolRunResponseType = {
-  moduleRunResponse: DispatchFlowModuleResponse;
+  moduleRunResponse: DispatchFlowResponse;
   toolMsgParams: ChatCompletionToolMessageParam;
 }[];
 
@@ -71,7 +70,16 @@ export const runToolWithToolChoice = async (
     messages,
     maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
   });
-
+  // console.log(
+  //   JSON.stringify(
+  //     {
+  //       messages: filterMessages,
+  //       tools
+  //     },
+  //     null,
+  //     2
+  //   )
+  // );
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
@@ -125,7 +133,7 @@ export const runToolWithToolChoice = async (
           }
         })();
 
-        const moduleRunResponse = await dispatchModules({
+        const moduleRunResponse = await dispatchWorkFlow({
           ...props,
           runtimeModules: runtimeModules.map((module) => ({
             ...module,
@@ -138,7 +146,7 @@ export const runToolWithToolChoice = async (
           tool_call_id: tool.id,
           role: ChatCompletionRequestMessageRoleEnum.Tool,
           name: tool.function.name,
-          content: JSON.stringify(moduleRunResponse.toolResponse, null, 2)
+          content: JSON.stringify(moduleRunResponse.toolResponses, null, 2)
         };
 
         if (stream) {
@@ -151,7 +159,7 @@ export const runToolWithToolChoice = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: JSON.stringify(moduleRunResponse.toolResponse, null, 2)
+                response: JSON.stringify(moduleRunResponse.toolResponses, null, 2)
               }
             })
           });
@@ -165,9 +173,7 @@ export const runToolWithToolChoice = async (
     )
   ).filter(Boolean) as ToolRunResponseType;
 
-  const flatToolsResponseData = toolsRunResponse
-    .map((item) => item.moduleRunResponse.responseData)
-    .flat();
+  const flatToolsResponseData = toolsRunResponse.map((item) => item.moduleRunResponse).flat();
 
   if (toolCalls.length > 0 && !res.closed) {
     // Run the tool, combine its results, and perform another round of AI calls
@@ -181,15 +187,15 @@ export const runToolWithToolChoice = async (
     ] as ChatCompletionMessageParam[];
 
     const tokens = countGptMessagesTokens(concatToolMessages, tools);
-
+    console.log(tokens, '--');
     return runToolWithToolChoice(
       {
         ...props,
         messages: [...concatToolMessages, ...toolsRunResponse.map((item) => item?.toolMsgParams)]
       },
       {
-        responseData: response
-          ? response.responseData.concat(flatToolsResponseData)
+        dispatchFlowResponse: response
+          ? response.dispatchFlowResponse.concat(flatToolsResponseData)
           : flatToolsResponseData,
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens
       }
@@ -202,9 +208,10 @@ export const runToolWithToolChoice = async (
     });
 
     const tokens = countGptMessagesTokens(completeMessages, tools);
+    console.log(tokens, '--');
 
     return {
-      [ModuleRunTimerOutputEnum.responseData]: response?.responseData || [],
+      dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages
     };

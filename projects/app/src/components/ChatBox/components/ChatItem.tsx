@@ -21,9 +21,12 @@ import { formatChatValue2InputType } from '../utils';
 import Markdown, { CodeClassName } from '@/components/Markdown';
 import styles from '../index.module.scss';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { ChatItemValueTypeEnum, ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  ChatItemValueTypeEnum,
+  ChatRoleEnum,
+  ChatStatusEnum
+} from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
-import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -49,7 +52,7 @@ const ChatItem = ({
   questionGuides = [],
   ...chatControllerProps
 }: {
-  type: 'Human' | 'AI';
+  type: ChatRoleEnum.Human | ChatRoleEnum.AI;
   avatar?: string;
   statusBoxData?: {
     status: `${ChatStatusEnum}`;
@@ -61,7 +64,7 @@ const ChatItem = ({
 } & ChatControllerProps) => {
   const theme = useTheme();
   const styleMap: BoxProps =
-    type === 'Human'
+    type === ChatRoleEnum.Human
       ? {
           order: 0,
           borderRadius: '8px 0 8px 8px',
@@ -176,7 +179,7 @@ ${tool.response}`}
     <>
       {/* control icon */}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {isChatting && type === 'AI' && isLastChild ? null : (
+        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Box order={styleMap.order} ml={styleMap.ml}>
             <ChatController {...chatControllerProps} />
           </Box>

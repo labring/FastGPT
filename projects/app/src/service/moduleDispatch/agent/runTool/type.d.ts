@@ -1,16 +1,13 @@
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
-import {
-  ModuleInputKeyEnum,
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
-import { ModuleDispatchResponse } from '@fastgpt/global/core/module/type';
 import type {
   ModuleDispatchProps,
-  ModuleDispatchResponse,
-  RunningModuleItemType
+  DispatchNodeResponseType
 } from '@fastgpt/global/core/module/type.d';
+import type { RunningModuleItemType } from '@fastgpt/global/core/module/runtime/type';
+import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import type { DispatchFlowResponse } from '../../type.d';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -18,10 +15,9 @@ export type DispatchToolModuleProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiSystemPrompt]: string;
   [ModuleInputKeyEnum.userChatInput]: string;
 }>;
-export type DispatchToolModuleResponse = ModuleDispatchResponse<{}>;
 
 export type RunToolResponse = {
-  [ModuleRunTimerOutputEnum.responseData]: moduleDispatchResType[];
+  dispatchFlowResponse: DispatchFlowResponse[];
   totalTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
 };

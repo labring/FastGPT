@@ -6,7 +6,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { dispatchModules } from '@/service/moduleDispatch';
+import { dispatchWorkFlow } from '@/service/moduleDispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { textAdaptGptResponse } from '@/utils/adapt';
@@ -33,6 +33,8 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { setEntryEntries } from '@/service/moduleDispatch/utils';
+import { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -110,7 +112,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }
 
     // user question
-    const question = chatMessages.pop();
+    const question = chatMessages.pop() as UserChatItemType;
     if (!question) {
       throw new Error('Question is empty');
     }
@@ -165,7 +167,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
-    const { responseData, moduleDispatchBills, assistantResponse } = await dispatchModules({
+    const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
       res,
       mode: 'chat',
       user,
@@ -214,8 +216,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           {
             dataId: responseChatItemId,
             obj: ChatRoleEnum.AI,
-            value: assistantResponse,
-            responseData
+            value: assistantResponses,
+            [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
           }
         ],
         metadata: {
@@ -227,7 +229,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = canWrite ? responseData : selectSimpleChatResponse({ responseData });
+    const feResponseData = canWrite ? flowResponses : selectSimpleChatResponse({ flowResponses });
 
     if (stream) {
       responseWrite({
@@ -261,7 +263,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: assistantResponse },
+            message: { role: 'assistant', content: assistantResponses },
             finish_reason: 'stop',
             index: 0
           }
@@ -276,11 +278,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       teamId,
       tmbId: tmbId,
       source: getUsageSourceByAuthType({ shareId, authType }),
-      moduleDispatchBills
+      flowUsages
     });
 
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, appName: app.name, responseData });
+      pushResult2Remote({ outLinkUid, shareId, appName: app.name, flowResponses });
       addOutLinkUsage({
         shareId,
         totalPoints

@@ -1,29 +1,24 @@
-import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
-import { dispatchModules } from '../index';
+import { dispatchWorkFlow } from '../index';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
 import { textAdaptGptResponse } from '@/utils/adapt';
-import {
-  ModuleInputKeyEnum,
-  ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum
-} from '@fastgpt/global/core/module/constants';
+import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { getHistories, setEntryEntries } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   app: SelectAppItemType;
 }>;
-type Response = ModuleDispatchResponse<{
+type Response = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.answerText]: string;
   [ModuleOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -65,7 +60,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const chatHistories = getHistories(history, histories);
 
-  const { responseData, moduleDispatchBills, assistantResponse } = await dispatchModules({
+  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
     appId: app.id,
     modules: setEntryEntries(appData.modules),
@@ -87,23 +82,23 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     },
     {
       obj: ChatRoleEnum.AI,
-      value: assistantResponse
+      value: assistantResponses
     }
   ]);
 
-  const { text } = chatValue2RuntimePrompt(assistantResponse);
+  const { text } = chatValue2RuntimePrompt(assistantResponses);
 
   return {
-    [ModuleRunTimerOutputEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       query: userChatInput,
       textOutput: text,
-      totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+      totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
     },
-    [ModuleRunTimerOutputEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: appData.name,
-        totalPoints: moduleDispatchBills.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
       }
     ],
     answerText: text,

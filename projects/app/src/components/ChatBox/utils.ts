@@ -11,7 +11,7 @@ export const formatChatValue2InputType = (value: ChatItemValueItemType[]): ChatB
   const files =
     (value
       .map((item) =>
-        item.type === ChatItemValueTypeEnum.file && item.file
+        item.type === 'file' && item.file
           ? {
               id: getNanoid(),
               type: item.file.type,

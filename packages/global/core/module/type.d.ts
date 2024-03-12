@@ -2,19 +2,19 @@ import { FlowNodeTypeEnum } from './node/constant';
 import {
   ModuleIOValueTypeEnum,
   ModuleOutputKeyEnum,
-  ModuleRunTimerOutputEnum,
   ModuleTemplateTypeEnum,
   VariableInputEnum
 } from './constants';
+import { DispatchNodeResponseKeyEnum } from './runtime/constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
 import {
   ChatItemValueItemType,
   ToolRunResponseItemType,
-  UserChatItemValueItemType,
-  moduleDispatchResType
-} from '..//chat/type';
-import { ChatModuleUsageType } from '../../support/wallet/bill/type';
+  UserChatItemValueItemType
+} from '../chat/type';
+import { ChatNodeUsageType } from '../../support/wallet/bill/type';
+import { RunningModuleItemType } from './runtime/type';
 
 export type FlowModuleTemplateType = {
   id: string; // module id, unique
@@ -95,35 +95,6 @@ export type ContextExtractAgentItemType = {
 };
 
 /* -------------- running module -------------- */
-export type RunningModuleItemType = {
-  name: ModuleItemType['name'];
-  avatar: ModuleItemType['avatar'];
-  intro?: ModuleItemType['intro'];
-  moduleId: ModuleItemType['moduleId'];
-  flowType: ModuleItemType['flowType'];
-  showStatus?: ModuleItemType['showStatus'];
-  isEntry?: ModuleItemType['isEntry'];
-
-  inputs: {
-    key: string;
-    value?: any;
-    valueType?: FlowNodeInputItemType['valueType'];
-    required?: boolean;
-    toolDescription?: string;
-  }[];
-  outputs: {
-    key: string;
-    answer?: boolean;
-    response?: boolean;
-    value?: any;
-    valueType?: FlowNodeOutputItemType['valueType'];
-    targets: {
-      moduleId: string;
-      key: string;
-    }[];
-  }[];
-};
-
 export type ChatDispatchProps = {
   res: NextApiResponse;
   mode: 'test' | 'chat';
@@ -145,9 +116,3 @@ export type ModuleDispatchProps<T> = ChatDispatchProps & {
   runtimeModules: RunningModuleItemType[];
   params: T;
 };
-export type ModuleDispatchResponse<T> = {
-  [ModuleRunTimerOutputEnum.responseData]?: moduleDispatchResType | moduleDispatchResType[];
-  [ModuleRunTimerOutputEnum.toolResponse]?: ToolRunResponseItemType;
-  [ModuleRunTimerOutputEnum.assistantResponse]?: ChatItemValueItemType[];
-  [ModuleRunTimerOutputEnum.moduleDispatchBills]?: ChatModuleUsageType[];
-} & T;
