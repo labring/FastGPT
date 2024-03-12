@@ -135,7 +135,7 @@ export function responseWrite({
 
 export const responseWriteNodeStatus = ({
   res,
-  status,
+  status = 'running',
   name
 }: {
   res?: NextApiResponse;
