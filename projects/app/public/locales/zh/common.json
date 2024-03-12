@@ -445,9 +445,11 @@
       "response": {
         "Complete Response": "完整响应",
         "Extension model": "问题优化模型",
-        "Plugin Resonse Detail": "插件详情",
+        "Plugin response detail": "插件详情",
         "Read complete response": "查看详情",
         "Read complete response tips": "点击查看详细流程",
+        "Tool call response detail": "工具运行详情",
+        "Tool call tokens": "工具调用Tokens消耗",
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",

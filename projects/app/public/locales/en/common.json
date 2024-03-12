@@ -445,9 +445,11 @@
       "response": {
         "Complete Response": "Complete Response",
         "Extension model": "Extension model",
-        "Plugin Resonse Detail": "Plugin Detail",
+        "Plugin response detail": "Plugin Detail",
         "Read complete response": "Read Detail",
         "Read complete response tips": "Click to see the detailed process",
+        "Tool call response detail": "Tool call detail",
+        "Tool call tokens": "Tool call tokens",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",

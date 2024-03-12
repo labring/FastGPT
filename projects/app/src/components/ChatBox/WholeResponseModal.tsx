@@ -143,6 +143,11 @@ const ResponseBox = React.memo(function ResponseBox({
           />
           <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
           <Row label={t('core.chat.response.module tokens')} value={`${activeModule?.tokens}`} />
+          <Row
+            label={t('core.chat.response.Tool call tokens')}
+            value={`${activeModule?.toolCallTokens}`}
+          />
+
           <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
           <Row
             label={t('core.chat.response.context total length')}
@@ -276,7 +281,7 @@ const ResponseBox = React.memo(function ResponseBox({
           )}
           {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
             <Row
-              label={t('core.chat.response.Plugin Resonse Detail')}
+              label={t('core.chat.response.Plugin response detail')}
               rawDom={<ResponseBox response={activeModule.pluginDetail} showDetail={showDetail} />}
             />
           )}
@@ -284,6 +289,14 @@ const ResponseBox = React.memo(function ResponseBox({
 
         {/* text output */}
         <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
+
+        {/* tool call */}
+        {activeModule?.toolDetail && activeModule?.toolDetail.length > 0 && (
+          <Row
+            label={t('core.chat.response.Tool call response detail')}
+            rawDom={<ResponseBox response={activeModule.toolDetail} showDetail={showDetail} />}
+          />
+        )}
       </Box>
     </>
   );

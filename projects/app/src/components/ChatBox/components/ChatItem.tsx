@@ -112,6 +112,20 @@ ${JSON.stringify(questionGuides)}`;
             return (
               <Box key={key}>
                 {value.tools.map((tool) => {
+                  const toolParams = (() => {
+                    try {
+                      return JSON.stringify(JSON.parse(tool.params), null, 2);
+                    } catch (error) {
+                      return tool.params;
+                    }
+                  })();
+                  const toolResponse = (() => {
+                    try {
+                      return JSON.stringify(JSON.parse(tool.response), null, 2);
+                    } catch (error) {
+                      return tool.response;
+                    }
+                  })();
                   return (
                     <Box key={tool.id}>
                       <Accordion allowToggle>
@@ -144,16 +158,16 @@ ${JSON.stringify(questionGuides)}`;
                             maxH={'500px'}
                             overflowY={'auto'}
                           >
-                            {tool.params && (
+                            {toolParams && (
                               <Markdown
                                 source={`~~~json#Input
-${tool.params}`}
+${toolParams}`}
                               />
                             )}
-                            {tool.response && (
+                            {toolResponse && (
                               <Markdown
                                 source={`~~~json#Response
-${tool.response}`}
+${toolResponse}`}
                               />
                             )}
                           </AccordionPanel>

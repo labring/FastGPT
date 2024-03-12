@@ -20,7 +20,7 @@ import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/out
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
-import { selectSimpleChatResponse } from '@/utils/service/core/chat';
+import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
@@ -229,7 +229,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = canWrite ? flowResponses : selectSimpleChatResponse({ flowResponses });
+    const feResponseData = canWrite
+      ? flowResponses
+      : filterPublicNodeResponseData({ flowResponses });
 
     if (stream) {
       responseWrite({

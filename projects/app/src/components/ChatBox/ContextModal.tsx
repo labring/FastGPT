@@ -38,7 +38,7 @@ const ContextModal = ({
             position={'relative'}
           >
             <Box fontWeight={'bold'}>{item.obj}</Box>
-            <Box>{JSON.stringify(item.value)}</Box>
+            <Box>{item.value}</Box>
           </Box>
         ))}
       </ModalBody>

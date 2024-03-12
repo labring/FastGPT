@@ -892,7 +892,7 @@ const ChatBox = (
                       })}
                     >
                       <ResponseTags
-                        responseData={item.responseData}
+                        flowResponses={item.responseData}
                         showDetail={!shareId && !teamId}
                       />
 

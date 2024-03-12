@@ -143,16 +143,13 @@ const OutLink = ({
         ...item,
         status: 'finish'
       }));
-      if (result[1].obj === ChatRoleEnum.AI) {
-        result[1].responseData = responseData;
-      }
 
       window.top?.postMessage(
         {
           type: 'shareChatFinish',
           data: {
             question: result[0]?.value,
-            answer: result[1]?.value
+            answer: responseText
           }
         },
         '*'

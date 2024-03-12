@@ -1,5 +1,7 @@
+import { DispatchNodeResponseType } from '../module/runtime/type';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../module/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
-import { ChatItemType } from './type.d';
+import { ChatHistoryItemResType, ChatItemType } from './type.d';
 
 export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
   // @ts-ignore
@@ -45,4 +47,33 @@ export const getHistoryPreview = (
       value: content
     };
   });
+};
+
+export const filterPublicNodeResponseData = ({
+  flowResponses = []
+}: {
+  flowResponses?: ChatHistoryItemResType[];
+}) => {
+  const filedList = ['quoteList', 'moduleType'];
+  const filterModuleTypeList: any[] = [
+    FlowNodeTypeEnum.pluginModule,
+    FlowNodeTypeEnum.datasetSearchNode,
+    FlowNodeTypeEnum.tools
+  ];
+
+  return flowResponses
+    .filter((item) => filterModuleTypeList.includes(item.moduleType))
+    .map((item) => {
+      const obj: DispatchNodeResponseType = {};
+      for (let key in item) {
+        if (key === 'toolDetail' || key === 'pluginDetail') {
+          // @ts-ignore
+          obj[key] = filterPublicNodeResponseData({ flowResponses: item[key] });
+        } else if (filedList.includes(key)) {
+          // @ts-ignore
+          obj[key] = item[key];
+        }
+      }
+      return obj as ChatHistoryItemResType;
+    });
 };

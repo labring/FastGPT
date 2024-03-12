@@ -34,7 +34,7 @@ export const runToolWithToolChoice = async (
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { toolModel, toolModules, messages, res, runtimeModules, stream } = props;
+  const { toolModel, toolModules, messages, res, runtimeModules, module, stream } = props;
 
   const tools: ChatCompletionTool[] = toolModules.map((module) => {
     const properties: Record<
@@ -70,16 +70,7 @@ export const runToolWithToolChoice = async (
     messages,
     maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
   });
-  // console.log(
-  //   JSON.stringify(
-  //     {
-  //       messages: filterMessages,
-  //       tools
-  //     },
-  //     null,
-  //     2
-  //   )
-  // );
+
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
@@ -178,7 +169,7 @@ export const runToolWithToolChoice = async (
   if (toolCalls.length > 0 && !res.closed) {
     // Run the tool, combine its results, and perform another round of AI calls
     const assistantToolMsgParams: ChatCompletionAssistantToolParam = {
-      role: 'assistant',
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
       tool_calls: toolCalls
     };
     const concatToolMessages = [
@@ -187,7 +178,27 @@ export const runToolWithToolChoice = async (
     ] as ChatCompletionMessageParam[];
 
     const tokens = countGptMessagesTokens(concatToolMessages, tools);
-    console.log(tokens, '--');
+    // console.log(
+    //   JSON.stringify(
+    //     {
+    //       messages: concatToolMessages,
+    //       tools
+    //     },
+    //     null,
+    //     2
+    //   )
+    // );
+    // console.log(tokens, 'tool');
+
+    responseWrite({
+      res,
+      event: sseResponseEventEnum.moduleStatus,
+      data: JSON.stringify({
+        status: 'running',
+        name: module.name
+      })
+    });
+
     return runToolWithToolChoice(
       {
         ...props,
@@ -208,7 +219,17 @@ export const runToolWithToolChoice = async (
     });
 
     const tokens = countGptMessagesTokens(completeMessages, tools);
-    console.log(tokens, '--');
+    // console.log(
+    //   JSON.stringify(
+    //     {
+    //       messages: completeMessages,
+    //       tools
+    //     },
+    //     null,
+    //     2
+    //   )
+    // );
+    // console.log(tokens, 'response token');
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],

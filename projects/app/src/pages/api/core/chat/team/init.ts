@@ -12,7 +12,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
 import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { selectSimpleChatResponse } from '@/utils/service/core/chat';
+import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
@@ -56,7 +56,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // pick share response field
     history.forEach((item) => {
       if (item.obj === ChatRoleEnum.AI) {
-        item.responseData = selectSimpleChatResponse({ flowResponses: item.responseData });
+        item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
       }
     });
 

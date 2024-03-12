@@ -153,7 +153,6 @@ export const streamFetch = ({
               return {};
             }
           })();
-
           if (event === sseResponseEventEnum.answer) {
             const text: string = parseJson?.choices?.[0]?.delta?.content || '';
 

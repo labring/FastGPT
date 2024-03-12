@@ -15,18 +15,18 @@ import ChatBoxDivider from '@/components/core/chat/Divider';
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
-const QuoteModal = dynamic(() => import('./QuoteModal'), { ssr: false });
-const ContextModal = dynamic(() => import('./ContextModal'), { ssr: false });
-const WholeResponseModal = dynamic(() => import('./WholeResponseModal'), { ssr: false });
+const QuoteModal = dynamic(() => import('./QuoteModal'));
+const ContextModal = dynamic(() => import('./ContextModal'));
+const WholeResponseModal = dynamic(() => import('./WholeResponseModal'));
 
 const isLLMNode = (item: ChatHistoryItemResType) =>
   item.moduleType === FlowNodeTypeEnum.chatNode || item.moduleType === FlowNodeTypeEnum.tools;
 
 const ResponseTags = ({
-  responseData = [],
+  flowResponses = [],
   showDetail
 }: {
-  responseData?: ChatHistoryItemResType[];
+  flowResponses?: ChatHistoryItemResType[];
   showDetail: boolean;
 }) => {
   const theme = useTheme();
@@ -55,8 +55,18 @@ const ResponseTags = ({
     historyPreview = [],
     runningTime = 0
   } = useMemo(() => {
-    const chatData = responseData.find(isLLMNode);
-    const quoteList = responseData
+    const flatResponse = flowResponses
+      .map((item) => {
+        if (item.pluginDetail || item.toolDetail) {
+          return [item, ...(item.pluginDetail || []), ...(item.toolDetail || [])];
+        }
+        return item;
+      })
+      .flat();
+
+    const chatData = flatResponse.find(isLLMNode);
+
+    const quoteList = flatResponse
       .filter((item) => item.moduleType === FlowNodeTypeEnum.datasetSearchNode)
       .map((item) => item.quoteList)
       .flat()
@@ -73,7 +83,7 @@ const ResponseTags = ({
     );
 
     return {
-      llmModuleAccount: responseData.filter(isLLMNode).length,
+      llmModuleAccount: flatResponse.filter(isLLMNode).length,
       quoteList,
       sourceList: Object.values(sourceList)
         .flat()
@@ -85,16 +95,16 @@ const ResponseTags = ({
           collectionId: item.collectionId
         })),
       historyPreview: chatData?.historyPreview,
-      runningTime: +responseData.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
+      runningTime: +flowResponses.reduce((sum, item) => sum + (item.runningTime || 0), 0).toFixed(2)
     };
-  }, [showDetail, responseData]);
+  }, [showDetail, flowResponses]);
 
   const TagStyles: BoxProps = {
     mr: 2,
     bg: 'transparent'
   };
 
-  return responseData.length === 0 ? null : (
+  return flowResponses.length === 0 ? null : (
     <>
       {sourceList.length > 0 && (
         <>
@@ -201,7 +211,7 @@ const ResponseTags = ({
       )}
       {isOpenWholeModal && (
         <WholeResponseModal
-          response={responseData}
+          response={flowResponses}
           showDetail={showDetail}
           onClose={onCloseWholeModal}
         />
