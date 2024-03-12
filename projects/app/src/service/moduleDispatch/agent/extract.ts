@@ -18,7 +18,11 @@ import { getHistories } from '../utils';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import json5 from 'json5';
-import { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import {
+  ChatCompletionCreateParams,
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
@@ -34,6 +38,8 @@ type Response = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.failed]?: boolean;
   [ModuleOutputKeyEnum.contextExtractFields]: string;
 }>;
+
+type ActionProps = Props & { extractModel: LLMModelItemType };
 
 const agentFunName = 'extract_json_data';
 
@@ -55,6 +61,13 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const { arg, tokens } = await (async () => {
     if (extractModel.toolChoice) {
       return toolChoice({
+        ...props,
+        histories: chatHistories,
+        extractModel
+      });
+    }
+    if (extractModel.functionCall) {
+      return functionCall({
         ...props,
         histories: chatHistories,
         extractModel
@@ -129,23 +142,29 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   };
 }
 
-async function toolChoice({
+const getFunctionCallSchema = ({
   extractModel,
-  user,
   histories,
   params: { content, extractKeys, description }
-}: Props & { extractModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: `你的任务是根据上下文获取适当的 JSON 字符串。要求：
-"""
-- 字符串不要换行。
-- 结合上下文和当前问题进行获取。
-"""
-
-当前问题: "${content}"`
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: `你的任务是根据上下文获取适当的 JSON 字符串。要求：
+          """
+          - 字符串不要换行。
+          - 结合上下文和当前问题进行获取。
+          """
+          
+          当前问题: "${content}"`
+          }
+        }
+      ]
     }
   ];
   const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
@@ -168,7 +187,6 @@ async function toolChoice({
       ...(item.enum ? { enum: item.enum.split('\n') } : {})
     };
   });
-
   // function body
   const agentFunction = {
     name: agentFunName,
@@ -178,6 +196,18 @@ async function toolChoice({
       properties
     }
   };
+
+  return {
+    filterMessages,
+    agentFunction
+  };
+};
+
+const toolChoice = async (props: ActionProps) => {
+  const { user, extractModel } = props;
+
+  const { filterMessages, agentFunction } = getFunctionCallSchema(props);
+
   const tools: ChatCompletionTool[] = [
     {
       type: 'function',
@@ -220,18 +250,64 @@ async function toolChoice({
   ];
 
   return {
-    rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
     tokens: countGptMessagesTokens(completeMessages, tools),
     arg
   };
-}
+};
 
-async function completions({
+const functionCall = async (props: ActionProps) => {
+  const { user, extractModel } = props;
+
+  const { agentFunction, filterMessages } = getFunctionCallSchema(props);
+  const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
+
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
+
+  const response = await ai.chat.completions.create({
+    model: extractModel.model,
+    temperature: 0,
+    messages: filterMessages,
+    function_call: {
+      name: agentFunName
+    },
+    functions
+  });
+
+  try {
+    const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
+    const completeMessages: ChatCompletionMessageParam[] = [
+      ...filterMessages,
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        function_call: response.choices?.[0]?.message?.function_call
+      }
+    ];
+
+    return {
+      arg,
+      tokens: countGptMessagesTokens(completeMessages, undefined, functions)
+    };
+  } catch (error) {
+    console.log(response.choices?.[0]?.message);
+
+    console.log('Your model may not support toll_call', error);
+
+    return {
+      arg: {},
+      tokens: 0
+    };
+  }
+};
+
+const completions = async ({
   extractModel,
   user,
   histories,
   params: { content, extractKeys, description }
-}: Props & { extractModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
@@ -295,4 +371,4 @@ async function completions({
       arg: {}
     };
   }
-}
+};

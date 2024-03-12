@@ -1,19 +1,15 @@
 import openai from 'openai';
 import type {
-  ChatCompletion,
   ChatCompletionMessageToolCall,
-  ChatCompletionCreateParams,
   ChatCompletionChunk,
   ChatCompletionMessageParam,
   ChatCompletionToolMessageParam,
-  ChatCompletionContentPart,
-  ChatCompletionTool
+  ChatCompletionAssistantMessageParam
 } from 'openai/resources';
 import { ChatMessageTypeEnum } from './constants';
 
-export type ChatCompletionContentPart = ChatCompletionContentPart;
-export type ChatCompletionCreateParams = ChatCompletionCreateParams;
-export type ChatCompletionTool = ChatCompletionTool;
+export * from 'openai/resources';
+
 export type ChatCompletionMessageParam = ChatCompletionMessageParam & {
   dataId?: string;
 };
@@ -23,8 +19,12 @@ export type ChatCompletionAssistantToolParam = {
   tool_calls: ChatCompletionMessageToolCall[];
 };
 
-export type ChatCompletion = ChatCompletion;
 export type ChatCompletionMessageToolCall = ChatCompletionMessageToolCall & {
+  toolName?: string;
+  toolAvatar?: string;
+};
+export type ChatCompletionMessageFunctionCall = ChatCompletionAssistantMessageParam.FunctionCall & {
+  id?: string;
   toolName?: string;
   toolAvatar?: string;
 };

@@ -18,7 +18,11 @@ import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { getHistories } from '../utils';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import { ChatCompletionMessageParam, ChatCompletionTool } from '@fastgpt/global/core/ai/type';
+import {
+  ChatCompletionCreateParams,
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/type';
 import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
@@ -31,6 +35,7 @@ type Props = ModuleDispatchProps<{
 type CQResponse = DispatchNodeResultType<{
   [key: string]: any;
 }>;
+type ActionProps = Props & { cqModel: LLMModelItemType };
 
 const agentFunName = 'classify_question';
 
@@ -54,6 +59,13 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   const { arg, tokens } = await (async () => {
     if (cqModel.toolChoice) {
       return toolChoice({
+        ...props,
+        histories: chatHistories,
+        cqModel
+      });
+    }
+    if (cqModel.functionCall) {
+      return functionCall({
         ...props,
         histories: chatHistories,
         cqModel
@@ -96,24 +108,30 @@ export const dispatchClassifyQuestion = async (props: Props): Promise<CQResponse
   };
 };
 
-async function toolChoice({
-  user,
+const getFunctionCallSchema = ({
   cqModel,
   histories,
   params: { agents, systemPrompt, userChatInput }
-}: Props & { cqModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: systemPrompt
-        ? `<背景知识>
-${systemPrompt}
-</背景知识>
-
-问题: "${userChatInput}"
-      `
-        : userChatInput
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: systemPrompt
+              ? `<背景知识>
+    ${systemPrompt}
+    </背景知识>
+    
+    问题: "${userChatInput}"
+          `
+              : userChatInput
+          }
+        }
+      ]
     }
   ];
 
@@ -126,7 +144,7 @@ ${systemPrompt}
   // function body
   const agentFunction = {
     name: agentFunName,
-    description: '根据对话记录及背景知识，对问题进行分类，并返回对应的类型字段',
+    description: '结合对话记录及背景知识，对问题进行分类，并返回对应的类型字段',
     parameters: {
       type: 'object',
       properties: {
@@ -141,6 +159,18 @@ ${systemPrompt}
       required: ['type']
     }
   };
+
+  return {
+    agentFunction,
+    filterMessages
+  };
+};
+
+const toolChoice = async (props: ActionProps) => {
+  const { user, cqModel } = props;
+
+  const { agentFunction, filterMessages } = getFunctionCallSchema(props);
+  // function body
   const tools: ChatCompletionTool[] = [
     {
       type: 'function',
@@ -178,7 +208,6 @@ ${systemPrompt}
       tokens: countGptMessagesTokens(completeMessages, tools)
     };
   } catch (error) {
-    console.log(agentFunction.parameters);
     console.log(response.choices?.[0]?.message);
 
     console.log('Your model may not support toll_call', error);
@@ -188,14 +217,61 @@ ${systemPrompt}
       tokens: 0
     };
   }
-}
+};
 
-async function completions({
+const functionCall = async (props: ActionProps) => {
+  const { user, cqModel } = props;
+
+  const { agentFunction, filterMessages } = getFunctionCallSchema(props);
+  const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
+
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
+
+  const response = await ai.chat.completions.create({
+    model: cqModel.model,
+    temperature: 0,
+    messages: filterMessages,
+    function_call: {
+      name: agentFunName
+    },
+    functions
+  });
+
+  try {
+    const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
+    const completeMessages: ChatCompletionMessageParam[] = [
+      ...filterMessages,
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        function_call: response.choices?.[0]?.message?.function_call
+      }
+    ];
+
+    return {
+      arg,
+      tokens: countGptMessagesTokens(completeMessages, undefined, functions)
+    };
+  } catch (error) {
+    console.log(response.choices?.[0]?.message);
+
+    console.log('Your model may not support toll_call', error);
+
+    return {
+      arg: {},
+      tokens: 0
+    };
+  }
+};
+
+const completions = async ({
   cqModel,
   user,
   histories,
   params: { agents, systemPrompt = '', userChatInput }
-}: Props & { cqModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
@@ -237,4 +313,4 @@ async function completions({
     tokens: countMessagesTokens(messages),
     arg: { type: id }
   };
-}
+};

@@ -18,6 +18,7 @@ import {
 } from '@fastgpt/global/core/chat/adapt';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
+import { runToolWithFunctionCall } from './functionCall';
 
 type Response = DispatchNodeResultType<{}>;
 
@@ -83,6 +84,14 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         messages: chats2GPTMessages({ messages, reserveId: false })
       });
     }
+    if (toolModel.functionCall) {
+      return runToolWithFunctionCall({
+        ...props,
+        toolModules,
+        toolModel,
+        messages: chats2GPTMessages({ messages, reserveId: false })
+      });
+    }
     return {
       dispatchFlowResponse: [],
       totalTokens: 0,
@@ -111,6 +120,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
       const childrenTotal = item.flowUsages.reduce((sum, item) => sum + item.totalPoints, 0);
       return sum + childrenTotal;
     }, 0);
+  const flatUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
 
   return {
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponse
@@ -127,10 +137,11 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
-        totalPoints: totalPointsUsage,
+        totalPoints,
         model: modelName,
         tokens: totalTokens
-      }
+      },
+      ...flatUsages
     ]
   };
 };

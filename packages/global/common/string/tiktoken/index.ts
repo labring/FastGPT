@@ -6,10 +6,9 @@ import encodingJson from './cl100k_base.json';
 import {
   ChatCompletionMessageParam,
   ChatCompletionContentPart,
-  ChatCompletionMessageToolCall,
+  ChatCompletionCreateParams,
   ChatCompletionTool
 } from '../../../core/ai/type';
-import { ChatRoleEnum } from '../../../core/chat/constants';
 import { ChatCompletionRequestMessageRoleEnum } from '../../../core/ai/constants';
 
 /* init tikToken obj */
@@ -63,7 +62,9 @@ export function countPromptTokens(
     return text.length;
   }
 }
-export const countToolsTokens = (tools?: ChatCompletionTool[]) => {
+export const countToolsTokens = (
+  tools?: ChatCompletionTool[] | ChatCompletionCreateParams.Function[]
+) => {
   if (!tools || tools.length === 0) return 0;
 
   const enc = getTikTokenEnc();
@@ -86,12 +87,26 @@ export const countMessagesTokens = (messages: ChatItemType[]) => {
 };
 export const countGptMessagesTokens = (
   messages: ChatCompletionMessageParam[],
-  tools?: ChatCompletionTool[]
+  tools?: ChatCompletionTool[],
+  functionCall?: ChatCompletionCreateParams.Function[]
 ) =>
   messages.reduce((sum, item) => {
-    // @ts-ignore
-    const toolCalls = (item.tool_calls as ChatCompletionMessageToolCall[]) || [];
-    const toolCallsPrompt = toolCalls?.map((item) => item?.function?.arguments)?.join('') || '';
+    // Evaluates the text of toolcall and functioncall
+    const functionCallPrompt = (() => {
+      let prompt = '';
+      if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant) {
+        const toolCalls = item.tool_calls;
+        prompt +=
+          toolCalls
+            ?.map((item) => `${item?.function?.name} ${item?.function?.arguments}`.trim())
+            ?.join('') || '';
+
+        const functionCall = item.function_call;
+        prompt += `${functionCall?.name} ${functionCall?.arguments}`.trim();
+      }
+      return prompt;
+    })();
+
     const contentPrompt = (() => {
       if (!item.content) return '';
       if (typeof item.content === 'string') return item.content;
@@ -103,8 +118,10 @@ export const countGptMessagesTokens = (
         .join('');
     })();
 
-    return sum + countPromptTokens(`${contentPrompt}${toolCallsPrompt}`, item.role);
-  }, 0) + countToolsTokens(tools);
+    return sum + countPromptTokens(`${contentPrompt}${functionCallPrompt}`, item.role);
+  }, 0) +
+  countToolsTokens(tools) +
+  countToolsTokens(functionCall);
 
 /* slice messages from top to bottom by maxTokens */
 export function sliceMessagesTB({
