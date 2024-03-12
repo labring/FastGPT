@@ -13,8 +13,7 @@ import type {
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { responseWrite } from '@fastgpt/service/common/response';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { responseWriteNodeStatus } from '@fastgpt/service/common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
 
 import { dispatchHistory } from './init/history';
@@ -392,13 +391,9 @@ export function responseStatus({
   name?: string;
 }) {
   if (!name) return;
-  responseWrite({
+  responseWriteNodeStatus({
     res,
-    event: sseResponseEventEnum.moduleStatus,
-    data: JSON.stringify({
-      status: 'running',
-      name
-    })
+    name
   });
 }
 

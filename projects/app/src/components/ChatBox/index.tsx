@@ -54,7 +54,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
@@ -222,14 +222,14 @@ const ChatBox = (
             JSON.stringify(item.value[item.value.length - 1])
           );
 
-          if (event === sseResponseEventEnum.moduleStatus && status) {
+          if (event === SseResponseEventEnum.flowNodeStatus && status) {
             return {
               ...item,
               status,
               moduleName: name
             };
           } else if (
-            (event === sseResponseEventEnum.answer || event === sseResponseEventEnum.response) &&
+            (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) &&
             text
           ) {
             if (!lastValue || !lastValue.text) {
@@ -250,7 +250,7 @@ const ChatBox = (
                 value: item.value.slice(0, -1).concat(lastValue)
               };
             }
-          } else if (event === sseResponseEventEnum.toolCall && tool) {
+          } else if (event === SseResponseEventEnum.toolCall && tool) {
             const val: AIChatItemValueItemType = {
               type: ChatItemValueTypeEnum.tool,
               tools: [tool]
@@ -263,7 +263,7 @@ const ChatBox = (
                   : item.value.concat(val)
             };
           } else if (
-            event === sseResponseEventEnum.toolParams &&
+            event === SseResponseEventEnum.toolParams &&
             tool &&
             lastValue.type === ChatItemValueTypeEnum.tool &&
             lastValue?.tools
@@ -278,7 +278,7 @@ const ChatBox = (
               ...item,
               value: item.value.slice(0, -1).concat(lastValue)
             };
-          } else if (event === sseResponseEventEnum.toolResponse && tool) {
+          } else if (event === SseResponseEventEnum.toolResponse && tool) {
             // replace tool response
             return {
               ...item,

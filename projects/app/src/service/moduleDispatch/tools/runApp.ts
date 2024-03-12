@@ -5,8 +5,8 @@ import { dispatchWorkFlow } from '../index';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { textAdaptGptResponse } from '@/utils/adapt';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { getHistories, setEntryEntries } from '../utils';
@@ -51,7 +51,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   if (stream) {
     responseWrite({
       res,
-      event: detail ? sseResponseEventEnum.answer : undefined,
+      event: detail ? SseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
         text: '\n'
       })

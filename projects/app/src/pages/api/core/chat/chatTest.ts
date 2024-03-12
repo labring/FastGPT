@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
@@ -77,12 +77,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     responseWrite({
       res,
-      event: sseResponseEventEnum.answer,
+      event: SseResponseEventEnum.answer,
       data: '[DONE]'
     });
     responseWrite({
       res,
-      event: sseResponseEventEnum.appStreamResponse,
+      event: SseResponseEventEnum.flowResponses,
       data: JSON.stringify(flowResponses)
     });
     res.end();

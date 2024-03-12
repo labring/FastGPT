@@ -11,9 +11,13 @@ import {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { NextApiResponse } from 'next';
-import { responseWrite, responseWriteController } from '@fastgpt/service/common/response';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { textAdaptGptResponse } from '@/utils/adapt';
+import {
+  responseWrite,
+  responseWriteController,
+  responseWriteNodeStatus
+} from '@fastgpt/service/common/response';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { dispatchWorkFlow } from '../../index';
 import { DispatchToolModuleProps, RunToolResponse, ToolModuleItemType } from './type.d';
@@ -34,7 +38,16 @@ export const runToolWithToolChoice = async (
   },
   response?: RunToolResponse
 ): Promise<RunToolResponse> => {
-  const { toolModel, toolModules, messages, res, runtimeModules, module, stream } = props;
+  const {
+    toolModel,
+    toolModules,
+    messages,
+    res,
+    runtimeModules,
+    detail = false,
+    module,
+    stream
+  } = props;
 
   const tools: ChatCompletionTool[] = toolModules.map((module) => {
     const properties: Record<
@@ -96,6 +109,7 @@ export const runToolWithToolChoice = async (
     if (stream) {
       return streamResponse({
         res,
+        detail,
         toolModules,
         stream: aiResponse
       });
@@ -140,10 +154,10 @@ export const runToolWithToolChoice = async (
           content: JSON.stringify(moduleRunResponse.toolResponses, null, 2)
         };
 
-        if (stream) {
+        if (stream && detail) {
           responseWrite({
             res,
-            event: sseResponseEventEnum.toolResponse,
+            event: SseResponseEventEnum.toolResponse,
             data: JSON.stringify({
               tool: {
                 id: tool.id,
@@ -190,14 +204,12 @@ export const runToolWithToolChoice = async (
     // );
     // console.log(tokens, 'tool');
 
-    responseWrite({
-      res,
-      event: sseResponseEventEnum.moduleStatus,
-      data: JSON.stringify({
-        status: 'running',
+    if (detail) {
+      responseWriteNodeStatus({
+        res,
         name: module.name
-      })
-    });
+      });
+    }
 
     return runToolWithToolChoice(
       {
@@ -241,10 +253,12 @@ export const runToolWithToolChoice = async (
 
 async function streamResponse({
   res,
+  detail,
   toolModules,
   stream
 }: {
   res: NextApiResponse;
+  detail: boolean;
   toolModules: ToolModuleItemType[];
   stream: StreamChatType;
 }) {
@@ -270,7 +284,7 @@ async function streamResponse({
 
       responseWrite({
         write,
-        event: sseResponseEventEnum.answer,
+        event: detail ? SseResponseEventEnum.answer : undefined,
         data: textAdaptGptResponse({
           text: content
         })
@@ -293,20 +307,23 @@ async function streamResponse({
             toolName: toolModule.name,
             toolAvatar: toolModule.avatar
           });
-          responseWrite({
-            write,
-            event: sseResponseEventEnum.toolCall,
-            data: JSON.stringify({
-              tool: {
-                id: toolCall.id,
-                toolName: toolModule.name,
-                toolAvatar: toolModule.avatar,
-                functionName: toolCall.function.name,
-                params: toolCall.function.arguments,
-                response: ''
-              }
-            })
-          });
+
+          if (detail) {
+            responseWrite({
+              write,
+              event: SseResponseEventEnum.toolCall,
+              data: JSON.stringify({
+                tool: {
+                  id: toolCall.id,
+                  toolName: toolModule.name,
+                  toolAvatar: toolModule.avatar,
+                  functionName: toolCall.function.name,
+                  params: toolCall.function.arguments,
+                  response: ''
+                }
+              })
+            });
+          }
         }
       }
       /* arg 插入最后一个工具的参数里 */
@@ -314,19 +331,22 @@ async function streamResponse({
       const currentTool = toolCalls[toolCalls.length - 1];
       if (currentTool) {
         currentTool.function.arguments += arg;
-        responseWrite({
-          write,
-          event: sseResponseEventEnum.toolParams,
-          data: JSON.stringify({
-            tool: {
-              id: currentTool.id,
-              toolName: '',
-              toolAvatar: '',
-              params: arg,
-              response: ''
-            }
-          })
-        });
+
+        if (detail) {
+          responseWrite({
+            write,
+            event: SseResponseEventEnum.toolParams,
+            data: JSON.stringify({
+              tool: {
+                id: currentTool.id,
+                toolName: '',
+                toolAvatar: '',
+                params: arg,
+                response: ''
+              }
+            })
+          });
+        }
       }
     }
   }

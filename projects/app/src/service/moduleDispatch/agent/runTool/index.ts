@@ -127,7 +127,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
-        totalPoints: totalPoints,
+        totalPoints: totalPointsUsage,
         model: modelName,
         tokens: totalTokens
       }

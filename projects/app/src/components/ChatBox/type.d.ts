@@ -5,10 +5,10 @@ import {
   ChatSiteItemType,
   ToolModuleResponseItemType
 } from '@fastgpt/global/core/chat/type';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 
 export type generatingMessageProps = {
-  event: `${sseResponseEventEnum}`;
+  event: `${SseResponseEventEnum}`;
   text?: string;
   name?: string;
   status?: 'running' | 'finish';

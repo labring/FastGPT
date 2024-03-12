@@ -1,3 +1,15 @@
+export enum SseResponseEventEnum {
+  error = 'error',
+  answer = 'answer', // animation stream
+  fastAnswer = 'fastAnswer', // direct answer text, not animation
+  flowNodeStatus = 'flowNodeStatus', // update node status
+
+  toolCall = 'toolCall', // tool start
+  toolParams = 'toolParams', // tool params return
+  toolResponse = 'toolResponse', // tool response return
+  flowResponses = 'flowResponses' // sse response request
+}
+
 export enum DispatchNodeResponseKeyEnum {
   nodeResponse = 'responseData', // run node response
   nodeDispatchUsages = 'nodeDispatchUsages', // the node bill.

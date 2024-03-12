@@ -4,35 +4,7 @@ import { customAlphabet } from 'nanoid';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/module/template/constants';
 import { EDGE_TYPE } from '@fastgpt/global/core/module/node/constant';
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-
-export const textAdaptGptResponse = ({
-  text,
-  model = '',
-  finish_reason = null,
-  extraData = {}
-}: {
-  model?: string;
-  text: string | null;
-  finish_reason?: null | 'stop';
-  extraData?: Object;
-}) => {
-  return JSON.stringify({
-    ...extraData,
-    id: '',
-    object: '',
-    created: 0,
-    model,
-    choices: [
-      {
-        delta: text === null ? {} : { role: ChatRoleEnum.AI, content: text },
-        index: 0,
-        finish_reason
-      }
-    ]
-  });
-};
 
 export const appModule2FlowNode = ({
   item

@@ -6,8 +6,8 @@ import {
 } from '@fastgpt/service/core/chat/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { textAdaptGptResponse } from '@/utils/adapt';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import type {
   ChatCompletion,
@@ -354,7 +354,7 @@ function targetResponse({
   if (targets.length === 0) return;
   responseWrite({
     res,
-    event: detail ? sseResponseEventEnum.answer : undefined,
+    event: detail ? SseResponseEventEnum.answer : undefined,
     data: textAdaptGptResponse({
       text: '\n'
     })
@@ -385,7 +385,7 @@ async function streamResponse({
 
     responseWrite({
       write,
-      event: detail ? sseResponseEventEnum.answer : undefined,
+      event: detail ? SseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
         text: content
       })

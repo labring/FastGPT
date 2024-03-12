@@ -5,11 +5,11 @@ import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { dispatchWorkFlow } from '@/service/moduleDispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
-import { textAdaptGptResponse } from '@/utils/adapt';
+import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
 import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
@@ -236,7 +236,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     if (stream) {
       responseWrite({
         res,
-        event: detail ? sseResponseEventEnum.answer : undefined,
+        event: detail ? SseResponseEventEnum.answer : undefined,
         data: textAdaptGptResponse({
           text: null,
           finish_reason: 'stop'
@@ -244,14 +244,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
       responseWrite({
         res,
-        event: detail ? sseResponseEventEnum.answer : undefined,
+        event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
 
       if (responseDetail && detail) {
         responseWrite({
           res,
-          event: sseResponseEventEnum.appStreamResponse,
+          event: SseResponseEventEnum.flowResponses,
           data: JSON.stringify(feResponseData)
         });
       }

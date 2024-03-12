@@ -1,4 +1,4 @@
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { StartChatFnProps } from '@/components/ChatBox/type.d';
@@ -34,7 +34,7 @@ export const streamFetch = ({
 
     // response data
     let responseText = '';
-    let remainTextList: { event: `${sseResponseEventEnum}`; text: string }[] = [];
+    let remainTextList: { event: `${SseResponseEventEnum}`; text: string }[] = [];
     let errMsg = '';
     let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
@@ -62,7 +62,7 @@ export const streamFetch = ({
       if (abortCtrl.signal.aborted) {
         remainTextList.forEach((item) => {
           onMessage(item);
-          if (item.event === sseResponseEventEnum.answer) {
+          if (item.event === SseResponseEventEnum.answer) {
             responseText += item.text;
           }
         });
@@ -75,7 +75,7 @@ export const streamFetch = ({
         for (let i = 0; i < fetchCount; i++) {
           const item = remainTextList[i];
           onMessage(item);
-          if (item.event === sseResponseEventEnum.answer) {
+          if (item.event === SseResponseEventEnum.answer) {
             responseText += item.text;
           }
         }
@@ -153,7 +153,7 @@ export const streamFetch = ({
               return {};
             }
           })();
-          if (event === sseResponseEventEnum.answer) {
+          if (event === SseResponseEventEnum.answer) {
             const text: string = parseJson?.choices?.[0]?.delta?.content || '';
 
             for (const item of text) {
@@ -162,25 +162,25 @@ export const streamFetch = ({
                 text: item
               });
             }
-          } else if (event === sseResponseEventEnum.response) {
+          } else if (event === SseResponseEventEnum.fastAnswer) {
             const text: string = parseJson?.choices?.[0]?.delta?.content || '';
             remainTextList.push({
               event,
               text
             });
           } else if (
-            event === sseResponseEventEnum.moduleStatus ||
-            event === sseResponseEventEnum.toolCall ||
-            event === sseResponseEventEnum.toolParams ||
-            event === sseResponseEventEnum.toolResponse
+            event === SseResponseEventEnum.flowNodeStatus ||
+            event === SseResponseEventEnum.toolCall ||
+            event === SseResponseEventEnum.toolParams ||
+            event === SseResponseEventEnum.toolResponse
           ) {
             onMessage({
               event,
               ...parseJson
             });
-          } else if (event === sseResponseEventEnum.appStreamResponse && Array.isArray(parseJson)) {
+          } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
             responseData = parseJson;
-          } else if (event === sseResponseEventEnum.error) {
+          } else if (event === SseResponseEventEnum.error) {
             errMsg = getErrText(parseJson, '流响应错误');
           }
         },
