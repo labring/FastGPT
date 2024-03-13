@@ -128,9 +128,7 @@ const Share = ({ appId }: { appId: string }) => {
                     <Th>{item?.limit?.hookUrl ? '✔' : '✖'}</Th>
                   </>
                 )}
-                <Td>
-                  {item.lastTime ? t(formatTimeToChatTime(item.lastTime)) : t('common.Un used')}
-                </Td>
+                <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : t('common.Un used')}</Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <MyMenu
                     Button={

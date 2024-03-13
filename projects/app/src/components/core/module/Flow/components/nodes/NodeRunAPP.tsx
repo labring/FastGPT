@@ -6,8 +6,10 @@ import Divider from '../modules/Divider';
 import Container from '../modules/Container';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
+import { useTranslation } from 'next-i18next';
 
 const NodeRunAPP = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
+  const { t } = useTranslation();
   const { moduleId, inputs, outputs } = data;
 
   return (
@@ -15,7 +17,7 @@ const NodeRunAPP = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'}>
         <RenderInput moduleId={moduleId} flowInputList={inputs} />
       </Container>
-      <Divider text="Output" />
+      <Divider text={t('common.Output')} />
       <Container>
         <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
       </Container>

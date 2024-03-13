@@ -1,19 +1,17 @@
-import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type.d';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 
 export type PluginOutputProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
-export type PluginOutputResponse = {
-  [ModuleOutputKeyEnum.responseData]: moduleDispatchResType;
-};
+export type PluginOutputResponse = DispatchNodeResultType<{}>;
 
 export const dispatchPluginOutput = (props: PluginOutputProps): PluginOutputResponse => {
   const { params } = props;
 
   return {
-    responseData: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: 0,
       pluginOutput: params
     }

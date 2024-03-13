@@ -3,7 +3,7 @@ import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 export const FlowValueTypeMap = {
   [ModuleIOValueTypeEnum.string]: {
     handlerStyle: {
-      background: '#36ADEF'
+      borderColor: '#36ADEF'
     },
     label: 'core.module.valueType.string',
     value: ModuleIOValueTypeEnum.string,
@@ -11,7 +11,7 @@ export const FlowValueTypeMap = {
   },
   [ModuleIOValueTypeEnum.number]: {
     handlerStyle: {
-      background: '#FB7C3C'
+      borderColor: '#FB7C3C'
     },
     label: 'core.module.valueType.number',
     value: ModuleIOValueTypeEnum.number,
@@ -19,7 +19,7 @@ export const FlowValueTypeMap = {
   },
   [ModuleIOValueTypeEnum.boolean]: {
     handlerStyle: {
-      background: '#E7D118'
+      borderColor: '#E7D118'
     },
     label: 'core.module.valueType.boolean',
     value: ModuleIOValueTypeEnum.boolean,
@@ -27,7 +27,7 @@ export const FlowValueTypeMap = {
   },
   [ModuleIOValueTypeEnum.chatHistory]: {
     handlerStyle: {
-      background: '#00A9A6'
+      borderColor: '#00A9A6'
     },
     label: 'core.module.valueType.chatHistory',
     value: ModuleIOValueTypeEnum.chatHistory,
@@ -38,7 +38,7 @@ export const FlowValueTypeMap = {
   },
   [ModuleIOValueTypeEnum.datasetQuote]: {
     handlerStyle: {
-      background: '#A558C9'
+      borderColor: '#A558C9'
     },
     label: 'core.module.valueType.datasetQuote',
     value: ModuleIOValueTypeEnum.datasetQuote,
@@ -54,7 +54,7 @@ export const FlowValueTypeMap = {
   },
   [ModuleIOValueTypeEnum.any]: {
     handlerStyle: {
-      background: '#9CA2A8'
+      borderColor: '#9CA2A8'
     },
     label: 'core.module.valueType.any',
     value: ModuleIOValueTypeEnum.any,
@@ -62,7 +62,7 @@ export const FlowValueTypeMap = {
   },
   [ModuleIOValueTypeEnum.selectApp]: {
     handlerStyle: {
-      background: '#6a6efa'
+      borderColor: '#6a6efa'
     },
     label: 'core.module.valueType.selectApp',
     value: ModuleIOValueTypeEnum.selectApp,
@@ -70,10 +70,18 @@ export const FlowValueTypeMap = {
   },
   [ModuleIOValueTypeEnum.selectDataset]: {
     handlerStyle: {
-      background: '#21ba45'
+      borderColor: '#21ba45'
     },
     label: 'core.module.valueType.selectDataset',
     value: ModuleIOValueTypeEnum.selectDataset,
+    description: ''
+  },
+  [ModuleIOValueTypeEnum.tools]: {
+    handlerStyle: {
+      borderColor: '#21ba45'
+    },
+    label: 'core.module.valueType.tools',
+    value: ModuleIOValueTypeEnum.tools,
     description: ''
   }
 };

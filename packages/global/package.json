@@ -6,7 +6,7 @@
     "dayjs": "^1.11.7",
     "encoding": "^0.1.13",
     "js-tiktoken": "^1.0.7",
-    "openai": "4.23.0",
+    "openai": "4.28.0",
     "nanoid": "^4.0.1",
     "timezones-list": "^3.0.2"
   },

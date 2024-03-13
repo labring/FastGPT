@@ -9,6 +9,7 @@ import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -45,7 +46,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       chatId,
       limit: 30,
       field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
-        ModuleOutputKeyEnum.responseData
+        DispatchNodeResponseKeyEnum.nodeResponse
       } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`
     });
 

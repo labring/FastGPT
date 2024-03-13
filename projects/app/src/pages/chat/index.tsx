@@ -22,7 +22,8 @@ const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 
-import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import ChatBox from '@/components/ChatBox';
+import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
 import PageContainer from '@/components/PageContainer';
 import SideBar from '@/components/SideBar';
 import ChatHistorySlider from './components/ChatHistorySlider';
@@ -33,8 +34,9 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
-import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
+import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -83,10 +85,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         abortCtrl: controller
       });
 
-      const newTitle =
-        chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
-        prompts[1]?.value?.slice(0, 20) ||
-        t('core.chat.New Chat');
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
 
       // new chat
       if (completionChatId !== chatId) {
@@ -126,7 +125,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [appId, chatId, histories, pushHistory, router, setChatData, t, updateHistory]
+    [appId, chatId, histories, pushHistory, router, setChatData, updateHistory]
   );
 
   useQuery(['loadModels'], () => loadMyApps(false));

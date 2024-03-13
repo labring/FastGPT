@@ -25,12 +25,12 @@ export const pushResult2Remote = async ({
   outLinkUid,
   shareId,
   appName,
-  responseData
+  flowResponses
 }: {
   outLinkUid?: string; // raw id, not parse
   shareId?: string;
   appName: string;
-  responseData?: ChatHistoryItemResType[];
+  flowResponses?: ChatHistoryItemResType[];
 }) => {
   if (!shareId || !outLinkUid || !FastGPTProUrl) return;
   try {
@@ -46,7 +46,7 @@ export const pushResult2Remote = async ({
       data: {
         token: outLinkUid,
         appName,
-        responseData
+        responseData: flowResponses
       }
     });
   } catch (error) {}

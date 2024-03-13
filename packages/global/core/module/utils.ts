@@ -10,6 +10,7 @@ import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
 import { Input_Template_Switch } from './template/input';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 
+/* module  */
 export const getGuideModule = (modules: ModuleItemType[]) =>
   modules.find((item) => item.flowType === FlowNodeTypeEnum.userGuide);
 
@@ -57,13 +58,13 @@ export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
   return {};
 };
 
-export function plugin2ModuleIO(
+export const plugin2ModuleIO = (
   pluginId: string,
   modules: ModuleItemType[]
 ): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
-} {
+} => {
   const pluginInput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginInput);
   const pluginOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
 
@@ -99,7 +100,7 @@ export function plugin2ModuleIO(
         }))
       : []
   };
-}
+};
 
 export const formatEditorVariablePickerIcon = (
   variables: { key: string; label: string; type?: `${VariableInputEnum}` }[]

@@ -19,9 +19,10 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.datasetSearchNode,
   avatar: '/imgs/module/db.png',
-  name: 'core.module.template.Dataset search',
-  intro: 'core.module.template.Dataset search intro',
+  name: '知识库搜索',
+  intro: '调用知识库搜索能力，查找“有可能”与问题相关的内容',
   showStatus: true,
+  isTool: true,
   inputs: [
     Input_Template_Switch,
     {
@@ -97,7 +98,10 @@ export const DatasetSearchModule: FlowModuleTemplateType = {
       showTargetInPlugin: false,
       value: ''
     },
-    Input_Template_UserChatInput
+    {
+      ...Input_Template_UserChatInput,
+      toolDescription: '需要检索的内容'
+    }
   ],
   outputs: [
     Output_Template_UserChatInput,

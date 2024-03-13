@@ -6,40 +6,34 @@ import {
 import { FlowModuleTemplateType } from '../../type.d';
 import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
 import {
+  Input_Template_AiModel,
   Input_Template_History,
   Input_Template_Switch,
   Input_Template_UserChatInput
 } from '../input';
 import { Output_Template_UserChatInput } from '../output';
+import { Input_Template_System_Prompt } from '../input';
+import { LLMModelTypeEnum } from '../../../ai/constants';
 
 export const ClassifyQuestionModule: FlowModuleTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
   templateType: ModuleTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.classifyQuestion,
   avatar: '/imgs/module/cq.png',
-  name: 'core.module.template.Classify question',
-  intro: `core.module.template.Classify question intro`,
+  name: '问题分类',
+  intro: `根据用户的历史记录和当前问题判断该次提问的类型。可以添加多组问题类型，下面是一个模板例子：\n类型1: 打招呼\n类型2: 关于商品“使用”问题\n类型3: 关于商品“购买”问题\n类型4: 其他问题`,
   showStatus: true,
   inputs: [
     Input_Template_Switch,
     {
-      key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectLLMModel,
-      valueType: ModuleIOValueTypeEnum.string,
-      label: 'core.module.input.label.Classify model',
-      required: true,
-      showTargetInApp: false,
-      showTargetInPlugin: false
+      ...Input_Template_AiModel,
+      llmModelType: LLMModelTypeEnum.classify
     },
     {
-      key: ModuleInputKeyEnum.aiSystemPrompt,
-      type: FlowNodeInputTypeEnum.textarea,
-      valueType: ModuleIOValueTypeEnum.string,
+      ...Input_Template_System_Prompt,
       label: 'core.module.input.label.Background',
       description: 'core.module.input.description.Background',
-      placeholder: 'core.module.input.placeholder.Classify background',
-      showTargetInApp: true,
-      showTargetInPlugin: true
+      placeholder: 'core.module.input.placeholder.Classify background'
     },
     Input_Template_History,
     Input_Template_UserChatInput,

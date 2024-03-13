@@ -5,10 +5,16 @@ import {
   ModuleTemplateTypeEnum,
   VariableInputEnum
 } from './constants';
+import { DispatchNodeResponseKeyEnum } from './runtime/constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
-import { moduleDispatchResType } from '..//chat/type';
-import { ChatModuleUsageType } from '../../support/wallet/bill/type';
+import {
+  ChatItemValueItemType,
+  ToolRunResponseItemType,
+  UserChatItemValueItemType
+} from '../chat/type';
+import { ChatNodeUsageType } from '../../support/wallet/bill/type';
+import { RunningModuleItemType } from './runtime/type';
 
 export type FlowModuleTemplateType = {
   id: string; // module id, unique
@@ -17,6 +23,7 @@ export type FlowModuleTemplateType = {
   avatar?: string;
   name: string;
   intro: string; // template list intro
+  isTool?: boolean; // can be connected by tool
   showStatus?: boolean; // chatting response step status
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
@@ -44,6 +51,9 @@ export type ModuleItemType = {
   showStatus?: boolean;
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
+
+  // runTime field
+  isEntry?: boolean;
 };
 
 /* --------------- function type -------------------- */
@@ -85,30 +95,6 @@ export type ContextExtractAgentItemType = {
 };
 
 /* -------------- running module -------------- */
-export type RunningModuleItemType = {
-  name: ModuleItemType['name'];
-  moduleId: ModuleItemType['moduleId'];
-  flowType: ModuleItemType['flowType'];
-  showStatus?: ModuleItemType['showStatus'];
-} & {
-  inputs: {
-    key: string;
-    value?: any;
-    valueType?: `${ModuleIOValueTypeEnum}`;
-  }[];
-  outputs: {
-    key: string;
-    answer?: boolean;
-    response?: boolean;
-    value?: any;
-    valueType?: `${ModuleIOValueTypeEnum}`;
-    targets: {
-      moduleId: string;
-      key: string;
-    }[];
-  }[];
-};
-
 export type ChatDispatchProps = {
   res: NextApiResponse;
   mode: 'test' | 'chat';
@@ -120,15 +106,13 @@ export type ChatDispatchProps = {
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>;
+  inputFiles?: UserChatItemValueItemType['file'][];
   stream: boolean;
   detail: boolean; // response detail
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
   module: RunningModuleItemType;
+  runtimeModules: RunningModuleItemType[];
   params: T;
-};
-export type ModuleDispatchResponse<T> = T & {
-  [ModuleOutputKeyEnum.responseData]?: moduleDispatchResType;
-  [ModuleOutputKeyEnum.moduleDispatchBills]?: ChatModuleUsageType[];
 };

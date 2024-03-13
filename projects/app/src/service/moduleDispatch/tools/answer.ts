@@ -1,6 +1,6 @@
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
-import { textAdaptGptResponse } from '@/utils/adapt';
+import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 export type AnswerProps = ModuleDispatchProps<{
@@ -23,7 +23,7 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   if (stream) {
     responseWrite({
       res,
-      event: detail ? sseResponseEventEnum.response : undefined,
+      event: detail ? SseResponseEventEnum.fastAnswer : undefined,
       data: textAdaptGptResponse({
         text: `\n${formatText}`
       })

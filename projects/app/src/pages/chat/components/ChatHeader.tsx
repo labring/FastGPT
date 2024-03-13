@@ -2,13 +2,13 @@ import React, { useMemo } from 'react';
 import { Flex, useTheme, Box } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Tag from '@/components/Tag';
 import Avatar from '@/components/Avatar';
 import ToolMenu from './ToolMenu';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
+import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
+import FillTag from '@fastgpt/web/components/common/Tag/Fill';
 
 const ChatHeader = ({
   history,
@@ -33,10 +33,8 @@ const ChatHeader = ({
   const { isPc } = useSystemStore();
   const title = useMemo(
     () =>
-      chatContentReplaceBlock(history[history.length - 2]?.value)?.slice(0, 8) ||
-      appName ||
-      t('core.chat.New Chat'),
-    [appName, history]
+      getChatTitleFromChatMessage(history[history.length - 2], appName || t('core.chat.New Chat')),
+    [appName, history, t]
   );
 
   return (
@@ -52,19 +50,19 @@ const ChatHeader = ({
           <Box mr={3} color={'myGray.1000'}>
             {title}
           </Box>
-          <Tag>
+          <FillTag>
             <MyIcon name={'history'} w={'14px'} />
             <Box ml={1}>
               {history.length === 0
                 ? t('core.chat.New Chat')
                 : t('core.chat.History Amount', { amount: history.length })}
             </Box>
-          </Tag>
+          </FillTag>
           {!!chatModels && chatModels.length > 0 && (
-            <Tag ml={2} colorSchema={'green'}>
+            <FillTag ml={2} colorSchema={'green'}>
               <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
               <Box ml={1}>{chatModels.join(',')}</Box>
-            </Tag>
+            </FillTag>
           )}
           <Box flex={1} />
         </>

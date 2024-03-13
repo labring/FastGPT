@@ -9,6 +9,7 @@ export const RunPluginModule: FlowModuleTemplateType = {
   intro: '',
   name: '',
   showStatus: false,
+  isTool: true,
   inputs: [], // [{key:'pluginId'},...]
   outputs: []
 };

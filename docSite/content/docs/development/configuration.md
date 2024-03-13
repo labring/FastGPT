@@ -20,14 +20,13 @@ llm模型全部合并
 ```json
 {
   "systemEnv": {
-    "openapiPrefix": "fastgpt",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
-    "pgHNSWEfSearch": 100
+    "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
   },
   "llmModels": [
     {
-      "model": "gpt-3.5-turbo-1106", // 模型名
+      "model": "gpt-3.5-turbo", // 模型名
       "name": "gpt-3.5-turbo", // 别名
       "maxContext": 16000, // 最大上下文
       "maxResponse": 4000, // 最大回复
@@ -37,12 +36,16 @@ llm模型全部合并
       "censor": false,
       "vision": false, // 是否支持图片输入
       "datasetProcess": false, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
-      "toolChoice": true, // 是否支持工具选择
-      "functionCall": false, // 是否支持函数调用
+      "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
+      "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
+      "useInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
+      "usedInQueryExtension": true, // 是否用于问题优化（务必保证至少有一个为true）
+      "toolChoice": true, // 是否支持工具选择（务必保证至少有一个为true）
+      "functionCall": false, // 是否支持函数调用（特殊功能，会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
       "customExtractPrompt": "", // 自定义内容提取提示词
       "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
-      "defaultConfig":{}  // 对话默认配置（比如 GLM4 的 top_p
+      "defaultConfig":{}  // LLM默认配置，可以针对不同模型设置特殊值（比如 GLM4 的 top_p
     },
     {
       "model": "gpt-3.5-turbo-16k",
@@ -55,6 +58,10 @@ llm模型全部合并
       "censor": false,
       "vision": false,
       "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "useInToolCall": true,
+      "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",
@@ -73,6 +80,10 @@ llm模型全部合并
       "censor": false,
       "vision": false,
       "datasetProcess": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "useInToolCall": true,
+      "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",
@@ -91,6 +102,10 @@ llm模型全部合并
       "censor": false,
       "vision": true,
       "datasetProcess": false,
+      "usedInClassify": false,
+      "usedInExtractFields": false,
+      "useInToolCall": false,
+      "usedInQueryExtension": false,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",

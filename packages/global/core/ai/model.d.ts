@@ -10,7 +10,13 @@ export type LLMModelItemType = {
 
   censor?: boolean;
   vision?: boolean;
-  datasetProcess?: boolean;
+
+  // diff function model
+  datasetProcess?: boolean; // dataset
+  usedInClassify?: boolean; // classify
+  usedInExtractFields?: boolean; // extract fields
+  usedInToolCall?: boolean; // tool call
+  usedInQueryExtension?: boolean; // query extension
 
   functionCall: boolean;
   toolChoice: boolean;

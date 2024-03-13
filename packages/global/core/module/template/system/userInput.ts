@@ -16,8 +16,8 @@ export const UserInputModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.systemInput,
   flowType: FlowNodeTypeEnum.questionInput,
   avatar: '/imgs/module/userChatInput.svg',
-  name: 'core.module.template.Chat entrance',
-  intro: 'core.module.template.Chat entrance intro',
+  name: '对话入口',
+  intro: '当用户发送一个内容后，流程将会从这个模块开始执行。',
   inputs: [
     {
       key: ModuleInputKeyEnum.userChatInput,

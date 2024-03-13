@@ -3,14 +3,24 @@ import type { RenderInputProps } from '../type';
 import { onChangeNode } from '../../../../FlowProvider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SelectAiModel from '@/components/Select/SelectAiModel';
+import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 
 const SelectAiModelRender = ({ item, inputs = [], moduleId }: RenderInputProps) => {
   const { llmModelList } = useSystemStore();
-  const modelList = llmModelList.map((item) => ({
-    model: item.model,
-    name: item.name,
-    maxResponse: item.maxResponse
-  }));
+
+  const modelList = llmModelList
+    .filter((model) => {
+      if (!item.llmModelType) return true;
+      const filterField = llmModelTypeFilterMap[item.llmModelType];
+      if (!filterField) return true;
+      //@ts-ignore
+      return !!model[filterField];
+    })
+    .map((item) => ({
+      model: item.model,
+      name: item.name,
+      maxResponse: item.maxResponse
+    }));
 
   const onChangeModel = useCallback(
     (e: string) => {

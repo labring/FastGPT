@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
-import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/module/template/constants';
 
 import Tabs from '../Tabs';
 import MyModal from '../MyModal';
@@ -143,6 +143,11 @@ const ResponseBox = React.memo(function ResponseBox({
           />
           <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
           <Row label={t('core.chat.response.module tokens')} value={`${activeModule?.tokens}`} />
+          <Row
+            label={t('core.chat.response.Tool call tokens')}
+            value={`${activeModule?.toolCallTokens}`}
+          />
+
           <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
           <Row
             label={t('core.chat.response.context total length')}
@@ -182,12 +187,6 @@ const ResponseBox = React.memo(function ResponseBox({
               )
             }
           />
-          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
-            <Row
-              label={t('core.chat.response.module quoteList')}
-              rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
-            />
-          )}
         </>
 
         {/* dataset search */}
@@ -213,6 +212,12 @@ const ResponseBox = React.memo(function ResponseBox({
             label={t('support.wallet.usage.Extension result')}
             value={`${activeModule?.extensionResult}`}
           />
+          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+            <Row
+              label={t('core.chat.response.module quoteList')}
+              rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
+            />
+          )}
         </>
 
         {/* classify question */}
@@ -276,7 +281,7 @@ const ResponseBox = React.memo(function ResponseBox({
           )}
           {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
             <Row
-              label={t('core.chat.response.Plugin Resonse Detail')}
+              label={t('core.chat.response.Plugin response detail')}
               rawDom={<ResponseBox response={activeModule.pluginDetail} showDetail={showDetail} />}
             />
           )}
@@ -284,6 +289,14 @@ const ResponseBox = React.memo(function ResponseBox({
 
         {/* text output */}
         <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
+
+        {/* tool call */}
+        {activeModule?.toolDetail && activeModule?.toolDetail.length > 0 && (
+          <Row
+            label={t('core.chat.response.Tool call response detail')}
+            rawDom={<ResponseBox response={activeModule.toolDetail} showDetail={showDetail} />}
+          />
+        )}
       </Box>
     </>
   );

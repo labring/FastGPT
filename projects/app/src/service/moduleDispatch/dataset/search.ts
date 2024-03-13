@@ -1,18 +1,19 @@
-import type { moduleDispatchResType } from '@fastgpt/global/core/chat/type.d';
+import {
+  DispatchNodeResponseType,
+  DispatchNodeResultType
+} from '@fastgpt/global/core/module/runtime/type.d';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModelTypeEnum, getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { searchDatasetData } from '@/service/core/dataset/data/controller';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '@fastgpt/service/core/dataset/search/utils';
-import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { checkTeamReRankPermission } from '@fastgpt/service/support/permission/teamLimit';
 
 type DatasetSearchProps = ModuleDispatchProps<{
@@ -26,7 +27,7 @@ type DatasetSearchProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.datasetSearchExtensionModel]: string;
   [ModuleInputKeyEnum.datasetSearchExtensionBg]: string;
 }>;
-export type DatasetSearchResponse = ModuleDispatchResponse<{
+export type DatasetSearchResponse = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.datasetIsEmpty]?: boolean;
   [ModuleOutputKeyEnum.datasetUnEmpty]?: boolean;
   [ModuleOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
@@ -107,7 +108,7 @@ export async function dispatchDatasetSearch(
     tokens,
     modelType: ModelTypeEnum.vector
   });
-  const responseData: moduleDispatchResType & { totalPoints: number } = {
+  const responseData: DispatchNodeResponseType & { totalPoints: number } = {
     totalPoints,
     query: concatQueries.join('\n'),
     model: modelName,
@@ -115,9 +116,10 @@ export async function dispatchDatasetSearch(
     similarity: usingSimilarityFilter ? similarity : undefined,
     limit,
     searchMode,
-    searchUsingReRank: searchUsingReRank
+    searchUsingReRank: searchUsingReRank,
+    quoteList: searchRes
   };
-  const moduleDispatchBills: ChatModuleUsageType[] = [
+  const nodeDispatchUsages: ChatNodeUsageType[] = [
     {
       totalPoints,
       moduleName: module.name,
@@ -140,7 +142,7 @@ export async function dispatchDatasetSearch(
       aiExtensionResult.extensionQueries?.join('\n') ||
       JSON.stringify(aiExtensionResult.extensionQueries);
 
-    moduleDispatchBills.push({
+    nodeDispatchUsages.push({
       totalPoints,
       moduleName: 'core.module.template.Query extension',
       model: modelName,
@@ -152,7 +154,11 @@ export async function dispatchDatasetSearch(
     isEmpty: searchRes.length === 0 ? true : undefined,
     unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
-    responseData,
-    moduleDispatchBills
+    [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
+    nodeDispatchUsages,
+    [DispatchNodeResponseKeyEnum.toolResponses]: searchRes.map((item) => ({
+      text: `${item.q}\n${item.a}`.trim(),
+      chunkIndex: item.chunkIndex
+    }))
   };
 }

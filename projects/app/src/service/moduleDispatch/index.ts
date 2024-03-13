@@ -1,16 +1,20 @@
 import { NextApiResponse } from 'next';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { ChatDispatchProps, RunningModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
+import type { ChatDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type { RunningModuleItemType } from '@fastgpt/global/core/module/runtime/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type {
+  AIChatItemValueItemType,
+  ChatHistoryItemResType,
+  ToolRunResponseItemType
+} from '@fastgpt/global/core/chat/type.d';
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { responseWrite } from '@fastgpt/service/common/response';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { responseWriteNodeStatus } from '@fastgpt/service/common/response';
 import { getSystemTime } from '@fastgpt/global/common/time/timezone';
-import { initRunningModuleType } from '../core/modules/constant';
 
 import { dispatchHistory } from './init/history';
 import { dispatchChatInput } from './init/userChatInput';
@@ -27,8 +31,11 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { valueTypeFormat } from './utils';
-import { ChatModuleUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { checkTheModuleConnectedByTool, valueTypeFormat } from './utils';
+import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
+import { dispatchRunTools } from './agent/runTool/index';
+import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
+import { DispatchFlowResponse } from './type';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -46,26 +53,29 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.pluginInput]: dispatchPluginInput,
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
+  [FlowNodeTypeEnum.tools]: dispatchRunTools,
 
   // none
   [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()
 };
 
 /* running */
-export async function dispatchModules({
+export async function dispatchWorkFlow({
   res,
-  modules,
-  histories = [],
+  modules = [],
+  runtimeModules,
   startParams = {},
+  histories = [],
   variables = {},
   user,
   stream = false,
   detail = false,
   ...props
 }: ChatDispatchProps & {
-  modules: ModuleItemType[];
-  startParams?: Record<string, any>;
-}) {
+  modules?: ModuleItemType[]; // app modules
+  runtimeModules?: RunningModuleItemType[];
+  startParams?: Record<string, any>; // entry module params
+}): Promise<DispatchFlowResponse> {
   // set sse response headers
   if (stream) {
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
@@ -78,48 +88,70 @@ export async function dispatchModules({
     ...getSystemVariable({ timezone: user.timezone }),
     ...variables
   };
-  const runningModules = loadModules(modules, variables);
+  const runningModules = runtimeModules ? runtimeModules : loadModules(modules, variables);
 
-  // let storeData: Record<string, any> = {}; // after module used
-  let chatResponse: ChatHistoryItemResType[] = []; // response request and save to database
-  let chatAnswerText = ''; // AI answer
-  let chatModuleBills: ChatModuleUsageType[] = [];
+  let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
+  let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
+  let chatNodeUsages: ChatNodeUsageType[] = [];
+  let toolRunResponse: ToolRunResponseItemType[] = [];
   let runningTime = Date.now();
 
+  /* Store special response field  */
   function pushStore(
     { inputs = [] }: RunningModuleItemType,
     {
       answerText = '',
       responseData,
-      moduleDispatchBills
+      nodeDispatchUsages,
+      toolResponses,
+      assistantResponses
     }: {
-      answerText?: string;
-      responseData?: ChatHistoryItemResType | ChatHistoryItemResType[];
-      moduleDispatchBills?: ChatModuleUsageType[];
+      [ModuleOutputKeyEnum.answerText]?: string;
+      [DispatchNodeResponseKeyEnum.nodeResponse]?: ChatHistoryItemResType;
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]?: ChatNodeUsageType[];
+      [DispatchNodeResponseKeyEnum.toolResponses]?: ToolRunResponseItemType;
+      [DispatchNodeResponseKeyEnum.assistantResponses]?: AIChatItemValueItemType[]; // tool module, save the response value
     }
   ) {
     const time = Date.now();
+
     if (responseData) {
-      if (Array.isArray(responseData)) {
-        chatResponse = chatResponse.concat(responseData);
-      } else {
-        chatResponse.push({
-          ...responseData,
-          runningTime: +((time - runningTime) / 1000).toFixed(2)
+      chatResponses.push({
+        ...responseData,
+        runningTime: +((time - runningTime) / 1000).toFixed(2)
+      });
+    }
+    if (nodeDispatchUsages) {
+      chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
+    }
+    if (toolResponses) {
+      if (Array.isArray(toolResponses) && toolResponses.length > 0) {
+        toolRunResponse.push(toolResponses);
+      } else if (Object.keys(toolResponses).length > 0) {
+        toolRunResponse.push(toolResponses);
+      }
+    }
+    if (assistantResponses) {
+      chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
+    }
+
+    // save assistant text response
+    if (answerText) {
+      const isResponseAnswerText =
+        inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
+      if (isResponseAnswerText) {
+        chatAssistantResponse.push({
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: answerText
+          }
         });
       }
     }
-    if (moduleDispatchBills) {
-      chatModuleBills = chatModuleBills.concat(moduleDispatchBills);
-    }
-    runningTime = time;
 
-    const isResponseAnswerText =
-      inputs.find((item) => item.key === ModuleInputKeyEnum.aiChatIsResponseText)?.value ?? true;
-    if (isResponseAnswerText) {
-      chatAnswerText += answerText;
-    }
+    runningTime = time;
   }
+  /* Inject data into module input */
   function moduleInput(module: RunningModuleItemType, data: Record<string, any> = {}) {
     const updateInputValue = (key: string, value: any) => {
       const index = module.inputs.findIndex((item: any) => item.key === key);
@@ -132,6 +164,7 @@ export async function dispatchModules({
 
     return;
   }
+  /* Pass the output of the module to the next stage */
   function moduleOutput(
     module: RunningModuleItemType,
     result: Record<string, any> = {}
@@ -207,6 +240,7 @@ export async function dispatchModules({
       stream,
       detail,
       module,
+      runtimeModules: runningModules,
       params
     };
 
@@ -218,19 +252,22 @@ export async function dispatchModules({
       return {};
     })();
 
-    // format response data. Add modulename and moduletype
-    const formatResponseData = (() => {
-      if (!dispatchRes[ModuleOutputKeyEnum.responseData]) return undefined;
-      if (Array.isArray(dispatchRes[ModuleOutputKeyEnum.responseData])) {
-        return dispatchRes[ModuleOutputKeyEnum.responseData];
-      }
-
+    // format response data. Add modulename and module type
+    const formatResponseData: ChatHistoryItemResType = (() => {
+      if (!dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]) return undefined;
       return {
         moduleName: module.name,
         moduleType: module.flowType,
-        ...dispatchRes[ModuleOutputKeyEnum.responseData]
+        ...dispatchRes[DispatchNodeResponseKeyEnum.nodeResponse]
       };
     })();
+
+    // Add output default value
+    module.outputs.forEach((item) => {
+      if (!item.required) return;
+      if (dispatchRes[item.key] !== undefined) return;
+      dispatchRes[item.key] = valueTypeFormat(item.defaultValue, item.valueType);
+    });
 
     // Pass userChatInput
     const hasUserChatInputTarget = !!module.outputs.find(
@@ -243,17 +280,17 @@ export async function dispatchModules({
         ? params[ModuleOutputKeyEnum.userChatInput]
         : undefined,
       ...dispatchRes,
-      [ModuleOutputKeyEnum.responseData]: formatResponseData,
-      [ModuleOutputKeyEnum.moduleDispatchBills]:
-        dispatchRes[ModuleOutputKeyEnum.moduleDispatchBills]
+      [DispatchNodeResponseKeyEnum.nodeResponse]: formatResponseData,
+      [DispatchNodeResponseKeyEnum.nodeDispatchUsages]:
+        dispatchRes[DispatchNodeResponseKeyEnum.nodeDispatchUsages]
     });
   }
   // start process width initInput
-  const initModules = runningModules.filter((item) => initRunningModuleType[item.flowType]);
-
-  // runningModules.forEach((item) => {
-  //   console.log(item);
-  // });
+  const initModules = runningModules.filter((item) => item.isEntry);
+  // reset entry
+  modules.forEach((item) => {
+    item.isEntry = false;
+  });
 
   initModules.map((module) =>
     moduleInput(module, {
@@ -272,9 +309,11 @@ export async function dispatchModules({
   }
 
   return {
-    [ModuleOutputKeyEnum.answerText]: chatAnswerText,
-    [ModuleOutputKeyEnum.responseData]: chatResponse,
-    [ModuleOutputKeyEnum.moduleDispatchBills]: chatModuleBills
+    flowResponses: chatResponses,
+    flowUsages: chatNodeUsages,
+    [DispatchNodeResponseKeyEnum.assistantResponses]:
+      concatAssistantResponseAnswerText(chatAssistantResponse),
+    [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse
   };
 }
 
@@ -287,18 +326,36 @@ function loadModules(
     .filter((item) => {
       return ![FlowNodeTypeEnum.userGuide].includes(item.moduleId as any);
     })
-    .map((module) => {
+    .map<RunningModuleItemType>((module) => {
       return {
         moduleId: module.moduleId,
         name: module.name,
+        avatar: module.avatar,
+        intro: module.intro,
         flowType: module.flowType,
         showStatus: module.showStatus,
+        isEntry: module.isEntry,
         inputs: module.inputs
           .filter(
-            (item) =>
-              item.type === FlowNodeInputTypeEnum.systemInput ||
-              item.connected ||
-              item.value !== undefined
+            /* 
+              1. system input must be save
+              2. connected by source handle
+              3. manual input value or have default value
+              4. For the module connected by the tool, leave the toolDescription input
+            */
+            (item) => {
+              const isTool = checkTheModuleConnectedByTool(modules, module);
+
+              if (isTool && item.toolDescription) {
+                return true;
+              }
+
+              return (
+                item.type === FlowNodeInputTypeEnum.systemInput ||
+                item.connected ||
+                item.value !== undefined
+              );
+            }
           ) // filter unconnected target input
           .map((item) => {
             const replace = ['string'].includes(typeof item.value);
@@ -307,12 +364,16 @@ function loadModules(
               key: item.key,
               // variables replace
               value: replace ? replaceVariable(item.value, variables) : item.value,
-              valueType: item.valueType
+              valueType: item.valueType,
+              required: item.required,
+              toolDescription: item.toolDescription
             };
           }),
         outputs: module.outputs
           .map((item) => ({
             key: item.key,
+            required: item.required,
+            defaultValue: item.defaultValue,
             answer: item.key === ModuleOutputKeyEnum.answerText,
             value: undefined,
             valueType: item.valueType,
@@ -339,13 +400,9 @@ export function responseStatus({
   name?: string;
 }) {
   if (!name) return;
-  responseWrite({
+  responseWriteNodeStatus({
     res,
-    event: sseResponseEventEnum.moduleStatus,
-    data: JSON.stringify({
-      status: 'running',
-      name
-    })
+    name
   });
 }
 
@@ -355,3 +412,22 @@ export function getSystemVariable({ timezone }: { timezone: string }) {
     cTime: getSystemTime(timezone)
   };
 }
+
+export const concatAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {
+  const result: AIChatItemValueItemType[] = [];
+  // 合并连续的text
+  for (let i = 0; i < response.length; i++) {
+    const item = response[i];
+    if (item.type === ChatItemValueTypeEnum.text) {
+      let text = item.text?.content || '';
+      const lastItem = result[result.length - 1];
+      if (lastItem && lastItem.type === ChatItemValueTypeEnum.text && lastItem.text?.content) {
+        lastItem.text.content += text;
+        continue;
+      }
+    }
+    result.push(item);
+  }
+
+  return result;
+};
