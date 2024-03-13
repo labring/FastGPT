@@ -5,11 +5,12 @@ import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { dispatchModules } from '@/service/moduleDispatch';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { dispatchWorkFlow } from '@/service/moduleDispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
-import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
-import { gptMessage2ChatType, textAdaptGptResponse } from '@/utils/adapt';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
+import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
+import { GPTMessages2Chats, chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { saveChat } from '@/service/utils/chat/saveChat';
 import { responseWrite } from '@fastgpt/service/common/response';
@@ -19,7 +20,7 @@ import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/out
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
-import { selectSimpleChatResponse } from '@/utils/service/core/chat';
+import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
@@ -31,6 +32,9 @@ import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { setEntryEntries } from '@/service/moduleDispatch/utils';
+import { UserChatItemType } from '@fastgpt/global/core/chat/type';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -40,7 +44,7 @@ type FastGptWebChatProps = {
 export type Props = ChatCompletionCreateParams &
   FastGptWebChatProps &
   OutLinkChatAuthProps & {
-    messages: ChatMessageItemType[];
+    messages: ChatCompletionMessageParam[];
     stream?: boolean;
     detail?: boolean;
     variables: Record<string, any>;
@@ -102,16 +106,18 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     let startTime = Date.now();
 
-    const chatMessages = gptMessage2ChatType(messages);
+    const chatMessages = GPTMessages2Chats(messages);
     if (chatMessages[chatMessages.length - 1].obj !== ChatRoleEnum.Human) {
       chatMessages.pop();
     }
 
     // user question
-    const question = chatMessages.pop();
+    const question = chatMessages.pop() as UserChatItemType;
     if (!question) {
       throw new Error('Question is empty');
     }
+
+    const { text, files } = chatValue2RuntimePrompt(question.value);
 
     /* 
       1. auth app permission
@@ -128,7 +134,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
             outLinkUid,
             chatId,
             ip: originIp,
-            question: question.value
+            question: text
           });
         }
         // team space chat
@@ -161,7 +167,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
-    const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
+    const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
       res,
       mode: 'chat',
       user,
@@ -170,11 +176,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       appId: String(app._id),
       chatId,
       responseChatItemId,
-      modules: app.modules,
+      modules: setEntryEntries(app.modules),
       variables,
+      inputFiles: files,
       histories: concatHistories,
       startParams: {
-        userChatInput: question.value
+        userChatInput: text
       },
       stream,
       detail
@@ -209,8 +216,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
           {
             dataId: responseChatItemId,
             obj: ChatRoleEnum.AI,
-            value: answerText,
-            responseData
+            value: assistantResponses,
+            [DispatchNodeResponseKeyEnum.nodeResponse]: flowResponses
           }
         ],
         metadata: {
@@ -222,12 +229,14 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     addLog.info(`completions running time: ${(Date.now() - startTime) / 1000}s`);
 
     /* select fe response field */
-    const feResponseData = canWrite ? responseData : selectSimpleChatResponse({ responseData });
+    const feResponseData = canWrite
+      ? flowResponses
+      : filterPublicNodeResponseData({ flowResponses });
 
     if (stream) {
       responseWrite({
         res,
-        event: detail ? sseResponseEventEnum.answer : undefined,
+        event: detail ? SseResponseEventEnum.answer : undefined,
         data: textAdaptGptResponse({
           text: null,
           finish_reason: 'stop'
@@ -235,20 +244,26 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       });
       responseWrite({
         res,
-        event: detail ? sseResponseEventEnum.answer : undefined,
+        event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
 
       if (responseDetail && detail) {
         responseWrite({
           res,
-          event: sseResponseEventEnum.appStreamResponse,
+          event: SseResponseEventEnum.flowResponses,
           data: JSON.stringify(feResponseData)
         });
       }
 
       res.end();
     } else {
+      const responseContent = (() => {
+        if (assistantResponses.length === 0) return '';
+        if (assistantResponses.length === 1 && assistantResponses[0].text?.content)
+          return assistantResponses[0].text?.content;
+        return assistantResponses;
+      })();
       res.json({
         ...(detail ? { responseData: feResponseData } : {}),
         id: chatId || '',
@@ -256,7 +271,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },
         choices: [
           {
-            message: { role: 'assistant', content: answerText },
+            message: { role: 'assistant', content: responseContent },
             finish_reason: 'stop',
             index: 0
           }
@@ -271,11 +286,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       teamId,
       tmbId: tmbId,
       source: getUsageSourceByAuthType({ shareId, authType }),
-      moduleDispatchBills
+      flowUsages
     });
 
     if (shareId) {
-      pushResult2Remote({ outLinkUid, shareId, appName: app.name, responseData });
+      pushResult2Remote({ outLinkUid, shareId, appName: app.name, flowResponses });
       addOutLinkUsage({
         shareId,
         totalPoints

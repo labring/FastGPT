@@ -25,14 +25,16 @@ import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
-import ChatBox, { type ComponentRef, type StartChatFnProps } from '@/components/ChatBox';
+import ChatBox from '@/components/ChatBox';
+import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
 import { streamFetch } from '@/web/common/api/fetch';
 import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
-import { chatContentReplaceBlock } from '@fastgpt/global/core/chat/utils';
+import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyBox from '@/components/common/MyBox';
 import SliderApps from './components/SliderApps';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
 const OutLink = ({
   teamId,
@@ -85,10 +87,8 @@ const OutLink = ({
         onMessage: generatingMessage,
         abortCtrl: controller
       });
-      const newTitle =
-        chatContentReplaceBlock(prompts[0].content).slice(0, 20) ||
-        prompts[1]?.value?.slice(0, 20) ||
-        t('core.chat.New Chat');
+
+      const newTitle = getChatTitleFromChatMessage(GPTMessages2Chats(prompts)[0]);
 
       // new chat
       if (completionChatId !== chatId) {
@@ -130,18 +130,7 @@ const OutLink = ({
 
       return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [
-      appId,
-      teamToken,
-      chatId,
-      histories,
-      pushHistory,
-      router,
-      setChatData,
-      teamId,
-      t,
-      updateHistory
-    ]
+    [appId, teamToken, chatId, histories, pushHistory, router, setChatData, teamId, updateHistory]
   );
 
   /* replace router query to last chat */

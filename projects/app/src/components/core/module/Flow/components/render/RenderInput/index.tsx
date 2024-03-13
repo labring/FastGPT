@@ -78,32 +78,33 @@ const RenderInput = ({ flowInputList, moduleId, CustomComponent }: Props) => {
 
   const sortInputs = useMemo(
     () =>
-      flowInputList.sort((a, b) => {
-        if (a.type === FlowNodeInputTypeEnum.addInputParam) {
-          return 1;
-        }
-        if (b.type === FlowNodeInputTypeEnum.addInputParam) {
-          return -1;
-        }
+      JSON.stringify(
+        [...flowInputList].sort((a, b) => {
+          if (a.type === FlowNodeInputTypeEnum.addInputParam) {
+            return 1;
+          }
+          if (b.type === FlowNodeInputTypeEnum.addInputParam) {
+            return -1;
+          }
 
-        if (a.type === FlowNodeInputTypeEnum.switch) {
-          return -1;
-        }
+          if (a.type === FlowNodeInputTypeEnum.switch) {
+            return -1;
+          }
 
-        return 0;
-      }),
+          return 0;
+        })
+      ),
     [flowInputList]
   );
-  const filterInputs = useMemo(
-    () =>
-      sortInputs.filter((input) => {
-        if (mode === 'app' && input.hideInApp) return false;
-        if (mode === 'plugin' && input.hideInPlugin) return false;
+  const filterInputs = useMemo(() => {
+    const parseSortInputs = JSON.parse(sortInputs) as FlowNodeInputItemType[];
+    return parseSortInputs.filter((input) => {
+      if (mode === 'app' && input.hideInApp) return false;
+      if (mode === 'plugin' && input.hideInPlugin) return false;
 
-        return true;
-      }),
-    [mode, sortInputs]
-  );
+      return true;
+    });
+  }, [mode, sortInputs]);
 
   const memoCustomComponent = useMemo(() => CustomComponent || {}, [CustomComponent]);
 
@@ -135,7 +136,7 @@ const RenderInput = ({ flowInputList, moduleId, CustomComponent }: Props) => {
         </Box>
       ) : null;
     });
-  }, [memoCustomComponent, filterInputs, mode, moduleId]);
+  }, [filterInputs, memoCustomComponent, mode, moduleId]);
 
   return <>{Render}</>;
 };

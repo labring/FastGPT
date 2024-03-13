@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
-import { useChatBox } from '@/components/ChatBox';
+import { useChatBox } from '@/components/ChatBox/hooks/useChatBox';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { Menu, MenuButton, MenuList, MenuItem, Box } from '@chakra-ui/react';
+import { Menu, MenuButton, MenuList, MenuItem, Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
+import MyMenu from '@/components/MyMenu';
 
 const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const { t } = useTranslation();
@@ -41,30 +42,21 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
         onClick: () => onExportChat({ type: 'pdf', history })
       }
     ],
-    [history, onExportChat, router]
+    [history, onExportChat, router, t]
   );
 
   return history.length > 0 ? (
-    <Menu autoSelect={false} isLazy>
-      <MenuButton
-        _hover={{ bg: 'myWhite.600  ' }}
-        cursor={'pointer'}
-        borderRadius={'md'}
-        onClick={(e) => {
-          e.stopPropagation();
-        }}
-      >
-        <MyIcon name={'more'} w={'14px'} p={2} />
-      </MenuButton>
-      <MenuList color={'myGray.700'} minW={`120px !important`} zIndex={10}>
-        {menuList.map((item) => (
-          <MenuItem key={item.label} onClick={item.onClick} py={[2, 3]}>
-            <MyIcon name={item.icon as any} w={['14px', '16px']} />
-            <Box ml={[1, 2]}>{item.label}</Box>
-          </MenuItem>
-        ))}
-      </MenuList>
-    </Menu>
+    <MyMenu
+      Button={
+        <IconButton
+          icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+          aria-label={''}
+          size={'sm'}
+          variant={'whitePrimary'}
+        />
+      }
+      menuList={menuList}
+    />
   ) : (
     <Box w={'28px'} h={'28px'} />
   );

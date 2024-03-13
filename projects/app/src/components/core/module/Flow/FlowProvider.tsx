@@ -12,7 +12,10 @@ import type {
   FlowModuleItemType,
   FlowModuleTemplateType
 } from '@fastgpt/global/core/module/type.d';
-import type { FlowNodeChangeProps } from '@fastgpt/global/core/module/node/type';
+import type {
+  FlowNodeChangeProps,
+  FlowNodeInputItemType
+} from '@fastgpt/global/core/module/node/type';
 import React, {
   type SetStateAction,
   type Dispatch,
@@ -20,13 +23,18 @@ import React, {
   useCallback,
   createContext,
   useRef,
-  useEffect
+  useEffect,
+  useMemo
 } from 'react';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowEdge, appModule2FlowNode } from '@/utils/adapt';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
+import {
+  ModuleIOValueTypeEnum,
+  ModuleInputKeyEnum,
+  ModuleOutputKeyEnum
+} from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
 import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
@@ -34,6 +42,14 @@ import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
+type requestEventType =
+  | 'onChangeNode'
+  | 'onCopyNode'
+  | 'onResetNode'
+  | 'onDelNode'
+  | 'onDelConnect'
+  | 'setNodes';
+
 export type useFlowProviderStoreType = {
   reactFlowWrapper: null | React.RefObject<HTMLDivElement>;
   mode: 'app' | 'plugin';
@@ -57,14 +73,16 @@ export type useFlowProviderStoreType = {
   onDelConnect: (id: string) => void;
   onConnect: ({ connect }: { connect: Connection }) => any;
   initData: (modules: ModuleItemType[]) => void;
+  splitToolInputs: (
+    inputs: FlowNodeInputItemType[],
+    moduleId: string
+  ) => {
+    isTool: boolean;
+    toolInputs: FlowNodeInputItemType[];
+    commonInputs: FlowNodeInputItemType[];
+  };
+  hasToolNode: boolean;
 };
-type requestEventType =
-  | 'onChangeNode'
-  | 'onCopyNode'
-  | 'onResetNode'
-  | 'onDelNode'
-  | 'onDelConnect'
-  | 'setNodes';
 
 const StateContext = createContext<useFlowProviderStoreType>({
   reactFlowWrapper: null,
@@ -116,7 +134,18 @@ const StateContext = createContext<useFlowProviderStoreType>({
   },
   onResetNode: function (e): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  splitToolInputs: function (
+    inputs: FlowNodeInputItemType[],
+    moduleId: string
+  ): {
+    isTool: boolean;
+    toolInputs: FlowNodeInputItemType[];
+    commonInputs: FlowNodeInputItemType[];
+  } {
+    throw new Error('Function not implemented.');
+  },
+  hasToolNode: false
 });
 export const useFlowProviderStore = () => useContext(StateContext);
 
@@ -134,6 +163,10 @@ export const FlowProvider = ({
   const { toast } = useToast();
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowModuleItemType>([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const hasToolNode = useMemo(() => {
+    return !!nodes.find((node) => node.data.flowType === FlowNodeTypeEnum.tools);
+  }, [nodes]);
 
   const onFixView = useCallback(() => {
     const btn = document.querySelector('.react-flow__controls-fitview') as HTMLButtonElement;
@@ -180,9 +213,12 @@ export const FlowProvider = ({
         const type = source?.outputs.find(
           (output) => output.key === connect.sourceHandle
         )?.valueType;
-        console.log(type);
+
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion && !type) {
           return ModuleIOValueTypeEnum.boolean;
+        }
+        if (source?.flowType === FlowNodeTypeEnum.tools) {
+          return ModuleIOValueTypeEnum.tools;
         }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
@@ -193,14 +229,17 @@ export const FlowProvider = ({
       const targetType = nodes
         .find((node) => node.id === connect.target)
         ?.data?.inputs.find((input) => input.key === connect.targetHandle)?.valueType;
-      console.log(source, targetType);
-      if (!sourceType || !targetType) {
+
+      if (
+        connect.sourceHandle === ModuleOutputKeyEnum.selectedTools &&
+        connect.targetHandle === ModuleOutputKeyEnum.selectedTools
+      ) {
+      } else if (!sourceType || !targetType) {
         return toast({
           status: 'warning',
           title: t('app.Connection is invalid')
         });
-      }
-      if (
+      } else if (
         sourceType !== ModuleIOValueTypeEnum.any &&
         targetType !== ModuleIOValueTypeEnum.any &&
         sourceType !== targetType
@@ -215,16 +254,13 @@ export const FlowProvider = ({
         addEdge(
           {
             ...connect,
-            type: EDGE_TYPE,
-            data: {
-              onDelete: onDelConnect
-            }
+            type: EDGE_TYPE
           },
           state
         )
       );
     },
-    [nodes, onDelConnect, setEdges, t, toast]
+    [nodes, setEdges, t, toast]
   );
 
   const onDelNode = useCallback(
@@ -359,6 +395,26 @@ export const FlowProvider = ({
     [setNodes]
   );
 
+  /* If the module is connected by a tool, the tool input and the normal input are separated */
+  const splitToolInputs = useCallback(
+    (inputs: FlowNodeInputItemType[], moduleId: string) => {
+      const isTool = !!edges.find(
+        (edge) =>
+          edge.targetHandle === ModuleOutputKeyEnum.selectedTools && edge.target === moduleId
+      );
+
+      return {
+        isTool,
+        toolInputs: inputs.filter((item) => isTool && item.toolDescription),
+        commonInputs: inputs.filter((item) => {
+          if (!isTool) return true;
+          return !item.toolDescription && item.key !== ModuleInputKeyEnum.switch;
+        })
+      };
+    },
+    [edges]
+  );
+
   // reset a node data. delete edge and replace it
   const onResetNode = useCallback(
     ({ id, module }: { id: string; module: FlowModuleTemplateType }) => {
@@ -465,7 +521,9 @@ export const FlowProvider = ({
     onDelEdge,
     onDelConnect,
     onConnect,
-    initData
+    initData,
+    splitToolInputs,
+    hasToolNode
   };
 
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;

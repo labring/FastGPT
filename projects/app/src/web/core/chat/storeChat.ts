@@ -32,7 +32,7 @@ type State = {
   setLastChatAppId: (id: string) => void;
   lastChatId: string;
   setLastChatId: (id: string) => void;
-  delOneHistoryItem: (e: DeleteChatItemProps & { index: number }) => Promise<any>;
+  delOneHistoryItem: (e: DeleteChatItemProps) => Promise<any>;
 };
 
 export const useChatStore = create<State>()(
@@ -120,14 +120,14 @@ export const useChatStore = create<State>()(
             });
           }
         },
-        async delOneHistoryItem({ index, ...props }) {
+        async delOneHistoryItem(props) {
           const { chatId, contentId } = props;
           if (!chatId || !contentId) return;
 
           try {
             get().setChatData((state) => ({
               ...state,
-              history: state.history.filter((_, i) => i !== index)
+              history: state.history.filter((item) => item.dataId !== contentId)
             }));
             await delChatRecordById(props);
           } catch (err) {

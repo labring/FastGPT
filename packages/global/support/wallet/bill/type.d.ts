@@ -22,7 +22,7 @@ export type BillSchemaType = {
   username: string;
 };
 
-export type ChatModuleUsageType = {
+export type ChatNodeUsageType = {
   tokens?: number;
   totalPoints: number;
   moduleName: string;

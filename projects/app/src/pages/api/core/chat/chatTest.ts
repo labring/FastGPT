@@ -1,20 +1,22 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { connectToDatabase } from '@/service/mongo';
 import { sseErrRes } from '@fastgpt/service/common/response';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { responseWrite } from '@fastgpt/service/common/response';
 import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import type { ChatItemType } from '@fastgpt/global/core/chat/type';
+import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { dispatchModules } from '@/service/moduleDispatch';
+import { dispatchWorkFlow } from '@/service/moduleDispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
+import { setEntryEntries } from '@/service/moduleDispatch/utils';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 export type Props = {
   history: ChatItemType[];
-  prompt: string;
+  prompt: ChatItemValueItemType[];
   modules: ModuleItemType[];
   variables: Record<string, any>;
   appId: string;
@@ -33,7 +35,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   let { modules = [], history = [], prompt, variables = {}, appName, appId } = req.body as Props;
   try {
     await connectToDatabase();
-    if (!history || !modules || !prompt) {
+    if (!history || !modules || !prompt || prompt.length === 0) {
       throw new Error('Prams Error');
     }
     if (!Array.isArray(modules)) {
@@ -52,19 +54,22 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // auth balance
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
+    const { text, files } = chatValue2RuntimePrompt(prompt);
+
     /* start process */
-    const { responseData, moduleDispatchBills } = await dispatchModules({
+    const { flowResponses, flowUsages } = await dispatchWorkFlow({
       res,
       mode: 'test',
       teamId,
       tmbId,
       user,
       appId,
-      modules,
+      modules: setEntryEntries(modules),
       variables,
+      inputFiles: files,
       histories: history,
       startParams: {
-        userChatInput: prompt
+        userChatInput: text
       },
       stream: true,
       detail: true
@@ -72,13 +77,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     responseWrite({
       res,
-      event: sseResponseEventEnum.answer,
+      event: SseResponseEventEnum.answer,
       data: '[DONE]'
     });
     responseWrite({
       res,
-      event: sseResponseEventEnum.appStreamResponse,
-      data: JSON.stringify(responseData)
+      event: SseResponseEventEnum.flowResponses,
+      data: JSON.stringify(flowResponses)
     });
     res.end();
 
@@ -88,7 +93,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       teamId,
       tmbId,
       source: UsageSourceEnum.fastgpt,
-      moduleDispatchBills
+      flowUsages
     });
   } catch (err: any) {
     res.status(500);

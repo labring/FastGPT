@@ -65,7 +65,7 @@ function DataProcess({
 
     return list.filter(([key, value]) => {
       if (feConfigs?.isPlus) return true;
-      return value.isPlus;
+      return value.openSource;
     });
   }, [feConfigs?.isPlus]);
 

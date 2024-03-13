@@ -1,7 +1,7 @@
 import React from 'react';
 import MyModal from '@/components/MyModal';
 import { ModalBody, Button, ModalFooter, useDisclosure, Textarea, Box } from '@chakra-ui/react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { onChangeNode } from '../../../FlowProvider';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';

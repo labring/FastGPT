@@ -5,6 +5,7 @@ import { useMutation } from '@tanstack/react-query';
 
 import { throttle } from 'lodash';
 import { useToast } from './useToast';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const thresholdVal = 100;
 
@@ -62,7 +63,7 @@ export function usePagination<T = any>({
         onChange && onChange(num);
       } catch (error: any) {
         toast({
-          title: error?.message || '获取数据异常',
+          title: getErrText(error, '获取数据异常'),
           status: 'error'
         });
         console.log(error);

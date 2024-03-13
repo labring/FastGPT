@@ -1,24 +1,24 @@
-import type { moduleDispatchResType, ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
-import { dispatchModules } from '../index';
+import { dispatchWorkFlow } from '../index';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { responseWrite } from '@fastgpt/service/common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { sseResponseEventEnum } from '@fastgpt/service/common/response/constant';
-import { textAdaptGptResponse } from '@/utils/adapt';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { getHistories } from '../utils';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { getHistories, setEntryEntries } from '../utils';
+import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.userChatInput]: string;
   [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   app: SelectAppItemType;
 }>;
-type Response = ModuleDispatchResponse<{
+type Response = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.answerText]: string;
   [ModuleOutputKeyEnum.history]: ChatItemType[];
 }>;
@@ -30,6 +30,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     stream,
     detail,
     histories,
+    inputFiles,
     params: { userChatInput, history, app }
   } = props;
   let start = Date.now();
@@ -50,7 +51,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   if (stream) {
     responseWrite({
       res,
-      event: detail ? sseResponseEventEnum.answer : undefined,
+      event: detail ? SseResponseEventEnum.answer : undefined,
       data: textAdaptGptResponse({
         text: '\n'
       })
@@ -59,11 +60,13 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const chatHistories = getHistories(history, histories);
 
-  const { responseData, moduleDispatchBills, answerText } = await dispatchModules({
+  const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
     appId: app.id,
-    modules: appData.modules,
+    modules: setEntryEntries(appData.modules),
+    runtimeModules: undefined, // must reset
     histories: chatHistories,
+    inputFiles,
     startParams: {
       userChatInput
     }
@@ -72,28 +75,33 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
-      value: userChatInput
+      value: runtimePrompt2ChatsValue({
+        files: inputFiles,
+        text: userChatInput
+      })
     },
     {
       obj: ChatRoleEnum.AI,
-      value: answerText
+      value: assistantResponses
     }
   ]);
 
+  const { text } = chatValue2RuntimePrompt(assistantResponses);
+
   return {
-    [ModuleOutputKeyEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       moduleLogo: appData.avatar,
       query: userChatInput,
-      textOutput: answerText,
-      totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+      textOutput: text,
+      totalPoints: flowResponses.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: appData.name,
-        totalPoints: responseData.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
+        totalPoints: flowUsages.reduce((sum, item) => sum + (item.totalPoints || 0), 0)
       }
     ],
-    answerText: answerText,
+    answerText: text,
     history: completeMessages
   };
 };

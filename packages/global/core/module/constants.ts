@@ -21,7 +21,10 @@ export enum ModuleIOValueTypeEnum {
 
   // plugin special type
   selectApp = 'selectApp',
-  selectDataset = 'selectDataset'
+  selectDataset = 'selectDataset',
+
+  // tool
+  tools = 'tools'
 }
 
 /* reg: modulename key */
@@ -89,12 +92,10 @@ export enum ModuleInputKeyEnum {
 
 export enum ModuleOutputKeyEnum {
   // common
-  responseData = 'responseData',
-  moduleDispatchBills = 'moduleDispatchBills',
   userChatInput = 'userChatInput',
   finish = 'finish',
   history = 'history',
-  answerText = 'answerText', //  answer module text key
+  answerText = 'answerText', // module answer. the value will be show and save to history
   success = 'success',
   failed = 'failed',
   text = 'system_text',
@@ -110,7 +111,13 @@ export enum ModuleOutputKeyEnum {
 
   // tf switch
   resultTrue = 'system_resultTrue',
-  resultFalse = 'system_resultFalse'
+  resultFalse = 'system_resultFalse',
+
+  // tools
+  selectedTools = 'selectedTools',
+
+  // http
+  httpRawResponse = 'httpRawResponse'
 }
 
 export enum VariableInputEnum {

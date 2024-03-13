@@ -51,8 +51,8 @@ importers:
         specifier: ^4.0.1
         version: 4.0.1
       openai:
-        specifier: 4.23.0
-        version: 4.23.0(encoding@0.1.13)
+        specifier: 4.28.0
+        version: 4.28.0(encoding@0.1.13)
       timezones-list:
         specifier: ^3.0.2
         version: 3.0.2
@@ -9406,8 +9406,8 @@ packages:
       mimic-fn: 4.0.0
     dev: true
 
-  /openai@4.23.0(encoding@0.1.13):
-    resolution: {integrity: sha512-ey2CXh1OTcTUa0AWZWuTpgA9t5GuAG3DVU1MofCRUI7fQJij8XJ3Sr0VtgxoAE69C9wbHBMCux8Z/IQZfSwHiA==}
+  /openai@4.28.0(encoding@0.1.13):
+    resolution: {integrity: sha512-JM8fhcpmpGN0vrUwGquYIzdcEQHtFuom6sRCbbCM6CfzZXNuRk33G7KfeRAIfnaCxSpzrP5iHtwJzIm6biUZ2Q==}
     hasBin: true
     dependencies:
       '@types/node': 18.19.21

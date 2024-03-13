@@ -8,7 +8,7 @@ export const UserGuideModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.userGuide,
   flowType: FlowNodeTypeEnum.userGuide,
   avatar: '/imgs/module/userGuide.png',
-  name: 'core.module.template.User guide',
+  name: '全局配置',
   intro: userGuideTip,
   inputs: [
     {

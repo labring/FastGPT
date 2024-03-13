@@ -1,14 +1,13 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type {
-  ModuleDispatchProps,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { queryExtension } from '@fastgpt/service/core/ai/functions/queryExtension';
 import { getHistories } from '../utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -16,7 +15,7 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
   [ModuleInputKeyEnum.userChatInput]: string;
 }>;
-type Response = ModuleDispatchResponse<{
+type Response = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.text]: string;
 }>;
 
@@ -57,14 +56,14 @@ export const dispatchQueryExtension = async ({
   });
 
   return {
-    [ModuleOutputKeyEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints,
       model: modelName,
       tokens,
       query: userChatInput,
       textOutput: JSON.stringify(filterSameQueries)
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: module.name,
         totalPoints,

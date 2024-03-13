@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import { sseResponseEventEnum } from './constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { addLog } from '../system/log';
 import { clearCookie } from '../../support/permission/controller';
@@ -70,7 +70,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
 
     return responseWrite({
       res,
-      event: sseResponseEventEnum.error,
+      event: SseResponseEventEnum.error,
       data: JSON.stringify(ERROR_RESPONSE[errResponseKey])
     });
   }
@@ -90,7 +90,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
 
   responseWrite({
     res,
-    event: sseResponseEventEnum.error,
+    event: SseResponseEventEnum.error,
     data: JSON.stringify({ message: replaceSensitiveText(msg) })
   });
 };
@@ -132,3 +132,22 @@ export function responseWrite({
   event && Write(`event: ${event}\n`);
   Write(`data: ${data}\n\n`);
 }
+
+export const responseWriteNodeStatus = ({
+  res,
+  status = 'running',
+  name
+}: {
+  res?: NextApiResponse;
+  status?: 'running';
+  name: string;
+}) => {
+  responseWrite({
+    res,
+    event: SseResponseEventEnum.flowNodeStatus,
+    data: JSON.stringify({
+      status,
+      name
+    })
+  });
+};

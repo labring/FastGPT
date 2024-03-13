@@ -26,7 +26,7 @@ export const DatasetConcatModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.tools,
   avatar: '/imgs/module/concat.svg',
   name: '知识库搜索引用合并',
-  intro: 'core.module.template.Dataset search result concat intro',
+  intro: '可以将多个知识库搜索结果进行合并输出。使用 RRF 的合并方式进行最终排序输出。',
   showStatus: false,
   inputs: [
     Input_Template_Switch,

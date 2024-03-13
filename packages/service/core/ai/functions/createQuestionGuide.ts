@@ -1,4 +1,4 @@
-import type { ChatMessageItemType } from '@fastgpt/global/core/ai/type.d';
+import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { getAIApi } from '../config';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 
@@ -8,10 +8,10 @@ export async function createQuestionGuide({
   messages,
   model
 }: {
-  messages: ChatMessageItemType[];
+  messages: ChatCompletionMessageParam[];
   model: string;
 }) {
-  const concatMessages: ChatMessageItemType[] = [
+  const concatMessages: ChatCompletionMessageParam[] = [
     ...messages,
     {
       role: 'user',

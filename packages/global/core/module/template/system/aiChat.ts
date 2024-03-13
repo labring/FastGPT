@@ -11,9 +11,11 @@ import {
   ModuleTemplateTypeEnum
 } from '../../constants';
 import {
+  Input_Template_AiModel,
   Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_Switch,
+  Input_Template_System_Prompt,
   Input_Template_UserChatInput
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
@@ -24,20 +26,13 @@ export const AiChatModule: FlowModuleTemplateType = {
   templateType: ModuleTemplateTypeEnum.textAnswer,
   flowType: FlowNodeTypeEnum.chatNode,
   avatar: '/imgs/module/AI.png',
-  name: 'core.module.template.Ai chat',
-  intro: 'core.module.template.Ai chat intro',
+  name: 'AI 对话',
+  intro: 'AI 大模型对话',
   showStatus: true,
+  // isTool: true,
   inputs: [
     Input_Template_Switch,
-    {
-      key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectLLMModel,
-      label: 'core.module.input.label.aiModel',
-      required: true,
-      valueType: ModuleIOValueTypeEnum.string,
-      showTargetInApp: false,
-      showTargetInPlugin: false
-    },
+    Input_Template_AiModel,
     // --- settings modal
     {
       key: ModuleInputKeyEnum.aiChatTemperature,
@@ -98,18 +93,13 @@ export const AiChatModule: FlowModuleTemplateType = {
     },
     // settings modal ---
     {
-      key: ModuleInputKeyEnum.aiSystemPrompt,
-      type: FlowNodeInputTypeEnum.textarea,
+      ...Input_Template_System_Prompt,
       label: 'core.ai.Prompt',
-      max: 300,
-      valueType: ModuleIOValueTypeEnum.string,
       description: chatNodeSystemPromptTip,
-      placeholder: chatNodeSystemPromptTip,
-      showTargetInApp: true,
-      showTargetInPlugin: true
+      placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
-    Input_Template_UserChatInput,
+    { ...Input_Template_UserChatInput, toolDescription: '用户问题' },
     Input_Template_Dataset_Quote
   ],
   outputs: [

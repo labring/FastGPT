@@ -2,6 +2,7 @@ import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { getAIApi } from '../config';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 
 /* 
     query extension - 问题扩展
@@ -133,7 +134,7 @@ A: ${chatBg}
         histories: concatFewShot
       })
     }
-  ];
+  ] as ChatCompletionMessageParam[];
   const result = await ai.chat.completions.create({
     model: model,
     temperature: 0.01,

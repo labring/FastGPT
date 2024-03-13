@@ -1,14 +1,15 @@
-import { adaptChat2GptMessages } from '@fastgpt/global/core/chat/adapt';
-import { ChatContextFilter } from '@fastgpt/service/core/chat/utils';
+import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
+import { filterGPTMessageByMaxTokens } from '@fastgpt/service/core/chat/utils';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { countMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
-import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import {
+  countGptMessagesTokens,
+  countMessagesTokens
+} from '@fastgpt/global/common/string/tiktoken';
+import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
-import type {
-  ContextExtractAgentItemType,
-  ModuleDispatchResponse
-} from '@fastgpt/global/core/module/type';
+import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { Prompt_ExtractJson } from '@/global/core/prompt/agent';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
@@ -17,6 +18,13 @@ import { getHistories } from '../utils';
 import { ModelTypeEnum, getLLMModel } from '@fastgpt/service/core/ai/model';
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import json5 from 'json5';
+import {
+  ChatCompletionCreateParams,
+  ChatCompletionMessageParam,
+  ChatCompletionTool
+} from '@fastgpt/global/core/ai/type';
+import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -25,11 +33,13 @@ type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.description]: string;
   [ModuleInputKeyEnum.aiModel]: string;
 }>;
-type Response = ModuleDispatchResponse<{
+type Response = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.success]?: boolean;
   [ModuleOutputKeyEnum.failed]?: boolean;
   [ModuleOutputKeyEnum.contextExtractFields]: string;
 }>;
+
+type ActionProps = Props & { extractModel: LLMModelItemType };
 
 const agentFunName = 'extract_json_data';
 
@@ -51,6 +61,13 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   const { arg, tokens } = await (async () => {
     if (extractModel.toolChoice) {
       return toolChoice({
+        ...props,
+        histories: chatHistories,
+        extractModel
+      });
+    }
+    if (extractModel.functionCall) {
+      return functionCall({
         ...props,
         histories: chatHistories,
         extractModel
@@ -105,7 +122,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
     [ModuleOutputKeyEnum.failed]: success ? undefined : true,
     [ModuleOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
-    [ModuleOutputKeyEnum.responseData]: {
+    [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
       model: modelName,
       query: content,
@@ -114,7 +131,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
       extractResult: arg,
       contextTotalLen: chatHistories.length + 2
     },
-    [ModuleOutputKeyEnum.moduleDispatchBills]: [
+    [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: [
       {
         moduleName: name,
         totalPoints: user.openaiAccount?.key ? 0 : totalPoints,
@@ -125,30 +142,36 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   };
 }
 
-async function toolChoice({
+const getFunctionCallSchema = ({
   extractModel,
-  user,
   histories,
   params: { content, extractKeys, description }
-}: Props & { extractModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     ...histories,
     {
       obj: ChatRoleEnum.Human,
-      value: `你的任务是根据上下文获取适当的 JSON 字符串。要求：
-"""
-- 字符串不要换行。
-- 结合上下文和当前问题进行获取。
-"""
-
-当前问题: "${content}"`
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: `你的任务是根据上下文获取适当的 JSON 字符串。要求：
+          """
+          - 字符串不要换行。
+          - 结合上下文和当前问题进行获取。
+          """
+          
+          当前问题: "${content}"`
+          }
+        }
+      ]
     }
   ];
-  const filterMessages = ChatContextFilter({
-    messages,
+  const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
+  const filterMessages = filterGPTMessageByMaxTokens({
+    messages: adaptMessages,
     maxTokens: extractModel.maxContext
   });
-  const adaptMessages = adaptChat2GptMessages({ messages: filterMessages, reserveId: false });
 
   const properties: Record<
     string,
@@ -164,7 +187,6 @@ async function toolChoice({
       ...(item.enum ? { enum: item.enum.split('\n') } : {})
     };
   });
-
   // function body
   const agentFunction = {
     name: agentFunName,
@@ -174,7 +196,19 @@ async function toolChoice({
       properties
     }
   };
-  const tools: any = [
+
+  return {
+    filterMessages,
+    agentFunction
+  };
+};
+
+const toolChoice = async (props: ActionProps) => {
+  const { user, extractModel } = props;
+
+  const { filterMessages, agentFunction } = getFunctionCallSchema(props);
+
+  const tools: ChatCompletionTool[] = [
     {
       type: 'function',
       function: agentFunction
@@ -189,7 +223,7 @@ async function toolChoice({
   const response = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0,
-    messages: [...adaptMessages],
+    messages: filterMessages,
     tools,
     tool_choice: { type: 'function', function: { name: agentFunName } }
   });
@@ -207,35 +241,96 @@ async function toolChoice({
     }
   })();
 
+  const completeMessages: ChatCompletionMessageParam[] = [
+    ...filterMessages,
+    {
+      role: ChatCompletionRequestMessageRoleEnum.Assistant,
+      tool_calls: response.choices?.[0]?.message?.tool_calls
+    }
+  ];
+
   return {
-    rawResponse: response?.choices?.[0]?.message?.tool_calls?.[0]?.function?.arguments || '',
-    tokens: countMessagesTokens(messages, tools),
+    tokens: countGptMessagesTokens(completeMessages, tools),
     arg
   };
-}
+};
 
-async function completions({
+const functionCall = async (props: ActionProps) => {
+  const { user, extractModel } = props;
+
+  const { agentFunction, filterMessages } = getFunctionCallSchema(props);
+  const functions: ChatCompletionCreateParams.Function[] = [agentFunction];
+
+  const ai = getAIApi({
+    userKey: user.openaiAccount,
+    timeout: 480000
+  });
+
+  const response = await ai.chat.completions.create({
+    model: extractModel.model,
+    temperature: 0,
+    messages: filterMessages,
+    function_call: {
+      name: agentFunName
+    },
+    functions
+  });
+
+  try {
+    const arg = JSON.parse(response?.choices?.[0]?.message?.function_call?.arguments || '');
+    const completeMessages: ChatCompletionMessageParam[] = [
+      ...filterMessages,
+      {
+        role: ChatCompletionRequestMessageRoleEnum.Assistant,
+        function_call: response.choices?.[0]?.message?.function_call
+      }
+    ];
+
+    return {
+      arg,
+      tokens: countGptMessagesTokens(completeMessages, undefined, functions)
+    };
+  } catch (error) {
+    console.log(response.choices?.[0]?.message);
+
+    console.log('Your model may not support toll_call', error);
+
+    return {
+      arg: {},
+      tokens: 0
+    };
+  }
+};
+
+const completions = async ({
   extractModel,
   user,
   histories,
   params: { content, extractKeys, description }
-}: Props & { extractModel: LLMModelItemType }) {
+}: ActionProps) => {
   const messages: ChatItemType[] = [
     {
       obj: ChatRoleEnum.Human,
-      value: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
-        description,
-        json: extractKeys
-          .map(
-            (item) =>
-              `{"key":"${item.key}", "description":"${item.desc}"${
-                item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
-              }}`
-          )
-          .join('\n'),
-        text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
-Human: ${content}`
-      })
+      value: [
+        {
+          type: ChatItemValueTypeEnum.text,
+          text: {
+            content: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
+              description,
+              json: extractKeys
+                .map(
+                  (item) =>
+                    `{"key":"${item.key}", "description":"${item.desc}"${
+                      item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
+                    }}`
+                )
+                .join('\n'),
+              text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
+      Human: ${content}`
+            })
+          }
+        }
+      ]
     }
   ];
 
@@ -246,7 +341,7 @@ Human: ${content}`
   const data = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0.01,
-    messages: adaptChat2GptMessages({ messages, reserveId: false }),
+    messages: chats2GPTMessages({ messages, reserveId: false }),
     stream: false
   });
   const answer = data.choices?.[0].message?.content || '';
@@ -276,4 +371,4 @@ Human: ${content}`
       arg: {}
     };
   }
-}
+};
