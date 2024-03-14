@@ -207,29 +207,6 @@ const EditForm = ({
 
       <Box px={4}>
         <Box bg={'white'} borderRadius={'md'} borderWidth={'1px'} borderColor={'borderColor.base'}>
-          {/* simple mode select */}
-          {/* <Flex {...BoxStyles}>
-            <Flex alignItems={'center'} flex={'1 0 0'}>
-              <MyIcon name={'core/app/simpleMode/template'} w={'20px'} />
-              <Box mx={2}>{t('core.app.simple.mode template select')}</Box>
-            </Flex>
-            <MySelect
-              w={['200px', '250px']}
-              list={
-                simpleModeTemplates?.map((item) => ({
-                  alias: t(item.name),
-                  label: t(item.desc),
-                  value: item.id
-                })) || []
-              }
-              value={getValues('templateId')}
-              onchange={(val) => {
-                setValue('templateId', val);
-                setRefresh(!refresh);
-              }}
-            />
-          </Flex> */}
-
           {/* ai */}
           <Box {...BoxStyles}>
             <Flex alignItems={'center'}>

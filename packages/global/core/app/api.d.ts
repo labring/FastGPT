@@ -19,9 +19,3 @@ export interface AppUpdateParams {
   permission?: AppSchema['permission'];
   teamTags?: AppSchema['teamTags'];
 }
-
-export type FormatForm2ModulesProps = {
-  formData: AppSimpleEditFormType;
-  chatModelMaxToken: number;
-  llmModelList: LLMModelItemType[];
-};

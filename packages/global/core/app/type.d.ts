@@ -94,34 +94,3 @@ export type AppSimpleEditFormType = {
     };
   };
 };
-
-/* simple mode template*/
-export type AppSimpleEditConfigTemplateType = {
-  id: string;
-  name: string;
-  desc: string;
-  systemForm: {
-    aiSettings?: {
-      model?: boolean;
-      systemPrompt?: boolean;
-      temperature?: boolean;
-      maxToken?: boolean;
-      quoteTemplate?: boolean;
-      quotePrompt?: boolean;
-    };
-    dataset?: {
-      datasets?: boolean;
-      similarity?: boolean;
-      limit?: boolean;
-      searchMode: `${DatasetSearchModeEnum}`;
-      usingReRank: boolean;
-      searchEmptyText?: boolean;
-    };
-    userGuide?: {
-      welcomeText?: boolean;
-      variables?: boolean;
-      questionGuide?: boolean;
-      tts?: boolean;
-    };
-  };
-};
