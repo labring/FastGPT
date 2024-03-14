@@ -98,7 +98,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
     }
   })();
-  // console.log(params, requestBody, headers, concatVariables);
 
   try {
     const { formatResponse, rawResponse } = await fetchData({
@@ -166,7 +165,7 @@ async function fetchData({
       ...headers
     },
     params: params,
-    data: method === 'POST' ? body : {}
+    data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined
   });
 
   /*
