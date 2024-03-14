@@ -122,7 +122,7 @@ CHAT_API_KEY=sk-xxxxxx
       "datasetProcess": false, // 是否设置为知识库处理模型
       "usedInClassify": true, // 是否用于问题分类
       "usedInExtractFields": true, // 是否用于字段提取
-      "useInToolCall": true, // 是否用于工具调用
+      "usedInToolCall": true, // 是否用于工具调用
       "usedInQueryExtension": true, // 是否用于问题优化
       "toolChoice": true, // 是否支持工具选择
       "functionCall": false, // 是否支持函数调用
