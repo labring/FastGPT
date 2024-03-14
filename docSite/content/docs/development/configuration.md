@@ -38,7 +38,7 @@ llm模型全部合并
       "datasetProcess": false, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
       "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
       "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
-      "useInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
+      "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
       "usedInQueryExtension": true, // 是否用于问题优化（务必保证至少有一个为true）
       "toolChoice": true, // 是否支持工具选择（务必保证至少有一个为true）
       "functionCall": false, // 是否支持函数调用（特殊功能，会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
@@ -60,7 +60,7 @@ llm模型全部合并
       "datasetProcess": true,
       "usedInClassify": true,
       "usedInExtractFields": true,
-      "useInToolCall": true,
+      "usedInToolCall": true,
       "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
@@ -82,7 +82,7 @@ llm模型全部合并
       "datasetProcess": false,
       "usedInClassify": true,
       "usedInExtractFields": true,
-      "useInToolCall": true,
+      "usedInToolCall": true,
       "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
@@ -104,7 +104,7 @@ llm模型全部合并
       "datasetProcess": false,
       "usedInClassify": false,
       "usedInExtractFields": false,
-      "useInToolCall": false,
+      "usedInToolCall": false,
       "usedInQueryExtension": false,
       "toolChoice": true,
       "functionCall": false,
