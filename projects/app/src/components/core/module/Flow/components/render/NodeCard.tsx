@@ -6,13 +6,7 @@ import type { FlowModuleItemType } from '@fastgpt/global/core/module/type.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import {
-  onChangeNode,
-  onCopyNode,
-  onResetNode,
-  onDelNode,
-  useFlowProviderStore
-} from '../../FlowProvider';
+import { onChangeNode, onCopyNode, onResetNode, useFlowProviderStore } from '../../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -26,6 +20,7 @@ import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
   minW?: string | number;
+  maxW?: string | number;
   forbidMenu?: boolean;
   selected?: boolean;
 };
@@ -38,6 +33,7 @@ const NodeCard = (props: Props) => {
     name = t('core.module.template.UnKnow Module'),
     intro,
     minW = '300px',
+    maxW = '600px',
     moduleId,
     flowType,
     inputs,
@@ -48,20 +44,24 @@ const NodeCard = (props: Props) => {
 
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
-  const { nodes, splitToolInputs } = useFlowProviderStore();
+  const { nodes, splitToolInputs, onDelNode } = useFlowProviderStore();
+  // edit intro
   const { onOpenModal: onOpenIntroModal, EditModal: EditIntroModal } = useEditTextarea({
     title: t('core.module.Edit intro'),
     tip: '调整该模块会对工具调用时机有影响。\n你可以通过精确的描述该模块功能，引导模型进行工具调用。',
     canEmpty: false
   });
-
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common.Custom Title'),
     placeholder: t('app.module.Custom Title Tip') || ''
   });
-  const { openConfirm, ConfirmModal } = useConfirm({
+  const { openConfirm: onOpenConfirmSync, ConfirmModal: ConfirmSyncModal } = useConfirm({
     content: t('module.Confirm Sync Plugin')
+  });
+  const { openConfirm: onOpenConfirmDeleteNode, ConfirmModal: ConfirmDeleteModal } = useConfirm({
+    content: t('core.module.Confirm Delete Node'),
+    type: 'delete'
   });
 
   const showToolHandle = useMemo(
@@ -86,7 +86,7 @@ const NodeCard = (props: Props) => {
                   (item) => item.key === ModuleInputKeyEnum.pluginId
                 )?.value;
                 if (!pluginId) return;
-                openConfirm(async () => {
+                onOpenConfirmSync(async () => {
                   try {
                     setLoading(true);
                     const pluginModule = await getPreviewPluginModule(pluginId);
@@ -140,7 +140,7 @@ const NodeCard = (props: Props) => {
         icon: 'delete',
         label: t('common.Delete'),
         variant: 'whiteDanger',
-        onClick: () => onDelNode(moduleId)
+        onClick: onOpenConfirmDeleteNode(() => onDelNode(moduleId))
       }
     ];
 
@@ -211,21 +211,23 @@ const NodeCard = (props: Props) => {
       </Box>
     );
   }, [
-    avatar,
     flowType,
-    forbidMenu,
-    inputs,
-    intro,
-    moduleId,
-    moduleIsTool,
-    name,
-    onOpenIntroModal,
-    onOpenModal,
-    openConfirm,
-    setLoading,
-    showToolHandle,
     t,
-    toast
+    onOpenConfirmDeleteNode,
+    showToolHandle,
+    moduleId,
+    avatar,
+    name,
+    forbidMenu,
+    intro,
+    moduleIsTool,
+    inputs,
+    onOpenConfirmSync,
+    setLoading,
+    toast,
+    onOpenModal,
+    onDelNode,
+    onOpenIntroModal
   ]);
 
   const RenderModal = useMemo(() => {
@@ -233,15 +235,16 @@ const NodeCard = (props: Props) => {
       <>
         <EditTitleModal maxLength={20} />
         {moduleIsTool && <EditIntroModal maxLength={500} />}
-        <ConfirmModal />
+        <ConfirmSyncModal />
+        <ConfirmDeleteModal />
       </>
     );
-  }, [ConfirmModal, EditIntroModal, EditTitleModal, moduleIsTool]);
+  }, [ConfirmDeleteModal, ConfirmSyncModal, EditIntroModal, EditTitleModal, moduleIsTool]);
 
   return (
     <Box
       minW={minW}
-      maxW={'600px'}
+      maxW={maxW}
       bg={'white'}
       borderWidth={'1px'}
       borderColor={selected ? 'primary.600' : 'borderColor.base'}

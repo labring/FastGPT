@@ -3,19 +3,19 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_AiModel, Input_Template_History, Input_Template_Switch } from '../input';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 
-export const ContextExtractModule: FlowModuleTemplateType = {
+export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
-  templateType: ModuleTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.contentExtract,
   avatar: '/imgs/module/extract.png',
   name: '文本内容提取',

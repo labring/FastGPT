@@ -141,7 +141,7 @@ export type ChatHistoryItemResType = DispatchNodeResponseType & {
 };
 
 /* One tool run response  */
-export type ToolRunResponseItemType = Record<string, any> | Array;
+export type ToolRunResponseItemType = any;
 /* tool module response */
 export type ToolModuleResponseItemType = {
   id: string;

@@ -4,8 +4,8 @@ import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
-import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
 import { GET } from '@fastgpt/service/common/api/plusRequest';
 import type { PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
@@ -20,10 +20,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       FastGPTProUrl ? GET<PluginTemplateType[]>('/core/plugin/getTemplates') : []
     ]);
 
-    const data: FlowModuleTemplateType[] = [
+    const data: FlowNodeTemplateType[] = [
       ...userPlugins.map((plugin) => ({
         id: String(plugin._id),
-        templateType: ModuleTemplateTypeEnum.personalPlugin,
+        templateType: FlowNodeTemplateTypeEnum.personalPlugin,
         flowType: FlowNodeTypeEnum.pluginModule,
         avatar: plugin.avatar,
         name: plugin.name,
@@ -34,7 +34,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       })),
       ...(global.communityPlugins?.map((plugin) => ({
         id: plugin.id,
-        templateType: plugin.templateType ?? ModuleTemplateTypeEnum.other,
+        templateType: plugin.templateType ?? FlowNodeTemplateTypeEnum.other,
         flowType: FlowNodeTypeEnum.pluginModule,
         avatar: plugin.avatar,
         name: plugin.name,
@@ -45,7 +45,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       })) || [])
     ];
 
-    jsonRes<FlowModuleTemplateType[]>(res, {
+    jsonRes<FlowNodeTemplateType[]>(res, {
       data
     });
   } catch (err) {

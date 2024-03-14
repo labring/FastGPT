@@ -1,5 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
-import ReactFlow, { Background, Connection, Controls, ReactFlowProvider } from 'reactflow';
+import ReactFlow, {
+  Background,
+  Connection,
+  Controls,
+  NodeProps,
+  ReactFlowProvider
+} from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -13,6 +19,7 @@ import { useFlowProviderStore } from './FlowProvider';
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
+import { FlowModuleItemType } from '@fastgpt/global/core/module/type';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
@@ -34,7 +41,10 @@ const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
-  [FlowNodeTypeEnum.tools]: dynamic(() => import('./components/nodes/NodeTools'))
+  [FlowNodeTypeEnum.tools]: dynamic(() => import('./components/nodes/NodeTools')),
+  [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowModuleItemType>) => (
+    <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
+  )
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge

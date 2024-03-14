@@ -3,12 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_AiModel,
@@ -21,15 +21,15 @@ import {
 import { chatNodeSystemPromptTip } from '../tip';
 import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
 
-export const AiChatModule: FlowModuleTemplateType = {
+export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
-  templateType: ModuleTemplateTypeEnum.textAnswer,
+  templateType: FlowNodeTemplateTypeEnum.textAnswer,
   flowType: FlowNodeTypeEnum.chatNode,
   avatar: '/imgs/module/AI.png',
   name: 'AI 对话',
   intro: 'AI 大模型对话',
   showStatus: true,
-  // isTool: true,
+  isTool: true,
   inputs: [
     Input_Template_Switch,
     Input_Template_AiModel,

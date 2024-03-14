@@ -8,7 +8,8 @@ import {
   ChatCompletionToolMessageParam,
   ChatCompletionAssistantToolParam,
   ChatCompletionMessageParam,
-  ChatCompletionTool
+  ChatCompletionTool,
+  ChatCompletionAssistantMessageParam
 } from '@fastgpt/global/core/ai/type';
 import { NextApiResponse } from 'next';
 import {
@@ -24,6 +25,8 @@ import { DispatchToolModuleProps, RunToolResponse, ToolModuleItemType } from './
 import json5 from 'json5';
 import { DispatchFlowResponse } from '../../type';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 type ToolRunResponseType = {
   moduleRunResponse: DispatchFlowResponse;
@@ -36,7 +39,8 @@ export const runToolWithToolChoice = async (
     toolModules: ToolModuleItemType[];
     toolModel: LLMModelItemType;
   },
-  response?: RunToolResponse
+  response?: RunToolResponse,
+  assistantResponses: AIChatItemValueItemType[] = []
 ): Promise<RunToolResponse> => {
   const {
     toolModel,
@@ -159,11 +163,19 @@ export const runToolWithToolChoice = async (
           startParams
         });
 
+        const stringToolResponse = (() => {
+          if (typeof moduleRunResponse.toolResponses === 'object') {
+            return JSON.stringify(moduleRunResponse.toolResponses, null, 2);
+          }
+
+          return moduleRunResponse.toolResponses ? String(moduleRunResponse.toolResponses) : 'none';
+        })();
+
         const toolMsgParams: ChatCompletionToolMessageParam = {
           tool_call_id: tool.id,
           role: ChatCompletionRequestMessageRoleEnum.Tool,
           name: tool.function.name,
-          content: JSON.stringify(moduleRunResponse.toolResponses, null, 2)
+          content: stringToolResponse
         };
 
         if (stream && detail) {
@@ -176,7 +188,7 @@ export const runToolWithToolChoice = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: JSON.stringify(moduleRunResponse.toolResponses, null, 2)
+                response: stringToolResponse
               }
             })
           });
@@ -204,16 +216,7 @@ export const runToolWithToolChoice = async (
     ] as ChatCompletionMessageParam[];
 
     const tokens = countGptMessagesTokens(concatToolMessages, tools);
-    // console.log(
-    //   JSON.stringify(
-    //     {
-    //       messages: concatToolMessages,
-    //       tools
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
+
     // console.log(tokens, 'tool');
 
     if (stream && detail) {
@@ -223,42 +226,60 @@ export const runToolWithToolChoice = async (
       });
     }
 
+    const toolAssistants = toolsRunResponse
+      .map((item) => {
+        const assistantResponses = item.moduleRunResponse.assistantResponses || [];
+        return assistantResponses;
+      })
+      .flat();
+    // concat tool responses
+    const dispatchFlowResponse = response
+      ? response.dispatchFlowResponse.concat(flatToolsResponseData)
+      : flatToolsResponseData;
+
+    /* check stop signal */
+    const hasStopSignal = flatToolsResponseData.some(
+      (item) => !!item.flowResponses?.find((item) => item.toolStop)
+    );
+    if (hasStopSignal) {
+      return {
+        dispatchFlowResponse,
+        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+        completeMessages: filterMessages,
+        assistantResponses: toolAssistants
+      };
+    }
+
     return runToolWithToolChoice(
       {
         ...props,
         messages: [...concatToolMessages, ...toolsRunResponse.map((item) => item?.toolMsgParams)]
       },
       {
-        dispatchFlowResponse: response
-          ? response.dispatchFlowResponse.concat(flatToolsResponseData)
-          : flatToolsResponseData,
+        dispatchFlowResponse,
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens
-      }
+      },
+      [...assistantResponses, ...toolAssistants]
     );
   } else {
     // No tool is invoked, indicating that the process is over
-    const completeMessages = filterMessages.concat({
+    const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
       content: answer
-    });
-
+    };
+    const completeMessages = filterMessages.concat(gptAssistantResponse);
     const tokens = countGptMessagesTokens(completeMessages, tools);
-    // console.log(
-    //   JSON.stringify(
-    //     {
-    //       messages: completeMessages,
-    //       tools
-    //     },
-    //     null,
-    //     2
-    //   )
-    // );
     // console.log(tokens, 'response token');
+
+    // concat tool assistant
+    const adaptAssistantMsg = GPTMessages2Chats([gptAssistantResponse]).pop() as AIChatItemType;
+    adaptAssistantMsg.value = [...assistantResponses, ...adaptAssistantMsg.value];
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
-      completeMessages
+      completeMessages,
+      assistantResponses: adaptAssistantMsg.value
     };
   }
 };

@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type {
-  FlowModuleTemplateType,
+  FlowNodeTemplateType,
   moduleTemplateListType
 } from '@fastgpt/global/core/module/type.d';
 import { useViewport, XYPosition } from 'reactflow';
@@ -20,7 +20,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@fastgpt/global/core/module/template/constants';
 
 export type ModuleTemplateProps = {
-  templates: FlowModuleTemplateType[];
+  templates: FlowNodeTemplateType[];
 };
 
 type ModuleTemplateListProps = ModuleTemplateProps & {
@@ -28,7 +28,7 @@ type ModuleTemplateListProps = ModuleTemplateProps & {
   onClose: () => void;
 };
 type RenderListProps = {
-  templates: FlowModuleTemplateType[];
+  templates: FlowNodeTemplateType[];
   onClose: () => void;
 };
 
@@ -90,7 +90,7 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
   }, [templates]);
 
   const onAddNode = useCallback(
-    async ({ template, position }: { template: FlowModuleTemplateType; position: XYPosition }) => {
+    async ({ template, position }: { template: FlowNodeTemplateType; position: XYPosition }) => {
       const { reactFlowWrapper, nodes } = await getFlowStore();
       if (!reactFlowWrapper?.current) return;
 
@@ -145,7 +145,7 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
               <Box fontWeight={'bold'} flex={1}>
                 {t(item.label)}
               </Box>
-              {/* {isPlugin && item.type === ModuleTemplateTypeEnum.personalPlugin && (
+              {/* {isPlugin && item.type === FlowNodeTemplateTypeEnum.personalPlugin && (
                 <Flex
                   alignItems={'center'}
                   _hover={{ textDecoration: 'underline' }}

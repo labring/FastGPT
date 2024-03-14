@@ -130,6 +130,7 @@ const Standard = ({
         gap={[4, 6, 8]}
         w={'100%'}
         maxW={'1440px'}
+        minH={'550px'}
       >
         {standardSubList.map((item) => {
           const isCurrentPlan =

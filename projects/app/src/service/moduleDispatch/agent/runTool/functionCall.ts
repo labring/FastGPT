@@ -25,6 +25,8 @@ import json5 from 'json5';
 import { DispatchFlowResponse } from '../../type';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
 type ToolRunResponseType = {
   moduleRunResponse: DispatchFlowResponse;
@@ -37,7 +39,8 @@ export const runToolWithFunctionCall = async (
     toolModules: ToolModuleItemType[];
     toolModel: LLMModelItemType;
   },
-  response?: RunToolResponse
+  response?: RunToolResponse,
+  assistantResponses: AIChatItemValueItemType[] = []
 ): Promise<RunToolResponse> => {
   const {
     toolModel,
@@ -161,10 +164,18 @@ export const runToolWithFunctionCall = async (
           startParams
         });
 
+        const stringToolResponse = (() => {
+          if (typeof moduleRunResponse.toolResponses === 'object') {
+            return JSON.stringify(moduleRunResponse.toolResponses, null, 2);
+          }
+
+          return moduleRunResponse.toolResponses ? String(moduleRunResponse.toolResponses) : 'none';
+        })();
+
         const functionCallMsg: ChatCompletionFunctionMessageParam = {
           role: ChatCompletionRequestMessageRoleEnum.Function,
           name: tool.name,
-          content: JSON.stringify(moduleRunResponse.toolResponses, null, 2)
+          content: stringToolResponse
         };
 
         if (stream && detail) {
@@ -177,7 +188,7 @@ export const runToolWithFunctionCall = async (
                 toolName: '',
                 toolAvatar: '',
                 params: '',
-                response: JSON.stringify(moduleRunResponse.toolResponses, null, 2)
+                response: stringToolResponse
               }
             })
           });
@@ -216,33 +227,60 @@ export const runToolWithFunctionCall = async (
       });
     }
 
+    const toolAssistants = toolsRunResponse
+      .map((item) => {
+        const assistantResponses = item.moduleRunResponse.assistantResponses || [];
+        return assistantResponses;
+      })
+      .flat();
+    // concat tool responses
+    const dispatchFlowResponse = response
+      ? response.dispatchFlowResponse.concat(flatToolsResponseData)
+      : flatToolsResponseData;
+
+    /* check stop signal */
+    const hasStopSignal = flatToolsResponseData.some(
+      (item) => !!item.flowResponses?.find((item) => item.toolStop)
+    );
+    if (hasStopSignal) {
+      return {
+        dispatchFlowResponse,
+        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+        completeMessages: filterMessages,
+        assistantResponses: toolAssistants
+      };
+    }
+
     return runToolWithFunctionCall(
       {
         ...props,
         messages: [...concatToolMessages, ...toolsRunResponse.map((item) => item?.functionCallMsg)]
       },
       {
-        dispatchFlowResponse: response
-          ? response.dispatchFlowResponse.concat(flatToolsResponseData)
-          : flatToolsResponseData,
+        dispatchFlowResponse,
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens
-      }
+      },
+      [...assistantResponses, ...toolAssistants]
     );
   } else {
     // No tool is invoked, indicating that the process is over
-    const completeMessages = filterMessages.concat({
+    const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
       content: answer
-    });
-
+    };
+    const completeMessages = filterMessages.concat(gptAssistantResponse);
     const tokens = countGptMessagesTokens(completeMessages, undefined, functions);
-
     // console.log(tokens, 'response token');
+
+    // concat tool assistant
+    const adaptAssistantMsg = GPTMessages2Chats([gptAssistantResponse]).pop() as AIChatItemType;
+    adaptAssistantMsg.value = [...assistantResponses, ...adaptAssistantMsg.value];
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
-      completeMessages
+      completeMessages,
+      assistantResponses: adaptAssistantMsg.value
     };
   }
 };

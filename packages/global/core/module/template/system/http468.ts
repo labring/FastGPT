@@ -3,12 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type';
+import { FlowNodeTemplateType } from '../../type';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_AddInputParam,
@@ -17,9 +17,9 @@ import {
 } from '../input';
 import { Output_Template_AddOutput, Output_Template_Finish } from '../output';
 
-export const HttpModule468: FlowModuleTemplateType = {
+export const HttpModule468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
-  templateType: ModuleTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.httpRequest468,
   avatar: '/imgs/module/http.png',
   name: 'HTTP 请求',

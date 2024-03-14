@@ -3,8 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
+import { FlowNodeTemplateType } from '../../type.d';
+import {
+  ModuleIOValueTypeEnum,
+  ModuleInputKeyEnum,
+  FlowNodeTemplateTypeEnum
+} from '../../constants';
 import {
   Input_Template_AiModel,
   Input_Template_History,
@@ -15,9 +19,9 @@ import { Output_Template_UserChatInput } from '../output';
 import { Input_Template_System_Prompt } from '../input';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 
-export const ClassifyQuestionModule: FlowModuleTemplateType = {
+export const ClassifyQuestionModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.classifyQuestion,
-  templateType: ModuleTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.classifyQuestion,
   avatar: '/imgs/module/cq.png',
   name: '问题分类',

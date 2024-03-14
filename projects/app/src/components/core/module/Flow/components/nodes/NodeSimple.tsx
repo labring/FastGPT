@@ -10,7 +10,12 @@ import RenderToolInput from '../render/RenderToolInput';
 import { useTranslation } from 'next-i18next';
 import { useFlowProviderStore } from '../../FlowProvider';
 
-const NodeSimple = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
+const NodeSimple = ({
+  data,
+  selected,
+  minW = '350px',
+  maxW
+}: NodeProps<FlowModuleItemType> & { minW?: string | number; maxW?: string | number }) => {
   const { t } = useTranslation();
   const { splitToolInputs } = useFlowProviderStore();
   const { moduleId, inputs, outputs } = data;
@@ -22,7 +27,7 @@ const NodeSimple = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   );
 
   return (
-    <NodeCard minW={'350px'} selected={selected} {...data}>
+    <NodeCard minW={minW} maxW={maxW} selected={selected} {...data}>
       {toolInputs.length > 0 && (
         <>
           <Divider text={t('core.module.tool.Tool input')} />

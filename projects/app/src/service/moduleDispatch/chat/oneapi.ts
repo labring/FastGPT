@@ -233,6 +233,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
         tokens
       }
     ],
+    [DispatchNodeResponseKeyEnum.toolResponses]: answerText,
     history: chatCompleteMessages
   };
 };

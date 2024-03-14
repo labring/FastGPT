@@ -1,10 +1,10 @@
-import { ModuleTemplateTypeEnum } from '../../constants';
+import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { FlowNodeTypeEnum } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 
-export const PluginInputModule: FlowModuleTemplateType = {
+export const PluginInputModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.pluginInput,
-  templateType: ModuleTemplateTypeEnum.systemInput,
+  templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowType: FlowNodeTypeEnum.pluginInput,
   avatar: '/imgs/module/input.png',
   name: '定义插件输入',

@@ -2,7 +2,7 @@ import { FlowNodeTypeEnum } from './node/constant';
 import {
   ModuleIOValueTypeEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum,
+  FlowNodeTemplateTypeEnum,
   VariableInputEnum
 } from './constants';
 import { DispatchNodeResponseKeyEnum } from './runtime/constants';
@@ -16,9 +16,9 @@ import {
 import { ChatNodeUsageType } from '../../support/wallet/bill/type';
 import { RunningModuleItemType } from './runtime/type';
 
-export type FlowModuleTemplateType = {
+export type FlowNodeTemplateType = {
   id: string; // module id, unique
-  templateType: `${ModuleTemplateTypeEnum}`;
+  templateType: `${FlowNodeTemplateTypeEnum}`;
   flowType: `${FlowNodeTypeEnum}`; // render node card
   avatar?: string;
   name: string;
@@ -28,13 +28,13 @@ export type FlowModuleTemplateType = {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
 };
-export type FlowModuleItemType = FlowModuleTemplateType & {
+export type FlowModuleItemType = FlowNodeTemplateType & {
   moduleId: string;
 };
 export type moduleTemplateListType = {
-  type: `${ModuleTemplateTypeEnum}`;
+  type: `${FlowNodeTemplateTypeEnum}`;
   label: string;
-  list: FlowModuleTemplateType[];
+  list: FlowNodeTemplateType[];
 }[];
 
 // store module type

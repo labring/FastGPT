@@ -3,12 +3,13 @@ import { responseWrite } from '@fastgpt/service/common/response';
 import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 export type AnswerProps = ModuleDispatchProps<{
   text: string;
 }>;
-export type AnswerResponse = {
+export type AnswerResponse = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.answerText]: string;
-};
+}>;
 
 export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
   const {

@@ -1,4 +1,4 @@
-export enum ModuleTemplateTypeEnum {
+export enum FlowNodeTemplateTypeEnum {
   userGuide = 'userGuide',
   systemInput = 'systemInput',
   tools = 'tools',

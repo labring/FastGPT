@@ -3,12 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type';
+import { FlowNodeTemplateType } from '../../type';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_History,
@@ -19,9 +19,9 @@ import {
 import { Output_Template_UserChatInput } from '../output';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 
-export const AiQueryExtension: FlowModuleTemplateType = {
+export const AiQueryExtension: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
-  templateType: ModuleTemplateTypeEnum.other,
+  templateType: FlowNodeTemplateTypeEnum.other,
   flowType: FlowNodeTypeEnum.queryExtension,
   avatar: '/imgs/module/cfr.svg',
   name: '问题优化',
