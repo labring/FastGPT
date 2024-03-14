@@ -194,7 +194,6 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                           bg: 'myGray.100'
                         }
                       })}
-                  onClick={() => onSwitchTeam(team.teamId)}
                 >
                   <Avatar src={team.avatar} w={['18px', '22px']} />
                   <Box

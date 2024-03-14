@@ -772,6 +772,7 @@
     "module": {
       "Add question type": "添加问题类型",
       "Can not connect self": "不能连接自身",
+      "Confirm Delete Node": "确认删除该节点？",
       "Data Type": "数据类型",
       "Dataset quote": {
         "Add quote": "添加引用",
@@ -1354,7 +1355,7 @@
           "experience": "体验版",
           "experience desc": "",
           "free": "免费版",
-          "free desc": "每月均可免费使用基础功能，15天不活跃时，将会清除知识库",
+          "free desc": "每月均可免费使用基础功能，15天无使用记录时，将会清除知识库",
           "team": "团队版"
         },
         "type": {

@@ -3,7 +3,7 @@ import { useRouter } from 'next/router';
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type.d';
 import { pluginSystemModuleTemplates } from '@fastgpt/global/core/module/template/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -28,7 +28,7 @@ const Render = ({ pluginId }: Props) => {
     const pluginTemplates = pluginModuleTemplates.filter((item) => item.id !== pluginId);
     const concatTemplates = [...pluginSystemModuleTemplates, ...pluginTemplates];
 
-    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
+    const copyTemplates: FlowNodeTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
 
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1,

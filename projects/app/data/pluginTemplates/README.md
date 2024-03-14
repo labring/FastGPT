@@ -14,7 +14,7 @@ type TemplateType =
 
 type pluginType = {
   author: string; // 填写作者信息
-  templateType: FlowModuleTemplateType['templateType'];
+  templateType: FlowNodeTemplateType['templateType'];
   name: string;
   avatar: string;
   intro: string;

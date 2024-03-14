@@ -10,7 +10,6 @@ import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 export type DispatchFlowResponse = {
   flowResponses: ChatHistoryItemResType[];
   flowUsages: ChatNodeUsageType[];
-  // [DispatchNodeResponseKeyEnum.nodeDispatchUsages]: ChatNodeUsageType[];
-  [DispatchNodeResponseKeyEnum.toolResponses]: ToolRunResponseItemType[];
+  [DispatchNodeResponseKeyEnum.toolResponses]: ToolRunResponseItemType;
   [DispatchNodeResponseKeyEnum.assistantResponses]: AIChatItemValueItemType[];
 };

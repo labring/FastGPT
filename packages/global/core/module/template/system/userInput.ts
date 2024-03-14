@@ -3,17 +3,17 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 
-export const UserInputModule: FlowModuleTemplateType = {
+export const UserInputModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.questionInput,
-  templateType: ModuleTemplateTypeEnum.systemInput,
+  templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowType: FlowNodeTypeEnum.questionInput,
   avatar: '/imgs/module/userChatInput.svg',
   name: '对话入口',

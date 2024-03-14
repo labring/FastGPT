@@ -74,7 +74,8 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const {
     dispatchFlowResponse,
     totalTokens,
-    completeMessages = []
+    completeMessages = [],
+    assistantResponses = []
   } = await (async () => {
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
@@ -105,11 +106,6 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     modelType: ModelTypeEnum.llm
   });
 
-  const adaptMessages = GPTMessages2Chats(completeMessages);
-  //@ts-ignore
-  const startIndex = adaptMessages.findLastIndex((item) => item.obj === ChatRoleEnum.Human);
-  const assistantResponse = adaptMessages.slice(startIndex + 1);
-
   // flat child tool response
   const childToolResponse = dispatchFlowResponse.map((item) => item.flowResponses).flat();
 
@@ -123,9 +119,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const flatUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
 
   return {
-    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponse
-      .map((item) => item.value)
-      .flat(),
+    [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,
       toolCallTokens: totalTokens,

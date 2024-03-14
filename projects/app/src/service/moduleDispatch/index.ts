@@ -36,6 +36,7 @@ import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { dispatchRunTools } from './agent/runTool/index';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { DispatchFlowResponse } from './type';
+import { dispatchStopToolCall } from './agent/runTool/stopTool';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -54,6 +55,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.pluginOutput]: dispatchPluginOutput,
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
   [FlowNodeTypeEnum.tools]: dispatchRunTools,
+  [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
 
   // none
   [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()
@@ -93,7 +95,7 @@ export async function dispatchWorkFlow({
   let chatResponses: ChatHistoryItemResType[] = []; // response request and save to database
   let chatAssistantResponse: AIChatItemValueItemType[] = []; // The value will be returned to the user
   let chatNodeUsages: ChatNodeUsageType[] = [];
-  let toolRunResponse: ToolRunResponseItemType[] = [];
+  let toolRunResponse: ToolRunResponseItemType;
   let runningTime = Date.now();
 
   /* Store special response field  */
@@ -124,12 +126,12 @@ export async function dispatchWorkFlow({
     if (nodeDispatchUsages) {
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
     }
-    if (toolResponses) {
-      if (Array.isArray(toolResponses) && toolResponses.length > 0) {
-        toolRunResponse.push(toolResponses);
-      } else if (Object.keys(toolResponses).length > 0) {
-        toolRunResponse.push(toolResponses);
+    if (toolResponses !== undefined) {
+      if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
+      if (typeof toolResponses === 'object' && Object.keys(toolResponses).length === 0) {
+        return;
       }
+      toolRunResponse = toolResponses;
     }
     if (assistantResponses) {
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);

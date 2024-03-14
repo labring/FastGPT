@@ -57,7 +57,8 @@ export enum FlowNodeTypeEnum {
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
-  tools = 'tools'
+  tools = 'tools',
+  stopTool = 'stopTool'
 
   // abandon
 }

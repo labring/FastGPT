@@ -8,6 +8,7 @@ import type {
 import type { RunningModuleItemType } from '@fastgpt/global/core/module/runtime/type';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import type { DispatchFlowResponse } from '../../type.d';
+import { ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 
 export type DispatchToolModuleProps = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -20,6 +21,7 @@ export type RunToolResponse = {
   dispatchFlowResponse: DispatchFlowResponse[];
   totalTokens: number;
   completeMessages?: ChatCompletionMessageParam[];
+  assistantResponses?: ChatItemValueItemType[];
 };
 export type ToolModuleItemType = RunningModuleItemType & {
   toolParams: RunningModuleItemType['inputs'];
