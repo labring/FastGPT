@@ -58,6 +58,7 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/consta
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
+import team from '@fastgpt/global/common/error/code/team';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
@@ -630,6 +631,8 @@ const ChatBox = (
           updateChatUserFeedback({
             appId,
             chatId,
+            teamId,
+            teamToken,
             chatItemId: chat.dataId,
             shareId,
             outLinkUid,
@@ -654,6 +657,8 @@ const ChatBox = (
         );
         updateChatUserFeedback({
           appId,
+          teamId,
+          teamToken,
           chatId,
           chatItemId: chat.dataId,
           userGoodFeedback: undefined
@@ -687,6 +692,8 @@ const ChatBox = (
               chatId,
               chatItemId: chat.dataId,
               shareId,
+              teamId,
+              teamToken,
               outLinkUid
             });
           } catch (error) {}
@@ -955,6 +962,8 @@ const ChatBox = (
       {!!feedbackId && chatId && appId && (
         <FeedbackModal
           appId={appId}
+          teamId={teamId}
+          teamToken={teamToken}
           chatId={chatId}
           chatItemId={feedbackId}
           shareId={shareId}

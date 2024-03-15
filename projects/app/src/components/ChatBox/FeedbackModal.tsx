@@ -9,6 +9,8 @@ const FeedbackModal = ({
   appId,
   chatId,
   chatItemId,
+  teamId,
+  teamToken,
   shareId,
   outLinkUid,
   onSuccess,
@@ -18,6 +20,8 @@ const FeedbackModal = ({
   chatId: string;
   chatItemId: string;
   shareId?: string;
+  teamId?: string;
+  teamToken?: string;
   outLinkUid?: string;
   onSuccess: (e: string) => void;
   onClose: () => void;
@@ -33,6 +37,8 @@ const FeedbackModal = ({
         chatId,
         chatItemId,
         shareId,
+        teamId,
+        teamToken,
         outLinkUid,
         userBadFeedback: val
       });
