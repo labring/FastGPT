@@ -19,6 +19,9 @@ import {
 import { formatModelChars2Points } from '@fastgpt/service/support/wallet/usage/utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 import { runToolWithFunctionCall } from './functionCall';
+import { runToolWithPromptCall } from './promptCall';
+import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { Prompt_Tool_Call } from './constants';
 
 type Response = DispatchNodeResultType<{}>;
 
@@ -72,17 +75,18 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   ];
 
   const {
-    dispatchFlowResponse,
+    dispatchFlowResponse, // tool flow response
     totalTokens,
-    completeMessages = [],
-    assistantResponses = []
+    completeMessages = [], // The actual message sent to AI(just save text)
+    assistantResponses = [] // FastGPT system store assistant.value response
   } = await (async () => {
+    const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
         toolModules,
         toolModel,
-        messages: chats2GPTMessages({ messages, reserveId: false })
+        messages: adaptMessages
       });
     }
     if (toolModel.functionCall) {
@@ -90,14 +94,25 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
         ...props,
         toolModules,
         toolModel,
-        messages: chats2GPTMessages({ messages, reserveId: false })
+        messages: adaptMessages
       });
     }
-    return {
-      dispatchFlowResponse: [],
-      totalTokens: 0,
-      completeMessages: []
-    };
+
+    const lastMessage = adaptMessages[adaptMessages.length - 1];
+    if (typeof lastMessage.content !== 'string') {
+      return Promise.reject('暂时只支持纯文本');
+    }
+
+    lastMessage.content = replaceVariable(Prompt_Tool_Call, {
+      question: userChatInput
+    });
+
+    return runToolWithPromptCall({
+      ...props,
+      toolModules,
+      toolModel,
+      messages: adaptMessages
+    });
   })();
 
   const { totalPoints, modelName } = formatModelChars2Points({
