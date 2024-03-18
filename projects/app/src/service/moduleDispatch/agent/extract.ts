@@ -25,6 +25,7 @@ import {
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -160,7 +161,7 @@ const getFunctionCallSchema = ({
           - 字符串不要换行。
           - 结合上下文和当前问题进行获取。
           """
-          
+
           当前问题: "${content}"`
           }
         }
@@ -325,8 +326,8 @@ const completions = async ({
                     }}`
                 )
                 .join('\n'),
-              text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
-      Human: ${content}`
+              text: `${histories.map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`).join('\n')}
+Human: ${content}`
             })
           }
         }
