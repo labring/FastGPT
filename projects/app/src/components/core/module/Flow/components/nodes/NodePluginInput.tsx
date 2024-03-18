@@ -62,44 +62,48 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
             position={'relative'}
             mb={7}
           >
-            <MyIcon
-              name={'common/settingLight'}
-              w={'14px'}
-              cursor={'pointer'}
-              mr={3}
-              _hover={{ color: 'primary.500' }}
-              onClick={() =>
-                setEditField({
-                  inputType: item.type,
-                  valueType: item.valueType,
-                  key: item.key,
-                  label: item.label,
-                  description: item.description,
-                  required: item.required,
-                  isToolInput: !!item.toolDescription
-                })
-              }
-            />
-            <MyIcon
-              className="delete"
-              name={'delete'}
-              w={'14px'}
-              cursor={'pointer'}
-              mr={3}
-              _hover={{ color: 'red.500' }}
-              onClick={() => {
-                onChangeNode({
-                  moduleId,
-                  type: 'delInput',
-                  key: item.key
-                });
-                onChangeNode({
-                  moduleId,
-                  type: 'delOutput',
-                  key: item.key
-                });
-              }}
-            />
+            {item.edit && (
+              <>
+                <MyIcon
+                  name={'common/settingLight'}
+                  w={'14px'}
+                  cursor={'pointer'}
+                  mr={3}
+                  _hover={{ color: 'primary.500' }}
+                  onClick={() =>
+                    setEditField({
+                      inputType: item.type,
+                      valueType: item.valueType,
+                      key: item.key,
+                      label: item.label,
+                      description: item.description,
+                      required: item.required,
+                      isToolInput: !!item.toolDescription
+                    })
+                  }
+                />
+                <MyIcon
+                  className="delete"
+                  name={'delete'}
+                  w={'14px'}
+                  cursor={'pointer'}
+                  mr={3}
+                  _hover={{ color: 'red.500' }}
+                  onClick={() => {
+                    onChangeNode({
+                      moduleId,
+                      type: 'delInput',
+                      key: item.key
+                    });
+                    onChangeNode({
+                      moduleId,
+                      type: 'delOutput',
+                      key: item.key
+                    });
+                  }}
+                />
+              </>
+            )}
             {item.description && (
               <MyTooltip label={t(item.description)} forceShow>
                 <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
