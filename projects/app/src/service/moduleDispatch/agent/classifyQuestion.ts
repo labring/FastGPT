@@ -125,7 +125,7 @@ const getFunctionCallSchema = ({
               ? `<背景知识>
     ${systemPrompt}
     </背景知识>
-    
+
     问题: "${userChatInput}"
           `
               : userChatInput
@@ -284,7 +284,9 @@ const completions = async ({
               typeList: agents
                 .map((item) => `{"questionType": "${item.value}", "typeId": "${item.key}"}`)
                 .join('\n'),
-              history: histories.map((item) => `${item.obj}:${item.value}`).join('\n'),
+              history: histories
+                .map((item) => `${item.obj}:${item.value[0].text.content}`)
+                .join('\n'),
               question: userChatInput
             })
           }

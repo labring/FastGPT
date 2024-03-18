@@ -160,7 +160,7 @@ const getFunctionCallSchema = ({
           - 字符串不要换行。
           - 结合上下文和当前问题进行获取。
           """
-          
+
           当前问题: "${content}"`
           }
         }
@@ -325,8 +325,8 @@ const completions = async ({
                     }}`
                 )
                 .join('\n'),
-              text: `${histories.map((item) => `${item.obj}:${item.value}`).join('\n')}
-      Human: ${content}`
+              text: `${histories.map((item) => `${item.obj}:${item.value[0].text.content}`).join('\n')}
+Human: ${content}`
             })
           }
         }
