@@ -13,7 +13,6 @@ export interface AppSchema {
   tmbId: string;
   name: string;
   type: `${AppTypeEnum}`;
-  simpleTemplateId: string;
   avatar: string;
   intro: string;
   updateTime: number;

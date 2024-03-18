@@ -13,7 +13,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import { usePluginStore } from '@/web/core/plugin/store/plugin';
+import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 
 type Props = { pluginId: string };
 
@@ -22,11 +22,28 @@ const Render = ({ pluginId }: Props) => {
   const router = useRouter();
   const { toast } = useToast();
   const { nodes, initData } = useFlowProviderStore();
-  const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
+  const { setBasicNodeTemplates } = useWorkflowStore();
 
-  const moduleTemplates = useMemo(() => {
-    const pluginTemplates = pluginModuleTemplates.filter((item) => item.id !== pluginId);
-    const concatTemplates = [...pluginSystemModuleTemplates, ...pluginTemplates];
+  const { data: pluginDetail } = useQuery(
+    ['getOnePlugin', pluginId],
+    () => getOnePlugin(pluginId),
+    {
+      onError: (error) => {
+        toast({
+          status: 'warning',
+          title: getErrText(error, t('plugin.Load Plugin Failed'))
+        });
+        router.replace('/plugin/list');
+      }
+    }
+  );
+
+  useEffect(() => {
+    initData(JSON.parse(JSON.stringify(pluginDetail?.modules || [])));
+  }, [pluginDetail?.modules]);
+
+  useEffect(() => {
+    const concatTemplates = [...pluginSystemModuleTemplates];
 
     const copyTemplates: FlowNodeTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
 
@@ -52,34 +69,11 @@ const Render = ({ pluginId }: Props) => {
       template.inputs = template.inputs.filter((input) => !input.hideInPlugin);
     });
 
-    return copyTemplates;
-  }, [nodes, pluginId, pluginModuleTemplates]);
-
-  const { data: pluginDetail } = useQuery(
-    ['getOnePlugin', pluginId],
-    () => getOnePlugin(pluginId),
-    {
-      onError: (error) => {
-        toast({
-          status: 'warning',
-          title: getErrText(error, t('plugin.Load Plugin Failed'))
-        });
-        router.replace('/plugin/list');
-      }
-    }
-  );
-
-  useQuery(['getPlugTemplates'], () => loadPluginTemplates());
-
-  useEffect(() => {
-    initData(JSON.parse(JSON.stringify(pluginDetail?.modules || [])));
-  }, [pluginDetail?.modules]);
+    setBasicNodeTemplates(copyTemplates);
+  }, [nodes, setBasicNodeTemplates]);
 
   return pluginDetail ? (
-    <Flow
-      templates={moduleTemplates}
-      Header={<Header plugin={pluginDetail} onClose={() => router.back()} />}
-    />
+    <Flow Header={<Header plugin={pluginDetail} onClose={() => router.back()} />} />
   ) : (
     <Loading />
   );

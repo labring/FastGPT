@@ -79,12 +79,7 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
 export const moduleTemplatesList: moduleTemplateListType = [
   {
     type: FlowNodeTemplateTypeEnum.userGuide,
-    label: 'core.module.template.Guide module',
-    list: []
-  },
-  {
-    type: FlowNodeTemplateTypeEnum.systemInput,
-    label: 'core.module.template.System input module',
+    label: '',
     list: []
   },
   {
@@ -109,12 +104,17 @@ export const moduleTemplatesList: moduleTemplateListType = [
   },
   {
     type: FlowNodeTemplateTypeEnum.personalPlugin,
-    label: 'core.module.template.My plugin module',
+    label: '',
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.other,
     label: '其他',
+    list: []
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.systemInput,
+    label: 'core.module.template.System input module',
     list: []
   }
 ];

@@ -12,7 +12,6 @@ export type CreateAppParams = {
 export interface AppUpdateParams {
   name?: string;
   type?: `${AppTypeEnum}`;
-  simpleTemplateId?: string;
   avatar?: string;
   intro?: string;
   modules?: AppSchema['modules'];

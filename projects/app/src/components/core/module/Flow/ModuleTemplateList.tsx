@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import type {
   FlowNodeTemplateType,
@@ -7,7 +7,7 @@ import type {
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
-import { getFlowStore, onSetNodes } from './FlowProvider';
+import { getFlowStore, onSetNodes, useFlowProviderStore } from './FlowProvider';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowNode } from '@/utils/adapt';
 import { useTranslation } from 'next-i18next';
@@ -18,12 +18,12 @@ import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@fastgpt/global/core/module/template/constants';
+import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
+import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import MyBox from '@/components/common/MyBox';
 
-export type ModuleTemplateProps = {
-  templates: FlowNodeTemplateType[];
-};
-
-type ModuleTemplateListProps = ModuleTemplateProps & {
+type ModuleTemplateListProps = {
   isOpen: boolean;
   onClose: () => void;
 };
@@ -32,8 +32,44 @@ type RenderListProps = {
   onClose: () => void;
 };
 
-const ModuleTemplateList = ({ templates, isOpen, onClose }: ModuleTemplateListProps) => {
+enum TemplateTypeEnum {
+  'basic' = 'basic',
+  'systemPlugin' = 'systemPlugin',
+  'teamPlugin' = 'teamPlugin'
+}
+
+const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
+  const {
+    basicNodeTemplates,
+    systemNodeTemplates,
+    loadSystemNodeTemplates,
+    teamPluginNodeTemplates,
+    loadTeamPluginNodeTemplates
+  } = useWorkflowStore();
+  const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
+
+  const templates = useMemo(() => {
+    const map = {
+      [TemplateTypeEnum.basic]: basicNodeTemplates,
+      [TemplateTypeEnum.systemPlugin]: systemNodeTemplates,
+      [TemplateTypeEnum.teamPlugin]: teamPluginNodeTemplates
+    };
+    return map[templateType];
+  }, [basicNodeTemplates, systemNodeTemplates, teamPluginNodeTemplates, templateType]);
+
+  const { mutate: onChangeTab } = useRequest({
+    mutationFn: async (e: any) => {
+      const val = e as TemplateTypeEnum;
+      if (val === TemplateTypeEnum.systemPlugin) {
+        await loadSystemNodeTemplates();
+      } else if (val === TemplateTypeEnum.teamPlugin) {
+        await loadTeamPluginNodeTemplates();
+      }
+      setTemplateType(val);
+    },
+    errorToast: '加载插件失败'
+  });
 
   return (
     <>
@@ -53,10 +89,10 @@ const ModuleTemplateList = ({ templates, isOpen, onClose }: ModuleTemplateListPr
         position={'absolute'}
         top={'65px'}
         left={0}
-        pt={2}
+        pt={'20px'}
         pb={4}
         h={isOpen ? 'calc(100% - 100px)' : '0'}
-        w={isOpen ? ['100%', '360px'] : '0'}
+        w={isOpen ? ['100%', '380px'] : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'20px'}
@@ -64,6 +100,31 @@ const ModuleTemplateList = ({ templates, isOpen, onClose }: ModuleTemplateListPr
         transition={'.2s ease'}
         userSelect={'none'}
       >
+        <Box mb={3} px={'20px'} whiteSpace={'nowrap'}>
+          <RowTabs
+            list={[
+              {
+                icon: 'core/modules/basicNode',
+                label: t('core.module.template.Basic Node'),
+                value: TemplateTypeEnum.basic
+              },
+              {
+                icon: 'core/modules/systemPlugin',
+                label: t('core.module.template.System Plugin'),
+                value: TemplateTypeEnum.systemPlugin
+              },
+              {
+                icon: 'core/modules/teamPlugin',
+                label: t('core.module.template.Personal Plugin'),
+                value: TemplateTypeEnum.teamPlugin
+              }
+            ]}
+            w={'100%'}
+            py={'5px'}
+            value={templateType}
+            onChange={onChangeTab}
+          />
+        </Box>
         <RenderList templates={templates} onClose={onClose} />
       </Flex>
     </>
@@ -78,6 +139,7 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
   const { toast } = useToast();
+  const { reactFlowWrapper, nodes } = useFlowProviderStore();
 
   const formatTemplates = useMemo<moduleTemplateListType>(() => {
     const copy: moduleTemplateListType = JSON.parse(JSON.stringify(moduleTemplatesList));
@@ -91,7 +153,6 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
 
   const onAddNode = useCallback(
     async ({ template, position }: { template: FlowNodeTemplateType; position: XYPosition }) => {
-      const { reactFlowWrapper, nodes } = await getFlowStore();
       if (!reactFlowWrapper?.current) return;
 
       const templateModule = await (async () => {
@@ -131,33 +192,20 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
         )
       );
     },
-    [setLoading, t, toast, x, y, zoom]
+    [nodes, reactFlowWrapper, setLoading, t, toast, x, y, zoom]
   );
 
   return templates.length === 0 ? (
     <EmptyTip text={t('app.module.No Modules')} />
   ) : (
-    <Box flex={'1 0 0'} overflow={'overlay'}>
-      <Box w={['100%', '330px']} mx={'auto'}>
+    <Box flex={'1 0 0'} overflow={'overlay'} px={'20px'}>
+      <Box mx={'auto'}>
         {formatTemplates.map((item, i) => (
           <Box key={item.type}>
             <Flex>
               <Box fontWeight={'bold'} flex={1}>
                 {t(item.label)}
               </Box>
-              {/* {isPlugin && item.type === FlowNodeTemplateTypeEnum.personalPlugin && (
-                <Flex
-                  alignItems={'center'}
-                  _hover={{ textDecoration: 'underline' }}
-                  cursor={'pointer'}
-                  onClick={() => router.push('/plugin/list')}
-                >
-                  <Box fontSize={'sm'} transform={'translateY(-1px)'}>
-                    {t('plugin.To Edit Plugin')}
-                  </Box>
-                  <MyIcon name={'common/rightArrowLight'} w={'12px'} />
-                </Flex>
-              )} */}
             </Flex>
             <>
               {item.list.map((template) => (

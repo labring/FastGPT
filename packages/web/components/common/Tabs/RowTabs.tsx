@@ -1,8 +1,8 @@
 import React from 'react';
-import { Flex, Box } from '@chakra-ui/react';
+import { Flex, Box, BoxProps } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 
-type Props = {
+type Props = BoxProps & {
   list: {
     icon?: string;
     label: string | React.ReactNode;
@@ -12,7 +12,7 @@ type Props = {
   onChange: (e: string) => void;
 };
 
-const RowTabs = ({ list, value, onChange }: Props) => {
+const RowTabs = ({ list, value, onChange, py = '7px', ...props }: Props) => {
   return (
     <Box
       display={'inline-flex'}
@@ -23,15 +23,17 @@ const RowTabs = ({ list, value, onChange }: Props) => {
       borderColor={'borderColor.base'}
       bg={'myGray.50'}
       gap={'4px'}
+      {...props}
     >
       {list.map((item) => (
         <Flex
           key={item.value}
+          flex={'1 0 0'}
           alignItems={'center'}
           cursor={'pointer'}
           borderRadius={'md'}
           px={'12px'}
-          py={'7px'}
+          py={py}
           userSelect={'none'}
           {...(value === item.value
             ? {

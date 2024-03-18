@@ -34,10 +34,6 @@ const AppSchema = new Schema({
     default: 'advanced',
     enum: Object.keys(AppTypeMap)
   },
-  simpleTemplateId: {
-    type: String,
-    required: true
-  },
   avatar: {
     type: String,
     default: '/icon/logo.svg'

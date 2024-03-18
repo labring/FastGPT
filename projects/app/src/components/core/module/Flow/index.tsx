@@ -13,7 +13,7 @@ import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/co
 import dynamic from 'next/dynamic';
 
 import ButtonEdge from './components/modules/ButtonEdge';
-import ModuleTemplateList, { type ModuleTemplateProps } from './ModuleTemplateList';
+import ModuleTemplateList from './ModuleTemplateList';
 import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
@@ -109,11 +109,7 @@ const Container = React.memo(function Container() {
   );
 });
 
-const Flow = ({
-  Header,
-  templates,
-  ...data
-}: ModuleTemplateProps & { Header: React.ReactNode }) => {
+const Flow = ({ Header, ...data }: { Header: React.ReactNode }) => {
   const {
     isOpen: isOpenTemplate,
     onOpen: onOpenTemplate,
@@ -153,14 +149,10 @@ const Flow = ({
 
         <Container {...data} />
 
-        <ModuleTemplateList
-          templates={templates}
-          isOpen={isOpenTemplate}
-          onClose={onCloseTemplate}
-        />
+        <ModuleTemplateList isOpen={isOpenTemplate} onClose={onCloseTemplate} />
       </Box>
     );
-  }, [data, isOpenTemplate, onCloseTemplate, onOpenTemplate, templates]);
+  }, [data, isOpenTemplate, onCloseTemplate, onOpenTemplate]);
 
   return (
     <Box h={'100%'} position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>
