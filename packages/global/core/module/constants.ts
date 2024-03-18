@@ -87,7 +87,8 @@ export enum ModuleInputKeyEnum {
   runAppSelectApp = 'app',
 
   // plugin
-  pluginId = 'pluginId'
+  pluginId = 'pluginId',
+  pluginStart = 'pluginStart'
 }
 
 export enum ModuleOutputKeyEnum {
@@ -117,7 +118,10 @@ export enum ModuleOutputKeyEnum {
   selectedTools = 'selectedTools',
 
   // http
-  httpRawResponse = 'httpRawResponse'
+  httpRawResponse = 'httpRawResponse',
+
+  // plugin
+  pluginStart = 'pluginStart'
 }
 
 export enum VariableInputEnum {

@@ -11,7 +11,13 @@ export const postCreatePlugin = (data: CreateOnePluginParams) =>
   POST<string>('/core/plugin/create', data);
 export const putUpdatePlugin = (data: UpdatePluginParams) => PUT('/core/plugin/update', data);
 export const getUserPlugins = () => GET<PluginListItemType[]>('/core/plugin/list');
-export const getPlugTemplates = () => GET<FlowNodeTemplateType[]>('/core/plugin/templates');
+
+/* work flow */
+export const getTeamPlugTemplates = () =>
+  GET<FlowNodeTemplateType[]>('/core/plugin/getTeamPluginTemplates');
+export const getSystemPlugTemplates = () =>
+  GET<FlowNodeTemplateType[]>('/core/plugin/getSystemPluginTemplates');
+
 export const getPreviewPluginModule = (id: string) =>
   GET<FlowNodeTemplateType>('/core/plugin/getPreviewModule', { id });
 export const getOnePlugin = (id: string) => GET<PluginItemSchema>('/core/plugin/detail', { id });

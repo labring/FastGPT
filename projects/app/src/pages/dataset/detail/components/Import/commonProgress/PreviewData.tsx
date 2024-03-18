@@ -13,7 +13,6 @@ const PreviewData = ({
 }) => {
   const { t } = useTranslation();
   const { sources, setSources } = useImportStore();
-  console.log(sources);
 
   return (
     <Flex flexDirection={'column'} h={'100%'} maxW={'1080px'}>

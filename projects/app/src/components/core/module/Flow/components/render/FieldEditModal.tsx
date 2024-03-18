@@ -13,7 +13,7 @@ import { useForm } from 'react-hook-form';
 import MyModal from '@/components/MyModal';
 import { DYNAMIC_INPUT_KEY, ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
-import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
+import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum

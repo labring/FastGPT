@@ -26,12 +26,19 @@ import json5 from 'json5';
 import { DispatchFlowResponse } from '../../type';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 
 type ToolRunResponseType = {
   moduleRunResponse: DispatchFlowResponse;
   toolMsgParams: ChatCompletionToolMessageParam;
 }[];
+
+/* 
+  调用思路
+  1. messages 接收发送给AI的消息
+  2. response 记录递归运行结果(累计计算 dispatchFlowResponse, totalTokens和assistantResponses)
+  3. 如果运行工具的话，则需要把工具中的结果累计加到dispatchFlowResponse中。 本次消耗的 token 加到 totalTokens, assistantResponses 记录当前工具运行的内容。
+*/
 
 export const runToolWithToolChoice = async (
   props: DispatchToolModuleProps & {
@@ -39,8 +46,7 @@ export const runToolWithToolChoice = async (
     toolModules: ToolModuleItemType[];
     toolModel: LLMModelItemType;
   },
-  response?: RunToolResponse,
-  assistantResponses: AIChatItemValueItemType[] = []
+  response?: RunToolResponse
 ): Promise<RunToolResponse> => {
   const {
     toolModel,
@@ -52,6 +58,7 @@ export const runToolWithToolChoice = async (
     module,
     stream
   } = props;
+  const assistantResponses = response?.assistantResponses || [];
 
   const tools: ChatCompletionTool[] = toolModules.map((module) => {
     const properties: Record<
@@ -214,8 +221,11 @@ export const runToolWithToolChoice = async (
       ...filterMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
-
     const tokens = countGptMessagesTokens(concatToolMessages, tools);
+    const completeMessages = [
+      ...concatToolMessages,
+      ...toolsRunResponse.map((item) => item?.toolMsgParams)
+    ];
 
     // console.log(tokens, 'tool');
 
@@ -226,12 +236,24 @@ export const runToolWithToolChoice = async (
       });
     }
 
+    // tool assistant
     const toolAssistants = toolsRunResponse
       .map((item) => {
         const assistantResponses = item.moduleRunResponse.assistantResponses || [];
         return assistantResponses;
       })
       .flat();
+
+    // tool node assistant
+    const adaptChatMessages = GPTMessages2Chats(completeMessages);
+    const toolNodeAssistant = adaptChatMessages.pop() as AIChatItemType;
+
+    const toolNodeAssistants = [
+      ...assistantResponses,
+      ...toolAssistants,
+      ...toolNodeAssistant.value
+    ];
+
     // concat tool responses
     const dispatchFlowResponse = response
       ? response.dispatchFlowResponse.concat(flatToolsResponseData)
@@ -245,21 +267,21 @@ export const runToolWithToolChoice = async (
       return {
         dispatchFlowResponse,
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
-        completeMessages: filterMessages,
-        assistantResponses: toolAssistants
+        completeMessages,
+        assistantResponses: toolNodeAssistants
       };
     }
 
     return runToolWithToolChoice(
       {
         ...props,
-        messages: [...concatToolMessages, ...toolsRunResponse.map((item) => item?.toolMsgParams)]
+        messages: completeMessages
       },
       {
         dispatchFlowResponse,
-        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens
-      },
-      [...assistantResponses, ...toolAssistants]
+        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+        assistantResponses: toolNodeAssistants
+      }
     );
   } else {
     // No tool is invoked, indicating that the process is over
@@ -272,14 +294,13 @@ export const runToolWithToolChoice = async (
     // console.log(tokens, 'response token');
 
     // concat tool assistant
-    const adaptAssistantMsg = GPTMessages2Chats([gptAssistantResponse]).pop() as AIChatItemType;
-    adaptAssistantMsg.value = [...assistantResponses, ...adaptAssistantMsg.value];
+    const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages,
-      assistantResponses: adaptAssistantMsg.value
+      assistantResponses: [...assistantResponses, ...toolNodeAssistant.value]
     };
   }
 };

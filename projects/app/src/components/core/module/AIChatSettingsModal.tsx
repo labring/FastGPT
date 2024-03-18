@@ -21,8 +21,6 @@ import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import dynamic from 'next/dynamic';
 import { PromptTemplateItem } from '@fastgpt/global/core/ai/type.d';
 import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
-import type { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type.d';
-import { SimpleModeTemplate_FastGPT_Universal } from '@/global/core/app/constants';
 import { getDocPath } from '@/web/common/system/doc';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';

@@ -28,7 +28,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
-type ToolRunResponseType = {
+type FunctionRunResponseType = {
   moduleRunResponse: DispatchFlowResponse;
   functionCallMsg: ChatCompletionFunctionMessageParam;
 }[];
@@ -39,8 +39,7 @@ export const runToolWithFunctionCall = async (
     toolModules: ToolModuleItemType[];
     toolModel: LLMModelItemType;
   },
-  response?: RunToolResponse,
-  assistantResponses: AIChatItemValueItemType[] = []
+  response?: RunToolResponse
 ): Promise<RunToolResponse> => {
   const {
     toolModel,
@@ -52,6 +51,7 @@ export const runToolWithFunctionCall = async (
     module,
     stream
   } = props;
+  const assistantResponses = response?.assistantResponses || [];
 
   const functions: ChatCompletionCreateParams.Function[] = toolModules.map((module) => {
     const properties: Record<
@@ -200,7 +200,7 @@ export const runToolWithFunctionCall = async (
         };
       })
     )
-  ).filter(Boolean) as ToolRunResponseType;
+  ).filter(Boolean) as FunctionRunResponseType;
 
   const flatToolsResponseData = toolsRunResponse.map((item) => item.moduleRunResponse).flat();
 
@@ -215,9 +215,11 @@ export const runToolWithFunctionCall = async (
       ...filterMessages,
       assistantToolMsgParams
     ] as ChatCompletionMessageParam[];
-
     const tokens = countGptMessagesTokens(concatToolMessages, undefined, functions);
-
+    const completeMessages = [
+      ...concatToolMessages,
+      ...toolsRunResponse.map((item) => item?.functionCallMsg)
+    ];
     // console.log(tokens, 'tool');
 
     if (stream && detail) {
@@ -227,12 +229,23 @@ export const runToolWithFunctionCall = async (
       });
     }
 
+    // tool assistant
     const toolAssistants = toolsRunResponse
       .map((item) => {
         const assistantResponses = item.moduleRunResponse.assistantResponses || [];
         return assistantResponses;
       })
       .flat();
+    // tool node assistant
+    const adaptChatMessages = GPTMessages2Chats(completeMessages);
+    const toolNodeAssistant = adaptChatMessages.pop() as AIChatItemType;
+
+    const toolNodeAssistants = [
+      ...assistantResponses,
+      ...toolAssistants,
+      ...toolNodeAssistant.value
+    ];
+
     // concat tool responses
     const dispatchFlowResponse = response
       ? response.dispatchFlowResponse.concat(flatToolsResponseData)
@@ -247,20 +260,20 @@ export const runToolWithFunctionCall = async (
         dispatchFlowResponse,
         totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
         completeMessages: filterMessages,
-        assistantResponses: toolAssistants
+        assistantResponses: toolNodeAssistants
       };
     }
 
     return runToolWithFunctionCall(
       {
         ...props,
-        messages: [...concatToolMessages, ...toolsRunResponse.map((item) => item?.functionCallMsg)]
+        messages: completeMessages
       },
       {
         dispatchFlowResponse,
-        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens
-      },
-      [...assistantResponses, ...toolAssistants]
+        totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
+        assistantResponses: toolNodeAssistants
+      }
     );
   } else {
     // No tool is invoked, indicating that the process is over
@@ -273,14 +286,13 @@ export const runToolWithFunctionCall = async (
     // console.log(tokens, 'response token');
 
     // concat tool assistant
-    const adaptAssistantMsg = GPTMessages2Chats([gptAssistantResponse]).pop() as AIChatItemType;
-    adaptAssistantMsg.value = [...assistantResponses, ...adaptAssistantMsg.value];
+    const toolNodeAssistant = GPTMessages2Chats([gptAssistantResponse])[0] as AIChatItemType;
 
     return {
       dispatchFlowResponse: response?.dispatchFlowResponse || [],
       totalTokens: response?.totalTokens ? response.totalTokens + tokens : tokens,
       completeMessages,
-      assistantResponses: adaptAssistantMsg.value
+      assistantResponses: [...assistantResponses, ...toolNodeAssistant.value]
     };
   }
 };
