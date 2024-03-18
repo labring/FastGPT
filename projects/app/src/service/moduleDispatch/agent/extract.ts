@@ -25,6 +25,7 @@ import {
 } from '@fastgpt/global/core/ai/type';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.history]?: ChatItemType[];
@@ -325,7 +326,7 @@ const completions = async ({
                     }}`
                 )
                 .join('\n'),
-              text: `${histories.map((item) => `${item.obj}:${item.value[0].text.content}`).join('\n')}
+              text: `${histories.map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`).join('\n')}
 Human: ${content}`
             })
           }

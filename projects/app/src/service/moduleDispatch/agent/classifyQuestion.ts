@@ -24,6 +24,7 @@ import {
   ChatCompletionTool
 } from '@fastgpt/global/core/ai/type';
 import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
+import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 type Props = ModuleDispatchProps<{
   [ModuleInputKeyEnum.aiModel]: string;
@@ -285,7 +286,7 @@ const completions = async ({
                 .map((item) => `{"questionType": "${item.value}", "typeId": "${item.key}"}`)
                 .join('\n'),
               history: histories
-                .map((item) => `${item.obj}:${item.value[0].text.content}`)
+                .map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`)
                 .join('\n'),
               question: userChatInput
             })
