@@ -337,7 +337,7 @@ function loadModules(
         isEntry: module.isEntry,
         inputs: module.inputs
           .filter(
-            /*
+            /* 
               1. system input must be save
               2. connected by source handle
               3. manual input value or have default value
