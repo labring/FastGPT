@@ -11,7 +11,7 @@ import {
 } from '@chakra-ui/react';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/module/type';
 import { useForm } from 'react-hook-form';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';

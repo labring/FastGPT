@@ -32,6 +32,9 @@ type State = {
   gitStar: number;
   loadGitStar: () => Promise<void>;
 
+  isNotSufficientModal: boolean;
+  setIsNotSufficientModal: (val: boolean) => void;
+
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
@@ -97,6 +100,13 @@ export const useSystemStore = create<State>()(
               state.gitStar = git.stargazers_count;
             });
           } catch (error) {}
+        },
+
+        isNotSufficientModal: false,
+        setIsNotSufficientModal(val: boolean) {
+          set((state) => {
+            state.isNotSufficientModal = val;
+          });
         },
 
         feConfigs: {},

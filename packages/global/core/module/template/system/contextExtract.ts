@@ -10,7 +10,11 @@ import {
   ModuleOutputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../constants';
-import { Input_Template_AiModel, Input_Template_History, Input_Template_Switch } from '../input';
+import {
+  Input_Template_SelectAIModel,
+  Input_Template_History,
+  Input_Template_Switch
+} from '../input';
 import { LLMModelTypeEnum } from '../../../ai/constants';
 
 export const ContextExtractModule: FlowNodeTemplateType = {
@@ -25,7 +29,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   inputs: [
     Input_Template_Switch,
     {
-      ...Input_Template_AiModel,
+      ...Input_Template_SelectAIModel,
       llmModelType: LLMModelTypeEnum.extractFields
     },
     {

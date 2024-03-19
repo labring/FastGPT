@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -28,7 +28,7 @@ import Tabs from '@/components/Tabs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import SelectAiModel from '@/components/Select/SelectAiModel';
+import SelectAiModel from '@/components/Select/AIModelSelector';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -75,7 +75,7 @@ const DatasetParamsModal = ({
       limit,
       similarity,
       searchMode,
-      usingReRank: !!usingReRank && !!teamPlanStatus?.standardConstants?.permissionReRank,
+      usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel: datasetSearchExtensionModel ?? llmModelList[0]?.model,
       datasetSearchExtensionBg

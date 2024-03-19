@@ -4,7 +4,7 @@ import { FlowModuleItemType, ModuleItemType } from '@fastgpt/global/core/module/
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import dynamic from 'next/dynamic';
 import { plugin2ModuleIO } from '@fastgpt/global/core/module/utils';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';

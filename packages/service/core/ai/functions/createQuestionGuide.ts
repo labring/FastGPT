@@ -2,7 +2,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { getAIApi } from '../config';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 
-export const Prompt_QuestionGuide = `我不太清楚问你什么问题，请帮我生成 3 个问题，引导我继续提问。问题的长度应小于20个字符，按 JSON 格式返回: ["问题1", "问题2", "问题3"]`;
+export const Prompt_QuestionGuide = `你是一个AI智能助手，可以回答和解决我的问题。请结合前面的对话记录，帮我生成 3 个问题，引导我继续提问。问题的长度应小于20个字符，按 JSON 格式返回: ["问题1", "问题2", "问题3"]`;
 
 export async function createQuestionGuide({
   messages,

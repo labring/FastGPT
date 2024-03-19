@@ -26,7 +26,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 

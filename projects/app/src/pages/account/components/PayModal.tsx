@@ -5,7 +5,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';

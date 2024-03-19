@@ -21,7 +21,8 @@ import { moduleTemplatesList } from '@fastgpt/global/core/module/template/consta
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import MyBox from '@/components/common/MyBox';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useRouter } from 'next/router';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -38,8 +39,11 @@ enum TemplateTypeEnum {
   'teamPlugin' = 'teamPlugin'
 }
 
+const sliderWidth = 380;
+
 const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
+  const router = useRouter();
   const {
     basicNodeTemplates,
     systemNodeTemplates,
@@ -68,7 +72,7 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       }
       setTemplateType(val);
     },
-    errorToast: '加载插件失败'
+    errorToast: t('core.module.templates.Load plugin error')
   });
 
   return (
@@ -92,7 +96,7 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         pt={'20px'}
         pb={4}
         h={isOpen ? 'calc(100% - 100px)' : '0'}
-        w={isOpen ? ['100%', '380px'] : '0'}
+        w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
         borderRadius={'20px'}
@@ -100,7 +104,7 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         transition={'.2s ease'}
         userSelect={'none'}
       >
-        <Box mb={3} px={'20px'} whiteSpace={'nowrap'}>
+        <Box mb={2} px={'20px'} whiteSpace={'nowrap'}>
           <RowTabs
             list={[
               {
@@ -115,7 +119,7 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
               },
               {
                 icon: 'core/modules/teamPlugin',
-                label: t('core.module.template.Personal Plugin'),
+                label: t('core.module.template.Team Plugin'),
                 value: TemplateTypeEnum.teamPlugin
               }
             ]}
@@ -124,6 +128,22 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             value={templateType}
             onChange={onChangeTab}
           />
+          {templateType === TemplateTypeEnum.teamPlugin && (
+            <Flex mt={2} alignItems={'center'}>
+              <Box flex={1} />
+              <Flex
+                alignItems={'center'}
+                cursor={'pointer'}
+                _hover={{
+                  color: 'primary.600'
+                }}
+                onClick={() => router.push('/plugin/list')}
+              >
+                <Box>去创建</Box>
+                <MyIcon name={'common/rightArrowLight'} w={'14px'} />
+              </Flex>
+            </Flex>
+          )}
         </Box>
         <RenderList templates={templates} onClose={onClose} />
       </Flex>
@@ -202,11 +222,14 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
       <Box mx={'auto'}>
         {formatTemplates.map((item, i) => (
           <Box key={item.type}>
-            <Flex>
-              <Box fontWeight={'bold'} flex={1}>
-                {t(item.label)}
-              </Box>
-            </Flex>
+            {item.label && (
+              <Flex>
+                <Box fontWeight={'bold'} flex={1}>
+                  {t(item.label)}
+                </Box>
+              </Flex>
+            )}
+
             <>
               {item.list.map((template) => (
                 <Flex
@@ -218,19 +241,25 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
                   borderRadius={'sm'}
                   draggable
                   onDragEnd={(e) => {
-                    if (e.clientX < 360) return;
+                    if (e.clientX < sliderWidth) return;
                     onAddNode({
                       template: template,
                       position: { x: e.clientX, y: e.clientY }
                     });
                   }}
                   onClick={(e) => {
-                    if (isPc) return;
-                    onClose();
-                    onAddNode({
-                      template: template,
-                      position: { x: e.clientX, y: e.clientY }
-                    });
+                    if (isPc) {
+                      onAddNode({
+                        template: template,
+                        position: { x: sliderWidth * 1.5, y: 200 }
+                      });
+                    } else {
+                      onAddNode({
+                        template: template,
+                        position: { x: e.clientX, y: e.clientY }
+                      });
+                      onClose();
+                    }
                   }}
                 >
                   <Avatar

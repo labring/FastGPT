@@ -37,7 +37,7 @@ import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '@/components/MyTooltip';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';

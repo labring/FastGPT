@@ -18,7 +18,7 @@ import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import Avatar from '@/components/Avatar';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionRadio from '@/components/support/permission/Radio';
 import { useTranslation } from 'next-i18next';

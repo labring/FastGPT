@@ -59,9 +59,18 @@ export const Input_Template_DynamicInput: FlowNodeInputItemType = {
   hideInApp: true
 };
 
-export const Input_Template_AiModel: FlowNodeInputItemType = {
+export const Input_Template_SelectAIModel: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.aiModel,
   type: FlowNodeInputTypeEnum.selectLLMModel,
+  label: 'core.module.input.label.aiModel',
+  required: true,
+  valueType: ModuleIOValueTypeEnum.string,
+  showTargetInApp: false,
+  showTargetInPlugin: false
+};
+export const Input_Template_SettingAiModel: FlowNodeInputItemType = {
+  key: ModuleInputKeyEnum.aiModel,
+  type: FlowNodeInputTypeEnum.settingLLMModel,
   label: 'core.module.input.label.aiModel',
   required: true,
   valueType: ModuleIOValueTypeEnum.string,

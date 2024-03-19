@@ -14,7 +14,7 @@ import {
   Input_Template_History,
   Input_Template_Switch,
   Input_Template_UserChatInput,
-  Input_Template_AiModel
+  Input_Template_SelectAIModel
 } from '../input';
 import { Output_Template_UserChatInput } from '../output';
 import { LLMModelTypeEnum } from '../../../ai/constants';
@@ -31,7 +31,7 @@ export const AiQueryExtension: FlowNodeTemplateType = {
   inputs: [
     Input_Template_Switch,
     {
-      ...Input_Template_AiModel,
+      ...Input_Template_SelectAIModel,
       llmModelType: LLMModelTypeEnum.queryExtension
     },
     {

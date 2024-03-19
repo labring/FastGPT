@@ -8,10 +8,10 @@ import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { dispatchWorkFlow } from '@/service/moduleDispatch';
+import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
-import { setEntryEntries } from '@/service/moduleDispatch/utils';
+import { setEntryEntries } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 
 export type Props = {

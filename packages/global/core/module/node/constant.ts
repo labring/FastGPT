@@ -21,6 +21,7 @@ export enum FlowNodeInputTypeEnum {
 
   // ai model select
   selectLLMModel = 'selectLLMModel',
+  settingLLMModel = 'settingLLMModel',
 
   // dataset special input
   selectDataset = 'selectDataset',

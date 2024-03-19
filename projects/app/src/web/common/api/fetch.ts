@@ -10,6 +10,8 @@ import {
   EventStreamContentType,
   fetchEventSource
 } from '@fortaine/fetch-event-source';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { useSystemStore } from '../system/useSystemStore';
 
 type StreamFetchProps = {
   url?: string;
@@ -35,12 +37,12 @@ export const streamFetch = ({
     // response data
     let responseText = '';
     let remainTextList: { event: `${SseResponseEventEnum}`; text: string }[] = [];
-    let errMsg = '';
+    let errMsg: string | undefined;
     let responseData: ChatHistoryItemResType[] = [];
     let finished = false;
 
     const finish = () => {
-      if (errMsg) {
+      if (errMsg !== undefined) {
         return failedFinish();
       }
       return resolve({
@@ -51,7 +53,7 @@ export const streamFetch = ({
     const failedFinish = (err?: any) => {
       finished = true;
       reject({
-        message: getErrText(err, errMsg || '响应过程出现异常~'),
+        message: getErrText(err, errMsg ?? '响应过程出现异常~'),
         responseText
       });
     };
@@ -182,6 +184,9 @@ export const streamFetch = ({
           } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
             responseData = parseJson;
           } else if (event === SseResponseEventEnum.error) {
+            if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
+              useSystemStore.getState().setIsNotSufficientModal(true);
+            }
             errMsg = getErrText(parseJson, '流响应错误');
           }
         },

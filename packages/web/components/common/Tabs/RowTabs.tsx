@@ -35,6 +35,7 @@ const RowTabs = ({ list, value, onChange, py = '7px', ...props }: Props) => {
           px={'12px'}
           py={py}
           userSelect={'none'}
+          whiteSpace={'noWrap'}
           {...(value === item.value
             ? {
                 bg: 'white',

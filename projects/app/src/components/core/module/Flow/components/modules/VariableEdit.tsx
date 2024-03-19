@@ -32,7 +32,7 @@ import { useForm } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { variableTip } from '@fastgpt/global/core/module/template/tip';
 import { useTranslation } from 'next-i18next';

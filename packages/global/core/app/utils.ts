@@ -47,7 +47,10 @@ export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
   };
 
   modules.forEach((module) => {
-    if (module.flowType === FlowNodeTypeEnum.chatNode) {
+    if (
+      module.flowType === FlowNodeTypeEnum.chatNode ||
+      module.flowType === FlowNodeTypeEnum.tools
+    ) {
       defaultAppForm.aiSettings.model = findInputValueByKey(
         module.inputs,
         ModuleInputKeyEnum.aiModel

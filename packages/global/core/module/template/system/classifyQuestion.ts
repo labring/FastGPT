@@ -10,7 +10,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
-  Input_Template_AiModel,
+  Input_Template_SelectAIModel,
   Input_Template_History,
   Input_Template_Switch,
   Input_Template_UserChatInput
@@ -30,7 +30,7 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
   inputs: [
     Input_Template_Switch,
     {
-      ...Input_Template_AiModel,
+      ...Input_Template_SelectAIModel,
       llmModelType: LLMModelTypeEnum.classify
     },
     {

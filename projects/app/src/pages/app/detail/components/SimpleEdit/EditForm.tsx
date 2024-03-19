@@ -1,14 +1,5 @@
 import React, { useMemo, useState, useTransition } from 'react';
-import {
-  Box,
-  Flex,
-  Grid,
-  BoxProps,
-  useTheme,
-  useDisclosure,
-  Button,
-  Image
-} from '@chakra-ui/react';
+import { Box, Flex, Grid, BoxProps, useTheme, useDisclosure, Button } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
@@ -34,11 +25,11 @@ import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
-import SelectAiModel from '@/components/Select/SelectAiModel';
+import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
+import { SettingAIDataType } from '@fastgpt/global/core/module/node/type';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
-const AIChatSettingsModal = dynamic(() => import('@/components/core/module/AIChatSettingsModal'));
 const TTSSelect = dynamic(
   () => import('@/components/core/module/Flow/components/modules/TTSSelect')
 );
@@ -56,7 +47,7 @@ const EditForm = ({
   const { t } = useTranslation();
   const { appDetail, updateAppDetail } = useAppStore();
   const { loadAllDatasets, allDatasets } = useDatasetStore();
-  const { isPc, llmModelList, reRankModelList } = useSystemStore();
+  const { isPc, llmModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [, startTst] = useTransition();
 
@@ -70,11 +61,6 @@ const EditForm = ({
     name: 'dataset.datasets'
   });
 
-  const {
-    isOpen: isOpenAIChatSetting,
-    onOpen: onOpenAIChatSetting,
-    onClose: onCloseAIChatSetting
-  } = useDisclosure();
   const {
     isOpen: isOpenDatasetSelect,
     onOpen: onOpenKbSelect,
@@ -96,12 +82,6 @@ const EditForm = ({
   const variables = watch('userGuide.variables');
   const formatVariables = useMemo(() => formatEditorVariablePickerIcon(variables), [variables]);
   const searchMode = watch('dataset.searchMode');
-
-  const chatModelSelectList = (() =>
-    llmModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
 
   const selectDatasets = useMemo(
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
@@ -214,39 +194,34 @@ const EditForm = ({
               <Box ml={2} flex={1}>
                 {t('app.AI Settings')}
               </Box>
-              <Flex {...BoxBtnStyles} onClick={onOpenAIChatSetting}>
-                <MyIcon mr={1} name={'common/settingLight'} w={'14px'} />
-                {t('common.More settings')}
-              </Flex>
             </Flex>
             <Flex alignItems={'center'} mt={5}>
               <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
               <Box flex={'1 0 0'}>
-                <SelectAiModel
-                  width={'100%'}
-                  value={getValues(`aiSettings.model`)}
-                  list={chatModelSelectList}
-                  onchange={(val: any) => {
-                    setValue('aiSettings.model', val);
-                    const maxToken =
-                      llmModelList.find((item) => item.model === getValues('aiSettings.model'))
-                        ?.maxResponse || 4000;
-                    const token = maxToken / 2;
-                    setValue('aiSettings.maxToken', token);
-                    setRefresh(!refresh);
+                <SettingLLMModel
+                  llmModelType={'all'}
+                  defaultData={{
+                    model: getValues('aiSettings.model'),
+                    temperature: getValues('aiSettings.temperature'),
+                    maxToken: getValues('aiSettings.maxToken')
+                  }}
+                  onChange={({ model, temperature, maxToken }: SettingAIDataType) => {
+                    setValue('aiSettings.model', model);
+                    setValue('aiSettings.maxToken', maxToken);
+                    setValue('aiSettings.temperature', temperature);
                   }}
                 />
               </Box>
             </Flex>
 
-            <Flex mt={10} alignItems={'flex-start'}>
+            <Box mt={3}>
               <Box {...LabelStyles}>
                 {t('core.ai.Prompt')}
                 <MyTooltip label={t(chatNodeSystemPromptTip)} forceShow>
                   <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
                 </MyTooltip>
               </Box>
-              {isInitd && (
+              <Box mt={1}>
                 <PromptEditor
                   value={aiSystemPrompt}
                   onChange={(text) => {
@@ -258,8 +233,8 @@ const EditForm = ({
                   placeholder={t('core.app.tip.chatNodeSystemPromptTip')}
                   title={t('core.ai.Prompt')}
                 />
-              )}
-            </Flex>
+              </Box>
+            </Box>
           </Box>
 
           {/* dataset */}
@@ -383,17 +358,6 @@ const EditForm = ({
       </Box>
 
       <ConfirmSaveModal bg={appDetail.type === AppTypeEnum.simple ? '' : 'red.600'} countDown={5} />
-      {isOpenAIChatSetting && (
-        <AIChatSettingsModal
-          onClose={onCloseAIChatSetting}
-          onSuccess={(e) => {
-            setValue('aiSettings', e);
-            onCloseAIChatSetting();
-          }}
-          defaultData={getValues('aiSettings')}
-          pickerMenu={formatVariables}
-        />
-      )}
       {isOpenDatasetSelect && (
         <DatasetSelectModal
           isOpen={isOpenDatasetSelect}

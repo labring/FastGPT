@@ -5,7 +5,7 @@ import type { SearchTestProps, SearchTestResponse } from '@/global/core/dataset/
 import { connectToDatabase } from '@/service/mongo';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
-import { searchDatasetData } from '@/service/core/dataset/data/controller';
+import { searchDatasetData } from '@fastgpt/service/core/dataset/search/controller';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';

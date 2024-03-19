@@ -1,6 +1,6 @@
 import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import React, { useCallback, useState } from 'react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex, FlexProps, Grid, Image, ModalBody, Switch, useTheme } from '@chakra-ui/react';
 import MyRadio from '@/components/common/MyRadio';

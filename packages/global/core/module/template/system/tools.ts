@@ -1,12 +1,17 @@
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleOutputKeyEnum,
-  FlowNodeTemplateTypeEnum
+  FlowNodeTemplateTypeEnum,
+  ModuleInputKeyEnum
 } from '../../constants';
 import {
-  Input_Template_AiModel,
+  Input_Template_SettingAiModel,
   Input_Template_History,
   Input_Template_Switch,
   Input_Template_System_Prompt,
@@ -27,8 +32,32 @@ export const ToolModule: FlowNodeTemplateType = {
   inputs: [
     Input_Template_Switch,
     {
-      ...Input_Template_AiModel,
+      ...Input_Template_SettingAiModel,
       llmModelType: LLMModelTypeEnum.toolCall
+    },
+    {
+      key: ModuleInputKeyEnum.aiChatTemperature,
+      type: FlowNodeInputTypeEnum.hidden, // Set in the pop-up window
+      label: '',
+      value: 0,
+      valueType: ModuleIOValueTypeEnum.number,
+      min: 0,
+      max: 10,
+      step: 1,
+      showTargetInApp: false,
+      showTargetInPlugin: false
+    },
+    {
+      key: ModuleInputKeyEnum.aiChatMaxToken,
+      type: FlowNodeInputTypeEnum.hidden, // Set in the pop-up window
+      label: '',
+      value: 2000,
+      valueType: ModuleIOValueTypeEnum.number,
+      min: 100,
+      max: 4000,
+      step: 50,
+      showTargetInApp: false,
+      showTargetInPlugin: false
     },
     {
       ...Input_Template_System_Prompt,

@@ -11,7 +11,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import { delOnePlugin, postCreatePlugin, putUpdatePlugin } from '@/web/core/plugin/api';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';

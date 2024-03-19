@@ -10,7 +10,7 @@ import {
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';

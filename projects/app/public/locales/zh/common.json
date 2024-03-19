@@ -159,6 +159,7 @@
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
     "Waiting": "等待中",
+    "Warning": "警告",
     "Website": "网站",
     "avatar": {
       "Select Avatar": "点击选择头像",
@@ -244,6 +245,8 @@
     "Total chars": "总字数: {{total}}",
     "Total tokens": "总 Tokens: {{total}}",
     "ai": {
+      "AI settings": "AI 配置",
+      "Max context": "最大上下文",
       "Model": "AI 模型",
       "Prompt": "提示词",
       "model": {
@@ -564,7 +567,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -902,6 +906,7 @@
         }
       },
       "template": {
+        "AI response switch tip": "如果你希望当前节点不输出内容，可以关闭该开关。AI输出的内容不会展示给用户，你可以手动的使用“AI回复内容”进行特殊处理。",
         "Ai chat": "AI 对话",
         "Ai chat intro": "AI 大模型对话",
         "Assigned reply": "指定回复",
@@ -922,7 +927,6 @@
         "Http request": "HTTP 请求",
         "Http request intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
         "My plugin module": "个人插件",
-        "Personal Plugin": "个人插件",
         "Query extension": "问题优化",
         "Query extension intro": "使用问题优化功能，可以提高知识库连续对话时搜索的精度。使用该功能后，会先利用 AI 根据上下文构建一个或多个新的检索词，这些检索词更利于进行知识库搜索。该模块已内置在知识库搜索模块中，如果您仅进行一次知识库搜索，可直接使用知识库内置的补全功能。",
         "Response module": "文本输出",
@@ -932,12 +936,16 @@
         "System input module": "系统输入",
         "TFSwitch": "判断器",
         "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。非字符、非数字、非布尔类型，直接输出 True。",
+        "Team Plugin": "团队插件",
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
         "http body placeholder": "与APIFox相同的语法",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"
+      },
+      "templates": {
+        "Load plugin error": "加载插件失败"
       },
       "textEditor": {
         "Text Edit": "文本加工"
@@ -1278,9 +1286,11 @@
       "Buy": "购买",
       "Buy more": "扩容",
       "Confirm pay": "支付确认",
+      "Not sufficient": "您的 AI 积分不足，请先升级套餐或购买额外 AI 积分后继续使用。",
       "Pay error": "支付失败",
       "Pay success": "支付成功",
       "Standard Plan Detail": "套餐详情",
+      "To read plan": "查看套餐",
       "bill": {
         "AI Model": "AI 模型",
         "AI Type": "AI 类型",

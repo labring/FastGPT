@@ -6,6 +6,8 @@ import axios, {
 } from 'axios';
 import { clearToken, getToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { useSystemStore } from '../system/useSystemStore';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -107,6 +109,10 @@ function responseError(err: any) {
     }
 
     return Promise.reject({ message: '无权操作' });
+  }
+  if (err?.statusText === TeamErrEnum.aiPointsNotEnough) {
+    useSystemStore.getState().setIsNotSufficientModal(true);
+    return Promise.reject(err);
   }
   if (err?.response?.data) {
     return Promise.reject(err?.response?.data);

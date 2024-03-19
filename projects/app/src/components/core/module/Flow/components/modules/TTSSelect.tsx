@@ -8,7 +8,7 @@ import { TTSTypeEnum } from '@/constants/app';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySlider from '@/components/Slider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 

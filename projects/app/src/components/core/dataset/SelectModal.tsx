@@ -1,5 +1,5 @@
 import { getDatasets, getDatasetPaths } from '@/web/core/dataset/api';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import React, { Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';

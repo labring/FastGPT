@@ -122,9 +122,9 @@ fastgpt.run 域名会弃用。
 
 ## 🏘️ 社区交流群
 
-添加 wx 小助手加入：
+wx 扫一下加入：
 
-![](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
+![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">

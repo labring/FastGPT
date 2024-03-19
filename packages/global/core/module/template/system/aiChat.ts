@@ -11,7 +11,7 @@ import {
   FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
-  Input_Template_AiModel,
+  Input_Template_SettingAiModel,
   Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_Switch,
@@ -32,7 +32,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   isTool: true,
   inputs: [
     Input_Template_Switch,
-    Input_Template_AiModel,
+    Input_Template_SettingAiModel,
     // --- settings modal
     {
       key: ModuleInputKeyEnum.aiChatTemperature,
@@ -80,14 +80,6 @@ export const AiChatModule: FlowNodeTemplateType = {
       type: FlowNodeInputTypeEnum.hidden,
       label: '',
       valueType: ModuleIOValueTypeEnum.string,
-      showTargetInApp: false,
-      showTargetInPlugin: false
-    },
-    {
-      key: ModuleInputKeyEnum.aiChatSettingModal,
-      type: FlowNodeInputTypeEnum.aiSettings,
-      label: '',
-      valueType: ModuleIOValueTypeEnum.any,
       showTargetInApp: false,
       showTargetInPlugin: false
     },

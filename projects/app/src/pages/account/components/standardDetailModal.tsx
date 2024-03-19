@@ -11,7 +11,7 @@ import {
   TableContainer,
   ModalCloseButton
 } from '@chakra-ui/react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';

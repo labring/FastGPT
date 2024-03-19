@@ -6,7 +6,7 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { Prompt_AgentQA } from '@/global/core/prompt/agent';
+import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
 import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';

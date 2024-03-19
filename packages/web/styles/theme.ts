@@ -363,6 +363,18 @@ const Checkbox = checkBoxMultiStyle({
   })
 });
 
+const Modal = defineMultiStyleConfig({
+  baseStyle: definePartsStyle({
+    body: {
+      py: [3, 5],
+      px: [5, 7]
+    },
+    footer: {
+      pt: 2
+    }
+  })
+});
+
 // 全局主题
 export const theme = extendTheme({
   styles: {
@@ -527,6 +539,7 @@ export const theme = extendTheme({
     Switch,
     Select,
     NumberInput,
-    Checkbox
+    Checkbox,
+    Modal
   }
 });

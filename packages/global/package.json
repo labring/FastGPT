@@ -8,7 +8,8 @@
     "js-tiktoken": "^1.0.7",
     "openai": "4.28.0",
     "nanoid": "^4.0.1",
-    "timezones-list": "^3.0.2"
+    "timezones-list": "^3.0.2",
+    "next": "13.5.2"
   },
   "devDependencies": {
     "@types/node": "^20.8.5"

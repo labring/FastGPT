@@ -50,6 +50,9 @@ importers:
       nanoid:
         specifier: ^4.0.1
         version: 4.0.1
+      next:
+        specifier: 13.5.2
+        version: 13.5.2(@babel/core@7.24.0)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
       openai:
         specifier: 4.28.0
         version: 4.28.0(encoding@0.1.13)
@@ -78,6 +81,9 @@ importers:
       '@fastgpt/global':
         specifier: workspace:*
         version: link:../global
+      '@node-rs/jieba':
+        specifier: ^1.7.2
+        version: 1.7.2
       axios:
         specifier: ^1.5.1
         version: 1.5.1
@@ -96,6 +102,9 @@ importers:
       encoding:
         specifier: ^0.1.13
         version: 0.1.13
+      json5:
+        specifier: ^2.2.3
+        version: 2.2.3
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2

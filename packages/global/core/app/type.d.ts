@@ -1,7 +1,7 @@
 import type { AppTTSConfigType, ModuleItemType, VariableItemType } from '../module/type.d';
 import { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
-import type { AIChatModuleProps, DatasetModuleProps } from '../module/node/type.d';
+import type { DatasetModuleProps } from '../module/node/type.d';
 import { VariableInputEnum } from '../module/constants';
 import { SelectedDatasetType } from '../module/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
@@ -36,19 +36,6 @@ export type AppDetailType = AppSchema & {
   canWrite: boolean;
 };
 
-// export type AppSimpleEditFormType = {
-//   aiSettings: AIChatModuleProps;
-//   dataset: DatasetModuleProps & {
-//     searchEmptyText: string;
-//   };
-//   userGuide: {
-//     welcomeText: string;
-//     variables: VariableItemType[];
-//     questionGuide: boolean;
-//     tts: AppTTSConfigType;
-//   };
-// };
-// Since useform cannot infer enumeration types, all enumeration keys can only be undone manually
 export type AppSimpleEditFormType = {
   // templateId: string;
   aiSettings: {

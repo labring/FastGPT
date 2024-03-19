@@ -29,7 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       let maxTokens = 3000;
 
       modules.forEach((item) => {
-        if (item.flowType === FlowNodeTypeEnum.chatNode) {
+        if (
+          item.flowType === FlowNodeTypeEnum.chatNode ||
+          item.flowType === FlowNodeTypeEnum.tools
+        ) {
           const model =
             item.inputs.find((item) => item.key === ModuleInputKeyEnum.aiModel)?.value || '';
           const chatModel = getLLMModel(model);
