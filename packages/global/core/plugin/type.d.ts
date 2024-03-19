@@ -15,8 +15,11 @@ export type PluginItemSchema = {
   modules: ModuleItemType[];
   parentId: string;
   type: `${PluginTypeEnum}`;
-  schema: string;
-  authMethod: MethodType;
+  metadata?: {
+    pluginUid?: string;
+    apiSchemaStr?: string;
+    customHeaders?: string;
+  };
 };
 
 /* plugin template */

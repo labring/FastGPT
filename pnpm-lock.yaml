@@ -1,4 +1,4 @@
-lockfileVersion: '6.0'
+lockfileVersion: '6.1'
 
 settings:
   autoInstallPeers: true
@@ -47,6 +47,9 @@ importers:
       js-tiktoken:
         specifier: ^1.0.7
         version: 1.0.7
+      js-yaml:
+        specifier: ^4.1.0
+        version: 4.1.0
       nanoid:
         specifier: ^4.0.1
         version: 4.0.1
@@ -56,10 +59,16 @@ importers:
       openai:
         specifier: 4.28.0
         version: 4.28.0(encoding@0.1.13)
+      openapi-types:
+        specifier: ^12.1.3
+        version: 12.1.3
       timezones-list:
         specifier: ^3.0.2
         version: 3.0.2
     devDependencies:
+      '@types/js-yaml':
+        specifier: ^4.0.9
+        version: 4.0.9
       '@types/node':
         specifier: ^20.8.5
         version: 20.8.5
@@ -371,9 +380,6 @@ importers:
       nprogress:
         specifier: ^0.2.0
         version: 0.2.0
-      openapi-types:
-        specifier: ^12.1.3
-        version: 12.1.3
       react:
         specifier: 18.2.0
         version: 18.2.0

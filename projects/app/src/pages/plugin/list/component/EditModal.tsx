@@ -15,24 +15,19 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { customAlphabet } from 'nanoid';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
+import { EditFormType } from './type';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-export type FormType = CreateOnePluginParams & {
-  id?: string;
-};
-export const defaultForm: FormType = {
+export const defaultForm: EditFormType = {
   avatar: '/icon/logo.svg',
   name: '',
   intro: '',
   parentId: null,
   type: PluginTypeEnum.plugin,
-  schema: null,
-  authMethod: null,
   modules: [
     {
       moduleId: nanoid(),
@@ -69,7 +64,7 @@ const CreateModal = ({
   onSuccess,
   onDelete
 }: {
-  defaultValue?: FormType;
+  defaultValue?: EditFormType;
   onClose: () => void;
   onSuccess: () => void;
   onDelete: () => void;
@@ -87,7 +82,7 @@ const CreateModal = ({
     content: t('plugin.Confirm Delete')
   });
 
-  const { register, setValue, getValues, handleSubmit } = useForm<FormType>({
+  const { register, setValue, getValues, handleSubmit } = useForm<EditFormType>({
     defaultValues: { ...defaultValue, parentId: parentId || null }
   });
 
@@ -120,7 +115,7 @@ const CreateModal = ({
   );
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
-    mutationFn: async (data: FormType) => {
+    mutationFn: async (data: EditFormType) => {
       return postCreatePlugin(data);
     },
     onSuccess(id: string) {
@@ -133,7 +128,7 @@ const CreateModal = ({
     errorToast: t('common.Create Failed')
   });
   const { mutate: onclickUpdate, isLoading: updating } = useRequest({
-    mutationFn: async (data: FormType) => {
+    mutationFn: async (data: EditFormType) => {
       if (!data.id) return Promise.resolve('');
       // @ts-ignore
       return putUpdatePlugin(data);
@@ -173,34 +168,41 @@ const CreateModal = ({
       isCentered={!isPc}
     >
       <ModalBody>
-        <Box color={'myGray.800'} fontWeight={'bold'}>
-          {t('plugin.Set Name')}
-        </Box>
-        <Flex mt={3} alignItems={'center'}>
-          <MyTooltip label={t('common.Set Avatar')}>
-            <Avatar
-              flexShrink={0}
-              src={getValues('avatar')}
-              w={['28px', '32px']}
-              h={['28px', '32px']}
-              cursor={'pointer'}
-              borderRadius={'md'}
-              onClick={onOpenSelectFile}
+        <>
+          <Box color={'myGray.800'} fontWeight={'bold'}>
+            {t('plugin.Set Name')}
+          </Box>
+          <Flex mt={3} alignItems={'center'}>
+            <MyTooltip label={t('common.Set Avatar')}>
+              <Avatar
+                flexShrink={0}
+                src={getValues('avatar')}
+                w={['28px', '32px']}
+                h={['28px', '32px']}
+                cursor={'pointer'}
+                borderRadius={'md'}
+                onClick={onOpenSelectFile}
+              />
+            </MyTooltip>
+            <Input
+              flex={1}
+              ml={4}
+              autoFocus={!defaultValue.id}
+              bg={'myWhite.600'}
+              {...register('name', {
+                required: t("common.Name Can't Be Empty")
+              })}
             />
-          </MyTooltip>
-          <Input
-            flex={1}
-            ml={4}
-            autoFocus={!defaultValue.id}
-            bg={'myWhite.600'}
-            {...register('name', {
-              required: t("common.Name Can't Be Empty")
-            })}
-          />
-        </Flex>
+          </Flex>
+        </>
         <Box mt={3}>
           <Box mb={1}>{t('plugin.Intro')}</Box>
-          <Textarea {...register('intro')} bg={'myWhite.600'} rows={5} />
+          <Textarea
+            {...register('intro')}
+            bg={'myWhite.600'}
+            rows={5}
+            placeholder={t('core.plugin.Intro placeholder')}
+          />
         </Box>
       </ModalBody>
 

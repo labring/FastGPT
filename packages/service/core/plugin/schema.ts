@@ -15,10 +15,6 @@ const PluginSchema = new Schema({
     ref: PluginCollectionName,
     default: null
   },
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -55,13 +51,12 @@ const PluginSchema = new Schema({
     type: Array,
     default: []
   },
-  schema: {
-    type: String,
-    default: null
-  },
-  authMethod: {
-    type: Object,
-    default: null
+  metadata: {
+    type: {
+      pluginUid: String,
+      apiSchemaStr: String,
+      customHeaders: String
+    }
   }
 });
 

@@ -62,6 +62,7 @@
     "Back": "返回",
     "Beta": "实验版",
     "Business edition features": "这是商业版功能~",
+    "Cancel": "取消",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
@@ -996,7 +997,10 @@
       "variable add option": "添加选项"
     },
     "plugin": {
-      "Get Plugin Module Detail Failed": "加载插件异常"
+      "Custom headers": "自定义请求头",
+      "Delete http plugin": "确认删除该组HTTP插件？会删除该目录下所有插件。",
+      "Get Plugin Module Detail Failed": "加载插件异常",
+      "Intro placeholder": "如果该插件作为工具被调用，则会使用该介绍作为提示词。"
     },
     "shareChat": {
       "Init Error": "初始化对话框失败",
@@ -1214,7 +1218,7 @@
     "Get Plugin Module Detail Failed": "获取插件信息异常",
     "HTTP Plugin": "HTTP 插件",
     "Import Plugin": "导入 HTTP 插件",
-    "Import from URL": "从 URL 中导入",
+    "Import from URL": "URL 导入",
     "Intro": "插件介绍",
     "Invalid Schema": "Schema 无效",
     "Invalid URL": "URL 无效",

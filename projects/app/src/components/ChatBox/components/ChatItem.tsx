@@ -100,7 +100,7 @@ const ChatItem = ({
           if (value.text) {
             let source = value.text?.content || '';
 
-            if (!source) return <></>;
+            if (!source && chat.value.length > 1) return <></>;
 
             if (
               isLastChild &&

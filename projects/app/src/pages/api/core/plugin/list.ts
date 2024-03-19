@@ -13,11 +13,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { teamId } = await authCert({ req, authToken: true });
 
-    const plugins = await MongoPlugin.find({
-      teamId,
-      ...(parentId !== undefined && { parentId: parentId || null }),
-      ...(type && { type })
-    })
+    const plugins = await MongoPlugin.find(
+      {
+        teamId,
+        ...(parentId !== undefined && { parentId: parentId || null }),
+        ...(type && { type })
+      },
+      '_id parentId type name avatar intro metadata'
+    )
       .sort({ updateTime: -1 })
       .lean();
 

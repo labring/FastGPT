@@ -62,6 +62,7 @@
     "Back": "Back",
     "Beta": "Beta",
     "Business edition features": "This is the commercial version function ~",
+    "Cancel": "Cancel",
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
@@ -994,7 +995,10 @@
       "variable add option": "Add Option"
     },
     "plugin": {
-      "Get Plugin Module Detail Failed": "Load plugin failed"
+      "Custom headers": "Custom Headers",
+      "Delete http plugin": "Are you sure to delete this group of HTTP plug-ins? All plug-ins in the directory are deleted.",
+      "Get Plugin Module Detail Failed": "Load plugin failed",
+      "Intro placeholder": "If the plug-in is called as a tool, the introduction is used as the prompt word."
     },
     "shareChat": {
       "Init Error": "Init Chat Error",

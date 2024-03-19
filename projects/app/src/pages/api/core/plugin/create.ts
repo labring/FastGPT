@@ -5,6 +5,8 @@ import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controll
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { checkTeamPluginLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { httpApiSchema2Plugins } from '@fastgpt/global/core/plugin/httpPlugin/utils';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -14,15 +16,56 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await checkTeamPluginLimit(teamId);
 
-    const { _id } = await MongoPlugin.create({
-      ...body,
-      teamId,
-      tmbId
-    });
+    // create parent plugin and child plugin
+    if (body.metadata?.apiSchemaStr) {
+      const parentId = await mongoSessionRun(async (session) => {
+        const [{ _id: parentId }] = await MongoPlugin.create(
+          [
+            {
+              ...body,
+              parentId: null,
+              teamId,
+              tmbId
+            }
+          ],
+          { session }
+        );
 
-    jsonRes(res, {
-      data: _id
-    });
+        const childrenPlugins = httpApiSchema2Plugins({
+          parentId,
+          apiSchemaStr: body.metadata?.apiSchemaStr,
+          customHeader: body.metadata?.customHeaders
+        });
+
+        await MongoPlugin.create(
+          childrenPlugins.map((item) => ({
+            ...item,
+            metadata: {
+              pluginUid: item.name
+            },
+            teamId,
+            tmbId
+          })),
+          {
+            session
+          }
+        );
+        return parentId;
+      });
+
+      jsonRes(res, {
+        data: parentId
+      });
+    } else {
+      const { _id } = await MongoPlugin.create({
+        ...body,
+        teamId,
+        tmbId
+      });
+      jsonRes(res, {
+        data: _id
+      });
+    }
   } catch (err) {
     jsonRes(res, {
       code: 500,

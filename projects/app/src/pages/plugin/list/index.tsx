@@ -9,22 +9,23 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
-import EditModal, { defaultForm, FormType } from './component/EditModal';
+import EditModal, { defaultForm } from './component/EditModal';
 import { getPluginPaths, getUserPlugins } from '@/web/core/plugin/api';
 import EmptyTip from '@/components/EmptyTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyMenu from '@/components/MyMenu';
-import ImportModal, { defaultHttpPlugin } from './component/ImportModal';
+import HttpPluginEditModal, { defaultHttpPlugin } from './component/HttpPluginEditModal';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import ParentPaths from '@/components/common/ParentPaths';
+import { EditFormType } from './component/type';
 
-const MyModules = () => {
+const TeamPlugins = () => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
-  const [editModalData, setEditModalData] = useState<FormType>();
-  const [importModalData, setImportModalData] = useState<FormType>();
+  const [editModalData, setEditModalData] = useState<EditFormType>();
+  const [httpPluginEditModalData, setHttpPluginModalData] = useState<EditFormType>();
 
   /* load plugins */
   const {
@@ -45,6 +46,7 @@ const MyModules = () => {
   );
 
   const paths = data?.[1] || [];
+  const plugins = data?.[0] || [];
 
   return (
     <PageContainer isLoading={isLoading} insertProps={{ px: [5, '48px'] }}>
@@ -99,7 +101,7 @@ const MyModules = () => {
                     {t('plugin.HTTP Plugin')}
                   </Flex>
                 ),
-                onClick: () => setImportModalData(defaultHttpPlugin)
+                onClick: () => setHttpPluginModalData(defaultHttpPlugin)
               }
             ]}
           />
@@ -110,7 +112,7 @@ const MyModules = () => {
         gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
         gridGap={5}
       >
-        {data[0]?.map((plugin) => (
+        {plugins.map((plugin) => (
           <Box
             key={plugin._id}
             py={3}
@@ -166,23 +168,20 @@ const MyModules = () => {
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  if (plugin.type === PluginTypeEnum.folder) {
-                    setImportModalData({
-                      id: plugin._id,
-                      name: plugin.name,
-                      avatar: plugin.avatar,
-                      intro: plugin.intro,
-                      schema: plugin.schema,
-                      authMethod: plugin.authMethod
-                    } as any);
-                    return;
-                  }
-                  setEditModalData({
+                  const data = {
                     id: plugin._id,
+                    parentId: plugin.parentId,
                     name: plugin.name,
                     avatar: plugin.avatar,
-                    intro: plugin.intro
-                  } as any);
+                    intro: plugin.intro,
+                    modules: [],
+                    type: plugin.type,
+                    metadata: plugin.metadata
+                  };
+                  if (plugin.type === PluginTypeEnum.folder) {
+                    return setHttpPluginModalData(data);
+                  }
+                  setEditModalData(data);
                 }}
               />
             </Flex>
@@ -207,10 +206,10 @@ const MyModules = () => {
           onDelete={refetch}
         />
       )}
-      {!!importModalData && (
-        <ImportModal
-          defaultPlugin={importModalData}
-          onClose={() => setImportModalData(undefined)}
+      {!!httpPluginEditModalData && (
+        <HttpPluginEditModal
+          defaultPlugin={httpPluginEditModalData}
+          onClose={() => setHttpPluginModalData(undefined)}
           onSuccess={refetch}
           onDelete={refetch}
         />
@@ -227,4 +226,4 @@ export async function getServerSideProps(content: any) {
   };
 }
 
-export default MyModules;
+export default TeamPlugins;

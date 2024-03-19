@@ -4,9 +4,9 @@ import * as SwaggerParser from '@apidevtools/swagger-parser';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const apiURL = req.query.url as string;
+    const apiURL = req.body.url as string;
 
-    let api = await (SwaggerParser as any).validate(apiURL);
+    const api = await (SwaggerParser as any).validate(apiURL);
 
     return jsonRes(res, {
       data: api

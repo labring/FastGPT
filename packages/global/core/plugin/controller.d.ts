@@ -1,35 +1,40 @@
 import type { ModuleItemType } from '../module/type.d';
+import { PluginTypeEnum } from './constants';
+import { HttpAuthMethodType } from './httpPlugin/type';
 
 export type CreateOnePluginParams = {
   name: string;
   avatar: string;
   intro: string;
-  modules?: ModuleItemType[];
+  modules: ModuleItemType[];
   parentId: string | null;
-  type: string;
-  schema?: string | null;
-  authMethod?: MethodType | null;
+  type: `${PluginTypeEnum}`;
+  metadata?: {
+    apiSchemaStr?: string;
+    customHeaders?: string;
+  };
 };
 export type UpdatePluginParams = {
   id: string;
+  parentId?: string | null;
   name?: string;
   avatar?: string;
   intro?: string;
   modules?: ModuleItemType[];
+  metadata?: {
+    apiSchemaStr?: string;
+    customHeaders?: string;
+  };
 };
 export type PluginListItemType = {
-  parentId: string;
-  type: string;
   _id: string;
+  parentId: string;
+  type: `${PluginTypeEnum}`;
   name: string;
   avatar: string;
   intro: string;
-  schema: string;
-  authMethod: MethodType | null;
-};
-export type MethodType = {
-  name: string;
-  prefix: string;
-  key: string;
-  value: string;
+  metadata?: {
+    apiSchemaStr?: string;
+    customHeaders?: string;
+  };
 };
