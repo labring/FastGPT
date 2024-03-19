@@ -226,7 +226,7 @@ export async function dispatchWorkFlow({
     }
 
     // get module running params
-    const params: Record<string, any> = { description: module.intro };
+    const params: Record<string, any> = {};
     module.inputs.forEach((item) => {
       params[item.key] = valueTypeFormat(item.value, item.valueType);
     });

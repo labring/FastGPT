@@ -191,7 +191,7 @@ const getFunctionCallSchema = ({
   // function body
   const agentFunction = {
     name: agentFunName,
-    description,
+    description: '结合对话记录及背景知识按照要求提取指定的信息',
     parameters: {
       type: 'object',
       properties,
