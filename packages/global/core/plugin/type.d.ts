@@ -1,6 +1,7 @@
-import { FlowNodeTemplateTypeEnum } from 'core/module/constants';
-import type { FlowNodeTemplateType, ModuleItemType } from '../module/type.d';
-import { PluginSourceEnum } from './constants';
+import { ModuleTemplateTypeEnum } from 'core/module/constants';
+import type { FlowModuleTemplateType, ModuleItemType } from '../module/type.d';
+import { PluginSourceEnum, PluginTypeEnum } from './constants';
+import { MethodType } from './controller';
 
 export type PluginItemSchema = {
   _id: string;
@@ -12,6 +13,10 @@ export type PluginItemSchema = {
   intro: string;
   updateTime: Date;
   modules: ModuleItemType[];
+  parentId: string;
+  type: `${PluginTypeEnum}`;
+  schema: string;
+  authMethod: MethodType;
 };
 
 /* plugin template */

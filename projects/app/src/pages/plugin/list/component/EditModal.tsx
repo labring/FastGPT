@@ -18,6 +18,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { customAlphabet } from 'nanoid';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export type FormType = CreateOnePluginParams & {
@@ -27,6 +28,10 @@ export const defaultForm: FormType = {
   avatar: '/icon/logo.svg',
   name: '',
   intro: '',
+  parentId: null,
+  type: PluginTypeEnum.plugin,
+  schema: null,
+  authMethod: null,
   modules: [
     {
       moduleId: nanoid(),
@@ -72,6 +77,8 @@ const CreateModal = ({
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
+  const { parentId } = router.query as { parentId: string };
+
   const { isPc } = useSystemStore();
   const { openConfirm, ConfirmModal } = useConfirm({
     title: t('common.Delete Tip'),
@@ -79,7 +86,7 @@ const CreateModal = ({
   });
 
   const { register, setValue, getValues, handleSubmit } = useForm<FormType>({
-    defaultValues: defaultValue
+    defaultValues: { ...defaultValue, parentId: parentId || null }
   });
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({

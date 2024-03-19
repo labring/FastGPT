@@ -21,6 +21,7 @@ import { moduleTemplatesList } from '@fastgpt/global/core/module/template/consta
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 import { useRequest } from '@/web/common/hooks/useRequest';
+import ParentPaths from '@/components/common/ParentPaths';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 
@@ -31,6 +32,8 @@ type ModuleTemplateListProps = {
 type RenderListProps = {
   templates: FlowNodeTemplateType[];
   onClose: () => void;
+  currentParent: { parentId: string; parentName: string };
+  setCurrentParent: (e: { parentId: string; parentName: string }) => void;
 };
 
 enum TemplateTypeEnum {
@@ -44,6 +47,8 @@ const sliderWidth = 380;
 const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
   const router = useRouter();
+  const [currentParent, setCurrentParent] = useState({ parentId: 'null', parentName: '' });
+
   const {
     basicNodeTemplates,
     systemNodeTemplates,
@@ -129,7 +134,21 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             onChange={onChangeTab}
           />
           {templateType === TemplateTypeEnum.teamPlugin && (
-            <Flex mt={2} alignItems={'center'}>
+            <Flex mt={2} alignItems={'center'} h={10}>
+              {currentParent.parentId !== 'null' && (
+                <Flex alignItems={'center'} h={'full'} pt={1}>
+                  <ParentPaths
+                    paths={[
+                      { parentId: currentParent.parentId, parentName: currentParent.parentName }
+                    ]}
+                    FirstPathDom={null}
+                    onClick={() => {
+                      setCurrentParent({ parentId: 'null', parentName: '' });
+                    }}
+                    fontSize="md"
+                  />
+                </Flex>
+              )}
               <Box flex={1} />
               <Flex
                 alignItems={'center'}
@@ -145,7 +164,12 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             </Flex>
           )}
         </Box>
-        <RenderList templates={templates} onClose={onClose} />
+        <RenderList
+          templates={templates}
+          onClose={onClose}
+          currentParent={currentParent}
+          setCurrentParent={setCurrentParent}
+        />
       </Flex>
     </>
   );
@@ -153,7 +177,12 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
 
 export default React.memo(ModuleTemplateList);
 
-const RenderList = React.memo(function RenderList({ templates, onClose }: RenderListProps) {
+const RenderList = React.memo(function RenderList({
+  templates,
+  onClose,
+  currentParent,
+  setCurrentParent
+}: RenderListProps) {
   const { t } = useTranslation();
   const { isPc } = useSystemStore();
   const { x, y, zoom } = useViewport();
@@ -169,7 +198,8 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
       copy[index].list.push(item);
     });
     return copy.filter((item) => item.list.length > 0);
-  }, [templates]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [templates, currentParent]);
 
   const onAddNode = useCallback(
     async ({ template, position }: { template: FlowNodeTemplateType; position: XYPosition }) => {
@@ -231,51 +261,55 @@ const RenderList = React.memo(function RenderList({ templates, onClose }: Render
             )}
 
             <>
-              {item.list.map((template) => (
-                <Flex
-                  key={template.id}
-                  alignItems={'center'}
-                  p={5}
-                  cursor={'pointer'}
-                  _hover={{ bg: 'myWhite.600' }}
-                  borderRadius={'sm'}
-                  draggable
-                  onDragEnd={(e) => {
-                    if (e.clientX < sliderWidth) return;
-                    onAddNode({
-                      template: template,
-                      position: { x: e.clientX, y: e.clientY }
-                    });
-                  }}
-                  onClick={(e) => {
-                    if (isPc) {
-                      onAddNode({
-                        template: template,
-                        position: { x: sliderWidth * 1.5, y: 200 }
-                      });
-                    } else {
+              {item.list
+                .filter((template: any) =>
+                  item.type === 'personalPlugin'
+                    ? template.parentId === currentParent.parentId
+                    : true
+                )
+                .map((template: any) => (
+                  <Flex
+                    key={template.id}
+                    alignItems={'center'}
+                    p={5}
+                    cursor={'pointer'}
+                    _hover={{ bg: 'myWhite.600' }}
+                    borderRadius={'sm'}
+                    draggable={template.type === 'plugin'}
+                    onDragEnd={(e) => {
+                      if (e.clientX < 360) return;
                       onAddNode({
                         template: template,
                         position: { x: e.clientX, y: e.clientY }
                       });
-                      onClose();
-                    }
-                  }}
-                >
-                  <Avatar
-                    src={template.avatar}
-                    w={'34px'}
-                    objectFit={'contain'}
-                    borderRadius={'0'}
-                  />
-                  <Box ml={5} flex={'1 0 0'}>
-                    <Box color={'black'}>{t(template.name)}</Box>
-                    <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
-                      {t(template.intro)}
+                    }}
+                    onClick={(e) => {
+                      if (isPc && template.type === 'plugin') return;
+                      if (template.type === 'plugin') {
+                        onClose();
+                        onAddNode({
+                          template: template,
+                          position: { x: e.clientX, y: e.clientY }
+                        });
+                      } else {
+                        setCurrentParent({ parentId: template.id, parentName: template.name });
+                      }
+                    }}
+                  >
+                    <Avatar
+                      src={template.avatar}
+                      w={'34px'}
+                      objectFit={'contain'}
+                      borderRadius={'0'}
+                    />
+                    <Box ml={5} flex={'1 0 0'}>
+                      <Box color={'black'}>{t(template.name)}</Box>
+                      <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
+                        {t(template.intro)}
+                      </Box>
                     </Box>
-                  </Box>
-                </Flex>
-              ))}
+                  </Flex>
+                ))}
             </>
           </Box>
         ))}

@@ -16,6 +16,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const data: FlowNodeTemplateType[] = userPlugins.map((plugin) => ({
       id: String(plugin._id),
+      parentId: String(plugin.parentId),
+      type: plugin.type,
       templateType: FlowNodeTemplateTypeEnum.personalPlugin,
       flowType: FlowNodeTypeEnum.pluginModule,
       avatar: plugin.avatar,

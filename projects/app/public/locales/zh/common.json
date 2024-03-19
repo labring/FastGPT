@@ -1191,18 +1191,37 @@
     "Set Public": "设为团队可用"
   },
   "plugin": {
+    "Auth Header Prefix": "鉴权头部前缀",
+    "Auth Method": "鉴权方法",
+    "Auth Type": "鉴权类型",
     "Confirm Delete": "确认删除该插件？",
     "Create Your Plugin": "创建你的插件",
+    "Custom Plugin": "自定义插件",
+    "Description": "描述",
+    "Edit Http Plugin": "编辑 HTTP 插件",
     "Get Plugin Module Detail Failed": "获取插件信息异常",
+    "HTTP Plugin": "HTTP 插件",
+    "Import Plugin": "导入 HTTP 插件",
+    "Import from URL": "从 URL 中导入",
     "Intro": "插件介绍",
+    "Invalid Schema": "Schema 无效",
+    "Invalid URL": "URL 无效",
+    "Key": "键",
     "Load Plugin Failed": "加载插件异常",
+    "Method": "方法",
     "My Plugins": "我的插件",
     "No Intro": "这个插件没有介绍~",
+    "None": "无",
+    "Path": "路径",
+    "Plugin List": "插件列表",
     "Plugin Module": "插件模块",
+    "Privacy Agreement": "隐私协议",
     "Set Name": "给插件取个名字",
     "Synchronous version": "同步版本",
     "To Edit Plugin": "去编辑",
-    "Update Your Plugin": "更新插件"
+    "Update Your Plugin": "更新插件",
+    "Value": "值",
+    "path": ""
   },
   "support": {
     "account": {

@@ -5,6 +5,7 @@ import { plugin2ModuleIO } from '@fastgpt/global/core/module/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import type { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
+import type { PluginItemSchema } from '@fastgpt/global/core/plugin/type.d';
 
 /* 
   plugin id rule:
@@ -85,4 +86,44 @@ export async function getPluginRuntimeById(id: string): Promise<PluginRuntimeTyp
     showStatus: plugin.showStatus,
     modules: plugin.modules
   };
+}
+
+/* find all pluginId by top pluginId */
+export async function findPluginAndAllChildren({
+  teamId,
+  pluginId,
+  fields
+}: {
+  teamId: string;
+  pluginId: string;
+  fields?: string;
+}): Promise<PluginItemSchema[]> {
+  const find = async (id: string) => {
+    const children = await MongoPlugin.find(
+      {
+        teamId,
+        parentId: id
+      },
+      fields
+    ).lean();
+
+    let plugins = children;
+
+    for (const child of children) {
+      const grandChildrenIds = await find(child._id);
+      plugins = plugins.concat(grandChildrenIds);
+    }
+
+    return plugins;
+  };
+  const [plugin, childPlugins] = await Promise.all([
+    MongoPlugin.findById(pluginId),
+    find(pluginId)
+  ]);
+
+  if (!plugin) {
+    return Promise.reject('Plugin not found');
+  }
+
+  return [plugin, ...childPlugins];
 }

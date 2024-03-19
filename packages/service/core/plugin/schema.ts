@@ -1,3 +1,4 @@
+import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { PluginItemSchema } from '@fastgpt/global/core/plugin/type.d';
@@ -9,6 +10,11 @@ import {
 export const PluginCollectionName = 'plugins';
 
 const PluginSchema = new Schema({
+  parentId: {
+    type: Schema.Types.ObjectId,
+    ref: PluginCollectionName,
+    default: null
+  },
   userId: {
     type: Schema.Types.ObjectId,
     ref: 'user'
@@ -22,6 +28,12 @@ const PluginSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
     required: true
+  },
+  type: {
+    type: String,
+    enum: Object.keys(PluginTypeEnum),
+    required: true,
+    default: PluginTypeEnum.plugin
   },
   name: {
     type: String,
@@ -42,6 +54,14 @@ const PluginSchema = new Schema({
   modules: {
     type: Array,
     default: []
+  },
+  schema: {
+    type: String,
+    default: null
+  },
+  authMethod: {
+    type: Object,
+    default: null
   }
 });
 

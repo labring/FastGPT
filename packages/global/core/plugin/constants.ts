@@ -27,6 +27,11 @@ export const defaultModules: ModuleItemType[] = [
   }
 ];
 
+export enum PluginTypeEnum {
+  folder = 'folder',
+  plugin = 'plugin'
+}
+
 export enum PluginSourceEnum {
   personal = 'personal',
   community = 'community',
