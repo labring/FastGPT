@@ -102,7 +102,9 @@ function responseError(err: any) {
   if (err?.code in TOKEN_ERROR_CODE) {
     clearToken();
 
-    if (window.location.pathname !== '/chat/share') {
+    if (
+      !(window.location.pathname === '/chat/share' || window.location.pathname === '/chat/team')
+    ) {
       window.location.replace(
         `/login?lastRoute=${encodeURIComponent(location.pathname + location.search)}`
       );
