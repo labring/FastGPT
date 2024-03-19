@@ -40,7 +40,6 @@ export type DatasetParamsProps = {
   datasetSearchExtensionBg?: string;
 
   maxTokens?: number; // limit max tokens
-  searchEmptyText?: string;
 };
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -50,7 +49,6 @@ enum SearchSettingTabEnum {
 
 const DatasetParamsModal = ({
   searchMode = DatasetSearchModeEnum.embedding,
-  searchEmptyText,
   limit,
   similarity,
   usingReRank,
@@ -71,7 +69,6 @@ const DatasetParamsModal = ({
 
   const { register, setValue, getValues, handleSubmit, watch } = useForm<DatasetParamsProps>({
     defaultValues: {
-      searchEmptyText,
       limit,
       similarity,
       searchMode,
@@ -269,21 +266,6 @@ const DatasetParamsModal = ({
                       setRefresh(!refresh);
                     }}
                   />
-                </Box>
-              </Box>
-            )}
-            {searchEmptyText !== undefined && (
-              <Box display={['block', 'flex']} pt={3}>
-                <Box flex={'0 0 120px'} mb={[2, 0]}>
-                  {t('core.dataset.search.Empty result response')}
-                </Box>
-                <Box flex={1}>
-                  <Textarea
-                    rows={5}
-                    maxLength={500}
-                    placeholder={t('core.dataset.search.Empty result response Tips')}
-                    {...register('searchEmptyText')}
-                  ></Textarea>
                 </Box>
               </Box>
             )}

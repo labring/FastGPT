@@ -20,6 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         name: plugin.name,
         intro: plugin.intro,
         showStatus: true,
+        isTool: plugin.isTool,
         inputs: [],
         outputs: []
       })) || [];

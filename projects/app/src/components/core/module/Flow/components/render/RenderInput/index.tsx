@@ -64,6 +64,10 @@ const RenderList: {
   {
     types: [FlowNodeInputTypeEnum.JSONEditor],
     Component: dynamic(() => import('./templates/JsonEditor'))
+  },
+  {
+    types: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
+    Component: dynamic(() => import('./templates/SettingQuotePrompt'))
   }
 ];
 const UserChatInput = dynamic(() => import('./templates/UserChatInput'));

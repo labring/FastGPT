@@ -107,6 +107,7 @@ export type SettingAIDataType = {
   temperature: number;
   maxToken: number;
   isResponseAnswerText?: boolean;
+  maxHistories?: number;
 };
 /* ai chat modules props */
 export type AIChatModuleProps = {

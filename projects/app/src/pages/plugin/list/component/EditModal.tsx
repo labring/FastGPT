@@ -19,6 +19,7 @@ import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { customAlphabet } from 'nanoid';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
 export type FormType = CreateOnePluginParams & {
@@ -80,6 +81,7 @@ const CreateModal = ({
   const { parentId } = router.query as { parentId: string };
 
   const { isPc } = useSystemStore();
+  const { loadTeamPluginNodeTemplates } = useWorkflowStore();
   const { openConfirm, ConfirmModal } = useConfirm({
     title: t('common.Delete Tip'),
     content: t('plugin.Confirm Delete')
@@ -125,6 +127,7 @@ const CreateModal = ({
       router.push(`/plugin/edit?pluginId=${id}`);
       onSuccess();
       onClose();
+      loadTeamPluginNodeTemplates();
     },
     successToast: t('common.Create Success'),
     errorToast: t('common.Create Failed')

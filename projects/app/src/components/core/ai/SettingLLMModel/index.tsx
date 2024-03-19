@@ -4,6 +4,8 @@ import { LLMModelTypeEnum, llmModelTypeFilterMap } from '@fastgpt/global/core/ai
 import { Box, Button, useDisclosure } from '@chakra-ui/react';
 import { SettingAIDataType } from '@fastgpt/global/core/module/node/type';
 import AISettingModal from '@/components/core/ai/AISettingModal';
+import Avatar from '@/components/Avatar';
+import { HUGGING_FACE_ICON } from '@fastgpt/global/common/system/constants';
 
 type Props = {
   llmModelType?: `${LLMModelTypeEnum}`;
@@ -51,6 +53,15 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
         _active={{
           transform: 'none'
         }}
+        leftIcon={
+          <Avatar
+            borderRadius={'0'}
+            src={selectedModel.avatar || HUGGING_FACE_ICON}
+            fallbackSrc={HUGGING_FACE_ICON}
+            w={'18px'}
+          />
+        }
+        pl={4}
         onClick={onOpenAIChatSetting}
       >
         {selectedModel?.name}

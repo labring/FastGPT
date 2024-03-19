@@ -92,7 +92,7 @@ export const Input_Template_System_Prompt: FlowNodeInputItemType = {
 
 export const Input_Template_Dataset_Quote: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.aiChatDatasetQuote,
-  type: FlowNodeInputTypeEnum.target,
+  type: FlowNodeInputTypeEnum.settingDatasetQuotePrompt,
   label: '知识库引用',
   description: 'core.module.Dataset quote.Input description',
   valueType: ModuleIOValueTypeEnum.datasetQuote,

@@ -36,10 +36,10 @@ export enum CodeClassName {
 
 const Markdown = ({
   source = '',
-  isChatting = false
+  showAnimation = false
 }: {
   source?: string;
-  isChatting?: boolean;
+  showAnimation?: boolean;
 }) => {
   const components = useMemo<any>(
     () => ({
@@ -60,7 +60,7 @@ const Markdown = ({
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}
-      ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
       remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}

@@ -7,7 +7,7 @@ import type {
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
-import { getFlowStore, onSetNodes, useFlowProviderStore } from './FlowProvider';
+import { onSetNodes, useFlowProviderStore } from './FlowProvider';
 import { customAlphabet } from 'nanoid';
 import { appModule2FlowNode } from '@/utils/adapt';
 import { useTranslation } from 'next-i18next';

@@ -9,28 +9,8 @@ import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { jiebaSplit } from '@fastgpt/service/common/string/jieba';
 import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/controller';
 import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
-import type {
-  PushDatasetDataProps,
-  PushDatasetDataResponse
-} from '@fastgpt/global/core/dataset/api.d';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-
-export async function pushDataToTrainingQueue(
-  props: {
-    teamId: string;
-    tmbId: string;
-  } & PushDatasetDataProps
-): Promise<PushDatasetDataResponse> {
-  const result = await pushDataListToTrainingQueue({
-    ...props,
-    vectorModelList: global.vectorModels,
-    datasetModelList: global.llmModels
-  });
-
-  return result;
-}
 
 /* insert data.
  * 1. create data id

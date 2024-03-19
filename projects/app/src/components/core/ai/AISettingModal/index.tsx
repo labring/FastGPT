@@ -42,6 +42,7 @@ const AIChatSettingsModal = ({
   });
   const model = watch('model');
   const showResponseAnswerText = watch(ModuleInputKeyEnum.aiChatIsResponseText) !== undefined;
+  const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
   const selectedModel = llmModelList.find((item) => item.model === model) || llmModelList[0];
 
   const tokenLimit = useMemo(() => {
@@ -157,6 +158,29 @@ const AIChatSettingsModal = ({
             />
           </Box>
         </Flex>
+        {showMaxHistoriesSlider && (
+          <Flex mt={8}>
+            <Box {...LabelStyles} mr={2}>
+              {t('core.app.Max histories')}
+            </Box>
+            <Box flex={1} ml={'10px'}>
+              <MySlider
+                markList={[
+                  { label: 0, value: 0 },
+                  { label: 30, value: 30 }
+                ]}
+                width={'95%'}
+                min={0}
+                max={30}
+                value={getValues('maxHistories') ?? 6}
+                onChange={(e) => {
+                  setValue('maxHistories', e);
+                  setRefresh(!refresh);
+                }}
+              />
+            </Box>
+          </Flex>
+        )}
         {showResponseAnswerText && (
           <Flex mt={8} alignItems={'center'}>
             <Box {...LabelStyles}>

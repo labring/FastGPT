@@ -88,7 +88,7 @@ const ChatItem = ({
       return (
         <>
           {files.length > 0 && <FilesBlock files={files} />}
-          <Markdown source={text} isChatting={false} />
+          <Markdown source={text} />
         </>
       );
     }
@@ -100,13 +100,26 @@ const ChatItem = ({
           if (value.text) {
             let source = value.text?.content || '';
 
-            if (isLastChild && !isChatting && questionGuides.length > 0) {
+            if (!source) return <></>;
+
+            if (
+              isLastChild &&
+              !isChatting &&
+              questionGuides.length > 0 &&
+              i === chat.value.length - 1
+            ) {
               source = `${source}
 \`\`\`${CodeClassName.questionGuide}
 ${JSON.stringify(questionGuides)}`;
             }
 
-            return <Markdown key={key} source={source} isChatting={isLastChild && isChatting} />;
+            return (
+              <Markdown
+                key={key}
+                source={source}
+                showAnimation={isLastChild && isChatting && i === chat.value.length - 1}
+              />
+            );
           }
           if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
             return (

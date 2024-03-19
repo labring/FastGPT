@@ -19,6 +19,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -162,7 +163,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
               </MyTooltip>
             </Flex>
             <Box flex={1}>
-              <MySelect
+              <AIModelSelector
                 w={'100%'}
                 value={getValues('vectorModel')}
                 list={filterNotHiddenVectorModelList.map((item) => ({
@@ -181,7 +182,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
           <Flex mt={6} alignItems={'center'}>
             <Box flex={'0 0 100px'}>{t('core.ai.model.Dataset Agent Model')}</Box>
             <Box flex={1}>
-              <MySelect
+              <AIModelSelector
                 w={'100%'}
                 value={getValues('agentModel')}
                 list={datasetModelList.map((item) => ({

@@ -59,19 +59,19 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const countRecallLimit = () => {
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return {
-        embeddingLimit: 100,
+        embeddingLimit: 150,
         fullTextLimit: 0
       };
     }
     if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
       return {
         embeddingLimit: 0,
-        fullTextLimit: 100
+        fullTextLimit: 150
       };
     }
     return {
-      embeddingLimit: 60,
-      fullTextLimit: 40
+      embeddingLimit: 100,
+      fullTextLimit: 80
     };
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
@@ -357,8 +357,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   // embedding recall and fullText recall rrf concat
   const rrfConcatResults = datasetSearchResultConcat([
     { k: 60, list: embeddingRecallResults },
-    { k: 64, list: fullTextRecallResults },
-    { k: 60, list: reRankResults }
+    { k: 60, list: fullTextRecallResults },
+    { k: 58, list: reRankResults }
   ]);
 
   // remove same q and a data

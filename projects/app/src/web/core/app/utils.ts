@@ -5,6 +5,7 @@ import { ModuleIOValueTypeEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
 import { ToolModule } from '@fastgpt/global/core/module/template/system/tools';
 import { DatasetSearchModule } from '@fastgpt/global/core/module/template/system/datasetSearch';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export async function postForm2Modules(data: AppSimpleEditFormType) {
   function userGuideTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
@@ -178,7 +179,7 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
-            value: formData.aiSettings.quoteTemplate,
+            value: '',
             connected: false
           },
           {
@@ -188,7 +189,7 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
             valueType: 'string',
             showTargetInApp: false,
             showTargetInPlugin: false,
-            value: formData.aiSettings.quotePrompt,
+            value: '',
             connected: false
           },
           {
@@ -223,7 +224,7 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
             min: 0,
             max: 30,
             valueType: 'chatHistory',
-            value: 6,
+            value: formData.aiSettings.maxHistories,
             showTargetInApp: true,
             showTargetInPlugin: true,
             connected: false
@@ -279,6 +280,182 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
     ];
   }
   function toolTemplates(formData: AppSimpleEditFormType): ModuleItemType[] {
+    let tools: ModuleItemType[] =
+      formData.dataset.datasets.length > 0
+        ? [
+            {
+              moduleId: getNanoid(6),
+              name: DatasetSearchModule.name,
+              intro: DatasetSearchModule.intro,
+              avatar: DatasetSearchModule.avatar,
+              flowType: DatasetSearchModule.flowType,
+              showStatus: DatasetSearchModule.showStatus,
+              position: {
+                x: 1000,
+                y: 2143
+              },
+              inputs: [
+                {
+                  key: 'switch',
+                  type: 'target',
+                  label: 'core.module.input.label.switch',
+                  description: 'core.module.input.description.Trigger',
+                  valueType: 'any',
+                  showTargetInApp: true,
+                  showTargetInPlugin: true,
+                  connected: false
+                },
+                {
+                  key: 'datasets',
+                  type: 'selectDataset',
+                  label: '关联的知识库',
+                  value: formData.dataset.datasets,
+                  valueType: 'selectDataset',
+                  required: true,
+                  showTargetInApp: false,
+                  showTargetInPlugin: true,
+                  connected: false
+                },
+                {
+                  key: 'similarity',
+                  type: 'selectDatasetParamsModal',
+                  label: '',
+                  value: formData.dataset.similarity,
+                  valueType: 'number',
+                  showTargetInApp: false,
+                  showTargetInPlugin: false,
+                  connected: false
+                },
+                {
+                  key: 'limit',
+                  type: 'hidden',
+                  label: '',
+                  value: formData.dataset.limit,
+                  valueType: 'number',
+                  showTargetInApp: false,
+                  showTargetInPlugin: false,
+                  connected: false
+                },
+                {
+                  key: 'searchMode',
+                  type: 'hidden',
+                  label: '',
+                  valueType: 'string',
+                  showTargetInApp: false,
+                  showTargetInPlugin: false,
+                  value: formData.dataset.searchMode,
+                  connected: false
+                },
+                {
+                  key: 'usingReRank',
+                  type: 'hidden',
+                  label: '',
+                  valueType: 'boolean',
+                  showTargetInApp: false,
+                  showTargetInPlugin: false,
+                  value: formData.dataset.usingReRank,
+                  connected: false
+                },
+                {
+                  key: 'datasetSearchUsingExtensionQuery',
+                  type: 'hidden',
+                  label: '',
+                  valueType: 'boolean',
+                  showTargetInApp: false,
+                  showTargetInPlugin: false,
+                  value: formData.dataset.datasetSearchUsingExtensionQuery,
+                  connected: false
+                },
+                {
+                  key: 'datasetSearchExtensionModel',
+                  type: 'hidden',
+                  label: '',
+                  valueType: 'string',
+                  showTargetInApp: false,
+                  showTargetInPlugin: false,
+                  connected: false,
+                  value: formData.dataset.datasetSearchExtensionModel
+                },
+                {
+                  key: 'datasetSearchExtensionBg',
+                  type: 'hidden',
+                  label: '',
+                  valueType: 'string',
+                  showTargetInApp: false,
+                  showTargetInPlugin: false,
+                  value: formData.dataset.datasetSearchExtensionBg,
+                  connected: false
+                },
+                {
+                  key: 'userChatInput',
+                  type: 'custom',
+                  label: '',
+                  required: true,
+                  valueType: 'string',
+                  showTargetInApp: true,
+                  showTargetInPlugin: true,
+                  toolDescription: '需要检索的内容',
+                  connected: false
+                }
+              ],
+              outputs: [
+                {
+                  key: 'userChatInput',
+                  label: 'core.module.input.label.user question',
+                  type: 'hidden',
+                  valueType: 'string',
+                  targets: []
+                },
+                {
+                  key: 'isEmpty',
+                  label: 'core.module.output.label.Search result empty',
+                  type: 'source',
+                  valueType: 'boolean',
+                  targets: []
+                },
+                {
+                  key: 'unEmpty',
+                  label: 'core.module.output.label.Search result not empty',
+                  type: 'source',
+                  valueType: 'boolean',
+                  targets: []
+                },
+                {
+                  key: 'quoteQA',
+                  label: 'core.module.Dataset quote.label',
+                  type: 'source',
+                  valueType: 'datasetQuote',
+                  targets: []
+                },
+                {
+                  key: 'finish',
+                  label: 'core.module.output.label.running done',
+                  description: 'core.module.output.description.running done',
+                  valueType: 'boolean',
+                  type: 'source',
+                  targets: []
+                }
+              ]
+            }
+          ]
+        : [];
+
+    tools = tools.concat(
+      formData.selectedTools.map((tool, i) => ({
+        moduleId: getNanoid(6),
+        name: tool.name,
+        intro: tool.intro,
+        avatar: tool.avatar,
+        flowType: tool.flowType,
+        showStatus: tool.showStatus,
+        position: {
+          x: 1000 + (300 * i + 1),
+          y: 2143
+        },
+        inputs: tool.inputs,
+        outputs: tool.outputs
+      }))
+    );
     const modules: ModuleItemType[] = [
       {
         moduleId: 'userChatInput',
@@ -382,7 +559,7 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
             min: 0,
             max: 30,
             valueType: 'chatHistory',
-            value: 6,
+            value: formData.aiSettings.maxHistories,
             showTargetInApp: true,
             showTargetInPlugin: true,
             connected: false
@@ -410,12 +587,10 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
             key: 'selectedTools',
             valueType: 'tools',
             type: 'hidden',
-            targets: [
-              {
-                moduleId: '1wdydt',
-                key: 'selectedTools'
-              }
-            ]
+            targets: tools.map((tool) => ({
+              moduleId: tool.moduleId,
+              key: 'selectedTools'
+            }))
           },
           {
             key: 'finish',
@@ -427,165 +602,15 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
           }
         ]
       },
-      {
-        moduleId: '1wdydt',
-        name: DatasetSearchModule.name,
-        intro: DatasetSearchModule.intro,
-        avatar: DatasetSearchModule.avatar,
-        flowType: DatasetSearchModule.flowType,
-        showStatus: DatasetSearchModule.showStatus,
-        position: {
-          x: 1205.7246680803316,
-          y: 2143.3348974694836
-        },
-        inputs: [
-          {
-            key: 'switch',
-            type: 'target',
-            label: 'core.module.input.label.switch',
-            description: 'core.module.input.description.Trigger',
-            valueType: 'any',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: false
-          },
-          {
-            key: 'datasets',
-            type: 'selectDataset',
-            label: '关联的知识库',
-            value: formData.dataset.datasets,
-            valueType: 'selectDataset',
-            required: true,
-            showTargetInApp: false,
-            showTargetInPlugin: true,
-            connected: false
-          },
-          {
-            key: 'similarity',
-            type: 'selectDatasetParamsModal',
-            label: '',
-            value: formData.dataset.similarity,
-            valueType: 'number',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'limit',
-            type: 'hidden',
-            label: '',
-            value: formData.dataset.limit,
-            valueType: 'number',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'searchMode',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: formData.dataset.searchMode,
-            connected: false
-          },
-          {
-            key: 'usingReRank',
-            type: 'hidden',
-            label: '',
-            valueType: 'boolean',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: formData.dataset.usingReRank,
-            connected: false
-          },
-          {
-            key: 'datasetSearchUsingExtensionQuery',
-            type: 'hidden',
-            label: '',
-            valueType: 'boolean',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: formData.dataset.datasetSearchUsingExtensionQuery,
-            connected: false
-          },
-          {
-            key: 'datasetSearchExtensionModel',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false,
-            value: formData.dataset.datasetSearchExtensionModel
-          },
-          {
-            key: 'datasetSearchExtensionBg',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: formData.dataset.datasetSearchExtensionBg,
-            connected: false
-          },
-          {
-            key: 'userChatInput',
-            type: 'custom',
-            label: '',
-            required: true,
-            valueType: 'string',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            toolDescription: '需要检索的内容',
-            connected: false
-          }
-        ],
-        outputs: [
-          {
-            key: 'userChatInput',
-            label: 'core.module.input.label.user question',
-            type: 'hidden',
-            valueType: 'string',
-            targets: []
-          },
-          {
-            key: 'isEmpty',
-            label: 'core.module.output.label.Search result empty',
-            type: 'source',
-            valueType: 'boolean',
-            targets: []
-          },
-          {
-            key: 'unEmpty',
-            label: 'core.module.output.label.Search result not empty',
-            type: 'source',
-            valueType: 'boolean',
-            targets: []
-          },
-          {
-            key: 'quoteQA',
-            label: 'core.module.Dataset quote.label',
-            type: 'source',
-            valueType: 'datasetQuote',
-            targets: []
-          },
-          {
-            key: 'finish',
-            label: 'core.module.output.label.running done',
-            description: 'core.module.output.description.running done',
-            valueType: 'boolean',
-            type: 'source',
-            targets: []
-          }
-        ]
-      }
+      ...tools
     ];
 
     return modules;
   }
-  const modules = data.dataset.datasets.length > 0 ? toolTemplates(data) : simpleChatTemplate(data);
+  const modules =
+    data.dataset.datasets.length > 0 || data.selectedTools.length > 0
+      ? toolTemplates(data)
+      : simpleChatTemplate(data);
 
   return [...userGuideTemplate(data), ...modules];
 }

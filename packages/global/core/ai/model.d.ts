@@ -1,6 +1,7 @@
 export type LLMModelItemType = {
   model: string;
   name: string;
+  avatar?: string;
   maxContext: number;
   maxResponse: number;
   quoteMaxToken: number;
@@ -31,6 +32,7 @@ export type LLMModelItemType = {
 export type VectorModelItemType = {
   model: string;
   name: string;
+  avatar?: string;
   defaultToken: number;
   charsPointsPrice: number;
   maxToken: number;

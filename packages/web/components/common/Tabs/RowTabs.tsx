@@ -12,7 +12,7 @@ type Props = BoxProps & {
   onChange: (e: string) => void;
 };
 
-const RowTabs = ({ list, value, onChange, py = '7px', ...props }: Props) => {
+const RowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
   return (
     <Box
       display={'inline-flex'}
@@ -32,7 +32,7 @@ const RowTabs = ({ list, value, onChange, py = '7px', ...props }: Props) => {
           alignItems={'center'}
           cursor={'pointer'}
           borderRadius={'md'}
-          px={'12px'}
+          px={px}
           py={py}
           userSelect={'none'}
           whiteSpace={'noWrap'}

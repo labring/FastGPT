@@ -207,6 +207,18 @@ const Button = defineStyleConfig({
       _disabled: {
         bg: 'myGray.50'
       }
+    },
+    grayDanger: {
+      bg: 'myGray.150',
+      color: 'myGray.900',
+      _hover: {
+        color: 'red.600',
+        background: 'red.1',
+        borderColor: 'red.300'
+      },
+      _active: {
+        color: 'red.600'
+      }
     }
   },
   defaultProps: {

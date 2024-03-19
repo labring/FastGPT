@@ -50,7 +50,7 @@ const SearchParamsTip = ({
         </Thead>
         <Tbody>
           <Tr color={'myGray.800'}>
-            <Td pt={0} pb={1}>
+            <Td pt={0} pb={2}>
               <Flex alignItems={'center'}>
                 <MyIcon
                   name={DatasetSearchModeMap[searchMode]?.icon as any}
@@ -60,18 +60,18 @@ const SearchParamsTip = ({
                 {t(DatasetSearchModeMap[searchMode]?.title)}
               </Flex>
             </Td>
-            <Td pt={0} pb={1}>
+            <Td pt={0} pb={2}>
               {limit}
             </Td>
-            <Td pt={0} pb={1}>
+            <Td pt={0} pb={2}>
               {hasSimilarityMode ? similarity : t('core.dataset.search.Nonsupport')}
             </Td>
             {hasReRankModel && (
-              <Td pt={0} pb={1}>
+              <Td pt={0} pb={2}>
                 {usingReRank ? '✅' : '❌'}
               </Td>
             )}
-            <Td pt={0} pb={1}>
+            <Td pt={0} pb={2}>
               {usingQueryExtension ? '✅' : '❌'}
             </Td>
             {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}

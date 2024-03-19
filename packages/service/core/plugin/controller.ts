@@ -71,6 +71,7 @@ export async function getPluginPreviewModule({
     name: plugin.name,
     intro: plugin.intro,
     showStatus: plugin.showStatus,
+    isTool: plugin.isTool,
     ...plugin2ModuleIO(plugin.id, plugin.modules)
   };
 }

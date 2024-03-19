@@ -26,6 +26,7 @@ export enum FlowNodeInputTypeEnum {
   // dataset special input
   selectDataset = 'selectDataset',
   selectDatasetParamsModal = 'selectDatasetParamsModal',
+  settingDatasetQuotePrompt = 'settingDatasetQuotePrompt',
 
   hidden = 'hidden',
   custom = 'custom'

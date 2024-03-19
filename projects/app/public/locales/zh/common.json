@@ -122,6 +122,7 @@
     "Price used": "金额消耗",
     "Read document": "查看文档",
     "Read intro": "查看说明",
+    "Remove": "移除",
     "Rename": "重命名",
     "Rename Failed": "重命名失败",
     "Rename Success": "重命名成功",
@@ -263,6 +264,7 @@
       "Chat Variable": "对话框变量",
       "External using": "外部使用途径",
       "Make a brief introduction of your app": "给你的 AI 应用一个介绍",
+      "Max histories": "聊天记录数量",
       "Max tokens": "回复上限",
       "Name and avatar": "头像 & 名称",
       "Next Step Guide": "下一步指引",
@@ -285,6 +287,12 @@
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Team tags": "团队标签",
       "Temperature": "温度",
+      "Tool call": "工具调用",
+      "ToolCall": {
+        "No plugin": "没有可用的插件",
+        "Setting tool": "配置工具",
+        "This plugin cannot be called as a tool": "该插件无法被作为工具调用"
+      },
       "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
       "deterministic": "严谨",
@@ -358,7 +366,7 @@
       },
       "tip": {
         "Add a intro to app": "快来给应用一个介绍~",
-        "chatNodeSystemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
+        "chatNodeSystemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}\n如果关联了知识库，你还可以通过适当的描述，来引导模型何时去调用知识库搜索。例如：\n你是电影《星际穿越》的助手，当用户询问与《星际穿越》相关的内容时，请搜索知识库并结合搜索结果进行回答。",
         "userGuideTip": "可以在对话前设置引导语，设置全局变量，设置下一步指引",
         "variableTip": "可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等",
         "welcomeTextTip": "每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题"
@@ -697,6 +705,7 @@
         "Search type": "类型",
         "Source id": "来源ID",
         "Source name": "引用来源名",
+        "Tool description": "调用时机",
         "Top K": "单次搜索上限",
         "Using cfr": "",
         "Using query extension": "使用问题优化",
@@ -798,6 +807,9 @@
         "placeholder": "例如:\n关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。",
         "tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。建议开启该功能后，都简单的描述在对话的背景，否则容易造成补全对象不准确。"
       },
+      "Quote prompt setting": "引用提示词配置",
+      "Qupte prompt setting": "",
+      "Setting quote prompt": "配置引用提示词",
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
       "Variable": "全局变量",
       "Variable Setting": "变量设置",
@@ -1261,6 +1273,7 @@
       }
     },
     "user": {
+      "AI point standard": "AI积分标准",
       "Avatar": "头像",
       "Need to login": "请先登录",
       "Price": "计费标准",
@@ -1429,8 +1442,8 @@
     "Help Document": "帮助文档"
   },
   "template": {
-    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第n个引用，{{score}} - 该引用的得分(0-1)，他们都是可选的，下面是默认值：\n{{default}}",
-    "Quote Prompt Tip": "该配置只在知识库搜索时生效。\n可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
+    "Quote Content Tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第n个引用，他们都是可选的，下面是默认值：\n{{default}}",
+    "Quote Prompt Tip": "可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
   "user": {
     "Account": "账号",

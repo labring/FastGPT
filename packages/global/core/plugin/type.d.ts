@@ -34,5 +34,6 @@ export type PluginRuntimeType = {
   name: string;
   avatar: string;
   showStatus?: boolean;
+  isTool?: boolean;
   modules: ModuleItemType[];
 };
