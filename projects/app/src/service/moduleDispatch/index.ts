@@ -226,7 +226,7 @@ export async function dispatchWorkFlow({
     }
 
     // get module running params
-    const params: Record<string, any> = {};
+    const params: Record<string, any> = { description: module.intro };
     module.inputs.forEach((item) => {
       params[item.key] = valueTypeFormat(item.value, item.valueType);
     });
@@ -337,7 +337,7 @@ function loadModules(
         isEntry: module.isEntry,
         inputs: module.inputs
           .filter(
-            /* 
+            /*
               1. system input must be save
               2. connected by source handle
               3. manual input value or have default value

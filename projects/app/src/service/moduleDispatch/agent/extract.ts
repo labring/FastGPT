@@ -194,7 +194,8 @@ const getFunctionCallSchema = ({
     description,
     parameters: {
       type: 'object',
-      properties
+      properties,
+      required: extractKeys.filter((item) => item.required).map((item) => item.key)
     }
   };
 
