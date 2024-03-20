@@ -176,6 +176,7 @@ const RenderList = React.memo(function RenderList({
   const { mutate: onClickAdd, isLoading } = useRequest({
     mutationFn: async (template: FlowNodeTemplateType) => {
       const res = await getPreviewPluginModule(template.id);
+
       // check inputs valid
       for (const input of res.inputs) {
         if ([ModuleInputKeyEnum.switch, ModuleInputKeyEnum.pluginId].includes(input.key as any))
@@ -190,7 +191,7 @@ const RenderList = React.memo(function RenderList({
       return res;
     },
     onSuccess(res: FlowNodeTemplateType) {
-      onAddTool(res);
+      res && onAddTool(res);
     },
     errorToast: t('core.module.templates.Load plugin error')
   });

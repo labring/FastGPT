@@ -38,7 +38,7 @@ export function filterGPTMessageByMaxTokens({
 
   // If the text length is less than half of the maximum token, no calculation is required
   if (rawTextLen < maxTokens * 0.5) {
-    return messages;
+    return messages.filter((item) => !!item.content);
   }
 
   // filter startWith system prompt
@@ -81,7 +81,7 @@ export function filterGPTMessageByMaxTokens({
     }
   }
 
-  return [...systemPrompts, ...chats];
+  return [...systemPrompts, ...chats].filter((item) => !!item.content);
 }
 export const formatGPTMessagesInRequestBefore = (messages: ChatCompletionMessageParam[]) => {
   return messages

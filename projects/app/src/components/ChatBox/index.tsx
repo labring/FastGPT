@@ -438,6 +438,7 @@ const ChatBox = (
           chatController.current = abortSignal;
 
           const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
+
           const {
             responseData,
             responseText,
@@ -534,10 +535,9 @@ const ChatBox = (
         setLoading(true);
         const index = chatHistories.findIndex((item) => item.dataId === dataId);
         const delHistory = chatHistories.slice(index);
-
         try {
           await Promise.all(
-            delHistory.map(async (item) => {
+            delHistory.map((item) => {
               if (item.dataId) {
                 return onDelMessage({ contentId: item.dataId });
               }

@@ -111,7 +111,7 @@ export const chats2GPTMessages = ({
               tool_calls
             })
             .concat(toolResponse);
-        } else if (value.text?.content) {
+        } else if (value.text) {
           results.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,
