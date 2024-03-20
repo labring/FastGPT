@@ -75,7 +75,6 @@
     "@types/request-ip": "^0.0.37",
     "eslint": "8.34.0",
     "eslint-config-next": "13.1.6",
-    "node-loader": "^2.0.0",
     "typescript": "4.9.5"
   }
 }
