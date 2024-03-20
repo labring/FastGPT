@@ -139,11 +139,11 @@ export const embeddingRecall = async (
     const results: any = await PgClient.query(
       `BEGIN;
         SET LOCAL hnsw.ef_search = ${efSearch};
-        select id, collection_id, (vector <#> '[${vectors[0]}]') * -1 AS score 
+        select id, collection_id, vector <#> '[${vectors[0]}]' AS score 
           from ${PgDatasetTableName} 
           where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               AND vector <#> '[${vectors[0]}]' < -${similarity}
-          order by score desc limit ${limit};
+          order by score limit ${limit};
         COMMIT;`
     );
 
@@ -153,7 +153,7 @@ export const embeddingRecall = async (
       results: rows.map((item) => ({
         id: item.id,
         collectionId: item.collection_id,
-        score: item.score
+        score: item.score * -1
       }))
     };
   } catch (error) {
