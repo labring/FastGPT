@@ -35,9 +35,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     ]);
 
     // auth chat permission
-    if (chat && !app.canWrite && String(tmbId) !== String(chat?.tmbId)) {
-      throw new Error(ChatErrEnum.unAuthChat);
-    }
+    // if (!app.canWrite && String(tmbId) !== String(chat?.tmbId)) {
+    //   throw new Error(ChatErrEnum.unAuthChat);
+    // }
 
     // get app and history
     const { history } = await getChatItems({

@@ -12,6 +12,9 @@ import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import Script from 'next/script';
+import UserManage from '@/pages/account/components/UserManage';
+import TeamManage from '@/pages/account/components/teamManage';
+import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 const Promotion = dynamic(() => import('./components/Promotion'));
 const UsageTable = dynamic(() => import('./components/UsageTable'));
@@ -22,9 +25,13 @@ const Individuation = dynamic(() => import('./components/Individuation'));
 
 enum TabEnum {
   'info' = 'info',
+  'manage' = 'manage',
+  'teamManage' = 'teamManage',
   'promotion' = 'promotion',
   'usage' = 'usage',
   'bill' = 'bill',
+  'price' = 'price',
+  'pay' = 'pay',
   'inform' = 'inform',
   'individuation' = 'individuation',
   'apikey' = 'apikey',
@@ -42,6 +49,20 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       label: t('user.Personal Information'),
       id: TabEnum.info
     },
+    ...(userInfo?.username === AuthUserTypeEnum.root
+      ? [
+          {
+            icon: 'support/user/userManage',
+            label: t('user.Manage'),
+            id: TabEnum.manage
+          }
+        ]
+      : []),
+    {
+      icon: 'support/user/teamManage',
+      label: t('user.Team'),
+      id: TabEnum.teamManage
+    },
     ...(feConfigs?.isPlus
       ? [
           {
@@ -54,9 +75,9 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     ...(feConfigs?.show_pay && userInfo?.team.canWrite
       ? [
           {
-            icon: 'support/bill/payRecordLight',
-            label: t('support.wallet.Bills'),
-            id: TabEnum.bill
+            icon: 'support/pay/priceLight',
+            label: t('support.user.Price'),
+            id: TabEnum.price
           }
         ]
       : []),
@@ -166,6 +187,8 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
           <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
             {currentTab === TabEnum.info && <UserInfo />}
+            {currentTab === TabEnum.manage && <UserManage />}
+            {currentTab === TabEnum.teamManage && <TeamManage />}
             {currentTab === TabEnum.promotion && <Promotion />}
             {currentTab === TabEnum.usage && <UsageTable />}
             {currentTab === TabEnum.bill && <BillTable />}

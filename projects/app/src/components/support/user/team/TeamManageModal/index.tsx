@@ -37,13 +37,14 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import dynamic from 'next/dynamic';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import { setToken } from '@/web/support/user/auth';
+import { setToken, clearToken } from '@/web/support/user/auth';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { FormDataType, defaultForm } from './EditModal';
 import MyMenu from '@/components/MyMenu';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useRouter } from 'next/router';
 
 const EditModal = dynamic(() => import('./EditModal'));
 const InviteModal = dynamic(() => import('./InviteModal'));
@@ -53,6 +54,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { Loading } = useLoading();
   const { toast } = useToast();
+  const router = useRouter();
   const { teamPlanStatus } = useUserStore();
   const { feConfigs } = useSystemStore();
 
@@ -115,11 +117,15 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
   const { mutate: onLeaveTeam, isLoading: isLoadingLeaveTeam } = useRequest({
     mutationFn: async (teamId?: string) => {
       if (!teamId) return;
-      // change to personal team
-      // get members
-      await onSwitchTeam(defaultTeam.teamId);
-
-      return delLeaveTeam(teamId);
+      return delLeaveTeam(teamId).then((res: any) => {
+        if (res.teamId) {
+          // change to personal team
+          onSwitchTeam(res.teamId);
+        } else {
+          clearToken();
+          router.push('/login');
+        }
+      });
     },
     onSuccess() {
       refetchTeam();
@@ -158,7 +164,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
               <Box flex={['0 0 auto', 1]} fontWeight={'bold'} fontSize={['md', 'lg']}>
                 {t('common.Team')}
               </Box>
-              {myTeams.length < 1 && (
+              {userInfo?.team.canWrite && (
                 <IconButton
                   variant={'ghost'}
                   border={'none'}
@@ -194,7 +200,6 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                           bg: 'myGray.100'
                         }
                       })}
-                  onClick={() => onSwitchTeam(team.teamId)}
                 >
                   <Avatar src={team.avatar} w={['18px', '22px']} />
                   <Box
@@ -277,10 +282,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                   ml={3}
                   leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
                   onClick={() => {
-                    if (
-                      teamPlanStatus?.standardConstants?.maxTeamMember &&
-                      teamPlanStatus.standardConstants.maxTeamMember <= members.length
-                    ) {
+                    if (userInfo.team.maxSize <= members.length) {
                       toast({
                         status: 'warning',
                         title: t('user.team.Over Max Member Tip', {

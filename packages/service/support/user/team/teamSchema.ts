@@ -25,6 +25,10 @@ const TeamSchema = new Schema({
     type: Number,
     default: 0
   },
+  maxSize: {
+    type: Number,
+    default: 100
+  },
   teamDomain: {
     type: String
   },

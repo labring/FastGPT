@@ -19,6 +19,7 @@ export type DatasetSchemaType = {
   updateTime: Date;
   avatar: string;
   name: string;
+  tmbName: string;
   vectorModel: string;
   agentModel: string;
   intro: string;
@@ -116,6 +117,7 @@ export type DatasetListItemType = {
   avatar: string;
   name: string;
   intro: string;
+  tmbName: string;
   type: `${DatasetTypeEnum}`;
   isOwner: boolean;
   canWrite: boolean;

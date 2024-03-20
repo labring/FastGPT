@@ -8,6 +8,7 @@ import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/use
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLLMModel, getVectorModel, getDatasetModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -31,13 +32,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('vectorModel or qaModel is invalid');
     }
 
+    const teamMember = await MongoTeamMember.findOne({ _id: tmbId });
+    if (!teamMember) {
+      throw new Error('成员不存在');
+    }
     // check limit
     await checkTeamDatasetLimit(teamId);
+    const authCount = await MongoDataset.countDocuments({
+      teamId,
+      type: DatasetTypeEnum.dataset
+    });
+    if (authCount >= 50) {
+      throw new Error('每个团队上限 50 个知识库');
+    }
 
     const { _id } = await MongoDataset.create({
       name,
       teamId,
       tmbId,
+      tmbName: teamMember.name,
       vectorModel,
       agentModel,
       avatar,

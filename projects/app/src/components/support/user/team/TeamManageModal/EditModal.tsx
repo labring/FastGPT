@@ -13,6 +13,7 @@ import Avatar from '@/components/Avatar';
 import { postCreateTeam, putUpdateTeam } from '@/web/support/user/team/api';
 import { CreateTeamProps } from '@fastgpt/global/support/user/team/controller.d';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export type FormDataType = CreateTeamProps & {
   id?: string;
@@ -35,7 +36,7 @@ function EditModal({
   const { t } = useTranslation();
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
-
+  const { userInfo, initUserInfo } = useUserStore();
   const { register, setValue, getValues, handleSubmit } = useForm<CreateTeamProps>({
     defaultValues: defaultData
   });
@@ -70,7 +71,7 @@ function EditModal({
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (data: CreateTeamProps) => {
-      return postCreateTeam(data);
+      return postCreateTeam({ ...data, username: userInfo?.username });
     },
     onSuccess() {
       onSuccess();

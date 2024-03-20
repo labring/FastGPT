@@ -280,130 +280,127 @@ const Kb = () => {
               }
             }}
           >
-            {userInfo?.team.canWrite && dataset.isOwner && (
-              <Box
-                position={'absolute'}
-                top={3}
-                right={3}
-                borderRadius={'md'}
-                _hover={{
-                  color: 'primary.500',
-                  '& .icon': {
-                    bg: 'myGray.100'
-                  }
-                }}
-                onClick={(e) => {
-                  e.stopPropagation();
-                }}
-              >
-                <MyMenu
-                  width={120}
-                  Button={
-                    <Box w={'22px'} h={'22px'}>
-                      <MyIcon
-                        className="icon"
-                        name={'more'}
-                        h={'16px'}
-                        w={'16px'}
-                        px={1}
-                        py={1}
-                        borderRadius={'md'}
-                        cursor={'pointer'}
-                      />
-                    </Box>
-                  }
-                  menuList={[
-                    ...(dataset.permission === PermissionTypeEnum.private
-                      ? [
-                          {
-                            label: (
-                              <Flex alignItems={'center'}>
-                                <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
-                                {t('permission.Set Public')}
-                              </Flex>
-                            ),
-                            onClick: () => {
-                              updateDataset({
-                                id: dataset._id,
-                                permission: PermissionTypeEnum.public
-                              });
-                            }
-                          }
-                        ]
-                      : [
-                          {
-                            label: (
-                              <Flex alignItems={'center'}>
-                                <MyIcon
-                                  name={'support/permission/privateLight'}
-                                  w={'14px'}
-                                  mr={2}
-                                />
-                                {t('permission.Set Private')}
-                              </Flex>
-                            ),
-                            onClick: () => {
-                              updateDataset({
-                                id: dataset._id,
-                                permission: PermissionTypeEnum.private
-                              });
-                            }
-                          }
-                        ]),
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'edit'} w={'14px'} mr={2} />
-                          {t('Rename')}
-                        </Flex>
-                      ),
-                      onClick: () =>
-                        onOpenTitleModal({
-                          defaultVal: dataset.name,
-                          onSuccess: (val) => {
-                            if (val === dataset.name || !val) return;
-                            updateDataset({ id: dataset._id, name: val });
-                          }
-                        })
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
-                          {t('Move')}
-                        </Flex>
-                      ),
-                      onClick: () => setMoveDataId(dataset._id)
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'export'} w={'14px'} mr={2} />
-                          {t('Export')}
-                        </Flex>
-                      ),
-                      onClick: () => {
-                        exportDataset(dataset);
+            {userInfo?.team.canWrite && (
+              <MyMenu
+                offset={[-30, 10]}
+                width={120}
+                Button={
+                  <MenuButton
+                    position={'absolute'}
+                    top={3}
+                    right={3}
+                    w={'22px'}
+                    h={'22px'}
+                    borderRadius={'md'}
+                    _hover={{
+                      color: 'primary.500',
+                      '& .icon': {
+                        bg: 'myGray.100'
                       }
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'delete'} w={'14px'} mr={2} />
-                          {t('common.Delete')}
-                        </Flex>
-                      ),
-                      onClick: () => {
-                        openConfirm(
-                          () => onclickDelDataset(dataset._id),
-                          undefined,
-                          DeleteTipsMap.current[dataset.type]
-                        )();
-                      }
+                    }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                    }}
+                  >
+                    <MyIcon
+                      className="icon"
+                      name={'more'}
+                      h={'16px'}
+                      w={'16px'}
+                      px={1}
+                      py={1}
+                      borderRadius={'md'}
+                      cursor={'pointer'}
+                    />
+                  </MenuButton>
+                }
+                menuList={[
+                  ...(dataset.permission === PermissionTypeEnum.private
+                    ? [
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
+                              {t('permission.Set Public')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            updateDataset({
+                              id: dataset._id,
+                              permission: PermissionTypeEnum.public
+                            });
+                          }
+                        }
+                      ]
+                    : [
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'support/permission/privateLight'} w={'14px'} mr={2} />
+                              {t('permission.Set Private')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            updateDataset({
+                              id: dataset._id,
+                              permission: PermissionTypeEnum.private
+                            });
+                          }
+                        }
+                      ]),
+                  {
+                    label: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'edit'} w={'14px'} mr={2} />
+                        {t('Rename')}
+                      </Flex>
+                    ),
+                    onClick: () =>
+                      onOpenTitleModal({
+                        defaultVal: dataset.name,
+                        onSuccess: (val) => {
+                          if (val === dataset.name || !val) return;
+                          updateDataset({ id: dataset._id, name: val });
+                        }
+                      })
+                  },
+                  {
+                    label: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
+                        {t('Move')}
+                      </Flex>
+                    ),
+                    onClick: () => setMoveDataId(dataset._id)
+                  },
+                  {
+                    label: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'export'} w={'14px'} mr={2} />
+                        {t('Export')}
+                      </Flex>
+                    ),
+                    onClick: () => {
+                      exportDataset(dataset);
                     }
-                  ]}
-                />
-              </Box>
+                  },
+                  {
+                    label: (
+                      <Flex alignItems={'center'}>
+                        <MyIcon name={'delete'} w={'14px'} mr={2} />
+                        {t('common.Delete')}
+                      </Flex>
+                    ),
+                    onClick: () => {
+                      openConfirm(
+                        () => onclickDelDataset(dataset._id),
+                        undefined,
+                        DeleteTipsMap.current[dataset.type]
+                      )();
+                    }
+                  }
+                ]}
+              />
             )}
             <Flex alignItems={'center'} h={'38px'}>
               <Avatar src={dataset.avatar} borderRadius={'md'} w={'28px'} />
@@ -426,7 +423,11 @@ const Kb = () => {
             </Box>
             <Flex alignItems={'center'} fontSize={'sm'}>
               <Box flex={1}>
-                <PermissionIconText permission={dataset.permission} color={'myGray.600'} />
+                <PermissionIconText
+                  permission={dataset.permission}
+                  tmbName={dataset.tmbName}
+                  color={'myGray.600'}
+                />
               </Box>
               {dataset.type !== DatasetTypeEnum.folder && (
                 <DatasetTypeTag type={dataset.type} py={1} px={2} />

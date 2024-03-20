@@ -1,17 +1,18 @@
 import React, { useMemo } from 'react';
-import { Box, BoxProps, Flex, Link, LinkProps } from '@chakra-ui/react';
+import { Box, BoxProps, Flex, Avatar, Link, LinkProps } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import NextLink from 'next/link';
 import Badge from '../Badge';
-import Avatar from '../Avatar';
+import MyAvatar from '../Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTooltip from '../MyTooltip';
 import { getDocPath } from '@/web/common/system/doc';
+import { getInitials } from '@/utils/getInitials';
 
 export enum NavbarTypeEnum {
   normal = 'normal',
@@ -31,6 +32,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         icon: 'core/chat/chatLight',
         activeIcon: 'core/chat/chatFill',
         link: `/chat?appId=${lastChatAppId}&chatId=${lastChatId}`,
+        needAuth: false,
         activeLink: ['/chat']
       },
       {
@@ -38,6 +40,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,
+        needAuth: false,
         activeLink: ['/app/list', '/app/detail']
       },
       {
@@ -45,6 +48,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         icon: 'common/navbar/pluginLight',
         activeIcon: 'common/navbar/pluginFill',
         link: `/plugin/list`,
+        needAuth: true,
         activeLink: ['/plugin/list', '/plugin/edit']
       },
       {
@@ -52,6 +56,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         icon: 'core/dataset/datasetLight',
         activeIcon: 'core/dataset/datasetFill',
         link: `/dataset/list`,
+        needAuth: true,
         activeLink: ['/dataset/list', '/dataset/detail']
       },
       {
@@ -59,6 +64,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         icon: 'support/user/userLight',
         activeIcon: 'support/user/userFill',
         link: '/account',
+        needAuth: false,
         activeLink: ['/account']
       }
     ],
@@ -102,48 +108,50 @@ const Navbar = ({ unread }: { unread: number }) => {
         cursor={'pointer'}
         onClick={() => router.push('/account')}
       >
-        <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={HUMAN_ICON} />
+        <MyAvatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={HUMAN_ICON} />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>
-        {navbarList.map((item) => (
-          <Box
-            key={item.link}
-            {...itemStyles}
-            {...(item.activeLink.includes(router.pathname)
-              ? {
-                  color: 'primary.600',
-                  bg: 'white',
-                  boxShadow:
-                    '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)'
-                }
-              : {
-                  color: 'myGray.500',
-                  bg: 'transparent',
-                  _hover: {
-                    bg: 'rgba(255,255,255,0.9)'
+        {navbarList
+          .filter((item) => !item.needAuth || (item.needAuth && userInfo?.team.canWrite))
+          .map((item) => (
+            <Box
+              key={item.link}
+              {...itemStyles}
+              {...(item.activeLink.includes(router.pathname)
+                ? {
+                    color: 'primary.600',
+                    bg: 'white',
+                    boxShadow:
+                      '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)'
                   }
-                })}
-            {...(item.link !== router.asPath
-              ? {
-                  onClick: () => router.push(item.link)
+                : {
+                    color: 'myGray.500',
+                    bg: 'transparent',
+                    _hover: {
+                      bg: 'rgba(255,255,255,0.9)'
+                    }
+                  })}
+              {...(item.link !== router.asPath
+                ? {
+                    onClick: () => router.push(item.link)
+                  }
+                : {})}
+            >
+              <MyIcon
+                name={
+                  item.activeLink.includes(router.pathname)
+                    ? (item.activeIcon as any)
+                    : (item.icon as any)
                 }
-              : {})}
-          >
-            <MyIcon
-              name={
-                item.activeLink.includes(router.pathname)
-                  ? (item.activeIcon as any)
-                  : (item.icon as any)
-              }
-              width={'20px'}
-              height={'20px'}
-            />
-            <Box fontSize={'12px'} transform={'scale(0.9)'} mt={'5px'} lineHeight={1}>
-              {item.label}
+                width={'20px'}
+                height={'20px'}
+              />
+              <Box fontSize={'12px'} transform={'scale(0.9)'} mt={'5px'} lineHeight={1}>
+                {item.label}
+              </Box>
             </Box>
-          </Box>
-        ))}
+          ))}
       </Box>
 
       {unread > 0 && (
@@ -192,6 +200,19 @@ const Navbar = ({ unread }: { unread: number }) => {
           </Link>
         </MyTooltip>
       )}
+      <MyTooltip
+        label={`${t('user.Team')}: ${userInfo?.team.teamName}\n${t(
+          'common.Username'
+        )}: ${userInfo?.username}`}
+        placement={'right-end'}
+      >
+        <Avatar
+          name={userInfo?.team.memberName}
+          getInitials={() => getInitials(userInfo?.team.memberName, true)}
+          size="sm"
+          mb={4}
+        />
+      </MyTooltip>
     </Flex>
   );
 };

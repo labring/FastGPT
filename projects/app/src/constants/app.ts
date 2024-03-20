@@ -9,6 +9,7 @@ export const defaultApp: AppDetailType = {
   simpleTemplateId: 'fastgpt-universal',
   avatar: '/icon/logo.svg',
   intro: '',
+  tmbName: '',
   updateTime: Date.now(),
   modules: [],
   teamId: '',

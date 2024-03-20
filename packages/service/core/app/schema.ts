@@ -25,6 +25,11 @@ const AppSchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
+  tmbName: {
+    type: String,
+    required: true,
+    default: 'Owner'
+  },
   name: {
     type: String,
     required: true

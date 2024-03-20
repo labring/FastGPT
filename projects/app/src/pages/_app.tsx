@@ -14,6 +14,7 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
+import '@/utils/apm';
 
 import 'nprogress/nprogress.css';
 import '@/web/styles/reset.scss';
@@ -53,13 +54,13 @@ function App({ Component, pageProps }: AppProps) {
       setTitle(systemTitle || 'FastGPT');
 
       // log fastgpt
-      if (!isPlus) {
-        console.log(
-          '%cWelcome to FastGPT',
-          'font-family:Arial; color:#3370ff ; font-size:18px; font-weight:bold;',
-          `GitHub：https://github.com/labring/FastGPT`
-        );
-      }
+      // if (!isPlus) {
+      //   console.log(
+      //     '%cWelcome to FastGPT',
+      //     'font-family:Arial; color:#3370ff ; font-size:18px; font-weight:bold;',
+      //     `GitHub：https://github.com/labring/FastGPT`
+      //   );
+      // }
       if (show_git) {
         loadGitStar();
       }

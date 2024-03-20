@@ -3,12 +3,12 @@ import MyModal from '@/components/MyModal';
 import { useTranslation } from 'next-i18next';
 import { ModalCloseButton, ModalBody, Box, ModalFooter, Button } from '@chakra-ui/react';
 import TagTextarea from '@/components/common/Textarea/TagTextarea';
+import MySelect from '@/components/Select';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { postInviteTeamMember } from '@/web/support/user/team/api';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import type { InviteMemberResponse } from '@fastgpt/global/support/user/team/controller.d';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const InviteModal = ({
   teamId,
@@ -55,13 +55,11 @@ const InviteModal = ({
       openConfirm(
         () => onClose(),
         undefined,
-        <Box whiteSpace={'pre-wrap'}>
-          {t('user.team.Invite Member Success Tip', {
-            success: res.invite.length,
-            inValid: res.inValid.map((item) => item.username).join(', '),
-            inTeam: res.inTeam.map((item) => item.username).join(', ')
-          })}
-        </Box>
+        t('user.team.Invite Member Success Tip', {
+          success: res.invite.length,
+          inValid: res.inValid.length > 0 ? res.inValid.map((item) => item.username).join(', ') : 0,
+          inTeam: res.inTeam.length > 0 ? res.inTeam.map((item) => item.username).join(', ') : 0
+        })
       )();
     },
     errorToast: t('user.team.Invite Member Failed Tip')

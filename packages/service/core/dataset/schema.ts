@@ -36,6 +36,11 @@ const DatasetSchema = new Schema({
     ref: TeamMemberCollectionName,
     required: true
   },
+  tmbName: {
+    type: String,
+    required: true,
+    default: 'root'
+  },
   type: {
     type: String,
     enum: Object.keys(DatasetTypeMap),

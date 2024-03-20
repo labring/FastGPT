@@ -8,10 +8,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getUnreadCount } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
-
+import { apm } from '@/utils/apm';
 import Auth from './auth';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
+import TeamBox from './teamBox';
 const UpdateInviteModal = dynamic(
   () => import('@/components/support/user/team/UpdateInviteModal'),
   { ssr: false }
@@ -57,6 +58,15 @@ const Layout = ({ children }: { children: JSX.Element }) => {
       setColorMode('light');
     }
   }, [colorMode, router.pathname, setColorMode]);
+
+  useEffect(() => {
+    apm.addLabels({
+      id: userInfo?._id || '',
+      username: userInfo?.username || '',
+      teamId: userInfo?.team.teamId || '',
+      teamName: userInfo?.team.teamName || ''
+    });
+  }, [router.pathname]);
 
   useEffect(() => {
     const resize = throttle(() => {
@@ -119,6 +129,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
         {!!userInfo && <UpdateInviteModal />}
       </Box>
+      {router.pathname !== '/login' && <TeamBox />}
       <Loading loading={loading} zIndex={999999} />
     </>
   );

@@ -6,7 +6,7 @@ import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useChatStore } from '@/web/core/chat/storeChat';
-import LoginForm from './components/LoginForm/LoginForm';
+import LoginForm from './components/LoginForm';
 import dynamic from 'next/dynamic';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { clearToken, setToken } from '@/web/support/user/auth';

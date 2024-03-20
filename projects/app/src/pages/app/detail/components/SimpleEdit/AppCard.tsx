@@ -53,7 +53,7 @@ const AppCard = ({ appId }: { appId: string }) => {
       <Box px={4}>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-            <PermissionIconText permission={appDetail.permission} />
+            <PermissionIconText permission={appDetail.permission} tmbName={appDetail.tmbName} />
           </Box>
           <Box color={'myGray.500'} fontSize={'sm'}>
             AppId:{' '}
@@ -78,7 +78,7 @@ const AppCard = ({ appId }: { appId: string }) => {
             <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
               {appDetail.name}
             </Box>
-            {appDetail.isOwner && (
+            {appDetail.canWrite && (
               <IconButton
                 className="delete"
                 position={'absolute'}
@@ -128,18 +128,7 @@ const AppCard = ({ appId }: { appId: string }) => {
             >
               {t('core.app.navbar.Publish')}
             </Button>
-            {appDetail.canWrite && feConfigs?.show_team_chat && (
-              <Button
-                mr={3}
-                size={['sm', 'md']}
-                variant={'whitePrimary'}
-                leftIcon={<DragHandleIcon w={'16px'} />}
-                onClick={() => setTeamTagsSet(appDetail)}
-              >
-                {t('common.Team Tags Set')}
-              </Button>
-            )}
-            {appDetail.isOwner && (
+            {appDetail.canWrite && (
               <Button
                 size={['sm', 'md']}
                 variant={'whitePrimary'}

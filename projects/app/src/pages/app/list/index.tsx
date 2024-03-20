@@ -65,9 +65,11 @@ const MyApps = () => {
         <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
           {t('app.My Apps')}
         </Box>
-        <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
-          {t('common.New Create')}
-        </Button>
+        {userInfo?.team.canWrite && (
+          <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
+            {t('common.New Create')}
+          </Button>
+        )}
       </Flex>
       <Grid
         py={[4, 6]}
@@ -75,10 +77,7 @@ const MyApps = () => {
         gridGap={5}
       >
         {myApps.map((app) => (
-          <MyTooltip
-            key={app._id}
-            label={userInfo?.team.canWrite ? t('app.To Settings') : t('app.To Chat')}
-          >
+          <MyTooltip key={app._id} label={t('app.To Chat')}>
             <Box
               lineHeight={1.5}
               h={'100%'}
@@ -95,13 +94,7 @@ const MyApps = () => {
               flexDirection={'column'}
               _hover={{
                 borderColor: 'primary.300',
-                boxShadow: '1.5',
-                '& .delete': {
-                  display: 'flex'
-                },
-                '& .chat': {
-                  display: 'flex'
-                }
+                boxShadow: '1.5'
               }}
               onClick={() => {
                 if (userInfo?.team.canWrite) {
@@ -114,7 +107,7 @@ const MyApps = () => {
               <Flex alignItems={'center'} h={'38px'}>
                 <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
                 <Box ml={3}>{app.name}</Box>
-                {app.isOwner && userInfo?.team.canWrite && (
+                {userInfo?.team.canWrite && (
                   <IconButton
                     className="delete"
                     position={'absolute'}
@@ -124,7 +117,6 @@ const MyApps = () => {
                     variant={'whiteDanger'}
                     icon={<MyIcon name={'delete'} w={'14px'} />}
                     aria-label={'delete'}
-                    display={['', 'none']}
                     onClick={(e) => {
                       e.stopPropagation();
                       openConfirm(() => onclickDelApp(app._id))();
@@ -144,7 +136,11 @@ const MyApps = () => {
               </Box>
               <Flex h={'34px'} alignItems={'flex-end'}>
                 <Box flex={1}>
-                  <PermissionIconText permission={app.permission} color={'myGray.600'} />
+                  <PermissionIconText
+                    permission={app.permission}
+                    tmbName={app.tmbName}
+                    color={'myGray.600'}
+                  />
                 </Box>
                 {userInfo?.team.canWrite && (
                   <IconButton
@@ -157,7 +153,6 @@ const MyApps = () => {
                       </MyTooltip>
                     }
                     aria-label={'chat'}
-                    display={['', 'none']}
                     onClick={(e) => {
                       e.stopPropagation();
                       router.push(`/chat?appId=${app._id}`);

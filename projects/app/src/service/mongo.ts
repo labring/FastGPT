@@ -11,6 +11,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { initGlobal } from './common/system';
 import { startMongoWatch } from './common/system/volumnMongoWatch';
 import { startTrainingQueue } from './core/dataset/training/utils';
+import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 
 /**
  * connect MongoDB and init data
@@ -68,7 +69,13 @@ async function initRootUser() {
         rootId = _id;
       }
       // init root team
-      await createDefaultTeam({ userId: rootId, balance: 9999 * PRICE_SCALE, session });
+      const hasDefaultTeam = await MongoTeamMember.findOne({
+        userId: rootId
+      });
+      if (!hasDefaultTeam) {
+        // init root team
+        await createDefaultTeam({ userId: rootId, maxSize: 50, balance: 9999 * PRICE_SCALE });
+      }
     });
 
     console.log(`root user init:`, {

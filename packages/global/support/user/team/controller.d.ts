@@ -9,6 +9,7 @@ export type AuthTeamRoleProps = {
 export type CreateTeamProps = {
   name: string;
   avatar?: string;
+  username?: string;
   defaultTeam?: boolean;
 };
 export type UpdateTeamProps = {
