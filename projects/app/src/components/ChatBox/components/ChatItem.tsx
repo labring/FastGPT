@@ -112,12 +112,11 @@ ${JSON.stringify(questionGuides)}`;
             }
 
             return (
-              <Box key={key}>
-                <Markdown
-                  source={source}
-                  showAnimation={isLastChild && isChatting && i === chat.value.length - 1}
-                />
-              </Box>
+              <Markdown
+                key={key}
+                source={source}
+                showAnimation={isLastChild && isChatting && i === chat.value.length - 1}
+              />
             );
           }
           if (value.type === ChatItemValueTypeEnum.tool && value.tools) {

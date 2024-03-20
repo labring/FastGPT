@@ -560,14 +560,29 @@ const ChatBox = (
     },
     [chatHistories, onDelMessage, sendPrompt, setLoading, toast]
   );
-  // delete one message
+  // delete one message(One human and the ai response)
   const delOneMessage = useCallback(
     (dataId?: string) => {
       if (!dataId || !onDelMessage) return;
       return () => {
-        setChatHistories((state) => state.filter((chat) => chat.dataId !== dataId));
-        onDelMessage({
-          contentId: dataId
+        setChatHistories((state) => {
+          let aiIndex = -1;
+
+          return state.filter((chat, i) => {
+            if (chat.dataId === dataId) {
+              aiIndex = i + 1;
+              onDelMessage({
+                contentId: dataId
+              });
+              return false;
+            } else if (aiIndex === i && chat.obj === ChatRoleEnum.AI && chat.dataId) {
+              onDelMessage({
+                contentId: chat.dataId
+              });
+              return false;
+            }
+            return true;
+          });
         });
       };
     },
@@ -872,7 +887,6 @@ const ChatBox = (
                       avatar={appAvatar}
                       chat={item}
                       isChatting={isChatting}
-                      onDelete={delOneMessage(item.dataId)}
                       {...(item.obj === 'AI' && {
                         setChatHistories,
                         showVoiceIcon,

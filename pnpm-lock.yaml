@@ -330,10 +330,10 @@ importers:
         specifier: ^1.11.7
         version: 1.11.7
       echarts:
-        specifier: ^5.4.1
+        specifier: 5.4.1
         version: 5.4.1
       echarts-gl:
-        specifier: ^2.0.9
+        specifier: 2.0.9
         version: 2.0.9(echarts@5.4.1)
       formidable:
         specifier: ^2.1.1

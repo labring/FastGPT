@@ -1355,6 +1355,10 @@
       "noBill": "Not Bills",
       "subscription": {
         "AI points": "AI points",
+        "AI points click to read tip": "Each time an AI model is invoked, a certain amount of AI credits (similar to Tokens) are consumed. Click to view the detailed calculation rules.",
+        "AI points tip": "",
+        "AI points usage": "AI point usage",
+        "AI points usage tip": "Each time the AI model is invoked, a certain amount of AI credits are consumed. Please refer to the \"Charging Standard\" above for specific calculation standards.",
         "Ai points": "AI Points Standard",
         "Buy now": "Buy now",
         "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",

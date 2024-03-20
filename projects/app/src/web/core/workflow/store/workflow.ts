@@ -10,11 +10,11 @@ type State = {
   systemNodeTemplates: FlowNodeTemplateType[];
   loadSystemNodeTemplates: (init?: boolean) => Promise<FlowNodeTemplateType[]>;
   teamPluginNodeTemplates: FlowNodeTemplateType[];
-  loadTeamPluginNodeTemplates: (
-    parentId: string | null,
-    searchKey?: string,
-    init?: boolean
-  ) => Promise<FlowNodeTemplateType[]>;
+  loadTeamPluginNodeTemplates: (e?: {
+    parentId?: string | null;
+    searchKey?: string;
+    init?: boolean;
+  }) => Promise<FlowNodeTemplateType[]>;
 };
 
 export const useWorkflowStore = create<State>()(
@@ -39,12 +39,14 @@ export const useWorkflowStore = create<State>()(
           return templates;
         },
         teamPluginNodeTemplates: [],
-        async loadTeamPluginNodeTemplates(parentId, searchKey, init) {
+        async loadTeamPluginNodeTemplates(e) {
+          const { parentId = null, searchKey, init } = e || {};
+
           if (!init && get().teamPluginNodeTemplates.length > 0) {
             return get().teamPluginNodeTemplates;
           }
           const templates = await getTeamPlugTemplates({
-            parentId: parentId,
+            parentId: parentId || null,
             searchKey: searchKey
           });
           set((state) => {

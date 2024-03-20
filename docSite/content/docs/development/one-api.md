@@ -112,6 +112,7 @@ CHAT_API_KEY=sk-xxxxxx
     {
       "model": "ERNIE-Bot", // 这里的模型需要对应 One API 的模型
       "name": "文心一言", // 对外展示的名称
+      "avatar": "/imgs/model/openai.svg", // 模型的logo
       "maxContext": 16000, // 最大上下文
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 13000, // 最大引用内容
@@ -135,4 +136,11 @@ CHAT_API_KEY=sk-xxxxxx
 ],
 ```
 
-添加完后，重启 FastGPT 即可在选择文心一言模型进行对话。**添加向量模型也是类似操作，增加到 `vectorModels`里。**
+### 3. 重启 FastGPT
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+重启 FastGPT 即可在选择文心一言模型进行对话。**添加向量模型也是类似操作，增加到 `vectorModels`里。**

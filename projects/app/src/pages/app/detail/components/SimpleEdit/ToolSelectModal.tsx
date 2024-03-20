@@ -51,9 +51,9 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.teamPlugin);
   const [currentParent, setCurrentParent] = useState<{
-    parentId: string | null;
+    parentId: string;
     parentName: string;
-  }>({ parentId: null, parentName: '' });
+  }>();
   const [searchKey, setSearchKey] = useState('');
 
   const templates = useMemo(() => {
@@ -66,7 +66,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       )
     };
     return map[templateType];
-  }, [systemNodeTemplates, teamPluginNodeTemplates, templateType]);
+  }, [searchKey, systemNodeTemplates, teamPluginNodeTemplates, templateType]);
 
   const { mutate: onChangeTab } = useRequest({
     mutationFn: async (e: any) => {
@@ -74,15 +74,21 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       if (val === TemplateTypeEnum.systemPlugin) {
         await loadSystemNodeTemplates();
       } else if (val === TemplateTypeEnum.teamPlugin) {
-        await loadTeamPluginNodeTemplates(currentParent.parentId);
+        await loadTeamPluginNodeTemplates({
+          parentId: currentParent?.parentId
+        });
       }
       setTemplateType(val);
     },
     errorToast: t('core.module.templates.Load plugin error')
   });
 
-  useQuery(['teamNodeTemplate', currentParent.parentId, searchKey], () =>
-    loadTeamPluginNodeTemplates(currentParent.parentId, searchKey, true)
+  const { isLoading } = useQuery(['teamNodeTemplate', currentParent?.parentId, searchKey], () =>
+    loadTeamPluginNodeTemplates({
+      parentId: currentParent?.parentId,
+      searchKey,
+      init: true
+    })
   );
 
   return (
@@ -123,27 +129,29 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
             bg={'myGray.50'}
             placeholder={t('plugin.Search plugin')}
             onChange={debounce((e) => setSearchKey(e.target.value), 200)}
-            fontSize={'lg'}
           />
         </InputGroup>
       </Box>
-      <Box mt={2} px={[3, 6]} pb={3} flex={'1 0 0'} overflowY={'auto'}>
-        {templateType === TemplateTypeEnum.teamPlugin && !searchKey && (
-          <Flex px={[4, 5]}>
-            <ParentPaths
-              paths={[
-                { parentId: currentParent.parentId || '', parentName: currentParent.parentName }
-              ]}
-              FirstPathDom={null}
-              onClick={() => {
-                setCurrentParent({ parentId: null, parentName: '' });
-              }}
-              fontSize="md"
-            />
-          </Flex>
-        )}
-        <RenderList templates={templates} {...props} setCurrentParent={setCurrentParent} />
-      </Box>
+      {templateType === TemplateTypeEnum.teamPlugin && !searchKey && currentParent && (
+        <Flex mt={2} px={[3, 6]}>
+          <ParentPaths
+            paths={[currentParent]}
+            FirstPathDom={null}
+            onClick={() => {
+              setCurrentParent(undefined);
+            }}
+            fontSize="md"
+          />
+        </Flex>
+      )}
+      <MyBox isLoading={isLoading} mt={2} px={[3, 6]} pb={3} flex={'1 0 0'} overflowY={'auto'}>
+        <RenderList
+          templates={templates}
+          isLoadingData={isLoading}
+          setCurrentParent={setCurrentParent}
+          {...props}
+        />
+      </MyBox>
     </MyModal>
   );
 };
@@ -153,12 +161,14 @@ export default React.memo(ToolSelectModal);
 const RenderList = React.memo(function RenderList({
   templates,
   selectedTools,
+  isLoadingData,
   onAddTool,
   onRemoveTool,
   setCurrentParent
 }: Props & {
   templates: FlowNodeTemplateType[];
-  setCurrentParent: (e: { parentId: string | null; parentName: string }) => void;
+  isLoadingData: boolean;
+  setCurrentParent: (e: { parentId: string; parentName: string }) => void;
 }) {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -185,7 +195,7 @@ const RenderList = React.memo(function RenderList({
     errorToast: t('core.module.templates.Load plugin error')
   });
 
-  return templates.length === 0 ? (
+  return templates.length === 0 && !isLoadingData ? (
     <EmptyTip text={t('core.app.ToolCall.No plugin')} />
   ) : (
     <MyBox isLoading={isLoading}>
@@ -199,6 +209,9 @@ const RenderList = React.memo(function RenderList({
             _notLast={{
               borderBottomWidth: '1px',
               borderBottomColor: 'myGray.150'
+            }}
+            _hover={{
+              bg: 'myGray.50'
             }}
           >
             <Avatar

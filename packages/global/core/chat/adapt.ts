@@ -83,6 +83,7 @@ export const chats2GPTMessages = ({
         });
       }
     } else {
+      //AI
       item.value.forEach((value) => {
         if (value.type === ChatItemValueTypeEnum.tool && value.tools && reserveTool) {
           const tool_calls: ChatCompletionMessageToolCall[] = [];
@@ -110,7 +111,7 @@ export const chats2GPTMessages = ({
               tool_calls
             })
             .concat(toolResponse);
-        } else if (value.text) {
+        } else if (value.text?.content) {
           results.push({
             dataId,
             role: ChatCompletionRequestMessageRoleEnum.Assistant,

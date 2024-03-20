@@ -10,8 +10,8 @@ export const appTemplates: (AppItemType & {
   {
     id: 'simpleChat',
     avatar: '/imgs/module/AI.png',
-    name: 'core.app.template.Simple chat',
-    intro: 'core.app.template.Simple chat desc',
+    name: '简易模板',
+    intro: '一个极其简单的 AI 应用，你可以绑定知识库或工具。',
     type: AppTypeEnum.simple,
     modules: [
       {
@@ -291,456 +291,10 @@ export const appTemplates: (AppItemType & {
     ]
   },
   {
-    id: 'simpleDatasetChat',
-    avatar: '/imgs/module/db.png',
-    name: 'core.app.template.Dataset and guide',
-    intro: 'core.app.template.Dataset and guide desc',
-    type: AppTypeEnum.simple,
-    modules: [
-      {
-        moduleId: 'userGuide',
-        name: 'core.module.template.User guide',
-        flowType: 'userGuide',
-        position: {
-          x: 447.98520778293346,
-          y: 721.4016845336229
-        },
-        inputs: [
-          {
-            key: 'welcomeText',
-            type: 'hidden',
-            valueType: 'string',
-            label: 'core.app.Welcome Text',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: '你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]',
-            connected: false
-          },
-          {
-            key: 'variables',
-            type: 'hidden',
-            valueType: 'any',
-            label: 'core.module.Variable',
-            value: [],
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'questionGuide',
-            valueType: 'boolean',
-            type: 'switch',
-            label: '',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: false,
-            connected: false
-          },
-          {
-            key: 'tts',
-            type: 'hidden',
-            valueType: 'any',
-            label: '',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: {
-              type: 'web'
-            },
-            connected: false
-          }
-        ],
-        outputs: []
-      },
-      {
-        moduleId: 'userChatInput',
-        name: 'core.module.template.Chat entrance',
-        flowType: 'questionInput',
-        position: {
-          x: 324.81436595478294,
-          y: 1527.0012457753612
-        },
-        inputs: [
-          {
-            key: 'userChatInput',
-            type: 'systemInput',
-            valueType: 'string',
-            label: 'core.module.input.label.user question',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          }
-        ],
-        outputs: [
-          {
-            key: 'userChatInput',
-            label: 'core.module.input.label.user question',
-            type: 'source',
-            valueType: 'string',
-            targets: [
-              {
-                moduleId: 'datasetSearch',
-                key: 'userChatInput'
-              }
-            ]
-          }
-        ]
-      },
-      {
-        moduleId: 'datasetSearch',
-        name: 'core.module.template.Dataset search',
-        flowType: 'datasetSearchNode',
-        showStatus: true,
-        position: {
-          x: 1351.5043753345153,
-          y: 947.0780385418003
-        },
-        inputs: [
-          {
-            key: 'switch',
-            type: 'target',
-            label: 'core.module.input.label.switch',
-            description: 'core.module.input.description.Trigger',
-            valueType: 'any',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: false
-          },
-          {
-            key: 'datasets',
-            type: 'selectDataset',
-            label: 'core.module.input.label.Select dataset',
-            value: [],
-            valueType: 'selectDataset',
-            list: [],
-            required: true,
-            showTargetInApp: false,
-            showTargetInPlugin: true,
-            connected: false
-          },
-          {
-            key: 'similarity',
-            type: 'selectDatasetParamsModal',
-            label: '',
-            value: 0.4,
-            valueType: 'number',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'limit',
-            type: 'hidden',
-            label: '',
-            value: 1500,
-            valueType: 'number',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'searchMode',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: 'embedding',
-            connected: false
-          },
-          {
-            key: 'usingReRank',
-            type: 'hidden',
-            label: '',
-            valueType: 'boolean',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: false,
-            connected: false
-          },
-          {
-            key: 'datasetSearchUsingExtensionQuery',
-            type: 'hidden',
-            label: '',
-            valueType: 'boolean',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: true,
-            connected: false
-          },
-          {
-            key: 'datasetSearchExtensionModel',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: 'gpt-3.5-turbo',
-            connected: false
-          },
-          {
-            key: 'datasetSearchExtensionBg',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: '',
-            connected: false
-          },
-          {
-            key: 'userChatInput',
-            type: 'custom',
-            label: '',
-            required: true,
-            valueType: 'string',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: true
-          }
-        ],
-        outputs: [
-          {
-            key: 'isEmpty',
-            label: 'core.module.output.label.Search result empty',
-            type: 'source',
-            valueType: 'boolean',
-            targets: []
-          },
-          {
-            key: 'unEmpty',
-            label: 'core.module.output.label.Search result not empty',
-            type: 'source',
-            valueType: 'boolean',
-            targets: []
-          },
-          {
-            key: 'quoteQA',
-            label: 'core.module.Dataset quote.label',
-            type: 'source',
-            valueType: 'datasetQuote',
-            targets: [
-              {
-                moduleId: 'chatModule',
-                key: 'quoteQA'
-              }
-            ]
-          },
-          {
-            key: 'finish',
-            label: 'core.module.output.label.running done',
-            description: 'core.module.output.description.running done',
-            valueType: 'boolean',
-            type: 'source',
-            targets: []
-          },
-          {
-            key: 'userChatInput',
-            label: 'core.module.input.label.user question',
-            type: 'hidden',
-            valueType: 'string',
-            targets: [
-              {
-                moduleId: 'chatModule',
-                key: 'userChatInput'
-              }
-            ]
-          }
-        ]
-      },
-      {
-        moduleId: 'chatModule',
-        name: 'AI 对话',
-        flowType: 'chatNode',
-        showStatus: true,
-        position: {
-          x: 2022.7264786978908,
-          y: 1006.3102431257475
-        },
-        inputs: [
-          {
-            key: 'switch',
-            type: 'target',
-            label: 'core.module.input.label.switch',
-            description: 'core.module.input.description.Trigger',
-            valueType: 'any',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: false
-          },
-          {
-            key: 'model',
-            type: 'selectLLMModel',
-            label: 'core.module.input.label.aiModel',
-            required: true,
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: 'gpt-3.5-turbo',
-            connected: false
-          },
-          {
-            key: 'temperature',
-            type: 'hidden',
-            label: '',
-            value: 0,
-            valueType: 'number',
-            min: 0,
-            max: 10,
-            step: 1,
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'maxToken',
-            type: 'hidden',
-            label: '',
-            value: 2000,
-            valueType: 'number',
-            min: 100,
-            max: 4000,
-            step: 50,
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            markList: [
-              {
-                label: '100',
-                value: 100
-              },
-              {
-                label: '4000',
-                value: 4000
-              }
-            ],
-            connected: false
-          },
-          {
-            key: 'isResponseAnswerText',
-            type: 'hidden',
-            label: '',
-            value: true,
-            valueType: 'boolean',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'quoteTemplate',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: '',
-            connected: false
-          },
-          {
-            key: 'quotePrompt',
-            type: 'hidden',
-            label: '',
-            valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            value: '',
-            connected: false
-          },
-          {
-            key: 'aiSettings',
-            type: 'aiSettings',
-            label: '',
-            valueType: 'any',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'systemPrompt',
-            type: 'textarea',
-            label: 'core.ai.Prompt',
-            max: 300,
-            valueType: 'string',
-            description: 'core.app.tip.chatNodeSystemPromptTip',
-            placeholder: 'core.app.tip.chatNodeSystemPromptTip',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            value: '',
-            connected: false
-          },
-          {
-            key: 'history',
-            type: 'numberInput',
-            label: 'core.module.input.label.chat history',
-            required: true,
-            min: 0,
-            max: 30,
-            valueType: 'chatHistory',
-            value: 6,
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: false
-          },
-          {
-            key: 'userChatInput',
-            type: 'custom',
-            label: '',
-            required: true,
-            valueType: 'string',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: true
-          },
-          {
-            key: 'quoteQA',
-            type: 'target',
-            label: '知识库引用',
-            description: 'core.module.Dataset quote.Input description',
-            valueType: 'datasetQuote',
-            showTargetInApp: true,
-            showTargetInPlugin: true,
-            connected: true
-          }
-        ],
-        outputs: [
-          {
-            key: 'answerText',
-            label: 'core.module.output.label.Ai response content',
-            description: 'core.module.output.description.Ai response content',
-            valueType: 'string',
-            type: 'source',
-            targets: []
-          },
-          {
-            key: 'finish',
-            label: 'core.module.output.label.running done',
-            description: 'core.module.output.description.running done',
-            valueType: 'boolean',
-            type: 'source',
-            targets: []
-          },
-          {
-            key: 'history',
-            label: 'core.module.output.label.New context',
-            description: 'core.module.output.description.New context',
-            valueType: 'chatHistory',
-            type: 'source',
-            targets: []
-          },
-          {
-            key: 'userChatInput',
-            label: 'core.module.input.label.user question',
-            type: 'hidden',
-            valueType: 'string',
-            targets: []
-          }
-        ]
-      }
-    ]
-  },
-  {
     id: 'chatGuide',
     avatar: '/imgs/module/userGuide.png',
-    name: 'core.app.template.Guide and variables',
-    intro: 'core.app.template.Guide and variables desc',
+    name: '对话引导 + 变量',
+    intro: '可以在对话开始发送一段提示，或者让用户填写一些内容，作为本次对话的变量',
     type: AppTypeEnum.simple,
     modules: [
       {
@@ -1053,10 +607,443 @@ export const appTemplates: (AppItemType & {
     ]
   },
   {
+    id: 'simpleDatasetChat',
+    avatar: '/imgs/module/db.png',
+    name: '知识库+对话引导',
+    intro: '每次提问时进行一次知识库搜索，将搜索结果注入 LLM 模型进行参考回答',
+    type: AppTypeEnum.advanced,
+    modules: [
+      {
+        moduleId: 'userGuide',
+        name: 'core.module.template.User guide',
+        intro: 'core.app.tip.userGuideTip',
+        avatar: '/imgs/module/userGuide.png',
+        flowType: 'userGuide',
+        position: {
+          x: 447.98520778293346,
+          y: 721.4016845336229
+        },
+        inputs: [
+          {
+            key: 'welcomeText',
+            type: 'hidden',
+            valueType: 'string',
+            label: 'core.app.Welcome Text',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: '你好，我是知识库助手，请不要忘记选择知识库噢~\n[你是谁]\n[如何使用]',
+            connected: false
+          },
+          {
+            key: 'variables',
+            type: 'hidden',
+            valueType: 'any',
+            label: 'core.module.Variable',
+            value: [],
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'questionGuide',
+            valueType: 'boolean',
+            type: 'switch',
+            label: '',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: false,
+            connected: false
+          },
+          {
+            key: 'tts',
+            type: 'hidden',
+            valueType: 'any',
+            label: '',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: {
+              type: 'web'
+            },
+            connected: false
+          }
+        ],
+        outputs: []
+      },
+      {
+        moduleId: 'userChatInput',
+        name: 'core.module.template.Chat entrance',
+        intro: '当用户发送一个内容后，流程将会从这个模块开始执行。',
+        avatar: '/imgs/module/userChatInput.svg',
+        flowType: 'questionInput',
+        position: {
+          x: 324.81436595478294,
+          y: 1527.0012457753612
+        },
+        inputs: [
+          {
+            key: 'userChatInput',
+            type: 'systemInput',
+            valueType: 'string',
+            label: 'core.module.input.label.user question',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: 'core.module.input.label.user question',
+            type: 'source',
+            valueType: 'string',
+            targets: [
+              {
+                moduleId: '0voh5n',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: '63toub',
+        name: 'AI 对话',
+        intro: 'AI 大模型对话',
+        avatar: '/imgs/module/AI.png',
+        flowType: 'chatNode',
+        showStatus: true,
+        position: {
+          x: 1962.4010270586014,
+          y: 1026.9105717680477
+        },
+        inputs: [
+          {
+            key: 'switch',
+            type: 'target',
+            label: 'core.module.input.label.switch',
+            description: 'core.module.input.description.Trigger',
+            valueType: 'any',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'model',
+            type: 'settingLLMModel',
+            label: 'core.module.input.label.aiModel',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: 'gpt-3.5-turbo',
+            connected: false
+          },
+          {
+            key: 'temperature',
+            type: 'hidden',
+            label: '',
+            value: 0,
+            valueType: 'number',
+            min: 0,
+            max: 10,
+            step: 1,
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'maxToken',
+            type: 'hidden',
+            label: '',
+            value: 2000,
+            valueType: 'number',
+            min: 100,
+            max: 4000,
+            step: 50,
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'isResponseAnswerText',
+            type: 'hidden',
+            label: '',
+            value: true,
+            valueType: 'boolean',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'quoteTemplate',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'quotePrompt',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'systemPrompt',
+            type: 'textarea',
+            max: 3000,
+            valueType: 'string',
+            label: 'core.ai.Prompt',
+            description: 'core.app.tip.chatNodeSystemPromptTip',
+            placeholder: 'core.app.tip.chatNodeSystemPromptTip',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'history',
+            type: 'numberInput',
+            label: 'core.module.input.label.chat history',
+            required: true,
+            min: 0,
+            max: 30,
+            valueType: 'chatHistory',
+            value: 6,
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'userChatInput',
+            type: 'custom',
+            label: '',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            toolDescription: '用户问题',
+            connected: true
+          },
+          {
+            key: 'quoteQA',
+            type: 'settingDatasetQuotePrompt',
+            label: '知识库引用',
+            description: 'core.module.Dataset quote.Input description',
+            valueType: 'datasetQuote',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: 'core.module.input.label.user question',
+            type: 'hidden',
+            valueType: 'string',
+            targets: []
+          },
+          {
+            key: 'history',
+            label: 'core.module.output.label.New context',
+            description: 'core.module.output.description.New context',
+            valueType: 'chatHistory',
+            type: 'source',
+            targets: []
+          },
+          {
+            key: 'answerText',
+            label: 'core.module.output.label.Ai response content',
+            description: 'core.module.output.description.Ai response content',
+            valueType: 'string',
+            type: 'source',
+            targets: []
+          },
+          {
+            key: 'finish',
+            label: 'core.module.output.label.running done',
+            description: 'core.module.output.description.running done',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
+      },
+      {
+        moduleId: '0voh5n',
+        name: '知识库搜索',
+        intro: '调用知识库搜索能力，查找“有可能”与问题相关的内容',
+        avatar: '/imgs/module/db.png',
+        flowType: 'datasetSearchNode',
+        showStatus: true,
+        position: {
+          x: 1098.245668870126,
+          y: 1166.7285333032098
+        },
+        inputs: [
+          {
+            key: 'switch',
+            type: 'target',
+            label: 'core.module.input.label.switch',
+            description: 'core.module.input.description.Trigger',
+            valueType: 'any',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'datasets',
+            type: 'selectDataset',
+            label: 'core.module.input.label.Select dataset',
+            value: [],
+            valueType: 'selectDataset',
+            list: [],
+            required: true,
+            showTargetInApp: false,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'similarity',
+            type: 'selectDatasetParamsModal',
+            label: '',
+            value: 0.4,
+            valueType: 'number',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'limit',
+            type: 'hidden',
+            label: '',
+            value: 1500,
+            valueType: 'number',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'searchMode',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: 'embedding',
+            connected: false
+          },
+          {
+            key: 'usingReRank',
+            type: 'hidden',
+            label: '',
+            valueType: 'boolean',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: false,
+            connected: false
+          },
+          {
+            key: 'datasetSearchUsingExtensionQuery',
+            type: 'hidden',
+            label: '',
+            valueType: 'boolean',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: true,
+            connected: false
+          },
+          {
+            key: 'datasetSearchExtensionModel',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'datasetSearchExtensionBg',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: '',
+            connected: false
+          },
+          {
+            key: 'userChatInput',
+            type: 'custom',
+            label: '',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            toolDescription: '需要检索的内容',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: 'core.module.input.label.user question',
+            type: 'hidden',
+            valueType: 'string',
+            targets: [
+              {
+                moduleId: '63toub',
+                key: 'userChatInput'
+              }
+            ]
+          },
+          {
+            key: 'isEmpty',
+            label: 'core.module.output.label.Search result empty',
+            type: 'source',
+            valueType: 'boolean',
+            targets: []
+          },
+          {
+            key: 'unEmpty',
+            label: 'core.module.output.label.Search result not empty',
+            type: 'source',
+            valueType: 'boolean',
+            targets: []
+          },
+          {
+            key: 'quoteQA',
+            label: 'core.module.Dataset quote.label',
+            type: 'source',
+            valueType: 'datasetQuote',
+            targets: [
+              {
+                moduleId: '63toub',
+                key: 'quoteQA'
+              }
+            ]
+          },
+          {
+            key: 'finish',
+            label: 'core.module.output.label.running done',
+            description: 'core.module.output.description.running done',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
+      }
+    ]
+  },
+  {
     id: 'CQ',
     avatar: '/imgs/module/cq.png',
-    name: 'core.app.template.Classify and dataset',
-    intro: 'core.app.template.Classify and dataset desc',
+    name: '问题分类 + 知识库',
+    intro: '先对用户的问题进行分类，再根据不同类型问题，执行不同的操作',
     type: AppTypeEnum.advanced,
     modules: [
       {
@@ -1404,15 +1391,6 @@ export const appTemplates: (AppItemType & {
             type: 'hidden',
             label: '',
             valueType: 'string',
-            showTargetInApp: false,
-            showTargetInPlugin: false,
-            connected: false
-          },
-          {
-            key: 'aiSettings',
-            type: 'aiSettings',
-            label: '',
-            valueType: 'any',
             showTargetInApp: false,
             showTargetInPlugin: false,
             connected: false

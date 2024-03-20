@@ -39,7 +39,6 @@ export const ContextExtractModule: FlowNodeTemplateType = {
       label: '提取要求描述',
       description:
         '给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\n该输入框可使用全局变量。',
-      required: true,
       placeholder:
         '例如: \n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。',
       showTargetInApp: true,

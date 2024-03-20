@@ -14,7 +14,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
     const body = req.body as CreateOnePluginParams;
 
-    await checkTeamPluginLimit(teamId);
+    // await checkTeamPluginLimit(teamId);
 
     // create parent plugin and child plugin
     if (body.metadata?.apiSchemaStr) {

@@ -16,6 +16,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -40,11 +41,13 @@ import {
 } from '@/web/support/wallet/sub/constants';
 
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
+
 const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
+const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const Account = () => {
   const { isPc } = useSystemStore();
@@ -471,7 +474,10 @@ const PlanUsage = () => {
         <Box mt="9" width={'100%'}>
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'}>{t('support.wallet.subscription.AI points')}</Box>
+              <Box fontWeight={'bold'}>{t('support.wallet.subscription.AI points usage')}</Box>
+              <MyTooltip label={t('support.wallet.subscription.AI points usage tip')}>
+                <QuestionOutlineIcon ml={'2px'} />
+              </MyTooltip>
               <Box color={'myGray.600'} ml={2}>
                 {aiPointsUsageMap.used}/{aiPointsUsageMap.max}
               </Box>
@@ -506,6 +512,7 @@ const Other = () => {
   });
 
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
+  const { isOpen: isOpenConcat, onClose: onCloseConcat, onOpen: onOpenConcat } = useDisclosure();
 
   const onclickSave = useCallback(
     async (data: UserType) => {
@@ -596,6 +603,17 @@ const Other = () => {
             />
           </Flex>
         )}
+        {feConfigs?.concatMd && (
+          <Button
+            variant={'whiteBase'}
+            justifyContent={'flex-start'}
+            leftIcon={<MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />}
+            onClick={onOpenConcat}
+            h={'48px'}
+          >
+            联系我们
+          </Button>
+        )}
       </Grid>
 
       {isOpenOpenai && userInfo && (
@@ -610,6 +628,7 @@ const Other = () => {
           onClose={onCloseOpenai}
         />
       )}
+      {isOpenConcat && <CommunityModal onClose={onCloseConcat} />}
     </Box>
   );
 };

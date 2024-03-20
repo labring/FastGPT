@@ -27,12 +27,11 @@ export function connectToDatabase(): Promise<void> {
       // init system config
       getInitConfig();
 
-      // init vector database
-      await initVectorStore();
+      // init vector database, init root user
+      await Promise.all([initVectorStore(), initRootUser()]);
+
       // start queue
       startTrainingQueue(true);
-
-      initRootUser();
     }
   });
 }

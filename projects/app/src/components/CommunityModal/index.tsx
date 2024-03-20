@@ -10,12 +10,7 @@ const CommunityModal = ({ onClose }: { onClose: () => void }) => {
   const { feConfigs } = useSystemStore();
 
   return (
-    <MyModal
-      isOpen={true}
-      onClose={onClose}
-      iconSrc="/imgs/modal/concat.svg"
-      title={t('home.Community')}
-    >
+    <MyModal isOpen={true} onClose={onClose} iconSrc="modal/concat" title={t('home.Community')}>
       <ModalBody textAlign={'center'}>
         <Markdown source={feConfigs?.concatMd || ''} />
       </ModalBody>

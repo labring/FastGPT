@@ -18,9 +18,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       userPlugins = await MongoPlugin.find({
         teamId,
         name: { $regex: searchKey, $options: 'i' }
-      }).lean();
+      })
+        .sort({
+          updateTime: -1
+        })
+        .lean();
     } else {
-      userPlugins = await MongoPlugin.find({ teamId, parentId }).lean();
+      userPlugins = await MongoPlugin.find({ teamId, parentId })
+        .sort({
+          updateTime: -1
+        })
+        .lean();
     }
 
     const data: FlowNodeTemplateType[] = userPlugins.map((plugin) => ({

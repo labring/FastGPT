@@ -1357,6 +1357,10 @@
       "noBill": "无账单记录~",
       "subscription": {
         "AI points": "AI积分",
+        "AI points click to read tip": "每次调用AI模型时，都会消耗一定的AI积分(类似于 Tokens)。点击可查看详细计算规则。",
+        "AI points tip": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考下方的“计费标准”",
+        "AI points usage": "AI积分使用量",
+        "AI points usage tip": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“计费标准”",
         "Ai points": "AI 积分计算标准",
         "Buy now": "切换套餐",
         "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
@@ -1390,7 +1394,7 @@
         "Upgrade plan": "升级套餐",
         "function": {
           "History store": "{{amount}} 天对话记录保留",
-          "Max app": "{{amount}} 个应用与插件",
+          "Max app": "{{amount}} 个应用",
           "Max dataset": "{{amount}} 个知识库",
           "Max dataset size": "{{amount}} 组知识库索引",
           "Max members": "{{amount}} 个团队成员",

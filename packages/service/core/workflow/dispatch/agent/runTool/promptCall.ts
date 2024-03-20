@@ -131,7 +131,7 @@ export const runToolWithPromptCall = async (
   })();
 
   const parseAnswerResult = parseAnswer(answer);
-
+  // console.log(answer, '==11==');
   // No tools
   if (typeof parseAnswerResult === 'string') {
     // No tool is invoked, indicating that the process is over
@@ -271,7 +271,7 @@ export const runToolWithPromptCall = async (
   // get the next user prompt
   lastMessage.content += `${answer}
 TOOL_RESPONSE: ${toolsRunResponse.toolResponsePrompt}
-`;
+ANSWER: `;
 
   /* check stop signal */
   const hasStopSignal = toolsRunResponse.moduleRunResponse.flowResponses.some(
@@ -336,21 +336,13 @@ async function streamResponse({
             text: content
           })
         });
-      } else if (textAnswer.length >= 10) {
-        if (!textAnswer.startsWith('TOOL_CALL:')) {
+      } else if (textAnswer.length >= 3) {
+        textAnswer = textAnswer.trim();
+        if (textAnswer.startsWith('0')) {
           startResponseWrite = true;
-          responseWrite({
-            write,
-            event: detail ? SseResponseEventEnum.answer : undefined,
-            data: textAdaptGptResponse({
-              text: textAnswer
-            })
-          });
-        }
-      } else if (textAnswer.length >= 7) {
-        if (textAnswer.startsWith('ANSWER:')) {
-          startResponseWrite = true;
-          textAnswer = textAnswer.substring(7).trim();
+          // find first : index
+          const firstIndex = textAnswer.indexOf(':');
+          textAnswer = textAnswer.substring(firstIndex + 1).trim();
           responseWrite({
             write,
             event: detail ? SseResponseEventEnum.answer : undefined,
@@ -372,12 +364,13 @@ async function streamResponse({
 
 const parseAnswer = (str: string): FunctionCallCompletion | string => {
   // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
-  const prefix = 'TOOL_CALL:';
+  const prefix = '1:';
+  str = str.trim();
   if (str.startsWith(prefix)) {
     const toolString = str.substring(prefix.length).trim();
 
     try {
-      const toolCall = JSON.parse(toolString);
+      const toolCall = json5.parse(toolString);
       return {
         id: getNanoid(),
         name: toolCall.toolId,

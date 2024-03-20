@@ -81,6 +81,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     assistantResponses = [] // FastGPT system store assistant.value response
   } = await (async () => {
     const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
+
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
