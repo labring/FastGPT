@@ -18,7 +18,7 @@ const WelcomeBox = ({ appAvatar, welcomeText }: { appAvatar?: string; welcomeTex
           bg={'white'}
           boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
         >
-          <Markdown source={`~~~guide \n${welcomeText}`} isChatting={false} />
+          <Markdown source={`~~~guide \n${welcomeText}`} />
         </Card>
       </Box>
     </Box>
