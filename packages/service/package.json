@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "dependencies": {
     "@fastgpt/global": "workspace:*",
-    "@node-rs/jieba": "^1.7.2",
+    "@node-rs/jieba": "1.10.0",
     "axios": "^1.5.1",
     "cheerio": "1.0.0-rc.12",
     "cookie": "^0.5.0",

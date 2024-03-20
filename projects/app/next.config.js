@@ -35,6 +35,10 @@ const nextConfig = {
           test: /\.svg$/i,
           issuer: /\.[jt]sx?$/,
           use: ['@svgr/webpack']
+        },
+        {
+          test: /\.node$/,
+          loader: 'node-loader'
         }
       ]),
       exprContextCritical: false,
@@ -45,7 +49,7 @@ const nextConfig = {
   },
   transpilePackages: ['@fastgpt/*'],
   experimental: {
-    serverComponentsExternalPackages: ['mongoose', 'pg'],
+    serverComponentsExternalPackages: ['mongoose', 'pg', '@node-rs/jieba'],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };

@@ -21,7 +21,7 @@ import { DispatchToolModuleProps, RunToolResponse, ToolModuleItemType } from './
 import json5 from 'json5';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
 import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
-import { AIChatItemType, AIChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
 type FunctionCallCompletion = {
