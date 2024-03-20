@@ -62,7 +62,7 @@ export default function VariablePickerPlugin({
                 borderColor={'borderColor.base'}
                 p={2}
                 borderRadius={'md'}
-                position={'fixed'}
+                position={'absolute'}
                 w={'auto'}
                 overflow={'hidden'}
                 zIndex={99999}

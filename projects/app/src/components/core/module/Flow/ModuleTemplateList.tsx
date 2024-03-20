@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement } from '@chakra-ui/react';
 import type {
   FlowNodeTemplateType,
   moduleTemplateListType
@@ -25,6 +25,8 @@ import ParentPaths from '@/components/common/ParentPaths';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { useQuery } from '@tanstack/react-query';
+import { debounce } from 'lodash';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -33,8 +35,8 @@ type ModuleTemplateListProps = {
 type RenderListProps = {
   templates: FlowNodeTemplateType[];
   onClose: () => void;
-  currentParent: { parentId: string; parentName: string };
-  setCurrentParent: (e: { parentId: string; parentName: string }) => void;
+  currentParent: { parentId: string | null; parentName: string };
+  setCurrentParent: (e: { parentId: string | null; parentName: string }) => void;
 };
 
 enum TemplateTypeEnum {
@@ -48,7 +50,11 @@ const sliderWidth = 380;
 const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const [currentParent, setCurrentParent] = useState({ parentId: 'null', parentName: '' });
+  const [currentParent, setCurrentParent] = useState<{
+    parentId: string | null;
+    parentName: string;
+  }>({ parentId: null, parentName: '' });
+  const [searchKey, setSearchKey] = useState('');
 
   const {
     basicNodeTemplates,
@@ -63,7 +69,9 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     const map = {
       [TemplateTypeEnum.basic]: basicNodeTemplates,
       [TemplateTypeEnum.systemPlugin]: systemNodeTemplates,
-      [TemplateTypeEnum.teamPlugin]: teamPluginNodeTemplates
+      [TemplateTypeEnum.teamPlugin]: teamPluginNodeTemplates.filter((item) =>
+        searchKey ? item.pluginType !== PluginTypeEnum.folder : true
+      )
     };
     return map[templateType];
   }, [basicNodeTemplates, systemNodeTemplates, teamPluginNodeTemplates, templateType]);
@@ -74,12 +82,16 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
       if (val === TemplateTypeEnum.systemPlugin) {
         await loadSystemNodeTemplates();
       } else if (val === TemplateTypeEnum.teamPlugin) {
-        await loadTeamPluginNodeTemplates();
+        await loadTeamPluginNodeTemplates(currentParent.parentId);
       }
       setTemplateType(val);
     },
     errorToast: t('core.module.templates.Load plugin error')
   });
+
+  useQuery(['teamNodeTemplate', currentParent.parentId, searchKey], () =>
+    loadTeamPluginNodeTemplates(currentParent.parentId, searchKey, true)
+  );
 
   return (
     <>
@@ -148,20 +160,18 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
           </Flex>
           {templateType === TemplateTypeEnum.teamPlugin && (
             <Flex mt={2} alignItems={'center'} h={10}>
-              {currentParent.parentId !== 'null' && (
-                <Flex alignItems={'center'} h={'full'} pt={1}>
-                  <ParentPaths
-                    paths={[
-                      { parentId: currentParent.parentId, parentName: currentParent.parentName }
-                    ]}
-                    FirstPathDom={null}
-                    onClick={() => {
-                      setCurrentParent({ parentId: 'null', parentName: '' });
-                    }}
-                    fontSize="md"
-                  />
-                </Flex>
-              )}
+              <InputGroup mr={4} h={'full'}>
+                <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
+                  <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} ml={3} />
+                </InputLeftElement>
+                <Input
+                  h={'full'}
+                  bg={'myGray.50'}
+                  placeholder={t('plugin.Search plugin')}
+                  onChange={debounce((e) => setSearchKey(e.target.value), 200)}
+                  fontSize={'lg'}
+                />
+              </InputGroup>
               <Box flex={1} />
               <Flex
                 alignItems={'center'}
@@ -174,6 +184,20 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                 <Box>去创建</Box>
                 <MyIcon name={'common/rightArrowLight'} w={'14px'} />
               </Flex>
+            </Flex>
+          )}
+          {templateType === TemplateTypeEnum.teamPlugin && !searchKey && (
+            <Flex alignItems={'center'} mt={2}>
+              <ParentPaths
+                paths={[
+                  { parentId: currentParent.parentId || '', parentName: currentParent.parentName }
+                ]}
+                FirstPathDom={null}
+                onClick={() => {
+                  setCurrentParent({ parentId: null, parentName: '' });
+                }}
+                fontSize="md"
+              />
             </Flex>
           )}
         </Box>
@@ -274,63 +298,56 @@ const RenderList = React.memo(function RenderList({
             )}
 
             <>
-              {item.list
-                .filter((template) =>
-                  item.type === 'personalPlugin'
-                    ? template.parentId === currentParent.parentId
-                    : true
-                )
-                .map((template) => (
-                  <Flex
-                    key={template.id}
-                    alignItems={'center'}
-                    p={5}
-                    cursor={'pointer'}
-                    _hover={{ bg: 'myWhite.600' }}
-                    borderRadius={'sm'}
-                    draggable={template.pluginType !== PluginTypeEnum.folder}
-                    onDragEnd={(e) => {
-                      if (e.clientX < sliderWidth) return;
-                      onAddNode({
-                        template: template,
-                        position: { x: e.clientX, y: e.clientY }
+              {item.list.map((template) => (
+                <Flex
+                  key={template.id}
+                  alignItems={'center'}
+                  p={5}
+                  cursor={'pointer'}
+                  _hover={{ bg: 'myWhite.600' }}
+                  borderRadius={'sm'}
+                  draggable={template.pluginType !== PluginTypeEnum.folder}
+                  onDragEnd={(e) => {
+                    if (e.clientX < sliderWidth) return;
+                    onAddNode({
+                      template: template,
+                      position: { x: e.clientX, y: e.clientY }
+                    });
+                  }}
+                  onClick={(e) => {
+                    if (template.pluginType === PluginTypeEnum.folder) {
+                      return setCurrentParent({
+                        parentId: template.id,
+                        parentName: template.name
                       });
-                    }}
-                    onClick={(e) => {
-                      console.log(template);
-                      if (template.pluginType === PluginTypeEnum.folder) {
-                        return setCurrentParent({
-                          parentId: template.id,
-                          parentName: template.name
-                        });
-                      }
-                      if (isPc) {
-                        return onAddNode({
-                          template,
-                          position: { x: sliderWidth * 1.5, y: 200 }
-                        });
-                      }
-                      onAddNode({
-                        template: template,
-                        position: { x: e.clientX, y: e.clientY }
+                    }
+                    if (isPc) {
+                      return onAddNode({
+                        template,
+                        position: { x: sliderWidth * 1.5, y: 200 }
                       });
-                      onClose();
-                    }}
-                  >
-                    <Avatar
-                      src={template.avatar}
-                      w={'34px'}
-                      objectFit={'contain'}
-                      borderRadius={'0'}
-                    />
-                    <Box ml={5} flex={'1 0 0'}>
-                      <Box color={'black'}>{t(template.name)}</Box>
-                      <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
-                        {t(template.intro)}
-                      </Box>
+                    }
+                    onAddNode({
+                      template: template,
+                      position: { x: e.clientX, y: e.clientY }
+                    });
+                    onClose();
+                  }}
+                >
+                  <Avatar
+                    src={template.avatar}
+                    w={'34px'}
+                    objectFit={'contain'}
+                    borderRadius={'0'}
+                  />
+                  <Box ml={5} flex={'1 0 0'}>
+                    <Box color={'black'}>{t(template.name)}</Box>
+                    <Box className="textEllipsis3" color={'myGray.500'} fontSize={'sm'}>
+                      {t(template.intro)}
                     </Box>
-                  </Flex>
-                ))}
+                  </Box>
+                </Flex>
+              ))}
             </>
           </Box>
         ))}

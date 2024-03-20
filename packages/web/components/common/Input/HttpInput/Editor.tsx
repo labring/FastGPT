@@ -78,7 +78,7 @@ export default function Editor({
   );
 
   return (
-    <Box position={'relative'} width={'full'} h={`${h}px`} cursor={'text'}>
+    <Box position={'relative'} width={'full'} h={`${h}px`} cursor={'text'} overflowY={'visible'}>
       <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}

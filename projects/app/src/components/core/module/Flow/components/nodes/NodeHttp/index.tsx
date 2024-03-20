@@ -41,6 +41,47 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import RenderToolInput from '../../render/RenderToolInput';
 const OpenApiImportModal = dynamic(() => import('./OpenApiImportModal'));
 
+export const HttpHeaders = [
+  { key: 'A-IM', label: 'A-IM' },
+  { key: 'Accept', label: 'Accept' },
+  { key: 'Accept-Charset', label: 'Accept-Charset' },
+  { key: 'Accept-Encoding', label: 'Accept-Encoding' },
+  { key: 'Accept-Language', label: 'Accept-Language' },
+  { key: 'Accept-Datetime', label: 'Accept-Datetime' },
+  { key: 'Access-Control-Request-Method', label: 'Access-Control-Request-Method' },
+  { key: 'Access-Control-Request-Headers', label: 'Access-Control-Request-Headers' },
+  { key: 'Authorization', label: 'Authorization' },
+  { key: 'Cache-Control', label: 'Cache-Control' },
+  { key: 'Connection', label: 'Connection' },
+  { key: 'Content-Length', label: 'Content-Length' },
+  { key: 'Content-Type', label: 'Content-Type' },
+  { key: 'Cookie', label: 'Cookie' },
+  { key: 'Date', label: 'Date' },
+  { key: 'Expect', label: 'Expect' },
+  { key: 'Forwarded', label: 'Forwarded' },
+  { key: 'From', label: 'From' },
+  { key: 'Host', label: 'Host' },
+  { key: 'If-Match', label: 'If-Match' },
+  { key: 'If-Modified-Since', label: 'If-Modified-Since' },
+  { key: 'If-None-Match', label: 'If-None-Match' },
+  { key: 'If-Range', label: 'If-Range' },
+  { key: 'If-Unmodified-Since', label: 'If-Unmodified-Since' },
+  { key: 'Max-Forwards', label: 'Max-Forwards' },
+  { key: 'Origin', label: 'Origin' },
+  { key: 'Pragma', label: 'Pragma' },
+  { key: 'Proxy-Authorization', label: 'Proxy-Authorization' },
+  { key: 'Range', label: 'Range' },
+  { key: 'Referer', label: 'Referer' },
+  { key: 'TE', label: 'TE' },
+  { key: 'User-Agent', label: 'User-Agent' },
+  { key: 'Upgrade', label: 'Upgrade' },
+  { key: 'Via', label: 'Via' },
+  { key: 'Warning', label: 'Warning' },
+  { key: 'Dnt', label: 'Dnt' },
+  { key: 'X-Requested-With', label: 'X-Requested-With' },
+  { key: 'X-CSRF-Token', label: 'X-CSRF-Token' }
+];
+
 enum TabEnum {
   params = 'params',
   headers = 'headers',
@@ -342,47 +383,6 @@ const RenderForm = ({
   const [shouldUpdateNode, setShouldUpdateNode] = useState(false);
 
   const leftVariables = useMemo(() => {
-    const HttpHeaders = [
-      { key: 'A-IM', label: 'A-IM' },
-      { key: 'Accept', label: 'Accept' },
-      { key: 'Accept-Charset', label: 'Accept-Charset' },
-      { key: 'Accept-Encoding', label: 'Accept-Encoding' },
-      { key: 'Accept-Language', label: 'Accept-Language' },
-      { key: 'Accept-Datetime', label: 'Accept-Datetime' },
-      { key: 'Access-Control-Request-Method', label: 'Access-Control-Request-Method' },
-      { key: 'Access-Control-Request-Headers', label: 'Access-Control-Request-Headers' },
-      { key: 'Authorization', label: 'Authorization' },
-      { key: 'Cache-Control', label: 'Cache-Control' },
-      { key: 'Connection', label: 'Connection' },
-      { key: 'Content-Length', label: 'Content-Length' },
-      { key: 'Content-Type', label: 'Content-Type' },
-      { key: 'Cookie', label: 'Cookie' },
-      { key: 'Date', label: 'Date' },
-      { key: 'Expect', label: 'Expect' },
-      { key: 'Forwarded', label: 'Forwarded' },
-      { key: 'From', label: 'From' },
-      { key: 'Host', label: 'Host' },
-      { key: 'If-Match', label: 'If-Match' },
-      { key: 'If-Modified-Since', label: 'If-Modified-Since' },
-      { key: 'If-None-Match', label: 'If-None-Match' },
-      { key: 'If-Range', label: 'If-Range' },
-      { key: 'If-Unmodified-Since', label: 'If-Unmodified-Since' },
-      { key: 'Max-Forwards', label: 'Max-Forwards' },
-      { key: 'Origin', label: 'Origin' },
-      { key: 'Pragma', label: 'Pragma' },
-      { key: 'Proxy-Authorization', label: 'Proxy-Authorization' },
-      { key: 'Range', label: 'Range' },
-      { key: 'Referer', label: 'Referer' },
-      { key: 'TE', label: 'TE' },
-      { key: 'User-Agent', label: 'User-Agent' },
-      { key: 'Upgrade', label: 'Upgrade' },
-      { key: 'Via', label: 'Via' },
-      { key: 'Warning', label: 'Warning' },
-      { key: 'Dnt', label: 'Dnt' },
-      { key: 'X-Requested-With', label: 'X-Requested-With' },
-      { key: 'X-CSRF-Token', label: 'X-CSRF-Token' }
-    ];
-
     return (tabType === TabEnum.headers ? HttpHeaders : variables).filter((variable) => {
       const existVariables = list.map((item) => item.key);
       return !existVariables.includes(variable.key);
@@ -455,7 +455,7 @@ const RenderForm = ({
   };
 
   return (
-    <TableContainer>
+    <TableContainer overflowY={'visible'} overflowX={'unset'}>
       <Table>
         <Thead>
           <Tr>

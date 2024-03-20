@@ -24,8 +24,8 @@ export const getPlugTemplates = () => GET<FlowNodeTemplateType[]>('/core/plugin/
 export const getUserPlugins = (data: { parentId?: string; type?: `${PluginTypeEnum}` }) =>
   GET<PluginListItemType[]>('/core/plugin/list', data);
 
-export const getTeamPlugTemplates = () =>
-  GET<FlowNodeTemplateType[]>('/core/plugin/getTeamPluginTemplates');
+export const getTeamPlugTemplates = (data: { parentId?: string | null; searchKey?: string }) =>
+  GET<FlowNodeTemplateType[]>('/core/plugin/getTeamPluginTemplates', data);
 export const getSystemPlugTemplates = () =>
   GET<FlowNodeTemplateType[]>('/core/plugin/getSystemPluginTemplates');
 

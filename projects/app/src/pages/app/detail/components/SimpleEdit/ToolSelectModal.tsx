@@ -2,7 +2,15 @@ import React, { useMemo, useState } from 'react';
 
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import { Box, Button, Flex, ModalBody } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  Input,
+  InputGroup,
+  InputLeftElement,
+  ModalBody
+} from '@chakra-ui/react';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -17,6 +25,9 @@ import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import MyBox from '@/components/common/MyBox';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import ParentPaths from '@/components/common/ParentPaths';
+import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { debounce } from 'lodash';
 
 type Props = {
   selectedTools: FlowNodeTemplateType[];
@@ -39,11 +50,20 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
   } = useWorkflowStore();
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.teamPlugin);
+  const [currentParent, setCurrentParent] = useState<{
+    parentId: string | null;
+    parentName: string;
+  }>({ parentId: null, parentName: '' });
+  const [searchKey, setSearchKey] = useState('');
 
   const templates = useMemo(() => {
     const map = {
-      [TemplateTypeEnum.systemPlugin]: systemNodeTemplates.filter((item) => item.isTool),
-      [TemplateTypeEnum.teamPlugin]: teamPluginNodeTemplates
+      [TemplateTypeEnum.systemPlugin]: systemNodeTemplates.filter(
+        (item) => item.isTool && item.name.toLowerCase().includes(searchKey.toLowerCase())
+      ),
+      [TemplateTypeEnum.teamPlugin]: teamPluginNodeTemplates.filter((item) =>
+        searchKey ? item.pluginType !== PluginTypeEnum.folder : true
+      )
     };
     return map[templateType];
   }, [systemNodeTemplates, teamPluginNodeTemplates, templateType]);
@@ -54,14 +74,16 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       if (val === TemplateTypeEnum.systemPlugin) {
         await loadSystemNodeTemplates();
       } else if (val === TemplateTypeEnum.teamPlugin) {
-        await loadTeamPluginNodeTemplates();
+        await loadTeamPluginNodeTemplates(currentParent.parentId);
       }
       setTemplateType(val);
     },
     errorToast: t('core.module.templates.Load plugin error')
   });
 
-  useQuery(['systemNodeTemplates'], () => loadTeamPluginNodeTemplates());
+  useQuery(['teamNodeTemplate', currentParent.parentId, searchKey], () =>
+    loadTeamPluginNodeTemplates(currentParent.parentId, searchKey, true)
+  );
 
   return (
     <MyModal
@@ -74,7 +96,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       h={['90vh', '80vh']}
       overflow={'none'}
     >
-      <Box px={[3, 6]} pt={4}>
+      <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>
         <RowTabs
           list={[
             {
@@ -93,9 +115,34 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           value={templateType}
           onChange={onChangeTab}
         />
+        <InputGroup w={300}>
+          <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
+            <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} ml={3} />
+          </InputLeftElement>
+          <Input
+            bg={'myGray.50'}
+            placeholder={t('plugin.Search plugin')}
+            onChange={debounce((e) => setSearchKey(e.target.value), 200)}
+            fontSize={'lg'}
+          />
+        </InputGroup>
       </Box>
       <Box mt={2} px={[3, 6]} pb={3} flex={'1 0 0'} overflowY={'auto'}>
-        <RenderList templates={templates} {...props} />
+        {templateType === TemplateTypeEnum.teamPlugin && !searchKey && (
+          <Flex px={[4, 5]}>
+            <ParentPaths
+              paths={[
+                { parentId: currentParent.parentId || '', parentName: currentParent.parentName }
+              ]}
+              FirstPathDom={null}
+              onClick={() => {
+                setCurrentParent({ parentId: null, parentName: '' });
+              }}
+              fontSize="md"
+            />
+          </Flex>
+        )}
+        <RenderList templates={templates} {...props} setCurrentParent={setCurrentParent} />
       </Box>
     </MyModal>
   );
@@ -107,8 +154,12 @@ const RenderList = React.memo(function RenderList({
   templates,
   selectedTools,
   onAddTool,
-  onRemoveTool
-}: Props & { templates: FlowNodeTemplateType[] }) {
+  onRemoveTool,
+  setCurrentParent
+}: Props & {
+  templates: FlowNodeTemplateType[];
+  setCurrentParent: (e: { parentId: string | null; parentName: string }) => void;
+}) {
   const { t } = useTranslation();
   const { toast } = useToast();
 
@@ -170,6 +221,14 @@ const RenderList = React.memo(function RenderList({
                 onClick={() => onRemoveTool(item)}
               >
                 {t('common.Remove')}
+              </Button>
+            ) : item.pluginType === PluginTypeEnum.folder ? (
+              <Button
+                size={'sm'}
+                variant={'whiteBase'}
+                onClick={() => setCurrentParent({ parentId: item.id, parentName: item.name })}
+              >
+                {t('common.Open')}
               </Button>
             ) : (
               <Button

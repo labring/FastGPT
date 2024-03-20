@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Flex,
@@ -39,9 +39,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { EditFormType } from './type';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
+import { HttpHeaders } from '@/components/core/module/Flow/components/nodes/NodeHttp';
 
 export const defaultHttpPlugin: CreateOnePluginParams = {
   avatar: FolderImgUrl,
@@ -74,6 +75,11 @@ const HttpPluginEditModal = ({
   const [refresh, setRefresh] = useState(false);
 
   const [schemaUrl, setSchemaUrl] = useState('');
+  const [customHeaders, setCustomHeaders] = useState<{ key: string; value: string }[]>(() => {
+    const keyValue = JSON.parse(defaultPlugin.metadata?.customHeaders || '{}');
+    return Object.keys(keyValue).map((key) => ({ key, value: keyValue[key] }));
+  });
+  const [updateTrigger, setUpdateTrigger] = useState(false);
 
   const { register, setValue, getValues, handleSubmit, watch } = useForm<CreateOnePluginParams>({
     defaultValues: defaultPlugin
@@ -194,6 +200,15 @@ const HttpPluginEditModal = ({
     errorToast: t('plugin.Invalid Schema')
   });
 
+  const leftVariables = useMemo(
+    () =>
+      HttpHeaders.filter((variable) => {
+        const existVariables = customHeaders.map((item) => item.key);
+        return !existVariables.includes(variable.key);
+      }),
+    [customHeaders]
+  );
+
   return (
     <>
       <MyModal
@@ -293,14 +308,158 @@ const HttpPluginEditModal = ({
               {t('core.plugin.Custom headers')}
             </Box>
             <Box mt={1}>
-              <JsonEditor
-                defaultHeight={100}
-                resize
-                value={getValues('metadata.customHeaders')}
-                onChange={(e) => {
-                  setValue('metadata.customHeaders', e);
-                }}
-              />
+              <TableContainer overflowY={'visible'} overflowX={'unset'}>
+                <Table>
+                  <Thead>
+                    <Tr>
+                      <Th px={2}>{t('core.module.http.Props name')}</Th>
+                      <Th px={2}>{t('core.module.http.Props value')}</Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {customHeaders.map((item, index) => (
+                      <Tr key={`${index}`}>
+                        <Td p={0} w={'150px'}>
+                          <HttpInput
+                            hasVariablePlugin={false}
+                            hasDropDownPlugin={true}
+                            setDropdownValue={(val) => {
+                              setCustomHeaders((prev) => {
+                                const newHeaders = prev.map((item, i) =>
+                                  i === index ? { ...item, key: val } : item
+                                );
+                                setValue(
+                                  'metadata.customHeaders',
+                                  '{\n' +
+                                    newHeaders
+                                      .map((item) => `"${item.key}":"${item.value}"`)
+                                      .join(',\n') +
+                                    '\n}'
+                                );
+                                return newHeaders;
+                              });
+                              setUpdateTrigger((prev) => !prev);
+                            }}
+                            placeholder={t('core.module.http.Props name')}
+                            value={item.key}
+                            variables={leftVariables}
+                            onBlur={(val) => {
+                              setCustomHeaders((prev) => {
+                                const newHeaders = prev.map((item, i) =>
+                                  i === index ? { ...item, key: val } : item
+                                );
+                                setValue(
+                                  'metadata.customHeaders',
+                                  '{\n' +
+                                    newHeaders
+                                      .map((item) => `"${item.key}":"${item.value}"`)
+                                      .join(',\n') +
+                                    '\n}'
+                                );
+                                return newHeaders;
+                              });
+                            }}
+                            updateTrigger={updateTrigger}
+                          />
+                        </Td>
+                        <Td p={0}>
+                          <Box display={'flex'} alignItems={'center'}>
+                            <HttpInput
+                              placeholder={t('core.module.http.Props value')}
+                              hasVariablePlugin={false}
+                              value={item.value}
+                              onBlur={(val) =>
+                                setCustomHeaders((prev) => {
+                                  const newHeaders = prev.map((item, i) =>
+                                    i === index ? { ...item, value: val } : item
+                                  );
+                                  setValue(
+                                    'metadata.customHeaders',
+                                    '{\n' +
+                                      newHeaders
+                                        .map((item) => `"${item.key}":"${item.value}"`)
+                                        .join(',\n') +
+                                      '\n}'
+                                  );
+                                  return newHeaders;
+                                })
+                              }
+                            />
+                            <MyIcon
+                              name={'delete'}
+                              cursor={'pointer'}
+                              _hover={{ color: 'red.600' }}
+                              w={'14px'}
+                              onClick={() =>
+                                setCustomHeaders((prev) => {
+                                  const newHeaders = prev.filter((val) => val.key !== item.key);
+                                  setValue(
+                                    'metadata.customHeaders',
+                                    '{\n' +
+                                      newHeaders
+                                        .map((item) => `"${item.key}":"${item.value}"`)
+                                        .join(',\n') +
+                                      '\n}'
+                                  );
+                                  return newHeaders;
+                                })
+                              }
+                            />
+                          </Box>
+                        </Td>
+                      </Tr>
+                    ))}
+                    <Tr>
+                      <Td p={0} w={'150px'}>
+                        <HttpInput
+                          hasVariablePlugin={false}
+                          hasDropDownPlugin={true}
+                          setDropdownValue={(val) => {
+                            setCustomHeaders((prev) => {
+                              const newHeaders = [...prev, { key: val, value: '' }];
+                              setValue(
+                                'metadata.customHeaders',
+                                '{\n' +
+                                  newHeaders
+                                    .map((item) => `"${item.key}":"${item.value}"`)
+                                    .join(',\n') +
+                                  '\n}'
+                              );
+                              return newHeaders;
+                            });
+                            setUpdateTrigger((prev) => !prev);
+                          }}
+                          placeholder={t('core.module.http.Add props')}
+                          value={''}
+                          variables={leftVariables}
+                          updateTrigger={updateTrigger}
+                          onBlur={(val) => {
+                            if (!val) return;
+                            setCustomHeaders((prev) => {
+                              const newHeaders = [...prev, { key: val, value: '' }];
+                              setValue(
+                                'metadata.customHeaders',
+                                '{\n' +
+                                  newHeaders
+                                    .map((item) => `"${item.key}":"${item.value}"`)
+                                    .join(',\n') +
+                                  '\n}'
+                              );
+                              return newHeaders;
+                            });
+                            setUpdateTrigger((prev) => !prev);
+                          }}
+                        />
+                      </Td>
+                      <Td p={0}>
+                        <Box display={'flex'} alignItems={'center'}>
+                          <HttpInput />
+                        </Box>
+                      </Td>
+                    </Tr>
+                  </Tbody>
+                </Table>
+              </TableContainer>
             </Box>
           </>
           <>
@@ -365,13 +524,7 @@ const HttpPluginEditModal = ({
               {t('common.Confirm Create')}
             </Button>
           ) : (
-            <Button
-              isLoading={isUpdating}
-              onClick={handleSubmit((data) => {
-                const parentId = defaultPlugin.id as string;
-                updatePlugins(data);
-              })}
-            >
+            <Button isLoading={isUpdating} onClick={handleSubmit((data) => updatePlugins(data))}>
               {t('common.Confirm Update')}
             </Button>
           )}

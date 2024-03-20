@@ -10,9 +10,18 @@ import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/module/constants'
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
+    const { parentId, searchKey } = req.query;
     const { teamId } = await authCert({ req, authToken: true });
 
-    const userPlugins = await MongoPlugin.find({ teamId }).lean();
+    let userPlugins;
+    if (searchKey) {
+      userPlugins = await MongoPlugin.find({
+        teamId,
+        name: { $regex: searchKey, $options: 'i' }
+      }).lean();
+    } else {
+      userPlugins = await MongoPlugin.find({ teamId, parentId }).lean();
+    }
 
     const data: FlowNodeTemplateType[] = userPlugins.map((plugin) => ({
       id: String(plugin._id),
