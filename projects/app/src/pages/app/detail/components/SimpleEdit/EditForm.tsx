@@ -315,6 +315,9 @@ const EditForm = ({
               <Flex alignItems={'center'} flex={1}>
                 <MyIcon name={'core/app/toolCall'} w={'20px'} />
                 <Box ml={2}>{t('core.app.Tool call')}(实验功能)</Box>
+                <MyTooltip label={t('core.app.Tool call tip')}>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
               </Flex>
               <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenToolsSelect}>
                 <SmallAddIcon />

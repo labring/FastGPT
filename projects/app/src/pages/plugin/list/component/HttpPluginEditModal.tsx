@@ -187,7 +187,7 @@ const HttpPluginEditModal = ({
       }
 
       const schema = await getApiSchemaByUrl(schemaUrl);
-      setValue('metadata.apiSchemaStr', JSON.stringify(schema));
+      setValue('metadata.apiSchemaStr', JSON.stringify(schema, null, 2));
 
       onCloseUrlImport();
     },

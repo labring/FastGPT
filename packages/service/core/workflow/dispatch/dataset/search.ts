@@ -157,8 +157,8 @@ export async function dispatchDatasetSearch(
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,
     [DispatchNodeResponseKeyEnum.toolResponses]: searchRes.map((item) => ({
-      text: `${item.q}\n${item.a}`.trim(),
-      chunkIndex: item.chunkIndex
+      id: item.id,
+      text: `${item.q}\n${item.a}`.trim()
     }))
   };
 }

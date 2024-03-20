@@ -72,6 +72,7 @@ const AIChatSettingsModal = ({
     <MyModal
       isOpen
       iconSrc="/imgs/module/AI.png"
+      onClose={onClose}
       title={
         <>
           {t('core.ai.AI settings')}
@@ -113,6 +114,14 @@ const AIChatSettingsModal = ({
           </Box>
           <Box flex={1} ml={'10px'}>
             {selectedModel?.maxContext || 4096}Tokens
+          </Box>
+        </Flex>
+        <Flex mt={8}>
+          <Box {...LabelStyles} mr={2}>
+            {t('core.ai.Support tool')}
+          </Box>
+          <Box flex={1} ml={'10px'}>
+            {selectedModel?.usedInToolCall ? '支持' : '不支持'}
           </Box>
         </Flex>
         <Flex mt={8}>
