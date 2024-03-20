@@ -27,7 +27,7 @@ export const defaultForm: EditFormType = {
   name: '',
   intro: '',
   parentId: null,
-  type: PluginTypeEnum.plugin,
+  type: PluginTypeEnum.custom,
   modules: [
     {
       moduleId: nanoid(),

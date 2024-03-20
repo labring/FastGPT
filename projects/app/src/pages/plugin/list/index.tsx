@@ -135,7 +135,6 @@ const TeamPlugins = () => {
             onClick={() => {
               if (plugin.type === PluginTypeEnum.folder) {
                 router.push({
-                  pathname: '/plugin/list',
                   query: {
                     parentId: plugin._id
                   }

@@ -41,9 +41,10 @@ import { AddIcon } from '@chakra-ui/icons';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { EditFormType } from './type';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 
 export const defaultHttpPlugin: CreateOnePluginParams = {
-  avatar: '/imgs/module/http.png',
+  avatar: FolderImgUrl,
   name: '',
   intro: '',
   parentId: null,

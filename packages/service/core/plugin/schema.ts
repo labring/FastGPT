@@ -1,4 +1,4 @@
-import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { pluginTypeMap } from '@fastgpt/global/core/plugin/constants';
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { PluginItemSchema } from '@fastgpt/global/core/plugin/type.d';
@@ -27,9 +27,8 @@ const PluginSchema = new Schema({
   },
   type: {
     type: String,
-    enum: Object.keys(PluginTypeEnum),
-    required: true,
-    default: PluginTypeEnum.plugin
+    enum: Object.keys(pluginTypeMap),
+    required: true
   },
   name: {
     type: String,

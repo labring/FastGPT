@@ -1,5 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import { Box, Flex, IconButton } from '@chakra-ui/react';
 import type {
   FlowNodeTemplateType,
   moduleTemplateListType
@@ -24,6 +24,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import ParentPaths from '@/components/common/ParentPaths';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
+import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -89,50 +90,62 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         top={0}
         left={0}
         bottom={0}
-        w={'360px'}
+        w={`${sliderWidth}px`}
         onClick={onClose}
       />
       <Flex
         zIndex={3}
         flexDirection={'column'}
         position={'absolute'}
-        top={'65px'}
+        top={'10px'}
         left={0}
         pt={'20px'}
         pb={4}
-        h={isOpen ? 'calc(100% - 100px)' : '0'}
+        h={isOpen ? 'calc(100% - 20px)' : '0'}
         w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
         bg={'white'}
         boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-        borderRadius={'20px'}
-        overflow={'hidden'}
+        borderRadius={'0 20px 20px 0'}
         transition={'.2s ease'}
         userSelect={'none'}
+        overflow={isOpen ? 'none' : 'hidden'}
       >
-        <Box mb={2} px={'20px'} whiteSpace={'nowrap'}>
-          <RowTabs
-            list={[
-              {
-                icon: 'core/modules/basicNode',
-                label: t('core.module.template.Basic Node'),
-                value: TemplateTypeEnum.basic
-              },
-              {
-                icon: 'core/modules/systemPlugin',
-                label: t('core.module.template.System Plugin'),
-                value: TemplateTypeEnum.systemPlugin
-              },
-              {
-                icon: 'core/modules/teamPlugin',
-                label: t('core.module.template.Team Plugin'),
-                value: TemplateTypeEnum.teamPlugin
-              }
-            ]}
-            w={'100%'}
-            py={'5px'}
-            value={templateType}
-            onChange={onChangeTab}
-          />
+        <Box mb={2} pl={'20px'} pr={'10px'} whiteSpace={'nowrap'}>
+          <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
+            <RowTabs
+              list={[
+                {
+                  icon: 'core/modules/basicNode',
+                  label: t('core.module.template.Basic Node'),
+                  value: TemplateTypeEnum.basic
+                },
+                {
+                  icon: 'core/modules/systemPlugin',
+                  label: t('core.module.template.System Plugin'),
+                  value: TemplateTypeEnum.systemPlugin
+                },
+                {
+                  icon: 'core/modules/teamPlugin',
+                  label: t('core.module.template.Team Plugin'),
+                  value: TemplateTypeEnum.teamPlugin
+                }
+              ]}
+              py={'5px'}
+              value={templateType}
+              onChange={onChangeTab}
+            />
+            {/* close icon */}
+            <IconButton
+              size={'sm'}
+              icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.700'} />}
+              w={'26px'}
+              h={'26px'}
+              borderColor={'myGray.300'}
+              variant={'grayBase'}
+              aria-label={''}
+              onClick={onClose}
+            />
+          </Flex>
           {templateType === TemplateTypeEnum.teamPlugin && (
             <Flex mt={2} alignItems={'center'} h={10}>
               {currentParent.parentId !== 'null' && (
@@ -262,12 +275,12 @@ const RenderList = React.memo(function RenderList({
 
             <>
               {item.list
-                .filter((template: any) =>
+                .filter((template) =>
                   item.type === 'personalPlugin'
                     ? template.parentId === currentParent.parentId
                     : true
                 )
-                .map((template: any) => (
+                .map((template) => (
                   <Flex
                     key={template.id}
                     alignItems={'center'}
@@ -275,25 +288,33 @@ const RenderList = React.memo(function RenderList({
                     cursor={'pointer'}
                     _hover={{ bg: 'myWhite.600' }}
                     borderRadius={'sm'}
-                    draggable={template.type === 'plugin'}
+                    draggable={template.pluginType !== PluginTypeEnum.folder}
                     onDragEnd={(e) => {
-                      if (e.clientX < 360) return;
+                      if (e.clientX < sliderWidth) return;
                       onAddNode({
                         template: template,
                         position: { x: e.clientX, y: e.clientY }
                       });
                     }}
                     onClick={(e) => {
-                      if (isPc && template.type === 'plugin') return;
-                      if (template.type === 'plugin') {
-                        onClose();
-                        onAddNode({
-                          template: template,
-                          position: { x: e.clientX, y: e.clientY }
+                      console.log(template);
+                      if (template.pluginType === PluginTypeEnum.folder) {
+                        return setCurrentParent({
+                          parentId: template.id,
+                          parentName: template.name
                         });
-                      } else {
-                        setCurrentParent({ parentId: template.id, parentName: template.name });
                       }
+                      if (isPc) {
+                        return onAddNode({
+                          template,
+                          position: { x: sliderWidth * 1.5, y: 200 }
+                        });
+                      }
+                      onAddNode({
+                        template: template,
+                        position: { x: e.clientX, y: e.clientY }
+                      });
+                      onClose();
                     }}
                   >
                     <Avatar

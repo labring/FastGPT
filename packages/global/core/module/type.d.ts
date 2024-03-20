@@ -15,6 +15,7 @@ import {
 } from '../chat/type';
 import { ChatNodeUsageType } from '../../support/wallet/bill/type';
 import { RunningModuleItemType } from './runtime/type';
+import { PluginTypeEnum } from 'core/plugin/constants';
 
 export type FlowNodeTemplateType = {
   id: string; // module id, unique
@@ -27,6 +28,10 @@ export type FlowNodeTemplateType = {
   showStatus?: boolean; // chatting response step status
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
+
+  // plugin data
+  pluginType?: `${PluginTypeEnum}`;
+  parentId?: string;
 };
 export type FlowModuleItemType = FlowNodeTemplateType & {
   moduleId: string;

@@ -12,6 +12,7 @@ import { HttpModule468 } from '../../module/template/system/http468';
 import { HttpParamAndHeaderItemType } from '../../module/api';
 import { CreateOnePluginParams } from '../controller';
 import { ModuleItemType } from '../../module/type';
+import { HttpImgUrl } from '../../../common/file/image/constants';
 
 export const str2OpenApiSchema = (yamlStr = ''): OpenApiJsonSchema => {
   try {
@@ -28,7 +29,9 @@ export const str2OpenApiSchema = (yamlStr = ''): OpenApiJsonSchema => {
       .map((path) => {
         const methodData: any = data.paths[path];
         return Object.keys(methodData)
-          .filter((method) => ['get', 'post', 'put', 'delete', 'patch'].includes(method))
+          .filter((method) =>
+            ['get', 'post', 'put', 'delete', 'patch'].includes(method.toLocaleLowerCase())
+          )
           .map((method) => {
             const methodInfo = methodData[method];
             if (methodInfo.deprecated) return;
@@ -503,10 +506,10 @@ export const httpApiSchema2Plugins = ({
 
     return {
       name: item.name,
-      avatar: '/icon/logo.svg',
+      avatar: HttpImgUrl,
       intro: item.description,
       parentId,
-      type: PluginTypeEnum.plugin,
+      type: PluginTypeEnum.http,
       modules
     };
   });
