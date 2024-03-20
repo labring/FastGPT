@@ -30,31 +30,26 @@ export async function generateVector(): Promise<any> {
     try {
       const data = await MongoDatasetTraining.findOneAndUpdate(
         {
-          lockTime: { $lte: addMinutes(new Date(), -1) },
-          mode: TrainingModeEnum.chunk
+          mode: TrainingModeEnum.chunk,
+          lockTime: { $lte: addMinutes(new Date(), -1) }
         },
         {
           lockTime: new Date()
         }
-      )
-        .sort({
-          weight: -1
-        })
-        .select({
-          _id: 1,
-          userId: 1,
-          teamId: 1,
-          tmbId: 1,
-          datasetId: 1,
-          collectionId: 1,
-          q: 1,
-          a: 1,
-          chunkIndex: 1,
-          indexes: 1,
-          model: 1,
-          billId: 1
-        })
-        .lean();
+      ).select({
+        _id: 1,
+        userId: 1,
+        teamId: 1,
+        tmbId: 1,
+        datasetId: 1,
+        collectionId: 1,
+        q: 1,
+        a: 1,
+        chunkIndex: 1,
+        indexes: 1,
+        model: 1,
+        billId: 1
+      });
 
       // task preemption
       if (!data) {
@@ -102,7 +97,7 @@ export async function generateVector(): Promise<any> {
   try {
     // invalid data
     if (!data.q.trim()) {
-      await MongoDatasetTraining.findByIdAndDelete(data._id);
+      await data.deleteOne();
       reduceQueue();
       generateVector();
       return;
@@ -131,7 +126,7 @@ export async function generateVector(): Promise<any> {
     });
 
     // delete data from training
-    await MongoDatasetTraining.findByIdAndDelete(data._id);
+    await data.deleteOne();
     reduceQueue();
     generateVector();
 
