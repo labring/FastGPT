@@ -1,7 +1,7 @@
 import React, { useMemo, useState, useTransition } from 'react';
 import { Box, Flex, Grid, BoxProps, useTheme, useDisclosure, Button } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
-import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
+import { AddIcon, QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
@@ -137,15 +137,6 @@ const EditForm = ({
     borderBottomWidth: '1px',
     borderBottomColor: 'borderColor.low'
   };
-  const BoxBtnStyles: BoxProps = {
-    cursor: 'pointer',
-    px: 3,
-    py: 1,
-    borderRadius: 'md',
-    _hover: {
-      bg: 'myGray.150'
-    }
-  };
   const LabelStyles: BoxProps = {
     w: ['60px', '100px'],
     flexShrink: 0,
@@ -255,14 +246,26 @@ const EditForm = ({
                 <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
                 <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
               </Flex>
-              <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenKbSelect}>
-                <SmallAddIcon />
+              <Button
+                variant={'transparentBase'}
+                leftIcon={<AddIcon fontSize={'xs'} />}
+                iconSpacing={1}
+                size={'sm'}
+                fontSize={'md'}
+                onClick={onOpenKbSelect}
+              >
                 {t('common.Choose')}
-              </Flex>
-              <Flex alignItems={'center'} ml={3} {...BoxBtnStyles} onClick={onOpenDatasetParams}>
-                <MyIcon name={'edit'} w={'14px'} mr={1} />
+              </Button>
+              <Button
+                variant={'transparentBase'}
+                leftIcon={<MyIcon name={'edit'} w={'14px'} />}
+                iconSpacing={1}
+                size={'sm'}
+                fontSize={'md'}
+                onClick={onOpenDatasetParams}
+              >
                 {t('common.Params')}
-              </Flex>
+              </Button>
             </Flex>
             {getValues('dataset.datasets').length > 0 && (
               <Box my={3}>
@@ -319,12 +322,23 @@ const EditForm = ({
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Flex>
-              <Flex alignItems={'center'} {...BoxBtnStyles} onClick={onOpenToolsSelect}>
-                <SmallAddIcon />
+              <Button
+                variant={'transparentBase'}
+                leftIcon={<SmallAddIcon />}
+                iconSpacing={1}
+                mr={'-5px'}
+                size={'sm'}
+                fontSize={'md'}
+                onClick={onOpenToolsSelect}
+              >
                 {t('common.Choose')}
-              </Flex>
+              </Button>
             </Flex>
-            <Grid mt={2} gridTemplateColumns={'repeat(2, minmax(0, 1fr))'} gridGap={[2, 4]}>
+            <Grid
+              mt={selectedTools.length > 0 ? 2 : 0}
+              gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
+              gridGap={[2, 4]}
+            >
               {selectedTools.map((item) => (
                 <Flex
                   key={item.id}

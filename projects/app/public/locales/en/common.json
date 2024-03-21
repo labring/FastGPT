@@ -249,6 +249,7 @@
     "Total tokens": "Tokens: {{total}}",
     "ai": {
       "AI settings": "AI settings",
+      "Ai point price": "AI points",
       "Max context": "Max context",
       "Model": "Model",
       "Prompt": "Prompt",
@@ -295,7 +296,9 @@
       "ToolCall": {
         "No plugin": "No plugins",
         "Setting tool": "Setting tool",
-        "This plugin cannot be called as a tool": "This plug-in cannot be invoked as a tool"
+        "System": "System",
+        "Team": "Team",
+        "This plugin cannot be called as a tool": "This tool cannot be used in easy mode"
       },
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
@@ -1318,6 +1321,9 @@
       }
     },
     "wallet": {
+      "Ai point every thoundsand tokens": "",
+      "Ai point every thounsand tokens": "{{points}}Points/1K Tokens",
+      "Ai point every thousand tokens": "{{points}}Points/1K Tokens",
       "Amount": "Amount",
       "Balance not enough tip": "The balance is insufficient, please go to the account page first",
       "Bills": "Bill",

@@ -107,12 +107,12 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
           list={[
             {
               icon: 'core/modules/teamPlugin',
-              label: t('core.module.template.Team Plugin'),
+              label: t('core.app.ToolCall.Team'),
               value: TemplateTypeEnum.teamPlugin
             },
             {
               icon: 'core/modules/systemPlugin',
-              label: t('core.module.template.System Plugin'),
+              label: t('core.app.ToolCall.System'),
               value: TemplateTypeEnum.systemPlugin
             }
           ]}
@@ -179,9 +179,17 @@ const RenderList = React.memo(function RenderList({
 
       // check inputs valid
       for (const input of res.inputs) {
-        if ([ModuleInputKeyEnum.switch, ModuleInputKeyEnum.pluginId].includes(input.key as any))
+        if (
+          [
+            ModuleInputKeyEnum.switch,
+            ModuleInputKeyEnum.pluginStart,
+            ModuleInputKeyEnum.pluginId
+          ].includes(input.key as any)
+        ) {
           continue;
-        if (input.type === FlowNodeInputTypeEnum.target && !input.toolDescription) {
+        }
+
+        if (!input.toolDescription) {
           return toast({
             status: 'warning',
             title: t('core.app.ToolCall.This plugin cannot be called as a tool')

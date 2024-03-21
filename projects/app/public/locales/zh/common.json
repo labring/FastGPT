@@ -249,6 +249,7 @@
     "Total tokens": "总 Tokens: {{total}}",
     "ai": {
       "AI settings": "AI 配置",
+      "Ai point price": "AI积分消耗",
       "Max context": "最大上下文",
       "Model": "AI 模型",
       "Prompt": "提示词",
@@ -295,7 +296,9 @@
       "ToolCall": {
         "No plugin": "没有可用的插件",
         "Setting tool": "配置工具",
-        "This plugin cannot be called as a tool": "该插件无法被作为工具调用"
+        "System": "系统",
+        "Team": "团队",
+        "This plugin cannot be called as a tool": "该工具无法在简易模式中使用"
       },
       "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
@@ -1320,6 +1323,9 @@
       }
     },
     "wallet": {
+      "Ai point every thoundsand tokens": "{{points}}积分/1K tokens",
+      "Ai point every thounsand tokens": "{{points}}积分/1K tokens",
+      "Ai point every thousand tokens": "{{points}}积分/1K tokens",
       "Amount": "金额",
       "Balance not enough tip": "余额不足，请先到账号页充值",
       "Bills": "账单",

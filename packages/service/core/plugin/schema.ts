@@ -60,7 +60,8 @@ const PluginSchema = new Schema({
 });
 
 try {
-  PluginSchema.index({ tmbId: 1 });
+  PluginSchema.index({ teamId: 1, parentId: 1 });
+  PluginSchema.index({ teamId: 1, name: 1, intro: 1 });
 } catch (error) {
   console.log(error);
 }

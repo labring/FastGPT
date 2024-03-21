@@ -65,7 +65,7 @@ const AIChatSettingsModal = ({
     display: 'flex',
     alignItems: 'center',
     fontSize: ['sm', 'md'],
-    width: '90px'
+    width: ['80px', '90px']
   };
 
   return (
@@ -92,22 +92,35 @@ const AIChatSettingsModal = ({
       }
       w={'500px'}
     >
-      <ModalBody flex={['1 0 0', 'auto']} overflowY={'auto'}>
+      <ModalBody overflowY={'auto'}>
         <Flex alignItems={'center'}>
           <Box {...LabelStyles} mr={2}>
             {t('core.ai.Model')}
           </Box>
-          <AIModelSelector
-            minW={'350px'}
-            width={'100%'}
-            value={model}
-            list={llmModels.map((item) => ({
-              value: item.model,
-              label: item.name
-            }))}
-            onchange={onChangeModel}
-          />
+          <Box flex={'1 0 0'}>
+            <AIModelSelector
+              width={'100%'}
+              value={model}
+              list={llmModels.map((item) => ({
+                value: item.model,
+                label: item.name
+              }))}
+              onchange={onChangeModel}
+            />
+          </Box>
         </Flex>
+        {feConfigs && (
+          <Flex mt={8}>
+            <Box {...LabelStyles} mr={2}>
+              {t('core.ai.Ai point price')}
+            </Box>
+            <Box flex={1} ml={'10px'}>
+              {t('support.wallet.Ai point every thousand tokens', {
+                points: selectedModel?.charsPointsPrice || 0
+              })}
+            </Box>
+          </Flex>
+        )}
         <Flex mt={8}>
           <Box {...LabelStyles} mr={2}>
             {t('core.ai.Max context')}

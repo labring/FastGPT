@@ -46,7 +46,6 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
   return (
     <Box position={'relative'}>
       <Button
-        minW={'350px'}
         w={'100%'}
         justifyContent={'flex-start'}
         variant={'whitePrimary'}
