@@ -924,6 +924,7 @@
       },
       "template": {
         "AI response switch tip": "If you want the current node not to output content, you can turn this switch off. AI output content will not be shown to the user, you can manually use the \"AI reply content\" for special processing.",
+        "AI support tool tip": "A model that supports function calls allows better use of tool calls.",
         "Ai chat": "LLM Chat",
         "Ai chat intro": "Request LLM chat",
         "Assigned reply": "Assigned reply",

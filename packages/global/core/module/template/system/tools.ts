@@ -33,7 +33,7 @@ export const ToolModule: FlowNodeTemplateType = {
     Input_Template_Switch,
     {
       ...Input_Template_SettingAiModel,
-      llmModelType: LLMModelTypeEnum.toolCall
+      llmModelType: LLMModelTypeEnum.all
     },
     {
       key: ModuleInputKeyEnum.aiChatTemperature,

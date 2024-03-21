@@ -926,6 +926,7 @@
       },
       "template": {
         "AI response switch tip": "如果你希望当前节点不输出内容，可以关闭该开关。AI输出的内容不会展示给用户，你可以手动的使用“AI回复内容”进行特殊处理。",
+        "AI support tool tip": "支持函数调用的模型，可以更好的使用工具调用。",
         "Ai chat": "AI 对话",
         "Ai chat intro": "AI 大模型对话",
         "Assigned reply": "指定回复",

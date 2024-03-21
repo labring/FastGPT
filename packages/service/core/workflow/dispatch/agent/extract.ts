@@ -222,7 +222,7 @@ const toolChoice = async (props: ActionProps) => {
     userKey: user.openaiAccount,
     timeout: 480000
   });
-  console.log(JSON.stringify({ messages: filterMessages, tools }, null, 2));
+
   const response = await ai.chat.completions.create({
     model: extractModel.model,
     temperature: 0,

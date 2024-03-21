@@ -21,6 +21,7 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const AIChatSettingsModal = ({
   onClose,
@@ -132,6 +133,7 @@ const AIChatSettingsModal = ({
         <Flex mt={8}>
           <Box {...LabelStyles} mr={2}>
             {t('core.ai.Support tool')}
+            <QuestionTip ml={1} label={t('core.module.template.AI support tool tip')} />
           </Box>
           <Box flex={1} ml={'10px'}>
             {selectedModel?.usedInToolCall ? '支持' : '不支持'}
