@@ -1,8 +1,11 @@
-import { TeamItemType, TeamMemberWithTeamSchema } from '@fastgpt/global/support/user/team/type';
-import { ClientSession, Types } from '../../../common/mongo';
 import {
   InviteResponseType,
   InviteTeamMemberItemType,
+  TeamItemType,
+  TeamMemberWithTeamSchema
+} from '@fastgpt/global/support/user/team/type';
+import { ClientSession, Types } from '../../../common/mongo';
+import {
   TeamMemberRoleEnum,
   TeamMemberStatusEnum,
   notLeaveStatus
