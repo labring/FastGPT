@@ -3,20 +3,20 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_Switch, Input_Template_UserChatInput } from '../input';
 import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
 
-export const DatasetSearchModule: FlowModuleTemplateType = {
+export const DatasetSearchModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,
-  templateType: ModuleTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.datasetSearchNode,
   avatar: '/imgs/module/db.png',
   name: '知识库搜索',

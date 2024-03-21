@@ -3,11 +3,14 @@
   "version": "1.0.0",
   "dependencies": {
     "@fastgpt/global": "workspace:*",
+    "@node-rs/jieba": "1.10.0",
     "axios": "^1.5.1",
     "cheerio": "1.0.0-rc.12",
     "cookie": "^0.5.0",
+    "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
     "encoding": "^0.1.13",
+    "json5": "^2.2.3",
     "jsonwebtoken": "^9.0.2",
     "mongoose": "^7.0.2",
     "multer": "1.4.5-lts.1",
@@ -15,7 +18,6 @@
     "nextjs-cors": "^2.1.2",
     "node-cron": "^3.0.3",
     "pg": "^8.10.0",
-    "date-fns": "2.30.0",
     "tunnel": "^0.0.6"
   },
   "devDependencies": {

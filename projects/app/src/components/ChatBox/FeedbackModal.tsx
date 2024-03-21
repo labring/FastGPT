@@ -1,6 +1,6 @@
 import React, { useRef } from 'react';
 import { ModalBody, Textarea, ModalFooter, Button } from '@chakra-ui/react';
-import MyModal from '../MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { updateChatUserFeedback } from '@/web/core/chat/api';
@@ -9,6 +9,8 @@ const FeedbackModal = ({
   appId,
   chatId,
   chatItemId,
+  teamId,
+  teamToken,
   shareId,
   outLinkUid,
   onSuccess,
@@ -18,6 +20,8 @@ const FeedbackModal = ({
   chatId: string;
   chatItemId: string;
   shareId?: string;
+  teamId?: string;
+  teamToken?: string;
   outLinkUid?: string;
   onSuccess: (e: string) => void;
   onClose: () => void;
@@ -33,6 +37,8 @@ const FeedbackModal = ({
         chatId,
         chatItemId,
         shareId,
+        teamId,
+        teamToken,
         outLinkUid,
         userBadFeedback: val
       });

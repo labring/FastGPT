@@ -30,8 +30,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         })) || [],
       whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
-      systemVersion: global.systemVersion || '0.0.0',
-      simpleModeTemplates: global.simpleModeTemplates
+      systemVersion: global.systemVersion || '0.0.0'
     }
   });
 }
@@ -43,7 +42,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   openAPIDocUrl: 'https://doc.fastgpt.in/docs/development/openapi',
   systemTitle: 'FastGPT',
   concatMd:
-    '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://doc.fastgpt.in/wechat-fastgpt.webp)',
+    '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)',
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0
@@ -68,7 +67,6 @@ export async function getInitConfig() {
     ]);
 
     console.log({
-      // simpleModeTemplates: global.simpleModeTemplates,
       communityPlugins: global.communityPlugins
     });
   } catch (error) {
@@ -140,39 +138,6 @@ export function getSystemVersion() {
     global.systemVersion = '0.0.0';
   }
 }
-
-// async function getSimpleModeTemplates() {
-//   if (global.simpleModeTemplates && global.simpleModeTemplates.length > 0) return;
-
-//   try {
-//     const basePath =
-//       process.env.NODE_ENV === 'development' ? 'data/simpleTemplates' : '/app/data/simpleTemplates';
-//     // read data/simpleTemplates directory, get all json file
-//     const files = readdirSync(basePath);
-//     // filter json file
-//     const filterFiles = files.filter((item) => item.endsWith('.json'));
-
-//     // read json file
-//     const fileTemplates = filterFiles.map((item) => {
-//       const content = readFileSync(`${basePath}/${item}`, 'utf-8');
-//       return {
-//         id: item.replace('.json', ''),
-//         ...JSON.parse(content)
-//       };
-//     });
-
-//     // fetch templates from plus
-//     const plusTemplates = await getSimpleTemplatesFromPlus();
-
-//     global.simpleModeTemplates = [
-//       SimpleModeTemplate_FastGPT_Universal,
-//       ...plusTemplates,
-//       ...fileTemplates
-//     ];
-//   } catch (error) {
-//     global.simpleModeTemplates = [SimpleModeTemplate_FastGPT_Universal];
-//   }
-// }
 
 function getSystemPlugin() {
   if (global.communityPlugins && global.communityPlugins.length > 0) return;

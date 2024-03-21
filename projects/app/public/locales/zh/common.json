@@ -62,6 +62,7 @@
     "Back": "返回",
     "Beta": "实验版",
     "Business edition features": "这是商业版功能~",
+    "Cancel": "取消",
     "Choose": "选择",
     "Close": "关闭",
     "Collect": "收藏",
@@ -113,6 +114,7 @@
     "Not open": "未开启",
     "Number of words": "{{amount}}字",
     "OK": "好的",
+    "Open": "打开",
     "Opened": "已开启",
     "Other": "其他",
     "Output": "输出",
@@ -122,6 +124,7 @@
     "Price used": "金额消耗",
     "Read document": "查看文档",
     "Read intro": "查看说明",
+    "Remove": "移除",
     "Rename": "重命名",
     "Rename Failed": "重命名失败",
     "Rename Success": "重命名成功",
@@ -159,6 +162,7 @@
     "Upload File Failed": "上传文件失败",
     "Username": "用户名",
     "Waiting": "等待中",
+    "Warning": "警告",
     "Website": "网站",
     "avatar": {
       "Select Avatar": "点击选择头像",
@@ -244,8 +248,12 @@
     "Total chars": "总字数: {{total}}",
     "Total tokens": "总 Tokens: {{total}}",
     "ai": {
+      "AI settings": "AI 配置",
+      "Ai point price": "AI积分消耗",
+      "Max context": "最大上下文",
       "Model": "AI 模型",
       "Prompt": "提示词",
+      "Support tool": "函数调用",
       "model": {
         "Dataset Agent Model": "文件处理模型",
         "Vector Model": "索引模型"
@@ -260,6 +268,7 @@
       "Chat Variable": "对话框变量",
       "External using": "外部使用途径",
       "Make a brief introduction of your app": "给你的 AI 应用一个介绍",
+      "Max histories": "聊天记录数量",
       "Max tokens": "回复上限",
       "Name and avatar": "头像 & 名称",
       "Next Step Guide": "下一步指引",
@@ -282,6 +291,15 @@
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
       "Team tags": "团队标签",
       "Temperature": "温度",
+      "Tool call": "工具调用",
+      "Tool call tip": "通过AI模型自动选择一个或多个工具进行使用。如果启动该功能，知识库调用也会被当做一个工具调用。请尽量选择支持“函数调用”的AI模型，效果更好。",
+      "ToolCall": {
+        "No plugin": "没有可用的插件",
+        "Setting tool": "配置工具",
+        "System": "系统",
+        "Team": "团队",
+        "This plugin cannot be called as a tool": "该工具无法在简易模式中使用"
+      },
       "Welcome Text": "对话开场白",
       "create app": "创建属于你的 AI 应用",
       "deterministic": "严谨",
@@ -355,7 +373,7 @@
       },
       "tip": {
         "Add a intro to app": "快来给应用一个介绍~",
-        "chatNodeSystemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
+        "chatNodeSystemPromptTip": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}\n如果关联了知识库，你还可以通过适当的描述，来引导模型何时去调用知识库搜索。例如：\n你是电影《星际穿越》的助手，当用户询问与《星际穿越》相关的内容时，请搜索知识库并结合搜索结果进行回答。",
         "userGuideTip": "可以在对话前设置引导语，设置全局变量，设置下一步指引",
         "variableTip": "可以在对话开始前，要求用户填写一些内容作为本轮对话的特定变量。该模块位于开场引导之后。\n变量可以通过 {{变量key}} 的形式注入到其他模块 string 类型的输入中，例如：提示词、限定词等",
         "welcomeTextTip": "每次对话开始前，发送一个初始内容。支持标准 Markdown 语法，可使用的额外标记:\n[快捷按键]: 用户点击后可以直接发送该问题"
@@ -694,6 +712,7 @@
         "Search type": "类型",
         "Source id": "来源ID",
         "Source name": "引用来源名",
+        "Tool description": "调用时机",
         "Top K": "单次搜索上限",
         "Using cfr": "",
         "Using query extension": "使用问题优化",
@@ -772,6 +791,7 @@
     "module": {
       "Add question type": "添加问题类型",
       "Can not connect self": "不能连接自身",
+      "Confirm Delete Node": "确认删除该节点？",
       "Data Type": "数据类型",
       "Dataset quote": {
         "Add quote": "添加引用",
@@ -794,6 +814,9 @@
         "placeholder": "例如:\n关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。",
         "tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。建议开启该功能后，都简单的描述在对话的背景，否则容易造成补全对象不准确。"
       },
+      "Quote prompt setting": "引用提示词配置",
+      "Qupte prompt setting": "",
+      "Setting quote prompt": "配置引用提示词",
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
       "Variable": "全局变量",
       "Variable Setting": "变量设置",
@@ -902,10 +925,13 @@
         }
       },
       "template": {
+        "AI response switch tip": "如果你希望当前节点不输出内容，可以关闭该开关。AI输出的内容不会展示给用户，你可以手动的使用“AI回复内容”进行特殊处理。",
+        "AI support tool tip": "支持函数调用的模型，可以更好的使用工具调用。",
         "Ai chat": "AI 对话",
         "Ai chat intro": "AI 大模型对话",
         "Assigned reply": "指定回复",
         "Assigned reply intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+        "Basic Node": "基础功能",
         "Chat entrance": "对话入口",
         "Chat entrance intro": "当用户发送一个内容后，流程将会从这个模块开始执行。",
         "Classify question": "问题分类",
@@ -926,15 +952,20 @@
         "Response module": "文本输出",
         "Running app": "应用调用",
         "Running app intro": "可以选择一个其他应用进行调用",
+        "System Plugin": "系统插件",
         "System input module": "系统输入",
         "TFSwitch": "判断器",
         "TFSwitch intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。非字符、非数字、非布尔类型，直接输出 True。",
+        "Team Plugin": "团队插件",
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
         "http body placeholder": "与APIFox相同的语法",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"
+      },
+      "templates": {
+        "Load plugin error": "加载插件失败"
       },
       "textEditor": {
         "Text Edit": "文本加工"
@@ -973,7 +1004,10 @@
       "variable add option": "添加选项"
     },
     "plugin": {
-      "Get Plugin Module Detail Failed": "加载插件异常"
+      "Custom headers": "自定义请求头",
+      "Delete http plugin": "确认删除该组HTTP插件？会删除该目录下所有插件。",
+      "Get Plugin Module Detail Failed": "加载插件异常",
+      "Intro placeholder": "如果该插件作为工具被调用，则会使用该介绍作为提示词。"
     },
     "shareChat": {
       "Init Error": "初始化对话框失败",
@@ -1180,18 +1214,38 @@
     "Set Public": "设为团队可用"
   },
   "plugin": {
+    "Auth Header Prefix": "鉴权头部前缀",
+    "Auth Method": "鉴权方法",
+    "Auth Type": "鉴权类型",
     "Confirm Delete": "确认删除该插件？",
     "Create Your Plugin": "创建你的插件",
+    "Custom Plugin": "自定义插件",
+    "Description": "描述",
+    "Edit Http Plugin": "编辑 HTTP 插件",
     "Get Plugin Module Detail Failed": "获取插件信息异常",
+    "HTTP Plugin": "HTTP 插件",
+    "Import Plugin": "导入 HTTP 插件",
+    "Import from URL": "URL 导入",
     "Intro": "插件介绍",
+    "Invalid Schema": "Schema 无效",
+    "Invalid URL": "URL 无效",
+    "Key": "键",
     "Load Plugin Failed": "加载插件异常",
+    "Method": "方法",
     "My Plugins": "我的插件",
     "No Intro": "这个插件没有介绍~",
+    "None": "无",
+    "Path": "路径",
+    "Plugin List": "插件列表",
     "Plugin Module": "插件模块",
+    "Privacy Agreement": "隐私协议",
+    "Search plugin": "搜索插件",
     "Set Name": "给插件取个名字",
     "Synchronous version": "同步版本",
     "To Edit Plugin": "去编辑",
-    "Update Your Plugin": "更新插件"
+    "Update Your Plugin": "更新插件",
+    "Value": "值",
+    "path": ""
   },
   "support": {
     "account": {
@@ -1231,6 +1285,7 @@
       }
     },
     "user": {
+      "AI point standard": "AI积分标准",
       "Avatar": "头像",
       "Need to login": "请先登录",
       "Price": "计费标准",
@@ -1269,15 +1324,20 @@
       }
     },
     "wallet": {
+      "Ai point every thoundsand tokens": "{{points}}积分/1K tokens",
+      "Ai point every thounsand tokens": "{{points}}积分/1K tokens",
+      "Ai point every thousand tokens": "{{points}}积分/1K tokens",
       "Amount": "金额",
       "Balance not enough tip": "余额不足，请先到账号页充值",
       "Bills": "账单",
       "Buy": "购买",
       "Buy more": "扩容",
       "Confirm pay": "支付确认",
+      "Not sufficient": "您的 AI 积分不足，请先升级套餐或购买额外 AI 积分后继续使用。",
       "Pay error": "支付失败",
       "Pay success": "支付成功",
       "Standard Plan Detail": "套餐详情",
+      "To read plan": "查看套餐",
       "bill": {
         "AI Model": "AI 模型",
         "AI Type": "AI 类型",
@@ -1304,6 +1364,10 @@
       "noBill": "无账单记录~",
       "subscription": {
         "AI points": "AI积分",
+        "AI points click to read tip": "每次调用AI模型时，都会消耗一定的AI积分(类似于 Tokens)。点击可查看详细计算规则。",
+        "AI points tip": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考下方的“计费标准”",
+        "AI points usage": "AI积分使用量",
+        "AI points usage tip": "每次调用AI模型时，都会消耗一定的AI积分。具体的计算标准可参考上方的“计费标准”",
         "Ai points": "AI 积分计算标准",
         "Buy now": "切换套餐",
         "Change will take effect after the current subscription expires": "更新成功。将会再下个订阅周期生效。",
@@ -1337,7 +1401,7 @@
         "Upgrade plan": "升级套餐",
         "function": {
           "History store": "{{amount}} 天对话记录保留",
-          "Max app": "{{amount}} 个应用与插件",
+          "Max app": "{{amount}} 个应用",
           "Max dataset": "{{amount}} 个知识库",
           "Max dataset size": "{{amount}} 组知识库索引",
           "Max members": "{{amount}} 个团队成员",
@@ -1354,7 +1418,7 @@
           "experience": "体验版",
           "experience desc": "",
           "free": "免费版",
-          "free desc": "每月均可免费使用基础功能，15天不活跃时，将会清除知识库",
+          "free desc": "每月均可免费使用基础功能，15天无使用记录时，将会清除知识库",
           "team": "团队版"
         },
         "type": {
@@ -1397,8 +1461,8 @@
     "Help Document": "帮助文档"
   },
   "template": {
-    "Quote Content Tip": "该配置只有传入引用内容（知识库搜索）时生效。\n可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第n个引用，{{score}} - 该引用的得分(0-1)，他们都是可选的，下面是默认值：\n{{default}}",
-    "Quote Prompt Tip": "该配置只在知识库搜索时生效。\n可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
+    "Quote Content Tip": "可以自定义引用内容的结构，以更好的适配不同场景。可以使用一些变量来进行模板配置:\n{{q}} - 检索内容, {{a}} - 预期内容, {{source}} - 来源，{{sourceId}} - 来源文件名，{{index}} - 第n个引用，他们都是可选的，下面是默认值：\n{{default}}",
+    "Quote Prompt Tip": "可以用 {{quote}} 来插入引用内容模板，使用 {{question}} 来插入问题。下面是默认值：\n{{default}}"
   },
   "user": {
     "Account": "账号",

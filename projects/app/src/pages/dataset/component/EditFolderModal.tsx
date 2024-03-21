@@ -1,6 +1,6 @@
 import React, { useMemo, useRef, useState } from 'react';
 import { ModalFooter, ModalBody, Input, Button } from '@chakra-ui/react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@/web/common/hooks/useRequest';
 

@@ -3,12 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { Input_Template_Dataset_Quote, Input_Template_Switch } from '../input';
 import { Output_Template_Finish } from '../output';
@@ -20,10 +20,10 @@ export const getOneQuoteInputTemplate = (key = getNanoid()) => ({
   type: FlowNodeInputTypeEnum.hidden
 });
 
-export const DatasetConcatModule: FlowModuleTemplateType = {
+export const DatasetConcatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.datasetConcatNode,
   flowType: FlowNodeTypeEnum.datasetConcatNode,
-  templateType: ModuleTemplateTypeEnum.tools,
+  templateType: FlowNodeTemplateTypeEnum.other,
   avatar: '/imgs/module/concat.svg',
   name: '知识库搜索引用合并',
   intro: '可以将多个知识库搜索结果进行合并输出。使用 RRF 的合并方式进行最终排序输出。',

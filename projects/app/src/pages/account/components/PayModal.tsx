@@ -1,15 +1,16 @@
 import React, { useState, useCallback, useMemo } from 'react';
-import { ModalFooter, ModalBody, Button, Input, Box, Grid } from '@chakra-ui/react';
+import { ModalFooter, ModalBody, Button, Input, Box, Grid, Link } from '@chakra-ui/react';
 import { getWxPayQRCode } from '@/web/support/wallet/bill/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { BillTypeEnum } from '@fastgpt/global/support/wallet/bill/constants';
 
 import QRCodePayModal, { type QRPayProps } from '@/components/support/wallet/QRCodePayModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { EXTRA_PLAN_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
 
 const PayModal = ({
   onClose,
@@ -59,8 +60,12 @@ const PayModal = ({
   return (
     <MyModal isOpen={true} onClose={onClose} title={t('user.Pay')} iconSrc="/imgs/modal/pay.svg">
       <ModalBody px={0} display={'flex'} flexDirection={'column'}>
-        <Box px={6} fontSize={'sm'} color={'myGray.600'} mb={2} maxW={'400px'}>
-          该余额仅用于自动续费标准套餐。如需购买额外套餐，可直接下单，无需充值余额。
+        <Box px={6} fontSize={'sm'} mb={2} py={2} maxW={'400px'}>
+          该余额仅用于自动续费标准套餐。如需购买额外套餐，可
+          <Link href={EXTRA_PLAN_CARD_ROUTE} color={'primary.600'} textDecoration={'underline'}>
+            直接下单
+          </Link>
+          ，无需充值余额。
         </Box>
         <Grid gridTemplateColumns={'repeat(3,1fr)'} gridGap={5} mb={4} px={6}>
           {payList.map((item) => (

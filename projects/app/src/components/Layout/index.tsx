@@ -12,10 +12,8 @@ import dynamic from 'next/dynamic';
 import Auth from './auth';
 import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
-const UpdateInviteModal = dynamic(
-  () => import('@/components/support/user/team/UpdateInviteModal'),
-  { ssr: false }
-);
+const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/UpdateInviteModal'));
+const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -44,7 +42,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   const router = useRouter();
   const { colorMode, setColorMode } = useColorMode();
   const { Loading } = useLoading();
-  const { loading, setScreenWidth, isPc, feConfigs } = useSystemStore();
+  const { loading, setScreenWidth, isPc, feConfigs, isNotSufficientModal } = useSystemStore();
   const { userInfo } = useUserStore();
 
   const isChatPage = useMemo(
@@ -118,6 +116,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
         )}
 
         {!!userInfo && <UpdateInviteModal />}
+        {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
       </Box>
       <Loading loading={loading} zIndex={999999} />
     </>

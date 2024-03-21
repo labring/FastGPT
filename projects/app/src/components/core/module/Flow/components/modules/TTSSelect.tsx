@@ -8,7 +8,7 @@ import { TTSTypeEnum } from '@/constants/app';
 import type { AppTTSConfigType } from '@fastgpt/global/core/module/type.d';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySlider from '@/components/Slider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 
@@ -67,7 +67,7 @@ const TTSSelect = ({
         });
       }
     },
-    [onChange, value]
+    [audioSpeechModelList, onChange, value]
   );
 
   return (
@@ -79,17 +79,16 @@ const TTSSelect = ({
       </MyTooltip>
       <Box flex={1} />
       <MyTooltip label={t('core.app.Select TTS')}>
-        <Box
-          cursor={'pointer'}
-          _hover={{ bg: 'myGray.100' }}
-          py={2}
-          px={3}
-          borderRadius={'md'}
+        <Button
+          variant={'transparentBase'}
+          iconSpacing={1}
+          size={'sm'}
+          fontSize={'md'}
+          mr={'-5px'}
           onClick={onOpen}
-          color={'myGray.600'}
         >
           {formLabel}
-        </Box>
+        </Button>
       </MyTooltip>
       <MyModal
         title={

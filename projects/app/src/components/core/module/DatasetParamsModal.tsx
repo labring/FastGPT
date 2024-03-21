@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -28,7 +28,7 @@ import Tabs from '@/components/Tabs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import SelectAiModel from '@/components/Select/SelectAiModel';
+import SelectAiModel from '@/components/Select/AIModelSelector';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -40,7 +40,6 @@ export type DatasetParamsProps = {
   datasetSearchExtensionBg?: string;
 
   maxTokens?: number; // limit max tokens
-  searchEmptyText?: string;
 };
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -50,7 +49,6 @@ enum SearchSettingTabEnum {
 
 const DatasetParamsModal = ({
   searchMode = DatasetSearchModeEnum.embedding,
-  searchEmptyText,
   limit,
   similarity,
   usingReRank,
@@ -71,11 +69,10 @@ const DatasetParamsModal = ({
 
   const { register, setValue, getValues, handleSubmit, watch } = useForm<DatasetParamsProps>({
     defaultValues: {
-      searchEmptyText,
       limit,
       similarity,
       searchMode,
-      usingReRank: !!usingReRank && !!teamPlanStatus?.standardConstants?.permissionReRank,
+      usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel: datasetSearchExtensionModel ?? llmModelList[0]?.model,
       datasetSearchExtensionBg
@@ -269,21 +266,6 @@ const DatasetParamsModal = ({
                       setRefresh(!refresh);
                     }}
                   />
-                </Box>
-              </Box>
-            )}
-            {searchEmptyText !== undefined && (
-              <Box display={['block', 'flex']} pt={3}>
-                <Box flex={'0 0 120px'} mb={[2, 0]}>
-                  {t('core.dataset.search.Empty result response')}
-                </Box>
-                <Box flex={1}>
-                  <Textarea
-                    rows={5}
-                    maxLength={500}
-                    placeholder={t('core.dataset.search.Empty result response Tips')}
-                    {...register('searchEmptyText')}
-                  ></Textarea>
                 </Box>
               </Box>
             )}

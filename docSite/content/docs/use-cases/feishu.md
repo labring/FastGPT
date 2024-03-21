@@ -1,6 +1,6 @@
 ---
-title: " 接入飞书 "
-description: "FastGPT 接入飞书机器人 "
+title: " 接入飞书(社区文章)"
+description: "FastGPT 接入飞书机器人"
 icon: "chat"
 draft: false
 toc: true

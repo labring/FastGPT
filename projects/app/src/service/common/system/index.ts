@@ -30,7 +30,6 @@ export function initGlobal() {
   if (global.communityPlugins) return;
 
   global.communityPlugins = [];
-  global.simpleModeTemplates = [];
   global.qaQueueLen = global.qaQueueLen ?? 0;
   global.vectorQueueLen = global.vectorQueueLen ?? 0;
   // init tikToken

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { ModalBody, ModalFooter, Button } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';

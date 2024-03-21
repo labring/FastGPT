@@ -92,7 +92,8 @@ const MySelect = (
               : `${width} !important`;
           })()}
           w={'auto'}
-          p={'6px'}
+          px={'6px'}
+          py={'6px'}
           border={'1px solid #fff'}
           boxShadow={
             '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'

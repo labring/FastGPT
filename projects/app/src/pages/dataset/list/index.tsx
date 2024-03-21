@@ -28,12 +28,8 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
-import {
-  DatasetTypeEnum,
-  DatasetTypeMap,
-  FolderIcon,
-  FolderImgUrl
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { FolderImgUrl, FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import MyMenu from '@/components/MyMenu';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

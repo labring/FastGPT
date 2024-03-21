@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { DragHandleIcon } from '@chakra-ui/icons';
@@ -194,7 +194,6 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                           bg: 'myGray.100'
                         }
                       })}
-                  onClick={() => onSwitchTeam(team.teamId)}
                 >
                   <Avatar src={team.avatar} w={['18px', '22px']} />
                   <Box

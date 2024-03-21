@@ -8,7 +8,7 @@ import {
   Box,
   Textarea
 } from '@chakra-ui/react';
-import MyModal from '../components/common/CustomModal';
+import MyModal from '../components/common/MyModal';
 import { useToast } from './useToast';
 import { useTranslation } from 'next-i18next';
 

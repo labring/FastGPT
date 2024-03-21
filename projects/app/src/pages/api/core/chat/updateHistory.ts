@@ -9,12 +9,13 @@ import { autChatCrud } from '@/service/support/permission/auth/chat';
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, chatId, shareId, outLinkUid, customTitle, top } = req.body as UpdateHistoryProps;
-
+    const { appId, chatId, teamId, shareId, outLinkUid, customTitle, top } =
+      req.body as UpdateHistoryProps;
     await autChatCrud({
       req,
       authToken: true,
       appId,
+      teamId,
       chatId,
       shareId,
       outLinkUid,

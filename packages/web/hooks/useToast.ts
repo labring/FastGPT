@@ -10,7 +10,9 @@ export const useToast = (props?: UseToastOptions) => {
 
   const myToast = useCallback(
     (options?: UseToastOptions) => {
-      toast(options);
+      if (options?.title || options?.description) {
+        toast(options);
+      }
     },
     [props]
   );

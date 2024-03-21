@@ -6,7 +6,7 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { ChatRoleEnum, ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
-import { dispatchWorkFlow } from '@/service/moduleDispatch';
+import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d';
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
@@ -32,7 +32,7 @@ import { AuthOutLinkChatProps } from '@fastgpt/global/support/outLink/api';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { setEntryEntries } from '@/service/moduleDispatch/utils';
+import { setEntryEntries } from '@fastgpt/service/core/workflow/dispatch/utils';
 import { UserChatItemType } from '@fastgpt/global/core/chat/type';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
 

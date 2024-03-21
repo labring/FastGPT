@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, Grid } from '@chakra-ui/react';
+import { Box, Flex, Grid, Link } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -18,7 +18,10 @@ const Points = () => {
       <Box id="point-card" fontWeight={'bold'} fontSize={['24px', '36px']}>
         {t('support.wallet.subscription.Ai points')}
       </Box>
-      <Grid gap={6} mt={['30px', '48px']} w={'100%'}>
+      <Link href="https://tiktokenizer.vercel.app/" target="_blank">
+        点击查看在线 Tokens 计算器
+      </Link>
+      <Grid gap={6} mt={['30px', '40px']} w={'100%'}>
         <Box
           display={['block', 'flex']}
           borderRadius={'xl'}

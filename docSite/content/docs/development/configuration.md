@@ -11,7 +11,7 @@ weight: 708
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。
 
-这个配置文件中包含了系统参数和各个模型配置，使用时务必去掉注释。
+这个配置文件中包含了系统参数和各个模型配置，`使用时务必去掉注释!!!!!!!!!!!!!!`
 
 ## 4.6.8+ 版本新配置文件
 
@@ -28,6 +28,7 @@ llm模型全部合并
     {
       "model": "gpt-3.5-turbo", // 模型名
       "name": "gpt-3.5-turbo", // 别名
+      "avatar": "/imgs/model/openai.svg", // 模型的logo
       "maxContext": 16000, // 最大上下文
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 13000, // 最大引用内容
@@ -35,7 +36,7 @@ llm模型全部合并
       "charsPointsPrice": 0, 
       "censor": false,
       "vision": false, // 是否支持图片输入
-      "datasetProcess": false, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
+      "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
       "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
       "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
       "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
@@ -48,30 +49,9 @@ llm模型全部合并
       "defaultConfig":{}  // LLM默认配置，可以针对不同模型设置特殊值（比如 GLM4 的 top_p
     },
     {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "gpt-3.5-turbo-16k",
-      "maxContext": 16000,
-      "maxResponse": 16000,
-      "quoteMaxToken": 13000,
-      "maxTemperature": 1.2,
-      "charsPointsPrice": 0,
-      "censor": false,
-      "vision": false,
-      "datasetProcess": true,
-      "usedInClassify": true,
-      "usedInExtractFields": true,
-      "usedInToolCall": true,
-      "usedInQueryExtension": true,
-      "toolChoice": true,
-      "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": "",
-      "defaultConfig":{} 
-    },
-    {
       "model": "gpt-4-0125-preview",
       "name": "gpt-4-turbo",
+      "avatar": "/imgs/model/openai.svg",
       "maxContext": 125000,
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
@@ -94,6 +74,7 @@ llm模型全部合并
     {
       "model": "gpt-4-vision-preview",
       "name": "gpt-4-vision",
+      "avatar": "/imgs/model/openai.svg",
       "maxContext": 128000,
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
@@ -118,6 +99,7 @@ llm模型全部合并
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
+      "avatar": "/imgs/model/openai.svg",
       "charsPointsPrice": 0,
       "defaultToken": 700,
       "maxToken": 3000,
@@ -148,6 +130,20 @@ llm模型全部合并
   }
 }
 ```
+
+## 关于模型 logo
+
+统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。
+
+- /imgs/model/baichuan.svg - 百川
+- /imgs/model/chatglm.svg - 智谱
+- /imgs/model/calude.svg - calude
+- /imgs/model/ernie.svg - 文心一言
+- /imgs/model/moonshot.svg - 月之暗面
+- /imgs/model/openai.svg - OpenAI GPT
+- /imgs/model/qwen.svg - 通义千问
+- /imgs/model/yi.svg - 零一万物
+- 
 
 ## 特殊模型
 

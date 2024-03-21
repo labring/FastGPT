@@ -1,5 +1,7 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type';
+import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import {
   CreateOnePluginParams,
   PluginListItemType,
@@ -10,9 +12,24 @@ import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';
 export const postCreatePlugin = (data: CreateOnePluginParams) =>
   POST<string>('/core/plugin/create', data);
 export const putUpdatePlugin = (data: UpdatePluginParams) => PUT('/core/plugin/update', data);
-export const getUserPlugins = () => GET<PluginListItemType[]>('/core/plugin/list');
-export const getPlugTemplates = () => GET<FlowModuleTemplateType[]>('/core/plugin/templates');
+export const getPluginPaths = (parentId?: string) =>
+  GET<ParentTreePathItemType[]>('/core/plugin/paths', { parentId });
+
+// http plugin
+export const getApiSchemaByUrl = (url: string) =>
+  POST<Object>('/core/plugin/httpPlugin/getApiSchemaByUrl', { url });
+
+/* work flow */
+export const getPlugTemplates = () => GET<FlowNodeTemplateType[]>('/core/plugin/templates');
+export const getUserPlugins = (data: { parentId?: string; type?: `${PluginTypeEnum}` }) =>
+  GET<PluginListItemType[]>('/core/plugin/list', data);
+
+export const getTeamPlugTemplates = (data: { parentId?: string | null; searchKey?: string }) =>
+  GET<FlowNodeTemplateType[]>('/core/plugin/pluginTemplate/getTeamPluginTemplates', data);
+export const getSystemPlugTemplates = () =>
+  GET<FlowNodeTemplateType[]>('/core/plugin/pluginTemplate/getSystemPluginTemplates');
+
 export const getPreviewPluginModule = (id: string) =>
-  GET<FlowModuleTemplateType>('/core/plugin/getPreviewModule', { id });
+  GET<FlowNodeTemplateType>('/core/plugin/getPreviewModule', { id });
 export const getOnePlugin = (id: string) => GET<PluginItemSchema>('/core/plugin/detail', { id });
-export const delOnePlugin = (id: string) => DELETE('/core/plugin/delete', { id });
+export const delOnePlugin = (pluginId: string) => DELETE('/core/plugin/delete', { pluginId });

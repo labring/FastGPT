@@ -7,8 +7,17 @@ import { autChatCrud } from '@/service/support/permission/auth/chat';
 
 /* 初始化我的聊天框，需要身份验证 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { appId, chatId, chatItemId, shareId, outLinkUid, userBadFeedback, userGoodFeedback } =
-    req.body as UpdateChatFeedbackProps;
+  const {
+    appId,
+    chatId,
+    chatItemId,
+    shareId,
+    teamId,
+    teamToken,
+    outLinkUid,
+    userBadFeedback,
+    userGoodFeedback
+  } = req.body as UpdateChatFeedbackProps;
 
   try {
     await connectToDatabase();
@@ -17,6 +26,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       req,
       authToken: true,
       appId,
+      teamId,
+      teamToken,
       chatId,
       shareId,
       outLinkUid,

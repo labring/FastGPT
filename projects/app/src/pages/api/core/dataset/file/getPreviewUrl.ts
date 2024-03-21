@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authDatasetFile } from '@fastgpt/service/support/permission/auth/dataset';
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
-import { BucketNameEnum, FileBaseUrl } from '@fastgpt/global/common/file/constants';
+import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -25,7 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     jsonRes(res, {
-      data: `${FileBaseUrl}?token=${token}`
+      data: `${ReadFileBaseUrl}?token=${token}`
     });
   } catch (error) {
     jsonRes(res, {

@@ -43,14 +43,14 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
-      router.replace({
+      router.push({
         query: {
-          appId,
+          ...router.query,
           currentTab: tab
         }
       });
     },
-    [appId, router]
+    [router]
   );
 
   const tabList = useMemo(

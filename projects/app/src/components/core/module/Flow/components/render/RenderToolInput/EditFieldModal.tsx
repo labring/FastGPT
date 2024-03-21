@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import type { EditFieldModalProps } from './type.d';
 import { useTranslation } from 'next-i18next';
 import {
