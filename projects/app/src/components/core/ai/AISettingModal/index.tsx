@@ -78,7 +78,7 @@ const AIChatSettingsModal = ({
           {t('core.ai.AI settings')}
           {feConfigs?.docUrl && (
             <Link
-              href={getDocPath('/docs/use-cases/ai_settings/')}
+              href={getDocPath('/docs/course/ai_settings/')}
               target={'_blank'}
               ml={1}
               textDecoration={'underline'}

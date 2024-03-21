@@ -4,7 +4,7 @@ description: "本节会详细介绍 FastGPT 知识库结构设计，理解其 QA
 icon: "dataset"
 draft: false
 toc: true
-weight: 502
+weight: 102
 ---
 
 ## 理解向量
@@ -90,4 +90,4 @@ FastGPT 采用了 `PostgresSQL` 的 `PG Vector` 插件作为向量检索器，�
 
 ## QA的组合与引用提示词构建
 
-参考[引用模板与引用提示词示例](/docs/use-cases/ai_settings/#示例)
+参考[引用模板与引用提示词示例](/docs/course/ai_settings/#示例)
