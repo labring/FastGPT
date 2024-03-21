@@ -207,7 +207,7 @@ const RenderList = React.memo(function RenderList({
   return templates.length === 0 && !isLoadingData ? (
     <EmptyTip text={t('core.app.ToolCall.No plugin')} />
   ) : (
-    <MyBox isLoading={isLoading}>
+    <MyBox>
       {templates.map((item, i) => {
         const selected = !!selectedTools.find((tool) => tool.id === item.id);
         return (
@@ -257,6 +257,7 @@ const RenderList = React.memo(function RenderList({
                 size={'sm'}
                 variant={'whiteBase'}
                 leftIcon={<AddIcon fontSize={'10px'} />}
+                isLoading={isLoading}
                 onClick={() => onClickAdd(item)}
               >
                 {t('common.Add')}
