@@ -113,6 +113,7 @@ affinity: {}
 
 mongodb:
   enabled: true
+  architecture: replicaset
   auth:
     rootUser: root
     rootPassword: "123456"
@@ -121,7 +122,7 @@ postgresql:
   enabled: true
   image:
 #    registry: 172.11.0.6:30002
-    repository: docker.io/linuxsuren/pgvector
+    repository: linuxsuren/pgvector
     tag: master
   global:
     postgresql:
