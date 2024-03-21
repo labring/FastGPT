@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 
-const BillTable = () => {
+const InformTable = () => {
   const theme = useTheme();
   const { Loading } = useLoading();
   const { isPc } = useSystemStore();
@@ -87,4 +87,4 @@ const BillTable = () => {
   );
 };
 
-export default BillTable;
+export default InformTable;

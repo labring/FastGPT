@@ -279,6 +279,380 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
       }
     ];
   }
+  function datasetTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
+    return [
+      {
+        moduleId: 'userChatInput',
+        name: 'core.module.template.Chat entrance',
+        intro: '当用户发送一个内容后，流程将会从这个模块开始执行。',
+        avatar: '/imgs/module/userChatInput.svg',
+        flowType: 'questionInput',
+        position: {
+          x: 324.81436595478294,
+          y: 1527.0012457753612
+        },
+        inputs: [
+          {
+            key: 'userChatInput',
+            type: 'systemInput',
+            valueType: 'string',
+            label: 'core.module.input.label.user question',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: 'core.module.input.label.user question',
+            type: 'source',
+            valueType: 'string',
+            targets: [
+              {
+                moduleId: '0voh5n',
+                key: 'userChatInput'
+              }
+            ]
+          }
+        ]
+      },
+      {
+        moduleId: '63toub',
+        name: 'AI 对话',
+        intro: 'AI 大模型对话',
+        avatar: '/imgs/module/AI.png',
+        flowType: 'chatNode',
+        showStatus: true,
+        position: {
+          x: 1962.4010270586014,
+          y: 1026.9105717680477
+        },
+        inputs: [
+          {
+            key: 'switch',
+            type: 'target',
+            label: 'core.module.input.label.switch',
+            description: 'core.module.input.description.Trigger',
+            valueType: 'any',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'model',
+            type: 'settingLLMModel',
+            label: 'core.module.input.label.aiModel',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: formData.aiSettings.model,
+            connected: false
+          },
+          {
+            key: 'temperature',
+            type: 'hidden',
+            label: '',
+            value: formData.aiSettings.temperature,
+            valueType: 'number',
+            min: 0,
+            max: 10,
+            step: 1,
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'maxToken',
+            type: 'hidden',
+            label: '',
+            value: formData.aiSettings.maxToken,
+            valueType: 'number',
+            min: 100,
+            max: 4000,
+            step: 50,
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'isResponseAnswerText',
+            type: 'hidden',
+            label: '',
+            value: true,
+            valueType: 'boolean',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'quoteTemplate',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'quotePrompt',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'systemPrompt',
+            type: 'textarea',
+            max: 3000,
+            valueType: 'string',
+            label: 'core.ai.Prompt',
+            description: 'core.app.tip.chatNodeSystemPromptTip',
+            placeholder: 'core.app.tip.chatNodeSystemPromptTip',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false,
+            value: formData.aiSettings.systemPrompt
+          },
+          {
+            key: 'history',
+            type: 'numberInput',
+            label: 'core.module.input.label.chat history',
+            required: true,
+            min: 0,
+            max: 30,
+            valueType: 'chatHistory',
+            value: formData.aiSettings.maxHistories,
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'userChatInput',
+            type: 'custom',
+            label: '',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            toolDescription: '用户问题',
+            connected: true
+          },
+          {
+            key: 'quoteQA',
+            type: 'settingDatasetQuotePrompt',
+            label: '知识库引用',
+            description: 'core.module.Dataset quote.Input description',
+            valueType: 'datasetQuote',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: 'core.module.input.label.user question',
+            type: 'hidden',
+            valueType: 'string',
+            targets: []
+          },
+          {
+            key: 'history',
+            label: 'core.module.output.label.New context',
+            description: 'core.module.output.description.New context',
+            valueType: 'chatHistory',
+            type: 'source',
+            targets: []
+          },
+          {
+            key: 'answerText',
+            label: 'core.module.output.label.Ai response content',
+            description: 'core.module.output.description.Ai response content',
+            valueType: 'string',
+            type: 'source',
+            targets: []
+          },
+          {
+            key: 'finish',
+            label: 'core.module.output.label.running done',
+            description: 'core.module.output.description.running done',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
+      },
+      {
+        moduleId: '0voh5n',
+        name: '知识库搜索',
+        intro: '调用知识库搜索能力，查找“有可能”与问题相关的内容',
+        avatar: '/imgs/module/db.png',
+        flowType: 'datasetSearchNode',
+        showStatus: true,
+        position: {
+          x: 1098.245668870126,
+          y: 1166.7285333032098
+        },
+        inputs: [
+          {
+            key: 'switch',
+            type: 'target',
+            label: 'core.module.input.label.switch',
+            description: 'core.module.input.description.Trigger',
+            valueType: 'any',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'datasets',
+            type: 'selectDataset',
+            label: 'core.module.input.label.Select dataset',
+            value: formData.dataset.datasets,
+            valueType: 'selectDataset',
+            list: [],
+            required: true,
+            showTargetInApp: false,
+            showTargetInPlugin: true,
+            connected: false
+          },
+          {
+            key: 'similarity',
+            type: 'selectDatasetParamsModal',
+            label: '',
+            value: formData.dataset.similarity,
+            valueType: 'number',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'limit',
+            type: 'hidden',
+            label: '',
+            value: formData.dataset.limit,
+            valueType: 'number',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false
+          },
+          {
+            key: 'searchMode',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: formData.dataset.searchMode,
+            connected: false
+          },
+          {
+            key: 'usingReRank',
+            type: 'hidden',
+            label: '',
+            valueType: 'boolean',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: formData.dataset.usingReRank,
+            connected: false
+          },
+          {
+            key: 'datasetSearchUsingExtensionQuery',
+            type: 'hidden',
+            label: '',
+            valueType: 'boolean',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: formData.dataset.datasetSearchUsingExtensionQuery,
+            connected: false
+          },
+          {
+            key: 'datasetSearchExtensionModel',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            connected: false,
+            value: formData.dataset.datasetSearchExtensionModel
+          },
+          {
+            key: 'datasetSearchExtensionBg',
+            type: 'hidden',
+            label: '',
+            valueType: 'string',
+            showTargetInApp: false,
+            showTargetInPlugin: false,
+            value: formData.dataset.datasetSearchExtensionBg,
+            connected: false
+          },
+          {
+            key: 'userChatInput',
+            type: 'custom',
+            label: '',
+            required: true,
+            valueType: 'string',
+            showTargetInApp: true,
+            showTargetInPlugin: true,
+            toolDescription: '需要检索的内容',
+            connected: true
+          }
+        ],
+        outputs: [
+          {
+            key: 'userChatInput',
+            label: 'core.module.input.label.user question',
+            type: 'hidden',
+            valueType: 'string',
+            targets: [
+              {
+                moduleId: '63toub',
+                key: 'userChatInput'
+              }
+            ]
+          },
+          {
+            key: 'isEmpty',
+            label: 'core.module.output.label.Search result empty',
+            type: 'source',
+            valueType: 'boolean',
+            targets: []
+          },
+          {
+            key: 'unEmpty',
+            label: 'core.module.output.label.Search result not empty',
+            type: 'source',
+            valueType: 'boolean',
+            targets: []
+          },
+          {
+            key: 'quoteQA',
+            label: 'core.module.Dataset quote.label',
+            type: 'source',
+            valueType: 'datasetQuote',
+            targets: [
+              {
+                moduleId: '63toub',
+                key: 'quoteQA'
+              }
+            ]
+          },
+          {
+            key: 'finish',
+            label: 'core.module.output.label.running done',
+            description: 'core.module.output.description.running done',
+            valueType: 'boolean',
+            type: 'source',
+            targets: []
+          }
+        ]
+      }
+    ];
+  }
   function toolTemplates(formData: AppSimpleEditFormType): ModuleItemType[] {
     let tools: ModuleItemType[] =
       formData.dataset.datasets.length > 0
@@ -607,10 +981,12 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
 
     return modules;
   }
-  const modules =
-    data.dataset.datasets.length > 0 || data.selectedTools.length > 0
-      ? toolTemplates(data)
-      : simpleChatTemplate(data);
+
+  const modules = (() => {
+    if (data.selectedTools.length > 0) return toolTemplates(data);
+    if (data.dataset.datasets.length > 0) return datasetTemplate(data);
+    return simpleChatTemplate(data);
+  })();
 
   return [...userGuideTemplate(data), ...modules];
 }

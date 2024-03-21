@@ -9,7 +9,6 @@ import { getCollectionWithDataset } from '../controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
-import type { VectorModelItemType, LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
