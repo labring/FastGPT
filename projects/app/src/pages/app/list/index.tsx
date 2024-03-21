@@ -148,14 +148,14 @@ const MyApps = () => {
                     size={'xsSquare'}
                     variant={'whitePrimary'}
                     icon={
-                      <MyTooltip label={'去聊天'}>
-                        <MyIcon name={'core/chat/chatLight'} w={'14px'} />
+                      <MyTooltip label={t('app.To Settings')}>
+                        <MyIcon name={'core/chat/setting'} w={'14px'} />
                       </MyTooltip>
                     }
                     aria-label={'chat'}
                     onClick={(e) => {
                       e.stopPropagation();
-                      router.push(`/chat?appId=${app._id}`);
+                      router.push(`/app/detail?appId=${app._id}`);
                     }}
                   />
                 )}

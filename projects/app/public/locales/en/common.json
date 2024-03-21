@@ -1233,6 +1233,10 @@
       "Need to login": "Please log in first",
       "Price": "Price",
       "User self info": "My info",
+      "status": {
+        "active": "Active",
+        "forbidden": "Forbidden"
+      },
       "auth": {
         "Sending Code": "Sending"
       },
@@ -1400,15 +1404,18 @@
   },
   "user": {
     "Account": "Account",
+    "active": "Active",
     "Amount of earnings": "Earnings",
     "Amount of inviter": "Inviter",
     "Application Name": "Application Name",
     "Avatar": "Avatar",
     "Balance": "Balance",
+    "BelongTeam": "Belong Team",
     "Bill Detail": "Bill Detail",
     "Change": "Change",
     "Copy invite url": "Copy invitation link",
     "Edit name": "Click to modify nickname",
+    "forbidden": "Forbidden",
     "Invite Url": "Invite Url",
     "Invite url tip": "Friends who register through this link will be permanently bound to you, and you will get a certain balance reward when they recharge. In addition, when friends register with their mobile phone number, you will get 5 yuan reward immediately.",
     "Language": "Language",

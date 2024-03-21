@@ -205,62 +205,56 @@ const MyInfo = () => {
             </Flex>
           </Flex>
         )}
-        {feConfigs.isPlus && (
-          <Flex mt={[0, 4]} alignItems={'center'}>
-            <Box flex={'0 0 80px'}>{t('user.Member Name')}:&nbsp;</Box>
-            <Input
-              flex={'1 0 0'}
-              defaultValue={userInfo?.team?.memberName || 'Member'}
-              title={t('user.Edit name')}
-              borderColor={'transparent'}
-              transform={'translateX(-11px)'}
-              maxLength={20}
-              onBlur={(e) => {
-                const val = e.target.value;
-                if (val === userInfo?.team?.memberName) return;
-                try {
-                  putUpdateMemberName(val);
-                } catch (error) {}
-              }}
-            />
-          </Flex>
-        )}
+        <Flex mt={[0, 4]} alignItems={'center'}>
+          <Box flex={'0 0 80px'}>{t('user.Member Name')}:&nbsp;</Box>
+          <Input
+            flex={'1 0 0'}
+            defaultValue={userInfo?.team?.memberName || 'Member'}
+            title={t('user.Edit name')}
+            borderColor={'transparent'}
+            transform={'translateX(-11px)'}
+            maxLength={20}
+            onBlur={(e) => {
+              const val = e.target.value;
+              if (val === userInfo?.team?.memberName) return;
+              try {
+                putUpdateMemberName(val);
+              } catch (error) {}
+            }}
+          />
+        </Flex>
         <Flex alignItems={'center'} mt={6}>
           <Box flex={'0 0 80px'}>{t('user.Account')}:&nbsp;</Box>
           <Box flex={1}>{userInfo?.username}</Box>
         </Flex>
-        {feConfigs.isPlus && (
-          <Flex mt={6} alignItems={'center'}>
-            <Box flex={'0 0 80px'}>{t('user.Password')}:&nbsp;</Box>
-            <Box flex={1}>*****</Box>
-            <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
-              {t('user.Change')}
-            </Button>
-          </Flex>
-        )}
+        <Flex mt={6} alignItems={'center'}>
+          <Box flex={'0 0 80px'}>{t('user.Password')}:&nbsp;</Box>
+          <Box flex={1}>*****</Box>
+          <Button size={'sm'} variant={'whitePrimary'} onClick={onOpenUpdatePsw}>
+            {t('user.Change')}
+          </Button>
+        </Flex>
         <Flex mt={6} alignItems={'center'}>
           <Box flex={'0 0 80px'}>{t('user.Team')}:&nbsp;</Box>
           <Box flex={1}>
             <TeamMenu />
           </Box>
         </Flex>
-        {feConfigs.isPlus && (
-          <Box mt={6} whiteSpace={'nowrap'}>
-            <Flex alignItems={'center'}>
-              <Box flex={'0 0 80px'} fontSize={'md'}>
-                {t('user.team.Balance')}:&nbsp;
-              </Box>
-              <Box flex={1}>
-                <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
-              </Box>
-              {feConfigs?.show_pay && userInfo?.team?.canWrite && (
-                <Button variant={'whitePrimary'} size={'sm'} ml={5} onClick={onOpenPayModal}>
-                  {t('user.Pay')}
-                </Button>
-              )}
-            </Flex>
-          </Box>
-        )}
+        <Box mt={6} whiteSpace={'nowrap'}>
+          <Flex alignItems={'center'}>
+            <Box flex={'0 0 80px'} fontSize={'md'}>
+              {t('user.team.Balance')}:&nbsp;
+            </Box>
+            <Box flex={1}>
+              <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
+            </Box>
+            {feConfigs?.show_pay && userInfo?.team?.canWrite && (
+              <Button variant={'whitePrimary'} size={'sm'} ml={5} onClick={onOpenPayModal}>
+                {t('user.Pay')}
+              </Button>
+            )}
+          </Flex>
+        </Box>
       </Box>
       {isOpenPayModal && <PayModal onClose={onClosePayModal} />}
       {isOpenUpdatePsw && <UpdatePswModal onClose={onCloseUpdatePsw} />}
@@ -507,25 +501,27 @@ const Other = () => {
             </Box>
           </Link>
         )}
-        <Link
-          href={feConfigs.chatbotUrl}
-          target="_blank"
-          display={'flex'}
-          py={3}
-          px={6}
-          bg={'white'}
-          border={theme.borders.sm}
-          borderWidth={'1.5px'}
-          borderRadius={'md'}
-          alignItems={'center'}
-          userSelect={'none'}
-          textDecoration={'none !important'}
-        >
-          <MyIcon name={'core/app/aiLight'} w={'18px'} />
-          <Box ml={2} flex={1}>
-            {t('common.system.Help Chatbot')}
-          </Box>
-        </Link>
+        {feConfigs.chatbotUrl && (
+          <Link
+            href={feConfigs.chatbotUrl}
+            target="_blank"
+            display={'flex'}
+            py={3}
+            px={6}
+            bg={'white'}
+            border={theme.borders.sm}
+            borderWidth={'1.5px'}
+            borderRadius={'md'}
+            alignItems={'center'}
+            userSelect={'none'}
+            textDecoration={'none !important'}
+          >
+            <MyIcon name={'core/app/aiLight'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              {t('common.system.Help Chatbot')}
+            </Box>
+          </Link>
+        )}
 
         {feConfigs?.show_openai_account && (
           <Flex

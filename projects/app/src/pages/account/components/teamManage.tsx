@@ -31,9 +31,9 @@ import {
   defaultForm
 } from '@/components/support/user/team/TeamManageModal/EditModal';
 import { useTranslation } from 'next-i18next';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useRouter } from 'next/router';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useQuery } from '@tanstack/react-query';
@@ -354,7 +354,7 @@ const TeamManage = () => {
                             menuList={[
                               {
                                 isActive: item.role === TeamMemberRoleEnum.visitor,
-                                child: t('user.team.Invite Role Visitor Tip'),
+                                label: t('user.team.Invite Role Visitor Tip'),
                                 onClick: () => {
                                   onUpdateMember({
                                     teamId: item.teamId,
@@ -365,7 +365,7 @@ const TeamManage = () => {
                               },
                               {
                                 isActive: item.role === TeamMemberRoleEnum.admin,
-                                child: t('user.team.Invite Role Admin Tip'),
+                                label: t('user.team.Invite Role Admin Tip'),
                                 onClick: () => {
                                   onUpdateMember({
                                     teamId: item.teamId,
@@ -377,7 +377,7 @@ const TeamManage = () => {
                               ...(item.status === TeamMemberStatusEnum.reject
                                 ? [
                                     {
-                                      child: t('user.team.Reinvite'),
+                                      label: t('user.team.Reinvite'),
                                       onClick: () => {
                                         onUpdateMember({
                                           teamId: item.teamId,
@@ -389,7 +389,7 @@ const TeamManage = () => {
                                   ]
                                 : []),
                               {
-                                child: t('user.team.Remove Member Tip'),
+                                label: t('user.team.Remove Member Tip'),
                                 onClick: () =>
                                   openRemoveMember(
                                     () =>

@@ -33,14 +33,7 @@ const TeamMenu = () => {
       }}
       transform={'none !important'}
       onClick={() => {
-        if (feConfigs.isPlus) {
-          onOpen();
-        } else {
-          toast({
-            status: 'warning',
-            title: t('common.Business edition features')
-          });
-        }
+        onOpen();
       }}
     >
       <MyTooltip label={t('user.team.Select Team')}>

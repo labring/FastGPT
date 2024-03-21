@@ -15,7 +15,7 @@ import {
 } from '@chakra-ui/react';
 import React, { useCallback, useState } from 'react';
 import MyModal from '@/components/MyModal';
-import { useToast } from '@/web/common/hooks/useToast';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { postCreateUser, putUpdateUser } from '@/web/support/user/manage/api';
 import { UserManageType } from '@fastgpt/global/support/user/manage/api';
@@ -105,7 +105,6 @@ const UserModal = ({
                 placeholder={'邮箱/手机号/用户名'}
                 disabled={!!userData?._id}
                 {...register('username', {
-                  required: '邮箱/手机号/用户名不能为空',
                   pattern: {
                     value: /(^[A-Za-z0-9_\\.\-@]{4,20}$)/,
                     message: '用户名格式错误'
@@ -120,7 +119,6 @@ const UserModal = ({
                 type={'password'}
                 placeholder={'密码'}
                 {...register('password', {
-                  required: '密码不能为空',
                   maxLength: {
                     value: 20,
                     message: '密码最多 20 位'

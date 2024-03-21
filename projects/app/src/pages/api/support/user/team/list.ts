@@ -10,22 +10,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
     let { pageNum = 1, pageSize = 10, status } = req.query as QueryUserParams;
-    const match = {
-      ...(status ? { status } : {})
-    };
     const { userId } = await authCert({ req, authToken: true });
 
     // 找出用户的所在团队
     const userTeamMembers = await MongoTeamMember.find({
-      userId
+      $and: [{ userId }, status ? { status } : {}]
     });
 
     let teams = [];
     for (const userTeamMember of userTeamMembers) {
       const team = await MongoTeam.findOne(
         {
-          _id: userTeamMember.teamId,
-          ...{ match }
+          _id: userTeamMember.teamId
         },
         { teamName: '$name', teamId: '$_id', ownerId: 1, avatar: 1, balance: 1, maxSize: 1 }
       );

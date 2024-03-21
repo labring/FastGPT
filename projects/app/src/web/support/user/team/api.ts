@@ -37,7 +37,7 @@ export const putUpdateMemberName = (name: string) =>
 export const delRemoveMember = (props: DelMemberProps) =>
   DELETE(`/support/user/team/member/delete`, props);
 export const updateInviteResult = (data: UpdateInviteProps) =>
-  PUT('/plusApi/support/user/team/member/updateInvite', data);
+  PUT('/support/user/team/member/updateInvite', data);
 export const delLeaveTeam = (teamId: string) =>
   DELETE('/support/user/team/member/leave', { teamId });
 

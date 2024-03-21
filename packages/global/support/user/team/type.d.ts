@@ -76,3 +76,19 @@ export type TeamTagItemType = {
   label: string;
   key: string;
 };
+
+export type InviteResponseType = {
+  userId: string;
+  username: string;
+};
+
+export type InviteTeamMemberItemType = {
+  userId?: string;
+  teamId: string;
+  name: string;
+  username: string;
+  role: `${TeamMemberRoleEnum}`;
+  status: `${TeamMemberStatusEnum}`;
+  createTime: Date;
+  defaultTeam: boolean;
+};

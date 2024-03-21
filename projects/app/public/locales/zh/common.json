@@ -1234,6 +1234,10 @@
       "Need to login": "请先登录",
       "Price": "计费标准",
       "User self info": "个人信息",
+      "status": {
+        "active": "激活",
+        "forbidden": "禁用"
+      },
       "auth": {
         "Sending Code": "正在发送"
       },
@@ -1401,15 +1405,18 @@
   },
   "user": {
     "Account": "账号",
+    "active": "激活",
     "Amount of earnings": "收益（￥）",
     "Amount of inviter": "累计邀请人数",
     "Application Name": "项目名",
     "Avatar": "头像",
     "Balance": "余额",
+    "BelongTeam": "所属团队",
     "Bill Detail": "账单详情",
     "Change": "变更",
     "Copy invite url": "复制邀请链接",
     "Edit name": "点击修改昵称",
+    "forbidden": "禁用",
     "Invite Url": "邀请链接",
     "Invite url tip": "通过该链接注册的好友将永久与你绑定，其充值时你会获得一定余额奖励。\n此外，好友使用手机号注册时，你将立即获得 5 元奖励。\n奖励会发送到您的默认团队中。",
     "Language": "语言",

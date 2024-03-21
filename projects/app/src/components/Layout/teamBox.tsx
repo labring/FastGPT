@@ -40,7 +40,7 @@ const TeamBox = () => {
 
   return (
     <MyCloseBox
-      title={`${t('user.belongTeam')}:`}
+      title={`${t('user.BelongTeam')}:`}
       pos={'fixed'}
       alignItems={'center'}
       bottom={'60px'}
@@ -50,7 +50,7 @@ const TeamBox = () => {
       zIndex={99999}
       borderRadius={'md'}
     >
-      <Flex>
+      <Flex minW={120}>
         {userInfo?.team ? (
           <Menu>
             <MenuButton>

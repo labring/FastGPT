@@ -26,14 +26,14 @@ export function connectToDatabase(): Promise<void> {
       // cron
       startCron();
       // init system config
-      getInitConfig();
+      await getInitConfig();
 
       // init vector database
       await initVectorStore();
       // start queue
       startTrainingQueue(true);
 
-      initRootUser();
+      await initRootUser();
     }
   });
 }

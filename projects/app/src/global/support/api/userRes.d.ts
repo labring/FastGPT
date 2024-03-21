@@ -11,3 +11,17 @@ export interface PromotionRecordType {
   createTime: PromotionRecordSchema['createTime'];
   amount: PromotionRecordSchema['amount'];
 }
+
+export interface QueryUserParams {
+  username?: string;
+  status?: string;
+  pageNum?: number;
+  pageSize?: number;
+}
+
+/* ================= data ===================== */
+export type UserListItemType = {
+  _id: string;
+  status: string;
+  username: string;
+};

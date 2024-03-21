@@ -29,6 +29,7 @@ export type AppListItemType = {
   avatar: string;
   intro: string;
   isOwner: boolean;
+  tmbName: string;
   permission: `${PermissionTypeEnum}`;
 };
 

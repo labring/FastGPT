@@ -23,8 +23,8 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { delRemoveUser, queryUsers } from '@/web/support/user/manage/api';
-import { usePagination } from '@/web/common/hooks/usePagination';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { UserModelSchema } from '@fastgpt/global/support/user/type';
@@ -159,7 +159,15 @@ const UserManage = () => {
               <Button
                 variant={'whitePrimary'}
                 leftIcon={<AddIcon fontSize={'10px'} />}
-                onClick={onOpenCreateModal}
+                onClick={() => {
+                  setEditData({
+                    _id: '',
+                    username: '',
+                    password: '',
+                    status: 'active'
+                  });
+                  onOpenCreateModal();
+                }}
               >
                 新增用户
               </Button>
