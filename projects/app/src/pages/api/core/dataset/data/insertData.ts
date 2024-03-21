@@ -23,11 +23,11 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
 
     if (!q) {
-      return Promise.reject('q is required');
+      throw new Error('q is required');
     }
 
     if (!collectionId) {
-      return Promise.reject('collectionId is required');
+      throw new Error('collectionId is required');
     }
 
     // 凭证校验

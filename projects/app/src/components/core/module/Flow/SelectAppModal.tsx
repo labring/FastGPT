@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { ModalBody, Flex, Box, useTheme, ModalFooter, Button } from '@chakra-ui/react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useQuery } from '@tanstack/react-query';
 import type { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';

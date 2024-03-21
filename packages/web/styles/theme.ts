@@ -207,6 +207,33 @@ const Button = defineStyleConfig({
       _disabled: {
         bg: 'myGray.50'
       }
+    },
+    grayDanger: {
+      bg: 'myGray.150',
+      color: 'myGray.900',
+      _hover: {
+        color: 'red.600',
+        background: 'red.1',
+        borderColor: 'red.300'
+      },
+      _active: {
+        color: 'red.600'
+      }
+    },
+    transparentBase: {
+      color: 'myGray.800',
+      fontWeight: '500',
+      bg: 'white',
+      transition: 'background 0.1s',
+      _hover: {
+        bg: 'myGray.150'
+      },
+      _active: {
+        bg: 'myGray.150'
+      },
+      _disabled: {
+        color: 'myGray.800 !important'
+      }
     }
   },
   defaultProps: {
@@ -359,6 +386,18 @@ const Checkbox = checkBoxMultiStyle({
   baseStyle: checkBoxPart({
     label: {
       fontFamily: 'mono' // change the font family of the label
+    }
+  })
+});
+
+const Modal = defineMultiStyleConfig({
+  baseStyle: definePartsStyle({
+    body: {
+      py: [3, 5],
+      px: [5, 7]
+    },
+    footer: {
+      pt: 2
     }
   })
 });
@@ -527,6 +566,7 @@ export const theme = extendTheme({
     Switch,
     Select,
     NumberInput,
-    Checkbox
+    Checkbox,
+    Modal
   }
 });

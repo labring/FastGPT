@@ -12,16 +12,9 @@ export type CreateAppParams = {
 export interface AppUpdateParams {
   name?: string;
   type?: `${AppTypeEnum}`;
-  simpleTemplateId?: string;
   avatar?: string;
   intro?: string;
   modules?: AppSchema['modules'];
   permission?: AppSchema['permission'];
   teamTags?: AppSchema['teamTags'];
 }
-
-export type FormatForm2ModulesProps = {
-  formData: AppSimpleEditFormType;
-  chatModelMaxToken: number;
-  llmModelList: LLMModelItemType[];
-};

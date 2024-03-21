@@ -1,5 +1,5 @@
 import React from 'react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import {
   Box,
   Button,

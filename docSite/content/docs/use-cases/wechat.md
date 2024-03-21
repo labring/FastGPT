@@ -1,5 +1,5 @@
 ---
-title: " 接入微信和企业微信 "
+title: "接入微信和企业微信 "
 description: "FastGPT 接入微信和企业微信 "
 icon: "chat"
 draft: false

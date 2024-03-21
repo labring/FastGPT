@@ -58,7 +58,7 @@ fastgpt.run 域名会弃用。
    - [x] 源文件引用追踪
    - [x] 模块封装，实现多级复用
    - [x] 混合检索 & 重排
-   - [ ] Tool 模块
+   - [x] Tool 模块
    - [ ] 嵌入 [Laf](https://github.com/labring/laf)，实现在线编写 HTTP 模块
    - [ ] 插件封装功能
 
@@ -114,7 +114,7 @@ fastgpt.run 域名会弃用。
 * [多模型配置](https://doc.fastgpt.in/docs/development/one-api/)
 * [版本更新/升级介绍](https://doc.fastgpt.in/docs/development/upgrading)
 * [OpenAPI API 文档](https://doc.fastgpt.in/docs/development/openapi/)
-* [知识库结构详解](https://doc.fastgpt.in/docs/use-cases/datasetengine/)
+* [知识库结构详解](https://doc.fastgpt.in/docs/course/datasetengine/)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
@@ -122,9 +122,9 @@ fastgpt.run 域名会弃用。
 
 ## 🏘️ 社区交流群
 
-添加 wx 小助手加入：
+wx 扫一下加入：
 
-![](https://otnvvf-imgs.oss.laf.run/wx300.jpg)
+![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">

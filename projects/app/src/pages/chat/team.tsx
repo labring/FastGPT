@@ -36,19 +36,23 @@ import MyBox from '@/components/common/MyBox';
 import SliderApps from './components/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 
-const OutLink = ({
-  teamId,
-  appId,
-  chatId,
-  teamToken
-}: {
-  teamId: string;
-  appId: string;
-  chatId: string;
-  teamToken: string;
-}) => {
+const OutLink = () => {
   const { t } = useTranslation();
   const router = useRouter();
+  const {
+    teamId = '',
+    appId = '',
+    chatId = '',
+    teamToken,
+    ...customVariables
+  } = router.query as {
+    teamId: string;
+    appId: string;
+    chatId: string;
+    teamToken: string;
+    [key: string]: string;
+  };
+
   const { toast } = useToast();
   const theme = useTheme();
   const { isPc } = useSystemStore();
@@ -78,7 +82,10 @@ const OutLink = ({
       const { responseText, responseData } = await streamFetch({
         data: {
           messages: prompts,
-          variables,
+          variables: {
+            ...customVariables,
+            ...variables
+          },
           appId,
           teamId,
           teamToken,
@@ -372,17 +379,8 @@ const OutLink = ({
 };
 
 export async function getServerSideProps(context: any) {
-  const teamId = context?.query?.teamId || '';
-  const appId = context?.query?.appId || '';
-  const chatId = context?.query?.chatId || '';
-  const teamToken: string = context?.query?.teamToken || '';
-
   return {
     props: {
-      teamId,
-      appId,
-      chatId,
-      teamToken,
       ...(await serviceSideProps(context))
     }
   };

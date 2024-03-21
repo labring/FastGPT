@@ -24,7 +24,7 @@ export const createDatasetTrainingMongoWatch = () => {
 
 export const startTrainingQueue = (fast?: boolean) => {
   const max = global.systemEnv?.qaMaxProcess || 10;
-  for (let i = 0; i < max; i++) {
+  for (let i = 0; i < (fast ? max : 1); i++) {
     generateQA();
     generateVector();
   }

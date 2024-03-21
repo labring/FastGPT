@@ -1,5 +1,5 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import ParentPaths from '@/components/common/ParentPaths';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';

@@ -50,3 +50,7 @@ export const mongoImageTypeMap = {
 export const uniqueImageTypeList = Object.entries(mongoImageTypeMap)
   .filter(([key, value]) => value.unique)
   .map(([key]) => key as `${MongoImageTypeEnum}`);
+
+export const FolderIcon = 'file/fill/folder';
+export const FolderImgUrl = '/imgs/files/folder.svg';
+export const HttpImgUrl = '/imgs/module/http.png';

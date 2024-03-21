@@ -27,7 +27,8 @@ const AppCard = ({ appId }: { appId: string }) => {
   const [TeamTagsSet, setTeamTagsSet] = useState<AppSchema>();
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('app.Confirm Del App Tip')
+    content: t('app.Confirm Del App Tip'),
+    type: 'delete'
   });
 
   /* 点击删除 */

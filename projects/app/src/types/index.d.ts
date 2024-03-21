@@ -8,7 +8,6 @@ import {
   WhisperModelType
 } from '@fastgpt/global/core/ai/model.d';
 import { TrackEventName } from '@/constants/common';
-import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
 
 export type PagingData<T> = {
@@ -27,8 +26,6 @@ declare global {
   var vectorQueueLen: number;
 
   var systemVersion: string;
-
-  var simpleModeTemplates: AppSimpleEditConfigTemplateType[];
 
   interface Window {
     grecaptcha: any;

@@ -14,7 +14,7 @@ import {
 import { UsageItemType } from '@fastgpt/global/support/wallet/usage/type.d';
 import dayjs from 'dayjs';
 import { UsageSourceMap } from '@fastgpt/global/support/wallet/usage/constants';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 

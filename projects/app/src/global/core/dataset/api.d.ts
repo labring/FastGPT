@@ -19,7 +19,6 @@ export type CreateDatasetParams = {
   avatar: string;
   vectorModel?: string;
   agentModel?: string;
-  type: `${DatasetTypeEnum}`;
 };
 
 /* ================= collection ===================== */

@@ -9,9 +9,16 @@ const ParentPaths = (props: {
   rootName?: string;
   FirstPathDom?: React.ReactNode;
   onClick: (parentId: string) => void;
+  fontSize?: string;
 }) => {
   const { t } = useTranslation();
-  const { paths = [], rootName = t('common.folder.Root Path'), FirstPathDom, onClick } = props;
+  const {
+    paths = [],
+    rootName = t('common.folder.Root Path'),
+    FirstPathDom,
+    onClick,
+    fontSize
+  } = props;
   const concatPaths = useMemo(
     () => [
       {
@@ -30,7 +37,7 @@ const ParentPaths = (props: {
       {concatPaths.map((item, i) => (
         <Flex key={item.parentId || i} alignItems={'center'}>
           <Box
-            fontSize={['sm', 'lg']}
+            fontSize={['sm', fontSize || 'lg']}
             py={1}
             px={[1, 2]}
             borderRadius={'md'}

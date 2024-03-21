@@ -54,7 +54,6 @@ type FormType = {
     similarity?: number;
     limit?: number;
     usingReRank?: boolean;
-    searchEmptyText?: string;
     datasetSearchUsingExtensionQuery?: boolean;
     datasetSearchExtensionModel?: string;
     datasetSearchExtensionBg?: string;

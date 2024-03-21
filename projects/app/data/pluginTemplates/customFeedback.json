@@ -5,6 +5,7 @@
   "avatar": "/imgs/module/customFeedback.svg",
   "intro": "该模块被触发时，会给当前的对话记录增加一条反馈。可用于自动记录对话效果等。",
   "showStatus": false,
+  "isTool": false,
   "modules": [
     {
       "moduleId": "w90mfp",

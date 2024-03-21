@@ -35,7 +35,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';

@@ -1,13 +1,13 @@
 ---
 weight: 749
-title: "常见开发 & 部署问题"
-description: "FastGPT 常见开发 & 部署问题"
+title: "私有部署常见问题"
+description: "FastGPT 私有部署常见问题"
 icon: upgrade
 draft: false
 images: []
 ---
 
-## 错误排查方式
+## 一、错误排查方式
 
 遇到问题先按下面方式排查。
 
@@ -17,7 +17,7 @@ images: []
 4. 无法解决时，可以找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的日志，否则很难排查。
 
 
-## 通用问题
+## 二、通用问题
 
 ### 能否纯本地运行
 
@@ -46,7 +46,7 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 ### 页面崩溃
 
 1. 关闭翻译
-2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。（95%情况，可以F12打开控制台，看具体的空指针情况）
+2. 检查配置文件是否正常加载，如果没有正常加载会导致缺失系统信息，在某些操作下会导致空指针。（95%情况是配置文件不对，可以F12打开控制台，看具体的空指针情况）
 3. 某些api不兼容问题（较少）
 
 ### 开启内容补全后，响应速度变慢
@@ -54,7 +54,11 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 1. 问题补全需要经过一轮AI生成。
 2. 会进行3~5轮的查询，如果数据库性能不足，会有明显影响。
 
-## 私有部署问题
+### 模型响应为空
+
+1. 检查 key 问题。
+2. 如果是国内模型，可能是命中风控了。
+3. 查看模型请求日志，检查出入参数是否异常。
 
 ### 知识库索引没有进度
 
@@ -64,11 +68,7 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 2. 不能对话，也不能索引：API调用失败。可能是没连上OneAPI或OpenAI
 3. 有进度，但是非常慢：api key不行，OpenAI的免费号，一分钟只有3次还是60次。一天上限200次。
 
-## Docker 部署常见问题
-
-### 首次部署，root用户提示未注册
-
-没有启动 Mongo 副本集模式。
+## 三、Docker 部署常见问题
 
 ### 如何更新？
 
@@ -133,14 +133,6 @@ mongo连接失败，检查
 2. 环境变量（账号密码，注意host和port）
 3. 副本集启动失败，一直在重启：没挂载mongo key；key没有权限；
 
-## 本地开发问题
+### 首次部署，root用户提示未注册
 
-### TypeError: Cannot read properties of null (reading 'useMemo' )
-
-删除所有的`node_modules`，用 Node18 重新 install 试试，可能最新的 Node 有问题。 本地开发流程：
-
-1. 根目录: `pnpm i`
-2. 复制 `config.json` -> `config.local.json`
-3. 复制 `.env.template` -> `.env.local`
-4. `cd projects/app`
-5. `pnpm dev`
+没有启动 Mongo 副本集模式。

@@ -13,11 +13,6 @@ import {
 export const DatasetTrainingCollectionName = 'dataset.trainings';
 
 const TrainingDataSchema = new Schema({
-  userId: {
-    // abandon
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -100,7 +95,7 @@ try {
   // lock training data; delete training data
   TrainingDataSchema.index({ teamId: 1, collectionId: 1 });
   // get training data and sort
-  TrainingDataSchema.index({ lockTime: 1, mode: 1, weight: -1 });
+  TrainingDataSchema.index({ mode: 1, lockTime: 1, weight: -1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days
 } catch (error) {
   console.log(error);

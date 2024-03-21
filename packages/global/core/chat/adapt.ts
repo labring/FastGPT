@@ -83,6 +83,7 @@ export const chats2GPTMessages = ({
         });
       }
     } else {
+      //AI
       item.value.forEach((value) => {
         if (value.type === ChatItemValueTypeEnum.tool && value.tools && reserveTool) {
           const tool_calls: ChatCompletionMessageToolCall[] = [];

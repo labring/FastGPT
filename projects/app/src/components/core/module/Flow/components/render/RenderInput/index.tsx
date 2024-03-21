@@ -42,12 +42,12 @@ const RenderList: {
     Component: dynamic(() => import('./templates/SelectApp'))
   },
   {
-    types: [FlowNodeInputTypeEnum.aiSettings],
-    Component: dynamic(() => import('./templates/AiSetting'))
+    types: [FlowNodeInputTypeEnum.selectLLMModel],
+    Component: dynamic(() => import('./templates/SelectLLMModel'))
   },
   {
-    types: [FlowNodeInputTypeEnum.selectLLMModel],
-    Component: dynamic(() => import('./templates/SelectAiModel'))
+    types: [FlowNodeInputTypeEnum.settingLLMModel],
+    Component: dynamic(() => import('./templates/SettingLLMModel'))
   },
   {
     types: [FlowNodeInputTypeEnum.selectDataset],
@@ -64,6 +64,10 @@ const RenderList: {
   {
     types: [FlowNodeInputTypeEnum.JSONEditor],
     Component: dynamic(() => import('./templates/JsonEditor'))
+  },
+  {
+    types: [FlowNodeInputTypeEnum.settingDatasetQuotePrompt],
+    Component: dynamic(() => import('./templates/SettingQuotePrompt'))
   }
 ];
 const UserChatInput = dynamic(() => import('./templates/UserChatInput'));

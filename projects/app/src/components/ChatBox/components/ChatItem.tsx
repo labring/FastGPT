@@ -9,9 +9,7 @@ import {
   AccordionButton,
   AccordionPanel,
   AccordionIcon,
-  Button,
-  Image,
-  Grid
+  Image
 } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import ChatController, { type ChatControllerProps } from './ChatController';
@@ -88,7 +86,7 @@ const ChatItem = ({
       return (
         <>
           {files.length > 0 && <FilesBlock files={files} />}
-          <Markdown source={text} isChatting={false} />
+          <Markdown source={text} />
         </>
       );
     }
@@ -100,13 +98,26 @@ const ChatItem = ({
           if (value.text) {
             let source = value.text?.content || '';
 
-            if (isLastChild && !isChatting && questionGuides.length > 0) {
+            if (!source && chat.value.length > 1) return <></>;
+
+            if (
+              isLastChild &&
+              !isChatting &&
+              questionGuides.length > 0 &&
+              i === chat.value.length - 1
+            ) {
               source = `${source}
 \`\`\`${CodeClassName.questionGuide}
 ${JSON.stringify(questionGuides)}`;
             }
 
-            return <Markdown key={key} source={source} isChatting={isLastChild && isChatting} />;
+            return (
+              <Markdown
+                key={key}
+                source={source}
+                showAnimation={isLastChild && isChatting && i === chat.value.length - 1}
+              />
+            );
           }
           if (value.type === ChatItemValueTypeEnum.tool && value.tools) {
             return (
@@ -233,4 +244,4 @@ ${toolResponse}`}
   );
 };
 
-export default ChatItem;
+export default React.memo(ChatItem);

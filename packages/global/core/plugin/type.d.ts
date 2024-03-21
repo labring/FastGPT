@@ -1,6 +1,7 @@
 import { ModuleTemplateTypeEnum } from 'core/module/constants';
 import type { FlowModuleTemplateType, ModuleItemType } from '../module/type.d';
-import { PluginSourceEnum } from './constants';
+import { PluginSourceEnum, PluginTypeEnum } from './constants';
+import { MethodType } from './controller';
 
 export type PluginItemSchema = {
   _id: string;
@@ -12,6 +13,13 @@ export type PluginItemSchema = {
   intro: string;
   updateTime: Date;
   modules: ModuleItemType[];
+  parentId: string;
+  type: `${PluginTypeEnum}`;
+  metadata?: {
+    pluginUid?: string;
+    apiSchemaStr?: string;
+    customHeaders?: string;
+  };
 };
 
 /* plugin template */
@@ -19,7 +27,7 @@ export type PluginTemplateType = PluginRuntimeType & {
   author?: string;
   id: string;
   source: `${PluginSourceEnum}`;
-  templateType: FlowModuleTemplateType['templateType'];
+  templateType: FlowNodeTemplateType['templateType'];
   intro: string;
   modules: ModuleItemType[];
 };
@@ -29,5 +37,6 @@ export type PluginRuntimeType = {
   name: string;
   avatar: string;
   showStatus?: boolean;
+  isTool?: boolean;
   modules: ModuleItemType[];
 };

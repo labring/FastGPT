@@ -1,3 +1,4 @@
+/* mongo fs bucket */
 export enum BucketNameEnum {
   dataset = 'dataset'
 }
@@ -7,4 +8,4 @@ export const bucketNameMap = {
   }
 };
 
-export const FileBaseUrl = '/api/common/file/read';
+export const ReadFileBaseUrl = '/api/common/file/read';

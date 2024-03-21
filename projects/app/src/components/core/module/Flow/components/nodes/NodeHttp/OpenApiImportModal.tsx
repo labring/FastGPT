@@ -1,5 +1,5 @@
 import React from 'react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { ModalBody, Button, ModalFooter, useDisclosure, Textarea, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { onChangeNode } from '../../../FlowProvider';

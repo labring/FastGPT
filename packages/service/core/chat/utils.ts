@@ -8,6 +8,15 @@ import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 
 /* slice chat context by tokens */
+const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
+  return messages.filter((item) => {
+    if (item.role === ChatCompletionRequestMessageRoleEnum.System) return !!item.content;
+    if (item.role === ChatCompletionRequestMessageRoleEnum.User) return !!item.content;
+    if (item.role === ChatCompletionRequestMessageRoleEnum.Assistant)
+      return !!item.content || !!item.function_call || !!item.tool_calls;
+    return true;
+  });
+};
 export function filterGPTMessageByMaxTokens({
   messages = [],
   maxTokens
@@ -38,7 +47,7 @@ export function filterGPTMessageByMaxTokens({
 
   // If the text length is less than half of the maximum token, no calculation is required
   if (rawTextLen < maxTokens * 0.5) {
-    return messages;
+    return filterEmptyMessages(messages);
   }
 
   // filter startWith system prompt
@@ -81,7 +90,7 @@ export function filterGPTMessageByMaxTokens({
     }
   }
 
-  return [...systemPrompts, ...chats];
+  return filterEmptyMessages([...systemPrompts, ...chats]);
 }
 export const formatGPTMessagesInRequestBefore = (messages: ChatCompletionMessageParam[]) => {
   return messages

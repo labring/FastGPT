@@ -6,14 +6,14 @@ import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d'
 import { addLog } from '@fastgpt/service/common/system/log';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import { Prompt_AgentQA } from '@/global/core/prompt/agent';
+import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import type { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api.d';
-import { pushDataToTrainingQueue } from '@/service/core/dataset/data/controller';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -128,7 +128,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     });
 
     // get vector and insert
-    const { insertLen } = await pushDataToTrainingQueue({
+    const { insertLen } = await pushDataListToTrainingQueue({
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,

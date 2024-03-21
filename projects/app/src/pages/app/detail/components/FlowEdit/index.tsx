@@ -3,22 +3,25 @@ import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import type { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
+import type { FlowNodeTemplateType } from '@fastgpt/global/core/module/type.d';
 import { appSystemModuleTemplates } from '@fastgpt/global/core/module/template/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { usePluginStore } from '@/web/core/plugin/store/plugin';
-import { useQuery } from '@tanstack/react-query';
+import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 
 type Props = { app: AppSchema; onClose: () => void };
 
 const Render = ({ app, onClose }: Props) => {
   const { nodes, initData } = useFlowProviderStore();
-  const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
+  const { setBasicNodeTemplates } = useWorkflowStore();
 
-  const moduleTemplates = useMemo(() => {
-    const concatTemplates = [...appSystemModuleTemplates, ...pluginModuleTemplates];
+  useEffect(() => {
+    initData(JSON.parse(JSON.stringify(app.modules)));
+  }, [app.modules]);
 
-    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
+  useEffect(() => {
+    const concatTemplates = [...appSystemModuleTemplates];
+
+    const copyTemplates: FlowNodeTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
 
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1
@@ -35,18 +38,12 @@ const Render = ({ app, onClose }: Props) => {
       }
     });
 
-    return copyTemplates;
-  }, [nodes, pluginModuleTemplates]);
-
-  useQuery(['getPlugTemplates'], () => loadPluginTemplates());
-
-  useEffect(() => {
-    initData(JSON.parse(JSON.stringify(app.modules)));
-  }, [app.modules]);
+    setBasicNodeTemplates(copyTemplates);
+  }, [nodes, setBasicNodeTemplates]);
 
   const memoRender = useMemo(() => {
-    return <Flow templates={moduleTemplates} Header={<Header app={app} onClose={onClose} />} />;
-  }, [app, moduleTemplates.length, onClose]);
+    return <Flow Header={<Header app={app} onClose={onClose} />} />;
+  }, [app, onClose]);
 
   return memoRender;
 };

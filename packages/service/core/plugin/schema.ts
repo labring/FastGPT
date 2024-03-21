@@ -1,3 +1,4 @@
+import { pluginTypeMap } from '@fastgpt/global/core/plugin/constants';
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { PluginItemSchema } from '@fastgpt/global/core/plugin/type.d';
@@ -9,9 +10,10 @@ import {
 export const PluginCollectionName = 'plugins';
 
 const PluginSchema = new Schema({
-  userId: {
+  parentId: {
     type: Schema.Types.ObjectId,
-    ref: 'user'
+    ref: PluginCollectionName,
+    default: null
   },
   teamId: {
     type: Schema.Types.ObjectId,
@@ -21,6 +23,11 @@ const PluginSchema = new Schema({
   tmbId: {
     type: Schema.Types.ObjectId,
     ref: TeamMemberCollectionName,
+    required: true
+  },
+  type: {
+    type: String,
+    enum: Object.keys(pluginTypeMap),
     required: true
   },
   name: {
@@ -42,11 +49,19 @@ const PluginSchema = new Schema({
   modules: {
     type: Array,
     default: []
+  },
+  metadata: {
+    type: {
+      pluginUid: String,
+      apiSchemaStr: String,
+      customHeaders: String
+    }
   }
 });
 
 try {
-  PluginSchema.index({ tmbId: 1 });
+  PluginSchema.index({ teamId: 1, parentId: 1 });
+  PluginSchema.index({ teamId: 1, name: 1, intro: 1 });
 } catch (error) {
   console.log(error);
 }

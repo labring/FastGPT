@@ -3,12 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_History,
@@ -17,9 +17,9 @@ import {
 } from '../input';
 import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
 
-export const RunAppModule: FlowModuleTemplateType = {
+export const RunAppModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.runApp,
-  templateType: ModuleTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.runApp,
   avatar: '/imgs/module/app.png',
   name: '应用调用',

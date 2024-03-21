@@ -102,6 +102,13 @@ export type EditNodeFieldType = {
 };
 
 /* ------------- item type --------------- */
+export type SettingAIDataType = {
+  model: string;
+  temperature: number;
+  maxToken: number;
+  isResponseAnswerText?: boolean;
+  maxHistories?: number;
+};
 /* ai chat modules props */
 export type AIChatModuleProps = {
   [ModuleInputKeyEnum.aiModel]: string;

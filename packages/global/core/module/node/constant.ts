@@ -21,10 +21,12 @@ export enum FlowNodeInputTypeEnum {
 
   // ai model select
   selectLLMModel = 'selectLLMModel',
+  settingLLMModel = 'settingLLMModel',
 
   // dataset special input
   selectDataset = 'selectDataset',
   selectDatasetParamsModal = 'selectDatasetParamsModal',
+  settingDatasetQuotePrompt = 'settingDatasetQuotePrompt',
 
   hidden = 'hidden',
   custom = 'custom'
@@ -57,7 +59,8 @@ export enum FlowNodeTypeEnum {
   pluginInput = 'pluginInput',
   pluginOutput = 'pluginOutput',
   queryExtension = 'cfr',
-  tools = 'tools'
+  tools = 'tools',
+  stopTool = 'stopTool'
 
   // abandon
 }

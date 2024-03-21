@@ -10,8 +10,8 @@ type Props = BoxProps & {
 const MyBox = ({ text, isLoading, children, ...props }: Props) => {
   return (
     <Box position={'relative'} {...props}>
-      {children}
       {isLoading && <Loading fixed={false} text={text} />}
+      {children}
     </Box>
   );
 };

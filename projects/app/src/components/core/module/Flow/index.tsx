@@ -1,5 +1,11 @@
 import React, { useCallback, useMemo } from 'react';
-import ReactFlow, { Background, Connection, Controls, ReactFlowProvider } from 'reactflow';
+import ReactFlow, {
+  Background,
+  Connection,
+  Controls,
+  NodeProps,
+  ReactFlowProvider
+} from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
@@ -7,12 +13,13 @@ import { EDGE_TYPE, FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/co
 import dynamic from 'next/dynamic';
 
 import ButtonEdge from './components/modules/ButtonEdge';
-import ModuleTemplateList, { type ModuleTemplateProps } from './ModuleTemplateList';
+import ModuleTemplateList from './ModuleTemplateList';
 import { useFlowProviderStore } from './FlowProvider';
 
 import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
+import { FlowModuleItemType } from '@fastgpt/global/core/module/type';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
@@ -34,7 +41,10 @@ const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
   [FlowNodeTypeEnum.pluginOutput]: dynamic(() => import('./components/nodes/NodePluginOutput')),
   [FlowNodeTypeEnum.pluginModule]: NodeSimple,
   [FlowNodeTypeEnum.queryExtension]: NodeSimple,
-  [FlowNodeTypeEnum.tools]: dynamic(() => import('./components/nodes/NodeTools'))
+  [FlowNodeTypeEnum.tools]: dynamic(() => import('./components/nodes/NodeTools')),
+  [FlowNodeTypeEnum.stopTool]: (data: NodeProps<FlowModuleItemType>) => (
+    <NodeSimple {...data} minW={'100px'} maxW={'300px'} />
+  )
 };
 const edgeTypes = {
   [EDGE_TYPE]: ButtonEdge
@@ -99,11 +109,7 @@ const Container = React.memo(function Container() {
   );
 });
 
-const Flow = ({
-  Header,
-  templates,
-  ...data
-}: ModuleTemplateProps & { Header: React.ReactNode }) => {
+const Flow = ({ Header, ...data }: { Header: React.ReactNode }) => {
   const {
     isOpen: isOpenTemplate,
     onOpen: onOpenTemplate,
@@ -143,14 +149,10 @@ const Flow = ({
 
         <Container {...data} />
 
-        <ModuleTemplateList
-          templates={templates}
-          isOpen={isOpenTemplate}
-          onClose={onCloseTemplate}
-        />
+        <ModuleTemplateList isOpen={isOpenTemplate} onClose={onCloseTemplate} />
       </Box>
     );
-  }, [data, isOpenTemplate, onCloseTemplate, onOpenTemplate, templates]);
+  }, [data, isOpenTemplate, onCloseTemplate, onOpenTemplate]);
 
   return (
     <Box h={'100%'} position={'fixed'} zIndex={999} top={0} left={0} right={0} bottom={0}>

@@ -10,10 +10,10 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DYNAMIC_INPUT_KEY, ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
-import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
+import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
@@ -265,10 +265,6 @@ const FieldEditModal = ({
               placeholder="appointment/sql"
               {...register('key', {
                 required: true,
-                pattern: {
-                  value: /^[a-zA-Z]+[0-9]*$/,
-                  message: '字段key必须是纯英文字母或数字，并且不能以数字开头。'
-                },
                 onChange: (e) => {
                   const value = e.target.value;
                   // auto fill label

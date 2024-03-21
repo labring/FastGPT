@@ -9,6 +9,7 @@ import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
 import { Input_Template_Switch } from './template/input';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
+import { Output_Template_Finish } from './template/output';
 
 /* module  */
 export const getGuideModule = (modules: ModuleItemType[]) =>
@@ -92,13 +93,16 @@ export const plugin2ModuleIO = (
             connected: false
           }))
         ]
-      : [],
+      : [Input_Template_Switch],
     outputs: pluginOutput
-      ? pluginOutput.outputs.map((item) => ({
-          ...item,
-          edit: false
-        }))
-      : []
+      ? [
+          ...pluginOutput.outputs.map((item) => ({
+            ...item,
+            edit: false
+          })),
+          Output_Template_Finish
+        ]
+      : [Output_Template_Finish]
   };
 };
 

@@ -8,7 +8,9 @@ import { ClassifyQuestionModule } from './system/classifyQuestion';
 import { ContextExtractModule } from './system/contextExtract';
 import { HttpModule468 } from './system/http468';
 import { HttpModule } from './system/abandon/http';
+
 import { ToolModule } from './system/tools';
+import { StopToolNode } from './system/stopTool';
 
 import { RunAppModule } from './system/runApp';
 import { PluginInputModule } from './system/pluginInput';
@@ -16,11 +18,11 @@ import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';
 import { AiQueryExtension } from './system/queryExtension';
 
-import type { FlowModuleTemplateType, moduleTemplateListType } from '../../module/type.d';
-import { ModuleTemplateTypeEnum } from '../../module/constants';
+import type { FlowNodeTemplateType, moduleTemplateListType } from '../../module/type.d';
+import { FlowNodeTemplateTypeEnum } from '../../module/constants';
 
 /* app flow module templates */
-export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
+export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   UserGuideModule,
   UserInputModule,
   AiChatModule,
@@ -29,13 +31,14 @@ export const appSystemModuleTemplates: FlowModuleTemplateType[] = [
   DatasetConcatModule,
   RunAppModule,
   ToolModule,
+  StopToolNode,
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule468,
   AiQueryExtension
 ];
 /* plugin flow module templates */
-export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
+export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
   AiChatModule,
@@ -44,6 +47,7 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
   DatasetConcatModule,
   RunAppModule,
   ToolModule,
+  StopToolNode,
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule468,
@@ -51,7 +55,7 @@ export const pluginSystemModuleTemplates: FlowModuleTemplateType[] = [
 ];
 
 /* all module */
-export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
+export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   UserGuideModule,
   UserInputModule,
   AiChatModule,
@@ -63,6 +67,7 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
   HttpModule468,
   HttpModule,
   ToolModule,
+  StopToolNode,
   AiChatModule,
   RunAppModule,
   PluginInputModule,
@@ -73,43 +78,43 @@ export const moduleTemplatesFlat: FlowModuleTemplateType[] = [
 
 export const moduleTemplatesList: moduleTemplateListType = [
   {
-    type: ModuleTemplateTypeEnum.userGuide,
-    label: 'core.module.template.Guide module',
+    type: FlowNodeTemplateTypeEnum.userGuide,
+    label: '',
     list: []
   },
   {
-    type: ModuleTemplateTypeEnum.systemInput,
-    label: 'core.module.template.System input module',
-    list: []
-  },
-  {
-    type: ModuleTemplateTypeEnum.textAnswer,
+    type: FlowNodeTemplateTypeEnum.textAnswer,
     label: 'core.module.template.Response module',
     list: []
   },
   {
-    type: ModuleTemplateTypeEnum.functionCall,
+    type: FlowNodeTemplateTypeEnum.functionCall,
     label: 'core.module.template.Function module',
     list: []
   },
   {
-    type: ModuleTemplateTypeEnum.tools,
+    type: FlowNodeTemplateTypeEnum.tools,
     label: 'core.module.template.Tool module',
     list: []
   },
   {
-    type: ModuleTemplateTypeEnum.externalCall,
+    type: FlowNodeTemplateTypeEnum.externalCall,
     label: 'core.module.template.External module',
     list: []
   },
   {
-    type: ModuleTemplateTypeEnum.personalPlugin,
-    label: 'core.module.template.My plugin module',
+    type: FlowNodeTemplateTypeEnum.personalPlugin,
+    label: '',
     list: []
   },
   {
-    type: ModuleTemplateTypeEnum.other,
+    type: FlowNodeTemplateTypeEnum.other,
     label: '其他',
+    list: []
+  },
+  {
+    type: FlowNodeTemplateTypeEnum.systemInput,
+    label: 'core.module.template.System input module',
     list: []
   }
 ];

@@ -21,18 +21,17 @@ export function connectToDatabase(): Promise<void> {
       initGlobal();
     },
     afterHook: async () => {
+      // init system config
+      getInitConfig();
+      // init vector database, init root user
+      await Promise.all([initVectorStore(), initRootUser()]);
+
       startMongoWatch();
       // cron
       startCron();
-      // init system config
-      getInitConfig();
 
-      // init vector database
-      await initVectorStore();
       // start queue
       startTrainingQueue(true);
-
-      initRootUser();
     }
   });
 }

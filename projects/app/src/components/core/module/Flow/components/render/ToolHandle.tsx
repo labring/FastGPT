@@ -1,5 +1,5 @@
 import MyTooltip from '@/components/MyTooltip';
-import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
+import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import { Box, BoxProps } from '@chakra-ui/react';
 import {
   ModuleIOValueTypeEnum,

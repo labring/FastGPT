@@ -62,6 +62,7 @@
     "Back": "Back",
     "Beta": "Beta",
     "Business edition features": "This is the commercial version function ~",
+    "Cancel": "Cancel",
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
@@ -113,6 +114,7 @@
     "Not open": "Close",
     "Number of words": "{{amount}} words",
     "OK": "OK",
+    "Open": "Open",
     "Opened": "Opened",
     "Other": "Other",
     "Output": "Output",
@@ -122,6 +124,7 @@
     "Price used": "Usage",
     "Read document": "Read document",
     "Read intro": "Read intro",
+    "Remove": "Remove",
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
@@ -159,6 +162,7 @@
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
     "Waiting": "Waiting",
+    "Warning": "",
     "Website": "Website",
     "avatar": {
       "Select Avatar": "Select Avatar",
@@ -244,8 +248,12 @@
     "Total chars": "Total chars: {{total}}",
     "Total tokens": "Tokens: {{total}}",
     "ai": {
+      "AI settings": "AI settings",
+      "Ai point price": "AI points",
+      "Max context": "Max context",
       "Model": "Model",
       "Prompt": "Prompt",
+      "Support tool": "Function call",
       "model": {
         "Dataset Agent Model": "Agent Model",
         "Vector Model": "Vector Model"
@@ -260,6 +268,7 @@
       "Chat Variable": "",
       "External using": "External use",
       "Make a brief introduction of your app": "Make a brief introduction of your app",
+      "Max histories": "Dialog round",
       "Max tokens": "Max tokens",
       "Name and avatar": "Avatar & Name",
       "Next Step Guide": "Next step guide",
@@ -282,6 +291,15 @@
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
       "Team tags": "Team tags",
       "Temperature": "Temperature",
+      "Tool call": "Tool call",
+      "Tool call tip": "The AI model automatically selects one or more tools to use. If this feature is enabled, the knowledge base call is also called as a tool. Please try to choose the AI model that supports \"function call\", the effect is better.",
+      "ToolCall": {
+        "No plugin": "No plugins",
+        "Setting tool": "Setting tool",
+        "System": "System",
+        "Team": "Team",
+        "This plugin cannot be called as a tool": "This tool cannot be used in easy mode"
+      },
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
       "deterministic": "Deterministic",
@@ -692,6 +710,7 @@
         "Search type": "Type",
         "Source id": "Source ID",
         "Source name": "Source",
+        "Tool description": "Description",
         "Top K": "Top K",
         "Using cfr": "Open query extension",
         "Using query extension": "Open query extension",
@@ -770,6 +789,7 @@
     "module": {
       "Add question type": "Add type",
       "Can not connect self": "Cannot connect itself",
+      "Confirm Delete Node": "",
       "Data Type": "Data Type",
       "Dataset quote": {
         "Add quote": "Add quote",
@@ -792,6 +812,9 @@
         "placeholder": "Questions about python introduction and usage, etc. The current conversation is related to the game GTA5.",
         "tip": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.If \n is empty, the question completion function is not used in the first conversation. "
       },
+      "Quote prompt setting": "Quote prompt setting",
+      "Qupte prompt setting": "",
+      "Setting quote prompt": "Setting quote prompt",
       "Unlink tip": "[{{name}}] An unfilled or unconnected parameter exists",
       "Variable": "Variables",
       "Variable Setting": "Variable Setting",
@@ -900,10 +923,13 @@
         }
       },
       "template": {
+        "AI response switch tip": "If you want the current node not to output content, you can turn this switch off. AI output content will not be shown to the user, you can manually use the \"AI reply content\" for special processing.",
+        "AI support tool tip": "A model that supports function calls allows better use of tool calls.",
         "Ai chat": "LLM Chat",
         "Ai chat intro": "Request LLM chat",
         "Assigned reply": "Assigned reply",
         "Assigned reply intro": "The module can respond directly to a specified piece of content. Often used to guide and prompt. When non-string content is passed in, it is converted to a string for output.",
+        "Basic Node": "Basic Node",
         "Chat entrance": "Chat entrance",
         "Chat entrance intro": "When the user sends a content, the flow will start from this module.",
         "Classify question": "Classify question",
@@ -924,15 +950,20 @@
         "Response module": "Text output",
         "Running app": "Running app",
         "Running app intro": "You can select a different app to run",
+        "System Plugin": "System Plugin",
         "System input module": "System input",
         "TFSwitch": "TF Switch",
         "TFSwitch intro": "Output True False based on what is passed in. By default, false is printed when the content passed in is false, undefined, null, 0, none. You can also add some custom strings to supplement the output of false.",
+        "Team Plugin": "Team Plugin",
         "Tool module": "Tools",
         "UnKnow Module": "UnKnow Module",
         "User guide": "User guide",
         "http body placeholder": "Same syntax as APIFox",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"
+      },
+      "templates": {
+        "Load plugin error": "Load plugin error"
       },
       "textEditor": {
         "Text Edit": "Text Edit"
@@ -971,7 +1002,10 @@
       "variable add option": "Add Option"
     },
     "plugin": {
-      "Get Plugin Module Detail Failed": "Load plugin failed"
+      "Custom headers": "Custom Headers",
+      "Delete http plugin": "Are you sure to delete this group of HTTP plug-ins? All plug-ins in the directory are deleted.",
+      "Get Plugin Module Detail Failed": "Load plugin failed",
+      "Intro placeholder": "If the plug-in is called as a tool, the introduction is used as the prompt word."
     },
     "shareChat": {
       "Init Error": "Init Chat Error",
@@ -1178,18 +1212,38 @@
     "Set Public": "Set to public"
   },
   "plugin": {
+    "Auth Header Prefix": "Auth header prefix",
+    "Auth Method": "Auth method",
+    "Auth Type": "Auth Type",
     "Confirm Delete": "Confirm to delete the plugin?",
     "Create Your Plugin": "Create Plugin",
+    "Custom Plugin": "Custom plugin",
+    "Description": "Description",
+    "Edit Http Plugin": "Edit HTTP plugin",
     "Get Plugin Module Detail Failed": "Get plugin detail failed",
+    "HTTP Plugin": "HTTP plugin",
+    "Import Plugin": "Import HTTP plugin",
+    "Import from URL": "Import from URL",
     "Intro": "Plugin Intro",
+    "Invalid Schema": "Invalid Schema",
+    "Invalid URL": "Invalid URL",
+    "Key": "Key",
     "Load Plugin Failed": "Load Plugin Failed",
+    "Method": "Method",
     "My Plugins": "My Plugins",
     "No Intro": "This plugin is not introduced",
+    "None": "None",
+    "Path": "Path",
+    "Plugin List": "Plugin list",
     "Plugin Module": "Plugin",
+    "Privacy Agreement": "privacy agreement",
+    "Search plugin": "Search plugins",
     "Set Name": "Plugin Name",
     "Synchronous version": "Sync Version",
     "To Edit Plugin": "To Edit",
-    "Update Your Plugin": "Update Plugin"
+    "Update Your Plugin": "Update Plugin",
+    "Value": "Value",
+    "path": ""
   },
   "support": {
     "account": {
@@ -1229,6 +1283,7 @@
       }
     },
     "user": {
+      "AI point standard": "AI points price",
       "Avatar": "Avatar",
       "Need to login": "Please log in first",
       "Price": "Price",
@@ -1267,15 +1322,20 @@
       }
     },
     "wallet": {
+      "Ai point every thoundsand tokens": "",
+      "Ai point every thounsand tokens": "{{points}}Points/1K Tokens",
+      "Ai point every thousand tokens": "{{points}}Points/1K Tokens",
       "Amount": "Amount",
       "Balance not enough tip": "The balance is insufficient, please go to the account page first",
       "Bills": "Bill",
       "Buy": "Buy",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",
+      "Not sufficient": "Your AI points are insufficient, please upgrade the package or purchase additional AI points before continuing to use.",
       "Pay error": "Pay error",
       "Pay success": "Pay success",
       "Standard Plan Detail": "Standard Plan Detail",
+      "To read plan": "Read plan",
       "bill": {
         "AI Model": "AI Model",
         "AI Type": "AI Type",
@@ -1302,6 +1362,10 @@
       "noBill": "Not Bills",
       "subscription": {
         "AI points": "AI points",
+        "AI points click to read tip": "Each time an AI model is invoked, a certain amount of AI credits (similar to Tokens) are consumed. Click to view the detailed calculation rules.",
+        "AI points tip": "",
+        "AI points usage": "AI point usage",
+        "AI points usage tip": "Each time the AI model is invoked, a certain amount of AI credits are consumed. Please refer to the \"Charging Standard\" above for specific calculation standards.",
         "Ai points": "AI Points Standard",
         "Buy now": "Buy now",
         "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",
@@ -1395,7 +1459,7 @@
     "Help Document": "Document"
   },
   "template": {
-    "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search).\nYou can customize the structure of the reference content to better suit different scenarios. Some variables can be used for template configuration:\n{{q}} - retrieve content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the first n references, {{with}} - the reference points (0-1), they are optional, Here are the default values:\n{{default}}",
+    "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search).\nYou can customize the structure of the reference content to better suit different scenarios. Some variables can be used for template configuration:\n{{q}} - retrieve content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the first n references, they are optional, Here are the default values:\n{{default}}",
     "Quote Prompt Tip": "This configuration takes effect only when the knowledge base is searched.\nYou can use {{quote}} to insert the reference content template and {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
   "user": {

@@ -15,7 +15,7 @@ export enum TeamErrEnum {
 const teamErr = [
   { statusText: TeamErrEnum.teamOverSize, message: 'error.team.overSize' },
   { statusText: TeamErrEnum.unAuthTeam, message: '无权操作该团队' },
-  { statusText: TeamErrEnum.aiPointsNotEnough, message: 'AI积分已用完~' },
+  { statusText: TeamErrEnum.aiPointsNotEnough, message: '' },
   { statusText: TeamErrEnum.datasetSizeNotEnough, message: '知识库容量不足，请先扩容~' },
   { statusText: TeamErrEnum.datasetAmountNotEnough, message: '知识库数量已达上限~' },
   { statusText: TeamErrEnum.appAmountNotEnough, message: '应用数量已达上限~' },

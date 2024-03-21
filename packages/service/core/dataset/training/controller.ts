@@ -31,16 +31,14 @@ export async function pushDataListToTrainingQueue({
   data,
   prompt,
   billId,
-  trainingMode = TrainingModeEnum.chunk,
-
-  vectorModelList = [],
-  datasetModelList = []
+  trainingMode = TrainingModeEnum.chunk
 }: {
   teamId: string;
   tmbId: string;
-  vectorModelList: VectorModelItemType[];
-  datasetModelList: LLMModelItemType[];
 } & PushDatasetDataProps): Promise<PushDatasetDataResponse> {
+  const vectorModelList = global.vectorModels;
+  const datasetModelList = global.llmModels;
+
   const {
     datasetId: { _id: datasetId, vectorModel, agentModel }
   } = await getCollectionWithDataset(collectionId);
@@ -48,11 +46,11 @@ export async function pushDataListToTrainingQueue({
   const checkModelValid = async () => {
     const agentModelData = datasetModelList?.find((item) => item.model === agentModel);
     if (!agentModelData) {
-      return Promise.reject(`Vector model ${agentModel} is inValid`);
+      return Promise.reject(`File model ${agentModel} is inValid`);
     }
     const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
     if (!vectorModelData) {
-      return Promise.reject(`File model ${vectorModel} is inValid`);
+      return Promise.reject(`Vector model ${vectorModel} is inValid`);
     }
 
     if (trainingMode === TrainingModeEnum.chunk) {

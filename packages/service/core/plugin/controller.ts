@@ -1,10 +1,11 @@
 import { MongoPlugin } from './schema';
-import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { plugin2ModuleIO } from '@fastgpt/global/core/module/utils';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 import type { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core/plugin/type.d';
-import { ModuleTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
+import type { PluginItemSchema } from '@fastgpt/global/core/plugin/type.d';
 
 /* 
   plugin id rule:
@@ -48,7 +49,7 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
       showStatus: true,
       source: PluginSourceEnum.personal,
       modules: item.modules,
-      templateType: ModuleTemplateTypeEnum.personalPlugin
+      templateType: FlowNodeTemplateTypeEnum.personalPlugin
     };
   }
   return Promise.reject('plugin not found');
@@ -59,7 +60,7 @@ export async function getPluginPreviewModule({
   id
 }: {
   id: string;
-}): Promise<FlowModuleTemplateType> {
+}): Promise<FlowNodeTemplateType> {
   const plugin = await getPluginTemplateById(id);
 
   return {
@@ -70,6 +71,7 @@ export async function getPluginPreviewModule({
     name: plugin.name,
     intro: plugin.intro,
     showStatus: plugin.showStatus,
+    isTool: plugin.isTool,
     ...plugin2ModuleIO(plugin.id, plugin.modules)
   };
 }

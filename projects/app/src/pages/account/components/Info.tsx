@@ -16,6 +16,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { UserType } from '@fastgpt/global/support/user/type.d';
 import { useQuery } from '@tanstack/react-query';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import dynamic from 'next/dynamic';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -29,16 +30,24 @@ import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tool
 import { putUpdateMemberName } from '@/web/support/user/team/api';
 import { getDocPath } from '@/web/common/system/doc';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
+import {
+  StandardSubLevelEnum,
+  standardSubLevelMap
+} from '@fastgpt/global/support/wallet/sub/constants';
 import { formatTime2YMD } from '@fastgpt/global/common/string/time';
-import { AI_POINT_USAGE_CARD_ROUTE } from '@/web/support/wallet/sub/constants';
+import {
+  AI_POINT_USAGE_CARD_ROUTE,
+  EXTRA_PLAN_CARD_ROUTE
+} from '@/web/support/wallet/sub/constants';
 
 import StandardPlanContentList from '@/components/support/wallet/StandardPlanContentList';
+
 const StandDetailModal = dynamic(() => import('./standardDetailModal'));
 const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu'));
 const PayModal = dynamic(() => import('./PayModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
+const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const Account = () => {
   const { isPc } = useSystemStore();
@@ -113,11 +122,11 @@ const MyInfo = () => {
       });
       reset(data);
       toast({
-        title: '更新数据成功',
+        title: t('dataset.data.Update Success Tip'),
         status: 'success'
       });
     },
-    [reset, toast, updateUserInfo]
+    [reset, t, toast, updateUserInfo]
   );
 
   const onSelectFile = useCallback(
@@ -184,7 +193,7 @@ const MyInfo = () => {
             cursor={'pointer'}
             onClick={onOpenSelectFile}
           >
-            <MyTooltip label={'更换头像'}>
+            <MyTooltip label={t('common.avatar.Select Avatar')}>
               <Box
                 w={['44px', '54px']}
                 h={['44px', '54px']}
@@ -269,7 +278,6 @@ const MyInfo = () => {
   );
 };
 const PlanUsage = () => {
-  const { isPc } = useSystemStore();
   const router = useRouter();
   const { t } = useTranslation();
   const { userInfo, initUserInfo, teamPlanStatus } = useUserStore();
@@ -288,6 +296,21 @@ const PlanUsage = () => {
     return standardSubLevelMap[teamPlanStatus.standard.currentSubLevel].label;
   }, [teamPlanStatus?.standard?.currentSubLevel]);
   const standardPlan = teamPlanStatus?.standard;
+  const isFreeTeam = useMemo(() => {
+    if (!teamPlanStatus || !teamPlanStatus?.standardConstants) return false;
+    const hasExtraDatasetSize =
+      teamPlanStatus.datasetMaxSize > teamPlanStatus.standardConstants.maxDatasetSize;
+    const hasExtraPoints =
+      teamPlanStatus.totalPoints > teamPlanStatus.standardConstants.totalPoints;
+    if (
+      teamPlanStatus?.standard?.currentSubLevel === StandardSubLevelEnum.free &&
+      !hasExtraDatasetSize &&
+      !hasExtraPoints
+    ) {
+      return true;
+    }
+    return false;
+  }, [teamPlanStatus]);
 
   useQuery(['init'], initUserInfo, {
     onSuccess(res) {
@@ -374,6 +397,11 @@ const PlanUsage = () => {
             <Box fontWeight={'bold'} fontSize="xl">
               {t(planName)}
             </Box>
+            {isFreeTeam && (
+              <Box mt="3" color={'#485264'} fontSize="sm">
+                免费版用户15天无任何使用记录时，系统会自动清理账号知识库。
+              </Box>
+            )}
             <Flex mt="3" color={'#485264'} fontSize="sm">
               <Box>{t('common.Expired Time')}:</Box>
               <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
@@ -399,9 +427,29 @@ const PlanUsage = () => {
         borderColor={'borderColor.low'}
         borderRadius={'md'}
         px={[5, 10]}
-        py={[4, 7]}
+        pt={[2, 4]}
+        pb={[4, 7]}
       >
-        <Box width={'100%'}>
+        <Flex>
+          <Flex flex={'1 0 0'} alignItems={'flex-end'}>
+            <Box fontSize={'xl'}>资源用量</Box>
+            <Box fontSize={'sm'} color={'myGray.500'}>
+              (包含标准套餐与额外资源包)
+            </Box>
+          </Flex>
+          <Link
+            href={EXTRA_PLAN_CARD_ROUTE}
+            transform={'translateX(15px)'}
+            display={'flex'}
+            alignItems={'center'}
+            color={'primary.600'}
+            cursor={'pointer'}
+          >
+            购买额外套餐
+            <MyIcon ml={1} name={'common/rightArrowLight'} w={'12px'} />
+          </Link>
+        </Flex>
+        <Box width={'100%'} mt={5}>
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'}>
               <Box fontWeight={'bold'}>{t('support.user.team.Dataset usage')}</Box>
@@ -426,7 +474,10 @@ const PlanUsage = () => {
         <Box mt="9" width={'100%'}>
           <Flex alignItems={'center'}>
             <Flex alignItems={'center'}>
-              <Box fontWeight={'bold'}>{t('support.wallet.subscription.AI points')}</Box>
+              <Box fontWeight={'bold'}>{t('support.wallet.subscription.AI points usage')}</Box>
+              <MyTooltip label={t('support.wallet.subscription.AI points usage tip')}>
+                <QuestionOutlineIcon ml={'2px'} />
+              </MyTooltip>
               <Box color={'myGray.600'} ml={2}>
                 {aiPointsUsageMap.used}/{aiPointsUsageMap.max}
               </Box>
@@ -445,7 +496,6 @@ const PlanUsage = () => {
             />
           </Box>
         </Box>
-        <Flex></Flex>
       </Box>
       {isOpenStandardModal && <StandDetailModal onClose={onCloseStandardModal} />}
     </Box>
@@ -462,6 +512,7 @@ const Other = () => {
   });
 
   const { isOpen: isOpenOpenai, onClose: onCloseOpenai, onOpen: onOpenOpenai } = useDisclosure();
+  const { isOpen: isOpenConcat, onClose: onCloseConcat, onOpen: onOpenConcat } = useDisclosure();
 
   const onclickSave = useCallback(
     async (data: UserType) => {
@@ -552,6 +603,17 @@ const Other = () => {
             />
           </Flex>
         )}
+        {feConfigs?.concatMd && (
+          <Button
+            variant={'whiteBase'}
+            justifyContent={'flex-start'}
+            leftIcon={<MyIcon name={'modal/concat'} w={'18px'} color={'myGray.600'} />}
+            onClick={onOpenConcat}
+            h={'48px'}
+          >
+            联系我们
+          </Button>
+        )}
       </Grid>
 
       {isOpenOpenai && userInfo && (
@@ -566,6 +628,7 @@ const Other = () => {
           onClose={onCloseOpenai}
         />
       )}
+      {isOpenConcat && <CommunityModal onClose={onCloseConcat} />}
     </Box>
   );
 };

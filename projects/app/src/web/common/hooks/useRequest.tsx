@@ -24,11 +24,16 @@ export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...pr
     },
     onError(err: any, variables: void, context: unknown) {
       onError?.(err, variables, context);
-      errorToast &&
-        toast({
-          title: t(getErrText(err, errorToast)),
-          status: 'error'
-        });
+
+      if (errorToast !== undefined) {
+        const errText = t(getErrText(err, errorToast || ''));
+        if (errText) {
+          toast({
+            title: errText,
+            status: 'error'
+          });
+        }
+      }
     }
   });
 
