@@ -164,6 +164,15 @@ export const runToolWithPromptCall = async (
     parseAnswerResult.toolName = toolModule.name;
     parseAnswerResult.toolAvatar = toolModule.avatar;
 
+    // run tool flow
+    const startParams = (() => {
+      try {
+        return json5.parse(parseAnswerResult.arguments);
+      } catch (error) {
+        return {};
+      }
+    })();
+
     // SSE response to client
     if (stream && detail) {
       responseWrite({
@@ -181,15 +190,6 @@ export const runToolWithPromptCall = async (
         })
       });
     }
-
-    // run tool flow
-    const startParams = (() => {
-      try {
-        return json5.parse(parseAnswerResult.arguments);
-      } catch (error) {
-        return {};
-      }
-    })();
 
     const moduleRunResponse = await dispatchWorkFlow({
       ...props,
@@ -374,7 +374,7 @@ const parseAnswer = (str: string): FunctionCallCompletion | string => {
       return {
         id: getNanoid(),
         name: toolCall.toolId,
-        arguments: JSON.stringify(toolCall.arguments)
+        arguments: JSON.stringify(toolCall.arguments || toolCall.parameters)
       };
     } catch (error) {
       return str;

@@ -1336,6 +1336,7 @@
       "Not sufficient": "您的 AI 积分不足，请先升级套餐或购买额外 AI 积分后继续使用。",
       "Pay error": "支付失败",
       "Pay success": "支付成功",
+      "Plan expired time": "套餐到期时间",
       "Standard Plan Detail": "套餐详情",
       "To read plan": "查看套餐",
       "bill": {

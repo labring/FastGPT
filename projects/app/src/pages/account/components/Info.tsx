@@ -397,15 +397,15 @@ const PlanUsage = () => {
             <Box fontWeight={'bold'} fontSize="xl">
               {t(planName)}
             </Box>
+            <Flex mt="2" color={'#485264'} fontSize="sm">
+              <Box>{t('support.wallet.Plan expired time')}:</Box>
+              <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
+            </Flex>
             {isFreeTeam && (
-              <Box mt="3" color={'#485264'} fontSize="sm">
+              <Box mt="2" color={'#485264'} fontSize="sm">
                 免费版用户15天无任何使用记录时，系统会自动清理账号知识库。
               </Box>
             )}
-            <Flex mt="3" color={'#485264'} fontSize="sm">
-              <Box>{t('common.Expired Time')}:</Box>
-              <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
-            </Flex>
           </Box>
           <Button onClick={() => router.push('/price')}>
             {t('support.wallet.subscription.Upgrade plan')}
