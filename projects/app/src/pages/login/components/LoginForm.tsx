@@ -13,12 +13,11 @@ import {
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
-import { PageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/constants/user';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import { postLogin } from '@/web/support/user/api';
 import type { ResLogin } from '@/global/support/api/userRes';
-import { useToast } from '@/web/common/hooks/useToast';
-import { feConfigs } from '@/web/common/system/staticData';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
@@ -29,7 +28,7 @@ import { useTranslation } from 'next-i18next';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {
-  setPageType: Dispatch<`${PageTypeEnum}`>;
+  setPageType: Dispatch<`${LoginPageTypeEnum}`>;
   loginSuccess: (e: ResLogin) => void;
 }
 
@@ -44,7 +43,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const theme = useTheme();
   const { lastRoute = '/app/list' } = router.query as { lastRoute: string };
   const { toast } = useToast();
-  const { setLoginStore } = useSystemStore();
+  const { setLoginStore, feConfigs } = useSystemStore();
   const {
     register,
     handleSubmit,
@@ -115,7 +114,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           bg={'myGray.25'}
           borderRadius={'xl'}
           borderWidth={'1.5px'}
-          borderColor={theme.borderColor.borderColor}
+          borderColor={theme.borderColor}
           alignItems={'center'}
           justifyContent={'center'}
         >
