@@ -85,7 +85,7 @@ brew install orbstack
 
 非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载下面2个链接的文件: [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/files/deploy/fastgpt/docker-compose.yml),[config.json](https://github.com/labring/FastGPT/blob/main/projects/app/data/config.json)
 
-**注意: `docker-compose.yml` 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**
+**注意: `docker-compose.yml` 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**（需要自己在docker hub下载，阿里云镜像没做备份）
 
 ```bash
 mkdir fastgpt
@@ -94,14 +94,7 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/files/deploy/fast
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 ```
 
-## 三、修改 docker-compose.yml 的环境变量
-
-修改`docker-compose.yml`中的`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）和`CHAT_API_KEY`（API 接口的凭证）。
-
-使用 OneAPI 的话，OPENAI_BASE_URL=OneAPI访问地址/v1；CHAT_API_KEY=令牌
-
-
-## 四、启动容器
+## 三、启动容器
 
 在 docker-compose.yml 同级目录下执行
 
@@ -113,34 +106,11 @@ docker-compose pull
 docker-compose up -d
 ```
 
-## 五、初始化 Mongo 副本集(4.6.8以前可忽略)
+## 四、打开 OneAPI 添加模型
 
-FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。副本集没法自动化初始化，需手动操作。
+可以通过`ip:3001`访问OneAPI，默认账号为`root`密码为`123456`。
 
-```bash
-# 查看 mongo 容器是否正常运行
-docker ps 
-# 进入容器
-docker exec -it mongo bash
-
-# 连接数据库（这里要填Mongo的用户名和密码）
-mongo -u myusername -p mypassword --authenticationDatabase admin
-
-# 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin => MONGODB_URI=mongodb://myname:mypassword@ip:27017/fastgpt?authSource=admin）
-rs.initiate({
-  _id: "rs0",
-  members: [
-    { _id: 0, host: "mongo:27017" }
-  ]
-})
-# 检查状态。如果提示 rs0 状态，则代表运行成功
-rs.status()
-```
-
-**关于 host: "mongo:27017" 说明**
-
-1. mongo:27017 代表指向同一个 docker 网络的 mongo 容器的 27017 服务。因此，如果使用该参数，外网是无法访问到数据库的。
-2. ip:27017 （ip替换成公网IP）：代表通过你的公网IP进行访问。如果用该方法，同时需要修改 docker-compose 中 mongo 的连接参数，因为默认是用 `mongo:27017` 进行连接。
+在OneApi中添加合适的渠道。
 
 ## 五、访问 FastGPT
 
@@ -153,7 +123,7 @@ rs.status()
 
 ### Mongo 启动失败
 
-docker-compose 示例优化 Mongo 副本集参数，不需要手动创建再挂载。如果无法启动，可以尝试更换下面的脚本：
+最新的 docker-compose 示例优化 Mongo 副本集初始化，实现了全自动。目前在 unbuntu20,22 centos7, wsl2, mac, window 均通过测试。如果你的环境特殊，可以手动初始化副本集：
 
 1. 终端中执行：
 
@@ -191,4 +161,40 @@ docker-compose down
 docker-compose up -d
 ```
 
-4. 进入容器执行副本集合初始化（看上方）
+4. 进入容器执行副本集合初始化
+
+
+```bash
+# 查看 mongo 容器是否正常运行
+docker ps 
+# 进入容器
+docker exec -it mongo bash
+
+# 连接数据库（这里要填Mongo的用户名和密码）
+mongo -u myusername -p mypassword --authenticationDatabase admin
+
+# 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin => MONGODB_URI=mongodb://myname:mypassword@ip:27017/fastgpt?authSource=admin）
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongo:27017" }
+  ]
+})
+# 检查状态。如果提示 rs0 状态，则代表运行成功
+rs.status()
+```
+
+### 如何修改API地址和密钥
+
+默认是写了OneAPi的连接地址和密钥，可以通过修改`docker-compose.yml`中，fastgpt容器的环境变量实现。
+
+
+`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）
+`CHAT_API_KEY`（API 接口的凭证）。
+
+修改完后重启：
+
+```bash
+docker-compose down
+docker-compose up -d
+```
