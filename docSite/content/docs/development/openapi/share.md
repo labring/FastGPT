@@ -36,7 +36,7 @@ weight: 860
 
 ### 触发流程
 
-![](/imgs/sharelinkProcess.png)
+![](/imgs/sharelink_process.png)
 
 ## 配置教程
 ### 1. 配置身份校验地址

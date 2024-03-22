@@ -226,6 +226,7 @@
       "error tip": "Speech Failed"
     },
     "system": {
+      "Commercial version function": "Commercial version special function",
       "Help Chatbot": "Chatbot Helper",
       "Use Helper": "UsingHelp"
     },
@@ -271,8 +272,7 @@
       "Max histories": "Dialog round",
       "Max tokens": "Max tokens",
       "Name and avatar": "Avatar & Name",
-      "Next Step Guide": "Next step guide",
-      "Question Guide": "",
+      "Question Guide": "Question Guide",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
       "Quote prompt": "Quote prompt",
       "Quote templates": "Quote templates",
@@ -414,7 +414,7 @@
       "Mark Description Title": "Mark Description",
       "New Chat": "New Chat",
       "Pin": "Pin",
-      "Question Guide Tips": "I guess what you're asking is",
+      "Question Guide": "I guess what you're asking is",
       "Quote": "Quote",
       "Quote Amount": "Dataset Quote:{{amount}}",
       "Read Mark Description": "Read mark description",

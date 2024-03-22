@@ -226,6 +226,7 @@
       "error tip": "语音转文字失败"
     },
     "system": {
+      "Commercial version function": "商业版特有功能",
       "Help Chatbot": "机器人助手",
       "Use Helper": "使用帮助"
     },
@@ -271,8 +272,7 @@
       "Max histories": "聊天记录数量",
       "Max tokens": "回复上限",
       "Name and avatar": "头像 & 名称",
-      "Next Step Guide": "下一步指引",
-      "Question Guide": "问题引导",
+      "Question Guide": "猜你想问",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
       "Quote prompt": "引用模板提示词",
       "Quote templates": "引用内容模板",
@@ -414,7 +414,7 @@
       "Mark Description Title": "标注功能介绍",
       "New Chat": "新对话",
       "Pin": "置顶",
-      "Question Guide Tips": "猜你想问",
+      "Question Guide": "猜你想问",
       "Quote": "引用",
       "Quote Amount": "知识库引用({{amount}}条)",
       "Read Mark Description": "查看标注功能介绍",
@@ -582,8 +582,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
