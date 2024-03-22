@@ -7,8 +7,8 @@ data:
   TOKEN_KEY: "any"
   ROOT_KEY: "root_key"
   FILE_TOKEN_KEY: "filetoken"
-  MONGODB_URI: "mongodb://root:123456@{{ include "fastgpt.fullname" . }}-mongodb-headless:27017/fastgpt?authSource=admin"
-  PG_URL: "postgresql://postgres:postgres@{{ include "fastgpt.fullname" . }}-postgresql:5432/postgres"
+  MONGODB_URI: "mongodb://{{ .Values.mongodb.auth.rootUser }}:{{ .Values.mongodb.auth.rootPassword }}@{{ include "fastgpt.fullname" . }}-mongodb-headless:27017/fastgpt?authSource=admin"
+  PG_URL: "postgresql://postgres:{{ .Values.postgresql.auth.rootPassword }}@{{ include "fastgpt.fullname" . }}-postgresql:5432/{{ .Values.postgresql.global.postgresql.auth.database }}"
 kind: ConfigMap
 metadata:
   labels:

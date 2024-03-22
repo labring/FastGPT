@@ -123,7 +123,7 @@ postgresql:
   image:
 #    registry: 172.11.0.6:30002
     repository: linuxsuren/pgvector
-    tag: master
+    tag: v0.0.1
   global:
     postgresql:
       auth:
