@@ -25,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       reRankModels:
         global.reRankModels?.map((item) => ({
           ...item,
-          requestUrl: undefined,
-          requestAuth: undefined
+          requestUrl: '',
+          requestAuth: ''
         })) || [],
       whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
