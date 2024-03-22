@@ -45,8 +45,8 @@ export type ReRankModelItemType = {
   model: string;
   name: string;
   charsPointsPrice: number;
-  requestUrl?: string;
-  requestAuth?: string;
+  requestUrl: string;
+  requestAuth: string;
 };
 
 export type AudioSpeechModelType = {

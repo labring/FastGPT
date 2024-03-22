@@ -17,7 +17,8 @@ import {
   Th,
   Td,
   TableContainer,
-  Button
+  Button,
+  useDisclosure
 } from '@chakra-ui/react';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { onChangeNode, useFlowProviderStore } from '../../../FlowProvider';
@@ -104,6 +105,8 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { toast } = useToast();
   const [_, startSts] = useTransition();
 
+  const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
+
   const requestMethods = inputs.find((item) => item.key === ModuleInputKeyEnum.httpMethod);
   const requestUrl = inputs.find((item) => item.key === ModuleInputKeyEnum.httpReqUrl);
 
@@ -180,11 +183,9 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
     <Box>
       <Box mb={2} display={'flex'} justifyContent={'space-between'}>
         <Box>{t('core.module.Http request settings')}</Box>
-        <Box>
-          <CurlImportModal moduleId={moduleId} inputs={inputs}>
-            <Button variant={'link'}>{t('core.module.http.curl import')}</Button>
-          </CurlImportModal>
-        </Box>
+        <Button variant={'link'} onClick={onOpenCurl}>
+          {t('core.module.http.curl import')}
+        </Button>
       </Box>
       <Flex alignItems={'center'} className="nodrag">
         <MySelect
@@ -228,16 +229,18 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
           }}
         />
         <Input
+          flex={'1 0 0'}
           ml={2}
           h={'34px'}
           value={requestUrl?.value}
           placeholder={t('core.module.input.label.Http Request Url')}
           fontSize={'xs'}
-          minW={'350px'}
           onChange={onChangeUrl}
           onBlur={onBlurUrl}
         />
       </Flex>
+
+      {isOpenCurl && <CurlImportModal moduleId={moduleId} inputs={inputs} onClose={onCloseCurl} />}
     </Box>
   );
 });

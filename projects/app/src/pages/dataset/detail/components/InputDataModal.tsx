@@ -314,13 +314,12 @@ const InputDataModal = ({
                         borderColor={'transparent'}
                         px={0}
                         pt={0}
-                        mt={-1}
-                        color={'myGray.600'}
                         _focus={{
-                          borderColor: 'primary.400',
-                          px: 2,
-                          bg: 'white',
-                          color: 'myGray.900'
+                          px: 3,
+                          py: 2,
+                          borderColor: 'primary.500',
+                          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+                          bg: 'white'
                         }}
                         placeholder={t('dataset.data.Index Placeholder')}
                         {...register(`indexes.${i}.text`, {
@@ -405,6 +404,7 @@ const InputTab = ({
           <Textarea
             placeholder={t('core.dataset.data.Data Content Placeholder', { maxToken })}
             maxLength={maxToken}
+            tabIndex={1}
             bg={'myGray.50'}
             h={'full'}
             {...register(`q`, {
@@ -424,6 +424,7 @@ const InputTab = ({
               maxToken: maxToken * 1.5
             })}
             h={'100%'}
+            tabIndex={1}
             bg={'myGray.50'}
             maxLength={maxToken * 1.5}
             {...register('a')}

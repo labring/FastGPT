@@ -19,15 +19,14 @@ const methodMap: { [K in RequestMethod]: string } = {
 };
 
 const CurlImportModal = ({
-  children,
   moduleId,
-  inputs
+  inputs,
+  onClose
 }: {
-  children: React.ReactElement;
   moduleId: string;
   inputs: FlowNodeInputItemType[];
+  onClose: () => void;
 }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
   const { register, handleSubmit } = useForm({
     defaultValues: {
@@ -129,32 +128,27 @@ const CurlImportModal = ({
   };
 
   return (
-    <>
-      {children && <Box onClick={onOpen}>{children}</Box>}
-      <MyModal
-        isOpen={isOpen}
-        onClose={onClose}
-        iconSrc="modal/edit"
-        title={t('common.Import')}
-        m={'auto'}
-        w={500}
-      >
-        <ModalBody>
-          <Textarea
-            height={400}
-            maxH={500}
-            mt={2}
-            {...register('curlContent')}
-            placeholder={t('core.module.http.curl import placeholder')}
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button onClick={handleSubmit((data) => handleFileProcessing(data.curlContent))}>
-            {t('common.Confirm')}
-          </Button>
-        </ModalFooter>
-      </MyModal>
-    </>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="modal/edit"
+      title={t('core.module.http.curl import')}
+      w={600}
+    >
+      <ModalBody>
+        <Textarea
+          rows={20}
+          mt={2}
+          {...register('curlContent')}
+          placeholder={t('core.module.http.curl import placeholder')}
+        />
+      </ModalBody>
+      <ModalFooter>
+        <Button onClick={handleSubmit((data) => handleFileProcessing(data.curlContent))}>
+          {t('common.Confirm')}
+        </Button>
+      </ModalFooter>
+    </MyModal>
   );
 };
 

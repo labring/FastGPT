@@ -225,7 +225,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     try {
       const results = await reRankRecall({
         query,
-        inputs: data.map((item) => ({
+        documents: data.map((item) => ({
           id: item.id,
           text: `${item.q}\n${item.a}`
         }))

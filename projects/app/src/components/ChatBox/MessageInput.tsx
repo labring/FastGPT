@@ -402,7 +402,7 @@ const MessageInput = ({
                       name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
                       width={['20px', '22px']}
                       height={['20px', '22px']}
-                      color={'primary.500'}
+                      color={isSpeaking ? 'primary.500' : 'myGray.600'}
                     />
                   </MyTooltip>
                 </Flex>

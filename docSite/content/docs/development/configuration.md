@@ -147,7 +147,7 @@ llm模型全部合并
 
 ## 特殊模型
 
-### ReRank 接入
+### ReRank 接入(私有部署)
 
 请使用 4.6.6-alpha 以上版本，配置文件中的 `reRankModels` 为重排模型，虽然是数组，不过目前仅有第1个生效。
 
@@ -164,6 +164,26 @@ llm模型全部合并
             "charsPointsPrice": 0,
             "requestUrl": "{{host}}/api/v1/rerank",
             "requestAuth": "安全凭证，已自动补 Bearer"
+        }
+    ]
+}
+```
+
+### ReRank 接入（Cohere）
+
+这个重排模型对中文不是很好，不如 bge 的好用。
+
+1. 申请 Cohere 官方 Key: https://dashboard.cohere.com/api-keys
+2. 修改 FastGPT 配置文件
+
+```json
+{
+    "reRankModels": [
+        {
+            "model": "rerank-multilingual-v2.0", // 这里的model需要对应 cohere 的模型名
+            "name": "检索重排", // 随意
+            "requestUrl": "https://api.cohere.ai/v1/rerank",
+            "requestAuth": "Coherer上申请的key"
         }
     ]
 }
