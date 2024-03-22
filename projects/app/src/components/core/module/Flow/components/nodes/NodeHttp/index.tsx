@@ -39,7 +39,7 @@ import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import RenderToolInput from '../../render/RenderToolInput';
-const OpenApiImportModal = dynamic(() => import('./OpenApiImportModal'));
+const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
   { key: 'A-IM', label: 'A-IM' },
@@ -181,9 +181,9 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
       <Box mb={2} display={'flex'} justifyContent={'space-between'}>
         <Box>{t('core.module.Http request settings')}</Box>
         <Box>
-          <OpenApiImportModal moduleId={moduleId} inputs={inputs}>
-            <Button variant={'link'}>{t('core.module.http.OpenAPI import')}</Button>
-          </OpenApiImportModal>
+          <CurlImportModal moduleId={moduleId} inputs={inputs}>
+            <Button variant={'link'}>{t('core.module.http.curl import')}</Button>
+          </CurlImportModal>
         </Box>
       </Box>
       <Flex alignItems={'center'} className="nodrag">
