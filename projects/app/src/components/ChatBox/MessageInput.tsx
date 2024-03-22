@@ -410,7 +410,7 @@ const MessageInput = ({
             )}
             {/* send and stop icon */}
             {isSpeaking ? (
-              <Box color={'#5A646E'} w={'36px'} textAlign={'right'}>
+              <Box color={'#5A646E'} w={'36px'} textAlign={'right'} whiteSpace={'nowrap'}>
                 {speakingTimeString}
               </Box>
             ) : (
