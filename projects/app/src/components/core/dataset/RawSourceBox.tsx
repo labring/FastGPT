@@ -30,7 +30,8 @@ const RawSourceBox = ({ sourceId, sourceName = '', canView = true, ...props }: P
       shouldWrapChildren={false}
     >
       <Box
-        color={'myGray.600'}
+        color={'myGray.900'}
+        fontWeight={'medium'}
         display={'inline-flex'}
         whiteSpace={'nowrap'}
         {...(canPreview

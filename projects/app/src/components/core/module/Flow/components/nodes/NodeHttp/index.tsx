@@ -233,7 +233,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
           value={requestUrl?.value}
           placeholder={t('core.module.input.label.Http Request Url')}
           fontSize={'xs'}
-          w={'350px'}
+          minW={'350px'}
           onChange={onChangeUrl}
           onBlur={onBlurUrl}
         />

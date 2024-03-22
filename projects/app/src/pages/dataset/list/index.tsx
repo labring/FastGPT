@@ -1,15 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import {
-  Box,
-  Flex,
-  Grid,
-  useTheme,
-  useDisclosure,
-  Card,
-  MenuButton,
-  Image,
-  Button
-} from '@chakra-ui/react';
+import { Box, Flex, Grid, useDisclosure, Image, Button } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import PageContainer from '@/components/PageContainer';
