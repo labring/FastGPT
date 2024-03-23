@@ -1,5 +1,6 @@
 import { AppItemType } from '@/types/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { Dataset_SEARCH_DESC } from '@fastgpt/global/core/module/template/system/datasetSearch';
 
 // template
 export const appTemplates: (AppItemType & {
@@ -876,7 +877,7 @@ export const appTemplates: (AppItemType & {
       {
         moduleId: '0voh5n',
         name: '知识库搜索',
-        intro: '调用知识库搜索能力，查找“有可能”与问题相关的内容',
+        intro: Dataset_SEARCH_DESC,
         avatar: '/imgs/module/db.png',
         flowType: 'datasetSearchNode',
         showStatus: true,
