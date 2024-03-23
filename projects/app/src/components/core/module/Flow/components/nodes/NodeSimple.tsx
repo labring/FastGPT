@@ -9,6 +9,7 @@ import RenderOutput from '../render/RenderOutput';
 import RenderToolInput from '../render/RenderToolInput';
 import { useTranslation } from 'next-i18next';
 import { useFlowProviderStore } from '../../FlowProvider';
+import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constant';
 
 const NodeSimple = ({
   data,
@@ -44,7 +45,7 @@ const NodeSimple = ({
           </Container>
         </>
       )}
-      {outputs.length > 0 && (
+      {outputs.filter((output) => output.type !== FlowNodeOutputTypeEnum.hidden).length > 0 && (
         <>
           <Divider text={t('common.Output')} />
           <Container>

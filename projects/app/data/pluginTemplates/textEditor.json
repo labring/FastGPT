@@ -281,7 +281,7 @@
           "label": "core.module.output.label.running done",
           "description": "core.module.output.description.running done",
           "valueType": "boolean",
-          "type": "source",
+          "type": "hidden",
           "targets": []
         },
         {

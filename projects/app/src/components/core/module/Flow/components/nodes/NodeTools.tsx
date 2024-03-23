@@ -21,10 +21,6 @@ const NodeTools = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
         <RenderInput moduleId={moduleId} flowInputList={inputs} />
       </Container>
 
-      <Divider text={t('common.Output')} />
-      <Container>
-        <RenderOutput moduleId={moduleId} flowOutputList={outputs} />
-      </Container>
       <Box position={'relative'}>
         <Box borderBottomLeftRadius={'md'} borderBottomRadius={'md'} overflow={'hidden'}>
           <Divider showBorderBottom={false} text={t('core.module.template.Tool module')} />
