@@ -70,8 +70,6 @@ export async function createDefaultTeam({
   });
 
   if (!tmb) {
-    console.log('create default team', userId);
-
     // create
     const [{ _id: insertedId }] = await MongoTeam.create(
       [
@@ -99,6 +97,7 @@ export async function createDefaultTeam({
       ],
       { session }
     );
+    console.log('create default team', userId);
   } else {
     console.log('default team exist', userId);
     await MongoTeam.findByIdAndUpdate(tmb.teamId, {

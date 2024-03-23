@@ -1,3 +1,7 @@
+# 数据库的默认账号和密码仅首次运行时设置有效
+# 如果修改了账号密码，记得改数据库和项目连接参数，别只改一处~
+# 该配置文件只是给快速启动，测试使用。正式使用，记得务必修改账号密码，以及调整合适的知识库参数，共享内存等。
+
 version: '3.3'
 services:
   pg:
@@ -37,13 +41,15 @@ services:
         openssl rand -base64 128 > /data/mongodb.key
         chmod 400 /data/mongodb.key
         chown 999:999 /data/mongodb.key
-        echo 'rs.initiate({
-            _id: "rs0",
-            members: [
-                { _id: 0, host: "mongo:27017" }
-            ]
-        })
-        console.log("finish")' > /data/initReplicaSet.js
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
         # 启动MongoDB服务
         exec docker-entrypoint.sh "$@" &
 
@@ -73,12 +79,10 @@ services:
     environment:
       # root 密码，用户名为: root
       - DEFAULT_ROOT_PSW=1234
-      # AI API的地址。务必加 /v1，下面默认填了 oneapi 的地址
+      # 中转地址，如果是用官方号，不需要管。务必加 /v1
       - OPENAI_BASE_URL=http://oneapi:3000/v1
-      # API 密钥
       - CHAT_API_KEY=sk-fastgpt
-      # database max link
-      - DB_MAX_LINK=30
+      - DB_MAX_LINK=30 # database max link
       - TOKEN_KEY=any
       - ROOT_KEY=root_key
       - FILE_TOKEN_KEY=filetoken
