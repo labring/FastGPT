@@ -36,7 +36,7 @@ export function connectToDatabase(): Promise<void> {
   });
 }
 
-async function initRootUser(retry = 3) {
+async function initRootUser(retry = 3): Promise<any> {
   try {
     const rootUser = await MongoUser.findOne({
       username: 'root'
