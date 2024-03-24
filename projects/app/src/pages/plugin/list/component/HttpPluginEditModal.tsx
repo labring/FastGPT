@@ -100,12 +100,6 @@ const HttpPluginEditModal = ({
     }
   }, [apiSchemaStr, t, toast]);
 
-  const {
-    isOpen: isOpenUrlImport,
-    onOpen: onOpenUrlImport,
-    onClose: onCloseUrlImport
-  } = useDisclosure();
-
   const { mutate: onCreate, isLoading: isCreating } = useRequest({
     mutationFn: async (data: CreateOnePluginParams) => {
       return postCreatePlugin(data);
@@ -194,8 +188,6 @@ const HttpPluginEditModal = ({
 
       const schema = await getApiSchemaByUrl(schemaUrl);
       setValue('metadata.apiSchemaStr', JSON.stringify(schema, null, 2));
-
-      onCloseUrlImport();
     },
     errorToast: t('plugin.Invalid Schema')
   });
@@ -251,7 +243,13 @@ const HttpPluginEditModal = ({
             <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
               {t('plugin.Intro')}
             </Box>
-            <Textarea {...register('intro')} bg={'myWhite.600'} rows={3} mt={3} />
+            <Textarea
+              {...register('intro')}
+              bg={'myWhite.600'}
+              rows={3}
+              mt={3}
+              placeholder={t('core.plugin.Http plugin intro placeholder')}
+            />
           </>
           <Box mt={4}>
             <Box
@@ -263,32 +261,24 @@ const HttpPluginEditModal = ({
               <Box my={'auto'}>{'OpenAPI Schema'}</Box>
 
               <Box>
-                {isOpenUrlImport ? (
-                  <Flex alignItems={'center'}>
-                    <Input
-                      mr={2}
-                      placeholder={'https://...'}
-                      h={'30px'}
-                      onBlur={(e) => setSchemaUrl(e.target.value)}
-                    />
-                    <Button size={'sm'} isLoading={isLoadingUrlApi} onClick={onClickUrlLoadApi}>
-                      {t('common.Confirm')}
-                    </Button>
-                    <Button ml={2} variant={'whiteBase'} size={'sm'} onClick={onCloseUrlImport}>
-                      {t('common.Cancel')}
-                    </Button>
-                  </Flex>
-                ) : (
+                <Flex alignItems={'center'}>
+                  <Input
+                    mr={2}
+                    placeholder={t('plugin.Import from URL')}
+                    h={'30px'}
+                    w={['150px', '250px']}
+                    fontSize={'sm'}
+                    onBlur={(e) => setSchemaUrl(e.target.value)}
+                  />
                   <Button
-                    variant={'whiteBase'}
                     size={'sm'}
-                    fontSize={'xs'}
-                    leftIcon={<AddIcon fontSize={'xs'} />}
-                    onClick={onOpenUrlImport}
+                    variant={'whitePrimary'}
+                    isLoading={isLoadingUrlApi}
+                    onClick={onClickUrlLoadApi}
                   >
-                    {t('plugin.Import from URL')}
+                    {t('common.Import')}
                   </Button>
-                )}
+                </Flex>
               </Box>
             </Box>
             <Textarea
@@ -466,34 +456,42 @@ const HttpPluginEditModal = ({
             <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
               {t('plugin.Plugin List')}
             </Box>
-            <TableContainer maxH={400} overflowY={'auto'} mt={3}>
-              <Table border={'1px solid'} borderColor={'myGray.200'}>
-                <Thead>
-                  <Th>{t('Name')}</Th>
-                  <Th>{t('plugin.Description')}</Th>
-                  <Th>{t('plugin.Method')}</Th>
-                  <Th>{t('plugin.Path')}</Th>
-                </Thead>
-                <Tbody>
-                  {apiData?.pathData?.map((item, index) => (
-                    <Tr key={index}>
-                      <Td>{item.name}</Td>
-                      <Td
-                        fontSize={'sm'}
-                        textColor={'gray.600'}
-                        w={'auto'}
-                        maxW={80}
-                        whiteSpace={'pre-wrap'}
-                      >
-                        {item.description}
-                      </Td>
-                      <Td>{item.method}</Td>
-                      <Td>{item.path}</Td>
-                    </Tr>
-                  ))}
-                </Tbody>
-              </Table>
-            </TableContainer>
+            <Box
+              mt={3}
+              borderRadius={'md'}
+              overflow={'hidden'}
+              borderWidth={'1px'}
+              borderBottom="none"
+            >
+              <TableContainer maxH={400} overflowY={'auto'}>
+                <Table bg={'white'}>
+                  <Thead bg={'myGray.50'}>
+                    <Th>{t('Name')}</Th>
+                    <Th>{t('plugin.Description')}</Th>
+                    <Th>{t('plugin.Method')}</Th>
+                    <Th>{t('plugin.Path')}</Th>
+                  </Thead>
+                  <Tbody>
+                    {apiData?.pathData?.map((item, index) => (
+                      <Tr key={index}>
+                        <Td>{item.name}</Td>
+                        <Td
+                          fontSize={'sm'}
+                          textColor={'gray.600'}
+                          w={'auto'}
+                          maxW={80}
+                          whiteSpace={'pre-wrap'}
+                        >
+                          {item.description}
+                        </Td>
+                        <Td>{item.method}</Td>
+                        <Td>{item.path}</Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              </TableContainer>
+            </Box>
           </>
         </ModalBody>
 

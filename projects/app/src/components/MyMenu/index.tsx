@@ -1,6 +1,16 @@
 import React, { useRef, useState } from 'react';
-import { Menu, MenuList, MenuItem, Box, useOutsideClick, MenuButton } from '@chakra-ui/react';
+import {
+  Menu,
+  MenuList,
+  MenuItem,
+  Box,
+  useOutsideClick,
+  MenuButton,
+  MenuItemProps
+} from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+
+type MenuItemType = 'primary' | 'danger';
 
 interface Props {
   width?: number | string;
@@ -11,6 +21,7 @@ interface Props {
     isActive?: boolean;
     label: string | React.ReactNode;
     icon?: string;
+    type?: MenuItemType;
     onClick: () => any;
   }[];
 }
@@ -22,15 +33,25 @@ const MyMenu = ({
   Button,
   menuList
 }: Props) => {
-  const menuItemStyles = {
+  const typeMapStyle: Record<MenuItemType, MenuItemProps> = {
+    primary: {
+      _hover: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
+      }
+    },
+    danger: {
+      _hover: {
+        color: 'red.600',
+        background: 'red.1'
+      }
+    }
+  };
+  const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
     py: 3,
     display: 'flex',
-    alignItems: 'center',
-    _hover: {
-      backgroundColor: 'myGray.05',
-      color: 'primary.600'
-    }
+    alignItems: 'center'
   };
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
@@ -92,6 +113,7 @@ const MyMenu = ({
             <MenuItem
               key={i}
               {...menuItemStyles}
+              {...typeMapStyle[item.type || 'primary']}
               onClick={(e) => {
                 e.stopPropagation();
                 setIsOpen(false);

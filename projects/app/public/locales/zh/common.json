@@ -582,7 +582,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -838,8 +839,6 @@
         "Add props": "添加参数",
         "AppId": "应用的ID",
         "ChatId": "当前对话ID",
-        "curl import": "curl 导入",
-        "curl import placeholder": "请输入 curl 格式内容，将会提取第一个接口的请求信息。",
         "Current time": "当前时间",
         "Histories": "历史纪录,最多取10条",
         "Key already exists": "Key 已经存在",
@@ -850,6 +849,8 @@
         "ResponseChatItemId": "AI回复的ID",
         "Url and params have been split": "路径参数已被自动加入 Params 中",
         "Variables": "全局变量",
+        "curl import": "curl 导入",
+        "curl import placeholder": "请输入 curl 格式内容，将会提取第一个接口的请求信息。",
         "params": "Params"
       },
       "input": {
@@ -1006,6 +1007,7 @@
       "Custom headers": "自定义请求头",
       "Delete http plugin": "确认删除该组HTTP插件？会删除该目录下所有插件。",
       "Get Plugin Module Detail Failed": "加载插件异常",
+      "Http plugin intro placeholder": "仅做展示，无实际效果",
       "Intro placeholder": "如果该插件作为工具被调用，则会使用该介绍作为提示词。"
     },
     "shareChat": {
@@ -1224,7 +1226,7 @@
     "Get Plugin Module Detail Failed": "获取插件信息异常",
     "HTTP Plugin": "HTTP 插件",
     "Import Plugin": "导入 HTTP 插件",
-    "Import from URL": "URL 导入",
+    "Import from URL": "从URL导入。https://xxxx",
     "Intro": "插件介绍",
     "Invalid Schema": "Schema 无效",
     "Invalid URL": "URL 无效",
@@ -1260,6 +1262,7 @@
       "Usage": "已用额度(￥)"
     },
     "outlink": {
+      "Delete link tip": "确认删除该免登录链接？删除后，该链接将会立即失效，对话日志仍会保留，请确认！",
       "Max usage points": "积分上限",
       "Max usage points tip": "该链接最多允许使用多少积分，超出后将无法使用。-1 代表无限制。",
       "Usage points": "积分消耗",

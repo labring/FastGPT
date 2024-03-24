@@ -15,7 +15,7 @@ import { Output_Template_Finish, Output_Template_UserChatInput } from '../output
 import { DatasetSearchModeEnum } from '../../../dataset/constants';
 
 export const Dataset_SEARCH_DESC =
-  '调用“语义检索”和“全文检索”能力，从数据库中查找“可能”与问题相关的内容';
+  '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容';
 
 export const DatasetSearchModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.datasetSearchNode,

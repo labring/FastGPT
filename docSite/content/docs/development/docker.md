@@ -99,10 +99,7 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 在 docker-compose.yml 同级目录下执行
 
 ```bash
-# 进入项目目录
-cd 项目目录
 # 启动容器
-docker-compose pull
 docker-compose up -d
 ```
 
@@ -122,19 +119,20 @@ docker-compose up -d
 
 ## FAQ
 
-### Mongo 启动失败
+### Mongo 副本集自动初始化失败
 
 最新的 docker-compose 示例优化 Mongo 副本集初始化，实现了全自动。目前在 unbuntu20,22 centos7, wsl2, mac, window 均通过测试。如果你的环境特殊，可以手动初始化副本集：
 
-1. 终端中执行：
+1. 终端中执行下面命令，创建mongo密钥：
 
 ```bash
 openssl rand -base64 756 > ./mongodb.key
 chmod 600 ./mongodb.key
+# 修改密钥权限，部分系统是admin，部分是root
 chown 999:root ./mongodb.key
 ```
 
-2. 修改 docker-compose.yml：
+2. 修改 docker-compose.yml，挂载密钥
   
 ```yml
 mongo:
@@ -164,7 +162,6 @@ docker-compose up -d
 
 4. 进入容器执行副本集合初始化
 
-
 ```bash
 # 查看 mongo 容器是否正常运行
 docker ps 
@@ -174,7 +171,7 @@ docker exec -it mongo bash
 # 连接数据库（这里要填Mongo的用户名和密码）
 mongo -u myusername -p mypassword --authenticationDatabase admin
 
-# 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin => MONGODB_URI=mongodb://myname:mypassword@ip:27017/fastgpt?authSource=admin）
+# 初始化副本集。如果需要外网访问，mongo:27017 。如果需要外网访问，需要增加Mongo连接参数：directConnection=true
 rs.initiate({
   _id: "rs0",
   members: [
@@ -262,10 +259,10 @@ mongo连接失败，查看mongo的运行状态对应日志。
 
 可能原因：
 
-1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以dockerhub找个最新的4.x，修改镜像版本，重新运行）
-2. 环境变量（账号密码，注意host和port）
-3. 副本集启动失败。
+1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以docker hub找个最新的4.x，修改镜像版本，重新运行）
+2. 连接数据库的环境变量填写错误（账号密码，注意host和port，非容器网络连接，需要用公网ip并加上 directConnection=true）
+3. 副本集启动失败。导致容器一直重启。
 
 ### 首次部署，root用户提示未注册
 
-没有启动 Mongo 副本集模式。
+日志会有错误提示。大概率是没有启动 Mongo 副本集模式。

@@ -837,8 +837,6 @@
         "Add props": "Add props",
         "AppId": "appId",
         "ChatId": "chatId",
-        "curl import": "curl Import",
-        "curl import placeholder": "Please enter the curl format content, and the request information for the first interface will be extracted.",
         "Current time": "Current time",
         "Histories": "histories",
         "Key already exists": "Key already exists",
@@ -849,6 +847,8 @@
         "ResponseChatItemId": "Ai response id",
         "Url and params have been split": "Path parameters are automatically added to Params",
         "Variables": "Global variables",
+        "curl import": "curl Import",
+        "curl import placeholder": "Please enter the curl format content, and the request information for the first interface will be extracted.",
         "params": ""
       },
       "input": {
@@ -1005,6 +1005,7 @@
       "Custom headers": "Custom Headers",
       "Delete http plugin": "Are you sure to delete this group of HTTP plug-ins? All plug-ins in the directory are deleted.",
       "Get Plugin Module Detail Failed": "Load plugin failed",
+      "Http plugin intro placeholder": "Only for demonstration, no practical effect",
       "Intro placeholder": "If the plug-in is called as a tool, the introduction is used as the prompt word."
     },
     "shareChat": {
@@ -1223,7 +1224,7 @@
     "Get Plugin Module Detail Failed": "Get plugin detail failed",
     "HTTP Plugin": "HTTP plugin",
     "Import Plugin": "Import HTTP plugin",
-    "Import from URL": "Import from URL",
+    "Import from URL": "Import from URL. https://xxxx",
     "Intro": "Plugin Intro",
     "Invalid Schema": "Invalid Schema",
     "Invalid URL": "Invalid URL",
@@ -1259,6 +1260,7 @@
       "Usage": "Usage"
     },
     "outlink": {
+      "Delete link tip": "Are you sure to delete this no-sign link? After deletion, the link will be invalid immediately and the session log will still be retained. Please confirm!",
       "Max usage points": "Max usage",
       "Max usage points tip": "The maximum number of credits allowed for this link will not be used. -1 indicates no limit.",
       "Usage points": "Usage points",
