@@ -5,6 +5,7 @@ import React, { Dispatch, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
 import ParentPaths from '@/components/common/ParentPaths';
+import MyBox from '@/components/common/MyBox';
 
 type PathItemType = {
   parentId: string;
@@ -17,6 +18,7 @@ const DatasetSelectContainer = ({
   paths,
   onClose,
   tips,
+  isLoading,
   children
 }: {
   isOpen: boolean;
@@ -24,6 +26,7 @@ const DatasetSelectContainer = ({
   paths: PathItemType[];
   onClose: () => void;
   tips?: string | null;
+  isLoading?: boolean;
   children: React.ReactNode;
 }) => {
   const { t } = useTranslation();
@@ -57,7 +60,9 @@ const DatasetSelectContainer = ({
       maxW={['90vw', '900px']}
       isCentered
     >
-      {children}
+      <MyBox isLoading={isLoading} h={'100%'}>
+        {children}
+      </MyBox>
     </MyModal>
   );
 };
