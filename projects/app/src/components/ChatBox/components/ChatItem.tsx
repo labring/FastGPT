@@ -90,13 +90,14 @@ const ChatItem = ({
         </>
       );
     }
+
     /* AI */
     return (
       <Flex flexDirection={'column'} gap={2}>
         {chat.value.map((value, i) => {
           const key = `${chat.dataId}-ai-${i}`;
           if (value.text) {
-            let source = value.text?.content || '';
+            let source = (value.text?.content || '').trim();
 
             if (!source && chat.value.length > 1) return <></>;
 

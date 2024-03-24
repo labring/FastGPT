@@ -582,7 +582,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -815,6 +816,7 @@
       },
       "Quote prompt setting": "引用提示词配置",
       "Qupte prompt setting": "",
+      "Select app": "选择应用",
       "Setting quote prompt": "配置引用提示词",
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
       "Variable": "全局变量",

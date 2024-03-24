@@ -1,14 +1,16 @@
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { getFlowStore, onChangeNode, useFlowProviderStoreType } from '../../../../FlowProvider';
+import { onChangeNode, useFlowProviderStore } from '../../../../FlowProvider';
 import { Box, Button, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
 import { SelectAppItemType } from '@fastgpt/global/core/module/type';
 import Avatar from '@/components/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
+import { useTranslation } from 'next-i18next';
 
 const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
+  const { t } = useTranslation();
   const theme = useTheme();
-  const [filterAppIds, setFilterAppIds] = useState<useFlowProviderStoreType['filterAppIds']>([]);
+  const { filterAppIds } = useFlowProviderStore();
 
   const {
     isOpen: isOpenSelectApp,
@@ -18,50 +20,65 @@ const SelectAppRender = ({ item, moduleId }: RenderInputProps) => {
 
   const value = item.value as SelectAppItemType | undefined;
 
-  useEffect(() => {
-    async () => {
-      const { filterAppIds } = await getFlowStore();
-      setFilterAppIds(filterAppIds);
-    };
-  }, []);
+  const filterAppString = useMemo(() => filterAppIds.join(','), [filterAppIds]);
 
-  return (
-    <>
-      <Box onClick={onOpenSelectApp}>
-        {!value ? (
-          <Button variant={'whitePrimary'} w={'100%'}>
-            选择应用
-          </Button>
-        ) : (
-          <Flex alignItems={'center'} border={theme.borders.base} borderRadius={'md'} px={3} py={2}>
-            <Avatar src={value?.logo} />
-            <Box fontWeight={'bold'} ml={1}>
-              {value?.name}
-            </Box>
-          </Flex>
+  const Render = useMemo(() => {
+    return (
+      <>
+        <Box onClick={onOpenSelectApp}>
+          {!value ? (
+            <Button variant={'whitePrimary'} w={'100%'}>
+              {t('core.module.Select app')}
+            </Button>
+          ) : (
+            <Flex
+              alignItems={'center'}
+              border={theme.borders.base}
+              borderRadius={'md'}
+              px={3}
+              py={2}
+            >
+              <Avatar src={value?.logo} />
+              <Box fontWeight={'bold'} ml={1}>
+                {value?.name}
+              </Box>
+            </Flex>
+          )}
+        </Box>
+
+        {isOpenSelectApp && (
+          <SelectAppModal
+            defaultApps={item.value?.id ? [item.value.id] : []}
+            filterAppIds={filterAppString.split(',')}
+            onClose={onCloseSelectApp}
+            onSuccess={(e) => {
+              onChangeNode({
+                moduleId,
+                type: 'updateInput',
+                key: 'app',
+                value: {
+                  ...item,
+                  value: e[0]
+                }
+              });
+            }}
+          />
         )}
-      </Box>
+      </>
+    );
+  }, [
+    filterAppString,
+    isOpenSelectApp,
+    item,
+    moduleId,
+    onCloseSelectApp,
+    onOpenSelectApp,
+    t,
+    theme.borders.base,
+    value
+  ]);
 
-      {isOpenSelectApp && (
-        <SelectAppModal
-          defaultApps={item.value?.id ? [item.value.id] : []}
-          filterAppIds={filterAppIds}
-          onClose={onCloseSelectApp}
-          onSuccess={(e) => {
-            onChangeNode({
-              moduleId,
-              type: 'updateInput',
-              key: 'app',
-              value: {
-                ...item,
-                value: e[0]
-              }
-            });
-          }}
-        />
-      )}
-    </>
-  );
+  return Render;
 };
 
 export default React.memo(SelectAppRender);

@@ -40,11 +40,10 @@ const SelectAppModal = ({
       title={`选择应用${max > 1 ? `(${selectedApps.length}/${max})` : ''}`}
       iconSrc="/imgs/module/ai.svg"
       onClose={onClose}
-      minW={'700px'}
       position={'relative'}
+      w={'600px'}
     >
       <ModalBody
-        minH={'300px'}
         display={'grid'}
         gridTemplateColumns={['1fr', 'repeat(3, minmax(0, 1fr))']}
         gridGap={4}

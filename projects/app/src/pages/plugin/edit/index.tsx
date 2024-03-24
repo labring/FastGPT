@@ -81,7 +81,7 @@ const Render = ({ pluginId }: Props) => {
 
 export default function FlowEdit(props: any) {
   return (
-    <FlowProvider mode={'plugin'} filterAppIds={[]}>
+    <FlowProvider mode={'plugin'}>
       <Render {...props} />
     </FlowProvider>
   );
