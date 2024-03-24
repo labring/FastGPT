@@ -46,7 +46,7 @@ llm模型全部合并
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
       "customExtractPrompt": "", // 自定义内容提取提示词
       "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
-      "defaultConfig":{}  // LLM默认配置，可以针对不同模型设置特殊值（比如 GLM4 的 top_p
+      "defaultConfig":{}  // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
     },
     {
       "model": "gpt-4-0125-preview",
@@ -133,7 +133,7 @@ llm模型全部合并
 
 ## 关于模型 logo
 
-统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。
+统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。默认头像为 Hugging face 的 logo~
 
 - /imgs/model/baichuan.svg - 百川
 - /imgs/model/chatglm.svg - 智谱
