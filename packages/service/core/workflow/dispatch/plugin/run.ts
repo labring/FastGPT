@@ -19,7 +19,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     mode,
     teamId,
     tmbId,
-    module,
     params: { pluginId, ...data }
   } = props;
 

@@ -137,6 +137,7 @@ ${JSON.stringify(questionGuides)}`;
                       return tool.response;
                     }
                   })();
+
                   return (
                     <Box key={tool.id}>
                       <Accordion allowToggle>
@@ -169,7 +170,7 @@ ${JSON.stringify(questionGuides)}`;
                             maxH={'500px'}
                             overflowY={'auto'}
                           >
-                            {toolParams && (
+                            {toolParams && toolParams !== '{}' && (
                               <Markdown
                                 source={`~~~json#Input
 ${toolParams}`}

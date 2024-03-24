@@ -582,8 +582,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1421,7 +1420,7 @@
           "experience": "体验版",
           "experience desc": "",
           "free": "免费版",
-          "free desc": "每月均可免费使用基础功能，15天无使用记录时，将会清除知识库",
+          "free desc": "每月均可免费使用基础功能，30天无使用记录时，将会清除知识库",
           "team": "团队版"
         },
         "type": {

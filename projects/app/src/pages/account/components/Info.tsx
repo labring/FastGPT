@@ -403,7 +403,7 @@ const PlanUsage = () => {
             </Flex>
             {isFreeTeam && (
               <Box mt="2" color={'#485264'} fontSize="sm">
-                免费版用户15天无任何使用记录时，系统会自动清理账号知识库。
+                免费版用户30天无任何使用记录时，系统会自动清理账号知识库。
               </Box>
             )}
           </Box>
