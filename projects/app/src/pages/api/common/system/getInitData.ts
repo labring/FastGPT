@@ -150,7 +150,7 @@ function getSystemPlugin() {
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
   // read json file
-  const fileTemplates: PluginTemplateType[] = filterFiles.map((filename) => {
+  const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
     const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
       ...JSON.parse(content),
