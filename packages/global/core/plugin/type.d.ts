@@ -30,6 +30,7 @@ export type PluginTemplateType = PluginRuntimeType & {
   templateType: FlowNodeTemplateType['templateType'];
   intro: string;
   modules: ModuleItemType[];
+  weight: number;
 };
 
 export type PluginRuntimeType = {
