@@ -6,6 +6,7 @@
   "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
   "showStatus": false,
   "isTool": false,
+  "weight": 100,
   "modules": [
     {
       "moduleId": "w90mfp",

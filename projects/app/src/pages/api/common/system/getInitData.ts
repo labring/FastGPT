@@ -159,5 +159,7 @@ function getSystemPlugin() {
     };
   });
 
+  fileTemplates.sort((a, b) => b.weight - a.weight);
+
   global.communityPlugins = fileTemplates;
 }
