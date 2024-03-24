@@ -124,6 +124,7 @@
     "Price used": "金额消耗",
     "Read document": "查看文档",
     "Read intro": "查看说明",
+    "Readed": "已读",
     "Remove": "移除",
     "Rename": "重命名",
     "Rename Failed": "重命名失败",
@@ -1252,6 +1253,9 @@
   "support": {
     "account": {
       "Individuation": "个性化"
+    },
+    "inform": {
+      "Read": "已读"
     },
     "openapi": {
       "Api baseurl": "API根地址",

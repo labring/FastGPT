@@ -124,6 +124,7 @@
     "Price used": "Usage",
     "Read document": "Read document",
     "Read intro": "Read intro",
+    "Readed": "",
     "Remove": "Remove",
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
@@ -1250,6 +1251,9 @@
   "support": {
     "account": {
       "Individuation": "Individuation"
+    },
+    "inform": {
+      "Read": "Read"
     },
     "openapi": {
       "Api baseurl": "Baseurl",
