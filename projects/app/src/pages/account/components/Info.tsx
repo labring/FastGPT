@@ -504,9 +504,9 @@ const PlanUsage = () => {
 const Other = () => {
   const theme = useTheme();
   const { toast } = useToast();
-  const { feConfigs, systemVersion } = useSystemStore();
+  const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
-  const { userInfo, updateUserInfo, initUserInfo, teamPlanStatus } = useUserStore();
+  const { userInfo, updateUserInfo } = useUserStore();
   const { reset } = useForm<UserUpdateParams>({
     defaultValues: userInfo as UserType
   });
@@ -551,10 +551,6 @@ const Other = () => {
             <MyIcon name={'common/courseLight'} w={'18px'} color={'myGray.600'} />
             <Box ml={2} flex={1}>
               {t('system.Help Document')}
-            </Box>
-            <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
-            <Box fontSize={'md'} ml={2}>
-              V{systemVersion}
             </Box>
           </Link>
         )}

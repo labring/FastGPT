@@ -34,7 +34,7 @@ enum TabEnum {
 const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
-  const { feConfigs, isPc } = useSystemStore();
+  const { feConfigs, isPc, systemVersion } = useSystemStore();
 
   const tabList = [
     {
@@ -148,6 +148,12 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
                 activeId={currentTab}
                 onChange={setCurrentTab}
               />
+              <Flex alignItems={'center'}>
+                <Box w={'8px'} h={'8px'} borderRadius={'50%'} bg={'#67c13b'} />
+                <Box fontSize={'md'} ml={2}>
+                  V{systemVersion}
+                </Box>
+              </Flex>
             </Flex>
           ) : (
             <Box mb={3}>

@@ -89,7 +89,7 @@ services:
       - TOKEN_KEY=any
       # root的密钥，常用于升级时候的初始化请求
       - ROOT_KEY=root_key
-      # 文件阅读加密你要
+      # 文件阅读加密
       - FILE_TOKEN_KEY=filetoken
       # MongoDB 连接参数. 用户名myusername,密码mypassword。
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
