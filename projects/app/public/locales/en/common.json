@@ -255,6 +255,7 @@
       "Ai point price": "AI points",
       "Max context": "Max context",
       "Model": "Model",
+      "Not deploy rerank model": "Not deploy rerank model",
       "Prompt": "Prompt",
       "Support tool": "Function call",
       "model": {
@@ -698,6 +699,7 @@
         "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
+        "No support similarity": "Relevance filtering is supported when using only rearrangement or semantic search",
         "Nonsupport": "Nonsupport",
         "Not similarity": "",
         "Params Setting": "Params Setting",
