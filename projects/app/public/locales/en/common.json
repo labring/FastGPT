@@ -1301,6 +1301,9 @@
       "auth": {
         "Sending Code": "Sending"
       },
+      "inform": {
+        "System message": "System message"
+      },
       "login": {
         "And": "&",
         "Email": "Email",

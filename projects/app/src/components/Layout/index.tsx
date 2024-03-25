@@ -14,6 +14,7 @@ import Navbar from './navbar';
 import NavbarPhone from './navbarPhone';
 const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/UpdateInviteModal'));
 const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
+const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -117,6 +118,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
 
         {!!userInfo && <UpdateInviteModal />}
         {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
+        <SystemMsgModal />
       </Box>
       <Loading loading={loading} zIndex={999999} />
     </>

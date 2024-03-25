@@ -119,7 +119,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
       };
 
       mediaRecorder.current.start();
-    } catch (error) {}
+    } catch (error) {
+      toast({
+        status: 'warning',
+        title: getErrText(error, 'Whisper error')
+      });
+      console.log(error);
+    }
   };
 
   const stopSpeak = () => {

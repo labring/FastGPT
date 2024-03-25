@@ -1303,6 +1303,9 @@
       "auth": {
         "Sending Code": "正在发送"
       },
+      "inform": {
+        "System message": "系统消息"
+      },
       "login": {
         "And": "和",
         "Email": "邮箱",
