@@ -2,7 +2,7 @@
 build_image
 
 IMAGE_NAME = fastgpt
-IMAGE_VERSION = 4.6.8-20240219
+IMAGE_VERSION = 4.6.8-20240312
 IMAGE_TAG = mickeyzhoudocker/${IMAGE_NAME}:${IMAGE_VERSION}
 
 install: 
