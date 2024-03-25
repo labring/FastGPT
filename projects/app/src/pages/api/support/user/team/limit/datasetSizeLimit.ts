@@ -2,8 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { checkDatasetLimit } from '@fastgpt/service/support/permission/limit/dataset';
-import { getStandardSubPlan } from '@/service/support/wallet/sub/utils';
+import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -23,8 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     await checkDatasetLimit({
       teamId,
-      insertLen: numberSize,
-      standardPlans: getStandardSubPlan()
+      insertLen: numberSize
     });
 
     jsonRes(res);

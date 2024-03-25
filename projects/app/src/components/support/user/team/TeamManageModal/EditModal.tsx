@@ -6,7 +6,7 @@ import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@/web/common/hooks/useRequest';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Box, Button, Flex, Input, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';

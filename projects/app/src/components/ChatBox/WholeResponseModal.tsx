@@ -2,16 +2,16 @@ import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
-import { moduleTemplatesFlat } from '@/web/core/modules/template/system';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/module/template/constants';
 
 import Tabs from '../Tabs';
-import MyModal from '../MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/bill/tools';
 import Markdown from '../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
+import { formatNumber } from '@fastgpt/global/common/math/tools';
 
 function Row({
   label,
@@ -51,11 +51,11 @@ function Row({
 
 const WholeResponseModal = ({
   response,
-  isShare,
+  showDetail,
   onClose
 }: {
   response: ChatHistoryItemResType[];
-  isShare: boolean;
+  showDetail: boolean;
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
@@ -78,7 +78,7 @@ const WholeResponseModal = ({
       }
     >
       <Flex h={'100%'} flexDirection={'column'}>
-        <ResponseBox response={response} isShare={isShare} />
+        <ResponseBox response={response} showDetail={showDetail} />
       </Flex>
     </MyModal>
   );
@@ -88,10 +88,10 @@ export default WholeResponseModal;
 
 const ResponseBox = React.memo(function ResponseBox({
   response,
-  isShare
+  showDetail
 }: {
   response: ChatHistoryItemResType[];
-  isShare: boolean;
+  showDetail: boolean;
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -131,10 +131,10 @@ const ResponseBox = React.memo(function ResponseBox({
       <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
         <>
           <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
-          {activeModule?.price !== undefined && (
+          {activeModule?.totalPoints !== undefined && (
             <Row
-              label={t('core.chat.response.module price')}
-              value={`￥${formatStorePrice2Read(activeModule?.price)}`}
+              label={t('support.wallet.usage.Total points')}
+              value={formatNumber(activeModule.totalPoints)}
             />
           )}
           <Row
@@ -142,12 +142,12 @@ const ResponseBox = React.memo(function ResponseBox({
             value={`${activeModule?.runningTime || 0}s`}
           />
           <Row label={t('core.chat.response.module model')} value={activeModule?.model} />
-          <Row label={t('wallet.bill.Chars length')} value={`${activeModule?.charsLength}`} />
-          <Row label={t('wallet.bill.Input Token Length')} value={`${activeModule?.inputTokens}`} />
+          <Row label={t('core.chat.response.module tokens')} value={`${activeModule?.tokens}`} />
           <Row
-            label={t('wallet.bill.Output Token Length')}
-            value={`${activeModule?.outputTokens}`}
+            label={t('core.chat.response.Tool call tokens')}
+            value={`${activeModule?.toolCallTokens}`}
           />
+
           <Row label={t('core.chat.response.module query')} value={activeModule?.query} />
           <Row
             label={t('core.chat.response.context total length')}
@@ -187,12 +187,6 @@ const ResponseBox = React.memo(function ResponseBox({
               )
             }
           />
-          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
-            <Row
-              label={t('core.chat.response.module quoteList')}
-              rawDom={<QuoteList isShare={isShare} rawSearch={activeModule.quoteList} />}
-            />
-          )}
         </>
 
         {/* dataset search */}
@@ -208,16 +202,22 @@ const ResponseBox = React.memo(function ResponseBox({
           <Row label={t('core.chat.response.module limit')} value={activeModule?.limit} />
           <Row
             label={t('core.chat.response.search using reRank')}
-            value={activeModule?.searchUsingReRank}
+            value={`${activeModule?.searchUsingReRank}`}
           />
           <Row
             label={t('core.chat.response.Extension model')}
             value={activeModule?.extensionModel}
           />
           <Row
-            label={t('wallet.bill.Extension result')}
+            label={t('support.wallet.usage.Extension result')}
             value={`${activeModule?.extensionResult}`}
           />
+          {activeModule.quoteList && activeModule.quoteList.length > 0 && (
+            <Row
+              label={t('core.chat.response.module quoteList')}
+              rawDom={<QuoteList showDetail={showDetail} rawSearch={activeModule.quoteList} />}
+            />
+          )}
         </>
 
         {/* classify question */}
@@ -273,22 +273,30 @@ const ResponseBox = React.memo(function ResponseBox({
 
         {/* plugin */}
         <>
-          {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
-            <Row
-              label={t('core.chat.response.Plugin Resonse Detail')}
-              rawDom={<ResponseBox response={activeModule.pluginDetail} isShare={isShare} />}
-            />
-          )}
           {activeModule?.pluginOutput && (
             <Row
               label={t('core.chat.response.plugin output')}
               value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
             />
           )}
+          {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
+            <Row
+              label={t('core.chat.response.Plugin response detail')}
+              rawDom={<ResponseBox response={activeModule.pluginDetail} showDetail={showDetail} />}
+            />
+          )}
         </>
 
         {/* text output */}
         <Row label={t('core.chat.response.text output')} value={activeModule?.textOutput} />
+
+        {/* tool call */}
+        {activeModule?.toolDetail && activeModule?.toolDetail.length > 0 && (
+          <Row
+            label={t('core.chat.response.Tool call response detail')}
+            rawDom={<ResponseBox response={activeModule.toolDetail} showDetail={showDetail} />}
+          />
+        )}
       </Box>
     </>
   );

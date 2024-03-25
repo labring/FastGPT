@@ -43,6 +43,7 @@ const AddOutputParam = ({ outputs = [], item, moduleId }: RenderOutputProps) => 
                 label: data.label,
                 description: data.description,
                 required: data.required,
+                defaultValue: data.defaultValue,
                 edit: true,
                 editField: item.editField,
                 targets: []

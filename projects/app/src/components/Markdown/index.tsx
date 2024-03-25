@@ -24,7 +24,6 @@ const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'));
 
 const ChatGuide = dynamic(() => import('./chat/Guide'));
 const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'));
-const ImageBlock = dynamic(() => import('./chat/Image'));
 
 export enum CodeClassName {
   guide = 'guide',
@@ -32,10 +31,16 @@ export enum CodeClassName {
   mermaid = 'mermaid',
   echarts = 'echarts',
   quote = 'quote',
-  img = 'img'
+  files = 'files'
 }
 
-const Markdown = ({ source, isChatting = false }: { source: string; isChatting?: boolean }) => {
+const Markdown = ({
+  source = '',
+  showAnimation = false
+}: {
+  source?: string;
+  showAnimation?: boolean;
+}) => {
   const components = useMemo<any>(
     () => ({
       img: Image,
@@ -55,9 +60,9 @@ const Markdown = ({ source, isChatting = false }: { source: string; isChatting?:
   return (
     <ReactMarkdown
       className={`markdown ${styles.markdown}
-      ${isChatting ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
+      ${showAnimation ? `${formatSource ? styles.waitingAnimation : styles.animation}` : ''}
     `}
-      remarkPlugins={[RemarkMath, RemarkGfm, RemarkBreaks]}
+      remarkPlugins={[RemarkMath, [RemarkGfm, { singleTilde: false }], RemarkBreaks]}
       rehypePlugins={[RehypeKatex]}
       components={components}
       linkTarget={'_blank'}
@@ -91,9 +96,7 @@ const Code = React.memo(function Code(e: any) {
     if (codeType === CodeClassName.echarts) {
       return <EChartsCodeBlock code={strChildren} />;
     }
-    if (codeType === CodeClassName.img) {
-      return <ImageBlock images={strChildren} />;
-    }
+
     return (
       <CodeLight className={className} inline={inline} match={match}>
         {children}

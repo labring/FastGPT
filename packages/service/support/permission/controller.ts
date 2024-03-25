@@ -94,10 +94,10 @@ export async function parseHeaderCert({
     })();
 
     // auth apikey
-    const { userId, teamId, tmbId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
+    const { teamId, tmbId, appId: apiKeyAppId = '' } = await authOpenApiKey({ apikey });
 
     return {
-      uid: userId,
+      uid: '',
       teamId,
       tmbId,
       apikey,

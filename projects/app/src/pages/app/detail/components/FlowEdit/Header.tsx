@@ -12,11 +12,12 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
-import { getFlowStore } from '@/components/core/module/Flow/FlowProvider';
+import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
 import { flowNode2Modules, filterExportModules } from '@/components/core/module/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 
@@ -42,17 +43,19 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   });
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { updateAppDetail } = useAppStore();
+  const { nodes, edges, splitToolInputs } = useFlowProviderStore();
+  const [isSaving, setIsSaving] = useState(false);
 
   const flow2ModulesAndCheck = useCallback(async () => {
-    const { nodes, edges } = await getFlowStore();
-
     const modules = flowNode2Modules({ nodes, edges });
     // check required connect
     for (let i = 0; i < modules.length; i++) {
       const item = modules[i];
 
+      const { isTool } = splitToolInputs(item.inputs, item.moduleId);
+
       const unconnected = item.inputs.find((input) => {
-        if (!input.required || input.connected) {
+        if (!input.required || input.connected || (isTool && input.toolDescription)) {
           return false;
         }
         if (input.value === undefined || input.value === '' || input.value?.length === 0) {
@@ -72,22 +75,47 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       }
     }
     return modules;
-  }, [t, toast]);
+  }, [edges, nodes, splitToolInputs, t, toast]);
 
-  const { mutate: onclickSave, isLoading } = useRequest({
-    mutationFn: async (modules: ModuleItemType[]) => {
-      return updateAppDetail(app._id, {
-        modules: modules,
-        type: AppTypeEnum.advanced,
-        permission: undefined
-      });
+  const onclickSave = useCallback(
+    async (modules: ModuleItemType[]) => {
+      setIsSaving(true);
+      try {
+        await updateAppDetail(app._id, {
+          modules: modules,
+          type: AppTypeEnum.advanced,
+          permission: undefined
+        });
+        toast({
+          status: 'success',
+          title: t('common.Save Success')
+        });
+        ChatTestRef.current?.resetChatTest();
+      } catch (error) {
+        toast({
+          status: 'warning',
+          title: getErrText(error, t('common.Save Failed'))
+        });
+      }
+      setIsSaving(false);
     },
-    successToast: t('common.Save Success'),
-    errorToast: t('common.Save Failed'),
-    onSuccess() {
-      ChatTestRef.current?.resetChatTest();
+    [ChatTestRef, app._id, t, toast, updateAppDetail]
+  );
+
+  const saveAndBack = useCallback(async () => {
+    try {
+      const modules = await flow2ModulesAndCheck();
+      if (modules) {
+        await onclickSave(modules);
+      }
+      onClose();
+    } catch (error) {
+      toast({
+        status: 'warning',
+        title: getErrText(error)
+      });
     }
-  });
+  }, [flow2ModulesAndCheck, onClose, onclickSave, toast]);
 
   return (
     <>
@@ -97,6 +125,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         borderBottom={theme.borders.base}
         alignItems={'center'}
         userSelect={'none'}
+        bg={'myGray.25'}
       >
         <IconButton
           size={'smSquare'}
@@ -107,13 +136,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           borderColor={'myGray.300'}
           variant={'whiteBase'}
           aria-label={''}
-          onClick={openConfirmOut(async () => {
-            const modules = await flow2ModulesAndCheck();
-            if (modules) {
-              await onclickSave(modules);
-            }
-            onClose();
-          }, onClose)}
+          isLoading={isSaving}
+          onClick={openConfirmOut(saveAndBack, onClose)}
         />
         <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
           {app.name}
@@ -176,7 +200,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <IconButton
             icon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
             size={'smSquare'}
-            isLoading={isLoading}
+            isLoading={isSaving}
             aria-label={'save'}
             onClick={async () => {
               const modules = await flow2ModulesAndCheck();

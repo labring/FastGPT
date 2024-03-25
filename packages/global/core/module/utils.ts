@@ -9,7 +9,9 @@ import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
 import { Input_Template_Switch } from './template/input';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
+import { Output_Template_Finish } from './template/output';
 
+/* module  */
 export const getGuideModule = (modules: ModuleItemType[]) =>
   modules.find((item) => item.flowType === FlowNodeTypeEnum.userGuide);
 
@@ -57,13 +59,13 @@ export const getModuleInputUiField = (input: FlowNodeInputItemType) => {
   return {};
 };
 
-export function plugin2ModuleIO(
+export const plugin2ModuleIO = (
   pluginId: string,
   modules: ModuleItemType[]
 ): {
   inputs: FlowNodeInputItemType[];
   outputs: FlowNodeOutputItemType[];
-} {
+} => {
   const pluginInput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginInput);
   const pluginOutput = modules.find((module) => module.flowType === FlowNodeTypeEnum.pluginOutput);
 
@@ -91,15 +93,18 @@ export function plugin2ModuleIO(
             connected: false
           }))
         ]
-      : [],
+      : [Input_Template_Switch],
     outputs: pluginOutput
-      ? pluginOutput.outputs.map((item) => ({
-          ...item,
-          edit: false
-        }))
-      : []
+      ? [
+          ...pluginOutput.outputs.map((item) => ({
+            ...item,
+            edit: false
+          })),
+          Output_Template_Finish
+        ]
+      : [Output_Template_Finish]
   };
-}
+};
 
 export const formatEditorVariablePickerIcon = (
   variables: { key: string; label: string; type?: `${VariableInputEnum}` }[]

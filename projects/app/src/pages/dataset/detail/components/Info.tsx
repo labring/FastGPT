@@ -13,10 +13,11 @@ import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import PermissionRadio from '@/components/support/permission/Radio';
-import MySelect from '@/components/Select';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import AIModelSelector from '@/components/Select/AIModelSelector';
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
@@ -137,7 +138,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           {t('core.ai.model.Dataset Agent Model')}
         </Box>
         <Box flex={[1, '0 0 300px']}>
-          <MySelect
+          <AIModelSelector
             w={'100%'}
             value={getValues('agentModel').model}
             list={datasetModelList.map((item) => ({

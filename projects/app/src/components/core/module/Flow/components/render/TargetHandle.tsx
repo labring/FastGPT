@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { Handle, OnConnect, Position } from 'reactflow';
-import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
+import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
@@ -27,7 +27,7 @@ const TargetHandle = ({ handleKey, valueType, ...props }: Props) => {
     <Box
       position={'absolute'}
       top={'50%'}
-      left={'-18px'}
+      left={'-20px'}
       transform={'translate(50%,-50%)'}
       {...props}
     >
@@ -41,6 +41,8 @@ const TargetHandle = ({ handleKey, valueType, ...props }: Props) => {
           style={{
             width: '14px',
             height: '14px',
+            borderWidth: '3.5px',
+            backgroundColor: 'white',
             ...valueStyle
           }}
           type="target"

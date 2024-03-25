@@ -2,6 +2,7 @@ import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from 
 import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleOutputKeyEnum } from '../constants';
 import { SelectedDatasetType } from '../api';
 import { EditInputFieldMap, EditOutputFieldMap } from './type';
+import { LLMModelTypeEnum } from '../../ai/constants';
 
 export type FlowNodeChangeProps = {
   moduleId: string;
@@ -28,6 +29,7 @@ export type FlowNodeInputItemType = {
   label: string;
   description?: string;
   required?: boolean;
+  toolDescription?: string; // If this field is not empty, it is entered as a tool
 
   edit?: boolean; // Whether to allow editing
   editField?: EditInputFieldMap;
@@ -49,6 +51,8 @@ export type FlowNodeInputItemType = {
   step?: number; // slider
   max?: number; // slider, number input
   min?: number; // slider, number input
+
+  llmModelType?: `${LLMModelTypeEnum}`;
 };
 
 export type FlowNodeOutputTargetItemType = {
@@ -62,6 +66,8 @@ export type FlowNodeOutputItemType = {
 
   label?: string;
   description?: string;
+  required?: boolean;
+  defaultValue?: any;
 
   edit?: boolean;
   editField?: EditOutputFieldMap;
@@ -74,12 +80,14 @@ export type FlowNodeOutputItemType = {
 export type EditInputFieldMap = EditOutputFieldMap & {
   inputType?: boolean;
   required?: boolean;
+  isToolInput?: boolean;
 };
 export type EditOutputFieldMap = {
   name?: boolean;
   key?: boolean;
   description?: boolean;
   dataType?: boolean;
+  defaultValue?: boolean;
 };
 export type EditNodeFieldType = {
   inputType?: `${FlowNodeInputTypeEnum}`; // input type
@@ -89,9 +97,18 @@ export type EditNodeFieldType = {
   label?: string;
   description?: string;
   valueType?: `${ModuleIOValueTypeEnum}`;
+  isToolInput?: boolean;
+  defaultValue?: string;
 };
 
 /* ------------- item type --------------- */
+export type SettingAIDataType = {
+  model: string;
+  temperature: number;
+  maxToken: number;
+  isResponseAnswerText?: boolean;
+  maxHistories?: number;
+};
 /* ai chat modules props */
 export type AIChatModuleProps = {
   [ModuleInputKeyEnum.aiModel]: string;

@@ -25,6 +25,18 @@ export async function initPg() {
     await PgClient.query(
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);`
     );
+    await PgClient.query(
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_index ON ${PgDatasetTableName} USING btree(team_id, dataset_id);`
+    );
+    await PgClient.query(
+      ` CREATE INDEX CONCURRENTLY IF NOT EXISTS team_collection_index ON ${PgDatasetTableName} USING btree(team_id, collection_id);`
+    );
+    await PgClient.query(
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_id_index ON ${PgDatasetTableName} USING btree(team_id, id);`
+    );
+    await PgClient.query(
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${PgDatasetTableName} USING btree(createtime);`
+    );
 
     console.log('init pg successful');
   } catch (error) {
@@ -127,11 +139,11 @@ export const embeddingRecall = async (
     const results: any = await PgClient.query(
       `BEGIN;
         SET LOCAL hnsw.ef_search = ${efSearch};
-        select id, collection_id, (vector <#> '[${vectors[0]}]') * -1 AS score 
+        select id, collection_id, vector <#> '[${vectors[0]}]' AS score 
           from ${PgDatasetTableName} 
           where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               AND vector <#> '[${vectors[0]}]' < -${similarity}
-          order by score desc limit ${limit};
+          order by score limit ${limit};
         COMMIT;`
     );
 
@@ -141,7 +153,7 @@ export const embeddingRecall = async (
       results: rows.map((item) => ({
         id: item.id,
         collectionId: item.collection_id,
-        score: item.score
+        score: item.score * -1
       }))
     };
   } catch (error) {
@@ -152,11 +164,6 @@ export const embeddingRecall = async (
   }
 };
 
-export const checkDataExist = async (id: string) => {
-  const { rows } = await PgClient.query(`SELECT id FROM ${PgDatasetTableName} WHERE id=${id};`);
-
-  return rows.length > 0;
-};
 export const getVectorCountByTeamId = async (teamId: string) => {
   const total = await PgClient.count(PgDatasetTableName, {
     where: [['team_id', String(teamId)]]

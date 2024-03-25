@@ -15,7 +15,7 @@ import { useForm } from 'react-hook-form';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySlider from '@/components/Slider';
 import MyTooltip from '@/components/MyTooltip';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -26,7 +26,9 @@ import MyRadio from '@/components/common/MyRadio';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Tabs from '@/components/Tabs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import SelectAiModel from '@/components/Select/SelectAiModel';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { useToast } from '@fastgpt/web/hooks/useToast';
+import SelectAiModel from '@/components/Select/AIModelSelector';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -38,7 +40,6 @@ export type DatasetParamsProps = {
   datasetSearchExtensionBg?: string;
 
   maxTokens?: number; // limit max tokens
-  searchEmptyText?: string;
 };
 enum SearchSettingTabEnum {
   searchMode = 'searchMode',
@@ -48,7 +49,6 @@ enum SearchSettingTabEnum {
 
 const DatasetParamsModal = ({
   searchMode = DatasetSearchModeEnum.embedding,
-  searchEmptyText,
   limit,
   similarity,
   usingReRank,
@@ -61,17 +61,18 @@ const DatasetParamsModal = ({
 }: DatasetParamsProps & { onClose: () => void; onSuccess: (e: DatasetParamsProps) => void }) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { toast } = useToast();
+  const { teamPlanStatus } = useUserStore();
   const { reRankModelList, llmModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
   const { register, setValue, getValues, handleSubmit, watch } = useForm<DatasetParamsProps>({
     defaultValues: {
-      searchEmptyText,
       limit,
       similarity,
       searchMode,
-      usingReRank,
+      usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
       datasetSearchUsingExtensionQuery,
       datasetSearchExtensionModel: datasetSearchExtensionModel ?? llmModelList[0]?.model,
       datasetSearchExtensionBg
@@ -82,10 +83,12 @@ const DatasetParamsModal = ({
   const cfbBgDesc = watch('datasetSearchExtensionBg');
 
   const chatModelSelectList = (() =>
-    llmModelList.map((item) => ({
-      value: item.model,
-      label: item.name
-    })))();
+    llmModelList
+      .filter((model) => model.usedInQueryExtension)
+      .map((item) => ({
+        value: item.model,
+        label: item.name
+      })))();
 
   const searchModeList = useMemo(() => {
     const list = Object.values(DatasetSearchModeMap);
@@ -104,6 +107,10 @@ const DatasetParamsModal = ({
 
     return true;
   }, [getValues, similarity]);
+
+  const showReRank = useMemo(() => {
+    return usingReRank !== undefined && reRankModelList.length > 0;
+  }, [reRankModelList.length, usingReRank]);
 
   return (
     <MyModal
@@ -148,7 +155,7 @@ const DatasetParamsModal = ({
                 setRefresh(!refresh);
               }}
             />
-            {usingReRank !== undefined && reRankModelList.length > 0 && (
+            {showReRank && (
               <>
                 <Divider my={4} />
                 <Flex
@@ -168,6 +175,15 @@ const DatasetParamsModal = ({
                       }
                     : {})}
                   onClick={(e) => {
+                    if (
+                      teamPlanStatus?.standardConstants &&
+                      !teamPlanStatus?.standardConstants?.permissionReRank
+                    ) {
+                      return toast({
+                        status: 'warning',
+                        title: t('support.team.limit.No permission rerank')
+                      });
+                    }
                     setValue('usingReRank', !getValues('usingReRank'));
                     setRefresh((state) => !state);
                   }}
@@ -253,27 +269,12 @@ const DatasetParamsModal = ({
                 </Box>
               </Box>
             )}
-            {searchEmptyText !== undefined && (
-              <Box display={['block', 'flex']} pt={3}>
-                <Box flex={'0 0 120px'} mb={[2, 0]}>
-                  {t('core.dataset.search.Empty result response')}
-                </Box>
-                <Box flex={1}>
-                  <Textarea
-                    rows={5}
-                    maxLength={500}
-                    placeholder={t('core.dataset.search.Empty result response Tips')}
-                    {...register('searchEmptyText')}
-                  ></Textarea>
-                </Box>
-              </Box>
-            )}
           </Box>
         )}
         {currentTabType === SearchSettingTabEnum.queryExtension && (
           <Box>
             <Box fontSize={'xs'} color={'myGray.500'}>
-              {t('core.module.template.Query extension intro')}
+              {t('core.dataset.Query extension intro')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
               <Box flex={'1 0 0'}>{t('core.dataset.search.Using query extension')}</Box>

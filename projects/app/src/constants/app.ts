@@ -6,7 +6,6 @@ export const defaultApp: AppDetailType = {
   userId: 'userId',
   name: '应用加载中',
   type: 'simple',
-  simpleTemplateId: 'fastgpt-universal',
   avatar: '/icon/logo.svg',
   intro: '',
   updateTime: Date.now(),
@@ -15,7 +14,8 @@ export const defaultApp: AppDetailType = {
   tmbId: '',
   permission: 'private',
   isOwner: false,
-  canWrite: false
+  canWrite: false,
+  teamTags: ['']
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {
@@ -23,7 +23,7 @@ export const defaultOutLinkForm: OutLinkEditType = {
   responseDetail: false,
   limit: {
     QPM: 100,
-    credit: -1
+    maxUsagePoints: -1
   }
 };
 

@@ -1,9 +1,9 @@
 import type { NextApiResponse } from 'next';
-import { sseResponseEventEnum } from './constant';
+import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { addLog } from '../system/log';
 import { clearCookie } from '../../support/permission/controller';
-import { replaceSensitiveLink } from '@fastgpt/global/common/string/tools';
+import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 
 export interface ResponseType<T = any> {
   code: number;
@@ -53,7 +53,7 @@ export const jsonRes = <T = any>(
   res.status(code).json({
     code,
     statusText: '',
-    message: replaceSensitiveLink(message || msg),
+    message: replaceSensitiveText(message || msg),
     data: data !== undefined ? data : null
   });
 };
@@ -70,7 +70,7 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
 
     return responseWrite({
       res,
-      event: sseResponseEventEnum.error,
+      event: SseResponseEventEnum.error,
       data: JSON.stringify(ERROR_RESPONSE[errResponseKey])
     });
   }
@@ -90,8 +90,8 @@ export const sseErrRes = (res: NextApiResponse, error: any) => {
 
   responseWrite({
     res,
-    event: sseResponseEventEnum.error,
-    data: JSON.stringify({ message: replaceSensitiveLink(msg) })
+    event: SseResponseEventEnum.error,
+    data: JSON.stringify({ message: replaceSensitiveText(msg) })
   });
 };
 
@@ -132,3 +132,22 @@ export function responseWrite({
   event && Write(`event: ${event}\n`);
   Write(`data: ${data}\n\n`);
 }
+
+export const responseWriteNodeStatus = ({
+  res,
+  status = 'running',
+  name
+}: {
+  res?: NextApiResponse;
+  status?: 'running';
+  name: string;
+}) => {
+  responseWrite({
+    res,
+    event: SseResponseEventEnum.flowNodeStatus,
+    data: JSON.stringify({
+      status,
+      name
+    })
+  });
+};

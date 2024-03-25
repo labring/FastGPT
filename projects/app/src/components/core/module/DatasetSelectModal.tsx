@@ -19,7 +19,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import DatasetSelectContainer, { useDatasetSelect } from '@/components/core/dataset/SelectModal';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import EmptyTip from '@/components/EmptyTip';
 
 export const DatasetSelectModal = ({

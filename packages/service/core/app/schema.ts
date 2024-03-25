@@ -34,10 +34,6 @@ const AppSchema = new Schema({
     default: 'advanced',
     enum: Object.keys(AppTypeMap)
   },
-  simpleTemplateId: {
-    type: String,
-    required: true
-  },
   avatar: {
     type: String,
     default: '/icon/logo.svg'
@@ -61,6 +57,9 @@ const AppSchema = new Schema({
     type: String,
     enum: Object.keys(PermissionTypeMap),
     default: PermissionTypeEnum.private
+  },
+  teamTags: {
+    type: [String]
   }
 });
 

@@ -1,3 +1,4 @@
+import { AppSchema } from 'core/app/type';
 import { OutLinkTypeEnum } from './constant';
 
 export type OutLinkSchema = {
@@ -7,16 +8,19 @@ export type OutLinkSchema = {
   tmbId: string;
   appId: string;
   name: string;
-  total: number;
+  usagePoints: number;
   lastTime: Date;
   type: `${OutLinkTypeEnum}`;
   responseDetail: boolean;
   limit?: {
     expiredTime?: Date;
     QPM: number;
-    credit: number;
+    maxUsagePoints: number;
     hookUrl?: string;
   };
+};
+export type OutLinkWithAppType = Omit<OutLinkSchema, 'appId'> & {
+  appId: AppSchema;
 };
 
 export type OutLinkEditType = {

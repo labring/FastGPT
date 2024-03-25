@@ -8,11 +8,20 @@ export type TeamSchema = {
   avatar: string;
   createTime: Date;
   balance: number;
-  maxSize: number;
+  teamDomain: string;
   limit: {
     lastExportDatasetTime: Date;
     lastWebsiteSyncTime: Date;
   };
+};
+export type tagsType = {
+  label: string;
+  key: string;
+};
+export type TeamTagSchema = TeamTagItemType & {
+  _id: string;
+  teamId: string;
+  createTime: Date;
 };
 
 export type TeamMemberSchema = {
@@ -26,13 +35,13 @@ export type TeamMemberSchema = {
   defaultTeam: boolean;
 };
 
-export type TeamMemberWithUserSchema = TeamMemberSchema & {
+export type TeamMemberWithUserSchema = Omit<TeamMemberSchema, 'userId'> & {
   userId: UserModelSchema;
 };
-export type TeamMemberWithTeamSchema = TeamMemberSchema & {
+export type TeamMemberWithTeamSchema = Omit<TeamMemberSchema, 'teamId'> & {
   teamId: TeamSchema;
 };
-export type TeamMemberWithTeamAndUserSchema = TeamMemberWithTeamSchema & {
+export type TeamMemberWithTeamAndUserSchema = Omit<TeamMemberWithTeamSchema, 'userId'> & {
   userId: UserModelSchema;
 };
 
@@ -44,11 +53,11 @@ export type TeamItemType = {
   avatar: string;
   balance: number;
   tmbId: string;
+  teamDomain: string;
   defaultTeam: boolean;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   canWrite: boolean;
-  maxSize: number;
 };
 
 export type TeamMemberItemType = {
@@ -59,4 +68,9 @@ export type TeamMemberItemType = {
   avatar: string;
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
+};
+
+export type TeamTagItemType = {
+  label: string;
+  key: string;
 };

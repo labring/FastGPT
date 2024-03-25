@@ -3,12 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type';
+import { FlowNodeTemplateType } from '../../type';
 import {
-  DYNAMIC_INPUT_KEY,
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
-  ModuleTemplateTypeEnum
+  ModuleOutputKeyEnum,
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_AddInputParam,
@@ -17,14 +17,15 @@ import {
 } from '../input';
 import { Output_Template_AddOutput, Output_Template_Finish } from '../output';
 
-export const HttpModule468: FlowModuleTemplateType = {
+export const HttpModule468: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.httpRequest468,
-  templateType: ModuleTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.httpRequest468,
   avatar: '/imgs/module/http.png',
-  name: 'core.module.template.Http request',
-  intro: 'core.module.template.Http request intro',
+  name: 'HTTP 请求',
+  intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,
+  isTool: true,
   inputs: [
     Input_Template_Switch,
     {
@@ -85,9 +86,7 @@ export const HttpModule468: FlowModuleTemplateType = {
       ...Input_Template_AddInputParam,
       editField: {
         key: true,
-        name: true,
         description: true,
-        required: true,
         dataType: true
       },
       defaultEditField: {
@@ -95,20 +94,27 @@ export const HttpModule468: FlowModuleTemplateType = {
         key: '',
         description: '',
         inputType: FlowNodeInputTypeEnum.target,
-        valueType: ModuleIOValueTypeEnum.string,
-        required: true
+        valueType: ModuleIOValueTypeEnum.string
       }
     }
   ],
   outputs: [
     Output_Template_Finish,
     {
+      key: ModuleOutputKeyEnum.httpRawResponse,
+      label: '原始响应',
+      description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
+      valueType: ModuleIOValueTypeEnum.any,
+      type: FlowNodeOutputTypeEnum.source,
+      targets: []
+    },
+    {
       ...Output_Template_AddOutput,
       editField: {
         key: true,
-        name: true,
         description: true,
-        dataType: true
+        dataType: true,
+        defaultValue: true
       },
       defaultEditField: {
         label: '',

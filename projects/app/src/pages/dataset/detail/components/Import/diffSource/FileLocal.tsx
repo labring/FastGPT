@@ -18,7 +18,7 @@ import { useImportStore } from '../Provider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import dynamic from 'next/dynamic';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />

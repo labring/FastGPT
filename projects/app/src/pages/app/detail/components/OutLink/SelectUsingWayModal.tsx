@@ -1,6 +1,6 @@
 import { OutLinkSchema } from '@fastgpt/global/support/outLink/type';
 import React, { useCallback, useState } from 'react';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex, FlexProps, Grid, Image, ModalBody, Switch, useTheme } from '@chakra-ui/react';
 import MyRadio from '@/components/common/MyRadio';
@@ -136,7 +136,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
         />
 
         {/* config */}
-        <Grid gridTemplateColumns={['repeat(3,1fr)']} gridGap={4} my={5}>
+        <Grid gridTemplateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={4} my={5}>
           <Flex {...gridItemStyle}>
             <Box flex={1}>{t('core.app.outLink.Show History')}</Box>
             <Switch {...register('showHistory')} />

@@ -1,10 +1,11 @@
 {
   "author": "FastGPT Team",
   "templateType": "tools",
-  "name": "core.module.template.textEditor",
+  "name": "文本加工",
   "avatar": "/imgs/module/textEditor.svg",
-  "intro": "core.module.template.textEditor intro",
+  "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
   "showStatus": false,
+  "isTool": false,
   "modules": [
     {
       "moduleId": "w90mfp",

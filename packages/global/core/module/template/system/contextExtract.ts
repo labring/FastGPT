@@ -3,33 +3,34 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
-import { Input_Template_History, Input_Template_Switch } from '../input';
+import {
+  Input_Template_SelectAIModel,
+  Input_Template_History,
+  Input_Template_Switch
+} from '../input';
+import { LLMModelTypeEnum } from '../../../ai/constants';
 
-export const ContextExtractModule: FlowModuleTemplateType = {
+export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
-  templateType: ModuleTemplateTypeEnum.functionCall,
+  templateType: FlowNodeTemplateTypeEnum.functionCall,
   flowType: FlowNodeTypeEnum.contentExtract,
   avatar: '/imgs/module/extract.png',
-  name: 'core.module.template.Extract field',
-  intro: 'core.module.template.Extract field intro',
+  name: '文本内容提取',
+  intro: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
   showStatus: true,
+  isTool: true,
   inputs: [
     Input_Template_Switch,
     {
-      key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectExtractModel,
-      valueType: ModuleIOValueTypeEnum.string,
-      label: 'core.module.input.label.LLM',
-      required: true,
-      showTargetInApp: false,
-      showTargetInPlugin: false
+      ...Input_Template_SelectAIModel,
+      llmModelType: LLMModelTypeEnum.extractFields
     },
     {
       key: ModuleInputKeyEnum.description,
@@ -38,7 +39,6 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       label: '提取要求描述',
       description:
         '给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\n该输入框可使用全局变量。',
-      required: true,
       placeholder:
         '例如: \n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。',
       showTargetInApp: true,
@@ -52,12 +52,13 @@ export const ContextExtractModule: FlowModuleTemplateType = {
       required: true,
       valueType: ModuleIOValueTypeEnum.string,
       showTargetInApp: true,
-      showTargetInPlugin: true
+      showTargetInPlugin: true,
+      toolDescription: '需要检索的内容'
     },
     {
       key: ModuleInputKeyEnum.extractKeys,
       type: FlowNodeInputTypeEnum.custom,
-      label: '目标字段',
+      label: '',
       valueType: ModuleIOValueTypeEnum.any,
       description: "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
       value: [], // {desc: string; key: string; required: boolean; enum: string[]}[]
@@ -76,6 +77,7 @@ export const ContextExtractModule: FlowModuleTemplateType = {
     {
       key: ModuleOutputKeyEnum.failed,
       label: '提取字段缺失',
+      description: '存在一个或多个字段未提取成功。尽管使用了默认值也算缺失。',
       valueType: ModuleIOValueTypeEnum.boolean,
       type: FlowNodeOutputTypeEnum.source,
       targets: []

@@ -8,7 +8,7 @@ import type {
   FlowNodeOutputItemType,
   FlowNodeOutputTargetItemType
 } from '@fastgpt/global/core/module/node/type.d';
-import type { FlowModuleTemplateType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import type { FlowNodeTemplateType, ModuleItemType } from '@fastgpt/global/core/module/type.d';
 import type { ChatSchema } from '@fastgpt/global/core/chat/type';
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ChatModelType } from '@/constants/model';

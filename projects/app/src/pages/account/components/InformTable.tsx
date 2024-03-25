@@ -1,14 +1,14 @@
 import React from 'react';
 import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/inform/api';
-import { usePagination } from '@/web/common/hooks/usePagination';
-import { useLoading } from '@/web/common/hooks/useLoading';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 
-const BillTable = () => {
+const InformTable = () => {
   const theme = useTheme();
   const { Loading } = useLoading();
   const { isPc } = useSystemStore();
@@ -87,4 +87,4 @@ const BillTable = () => {
   );
 };
 
-export default BillTable;
+export default InformTable;

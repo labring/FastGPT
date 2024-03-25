@@ -29,7 +29,7 @@ weight: 910
 
 1. 根据上面的环境配置配置好环境，具体教程自行 GPT；
 2. 下载 [python 文件](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-base)
-3. 在命令行输入命令 `pip install -r requirments.txt`；
+3. 在命令行输入命令 `pip install -r requirements.txt`；
 4. 按照[https://huggingface.co/BAAI/bge-reranker-base](https://huggingface.co/BAAI/bge-reranker-base)下载模型仓库到app.py同级目录
 5. 添加环境变量 `export ACCESS_TOKEN=XXXXXX` 配置 token，这里的 token 只是加一层验证，防止接口被人盗用，默认值为 `ACCESS_TOKEN` ；
 6. 执行命令 `python app.py`。
@@ -54,11 +54,37 @@ ACCESS_TOKEN=mytoken
 ```
 
 **运行命令示例**
-
+- 无需GPU环境，使用CPU运行
 ```sh
 docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.1
 ```
 
+- 需要CUDA 11.7环境
+```sh
+docker run -d --gpus all --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.1
+```
+
+**docker-compose.yml示例**
+```
+version: "3"
+services:
+  reranker:
+    image: luanshaotong/reranker:v0.1
+    container_name: reranker
+    # GPU运行环境，如果宿主机未安装，将deploy配置隐藏即可
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            count: all
+            capabilities: [gpu]
+    ports:
+      - 6006:6006
+    environment:
+      - ACCESS_TOKEN=mytoken
+
+```
 ## 接入 FastGPT
 
 参考 [ReRank模型接入](/docs/development/configuration/#rerank-接入)，host 变量为部署的域名。

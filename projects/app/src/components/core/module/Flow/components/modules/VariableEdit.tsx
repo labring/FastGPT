@@ -25,14 +25,14 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
-import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
+import { VariableInputEnum, variableMap } from '@fastgpt/global/core/module/constants';
 import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
 import { useFieldArray } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@/components/MyTooltip';
 import { variableTip } from '@fastgpt/global/core/module/template/tip';
 import { useTranslation } from 'next-i18next';
@@ -52,23 +52,12 @@ const VariableEdit = ({
   const [refresh, setRefresh] = useState(false);
 
   const VariableTypeList = useMemo(
-    () => [
-      {
-        title: t('core.module.variable.input type'),
-        icon: 'core/app/variable/input',
-        value: VariableInputEnum.input
-      },
-      {
-        title: t('core.module.variable.textarea type'),
-        icon: 'core/app/variable/textarea',
-        value: VariableInputEnum.textarea
-      },
-      {
-        title: t('core.module.variable.select type'),
-        icon: 'core/app/variable/select',
-        value: VariableInputEnum.select
-      }
-    ],
+    () =>
+      Object.entries(variableMap).map(([key, value]) => ({
+        title: t(value.title),
+        icon: value.icon,
+        value: key
+      })),
     [t]
   );
 
@@ -79,8 +68,11 @@ const VariableEdit = ({
     getValues: getValuesEdit,
     setValue: setValuesEdit,
     control: editVariableController,
-    handleSubmit: handleSubmitEdit
+    handleSubmit: handleSubmitEdit,
+    watch
   } = useForm<{ variable: VariableItemType }>();
+
+  const variableType = watch('variable.type');
 
   const {
     fields: selectEnums,
@@ -90,16 +82,6 @@ const VariableEdit = ({
     control: editVariableController,
     name: 'variable.enums'
   });
-
-  const BoxBtnStyles: BoxProps = {
-    cursor: 'pointer',
-    px: 3,
-    py: 1,
-    borderRadius: 'md',
-    _hover: {
-      bg: 'myGray.150'
-    }
-  };
 
   const formatVariables = useMemo(() => {
     const results = formatEditorVariablePickerIcon(variables);
@@ -122,17 +104,20 @@ const VariableEdit = ({
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
         </Box>
-        <Flex
-          {...BoxBtnStyles}
-          alignItems={'center'}
+        <Button
+          variant={'transparentBase'}
+          leftIcon={<SmallAddIcon />}
+          iconSpacing={1}
+          size={'sm'}
+          mr={'-5px'}
+          fontSize={'md'}
           onClick={() => {
             resetEdit({ variable: addVariable() });
             onOpenEdit();
           }}
         >
-          <SmallAddIcon />
           {t('common.Add New')}
-        </Flex>
+        </Button>
       </Flex>
       {formatVariables.length > 0 && (
         <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
@@ -140,11 +125,11 @@ const VariableEdit = ({
             <Table bg={'white'}>
               <Thead>
                 <Tr>
-                  <Th w={'18px !important'} p={0} />
-                  <Th>{t('core.module.variable.variable name')}</Th>
-                  <Th>{t('core.module.variable.key')}</Th>
-                  <Th>{t('common.Require Input')}</Th>
-                  <Th></Th>
+                  <Th w={'18px !important'} p={0} bg={'myGray.50'} />
+                  <Th bg={'myGray.50'}>{t('core.module.variable.variable name')}</Th>
+                  <Th bg={'myGray.50'}>{t('core.module.variable.key')}</Th>
+                  <Th bg={'myGray.50'}>{t('common.Require Input')}</Th>
+                  <Th bg={'myGray.50'}></Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -188,12 +173,15 @@ const VariableEdit = ({
         title={t('core.module.Variable Setting')}
         isOpen={isOpenEdit}
         onClose={onCloseEdit}
+        maxW={['90vw', '500px']}
       >
         <ModalBody>
-          <Flex alignItems={'center'}>
-            <Box w={'70px'}>{t('common.Require Input')}</Box>
-            <Switch {...registerEdit('variable.required')} />
-          </Flex>
+          {variableType !== VariableInputEnum.external && (
+            <Flex alignItems={'center'}>
+              <Box w={'70px'}>{t('common.Require Input')}</Box>
+              <Switch {...registerEdit('variable.required')} />
+            </Flex>
+          )}
           <Flex mt={5} alignItems={'center'}>
             <Box w={'80px'}>{t('core.module.variable.variable name')}</Box>
             <Input
@@ -216,8 +204,8 @@ const VariableEdit = ({
           </Box>
           <MyRadio
             gridGap={4}
-            gridTemplateColumns={'repeat(3,1fr)'}
-            value={getValuesEdit('variable.type')}
+            gridTemplateColumns={'repeat(2,1fr)'}
+            value={variableType}
             list={VariableTypeList}
             color={'myGray.600'}
             hiddenCircle
@@ -227,7 +215,14 @@ const VariableEdit = ({
             }}
           />
 
-          {getValuesEdit('variable.type') === VariableInputEnum.input && (
+          {/* desc */}
+          {variableMap[variableType]?.desc && (
+            <Box mt={2} fontSize={'sm'} color={'myGray.500'} whiteSpace={'pre-wrap'}>
+              {t(variableMap[variableType].desc)}
+            </Box>
+          )}
+
+          {variableType === VariableInputEnum.input && (
             <>
               <Box mt={5} mb={2}>
                 {t('core.module.variable.text max length')}
@@ -251,7 +246,7 @@ const VariableEdit = ({
             </>
           )}
 
-          {getValuesEdit('variable.type') === VariableInputEnum.select && (
+          {variableType === VariableInputEnum.select && (
             <>
               <Box mt={5} mb={2}>
                 {t('core.module.variable.variable options')}

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -10,17 +10,17 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import MyModal from '@/components/MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DYNAMIC_INPUT_KEY, ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { useTranslation } from 'next-i18next';
-import MySelect from '@/components/Select';
-import { FlowValueTypeMap } from '@/web/core/modules/constants/dataType';
+import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum
 } from '@fastgpt/global/core/module/node/constant';
 import { EditInputFieldMap, EditNodeFieldType } from '@fastgpt/global/core/module/node/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import MySelect from '@fastgpt/web/components/common/MySelect';
 
 const FieldEditModal = ({
   editField = {
@@ -93,47 +93,70 @@ const FieldEditModal = ({
   const { register, getValues, setValue, handleSubmit, watch } = useForm<EditNodeFieldType>({
     defaultValues: defaultField
   });
+  const inputType = watch('inputType');
+  const outputType = watch('outputType');
+  const required = watch('required');
   const [refresh, setRefresh] = useState(false);
 
   const showDataTypeSelect = useMemo(() => {
     if (!editField.dataType) return false;
-    const inputType = getValues('inputType');
-    const outputType = getValues('outputType');
-
+    if (inputType === undefined) return true;
     if (inputType === FlowNodeInputTypeEnum.target) return true;
-
     if (outputType === FlowNodeOutputTypeEnum.source) return true;
 
     return false;
-  }, [editField.dataType, getValues, refresh]);
+  }, [editField.dataType, inputType, outputType]);
 
   const showRequired = useMemo(() => {
-    const inputType = getValues('inputType');
-    const valueType = getValues('valueType');
     if (inputType === FlowNodeInputTypeEnum.addInputParam) return false;
 
-    return editField.required;
-  }, [editField.required, getValues, refresh]);
+    return editField.required || editField.defaultValue;
+  }, [editField.defaultValue, editField.required, inputType]);
 
   const showNameInput = useMemo(() => {
-    const inputType = getValues('inputType');
-
     return editField.name;
-  }, [editField.name, getValues, refresh]);
+  }, [editField.name]);
 
   const showKeyInput = useMemo(() => {
-    const inputType = getValues('inputType');
-    const valueType = getValues('valueType');
     if (inputType === FlowNodeInputTypeEnum.addInputParam) return false;
 
     return editField.key;
-  }, [editField.key, getValues, refresh]);
+  }, [editField.key, inputType]);
 
   const showDescriptionInput = useMemo(() => {
-    const inputType = getValues('inputType');
-
     return editField.description;
-  }, [editField.description, getValues, refresh]);
+  }, [editField.description]);
+
+  const onSubmitSuccess = useCallback(
+    (data: EditNodeFieldType) => {
+      if (!data.key) return;
+      if (isCreate && keys.includes(data.key)) {
+        return toast({
+          status: 'warning',
+          title: t('core.module.edit.Field Already Exist')
+        });
+      }
+      onSubmit({
+        data,
+        changeKey: !keys.includes(data.key)
+      });
+    },
+    [isCreate, keys, onSubmit, t, toast]
+  );
+  const onSubmitError = useCallback(
+    (e: Object) => {
+      for (const item of Object.values(e)) {
+        if (item.message) {
+          toast({
+            status: 'warning',
+            title: item.message
+          });
+          break;
+        }
+      }
+    },
+    [toast]
+  );
 
   return (
     <MyModal
@@ -173,7 +196,31 @@ const FieldEditModal = ({
         {showRequired && (
           <Flex alignItems={'center'} mb={5}>
             <Box flex={'0 0 70px'}>{t('common.Require Input')}</Box>
-            <Switch {...register('required')} />
+            <Switch
+              {...register('required', {
+                onChange(e) {
+                  if (!e.target.checked) {
+                    setValue('defaultValue', '');
+                  }
+                }
+              })}
+            />
+          </Flex>
+        )}
+        {showRequired && required && editField.defaultValue && (
+          <Flex alignItems={'center'} mb={5}>
+            <Box flex={['0 0 70px']}>{t('core.module.Default value')}</Box>
+            <Input
+              bg={'myGray.50'}
+              placeholder={t('core.module.Default value placeholder')}
+              {...register('defaultValue')}
+            />
+          </Flex>
+        )}
+        {editField.isToolInput && (
+          <Flex alignItems={'center'} mb={5}>
+            <Box flex={'0 0 70px'}>工具参数</Box>
+            <Switch {...register('isToolInput')} />
           </Flex>
         )}
         {showDataTypeSelect && (
@@ -203,20 +250,44 @@ const FieldEditModal = ({
         {showNameInput && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Field Name')}</Box>
-            <Input placeholder="预约字段/sql语句……" {...register('label', { required: true })} />
+            <Input
+              bg={'myGray.50'}
+              placeholder="预约字段/sql语句……"
+              {...register('label', { required: true })}
+            />
           </Flex>
         )}
         {showKeyInput && (
           <Flex mb={5} alignItems={'center'}>
             <Box flex={'0 0 70px'}>{t('core.module.Field key')}</Box>
-            <Input placeholder="appointment/sql" {...register('key', { required: true })} />
+            <Input
+              bg={'myGray.50'}
+              placeholder="appointment/sql"
+              {...register('key', {
+                required: true,
+                onChange: (e) => {
+                  const value = e.target.value;
+                  // auto fill label
+                  if (!showNameInput) {
+                    setValue('label', value);
+                  }
+                }
+              })}
+            />
           </Flex>
         )}
         {showDescriptionInput && (
-          <Flex mb={5} alignItems={'flex-start'}>
-            <Box flex={'0 0 70px'}>{t('core.module.Field Description')}</Box>
-            <Textarea placeholder={t('common.choosable')} rows={3} {...register('description')} />
-          </Flex>
+          <Box mb={5} alignItems={'flex-start'}>
+            <Box flex={'0 0 70px'} mb={'1px'}>
+              {t('core.module.Field Description')}
+            </Box>
+            <Textarea
+              bg={'myGray.50'}
+              placeholder={t('common.choosable')}
+              rows={5}
+              {...register('description')}
+            />
+          </Box>
         )}
       </ModalBody>
 
@@ -224,21 +295,7 @@ const FieldEditModal = ({
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
-        <Button
-          onClick={handleSubmit((data) => {
-            if (!data.key) return;
-            if (isCreate && keys.includes(data.key)) {
-              return toast({
-                status: 'warning',
-                title: t('core.module.edit.Field Already Exist')
-              });
-            }
-            onSubmit({
-              data,
-              changeKey: !keys.includes(data.key)
-            });
-          })}
-        >
+        <Button onClick={handleSubmit(onSubmitSuccess, onSubmitError)}>
           {t('common.Confirm')}
         </Button>
       </ModalFooter>

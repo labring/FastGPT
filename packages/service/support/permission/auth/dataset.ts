@@ -107,7 +107,7 @@ export async function authDatasetCollection({
     collection: CollectionWithDatasetType;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert(props);
+  const { teamId, tmbId } = await parseHeaderCert(props);
   const { role } = await getTmbInfoByTmbId({ tmbId });
 
   const { collection, isOwner, canWrite } = await (async () => {
@@ -143,7 +143,6 @@ export async function authDatasetCollection({
   })();
 
   return {
-    userId,
     teamId,
     tmbId,
     collection,
@@ -163,7 +162,7 @@ export async function authDatasetFile({
     file: DatasetFileSchema;
   }
 > {
-  const { userId, teamId, tmbId } = await parseHeaderCert(props);
+  const { teamId, tmbId } = await parseHeaderCert(props);
 
   const [file, collection] = await Promise.all([
     getFileById({ bucketName: BucketNameEnum.dataset, fileId }),
@@ -190,7 +189,6 @@ export async function authDatasetFile({
     });
 
     return {
-      userId,
       teamId,
       tmbId,
       file,

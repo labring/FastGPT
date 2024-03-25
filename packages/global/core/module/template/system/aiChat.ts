@@ -3,41 +3,36 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
+  Input_Template_SettingAiModel,
   Input_Template_Dataset_Quote,
   Input_Template_History,
   Input_Template_Switch,
+  Input_Template_System_Prompt,
   Input_Template_UserChatInput
 } from '../input';
 import { chatNodeSystemPromptTip } from '../tip';
 import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
 
-export const AiChatModule: FlowModuleTemplateType = {
+export const AiChatModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.chatNode,
-  templateType: ModuleTemplateTypeEnum.textAnswer,
+  templateType: FlowNodeTemplateTypeEnum.textAnswer,
   flowType: FlowNodeTypeEnum.chatNode,
   avatar: '/imgs/module/AI.png',
-  name: 'core.module.template.Ai chat',
-  intro: 'core.module.template.Ai chat intro',
+  name: 'AI 对话',
+  intro: 'AI 大模型对话',
   showStatus: true,
+  isTool: true,
   inputs: [
     Input_Template_Switch,
-    {
-      key: ModuleInputKeyEnum.aiModel,
-      type: FlowNodeInputTypeEnum.selectChatModel,
-      label: 'core.module.input.label.aiModel',
-      required: true,
-      valueType: ModuleIOValueTypeEnum.string,
-      showTargetInApp: false,
-      showTargetInPlugin: false
-    },
+    Input_Template_SettingAiModel,
     // --- settings modal
     {
       key: ModuleInputKeyEnum.aiChatTemperature,
@@ -88,28 +83,15 @@ export const AiChatModule: FlowModuleTemplateType = {
       showTargetInApp: false,
       showTargetInPlugin: false
     },
-    {
-      key: ModuleInputKeyEnum.aiChatSettingModal,
-      type: FlowNodeInputTypeEnum.aiSettings,
-      label: '',
-      valueType: ModuleIOValueTypeEnum.any,
-      showTargetInApp: false,
-      showTargetInPlugin: false
-    },
     // settings modal ---
     {
-      key: ModuleInputKeyEnum.aiSystemPrompt,
-      type: FlowNodeInputTypeEnum.textarea,
+      ...Input_Template_System_Prompt,
       label: 'core.ai.Prompt',
-      max: 300,
-      valueType: ModuleIOValueTypeEnum.string,
       description: chatNodeSystemPromptTip,
-      placeholder: chatNodeSystemPromptTip,
-      showTargetInApp: true,
-      showTargetInPlugin: true
+      placeholder: chatNodeSystemPromptTip
     },
     Input_Template_History,
-    Input_Template_UserChatInput,
+    { ...Input_Template_UserChatInput, toolDescription: '用户问题' },
     Input_Template_Dataset_Quote
   ],
   outputs: [

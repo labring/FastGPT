@@ -1,6 +1,6 @@
 import React from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 type Props = BoxProps & {
   isLoading?: boolean;
@@ -10,8 +10,8 @@ type Props = BoxProps & {
 const MyBox = ({ text, isLoading, children, ...props }: Props) => {
   return (
     <Box position={'relative'} {...props}>
-      {children}
       {isLoading && <Loading fixed={false} text={text} />}
+      {children}
     </Box>
   );
 };

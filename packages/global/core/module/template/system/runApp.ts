@@ -3,12 +3,12 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import {
   Input_Template_History,
@@ -17,13 +17,13 @@ import {
 } from '../input';
 import { Output_Template_Finish, Output_Template_UserChatInput } from '../output';
 
-export const RunAppModule: FlowModuleTemplateType = {
+export const RunAppModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.runApp,
-  templateType: ModuleTemplateTypeEnum.externalCall,
+  templateType: FlowNodeTemplateTypeEnum.externalCall,
   flowType: FlowNodeTypeEnum.runApp,
   avatar: '/imgs/module/app.png',
-  name: 'core.module.template.Running app',
-  intro: 'core.module.template.Running app intro',
+  name: '应用调用',
+  intro: '可以选择一个其他应用进行调用',
   showStatus: true,
   inputs: [
     Input_Template_Switch,
@@ -52,7 +52,7 @@ export const RunAppModule: FlowModuleTemplateType = {
     },
     {
       key: ModuleOutputKeyEnum.answerText,
-      label: 'AI回复',
+      label: '回复的文本',
       description: '将在应用完全结束后触发',
       valueType: ModuleIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.source,

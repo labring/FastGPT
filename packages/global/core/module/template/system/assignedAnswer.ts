@@ -1,16 +1,21 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
-import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
+import { FlowNodeTemplateType } from '../../type.d';
+import {
+  ModuleIOValueTypeEnum,
+  ModuleInputKeyEnum,
+  FlowNodeTemplateTypeEnum
+} from '../../constants';
 import { Input_Template_Switch } from '../input';
 import { Output_Template_Finish } from '../output';
 
-export const AssignedAnswerModule: FlowModuleTemplateType = {
+export const AssignedAnswerModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.answerNode,
-  templateType: ModuleTemplateTypeEnum.textAnswer,
+  templateType: FlowNodeTemplateTypeEnum.textAnswer,
   flowType: FlowNodeTypeEnum.answerNode,
   avatar: '/imgs/module/reply.png',
-  name: 'core.module.template.Assigned reply',
-  intro: 'core.module.template.Assigned reply intro',
+  name: '指定回复',
+  intro:
+    '该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。',
   inputs: [
     Input_Template_Switch,
     {

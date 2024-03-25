@@ -12,7 +12,7 @@ const SimpleEdit = ({ appId }: { appId: string }) => {
   const { parentRef, divRef, isSticky } = useSticky();
 
   return (
-    <Grid gridTemplateColumns={['1fr', '550px 1fr']} h={'100%'}>
+    <Grid gridTemplateColumns={['1fr', '560px 1fr']} h={'100%'}>
       <Box
         ref={parentRef}
         h={'100%'}

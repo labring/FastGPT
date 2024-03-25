@@ -13,7 +13,6 @@ import type {
 import { InitDateResponse } from '@/global/common/api/systemRes';
 import { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types';
 import { SubPlanType } from '@fastgpt/global/support/wallet/sub/type';
-import { AppSimpleEditConfigTemplateType } from '@fastgpt/global/core/app/type';
 
 type LoginStoreType = { provider: `${OAuthEnum}`; lastRoute: string; state: string };
 
@@ -33,6 +32,9 @@ type State = {
   gitStar: number;
   loadGitStar: () => Promise<void>;
 
+  isNotSufficientModal: boolean;
+  setIsNotSufficientModal: (val: boolean) => void;
+
   feConfigs: FastGPTFeConfigsType;
   subPlans?: SubPlanType;
   systemVersion: string;
@@ -42,7 +44,6 @@ type State = {
   audioSpeechModelList: AudioSpeechModelType[];
   reRankModelList: ReRankModelItemType[];
   whisperModel?: WhisperModelType;
-  simpleModeTemplates: AppSimpleEditConfigTemplateType[];
   initStaticData: (e: InitDateResponse) => void;
 };
 
@@ -101,6 +102,13 @@ export const useSystemStore = create<State>()(
           } catch (error) {}
         },
 
+        isNotSufficientModal: false,
+        setIsNotSufficientModal(val: boolean) {
+          set((state) => {
+            state.isNotSufficientModal = val;
+          });
+        },
+
         feConfigs: {},
         subPlans: undefined,
         systemVersion: '0.0.0',
@@ -110,7 +118,6 @@ export const useSystemStore = create<State>()(
         audioSpeechModelList: [],
         reRankModelList: [],
         whisperModel: undefined,
-        simpleModeTemplates: [],
         initStaticData(res) {
           set((state) => {
             state.feConfigs = res.feConfigs || {};
@@ -123,8 +130,6 @@ export const useSystemStore = create<State>()(
             state.audioSpeechModelList = res.audioSpeechModels ?? state.audioSpeechModelList;
             state.reRankModelList = res.reRankModels ?? state.reRankModelList;
             state.whisperModel = res.whisperModel;
-
-            state.simpleModeTemplates = res.simpleModeTemplates;
           });
         }
       })),

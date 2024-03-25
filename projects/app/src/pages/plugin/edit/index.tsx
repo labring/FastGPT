@@ -3,17 +3,17 @@ import { useRouter } from 'next/router';
 import Header from './Header';
 import Flow from '@/components/core/module/Flow';
 import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import { FlowModuleTemplateType } from '@fastgpt/global/core/module/type.d';
-import { pluginSystemModuleTemplates } from '@/web/core/modules/template/system';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type.d';
+import { pluginSystemModuleTemplates } from '@fastgpt/global/core/module/template/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
 import { getOnePlugin } from '@/web/core/plugin/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
-import { usePluginStore } from '@/web/core/plugin/store/plugin';
+import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 
 type Props = { pluginId: string };
 
@@ -22,13 +22,30 @@ const Render = ({ pluginId }: Props) => {
   const router = useRouter();
   const { toast } = useToast();
   const { nodes, initData } = useFlowProviderStore();
-  const { pluginModuleTemplates, loadPluginTemplates } = usePluginStore();
+  const { setBasicNodeTemplates } = useWorkflowStore();
 
-  const moduleTemplates = useMemo(() => {
-    const pluginTemplates = pluginModuleTemplates.filter((item) => item.id !== pluginId);
-    const concatTemplates = [...pluginSystemModuleTemplates, ...pluginTemplates];
+  const { data: pluginDetail } = useQuery(
+    ['getOnePlugin', pluginId],
+    () => getOnePlugin(pluginId),
+    {
+      onError: (error) => {
+        toast({
+          status: 'warning',
+          title: getErrText(error, t('plugin.Load Plugin Failed'))
+        });
+        router.replace('/plugin/list');
+      }
+    }
+  );
 
-    const copyTemplates: FlowModuleTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
+  useEffect(() => {
+    initData(JSON.parse(JSON.stringify(pluginDetail?.modules || [])));
+  }, [pluginDetail?.modules]);
+
+  useEffect(() => {
+    const concatTemplates = [...pluginSystemModuleTemplates];
+
+    const copyTemplates: FlowNodeTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
 
     const filterType: Record<string, 1> = {
       [FlowNodeTypeEnum.userGuide]: 1,
@@ -52,34 +69,11 @@ const Render = ({ pluginId }: Props) => {
       template.inputs = template.inputs.filter((input) => !input.hideInPlugin);
     });
 
-    return copyTemplates;
-  }, [nodes, pluginId, pluginModuleTemplates]);
-
-  const { data: pluginDetail } = useQuery(
-    ['getOnePlugin', pluginId],
-    () => getOnePlugin(pluginId),
-    {
-      onError: (error) => {
-        toast({
-          status: 'warning',
-          title: getErrText(error, t('plugin.Load Plugin Failed'))
-        });
-        router.replace('/plugin/list');
-      }
-    }
-  );
-
-  useQuery(['getPlugTemplates'], () => loadPluginTemplates());
-
-  useEffect(() => {
-    initData(JSON.parse(JSON.stringify(pluginDetail?.modules || [])));
-  }, [pluginDetail?.modules]);
+    setBasicNodeTemplates(copyTemplates);
+  }, [nodes, setBasicNodeTemplates]);
 
   return pluginDetail ? (
-    <Flow
-      templates={moduleTemplates}
-      Header={<Header plugin={pluginDetail} onClose={() => router.back()} />}
-    />
+    <Flow Header={<Header plugin={pluginDetail} onClose={() => router.back()} />} />
   ) : (
     <Loading />
   );

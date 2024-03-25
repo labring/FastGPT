@@ -11,7 +11,7 @@ import SideTabs from '@/components/SideTabs';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
-import Loading from '@/components/Loading';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 import SimpleEdit from './components/SimpleEdit';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
@@ -43,14 +43,14 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
-      router.replace({
+      router.push({
         query: {
-          appId,
+          ...router.query,
           currentTab: tab
         }
       });
     },
-    [appId, router]
+    [router]
   );
 
   const tabList = useMemo(

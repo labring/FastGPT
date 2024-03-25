@@ -112,15 +112,19 @@ CHAT_API_KEY=sk-xxxxxx
     {
       "model": "ERNIE-Bot", // 这里的模型需要对应 One API 的模型
       "name": "文心一言", // 对外展示的名称
+      "avatar": "/imgs/model/openai.svg", // 模型的logo
       "maxContext": 16000, // 最大上下文
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 13000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
-      "inputPrice": 0, 
-      "outputPrice": 0,
+      "charsPointsPrice": 0, 
       "censor": false,
       "vision": false, // 是否支持图片输入
       "datasetProcess": false, // 是否设置为知识库处理模型
+      "usedInClassify": true, // 是否用于问题分类
+      "usedInExtractFields": true, // 是否用于字段提取
+      "usedInToolCall": true, // 是否用于工具调用
+      "usedInQueryExtension": true, // 是否用于问题优化
       "toolChoice": true, // 是否支持工具选择
       "functionCall": false, // 是否支持函数调用
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
@@ -132,4 +136,11 @@ CHAT_API_KEY=sk-xxxxxx
 ],
 ```
 
-添加完后，重启 FastGPT 即可在选择文心一言模型进行对话。**添加向量模型也是类似操作，增加到 `vectorModels`里。**
+### 3. 重启 FastGPT
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+重启 FastGPT 即可在选择文心一言模型进行对话。**添加向量模型也是类似操作，增加到 `vectorModels`里。**

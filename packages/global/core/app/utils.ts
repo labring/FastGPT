@@ -1,6 +1,10 @@
 import type { AppSimpleEditFormType } from '../app/type';
 import { FlowNodeTypeEnum } from '../module/node/constant';
-import { ModuleOutputKeyEnum, ModuleInputKeyEnum } from '../module/constants';
+import {
+  ModuleOutputKeyEnum,
+  ModuleInputKeyEnum,
+  FlowNodeTemplateTypeEnum
+} from '../module/constants';
 import type { FlowNodeInputItemType } from '../module/node/type.d';
 import { getGuideModule, splitGuideModule } from '../module/utils';
 import { ModuleItemType } from '../module/type.d';
@@ -13,20 +17,19 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       systemPrompt: '',
       temperature: 0,
       isResponseAnswerText: true,
-      quotePrompt: '',
-      quoteTemplate: '',
+      maxHistories: 6,
       maxToken: 4000
     },
     dataset: {
       datasets: [],
       similarity: 0.4,
       limit: 1500,
-      searchEmptyText: '',
       searchMode: DatasetSearchModeEnum.embedding,
       usingReRank: false,
       datasetSearchUsingExtensionQuery: true,
       datasetSearchExtensionBg: ''
     },
+    selectedTools: [],
     userGuide: {
       welcomeText: '',
       variables: [],
@@ -47,7 +50,10 @@ export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
   };
 
   modules.forEach((module) => {
-    if (module.flowType === FlowNodeTypeEnum.chatNode) {
+    if (
+      module.flowType === FlowNodeTypeEnum.chatNode ||
+      module.flowType === FlowNodeTypeEnum.tools
+    ) {
       defaultAppForm.aiSettings.model = findInputValueByKey(
         module.inputs,
         ModuleInputKeyEnum.aiModel
@@ -64,13 +70,9 @@ export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
         module.inputs,
         ModuleInputKeyEnum.aiChatMaxToken
       );
-      defaultAppForm.aiSettings.quoteTemplate = findInputValueByKey(
+      defaultAppForm.aiSettings.maxHistories = findInputValueByKey(
         module.inputs,
-        ModuleInputKeyEnum.aiChatQuoteTemplate
-      );
-      defaultAppForm.aiSettings.quotePrompt = findInputValueByKey(
-        module.inputs,
-        ModuleInputKeyEnum.aiChatQuotePrompt
+        ModuleInputKeyEnum.history
       );
     } else if (module.flowType === FlowNodeTypeEnum.datasetSearchNode) {
       defaultAppForm.dataset.datasets = findInputValueByKey(
@@ -104,17 +106,6 @@ export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
         module.inputs,
         ModuleInputKeyEnum.datasetSearchExtensionBg
       );
-
-      // empty text
-      const emptyOutputs =
-        module.outputs.find((item) => item.key === ModuleOutputKeyEnum.datasetIsEmpty)?.targets ||
-        [];
-      const emptyOutput = emptyOutputs[0];
-      if (emptyOutput) {
-        const target = modules.find((item) => item.moduleId === emptyOutput.moduleId);
-        defaultAppForm.dataset.searchEmptyText =
-          target?.inputs?.find((item) => item.key === ModuleInputKeyEnum.answerText)?.value || '';
-      }
     } else if (module.flowType === FlowNodeTypeEnum.userGuide) {
       const { welcomeText, variableModules, questionGuide, ttsConfig } = splitGuideModule(
         getGuideModule(modules)
@@ -125,6 +116,18 @@ export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
         questionGuide: questionGuide,
         tts: ttsConfig
       };
+    } else if (module.flowType === FlowNodeTypeEnum.pluginModule) {
+      defaultAppForm.selectedTools.push({
+        id: module.inputs.find((input) => input.key === ModuleInputKeyEnum.pluginId)?.value || '',
+        name: module.name,
+        avatar: module.avatar,
+        intro: module.intro || '',
+        flowType: module.flowType,
+        showStatus: module.showStatus,
+        inputs: module.inputs,
+        outputs: module.outputs,
+        templateType: FlowNodeTemplateTypeEnum.other
+      });
     }
   });
 

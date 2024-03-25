@@ -9,9 +9,8 @@ import { getCollectionWithDataset } from '../controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
-import type { VectorModelItemType, LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 
-export const lockTrainingDataByTeamId = async (teamId: string, retry = 3): Promise<any> => {
+export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
     await MongoDatasetTraining.updateMany(
       {
@@ -21,13 +20,7 @@ export const lockTrainingDataByTeamId = async (teamId: string, retry = 3): Promi
         lockTime: new Date('2999/5/5')
       }
     );
-  } catch (error) {
-    if (retry > 0) {
-      await delay(1000);
-      return lockTrainingDataByTeamId(teamId, retry - 1);
-    }
-    return Promise.reject(error);
-  }
+  } catch (error) {}
 };
 
 export async function pushDataListToTrainingQueue({
@@ -37,53 +30,48 @@ export async function pushDataListToTrainingQueue({
   data,
   prompt,
   billId,
-  trainingMode = TrainingModeEnum.chunk,
-
-  vectorModelList = [],
-  datasetModelList = []
+  trainingMode = TrainingModeEnum.chunk
 }: {
   teamId: string;
   tmbId: string;
-  vectorModelList: VectorModelItemType[];
-  datasetModelList: LLMModelItemType[];
 } & PushDatasetDataProps): Promise<PushDatasetDataResponse> {
+  const vectorModelList = global.vectorModels;
+  const datasetModelList = global.llmModels;
+
   const {
     datasetId: { _id: datasetId, vectorModel, agentModel }
   } = await getCollectionWithDataset(collectionId);
 
-  const checkModelValid = async ({ collectionId }: { collectionId: string }) => {
-    if (!collectionId) return Promise.reject(`CollectionId is empty`);
+  const checkModelValid = async () => {
+    const agentModelData = datasetModelList?.find((item) => item.model === agentModel);
+    if (!agentModelData) {
+      return Promise.reject(`File model ${agentModel} is inValid`);
+    }
+    const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
+    if (!vectorModelData) {
+      return Promise.reject(`Vector model ${vectorModel} is inValid`);
+    }
 
     if (trainingMode === TrainingModeEnum.chunk) {
-      const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
-      if (!vectorModelData) {
-        return Promise.reject(`Model ${vectorModel} is inValid`);
-      }
-
       return {
-        maxToken: vectorModelData.maxToken * 1.5,
+        maxToken: vectorModelData.maxToken * 1.3,
         model: vectorModelData.model,
         weight: vectorModelData.weight
       };
     }
 
-    if (trainingMode === TrainingModeEnum.qa) {
-      const qaModelData = datasetModelList?.find((item) => item.model === agentModel);
-      if (!qaModelData) {
-        return Promise.reject(`Model ${agentModel} is inValid`);
-      }
+    if (trainingMode === TrainingModeEnum.qa || trainingMode === TrainingModeEnum.auto) {
       return {
-        maxToken: qaModelData.maxContext * 0.8,
-        model: qaModelData.model,
+        maxToken: agentModelData.maxContext * 0.8,
+        model: agentModelData.model,
         weight: 0
       };
     }
+
     return Promise.reject(`Training mode "${trainingMode}" is inValid`);
   };
 
-  const { model, maxToken, weight } = await checkModelValid({
-    collectionId
-  });
+  const { model, maxToken, weight } = await checkModelValid();
 
   // format q and a, remove empty char
   data.forEach((item) => {

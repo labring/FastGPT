@@ -15,7 +15,6 @@ import {
   DrawerContent,
   useDisclosure
 } from '@chakra-ui/react';
-import { usePagination } from '@/web/common/hooks/usePagination';
 import {
   getDatasetDataList,
   delOneDatasetDataById,
@@ -31,7 +30,7 @@ import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyInput from '@/components/MyInput';
-import { useLoading } from '@/web/common/hooks/useLoading';
+import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
@@ -48,6 +47,7 @@ import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
 import MyTooltip from '@/components/MyTooltip';
+import { usePagination } from '@fastgpt/web/hooks/usePagination';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);

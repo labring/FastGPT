@@ -11,227 +11,59 @@ weight: 708
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。
 
-这个配置文件中包含了系统级参数、AI 对话的模型、function 模型等……
+这个配置文件中包含了系统参数和各个模型配置，`使用时务必去掉注释!!!!!!!!!!!!!!`
 
-## 4.6.8 以前版本完整配置参数
-
-**使用时，请务必去除注释！**
-
-以下配置适用于V4.6.6-alpha版本以后
-
-```json
-{
-  "systemEnv": {
-    "vectorMaxProcess": 15, // 向量生成最大进程，结合数据库性能和 key 来设置
-    "qaMaxProcess": 15,  // QA 生成最大进程，结合数据库性能和 key 来设置
-    "pgHNSWEfSearch": 100  // pg vector 索引参数，越大精度高但速度慢
-  },
-  "chatModels": [ // 对话模型
-    {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "inputPrice": 0, // 输入价格。 xx元/1k tokens
-      "outputPrice": 0, // 输出价格。 xx元/1k tokens
-      "maxContext": 16000, // 最大上下文长度
-      "maxResponse": 4000, // 最大回复长度
-      "quoteMaxToken": 2000, // 最大引用内容长度
-      "maxTemperature": 1.2, // 最大温度值
-      "censor": false, // 是否开启敏感词过滤(商业版)
-      "vision": false, // 支持图片输入
-      "defaultSystemChatPrompt": ""
-    },
-    {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
-      "maxContext": 16000,
-      "maxResponse": 16000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "quoteMaxToken": 8000,
-      "maxTemperature": 1.2,
-      "censor": false,
-      "vision": false,
-      "defaultSystemChatPrompt": ""
-    },
-    {
-      "model": "gpt-4",
-      "name": "GPT4-8k",
-      "maxContext": 8000,
-      "maxResponse": 8000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "quoteMaxToken": 4000,
-      "maxTemperature": 1.2,
-      "censor": false,
-      "vision": false,
-      "defaultSystemChatPrompt": ""
-    },
-    {
-      "model": "gpt-4-vision-preview",
-      "name": "GPT4-Vision",
-      "maxContext": 128000,
-      "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "quoteMaxToken": 100000,
-      "maxTemperature": 1.2,
-      "censor": false,
-      "vision": true,
-      "defaultSystemChatPrompt": ""
-    }
-  ],
-  "qaModels": [ // QA 生成模型
-    {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "GPT35-16k",
-      "maxContext": 16000,
-      "maxResponse": 16000,
-      "inputPrice": 0,
-      "outputPrice": 0
-    }
-  ],
-  "cqModels": [ // 问题分类模型
-    {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "maxContext": 16000,
-      "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "toolChoice": true, // 是否支持openai的 toolChoice， 不支持的模型需要设置为 false，会走提示词生成
-      "functionPrompt": ""
-    },
-    {
-      "model": "gpt-4",
-      "name": "GPT4-8k",
-      "maxContext": 8000,
-      "maxResponse": 8000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "toolChoice": true,
-      "functionPrompt": ""
-    }
-  ],
-  "extractModels": [ // 内容提取模型
-    {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "maxContext": 16000,
-      "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "toolChoice": true,
-      "functionPrompt": ""
-    }
-  ],
-  "qgModels": [ // 生成下一步指引
-    {
-      "model": "gpt-3.5-turbo-1106",
-      "name": "GPT35-1106",
-      "maxContext": 1600,
-      "maxResponse": 4000,
-      "inputPrice": 0,
-      "outputPrice": 0
-    }
-  ],
-  "vectorModels": [ // 向量模型
-    {
-      "model": "text-embedding-ada-002",
-      "name": "Embedding-2",
-      "inputPrice": 0,
-      "defaultToken": 700,
-      "maxToken": 3000
-    }
-  ],
-  "reRankModels": [], // 重排模型,暂时填空数组
-  "audioSpeechModels": [
-    {
-      "model": "tts-1",
-      "name": "OpenAI TTS1",
-      "inputPrice": 0,
-      "baseUrl": "",
-      "key": "",
-      "voices": [
-        { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
-        { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
-        { "label": "Fable", "value": "fable", "bufferId": "openai-Fable" },
-        { "label": "Onyx", "value": "onyx", "bufferId": "openai-Onyx" },
-        { "label": "Nova", "value": "nova", "bufferId": "openai-Nova" },
-        { "label": "Shimmer", "value": "shimmer", "bufferId": "openai-Shimmer" }
-      ]
-    }
-  ],
-  "whisperModel": {
-    "model": "whisper-1",
-    "name": "Whisper1",
-    "inputPrice": 0
-  }
-}
-```
-
-## 4.6.8 新配置文件
+## 4.6.8+ 版本新配置文件
 
 llm模型全部合并
 
 ```json
 {
   "systemEnv": {
-    "openapiPrefix": "fastgpt",
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
-    "pgHNSWEfSearch": 100
+    "pgHNSWEfSearch": 100 // 向量搜索参数。越大，搜索越精确，但是速度越慢。设置为100，有99%+精度。
   },
   "llmModels": [
     {
-      "model": "gpt-3.5-turbo-1106", // 模型名
+      "model": "gpt-3.5-turbo", // 模型名
       "name": "gpt-3.5-turbo", // 别名
+      "avatar": "/imgs/model/openai.svg", // 模型的logo
       "maxContext": 16000, // 最大上下文
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 13000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
-      "inputPrice": 0, 
-      "outputPrice": 0,
+      "charsPointsPrice": 0, 
       "censor": false,
       "vision": false, // 是否支持图片输入
-      "datasetProcess": false, // 是否设置为知识库处理模型
-      "toolChoice": true, // 是否支持工具选择
-      "functionCall": false, // 是否支持函数调用
+      "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
+      "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
+      "usedInExtractFields": true, // 是否用于内容提取（务必保证至少有一个为true）
+      "usedInToolCall": true, // 是否用于工具调用（务必保证至少有一个为true）
+      "usedInQueryExtension": true, // 是否用于问题优化（务必保证至少有一个为true）
+      "toolChoice": true, // 是否支持工具选择（分类，内容提取，工具调用会用到。目前只有gpt支持）
+      "functionCall": false, // 是否支持函数调用（分类，内容提取，工具调用会用到。会优先使用 toolChoice，如果为false，则使用 functionCall，如果仍为 false，则使用提示词模式）
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
       "customExtractPrompt": "", // 自定义内容提取提示词
       "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
-      "defaultConfig":{}  // 对话默认配置（比如 GLM4 的 top_p
-    },
-    {
-      "model": "gpt-3.5-turbo-16k",
-      "name": "gpt-3.5-turbo-16k",
-      "maxContext": 16000,
-      "maxResponse": 16000,
-      "quoteMaxToken": 13000,
-      "maxTemperature": 1.2,
-      "inputPrice": 0,
-      "outputPrice": 0,
-      "censor": false,
-      "vision": false,
-      "datasetProcess": true,
-      "toolChoice": true,
-      "functionCall": false,
-      "customCQPrompt": "",
-      "customExtractPrompt": "",
-      "defaultSystemChatPrompt": "",
-      "defaultConfig":{} 
+      "defaultConfig":{}  // LLM默认配置，可以针对不同模型设置特殊值（比如 GLM4 的 top_p
     },
     {
       "model": "gpt-4-0125-preview",
       "name": "gpt-4-turbo",
+      "avatar": "/imgs/model/openai.svg",
       "maxContext": 125000,
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "censor": false,
       "vision": false,
       "datasetProcess": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",
@@ -242,15 +74,19 @@ llm模型全部合并
     {
       "model": "gpt-4-vision-preview",
       "name": "gpt-4-vision",
+      "avatar": "/imgs/model/openai.svg",
       "maxContext": 128000,
       "maxResponse": 4000,
       "quoteMaxToken": 100000,
       "maxTemperature": 1.2,
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "censor": false,
-      "vision": false,
+      "vision": true,
       "datasetProcess": false,
+      "usedInClassify": false,
+      "usedInExtractFields": false,
+      "usedInToolCall": false,
+      "usedInQueryExtension": false,
       "toolChoice": true,
       "functionCall": false,
       "customCQPrompt": "",
@@ -263,8 +99,8 @@ llm模型全部合并
     {
       "model": "text-embedding-ada-002",
       "name": "Embedding-2",
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
       "defaultToken": 700,
       "maxToken": 3000,
       "weight": 100,
@@ -276,8 +112,7 @@ llm模型全部合并
     {
       "model": "tts-1",
       "name": "OpenAI TTS1",
-      "inputPrice": 0,
-      "outputPrice": 0,
+      "charsPointsPrice": 0,
       "voices": [
         { "label": "Alloy", "value": "alloy", "bufferId": "openai-Alloy" },
         { "label": "Echo", "value": "echo", "bufferId": "openai-Echo" },
@@ -291,11 +126,24 @@ llm模型全部合并
   "whisperModel": {
     "model": "whisper-1",
     "name": "Whisper1",
-    "inputPrice": 0,
-    "outputPrice": 0
+    "charsPointsPrice": 0
   }
 }
 ```
+
+## 关于模型 logo
+
+统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。
+
+- /imgs/model/baichuan.svg - 百川
+- /imgs/model/chatglm.svg - 智谱
+- /imgs/model/calude.svg - calude
+- /imgs/model/ernie.svg - 文心一言
+- /imgs/model/moonshot.svg - 月之暗面
+- /imgs/model/openai.svg - OpenAI GPT
+- /imgs/model/qwen.svg - 通义千问
+- /imgs/model/yi.svg - 零一万物
+- 
 
 ## 特殊模型
 
@@ -313,7 +161,7 @@ llm模型全部合并
         {
             "model": "bge-reranker-base", // 随意
             "name": "检索重排-base", // 随意
-            "inputPrice": 0,
+            "charsPointsPrice": 0,
             "requestUrl": "{{host}}/api/v1/rerank",
             "requestAuth": "安全凭证，已自动补 Bearer"
         }

@@ -1,6 +1,6 @@
 import React from 'react';
 import { ModalBody, ModalFooter, Button } from '@chakra-ui/react';
-import MyModal from '../MyModal';
+import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 
 const ReadFeedbackModal = ({

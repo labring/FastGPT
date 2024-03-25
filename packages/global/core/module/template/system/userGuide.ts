@@ -1,14 +1,18 @@
 import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import { userGuideTip } from '../tip';
-import { ModuleIOValueTypeEnum, ModuleInputKeyEnum, ModuleTemplateTypeEnum } from '../../constants';
+import {
+  ModuleIOValueTypeEnum,
+  ModuleInputKeyEnum,
+  FlowNodeTemplateTypeEnum
+} from '../../constants';
 
-export const UserGuideModule: FlowModuleTemplateType = {
+export const UserGuideModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.userGuide,
-  templateType: ModuleTemplateTypeEnum.userGuide,
+  templateType: FlowNodeTemplateTypeEnum.userGuide,
   flowType: FlowNodeTypeEnum.userGuide,
   avatar: '/imgs/module/userGuide.png',
-  name: 'core.module.template.User guide',
+  name: '全局配置',
   intro: userGuideTip,
   inputs: [
     {

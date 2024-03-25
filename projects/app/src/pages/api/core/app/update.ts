@@ -6,13 +6,13 @@ import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { getLLMModel } from '@/service/core/ai/model';
+import { getLLMModel } from '@fastgpt/service/core/ai/model';
 
 /* 获取我的模型 */
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { name, avatar, type, simpleTemplateId, intro, modules, permission } =
+    const { name, avatar, type, intro, modules, permission, teamTags } =
       req.body as AppUpdateParams;
     const { appId } = req.query as { appId: string };
 
@@ -29,7 +29,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       let maxTokens = 3000;
 
       modules.forEach((item) => {
-        if (item.flowType === FlowNodeTypeEnum.chatNode) {
+        if (
+          item.flowType === FlowNodeTypeEnum.chatNode ||
+          item.flowType === FlowNodeTypeEnum.tools
+        ) {
           const model =
             item.inputs.find((item) => item.key === ModuleInputKeyEnum.aiModel)?.value || '';
           const chatModel = getLLMModel(model);
@@ -61,10 +64,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       {
         name,
         type,
-        simpleTemplateId,
         avatar,
         intro,
         permission,
+        teamTags: teamTags,
         ...(modules && {
           modules
         })

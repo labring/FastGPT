@@ -11,6 +11,7 @@ const unAuthPage: { [key: string]: boolean } = {
   '/login/fastlogin': true,
   '/appStore': true,
   '/chat/share': true,
+  '/chat/team': true,
   '/tools/price': true,
   '/price': true
 };

@@ -48,7 +48,9 @@ const OutputLabel = ({
                 label: item.label,
                 description: item.description,
                 valueType: item.valueType,
-                outputType: item.type
+                outputType: item.type,
+                required: item.required,
+                defaultValue: item.defaultValue
               })
             }
           />
@@ -74,7 +76,20 @@ const OutputLabel = ({
           <QuestionOutlineIcon display={['none', 'inline']} mr={1} />
         </MyTooltip>
       )}
-      <Box>{t(label)}</Box>
+      <Box position={'relative'}>
+        {item.required && (
+          <Box
+            position={'absolute'}
+            top={'-2px'}
+            left={'-5px'}
+            color={'red.500'}
+            fontWeight={'bold'}
+          >
+            *
+          </Box>
+        )}
+        {t(label)}
+      </Box>
 
       {item.type === FlowNodeOutputTypeEnum.source && (
         <SourceHandle handleKey={outputKey} valueType={item.valueType} />
@@ -95,7 +110,9 @@ const OutputLabel = ({
               valueType: data.valueType,
               key: data.key,
               label: data.label,
-              description: data.description
+              description: data.description,
+              required: data.required,
+              defaultValue: data.defaultValue
             };
 
             if (changeKey) {

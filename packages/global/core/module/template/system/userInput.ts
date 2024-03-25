@@ -3,21 +3,21 @@ import {
   FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '../../node/constant';
-import { FlowModuleTemplateType } from '../../type.d';
+import { FlowNodeTemplateType } from '../../type.d';
 import {
   ModuleIOValueTypeEnum,
   ModuleInputKeyEnum,
   ModuleOutputKeyEnum,
-  ModuleTemplateTypeEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 
-export const UserInputModule: FlowModuleTemplateType = {
+export const UserInputModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.questionInput,
-  templateType: ModuleTemplateTypeEnum.systemInput,
+  templateType: FlowNodeTemplateTypeEnum.systemInput,
   flowType: FlowNodeTypeEnum.questionInput,
   avatar: '/imgs/module/userChatInput.svg',
-  name: 'core.module.template.Chat entrance',
-  intro: 'core.module.template.Chat entrance intro',
+  name: '对话入口',
+  intro: '当用户发送一个内容后，流程将会从这个模块开始执行。',
   inputs: [
     {
       key: ModuleInputKeyEnum.userChatInput,

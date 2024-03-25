@@ -103,7 +103,7 @@ const QuoteItem = ({
         fontSize={'sm'}
         whiteSpace={'pre-wrap'}
         wordBreak={'break-all'}
-        _hover={{ '& .hover-data': { display: 'flex' } }}
+        _hover={{ '& .hover-data': { visibility: 'visible' } }}
         h={'100%'}
         display={'flex'}
         flexDirection={'column'}
@@ -218,7 +218,8 @@ const QuoteItem = ({
               <MyTooltip label={t('core.dataset.data.Edit')}>
                 <Box
                   className="hover-data"
-                  display={['flex', 'none']}
+                  visibility={'hidden'}
+                  display={'flex'}
                   alignItems={'center'}
                   justifyContent={'center'}
                 >
@@ -245,7 +246,7 @@ const QuoteItem = ({
               <Link
                 as={NextLink}
                 className="hover-data"
-                display={'none'}
+                visibility={'hidden'}
                 alignItems={'center'}
                 color={'primary.500'}
                 href={`/dataset/detail?datasetId=${quoteItem.datasetId}&currentTab=dataCard&collectionId=${quoteItem.collectionId}`}

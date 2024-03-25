@@ -1,17 +1,23 @@
 export type LLMModelItemType = {
   model: string;
   name: string;
+  avatar?: string;
   maxContext: number;
   maxResponse: number;
   quoteMaxToken: number;
   maxTemperature: number;
 
-  inputPrice: number;
-  outputPrice: number;
+  charsPointsPrice: number; // 1k chars=n points
 
   censor?: boolean;
   vision?: boolean;
-  datasetProcess?: boolean;
+
+  // diff function model
+  datasetProcess?: boolean; // dataset
+  usedInClassify?: boolean; // classify
+  usedInExtractFields?: boolean; // extract fields
+  usedInToolCall?: boolean; // tool call
+  usedInQueryExtension?: boolean; // query extension
 
   functionCall: boolean;
   toolChoice: boolean;
@@ -26,9 +32,9 @@ export type LLMModelItemType = {
 export type VectorModelItemType = {
   model: string;
   name: string;
+  avatar?: string;
   defaultToken: number;
-  inputPrice: number;
-  outputPrice: number;
+  charsPointsPrice: number;
   maxToken: number;
   weight: number;
   hidden?: boolean;
@@ -38,8 +44,7 @@ export type VectorModelItemType = {
 export type ReRankModelItemType = {
   model: string;
   name: string;
-  inputPrice: number;
-  outputPrice?: number;
+  charsPointsPrice: number;
   requestUrl?: string;
   requestAuth?: string;
 };
@@ -47,14 +52,12 @@ export type ReRankModelItemType = {
 export type AudioSpeechModelType = {
   model: string;
   name: string;
-  inputPrice: number;
-  outputPrice?: number;
+  charsPointsPrice: number;
   voices: { label: string; value: string; bufferId: string }[];
 };
 
 export type WhisperModelType = {
   model: string;
   name: string;
-  inputPrice: number;
-  outputPrice?: number;
+  charsPointsPrice: number; // 60s = n points
 };

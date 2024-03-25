@@ -13,6 +13,7 @@ import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 const PreviewPlugin = dynamic(() => import('./Preview'));
@@ -41,7 +42,12 @@ const Header = ({ plugin, onClose }: Props) => {
         item.inputs.forEach((item) => {
           item.connected = true;
         });
-        if (item.outputs.find((output) => output.targets.length === 0)) {
+        if (
+          item.outputs.find(
+            (output) =>
+              output.key !== ModuleOutputKeyEnum.pluginStart && output.targets.length === 0
+          )
+        ) {
           toast({
             status: 'warning',
             title: t('module.Plugin input must connect')

@@ -15,6 +15,7 @@
     "AI Settings": "AI Settings",
     "Advance App TestTip": "The current application is advanced editing mode \n. If you need to switch to [simple mode], please click the save button on the left",
     "App Detail": "App Detail",
+    "Apps Share": "Apps Share",
     "Basic Settings": "Basic Settings",
     "Chat Debug": "Chat Debug",
     "Chat Logs Tips": "Logs record the app's online, shared, and API(chatId is existing) conversations",
@@ -61,6 +62,7 @@
     "Back": "Back",
     "Beta": "Beta",
     "Business edition features": "This is the commercial version function ~",
+    "Cancel": "Cancel",
     "Choose": "Choose",
     "Close": "Close",
     "Collect": "Collect",
@@ -83,14 +85,19 @@
     "Delete Success": "Delete Successful",
     "Delete Tip": "Delete Confirm",
     "Delete Warning": "Warning",
+    "Detail": "Detail",
     "Done": "Done",
     "Edit": "Edit",
     "Exit": "Exit",
     "Expired Time": "Expired",
+    "Field": "Field",
     "File": "File",
     "Filed is repeat": "Filed is repeated",
     "Filed is repeated": "",
     "Finish": "Finish",
+    "Import": "Import",
+    "Import failed": "Import failed",
+    "Import success": "Import success",
     "Input": "Input",
     "Intro": "Intro",
     "Invalid Json": "Invalid Json",
@@ -98,8 +105,6 @@
     "Last use time": "Last use time",
     "Load Failed": "Load Failed",
     "Loading": "Loading",
-    "Max credit": "Credit",
-    "Max credit tips": "What is the maximum amount of money that can be consumed by the link? If the link is exceeded, it will be banned. -1 indicates no limit.",
     "More settings": "More settings",
     "Name": "Name",
     "Name Can": "Name Can't Be Empty",
@@ -109,7 +114,9 @@
     "Not open": "Close",
     "Number of words": "{{amount}} words",
     "OK": "OK",
+    "Open": "Open",
     "Opened": "Opened",
+    "Other": "Other",
     "Output": "Output",
     "Params": "Params",
     "Password inconsistency": "Password inconsistency",
@@ -117,6 +124,7 @@
     "Price used": "Usage",
     "Read document": "Read document",
     "Read intro": "Read intro",
+    "Remove": "Remove",
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
     "Rename Success": "Rename Success",
@@ -132,17 +140,20 @@
     "Select template": "Select template",
     "Set Avatar": "Set Avatar",
     "Set Name": "Make a nice name",
+    "Set Team Tags": "Set Team Tags",
     "Setting": "Setting",
     "Status": "Status",
     "Submit failed": "Submit failed",
     "Submit success": "Update Success",
     "Team": "Team",
+    "Team Tags Set": "Team Tags",
     "Test": "Test",
     "Time": "Time",
     "Un used": "Unused",
     "UnKnow": "UnKnow",
     "UnKnow Source": "UnKnow Source",
     "Unlimited": "Unlimited",
+    "Update": "Update",
     "Update Failed": "Update Failed",
     "Update Success": "Update Success",
     "Update Successful": "Update Successful",
@@ -151,6 +162,7 @@
     "Upload File Failed": "Upload File Failed",
     "Username": "UserName",
     "Waiting": "Waiting",
+    "Warning": "",
     "Website": "Website",
     "avatar": {
       "Select Avatar": "Select Avatar",
@@ -236,8 +248,12 @@
     "Total chars": "Total chars: {{total}}",
     "Total tokens": "Tokens: {{total}}",
     "ai": {
+      "AI settings": "AI settings",
+      "Ai point price": "AI points",
+      "Max context": "Max context",
       "Model": "Model",
       "Prompt": "Prompt",
+      "Support tool": "Function call",
       "model": {
         "Dataset Agent Model": "Agent Model",
         "Vector Model": "Vector Model"
@@ -252,6 +268,7 @@
       "Chat Variable": "",
       "External using": "External use",
       "Make a brief introduction of your app": "Make a brief introduction of your app",
+      "Max histories": "Dialog round",
       "Max tokens": "Max tokens",
       "Name and avatar": "Avatar & Name",
       "Next Step Guide": "Next step guide",
@@ -261,6 +278,7 @@
       "Quote templates": "Quote templates",
       "Random": "Random",
       "Save and preview": "Save",
+      "Search team tags": "Search tags",
       "Select TTS": "Select TTS",
       "Select app from template": "Select from the template",
       "Select quote template": "Select quote template",
@@ -271,7 +289,17 @@
       "Simple Config Tip": "Only basic functions are included. For complex agent functions, use advanced orchestration.",
       "TTS": "Audio Speech",
       "TTS Tip": "After this function is enabled, the voice playback function can be used after each conversation. Use of this feature may incur additional charges.",
+      "Team tags": "Team tags",
       "Temperature": "Temperature",
+      "Tool call": "Tool call",
+      "Tool call tip": "The AI model automatically selects one or more tools to use. If this feature is enabled, the knowledge base call is also called as a tool. Please try to choose the AI model that supports \"function call\", the effect is better.",
+      "ToolCall": {
+        "No plugin": "No plugins",
+        "Setting tool": "Setting tool",
+        "System": "System",
+        "Team": "Team",
+        "This plugin cannot be called as a tool": "This tool cannot be used in easy mode"
+      },
       "Welcome Text": "Welcome Text",
       "create app": "Create App",
       "deterministic": "Deterministic",
@@ -400,9 +428,9 @@
       "Speaking": "I'm listening...",
       "Start Chat": "Start Chat",
       "Stop Speak": "Stop Speak",
-      "Type a message": "Input problem",
+      "Type a message": "Enter your question here",
       "Unpin": "Unpin",
-      "You need to a chat app": "You need to a chat app",
+      "You need to a chat app": "You don't have apps available",
       "error": {
         "Chat error": "Chat error",
         "Messages empty": "Interface content is empty, maybe the text is too long ~",
@@ -435,9 +463,11 @@
       "response": {
         "Complete Response": "Complete Response",
         "Extension model": "Extension model",
-        "Plugin Resonse Detail": "Plugin Detail",
+        "Plugin response detail": "Plugin Detail",
         "Read complete response": "Read Detail",
         "Read complete response tips": "Click to see the detailed process",
+        "Tool call response detail": "Tool call detail",
+        "Tool call tokens": "Tool call tokens",
         "context total length": "Context Length",
         "module cq": "Question classification list",
         "module cq result": "Classification Result",
@@ -461,7 +491,7 @@
         "module similarity": "Similarity",
         "module temperature": "Temperature",
         "module time": "Running Time",
-        "module tokens": "Tokens",
+        "module tokens": "Total Tokens",
         "plugin output": "Plugin Output",
         "search using reRank": "ReRank",
         "text output": "Text Output"
@@ -500,6 +530,7 @@
       "Manual collection": "Manual collection",
       "My Dataset": "My Dataset",
       "Name": "Name",
+      "Query extension intro": "If the problem completion function is enabled, the accuracy of knowledge base search can be improved in continuous conversations. After this function is enabled, when searching the knowledge base, AI will be used to complete the missing information of the problem according to the conversation records.",
       "Quote Length": "Quote Length",
       "Read Dataset": "Read Dataset",
       "Search score tip": "{{scoreText}}Here are the rankings and scores:\n----\n{{detailScore}}",
@@ -586,6 +617,7 @@
       "file": "File",
       "folder": "Folder",
       "import": {
+        "Auto mode Estimated Price Tips": "Enhanced processing calls the file processing model: {{price}} integral /1k Tokens",
         "Auto process": "Auto",
         "Auto process desc": "Automatically set segmentation and preprocessing rules",
         "CSV Import": "CSV QA Import",
@@ -607,9 +639,10 @@
         "Data file progress": "Data upload progress",
         "Data process params": "Data process params",
         "Down load csv template": "Down load csv template",
-        "Embedding Estimated Price Tips": "Index billing: {{price}}/1k chars",
+        "Embedding Estimated Price Tips": "Index billing: {{price}}/1k Tokens",
         "Estimated Price": "Estimated Price: : {{amount}}{{unit}}",
-        "Estimated Price Tips": "QA charges\nInput: {{inputPrice}}/1k tokens\nOutput: {{outputPrice}}/1k tokens",
+        "Estimated Price Tips": "QA charges: {{charsPointsPrice}} points/1k Tokens",
+        "Estimated points": "About {{points}} points",
         "Fetch Error": "Get link failed",
         "Fetch Url": "Url",
         "Fetch url placeholder": "Up to 10 links, one per line.",
@@ -629,7 +662,7 @@
         "Preview chunks": "Chunks",
         "Preview raw text": "Preview file text (max show 10000 words)",
         "Process way": "Process way",
-        "QA Estimated Price Tips": "QA billing: {{price}}/1k characters (including input and output)",
+        "QA Estimated Price Tips": "QA billing: {{price}}/1k Tokens (including input and output)",
         "QA Import": "QA Split",
         "QA Import Tip": "According to certain rules, the text is broken into a larger paragraph, and the AI is invoked to generate a question and answer pair for the paragraph.",
         "Re Preview": "RePreview",
@@ -677,9 +710,10 @@
         "Search type": "Type",
         "Source id": "Source ID",
         "Source name": "Source",
+        "Tool description": "Description",
         "Top K": "Top K",
         "Using cfr": "Open query extension",
-        "Using query extension": "",
+        "Using query extension": "Open query extension",
         "mode": {
           "embedding": "Vector recall",
           "embedding desc": "Use vectors for text correlation queries",
@@ -728,6 +762,8 @@
       },
       "training": {
         "Agent queue": "QA wait list",
+        "Auto mode": "Enhancement process",
+        "Auto mode Tip": "Subindex and call model are used to generate relevant questions and abstracts to increase the semantic richness of data blocks and facilitate retrieval. It consumes more storage space and increases the number of AI calls.",
         "Chunk mode": "Chunk split",
         "Full": "Expect more than 5 minutes",
         "Leisure": "Leisure",
@@ -753,6 +789,7 @@
     "module": {
       "Add question type": "Add type",
       "Can not connect self": "Cannot connect itself",
+      "Confirm Delete Node": "",
       "Data Type": "Data Type",
       "Dataset quote": {
         "Add quote": "Add quote",
@@ -760,6 +797,9 @@
         "Input description": "",
         "label": "Dataset quote"
       },
+      "Default value": "Default ",
+      "Default value placeholder": "Null characters are returned by default",
+      "Edit intro": "Edit",
       "Field Description": "Description",
       "Field Name": "Name",
       "Field Type": "Type",
@@ -772,18 +812,26 @@
         "placeholder": "Questions about python introduction and usage, etc. The current conversation is related to the game GTA5.",
         "tip": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.If \n is empty, the question completion function is not used in the first conversation. "
       },
+      "Quote prompt setting": "Quote prompt setting",
+      "Qupte prompt setting": "",
+      "Setting quote prompt": "Setting quote prompt",
       "Unlink tip": "[{{name}}] An unfilled or unconnected parameter exists",
       "Variable": "Variables",
       "Variable Setting": "Variable Setting",
+      "Variable import": "Variable import",
       "edit": {
         "Field Already Exist": "Key already exist",
         "Field Edit": "Field Edit"
       },
       "extract": {
+        "Add field": "Add",
         "Enum Description": "Lists the possible values for the field, one per row",
         "Enum Value": "Enum",
         "Field Description Placeholder": "Name/age /sql statement......",
-        "Field Setting Title": "Extract field configuration"
+        "Field Setting Title": "Extract field configuration",
+        "Required": "Required",
+        "Required Description": "Even if the field cannot be extracted, it is returned with the default value",
+        "Target field": "Field"
       },
       "http": {
         "Add props": "Add props",
@@ -793,6 +841,8 @@
         "Histories": "histories",
         "Key already exists": "Key already exists",
         "Key cannot be empty": "Name cannot be empty",
+        "OpenAPI import": "OpenAPI import",
+        "OpenAPI import placeholder": "Please enter the OpenAPI format content, and the request information for the first interface will be extracted.",
         "Props name": "Name",
         "Props tip": "You can set parameters related to Http requests\nGlobal changes or external parameter inputs can be invoked by {{key}}",
         "Props value": "Value",
@@ -843,8 +893,8 @@
         "dynamicTargetInput": "dynamic Target Input",
         "input": "Input",
         "selectApp": "App Selector",
-        "selectChatModel": "Select Chat Model",
         "selectDataset": "Dataset Selector",
+        "selectLLMModel": "Select Chat Model",
         "switch": "Switch",
         "target": "Target Data",
         "textarea": "Textarea"
@@ -856,6 +906,7 @@
           "Ai response content": "Will be triggered after the stream reply is complete",
           "New context": "Concatenate the reply content with history and return it as a new context",
           "Quote": "Always return an array, if you want the search results to be empty to perform additional operations, you need to use the above two inputs and the trigger of the target module",
+          "query extension result": "Output as an array of strings to connect the result directly to the 'Question' of the knowledge base search",
           "running done": "Triggered when the module call finish"
         },
         "label": {
@@ -864,7 +915,7 @@
           "Quote": "Quote",
           "Search result empty": "Search result empty",
           "Search result not empty": "Search result not empty",
-          "cfr result": "Response text",
+          "query extension result": "Response text",
           "result false": "False",
           "result true": "True",
           "running done": "done",
@@ -872,10 +923,13 @@
         }
       },
       "template": {
+        "AI response switch tip": "If you want the current node not to output content, you can turn this switch off. AI output content will not be shown to the user, you can manually use the \"AI reply content\" for special processing.",
+        "AI support tool tip": "A model that supports function calls allows better use of tool calls.",
         "Ai chat": "LLM Chat",
         "Ai chat intro": "Request LLM chat",
         "Assigned reply": "Assigned reply",
         "Assigned reply intro": "The module can respond directly to a specified piece of content. Often used to guide and prompt. When non-string content is passed in, it is converted to a string for output.",
+        "Basic Node": "Basic Node",
         "Chat entrance": "Chat entrance",
         "Chat entrance intro": "When the user sends a content, the flow will start from this module.",
         "Classify question": "Classify question",
@@ -896,17 +950,26 @@
         "Response module": "Text output",
         "Running app": "Running app",
         "Running app intro": "You can select a different app to run",
+        "System Plugin": "System Plugin",
         "System input module": "System input",
         "TFSwitch": "TF Switch",
         "TFSwitch intro": "Output True False based on what is passed in. By default, false is printed when the content passed in is false, undefined, null, 0, none. You can also add some custom strings to supplement the output of false.",
+        "Team Plugin": "Team Plugin",
         "Tool module": "Tools",
         "UnKnow Module": "UnKnow Module",
         "User guide": "User guide",
+        "http body placeholder": "Same syntax as APIFox",
         "textEditor": "Text Editor",
         "textEditor intro": "Output of fixed or incoming text after edit"
       },
+      "templates": {
+        "Load plugin error": "Load plugin error"
+      },
       "textEditor": {
         "Text Edit": "Text Edit"
+      },
+      "tool": {
+        "Tool input": "Tool input"
       },
       "valueType": {
         "any": "Any",
@@ -917,9 +980,11 @@
         "number": "Number",
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",
-        "string": "String"
+        "string": "String",
+        "tools": "tools"
       },
       "variable": {
+        "External type": "External",
         "add option": "Add Option",
         "input type": "Text",
         "key": "Key",
@@ -937,7 +1002,10 @@
       "variable add option": "Add Option"
     },
     "plugin": {
-      "Get Plugin Module Detail Failed": "Load plugin failed"
+      "Custom headers": "Custom Headers",
+      "Delete http plugin": "Are you sure to delete this group of HTTP plug-ins? All plug-ins in the directory are deleted.",
+      "Get Plugin Module Detail Failed": "Load plugin failed",
+      "Intro placeholder": "If the plug-in is called as a tool, the introduction is used as the prompt word."
     },
     "shareChat": {
       "Init Error": "Init Chat Error",
@@ -1103,6 +1171,7 @@
   "navbar": {
     "Account": "Account",
     "Apps": "App",
+    "Apps Share": "",
     "Chat": "Chat",
     "Datasets": "DataSet",
     "Module": "Module",
@@ -1143,20 +1212,43 @@
     "Set Public": "Set to public"
   },
   "plugin": {
+    "Auth Header Prefix": "Auth header prefix",
+    "Auth Method": "Auth method",
+    "Auth Type": "Auth Type",
     "Confirm Delete": "Confirm to delete the plugin?",
     "Create Your Plugin": "Create Plugin",
+    "Custom Plugin": "Custom plugin",
+    "Description": "Description",
+    "Edit Http Plugin": "Edit HTTP plugin",
     "Get Plugin Module Detail Failed": "Get plugin detail failed",
+    "HTTP Plugin": "HTTP plugin",
+    "Import Plugin": "Import HTTP plugin",
+    "Import from URL": "Import from URL",
     "Intro": "Plugin Intro",
+    "Invalid Schema": "Invalid Schema",
+    "Invalid URL": "Invalid URL",
+    "Key": "Key",
     "Load Plugin Failed": "Load Plugin Failed",
+    "Method": "Method",
     "My Plugins": "My Plugins",
     "No Intro": "This plugin is not introduced",
+    "None": "None",
+    "Path": "Path",
+    "Plugin List": "Plugin list",
     "Plugin Module": "Plugin",
+    "Privacy Agreement": "privacy agreement",
+    "Search plugin": "Search plugins",
     "Set Name": "Plugin Name",
     "Synchronous version": "Sync Version",
     "To Edit Plugin": "To Edit",
-    "Update Your Plugin": "Update Plugin"
+    "Update Your Plugin": "Update Plugin",
+    "Value": "Value",
+    "path": ""
   },
   "support": {
+    "account": {
+      "Individuation": "Individuation"
+    },
     "openapi": {
       "Api baseurl": "Baseurl",
       "Api manager": "API key management",
@@ -1167,65 +1259,145 @@
       "Usage": "Usage"
     },
     "outlink": {
+      "Max usage points": "Max usage",
+      "Max usage points tip": "The maximum number of credits allowed for this link will not be used. -1 indicates no limit.",
+      "Usage points": "Usage points",
       "share": {
         "Response Quote": "Show Quote",
         "Response Quote tips": "The referenced content is returned in the share link, but the user is not allowed to download the original document."
       }
     },
+    "standard": {
+      "AI Bonus Points": "AI Bonus Points",
+      "Expired Time": "Expired Time",
+      "Start Time": "Start Time",
+      "storage": "storage",
+      "type": "type"
+    },
     "subscription": {
       "Cancel subscription": "Cancel"
     },
+    "team": {
+      "limit": {
+        "No permission rerank": "Not permission to rerank, please upgrade your plan"
+      }
+    },
     "user": {
+      "AI point standard": "AI points price",
+      "Avatar": "Avatar",
       "Need to login": "Please log in first",
       "Price": "Price",
+      "User self info": "My info",
       "auth": {
         "Sending Code": "Sending"
       },
       "login": {
+        "And": "&",
+        "Email": "Email",
+        "Forget Password": "Forget Password?",
         "Github": "Github",
         "Google": "Google",
-        "Provider error": "Login exception, please try again"
+        "Password": "Password",
+        "Password login": "Password login",
+        "Phone": "Phone Login",
+        "Phone number": "Phone",
+        "Policy tip": "By using it, you agree with us",
+        "Privacy": "Privacy",
+        "Provider error": "Login exception, please try again",
+        "Register": "Register",
+        "Root login": "Log in as the root user",
+        "Root password placeholder": "root password is the environment variable you set",
+        "Terms": "Terms",
+        "Username": "Username",
+        "Wechat": "Wechat",
+        "Wx qr login": "Wechat scan code login"
       },
       "team": {
         "Dataset usage": "Dataset usage",
-        "member": "Member"
+        "Team Tags Async Success": "Team async success",
+        "member": "Member",
+        "tag": {
+          "Have not opened": "Team chat is not enabled"
+        }
       }
     },
     "wallet": {
+      "Ai point every thoundsand tokens": "",
+      "Ai point every thounsand tokens": "{{points}}Points/1K Tokens",
+      "Ai point every thousand tokens": "{{points}}Points/1K Tokens",
+      "Amount": "Amount",
       "Balance not enough tip": "The balance is insufficient, please go to the account page first",
+      "Bills": "Bill",
+      "Buy": "Buy",
       "Buy more": "Buy more",
       "Confirm pay": "Confirm pay",
+      "Not sufficient": "Your AI points are insufficient, please upgrade the package or purchase additional AI points before continuing to use.",
       "Pay error": "Pay error",
       "Pay success": "Pay success",
+      "Plan expired time": "Plan expired time",
+      "Standard Plan Detail": "Standard Plan Detail",
+      "To read plan": "Read plan",
       "bill": {
         "AI Model": "AI Model",
         "AI Type": "AI Type",
-        "Price": "Price（￥）"
+        "Number": "Number",
+        "Price": "Price（￥）",
+        "Status": "Status",
+        "Type": "Bill type",
+        "payWay": {
+          "Way": "Pay way",
+          "balance": "Balance",
+          "wx": "Wechat"
+        },
+        "status": {
+          "closed": "CLOSED",
+          "notpay": "NOT_PAY",
+          "refund": "REFUND",
+          "success": "SUCCESS"
+        }
       },
+      "moduleName": {
+        "index": "Index Generation",
+        "qa": "QA Generation"
+      },
+      "noBill": "Not Bills",
       "subscription": {
+        "AI points": "AI points",
+        "AI points click to read tip": "Each time an AI model is invoked, a certain amount of AI credits (similar to Tokens) are consumed. Click to view the detailed calculation rules.",
+        "AI points tip": "",
+        "AI points usage": "AI point usage",
+        "AI points usage tip": "Each time the AI model is invoked, a certain amount of AI credits are consumed. Please refer to the \"Charging Standard\" above for specific calculation standards.",
         "Ai points": "AI Points Standard",
         "Buy now": "Buy now",
         "Change will take effect after the current subscription expires": "Change will take effect after the current subscription expires",
         "Current dataset store": "Current dataset store subscription",
+        "Current extra ai points": "Current extra points",
         "Current plan": "Current plan",
         "Dataset store": "Dataset store size",
         "Dataset store price tip": "Deduct it from the account balance on the 1st of each month",
         "Expand size": "Expand size",
+        "Extra ai points": "Extra ai points",
         "Extra dataset size": "Extra dataset size",
         "Extra plan": "Extra Plan",
         "Extra plan tip": "When the standard plan is not enough, you can purchase an additional plan to continue using",
         "FAQ": "Pricing FAQs",
+        "Month amount": "Month",
+        "Next extra ai points": "Next extra points",
         "Next plan": "Future plan",
         "Next sub dataset size": "",
         "Nonsupport": "Nonsupport",
         "Refund plan and pay confirm": "There is no extra cost for you to switch this package and {{amount}} will be refunded to the balance.",
+        "Stand plan level": "Sub plan",
         "Standard plan pay confirm": "To switch this package, you need to pay {{payPrice}} Yuan.",
         "Standard update fail": "Update plan failed.",
         "Standard update success": "Change subscription plan successful!",
         "Sub plan": "Pricing Plans",
         "Sub plan tip": "Use FastGPT for free or upgrade to a higher plan",
+        "Team plan and usage": "Plan and usage",
         "Training weight": "Training weight: {{weight}}",
-        "Update extra dataset size": "Update size",
+        "Update extra ai points": "AI Points",
+        "Update extra dataset size": "Dataset size",
+        "Upgrade plan": "Upgrade plan",
         "function": {
           "History store": "",
           "Max app": "",
@@ -1236,6 +1408,7 @@
         },
         "mode": {
           "Month": "Monthly",
+          "Period": "Period",
           "Year": "Yearly",
           "Year sale": "2 months free"
         },
@@ -1248,9 +1421,38 @@
           "team": ""
         },
         "type": {
+          "balance": "Add Balance",
           "extraDatasetSize": "Extra dataset size",
-          "standard": ""
+          "extraPoints": "AI Points",
+          "standard": "Sub plan"
         }
+      },
+      "usage": {
+        "Ai model": "Ai Model",
+        "App name": "App name",
+        "Audio Speech": "Audio Speech",
+        "Bill Module": "Bill Detail",
+        "Chars length": "Chars length",
+        "Data Length": "Data length",
+        "Dataset store": "Dataset store",
+        "Duration": "Duration(s)",
+        "Extension Input Token Length": "Extension input tokens",
+        "Extension Output Token Length": "Extension output tokens",
+        "Extension result": "Extension result",
+        "Input Token Length": "Input tokens",
+        "Module name": "Module name",
+        "Number": "Bill ID",
+        "Output Token Length": "Output tokens",
+        "ReRank": "ReRank",
+        "Source": "Source",
+        "Text Length": "Text length",
+        "Time": "Time",
+        "Token Length": "Tokens",
+        "Total": "Total",
+        "Total points": "AI points usage",
+        "Usage Detail": "Usage Detail",
+        "Whisper": "Whisper",
+        "bill username": "User"
       }
     }
   },
@@ -1258,7 +1460,7 @@
     "Help Document": "Document"
   },
   "template": {
-    "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search).\nYou can customize the structure of the reference content to better suit different scenarios. Some variables can be used for template configuration:\n{{q}} - retrieve content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the first n references, {{with}} - the reference points (0-1), they are optional, Here are the default values:\n{{default}}",
+    "Quote Content Tip": "This configuration takes effect only when reference content is passed in (knowledge base search).\nYou can customize the structure of the reference content to better suit different scenarios. Some variables can be used for template configuration:\n{{q}} - retrieve content, {{a}} - expected content, {{source}} - source, {{sourceId}} - source file name, {{index}} - the first n references, they are optional, Here are the default values:\n{{default}}",
     "Quote Prompt Tip": "This configuration takes effect only when the knowledge base is searched.\nYou can use {{quote}} to insert the reference content template and {{question}} to insert the question. Here are the default values:\n{{default}}"
   },
   "user": {
@@ -1292,6 +1494,7 @@
     "Set OpenAI Account Failed": "Set OpenAI account failed",
     "Sign Out": "Sign Out",
     "Source": "Source",
+    "Standard Detail": "",
     "Team": "Team",
     "Time": "Time",
     "Timezone": "Timezone",
@@ -1339,7 +1542,11 @@
       "Select Team": "Select Team",
       "Set Name": "Team Name",
       "Switch Team Failed": "Switch Team Failed",
+      "Tags Async": "Tag synchronization",
       "Team Name": "Team Name",
+      "Team Tags Async": "Team Tags Async",
+      "Team Tags Async Success": "Team Tags Async Success",
+      "Team Tags Async Tip": "Fill in the tag sync connection to get the latest",
       "Update Team": "Update Team",
       "invite": {
         "Accept Confirm": "Want to join the team?",
@@ -1363,38 +1570,6 @@
         "Update to Visitor": "Set to visitor",
         "Visitor": "Visitor"
       }
-    }
-  },
-  "wallet": {
-    "bill": {
-      "Ai model": "Ai Model",
-      "App name": "App name",
-      "Audio Speech": "Audio Speech",
-      "Bill Module": "Bill Detail",
-      "Chars length": "Chars length",
-      "Data Length": "Data length",
-      "Dataset store": "",
-      "Duration": "Duration(s)",
-      "Extension Input Token Length": "Extension input tokens",
-      "Extension Output Token Length": "Extension output tokens",
-      "Extension result": "Extension result",
-      "Input Token Length": "Input tokens",
-      "Module name": "Module name",
-      "Next Step Guide": "",
-      "Number": "Bill ID",
-      "Output Token Length": "Output tokens",
-      "ReRank": "ReRank",
-      "Source": "Source",
-      "Text Length": "Text length",
-      "Time": "Time",
-      "Token Length": "Tokens",
-      "Total": "Total",
-      "Whisper": "Whisper",
-      "bill username": "User"
-    },
-    "moduleName": {
-      "index": "Index Generation",
-      "qa": "QA Generation"
     }
   }
 }

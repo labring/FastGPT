@@ -116,14 +116,12 @@ Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 - [Configuring Multiple Models](https://doc.fastgpt.in/docs/installation/reference/models)
 - [Version Updates & Upgrades](https://doc.fastgpt.in/docs/installation/upgrading)
 
-<!-- ## :point_right: RoadMap
-- [FastGPT RoadMap](https://kjqvjse66l.feishu.cn/docx/RVUxdqE2WolDYyxEKATcM0XXnte) -->
 
-<!-- ## 🏘️ Community
+## 🏘️ Community
 
-| Community Group                                   | Assistant                                      |
-| ------------------------------------------------- | ---------------------------------------------- |
-| ![](https://otnvvf-imgs.oss.laf.run/wxqun300.jpg) | ![](https://otnvvf-imgs.oss.laf.run/wx300.jpg) | -->
+| Community Group                                   | 
+| ------------------------------------------------- | 
+| ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg) | 
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-Back_to_Top-7d09f1.svg" alt="#" align="right">

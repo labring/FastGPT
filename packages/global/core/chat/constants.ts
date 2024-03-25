@@ -1,33 +1,36 @@
 export enum ChatRoleEnum {
   System = 'System',
   Human = 'Human',
-  AI = 'AI',
-  Function = 'Function',
-  Tool = 'Tool'
+  AI = 'AI'
 }
 export const ChatRoleMap = {
   [ChatRoleEnum.System]: {
-    name: '系统提示词'
+    name: '系统'
   },
   [ChatRoleEnum.Human]: {
     name: '用户'
   },
   [ChatRoleEnum.AI]: {
     name: 'AI'
-  },
-  [ChatRoleEnum.Function]: {
-    name: 'Function'
-  },
-  [ChatRoleEnum.Tool]: {
-    name: 'Tool'
   }
 };
+
+export enum ChatFileTypeEnum {
+  image = 'image',
+  file = 'file'
+}
+export enum ChatItemValueTypeEnum {
+  text = 'text',
+  file = 'file',
+  tool = 'tool'
+}
 
 export enum ChatSourceEnum {
   test = 'test',
   online = 'online',
   share = 'share',
-  api = 'api'
+  api = 'api',
+  team = 'team'
 }
 export const ChatSourceMap = {
   [ChatSourceEnum.test]: {
@@ -41,6 +44,9 @@ export const ChatSourceMap = {
   },
   [ChatSourceEnum.api]: {
     name: 'core.chat.logs.api'
+  },
+  [ChatSourceEnum.team]: {
+    name: 'core.chat.logs.team'
   }
 };
 
