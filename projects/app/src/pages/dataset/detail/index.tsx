@@ -23,8 +23,8 @@ import {
   DatasetTypeEnum,
   DatasetTypeMap
 } from '@fastgpt/global/core/dataset/constants';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import Head from 'next/head';
 import MyBox from '@/components/common/MyBox';

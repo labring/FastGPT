@@ -390,8 +390,8 @@ importers:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
       react-hook-form:
-        specifier: ^7.43.1
-        version: 7.51.1(react@18.2.0)
+        specifier: 7.43.1
+        version: 7.43.1(react@18.2.0)
       react-i18next:
         specifier: 13.5.0
         version: 13.5.0(i18next@23.10.0)(react-dom@18.2.0)(react@18.2.0)
@@ -10224,8 +10224,8 @@ packages:
       use-sidecar: 1.1.2(@types/react@18.2.0)(react@18.2.0)
     dev: false
 
-  /react-hook-form@7.51.1(react@18.2.0):
-    resolution: {integrity: sha512-ifnBjl+kW0ksINHd+8C/Gp6a4eZOdWyvRv0UBaByShwU8JbVx5hTcTWEcd5VdybvmPTATkVVXk9npXArHmo56w==}
+  /react-hook-form@7.43.1(react@18.2.0):
+    resolution: {integrity: sha512-+s3+s8LLytRMriwwuSqeLStVjRXFGxgjjx2jED7Z+wz1J/88vpxieRQGvJVvzrzVxshZ0BRuocFERb779m2kNg==}
     engines: {node: '>=12.22.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18

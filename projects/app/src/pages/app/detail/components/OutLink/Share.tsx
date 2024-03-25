@@ -32,7 +32,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/app';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -43,7 +43,7 @@ import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
 import MyMenu from '@/components/MyMenu';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 

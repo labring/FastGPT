@@ -10,7 +10,7 @@ import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { customAlphabet } from 'nanoid';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from './type';

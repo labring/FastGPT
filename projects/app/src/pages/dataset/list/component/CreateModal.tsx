@@ -7,7 +7,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';

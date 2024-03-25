@@ -20,7 +20,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { moduleTemplatesList } from '@fastgpt/global/core/module/template/constants';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import ParentPaths from '@/components/common/ParentPaths';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';

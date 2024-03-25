@@ -38,11 +38,11 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@/components/MyMenu';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {

@@ -25,7 +25,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { debounce } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';

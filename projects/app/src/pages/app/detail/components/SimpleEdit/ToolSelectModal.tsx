@@ -13,7 +13,7 @@ import {
 } from '@chakra-ui/react';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useQuery } from '@tanstack/react-query';
 import EmptyTip from '@/components/EmptyTip';
 import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type';

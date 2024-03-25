@@ -12,7 +12,7 @@ import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolTargetHandle } from './ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';

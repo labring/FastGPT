@@ -8,7 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { useTranslation } from 'next-i18next';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 import { useImportStore } from '../Provider';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

@@ -21,7 +21,7 @@ import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
@@ -36,7 +36,7 @@ import {
 } from '@/web/core/plugin/api';
 import { str2OpenApiSchema } from '@fastgpt/global/core/plugin/httpPlugin/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { EditFormType } from './type';

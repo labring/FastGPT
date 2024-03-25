@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import { ModalBody, Textarea, ModalFooter, Button } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 import { updateChatUserFeedback } from '@/web/core/chat/api';
 
