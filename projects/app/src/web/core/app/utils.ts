@@ -643,14 +643,6 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
                 key: 'quoteQA'
               }
             ]
-          },
-          {
-            key: 'finish',
-            label: 'core.module.output.label.running done',
-            description: 'core.module.output.description.running done',
-            valueType: 'boolean',
-            type: 'source',
-            targets: []
           }
         ]
       }
@@ -802,14 +794,6 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
                   label: 'core.module.Dataset quote.label',
                   type: 'source',
                   valueType: 'datasetQuote',
-                  targets: []
-                },
-                {
-                  key: 'finish',
-                  label: 'core.module.output.label.running done',
-                  description: 'core.module.output.description.running done',
-                  valueType: 'boolean',
-                  type: 'source',
                   targets: []
                 }
               ]

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -28,6 +28,7 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/module/node/constan
 import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
 import { onChangeNode, useFlowProviderStore } from '../../../FlowProvider';
 import RenderToolInput from '../../render/RenderToolInput';
+import { FlowNodeInputItemType } from '../../../../../../../../../../packages/global/core/module/node/type';
 
 const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { inputs, outputs, moduleId } = data;
@@ -35,6 +36,99 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
   const { toolInputs, commonInputs } = splitToolInputs(inputs, moduleId);
   const { t } = useTranslation();
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
+
+  const CustomComponent = useMemo(
+    () => ({
+      [ModuleInputKeyEnum.extractKeys]: ({
+        value: extractKeys = [],
+        ...props
+      }: Omit<FlowNodeInputItemType, 'value'> & {
+        value?: ContextExtractAgentItemType[];
+      }) => (
+        <Box>
+          <Flex alignItems={'center'}>
+            <Box flex={'1 0 0'}>{t('core.module.extract.Target field')}</Box>
+            <Button
+              size={'sm'}
+              variant={'whitePrimary'}
+              leftIcon={<AddIcon fontSize={'10px'} />}
+              onClick={() => setEditExtractField(defaultField)}
+            >
+              {t('core.module.extract.Add field')}
+            </Button>
+          </Flex>
+          <Box
+            mt={2}
+            borderRadius={'md'}
+            overflow={'hidden'}
+            borderWidth={'1px'}
+            borderBottom="none"
+          >
+            <TableContainer>
+              <Table bg={'white'}>
+                <Thead>
+                  <Tr>
+                    <Th bg={'myGray.50'}>字段 key</Th>
+                    <Th bg={'myGray.50'}>字段描述</Th>
+                    <Th bg={'myGray.50'}>必须</Th>
+                    <Th bg={'myGray.50'}></Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {extractKeys.map((item, index) => (
+                    <Tr
+                      key={index}
+                      position={'relative'}
+                      whiteSpace={'pre-wrap'}
+                      wordBreak={'break-all'}
+                    >
+                      <Td>{item.key}</Td>
+                      <Td>{item.desc}</Td>
+                      <Td>{item.required ? '✔' : ''}</Td>
+                      <Td whiteSpace={'nowrap'}>
+                        <MyIcon
+                          mr={3}
+                          name={'common/settingLight'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() => {
+                            setEditExtractField(item);
+                          }}
+                        />
+                        <MyIcon
+                          name={'delete'}
+                          w={'16px'}
+                          cursor={'pointer'}
+                          onClick={() => {
+                            onChangeNode({
+                              moduleId,
+                              type: 'updateInput',
+                              key: ModuleInputKeyEnum.extractKeys,
+                              value: {
+                                ...props,
+                                value: extractKeys.filter((extract) => item.key !== extract.key)
+                              }
+                            });
+
+                            onChangeNode({
+                              moduleId,
+                              type: 'delOutput',
+                              key: item.key
+                            });
+                          }}
+                        />
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </TableContainer>
+          </Box>
+        </Box>
+      )
+    }),
+    [moduleId, t]
+  );
 
   return (
     <NodeCard minW={'400px'} {...data}>
@@ -52,97 +146,7 @@ const NodeExtract = ({ data }: NodeProps<FlowModuleItemType>) => {
           <RenderInput
             moduleId={moduleId}
             flowInputList={commonInputs}
-            CustomComponent={{
-              [ModuleInputKeyEnum.extractKeys]: ({
-                value: extractKeys = [],
-                ...props
-              }: {
-                value?: ContextExtractAgentItemType[];
-              }) => (
-                <Box>
-                  <Flex alignItems={'center'}>
-                    <Box flex={'1 0 0'}>{t('core.module.extract.Target field')}</Box>
-                    <Button
-                      size={'sm'}
-                      variant={'whitePrimary'}
-                      leftIcon={<AddIcon fontSize={'10px'} />}
-                      onClick={() => setEditExtractField(defaultField)}
-                    >
-                      {t('core.module.extract.Add field')}
-                    </Button>
-                  </Flex>
-                  <Box
-                    mt={2}
-                    borderRadius={'md'}
-                    overflow={'hidden'}
-                    borderWidth={'1px'}
-                    borderBottom="none"
-                  >
-                    <TableContainer>
-                      <Table bg={'white'}>
-                        <Thead>
-                          <Tr>
-                            <Th bg={'myGray.50'}>字段 key</Th>
-                            <Th bg={'myGray.50'}>字段描述</Th>
-                            <Th bg={'myGray.50'}>必须</Th>
-                            <Th bg={'myGray.50'}></Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {extractKeys.map((item, index) => (
-                            <Tr
-                              key={index}
-                              position={'relative'}
-                              whiteSpace={'pre-wrap'}
-                              wordBreak={'break-all'}
-                            >
-                              <Td>{item.key}</Td>
-                              <Td>{item.desc}</Td>
-                              <Td>{item.required ? '✔' : ''}</Td>
-                              <Td whiteSpace={'nowrap'}>
-                                <MyIcon
-                                  mr={3}
-                                  name={'common/settingLight'}
-                                  w={'16px'}
-                                  cursor={'pointer'}
-                                  onClick={() => {
-                                    setEditExtractField(item);
-                                  }}
-                                />
-                                <MyIcon
-                                  name={'delete'}
-                                  w={'16px'}
-                                  cursor={'pointer'}
-                                  onClick={() => {
-                                    onChangeNode({
-                                      moduleId,
-                                      type: 'updateInput',
-                                      key: ModuleInputKeyEnum.extractKeys,
-                                      value: {
-                                        ...props,
-                                        value: extractKeys.filter(
-                                          (extract) => item.key !== extract.key
-                                        )
-                                      }
-                                    });
-
-                                    onChangeNode({
-                                      moduleId,
-                                      type: 'delOutput',
-                                      key: item.key
-                                    });
-                                  }}
-                                />
-                              </Td>
-                            </Tr>
-                          ))}
-                        </Tbody>
-                      </Table>
-                    </TableContainer>
-                  </Box>
-                </Box>
-              )
-            }}
+            CustomComponent={CustomComponent}
           />
         </Container>
       </>

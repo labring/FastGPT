@@ -20,6 +20,7 @@ import SourceHandle from '../render/SourceHandle';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const { t } = useTranslation();
@@ -27,7 +28,10 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowModuleItemType>) =>
   const { nodes } = useFlowProviderStore();
   const { moduleId, inputs, outputs } = data;
 
-  const quotes = inputs.filter((item) => item.valueType === ModuleIOValueTypeEnum.datasetQuote);
+  const quotes = useMemo(
+    () => inputs.filter((item) => item.valueType === ModuleIOValueTypeEnum.datasetQuote),
+    [inputs]
+  );
 
   const tokenLimit = useMemo(() => {
     let maxTokens = 3000;
@@ -46,8 +50,8 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowModuleItemType>) =>
     return maxTokens;
   }, [llmModelList, nodes]);
 
-  const RenderQuoteList = useMemo(
-    () => (
+  const RenderQuoteList = useMemo(() => {
+    return (
       <Box>
         <Box>
           {quotes.map((quote, i) => (
@@ -88,45 +92,45 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowModuleItemType>) =>
           {t('core.module.Dataset quote.Add quote')}
         </Button>
       </Box>
-    ),
-    [moduleId, quotes, t]
-  );
+    );
+  }, [moduleId, quotes, t]);
+
+  const CustomComponent = useMemo(() => {
+    console.log(111);
+    return {
+      [ModuleInputKeyEnum.datasetMaxTokens]: (item: FlowNodeInputItemType) => (
+        <Box px={2}>
+          <MySlider
+            markList={[
+              { label: '100', value: 100 },
+              { label: tokenLimit, value: tokenLimit }
+            ]}
+            width={'100%'}
+            min={100}
+            max={tokenLimit}
+            step={50}
+            value={item.value}
+            onChange={(e) => {
+              onChangeNode({
+                moduleId,
+                type: 'updateInput',
+                key: item.key,
+                value: {
+                  ...item,
+                  value: e
+                }
+              });
+            }}
+          />
+        </Box>
+      )
+    };
+  }, [moduleId, tokenLimit]);
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
       <Container borderTop={'2px solid'} borderTopColor={'myGray.200'} position={'relative'}>
-        <RenderInput
-          moduleId={moduleId}
-          flowInputList={inputs}
-          CustomComponent={{
-            [ModuleInputKeyEnum.datasetMaxTokens]: (item) => (
-              <Box px={2}>
-                <MySlider
-                  markList={[
-                    { label: '100', value: 100 },
-                    { label: tokenLimit, value: tokenLimit }
-                  ]}
-                  width={'100%'}
-                  min={100}
-                  max={tokenLimit}
-                  step={50}
-                  value={item.value}
-                  onChange={(e) => {
-                    onChangeNode({
-                      moduleId,
-                      type: 'updateInput',
-                      key: item.key,
-                      value: {
-                        ...item,
-                        value: e
-                      }
-                    });
-                  }}
-                />
-              </Box>
-            )
-          }}
-        />
+        <RenderInput moduleId={moduleId} flowInputList={inputs} CustomComponent={CustomComponent} />
         {/* render dataset select */}
         {RenderQuoteList}
         <Flex position={'absolute'} right={4} top={'60%'}>

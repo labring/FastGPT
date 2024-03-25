@@ -128,7 +128,6 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       type: FlowNodeOutputTypeEnum.source,
       valueType: ModuleIOValueTypeEnum.datasetQuote,
       targets: []
-    },
-    Output_Template_Finish
+    }
   ]
 };
