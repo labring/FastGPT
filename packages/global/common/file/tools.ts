@@ -10,6 +10,6 @@ export const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-export const detectFileEncoding = (buffers: Buffer) => {
+export const detectFileEncoding = (buffers: string | Buffer) => {
   return detect(buffers)?.encoding || 'utf-8';
 };

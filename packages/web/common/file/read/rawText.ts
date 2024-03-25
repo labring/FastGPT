@@ -8,8 +8,9 @@ export const readFileRawText = (file: File) => {
     try {
       const reader = new FileReader();
       reader.onload = () => {
+        //@ts-ignore
         const encode = detectFileEncoding(reader.result);
-
+        console.log(encode);
         // 再次读取文件，这次使用检测到的编码
         const reader2 = new FileReader();
         reader2.onload = () => {
