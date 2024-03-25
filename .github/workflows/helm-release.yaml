@@ -21,7 +21,7 @@ jobs:
         run: echo "tag=$(git describe --tags)" >> $GITHUB_OUTPUT
       - name: Release Helm
         run: |
-          echo ${{ secrets.GH_PUBLISH_SECRETS }} | helm registry login ghcr.io -u ${{ secrets.GH_USER }} --password-stdin
+          echo ${{ secrets.GH_PAT }} | helm registry login ghcr.io -u ${{ github.repository_owner }} --password-stdin
           export APP_VERSION=${{ steps.vars.outputs.tag }}
           export HELM_VERSION=${{ steps.vars.outputs.tag }}
           if [[ ! "$line" =~ ^v ]]
