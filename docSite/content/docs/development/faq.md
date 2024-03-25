@@ -60,6 +60,8 @@ images: []
 
 网络异常。国内服务器无法请求OpenAI，自行检查与AI模型的连接是否正常。
 
+或者是FastGPT请求不到 OneAPI（没放同一个网络）
+
 ## 三、常见的 OneAPI 错误
 
 ### insufficient_user_quota user quota is not enough 
