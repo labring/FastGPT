@@ -61,7 +61,7 @@ const MessageInput = ({
     renderAudioGraph,
     stream
   } = useSpeech({ shareId, outLinkUid, teamId, teamToken });
-  const { isPc } = useSystemStore();
+  const { isPc, whisperModel } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
 
@@ -369,7 +369,7 @@ const MessageInput = ({
             bottom={['10px', '12px']}
           >
             {/* voice-input */}
-            {!shareId && !havInput && !isChatting && (
+            {!shareId && !havInput && !isChatting && !!whisperModel && (
               <>
                 <canvas
                   ref={canvasRef}
