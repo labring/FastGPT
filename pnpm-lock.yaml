@@ -50,6 +50,9 @@ importers:
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.0
+      jschardet:
+        specifier: 3.1.1
+        version: 3.1.1
       nanoid:
         specifier: ^4.0.1
         version: 4.0.2
@@ -356,9 +359,6 @@ importers:
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.0
-      jschardet:
-        specifier: ^3.0.0
-        version: 3.1.0
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
@@ -8356,8 +8356,8 @@ packages:
     resolution: {integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==}
     dev: false
 
-  /jschardet@3.1.0:
-    resolution: {integrity: sha512-MND0yjRsoQ/3iFXce7lqV/iBmqH9oWGUTlty36obRBZjhFDWCLKjXgfxY75wYfwlW7EFqw52tyziy/q4WsQmrA==}
+  /jschardet@3.1.1:
+    resolution: {integrity: sha512-Jbygqaa20I+0ImPjmMbrsY3QrMkfwfI5G/VNlb6c9nDIyyOw8msfWHzTy04/sawa4rjn0t9WYy3nahWlSjB5zw==}
     engines: {node: '>=0.1.90'}
     dev: false
 
