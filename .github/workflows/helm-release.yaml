@@ -24,6 +24,7 @@ jobs:
           echo ${{ secrets.GH_PAT }} | helm registry login ghcr.io -u ${{ github.repository_owner }} --password-stdin
           export APP_VERSION=${{ steps.vars.outputs.tag }}
           export HELM_VERSION=${{ steps.vars.outputs.tag }}
+          export HELM_REPO=ghcr.io/${{ github.repository_owner }}
           if [[ ! "$line" =~ ^v ]]
           then
             unset APP_VERSION
