@@ -184,7 +184,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
         userChatInput: text
       },
       stream,
-      detail
+      detail,
+      maxRunTimes: 200
     });
 
     // save chat

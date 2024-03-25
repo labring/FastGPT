@@ -379,6 +379,7 @@ const Kb = () => {
                           {t('common.Delete')}
                         </Flex>
                       ),
+                      type: 'danger',
                       onClick: () => {
                         openConfirm(
                           () => onclickDelDataset(dataset._id),

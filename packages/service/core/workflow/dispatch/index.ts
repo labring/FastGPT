@@ -125,6 +125,7 @@ export async function dispatchWorkFlow({
     }
     if (nodeDispatchUsages) {
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
+      props.maxRunTimes -= nodeDispatchUsages.length;
     }
     if (toolResponses !== undefined) {
       if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
@@ -217,7 +218,7 @@ export async function dispatchWorkFlow({
     );
   }
   async function moduleRun(module: RunningModuleItemType): Promise<any> {
-    if (res.closed) return Promise.resolve();
+    if (res.closed || props.maxRunTimes <= 0) return Promise.resolve();
 
     if (stream && detail && module.showStatus) {
       responseStatus({

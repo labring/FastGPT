@@ -707,6 +707,7 @@ const CollectionCard = () => {
                                 <Box>{t('common.Delete')}</Box>
                               </Flex>
                             ),
+                            type: 'danger',
                             onClick: () =>
                               openDeleteConfirm(
                                 () => {

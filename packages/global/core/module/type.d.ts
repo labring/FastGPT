@@ -114,6 +114,7 @@ export type ChatDispatchProps = {
   inputFiles?: UserChatItemValueItemType['file'][];
   stream: boolean;
   detail: boolean; // response detail
+  maxRunTimes: number;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
