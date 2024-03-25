@@ -12,7 +12,6 @@ export const checkTeamAiPointsAndLock = async (teamId: string, tmbId: string) =>
       // send inform and lock data
       try {
         sendOneInform({
-          type: 'system',
           title: '文本训练任务中止',
           content:
             '该团队账号AI积分不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',

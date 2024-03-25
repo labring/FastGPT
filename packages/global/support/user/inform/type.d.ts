@@ -4,8 +4,7 @@ export type SendInformProps = {
   title: string;
   content: string;
 };
-export type SendInform2User = SendInformProps & {
-  type: `${InformTypeEnum}`;
+export type SendInform2UserProps = SendInformProps & {
   tmbId: string;
 };
 
