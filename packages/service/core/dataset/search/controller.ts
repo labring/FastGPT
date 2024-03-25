@@ -77,7 +77,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, tokens } = await getVectorsByText({
       model: getVectorModel(model),
-      input: query
+      input: query,
+      type: 'query'
     });
 
     const { results } = await recallFromVectorStore({
