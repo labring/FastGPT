@@ -7,13 +7,6 @@ import { InformLevelEnum } from '@fastgpt/global/support/user/inform/constants';
 export const checkTeamAiPointsAndLock = async (teamId: string, tmbId: string) => {
   try {
     await checkTeamAIPoints(teamId);
-    sendOneInform({
-      level: InformLevelEnum.important,
-      title: '文本训练任务中止',
-      content:
-        '该团队账号AI积分不足，文本训练任务中止，重新充值后将会继续。暂停的任务将在 7 天后被删除。',
-      tmbId: tmbId
-    });
     return true;
   } catch (error: any) {
     if (error === TeamErrEnum.aiPointsNotEnough) {
