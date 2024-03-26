@@ -25,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       reRankModels:
         global.reRankModels?.map((item) => ({
           ...item,
-          requestUrl: undefined,
-          requestAuth: undefined
+          requestUrl: '',
+          requestAuth: ''
         })) || [],
       whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
@@ -42,7 +42,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   openAPIDocUrl: 'https://doc.fastgpt.in/docs/development/openapi',
   systemTitle: 'FastGPT',
   concatMd:
-    '* 项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n* 交流群: ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)',
+    '项目开源地址: [FastGPT GitHub](https://github.com/labring/FastGPT)\n交流群: ![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)',
   limit: {
     exportDatasetLimitMinutes: 0,
     websiteSyncLimitMinuted: 0
@@ -150,7 +150,7 @@ function getSystemPlugin() {
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
   // read json file
-  const fileTemplates: PluginTemplateType[] = filterFiles.map((filename) => {
+  const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
     const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
       ...JSON.parse(content),
@@ -158,6 +158,8 @@ function getSystemPlugin() {
       source: PluginSourceEnum.community
     };
   });
+
+  fileTemplates.sort((a, b) => b.weight - a.weight);
 
   global.communityPlugins = fileTemplates;
 }

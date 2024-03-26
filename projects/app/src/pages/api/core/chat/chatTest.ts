@@ -72,7 +72,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         userChatInput: text
       },
       stream: true,
-      detail: true
+      detail: true,
+      maxRunTimes: 200
     });
 
     responseWrite({

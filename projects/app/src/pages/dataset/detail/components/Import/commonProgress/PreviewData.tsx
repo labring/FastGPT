@@ -15,7 +15,7 @@ const PreviewData = ({
   const { sources, setSources } = useImportStore();
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} maxW={'1080px'}>
+    <Flex flexDirection={'column'} h={'100%'}>
       <Box flex={'1 0 0 '}>
         <Preview showPreviewChunks={showPreviewChunks} sources={sources} />
       </Box>

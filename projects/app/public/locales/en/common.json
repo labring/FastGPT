@@ -124,6 +124,7 @@
     "Price used": "Usage",
     "Read document": "Read document",
     "Read intro": "Read intro",
+    "Readed": "",
     "Remove": "Remove",
     "Rename": "Rename",
     "Rename Failed": "Rename Failed",
@@ -145,6 +146,7 @@
     "Status": "Status",
     "Submit failed": "Submit failed",
     "Submit success": "Update Success",
+    "System version": "System version",
     "Team": "Team",
     "Team Tags Set": "Team Tags",
     "Test": "Test",
@@ -226,6 +228,7 @@
       "error tip": "Speech Failed"
     },
     "system": {
+      "Commercial version function": "Commercial version special function",
       "Help Chatbot": "Chatbot Helper",
       "Use Helper": "UsingHelp"
     },
@@ -252,6 +255,7 @@
       "Ai point price": "AI points",
       "Max context": "Max context",
       "Model": "Model",
+      "Not deploy rerank model": "Not deploy rerank model",
       "Prompt": "Prompt",
       "Support tool": "Function call",
       "model": {
@@ -271,8 +275,7 @@
       "Max histories": "Dialog round",
       "Max tokens": "Max tokens",
       "Name and avatar": "Avatar & Name",
-      "Next Step Guide": "Next step guide",
-      "Question Guide": "",
+      "Question Guide": "Question Guide",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
       "Quote prompt": "Quote prompt",
       "Quote templates": "Quote templates",
@@ -414,7 +417,7 @@
       "Mark Description Title": "Mark Description",
       "New Chat": "New Chat",
       "Pin": "Pin",
-      "Question Guide Tips": "I guess what you're asking is",
+      "Question Guide": "I guess what you're asking is",
       "Quote": "Quote",
       "Quote Amount": "Dataset Quote:{{amount}}",
       "Read Mark Description": "Read mark description",
@@ -696,6 +699,7 @@
         "Max Tokens Tips": "The maximum number of Tokens in a single search, about 1 word in Chinese =1.7Tokens, about 1 word in English =1 tokens",
         "Min Similarity": "Min Similarity",
         "Min Similarity Tips": "The similarity of different index models is different, please use the search test to select the appropriate value",
+        "No support similarity": "Relevance filtering is supported when using only rearrangement or semantic search",
         "Nonsupport": "Nonsupport",
         "Not similarity": "",
         "Params Setting": "Params Setting",
@@ -814,6 +818,7 @@
       },
       "Quote prompt setting": "Quote prompt setting",
       "Qupte prompt setting": "",
+      "Select app": "Select app",
       "Setting quote prompt": "Setting quote prompt",
       "Unlink tip": "[{{name}}] An unfilled or unconnected parameter exists",
       "Variable": "Variables",
@@ -841,14 +846,14 @@
         "Histories": "histories",
         "Key already exists": "Key already exists",
         "Key cannot be empty": "Name cannot be empty",
-        "OpenAPI import": "OpenAPI import",
-        "OpenAPI import placeholder": "Please enter the OpenAPI format content, and the request information for the first interface will be extracted.",
         "Props name": "Name",
         "Props tip": "You can set parameters related to Http requests\nGlobal changes or external parameter inputs can be invoked by {{key}}",
         "Props value": "Value",
         "ResponseChatItemId": "Ai response id",
         "Url and params have been split": "Path parameters are automatically added to Params",
         "Variables": "Global variables",
+        "curl import": "curl Import",
+        "curl import placeholder": "Please enter the curl format content, and the request information for the first interface will be extracted.",
         "params": ""
       },
       "input": {
@@ -1005,6 +1010,7 @@
       "Custom headers": "Custom Headers",
       "Delete http plugin": "Are you sure to delete this group of HTTP plug-ins? All plug-ins in the directory are deleted.",
       "Get Plugin Module Detail Failed": "Load plugin failed",
+      "Http plugin intro placeholder": "Only for demonstration, no practical effect",
       "Intro placeholder": "If the plug-in is called as a tool, the introduction is used as the prompt word."
     },
     "shareChat": {
@@ -1223,7 +1229,7 @@
     "Get Plugin Module Detail Failed": "Get plugin detail failed",
     "HTTP Plugin": "HTTP plugin",
     "Import Plugin": "Import HTTP plugin",
-    "Import from URL": "Import from URL",
+    "Import from URL": "Import from URL. https://xxxx",
     "Intro": "Plugin Intro",
     "Invalid Schema": "Invalid Schema",
     "Invalid URL": "Invalid URL",
@@ -1249,6 +1255,9 @@
     "account": {
       "Individuation": "Individuation"
     },
+    "inform": {
+      "Read": "Read"
+    },
     "openapi": {
       "Api baseurl": "Baseurl",
       "Api manager": "API key management",
@@ -1259,6 +1268,7 @@
       "Usage": "Usage"
     },
     "outlink": {
+      "Delete link tip": "Are you sure to delete this no-sign link? After deletion, the link will be invalid immediately and the session log will still be retained. Please confirm!",
       "Max usage points": "Max usage",
       "Max usage points tip": "The maximum number of credits allowed for this link will not be used. -1 indicates no limit.",
       "Usage points": "Usage points",
@@ -1290,6 +1300,9 @@
       "User self info": "My info",
       "auth": {
         "Sending Code": "Sending"
+      },
+      "inform": {
+        "System message": "System message"
       },
       "login": {
         "And": "&",

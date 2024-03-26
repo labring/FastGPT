@@ -14,9 +14,9 @@ import { useQuery } from '@tanstack/react-query';
 import { getTeamList, updateInviteResult } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import Avatar from '@/components/Avatar';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const UpdateInviteModal = () => {

@@ -5,7 +5,7 @@ import { Box, Button, Input, Link, ModalBody, ModalFooter } from '@chakra-ui/rea
 import { strIsLink } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getDocPath } from '@/web/common/system/doc';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 

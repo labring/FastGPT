@@ -6,6 +6,7 @@
   "intro": "根据传入的内容进行 True False 输出。默认情况下，当传入的内容为 false, undefined, null, 0, none 时，会输出 false。你也可以增加一些自定义的字符串来补充输出 false 的内容。非字符、非数字、非布尔类型，直接输出 True。",
   "showStatus": false,
   "isTool": false,
+  "weight": 10,
   "modules": [
     {
       "moduleId": "w90mfp",
@@ -298,7 +299,7 @@
           "label": "core.module.output.label.running done",
           "description": "core.module.output.description.running done",
           "valueType": "boolean",
-          "type": "source",
+          "type": "hidden",
           "targets": []
         },
         {

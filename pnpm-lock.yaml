@@ -1,4 +1,4 @@
-lockfileVersion: '6.0'
+lockfileVersion: '6.1'
 
 settings:
   autoInstallPeers: true
@@ -50,6 +50,9 @@ importers:
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.0
+      jschardet:
+        specifier: 3.1.1
+        version: 3.1.1
       nanoid:
         specifier: ^4.0.1
         version: 4.0.2
@@ -272,6 +275,9 @@ importers:
       '@apidevtools/swagger-parser':
         specifier: ^10.1.0
         version: 10.1.0(openapi-types@12.1.3)
+      '@bany/curl-to-json':
+        specifier: ^1.2.8
+        version: 1.2.8
       '@chakra-ui/anatomy':
         specifier: 2.2.1
         version: 2.2.1
@@ -353,9 +359,6 @@ importers:
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.0
-      jschardet:
-        specifier: ^3.0.0
-        version: 3.1.0
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2
@@ -387,8 +390,8 @@ importers:
         specifier: 18.2.0
         version: 18.2.0(react@18.2.0)
       react-hook-form:
-        specifier: ^7.43.1
-        version: 7.51.1(react@18.2.0)
+        specifier: 7.43.1
+        version: 7.43.1(react@18.2.0)
       react-i18next:
         specifier: 13.5.0
         version: 13.5.0(i18next@23.10.0)(react-dom@18.2.0)(react@18.2.0)
@@ -1777,6 +1780,12 @@ packages:
       '@babel/helper-string-parser': 7.24.1
       '@babel/helper-validator-identifier': 7.22.20
       to-fast-properties: 2.0.0
+
+  /@bany/curl-to-json@1.2.8:
+    resolution: {integrity: sha512-hPt9KUM2sGZ5Ojx3O9utjzUgjRZI3CZPAlLf+cRY9EUzVs7tWt1OpA0bhEUTX2PEEkOeyZ6sC0tAQMOHh9ld+Q==}
+    dependencies:
+      minimist: 1.2.8
+    dev: false
 
   /@braintree/sanitize-url@6.0.4:
     resolution: {integrity: sha512-s3jaWicZd0pkP0jf5ysyHUI/RE7MHos6qlToFcGWXVp+ykHOy77OUMrfbgJ9it2C5bow7OIQwYYaHjk9XlBQ2A==}
@@ -8347,8 +8356,8 @@ packages:
     resolution: {integrity: sha512-4bYVV3aAMtDTTu4+xsDYa6sy9GyJ69/amsu9sYF2zqjiEoZA5xJi3BrfX3uY+/IekIu7MwdObdbDWpoZdBv3/A==}
     dev: false
 
-  /jschardet@3.1.0:
-    resolution: {integrity: sha512-MND0yjRsoQ/3iFXce7lqV/iBmqH9oWGUTlty36obRBZjhFDWCLKjXgfxY75wYfwlW7EFqw52tyziy/q4WsQmrA==}
+  /jschardet@3.1.1:
+    resolution: {integrity: sha512-Jbygqaa20I+0ImPjmMbrsY3QrMkfwfI5G/VNlb6c9nDIyyOw8msfWHzTy04/sawa4rjn0t9WYy3nahWlSjB5zw==}
     engines: {node: '>=0.1.90'}
     dev: false
 
@@ -10215,8 +10224,8 @@ packages:
       use-sidecar: 1.1.2(@types/react@18.2.0)(react@18.2.0)
     dev: false
 
-  /react-hook-form@7.51.1(react@18.2.0):
-    resolution: {integrity: sha512-ifnBjl+kW0ksINHd+8C/Gp6a4eZOdWyvRv0UBaByShwU8JbVx5hTcTWEcd5VdybvmPTATkVVXk9npXArHmo56w==}
+  /react-hook-form@7.43.1(react@18.2.0):
+    resolution: {integrity: sha512-+s3+s8LLytRMriwwuSqeLStVjRXFGxgjjx2jED7Z+wz1J/88vpxieRQGvJVvzrzVxshZ0BRuocFERb779m2kNg==}
     engines: {node: '>=12.22.0'}
     peerDependencies:
       react: ^16.8.0 || ^17 || ^18

@@ -85,7 +85,7 @@ brew install orbstack
 
 非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载下面2个链接的文件: [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/files/deploy/fastgpt/docker-compose.yml),[config.json](https://github.com/labring/FastGPT/blob/main/projects/app/data/config.json)
 
-**注意: `docker-compose.yml` 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**
+**注意: `docker-compose.yml` 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**（需要自己在docker hub下载，阿里云镜像没做备份）
 
 ```bash
 mkdir fastgpt
@@ -94,53 +94,22 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/files/deploy/fast
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 ```
 
-## 三、修改 docker-compose.yml 的环境变量
-
-修改`docker-compose.yml`中的`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）和`CHAT_API_KEY`（API 接口的凭证）。
-
-使用 OneAPI 的话，OPENAI_BASE_URL=OneAPI访问地址/v1；CHAT_API_KEY=令牌
-
-
-## 四、启动容器
+## 三、启动容器
 
 在 docker-compose.yml 同级目录下执行
 
 ```bash
-# 进入项目目录
-cd 项目目录
 # 启动容器
-docker-compose pull
 docker-compose up -d
+# 重启一次oneapi(由于OneAPI的默认Key有点问题，不重启的话会提示找不到渠道，临时手动重启一次解决，等待作者修复)
+docker restart oneapi
 ```
 
-## 五、初始化 Mongo 副本集(4.6.8以前可忽略)
+## 四、打开 OneAPI 添加模型
 
-FastGPT 4.6.8 后使用了 MongoDB 的事务，需要运行在副本集上。副本集没法自动化初始化，需手动操作。
+可以通过`ip:3001`访问OneAPI，默认账号为`root`密码为`123456`。
 
-```bash
-# 查看 mongo 容器是否正常运行
-docker ps 
-# 进入容器
-docker exec -it mongo bash
-
-# 连接数据库（这里要填Mongo的用户名和密码）
-mongo -u myusername -p mypassword --authenticationDatabase admin
-
-# 初始化副本集。如果需要外网访问，mongo:27017 可以改成 ip:27017。但是需要同时修改 FastGPT 连接的参数（MONGODB_URI=mongodb://myname:mypassword@mongo:27017/fastgpt?authSource=admin => MONGODB_URI=mongodb://myname:mypassword@ip:27017/fastgpt?authSource=admin）
-rs.initiate({
-  _id: "rs0",
-  members: [
-    { _id: 0, host: "mongo:27017" }
-  ]
-})
-# 检查状态。如果提示 rs0 状态，则代表运行成功
-rs.status()
-```
-
-**关于 host: "mongo:27017" 说明**
-
-1. mongo:27017 代表指向同一个 docker 网络的 mongo 容器的 27017 服务。因此，如果使用该参数，外网是无法访问到数据库的。
-2. ip:27017 （ip替换成公网IP）：代表通过你的公网IP进行访问。如果用该方法，同时需要修改 docker-compose 中 mongo 的连接参数，因为默认是用 `mongo:27017` 进行连接。
+在OneApi中添加合适的AI模型渠道。
 
 ## 五、访问 FastGPT
 
@@ -148,22 +117,24 @@ rs.status()
 
 如果需要域名访问，请自行安装并配置 Nginx。
 
+首次运行，会自动初始化 root 用户，密码为 `1234`（与环境变量中的`DEFAULT_ROOT_PSW`一致），日志里会提示一次`MongoServerError: Unable to read from a snapshot due to pending collection catalog changes;`可忽略。
 
 ## FAQ
 
-### Mongo 启动失败
+### Mongo 副本集自动初始化失败
 
-docker-compose 示例优化 Mongo 副本集参数，不需要手动创建再挂载。如果无法启动，可以尝试更换下面的脚本：
+最新的 docker-compose 示例优化 Mongo 副本集初始化，实现了全自动。目前在 unbuntu20,22 centos7, wsl2, mac, window 均通过测试。如果你的环境特殊，可以手动初始化副本集：
 
-1. 终端中执行：
+1. 终端中执行下面命令，创建mongo密钥：
 
 ```bash
 openssl rand -base64 756 > ./mongodb.key
 chmod 600 ./mongodb.key
+# 修改密钥权限，部分系统是admin，部分是root
 chown 999:root ./mongodb.key
 ```
 
-2. 修改 docker-compose.yml：
+2. 修改 docker-compose.yml，挂载密钥
   
 ```yml
 mongo:
@@ -191,4 +162,109 @@ docker-compose down
 docker-compose up -d
 ```
 
-4. 进入容器执行副本集合初始化（看上方）
+4. 进入容器执行副本集合初始化
+
+```bash
+# 查看 mongo 容器是否正常运行
+docker ps 
+# 进入容器
+docker exec -it mongo bash
+
+# 连接数据库（这里要填Mongo的用户名和密码）
+mongo -u myusername -p mypassword --authenticationDatabase admin
+
+# 初始化副本集。如果需要外网访问，mongo:27017 。如果需要外网访问，需要增加Mongo连接参数：directConnection=true
+rs.initiate({
+  _id: "rs0",
+  members: [
+    { _id: 0, host: "mongo:27017" }
+  ]
+})
+# 检查状态。如果提示 rs0 状态，则代表运行成功
+rs.status()
+```
+
+### 如何修改API地址和密钥
+
+默认是写了OneAPi的连接地址和密钥，可以通过修改`docker-compose.yml`中，fastgpt容器的环境变量实现。
+
+
+`OPENAI_BASE_URL`（API 接口的地址，需要加/v1）
+`CHAT_API_KEY`（API 接口的凭证）。
+
+修改完后重启：
+
+```bash
+docker-compose down
+docker-compose up -d
+```
+
+### 如何更新版本？
+
+1. 查看[更新文档](/docs/development/upgrading/intro/)，确认要升级的版本，避免跨版本升级。
+2. 修改镜像 tag 到指定版本
+3. 执行下面命令会自动拉取镜像：
+
+    ```bash
+    docker-compose pull
+    docker-compose up -d
+    ```
+
+4. 执行初始化脚本（如果有）
+
+### 如何自定义配置文件？
+
+修改`config.json`文件，并执行`docker-compose down`再执行`docker-compose up -d`重起容器。具体配置，参考[配置详解](/docs/development/configuration)。
+
+### 如何检查自定义配置文件是否挂载
+
+1. `docker logs fastgpt` 可以查看日志，在启动容器后，第一次请求网页，会进行配置文件读取，可以看看有没有读取成功以及有无错误日志。
+2. `docker exec -it fastgpt sh` 进入 FastGPT 容器，可以通过`ls data`查看目录下是否成功挂载`config.json`文件。可通过`cat data/config.json`查看配置文件。
+
+**可能不生效的原因**
+
+1. 挂载目录不正确
+2. 配置文件不正确，日志中会提示`invalid json`，配置文件需要是标准的 JSON 文件。
+3. 修改后，没有`docker-compose down`再`docker-compose up -d`，restart是不会重新挂载文件的。
+
+### 如何检查环境变量是否正常加载
+
+1. `docker exec -it fastgpt sh` 进入 FastGPT 容器。
+2. 直接输入`env`命令查看所有环境变量。
+
+
+### 为什么无法连接`本地模型`镜像。
+
+`docker-compose.yml`中使用了桥接的模式建立了`fastgpt`网络，如想通过0.0.0.0或镜像名访问其它镜像，需将其它镜像也加入到网络中。
+
+### 端口冲突怎么解决？
+
+docker-compose 端口定义为：`映射端口:运行端口`。
+
+桥接模式下，容器运行端口不会有冲突，但是会有映射端口冲突，只需将映射端口修改成不同端口即可。
+
+如果`容器1`需要连接`容器2`，使用`容器2:运行端口`来进行连接即可。
+
+（自行补习 docker 基本知识）
+
+### relation "modeldata" does not exist
+
+PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会在每次连接上 PG 时进行表初始化，如果报错会有对应日志。
+
+1. 检查数据库容器是否正常启动
+2. 非 docker 部署的，需要手动安装 pg vector 插件
+3. 查看 fastgpt 日志，有没有相关报错
+
+### Operation `auth_codes.findOne()` buffering timed out after 10000ms
+
+mongo连接失败，查看mongo的运行状态对应日志。
+
+可能原因：
+
+1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以docker hub找个最新的4.x，修改镜像版本，重新运行）
+2. 连接数据库的环境变量填写错误（账号密码，注意host和port，非容器网络连接，需要用公网ip并加上 directConnection=true）
+3. 副本集启动失败。导致容器一直重启。
+
+### 首次部署，root用户提示未注册
+
+日志会有错误提示。大概率是没有启动 Mongo 副本集模式。

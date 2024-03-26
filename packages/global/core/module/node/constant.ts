@@ -1,4 +1,5 @@
 export enum FlowNodeInputTypeEnum {
+  triggerAndFinish = 'triggerAndFinish',
   systemInput = 'systemInput', // history, userChatInput, variableInput
 
   input = 'input', // one line input

@@ -17,6 +17,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { teamId, tmbId } = await authPluginCrud({ req, authToken: true, id, per: 'owner' });
 
+    const updateData = {
+      name: props.name,
+      intro: props.intro,
+      avatar: props.avatar,
+      parentId: props.parentId,
+      ...(props.modules &&
+        props.modules.length > 0 && {
+          modules: props.modules
+        }),
+      metadata: props.metadata
+    };
+
     if (props.metadata?.apiSchemaStr) {
       await mongoSessionRun(async (session) => {
         // update children
@@ -26,13 +38,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           parent: body,
           session
         });
-        await MongoPlugin.findByIdAndUpdate(id, props, { session });
+        await MongoPlugin.findByIdAndUpdate(id, updateData, { session });
       });
 
       jsonRes(res, {});
     } else {
       jsonRes(res, {
-        data: await MongoPlugin.findByIdAndUpdate(id, props)
+        data: await MongoPlugin.findByIdAndUpdate(id, updateData)
       });
     }
   } catch (err) {

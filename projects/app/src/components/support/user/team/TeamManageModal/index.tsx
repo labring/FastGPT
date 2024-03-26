@@ -36,12 +36,12 @@ import {
   TeamMemberStatusMap
 } from '@fastgpt/global/support/user/team/constant';
 import dynamic from 'next/dynamic';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { setToken } from '@/web/support/user/auth';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { FormDataType, defaultForm } from './EditModal';
 import MyMenu from '@/components/MyMenu';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 

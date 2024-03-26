@@ -77,7 +77,8 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, tokens } = await getVectorsByText({
       model: getVectorModel(model),
-      input: query
+      input: query,
+      type: 'query'
     });
 
     const { results } = await recallFromVectorStore({
@@ -225,7 +226,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     try {
       const results = await reRankRecall({
         query,
-        inputs: data.map((item) => ({
+        documents: data.map((item) => ({
           id: item.id,
           text: `${item.q}\n${item.a}`
         }))

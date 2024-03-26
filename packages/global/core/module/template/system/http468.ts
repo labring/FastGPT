@@ -99,7 +99,6 @@ export const HttpModule468: FlowNodeTemplateType = {
     }
   ],
   outputs: [
-    Output_Template_Finish,
     {
       key: ModuleOutputKeyEnum.httpRawResponse,
       label: '原始响应',

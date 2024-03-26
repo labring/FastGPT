@@ -83,8 +83,7 @@ export const streamFetch = ({
       }
 
       if (responseQueue.length > 0) {
-        const fetchCount = Math.max(1, Math.round(responseQueue.length / 10));
-
+        const fetchCount = Math.max(1, Math.round(responseQueue.length / 30));
         for (let i = 0; i < fetchCount; i++) {
           const item = responseQueue[i];
           onMessage(item);
@@ -167,7 +166,15 @@ export const streamFetch = ({
             }
           })();
           // console.log(parseJson, event);
-          if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+          if (event === SseResponseEventEnum.answer) {
+            const text = parseJson.choices?.[0]?.delta?.content || '';
+            for (const item of text) {
+              responseQueue.push({
+                event,
+                text: item
+              });
+            }
+          } else if (event === SseResponseEventEnum.fastAnswer) {
             const text = parseJson.choices?.[0]?.delta?.content || '';
             responseQueue.push({
               event,

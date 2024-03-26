@@ -10,7 +10,7 @@ import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { customAlphabet } from 'nanoid';
 import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from './type';
@@ -61,7 +61,7 @@ const MessageInput = ({
     renderAudioGraph,
     stream
   } = useSpeech({ shareId, outLinkUid, teamId, teamToken });
-  const { isPc } = useSystemStore();
+  const { isPc, whisperModel } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
 
@@ -369,7 +369,7 @@ const MessageInput = ({
             bottom={['10px', '12px']}
           >
             {/* voice-input */}
-            {!shareId && !havInput && !isChatting && (
+            {!shareId && !havInput && !isChatting && !!whisperModel && (
               <>
                 <canvas
                   ref={canvasRef}
@@ -402,7 +402,7 @@ const MessageInput = ({
                       name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
                       width={['20px', '22px']}
                       height={['20px', '22px']}
-                      color={'primary.500'}
+                      color={isSpeaking ? 'primary.500' : 'myGray.600'}
                     />
                   </MyTooltip>
                 </Flex>
@@ -410,7 +410,7 @@ const MessageInput = ({
             )}
             {/* send and stop icon */}
             {isSpeaking ? (
-              <Box color={'#5A646E'} w={'36px'} textAlign={'right'}>
+              <Box color={'#5A646E'} w={'36px'} textAlign={'right'} whiteSpace={'nowrap'}>
                 {speakingTimeString}
               </Box>
             ) : (

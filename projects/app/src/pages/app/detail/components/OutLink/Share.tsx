@@ -14,7 +14,8 @@ import {
   ModalBody,
   Input,
   Switch,
-  Link
+  Link,
+  IconButton
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -31,7 +32,7 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/app';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -42,6 +43,7 @@ import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
 import MyMenu from '@/components/MyMenu';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -53,6 +55,10 @@ const Share = ({ appId }: { appId: string }) => {
   const [editLinkData, setEditLinkData] = useState<OutLinkEditType>();
   const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema>();
   const { toast } = useToast();
+  const { ConfirmModal, openConfirm } = useConfirm({
+    content: t('support.outlink.Delete link tip'),
+    type: 'delete'
+  });
 
   const {
     isFetching,
@@ -130,25 +136,25 @@ const Share = ({ appId }: { appId: string }) => {
                 )}
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : t('common.Un used')}</Td>
                 <Td display={'flex'} alignItems={'center'}>
+                  <Button
+                    onClick={() => setSelectedLinkData(item)}
+                    size={'sm'}
+                    mr={3}
+                    variant={'whitePrimary'}
+                  >
+                    {t('core.app.outLink.Select Mode')}
+                  </Button>
                   <MyMenu
                     Button={
-                      <MyIcon
+                      <IconButton
+                        icon={<MyIcon name={'more'} w={'14px'} />}
                         name={'more'}
-                        _hover={{ bg: 'myGray.100  ' }}
-                        cursor={'pointer'}
-                        borderRadius={'md'}
-                        w={'14px'}
-                        p={2}
+                        variant={'whiteBase'}
+                        size={'sm'}
+                        aria-label={''}
                       />
                     }
                     menuList={[
-                      {
-                        label: t('core.app.outLink.Select Mode'),
-                        icon: 'copy',
-                        onClick: () => {
-                          setSelectedLinkData(item);
-                        }
-                      },
                       {
                         label: t('common.Edit'),
                         icon: 'edit',
@@ -163,7 +169,8 @@ const Share = ({ appId }: { appId: string }) => {
                       {
                         label: t('common.Delete'),
                         icon: 'delete',
-                        onClick: async () => {
+                        type: 'danger',
+                        onClick: openConfirm(async () => {
                           setIsLoading(true);
                           try {
                             await delShareChatById(item._id);
@@ -172,7 +179,7 @@ const Share = ({ appId }: { appId: string }) => {
                             console.log(error);
                           }
                           setIsLoading(false);
-                        }
+                        })
                       }
                     ]}
                   />
@@ -219,6 +226,7 @@ const Share = ({ appId }: { appId: string }) => {
           onClose={() => setSelectedLinkData(undefined)}
         />
       )}
+      <ConfirmModal />
       <Loading loading={isFetching} fixed={false} />
     </Box>
   );

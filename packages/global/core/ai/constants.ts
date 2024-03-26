@@ -25,3 +25,8 @@ export const llmModelTypeFilterMap = {
   [LLMModelTypeEnum.toolCall]: 'usedInToolCall',
   [LLMModelTypeEnum.queryExtension]: 'usedInQueryExtension'
 };
+
+export enum EmbeddingTypeEnm {
+  query = 'query',
+  db = 'db'
+}

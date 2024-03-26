@@ -124,6 +124,7 @@
     "Price used": "金额消耗",
     "Read document": "查看文档",
     "Read intro": "查看说明",
+    "Readed": "已读",
     "Remove": "移除",
     "Rename": "重命名",
     "Rename Failed": "重命名失败",
@@ -145,6 +146,7 @@
     "Status": "状态",
     "Submit failed": "提交失败",
     "Submit success": "提交成功",
+    "System version": "系统版本",
     "Team": "团队",
     "Team Tags Set": "标签",
     "Test": "测试",
@@ -226,6 +228,7 @@
       "error tip": "语音转文字失败"
     },
     "system": {
+      "Commercial version function": "商业版特有功能",
       "Help Chatbot": "机器人助手",
       "Use Helper": "使用帮助"
     },
@@ -252,6 +255,7 @@
       "Ai point price": "AI积分消耗",
       "Max context": "最大上下文",
       "Model": "AI 模型",
+      "Not deploy rerank model": "未部署重排模型",
       "Prompt": "提示词",
       "Support tool": "函数调用",
       "model": {
@@ -271,8 +275,7 @@
       "Max histories": "聊天记录数量",
       "Max tokens": "回复上限",
       "Name and avatar": "头像 & 名称",
-      "Next Step Guide": "下一步指引",
-      "Question Guide": "问题引导",
+      "Question Guide": "猜你想问",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
       "Quote prompt": "引用模板提示词",
       "Quote templates": "引用内容模板",
@@ -414,7 +417,7 @@
       "Mark Description Title": "标注功能介绍",
       "New Chat": "新对话",
       "Pin": "置顶",
-      "Question Guide Tips": "猜你想问",
+      "Question Guide": "猜你想问",
       "Quote": "引用",
       "Quote Amount": "知识库引用({{amount}}条)",
       "Read Mark Description": "查看标注功能介绍",
@@ -698,6 +701,7 @@
         "Max Tokens Tips": "单次搜索最大的 Tokens 数量，中文约1字=1.7Tokens，英文约1字=1Tokens",
         "Min Similarity": "最低相关度",
         "Min Similarity Tips": "不同索引模型的相关度有区别，请通过搜索测试来选择合适的数值，使用 ReRank 时，相关度可能会很低。",
+        "No support similarity": "仅使用结果重排或语义检索时，支持相关度过滤",
         "Nonsupport": "不支持",
         "Not similarity": "",
         "Params Setting": "搜索参数设置",
@@ -816,6 +820,7 @@
       },
       "Quote prompt setting": "引用提示词配置",
       "Qupte prompt setting": "",
+      "Select app": "选择应用",
       "Setting quote prompt": "配置引用提示词",
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
       "Variable": "全局变量",
@@ -843,14 +848,14 @@
         "Histories": "历史纪录,最多取10条",
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
-        "OpenAPI import": "OpenAPI 导入",
-        "OpenAPI import placeholder": "请输入 OpenAPI 格式内容，将会提取第一个接口的请求信息。",
         "Props name": "参数名",
         "Props tip": "可以设置 Http 请求的相关参数\n可通过 {{key}} 来调用全局变了或外部参数输入，当前可使用变量:\n{{variable}}",
         "Props value": "参数值",
         "ResponseChatItemId": "AI回复的ID",
         "Url and params have been split": "路径参数已被自动加入 Params 中",
         "Variables": "全局变量",
+        "curl import": "curl 导入",
+        "curl import placeholder": "请输入 curl 格式内容，将会提取第一个接口的请求信息。",
         "params": "Params"
       },
       "input": {
@@ -1007,6 +1012,7 @@
       "Custom headers": "自定义请求头",
       "Delete http plugin": "确认删除该组HTTP插件？会删除该目录下所有插件。",
       "Get Plugin Module Detail Failed": "加载插件异常",
+      "Http plugin intro placeholder": "仅做展示，无实际效果",
       "Intro placeholder": "如果该插件作为工具被调用，则会使用该介绍作为提示词。"
     },
     "shareChat": {
@@ -1225,7 +1231,7 @@
     "Get Plugin Module Detail Failed": "获取插件信息异常",
     "HTTP Plugin": "HTTP 插件",
     "Import Plugin": "导入 HTTP 插件",
-    "Import from URL": "URL 导入",
+    "Import from URL": "从URL导入。https://xxxx",
     "Intro": "插件介绍",
     "Invalid Schema": "Schema 无效",
     "Invalid URL": "URL 无效",
@@ -1251,6 +1257,9 @@
     "account": {
       "Individuation": "个性化"
     },
+    "inform": {
+      "Read": "已读"
+    },
     "openapi": {
       "Api baseurl": "API根地址",
       "Api manager": "API 秘钥管理",
@@ -1261,6 +1270,7 @@
       "Usage": "已用额度(￥)"
     },
     "outlink": {
+      "Delete link tip": "确认删除该免登录链接？删除后，该链接将会立即失效，对话日志仍会保留，请确认！",
       "Max usage points": "积分上限",
       "Max usage points tip": "该链接最多允许使用多少积分，超出后将无法使用。-1 代表无限制。",
       "Usage points": "积分消耗",
@@ -1292,6 +1302,9 @@
       "User self info": "个人信息",
       "auth": {
         "Sending Code": "正在发送"
+      },
+      "inform": {
+        "System message": "系统消息"
       },
       "login": {
         "And": "和",
@@ -1419,7 +1432,7 @@
           "experience": "体验版",
           "experience desc": "",
           "free": "免费版",
-          "free desc": "每月均可免费使用基础功能，15天无使用记录时，将会清除知识库",
+          "free desc": "每月均可免费使用基础功能，30天无使用记录时，将会清除知识库",
           "team": "团队版"
         },
         "type": {

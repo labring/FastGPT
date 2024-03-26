@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
 import { delModelById } from '@/web/core/app/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';

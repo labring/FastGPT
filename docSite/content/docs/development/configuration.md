@@ -33,8 +33,8 @@ llm模型全部合并
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 13000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
-      "charsPointsPrice": 0, 
-      "censor": false,
+      "charsPointsPrice": 0,  // n积分/1k token（商业版）
+      "censor": false, // 是否开启敏感校验（商业版）
       "vision": false, // 是否支持图片输入
       "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
       "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）
@@ -46,7 +46,7 @@ llm模型全部合并
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
       "customExtractPrompt": "", // 自定义内容提取提示词
       "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
-      "defaultConfig":{}  // LLM默认配置，可以针对不同模型设置特殊值（比如 GLM4 的 top_p
+      "defaultConfig":{}  // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
     },
     {
       "model": "gpt-4-0125-preview",
@@ -133,7 +133,7 @@ llm模型全部合并
 
 ## 关于模型 logo
 
-统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。
+统一放置在项目的`public/imgs/model/xxx`目录中，目前内置了以下几种，如果有需要，可以PR增加。默认头像为 Hugging face 的 logo~
 
 - /imgs/model/baichuan.svg - 百川
 - /imgs/model/chatglm.svg - 智谱
@@ -147,7 +147,7 @@ llm模型全部合并
 
 ## 特殊模型
 
-### ReRank 接入
+### ReRank 接入(私有部署)
 
 请使用 4.6.6-alpha 以上版本，配置文件中的 `reRankModels` 为重排模型，虽然是数组，不过目前仅有第1个生效。
 
@@ -164,6 +164,26 @@ llm模型全部合并
             "charsPointsPrice": 0,
             "requestUrl": "{{host}}/api/v1/rerank",
             "requestAuth": "安全凭证，已自动补 Bearer"
+        }
+    ]
+}
+```
+
+### ReRank 接入（Cohere）
+
+这个重排模型对中文不是很好，不如 bge 的好用。
+
+1. 申请 Cohere 官方 Key: https://dashboard.cohere.com/api-keys
+2. 修改 FastGPT 配置文件
+
+```json
+{
+    "reRankModels": [
+        {
+            "model": "rerank-multilingual-v2.0", // 这里的model需要对应 cohere 的模型名
+            "name": "检索重排", // 随意
+            "requestUrl": "https://api.cohere.ai/v1/rerank",
+            "requestAuth": "Coherer上申请的key"
         }
     ]
 }

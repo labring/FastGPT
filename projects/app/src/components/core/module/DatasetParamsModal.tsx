@@ -81,6 +81,8 @@ const DatasetParamsModal = ({
   const datasetSearchUsingCfrForm = watch('datasetSearchUsingExtensionQuery');
   const queryExtensionModel = watch('datasetSearchExtensionModel');
   const cfbBgDesc = watch('datasetSearchExtensionBg');
+  const usingReRankWatch = watch('usingReRank');
+  const searchModeWatch = watch('searchMode');
 
   const chatModelSelectList = (() =>
     llmModelList
@@ -97,16 +99,10 @@ const DatasetParamsModal = ({
 
   const showSimilarity = useMemo(() => {
     if (similarity === undefined) return false;
-    if (
-      getValues('searchMode') === DatasetSearchModeEnum.fullTextRecall &&
-      !getValues('usingReRank')
-    )
-      return false;
-    if (getValues('searchMode') === DatasetSearchModeEnum.mixedRecall && !getValues('usingReRank'))
-      return false;
-
-    return true;
-  }, [getValues, similarity]);
+    if (usingReRankWatch) return true;
+    if (searchModeWatch === DatasetSearchModeEnum.embedding) return true;
+    return false;
+  }, [searchModeWatch, similarity, usingReRankWatch]);
 
   const showReRank = useMemo(() => {
     return usingReRank !== undefined && reRankModelList.length > 0;
@@ -155,64 +151,57 @@ const DatasetParamsModal = ({
                 setRefresh(!refresh);
               }}
             />
-            {showReRank && (
-              <>
-                <Divider my={4} />
-                <Flex
-                  alignItems={'center'}
-                  cursor={'pointer'}
-                  userSelect={'none'}
-                  py={3}
-                  pl={'14px'}
-                  pr={'16px'}
-                  border={theme.borders.sm}
-                  borderWidth={'1.5px'}
-                  borderRadius={'md'}
-                  position={'relative'}
-                  {...(getValues('usingReRank')
-                    ? {
-                        borderColor: 'primary.400'
-                      }
-                    : {})}
-                  onClick={(e) => {
-                    if (
-                      teamPlanStatus?.standardConstants &&
-                      !teamPlanStatus?.standardConstants?.permissionReRank
-                    ) {
-                      return toast({
-                        status: 'warning',
-                        title: t('support.team.limit.No permission rerank')
-                      });
+            <>
+              <Divider my={4} />
+              <Flex
+                alignItems={'center'}
+                cursor={'pointer'}
+                userSelect={'none'}
+                py={3}
+                pl={'14px'}
+                pr={'16px'}
+                border={theme.borders.sm}
+                borderWidth={'1.5px'}
+                borderRadius={'md'}
+                position={'relative'}
+                {...(getValues('usingReRank')
+                  ? {
+                      borderColor: 'primary.400'
                     }
-                    setValue('usingReRank', !getValues('usingReRank'));
-                    setRefresh((state) => !state);
-                  }}
-                >
-                  <MyIcon name="core/dataset/rerank" w={'18px'} mr={'14px'} />
-                  <Box pr={2} color={'myGray.800'} flex={'1 0 0'}>
-                    <Box>{t('core.dataset.search.ReRank')}</Box>
-                    <Box fontSize={['xs', 'sm']} color={'myGray.500'}>
-                      {t('core.dataset.search.ReRank desc')}
-                    </Box>
+                  : {})}
+                onClick={(e) => {
+                  if (!showReRank) {
+                    return toast({
+                      status: 'warning',
+                      title: t('core.ai.Not deploy rerank model')
+                    });
+                  }
+                  if (
+                    teamPlanStatus?.standardConstants &&
+                    !teamPlanStatus?.standardConstants?.permissionReRank
+                  ) {
+                    return toast({
+                      status: 'warning',
+                      title: t('support.team.limit.No permission rerank')
+                    });
+                  }
+                  setValue('usingReRank', !getValues('usingReRank'));
+                  setRefresh((state) => !state);
+                }}
+              >
+                <MyIcon name="core/dataset/rerank" w={'18px'} mr={'14px'} />
+                <Box pr={2} color={'myGray.800'} flex={'1 0 0'}>
+                  <Box>{t('core.dataset.search.ReRank')}</Box>
+                  <Box fontSize={['xs', 'sm']} color={'myGray.500'}>
+                    {t('core.dataset.search.ReRank desc')}
                   </Box>
-                  <Box position={'relative'} w={'18px'} h={'18px'}>
-                    <Checkbox
-                      colorScheme="primary"
-                      isChecked={getValues('usingReRank')}
-                      size="lg"
-                    />
-                    <Box
-                      position={'absolute'}
-                      top={0}
-                      right={0}
-                      bottom={0}
-                      left={0}
-                      zIndex={1}
-                    ></Box>
-                  </Box>
-                </Flex>
-              </>
-            )}
+                </Box>
+                <Box position={'relative'} w={'18px'} h={'18px'}>
+                  <Checkbox colorScheme="primary" isChecked={getValues('usingReRank')} size="lg" />
+                  <Box position={'absolute'} top={0} right={0} bottom={0} left={0} zIndex={1}></Box>
+                </Box>
+              </Flex>
+            </>
           </>
         )}
         {currentTabType === SearchSettingTabEnum.limit && (
@@ -243,15 +232,15 @@ const DatasetParamsModal = ({
                 </Box>
               </Box>
             )}
-            {showSimilarity && (
-              <Box display={['block', 'flex']} mt={10}>
-                <Box flex={'0 0 120px'} mb={[8, 0]}>
-                  {t('core.dataset.search.Min Similarity')}
-                  <MyTooltip label={t('core.dataset.search.Min Similarity Tips')} forceShow>
-                    <QuestionOutlineIcon ml={1} />
-                  </MyTooltip>
-                </Box>
-                <Box flex={1} mx={4}>
+            <Box display={['block', 'flex']} mt={10}>
+              <Box flex={'0 0 120px'} mb={[8, 0]}>
+                {t('core.dataset.search.Min Similarity')}
+                <MyTooltip label={t('core.dataset.search.Min Similarity Tips')} forceShow>
+                  <QuestionOutlineIcon ml={1} />
+                </MyTooltip>
+              </Box>
+              <Box flex={1} mx={4}>
+                {showSimilarity ? (
                   <MySlider
                     markList={[
                       { label: '0', value: 0 },
@@ -266,9 +255,11 @@ const DatasetParamsModal = ({
                       setRefresh(!refresh);
                     }}
                   />
-                </Box>
+                ) : (
+                  <Box color={'myGray.500'}>{t('core.dataset.search.No support similarity')}</Box>
+                )}
               </Box>
-            )}
+            </Box>
           </Box>
         )}
         {currentTabType === SearchSettingTabEnum.queryExtension && (

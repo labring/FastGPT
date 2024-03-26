@@ -4,7 +4,10 @@ import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '@fastgpt/global/core/mo
 import { ModuleIOValueTypeEnum, ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { UserInputModule } from '@fastgpt/global/core/module/template/system/userInput';
 import { ToolModule } from '@fastgpt/global/core/module/template/system/tools';
-import { DatasetSearchModule } from '@fastgpt/global/core/module/template/system/datasetSearch';
+import {
+  DatasetSearchModule,
+  Dataset_SEARCH_DESC
+} from '@fastgpt/global/core/module/template/system/datasetSearch';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export async function postForm2Modules(data: AppSimpleEditFormType) {
@@ -489,7 +492,7 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
       {
         moduleId: '0voh5n',
         name: '知识库搜索',
-        intro: '调用知识库搜索能力，查找“有可能”与问题相关的内容',
+        intro: Dataset_SEARCH_DESC,
         avatar: '/imgs/module/db.png',
         flowType: 'datasetSearchNode',
         showStatus: true,
@@ -640,14 +643,6 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
                 key: 'quoteQA'
               }
             ]
-          },
-          {
-            key: 'finish',
-            label: 'core.module.output.label.running done',
-            description: 'core.module.output.description.running done',
-            valueType: 'boolean',
-            type: 'source',
-            targets: []
           }
         ]
       }
@@ -799,14 +794,6 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
                   label: 'core.module.Dataset quote.label',
                   type: 'source',
                   valueType: 'datasetQuote',
-                  targets: []
-                },
-                {
-                  key: 'finish',
-                  label: 'core.module.output.label.running done',
-                  description: 'core.module.output.description.running done',
-                  valueType: 'boolean',
-                  type: 'source',
                   targets: []
                 }
               ]

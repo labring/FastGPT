@@ -6,8 +6,8 @@ import { onChangeNode } from '../../../FlowProvider';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import yaml from 'js-yaml';
 import { useForm } from 'react-hook-form';
+import parse from '@bany/curl-to-json';
 
 type RequestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
 const methodMap: { [K in RequestMethod]: string } = {
@@ -18,20 +18,19 @@ const methodMap: { [K in RequestMethod]: string } = {
   patch: 'PATCH'
 };
 
-const OpenApiImportModal = ({
-  children,
+const CurlImportModal = ({
   moduleId,
-  inputs
+  inputs,
+  onClose
 }: {
-  children: React.ReactElement;
   moduleId: string;
   inputs: FlowNodeInputItemType[];
+  onClose: () => void;
 }) => {
-  const { isOpen, onOpen, onClose } = useDisclosure();
   const { t } = useTranslation();
   const { register, handleSubmit } = useForm({
     defaultValues: {
-      openapiContent: ''
+      curlContent: ''
     }
   });
 
@@ -39,52 +38,28 @@ const OpenApiImportModal = ({
 
   const handleFileProcessing = async (content: string) => {
     try {
-      let data;
-      try {
-        data = JSON.parse(content);
-      } catch (jsonError) {
-        try {
-          data = yaml.load(content, { schema: yaml.FAILSAFE_SCHEMA });
-        } catch (yamlError) {
-          console.error(yamlError);
-          throw new Error();
-        }
-      }
-
-      const firstPathName = Object.keys(data.paths)[0];
-      const firstPathData = data.paths[firstPathName];
-      const firstRequestMethod = Object.keys(firstPathData)[0];
-      const firstRequestMethodData = firstPathData[firstRequestMethod];
-      const firstRequestParameters = firstRequestMethodData.parameters || [];
-
-      const pathParams = [];
-      const headerParams = [];
-      for (const parameter of firstRequestParameters) {
-        if (parameter.in === 'path') {
-          pathParams.push({
-            key: parameter.name,
-            type: parameter.schema.type
-          });
-        } else {
-          headerParams.push({
-            key: parameter.name,
-            type: parameter.schema.type
-          });
-        }
-      }
-
-      const requestBodySchema =
-        firstRequestMethodData.requestBody?.content?.['application/json']?.schema;
-      let requestBodyValue = '';
-      if (requestBodySchema) {
-        requestBodyValue = JSON.stringify(requestBodySchema, null, 2);
-      }
-
       const requestUrl = inputs.find((item) => item.key === ModuleInputKeyEnum.httpReqUrl);
       const requestMethod = inputs.find((item) => item.key === ModuleInputKeyEnum.httpMethod);
       const params = inputs.find((item) => item.key === ModuleInputKeyEnum.httpParams);
       const headers = inputs.find((item) => item.key === ModuleInputKeyEnum.httpHeaders);
       const jsonBody = inputs.find((item) => item.key === ModuleInputKeyEnum.httpJsonBody);
+
+      const parsed = parse(content);
+      if (!parsed.url) {
+        throw new Error('url not found');
+      }
+
+      const newParams = Object.keys(parsed.params || {}).map((key) => ({
+        key,
+        value: parsed.params?.[key],
+        type: 'string'
+      }));
+      const newHeaders = Object.keys(parsed.header || {}).map((key) => ({
+        key,
+        value: parsed.header?.[key],
+        type: 'string'
+      }));
+      const newBody = JSON.stringify(parsed.data, null, 2);
 
       onChangeNode({
         moduleId,
@@ -92,7 +67,7 @@ const OpenApiImportModal = ({
         key: ModuleInputKeyEnum.httpReqUrl,
         value: {
           ...requestUrl,
-          value: firstPathName
+          value: parsed.url
         }
       });
 
@@ -102,7 +77,7 @@ const OpenApiImportModal = ({
         key: ModuleInputKeyEnum.httpMethod,
         value: {
           ...requestMethod,
-          value: methodMap[firstRequestMethod.toLowerCase() as RequestMethod] || 'GET'
+          value: methodMap[parsed.method?.toLowerCase() as RequestMethod] || 'GET'
         }
       });
 
@@ -112,7 +87,7 @@ const OpenApiImportModal = ({
         key: ModuleInputKeyEnum.httpParams,
         value: {
           ...params,
-          value: pathParams
+          value: newParams
         }
       });
 
@@ -122,7 +97,7 @@ const OpenApiImportModal = ({
         key: ModuleInputKeyEnum.httpHeaders,
         value: {
           ...headers,
-          value: headerParams
+          value: newHeaders
         }
       });
 
@@ -132,7 +107,7 @@ const OpenApiImportModal = ({
         key: ModuleInputKeyEnum.httpJsonBody,
         value: {
           ...jsonBody,
-          value: requestBodyValue
+          value: newBody
         }
       });
 
@@ -153,33 +128,28 @@ const OpenApiImportModal = ({
   };
 
   return (
-    <>
-      {children && <Box onClick={onOpen}>{children}</Box>}
-      <MyModal
-        isOpen={isOpen}
-        onClose={onClose}
-        iconSrc="modal/edit"
-        title={t('common.Import')}
-        m={'auto'}
-        w={500}
-      >
-        <ModalBody>
-          <Textarea
-            height={400}
-            maxH={500}
-            mt={2}
-            {...register('openapiContent')}
-            placeholder={t('core.module.http.OpenAPI import placeholder')}
-          />
-        </ModalBody>
-        <ModalFooter>
-          <Button onClick={handleSubmit((data) => handleFileProcessing(data.openapiContent))}>
-            {t('common.Confirm')}
-          </Button>
-        </ModalFooter>
-      </MyModal>
-    </>
+    <MyModal
+      isOpen
+      onClose={onClose}
+      iconSrc="modal/edit"
+      title={t('core.module.http.curl import')}
+      w={600}
+    >
+      <ModalBody>
+        <Textarea
+          rows={20}
+          mt={2}
+          {...register('curlContent')}
+          placeholder={t('core.module.http.curl import placeholder')}
+        />
+      </ModalBody>
+      <ModalFooter>
+        <Button onClick={handleSubmit((data) => handleFileProcessing(data.curlContent))}>
+          {t('common.Confirm')}
+        </Button>
+      </ModalFooter>
+    </MyModal>
   );
 };
 
-export default React.memo(OpenApiImportModal);
+export default React.memo(CurlImportModal);

@@ -157,7 +157,7 @@ async function fetchData({
   body: Record<string, any>;
   params: Record<string, any>;
 }): Promise<Record<string, any>> {
-  const { data: response } = await axios<Record<string, any>>({
+  const { data: response } = await axios({
     method,
     baseURL: `http://${SERVICE_LOCAL_HOST}`,
     url,
@@ -241,7 +241,8 @@ async function fetchData({
   };
 
   return {
-    formatResponse: parseJson(response),
+    formatResponse:
+      typeof response === 'object' && !Array.isArray(response) ? parseJson(response) : {},
     rawResponse: response
   };
 }

@@ -2,9 +2,9 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authFileToken } from '@fastgpt/service/support/permission/controller';
-import { detect } from 'jschardet';
 import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -37,7 +37,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       }
     }
 
-    const encoding = detect(buffers)?.encoding || 'utf-8';
+    const encoding = detectFileEncoding(buffers);
 
     res.setHeader('Content-Type', `${file.contentType}; charset=${encoding}`);
     res.setHeader('Cache-Control', 'public, max-age=3600');
