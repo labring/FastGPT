@@ -12,9 +12,8 @@ images: []
 遇到问题先按下面方式排查。
 
 1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试`docker logs 容器名`查看对应日志。
-2. 不懂 docker 不要瞎改端口，只需要改`OPENAI_BASE_URL`和`CHAT_API_KEY`即可。
-3. 容器都运行正常的，`docker logs 容器名` 查看报错日志
-4. 无法解决时，可以找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的日志，否则很难排查。
+2. 容器都运行正常的，`docker logs 容器名` 查看报错日志
+3. 无法解决时，可以找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的日志，否则很难排查。
 
 
 ## 二、通用问题
@@ -29,7 +28,8 @@ images: []
 
 ### 其他模型没法进行问题分类/内容提取
 
-需要给其他模型配置`toolChoice=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试，国内外的商业模型基本都可用。
+需要给其他模型配置`toolChoice=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。
+问题分类基本可用，内容提取不太行。
    
 ### 页面崩溃
 
@@ -62,7 +62,15 @@ images: []
 
 或者是FastGPT请求不到 OneAPI（没放同一个网络）
 
+### 修改了 vectorModels 但是没有生效
+
+1. 重启容器，确保模型配置已经加载（可以在日志或者新建知识库时候看到新模型）
+2. 记得刷新一次浏览器。
+3. 如果是已经创建的知识库，需要删除重建。向量模型是创建时候绑定的，不会动态更新。
+
 ## 三、常见的 OneAPI 错误
+
+带有 requestId 的都是 OneAPI 的报错。
 
 ### insufficient_user_quota user quota is not enough 
 

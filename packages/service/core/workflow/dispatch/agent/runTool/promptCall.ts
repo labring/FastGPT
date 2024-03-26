@@ -131,7 +131,7 @@ export const runToolWithPromptCall = async (
   })();
 
   const parseAnswerResult = parseAnswer(answer);
-  // console.log(answer, '==11==');
+  // console.log(parseAnswer, '==11==');
   // No tools
   if (typeof parseAnswerResult === 'string') {
     // No tool is invoked, indicating that the process is over
@@ -270,7 +270,9 @@ export const runToolWithPromptCall = async (
 
   // get the next user prompt
   lastMessage.content += `${answer}
-TOOL_RESPONSE: ${toolsRunResponse.toolResponsePrompt}
+TOOL_RESPONSE: """
+${toolsRunResponse.toolResponsePrompt}
+"""
 ANSWER: `;
 
   /* check stop signal */
