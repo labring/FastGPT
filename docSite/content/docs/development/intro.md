@@ -54,11 +54,11 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 
 以下文件均在 `projects/app` 路径下。
 
-**环境变量**
+**1. 环境变量**
 
 复制`.env.template`文件，在同级目录下生成一个`.env.local` 文件，修改`.env.local` 里内容才是有效的变量。变量说明见 .env.template
 
-**config 配置文件**
+**2. config 配置文件**
 
 复制 `data/config.json` 文件，生成一个 `data/config.local.json` 配置文件，具体配置参数说明，可参考 [config 配置说明](/docs/development/configuration)
 
@@ -73,7 +73,7 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 ### 5. 运行
 
 ```bash
-# 给脚本代码执行权限
+# 给自动化脚本代码执行权限(非 linux 系统, 可以手动执行里面的 postinstall.sh 文件内容)
 chmod -R +x ./scripts/
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 pnpm i
