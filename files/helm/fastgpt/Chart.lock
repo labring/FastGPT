@@ -1,0 +1,9 @@
+dependencies:
+- name: mongodb
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 15.0.1
+- name: postgresql
+  repository: oci://registry-1.docker.io/bitnamicharts
+  version: 15.0.0
+digest: sha256:eaee52dc30a5f0e8e65e30a99240707c8493fa2773a4afcfb54d286fb4fa6306
+generated: "2024-03-19T13:47:47.7518066+08:00"
