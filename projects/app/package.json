@@ -9,7 +9,6 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@apidevtools/swagger-parser": "^10.1.0",
     "@bany/curl-to-json": "^1.2.8",
     "@chakra-ui/anatomy": "2.2.1",
     "@chakra-ui/icons": "2.1.1",

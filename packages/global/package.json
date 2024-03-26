@@ -12,7 +12,8 @@
     "js-yaml": "^4.1.0",
     "timezones-list": "^3.0.2",
     "next": "13.5.2",
-    "jschardet": "3.1.1"
+    "jschardet": "3.1.1",
+    "@apidevtools/swagger-parser": "^10.1.0"
   },
   "devDependencies": {
     "@types/js-yaml": "^4.0.9",
