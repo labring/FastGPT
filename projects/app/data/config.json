@@ -84,7 +84,9 @@
       "charsPointsPrice": 0,
       "defaultToken": 700,
       "maxToken": 3000,
-      "weight": 100
+      "weight": 100,
+      "dbConfig": {},
+      "queryConfig": {}
     }
   ],
   "reRankModels": [],
