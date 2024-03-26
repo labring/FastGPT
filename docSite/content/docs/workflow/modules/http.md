@@ -19,12 +19,13 @@ weight: 355
 
 ## 介绍
 
-HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`系统参数`及`自定义参数`，并接收一个 JSON 响应值，字段也是自定义。
+HTTP 模块会向对应的地址发送一个 `HTTP` 请求，实际操作与 Postman 和 ApiFox 这类直流工具使用差不多。
 
 - Params 为路径请求参数，GET请求中用的居多。
-- Body 为请求体，POST请求中用的居多。
+- Body 为请求体，POST/PUT请求中用的居多。
 - Headers 为请求头，用于传递一些特殊的信息。
 - 3 种数据中均可以通过 `{{}}` 来引用变量。
+- url 也可以通过 `{{}}` 来引用变量。
 - 变量来自于`全局变量`、`系统变量`、`局部传入`
 
 ## 参数结构
@@ -42,7 +43,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 
 ### Params, Headers
 
-不多描述，使用方法和Postman, ApiFox 基本一致，目前 Params 和 Headers 未提供语法提示，后续会加入。
+不多描述，使用方法和Postman, ApiFox 基本一致。
 
 可通过 {{key}} 来引入变量。例如：
 
@@ -53,7 +54,7 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 
 ### Body
 
-只有`POST`模式下会生效。
+只有特定请求类型下会生效。
 
 可以写一个`自定义的 Json`，并通过 {{key}} 来引入变量。例如：
 
@@ -182,17 +183,15 @@ HTTP 模块会向对应的地址发送一个 `POST/GET` 请求，携带部分`�
 
 FastGPT v4.6.8 后，加入了出参格式化功能，主要以`json`格式化成`字符串`为主。如果你的输出类型选择了`字符串`，则会将`HTTP`对应`key`的值，转成`json`字符串进行输出。因此，未来你可以直接从`HTTP`接口输出内容至`文本加工`中，然后拼接适当的提示词，最终输入给`AI对话`。
 
-### 动态外部数据
 
-在插件中的`HTTP模块`有一个属性叫`动态外部数据`，这个属性是与`插件输入`中，数据类型为`动态外部数据`的值搭配使用。
+{{% alert context="warning" %}}
+HTTP模块非常强大，你可以对接一些公开的API，来提高编排的功能。
 
-类似于文本加工模块，会有一个不确定长度，不确定key的用户输入，因此这部分数据会被`动态外部数据`接收，它们是一个对象。在 HTTP 模块中，你可以在`Body`中接收到一个`key`为`DYNAMIC_INPUT_KEY`的对象。
+如果你不想额外部署服务，可以使用 [Laf](https://laf.dev/) 来快速开发上线接口，即写即发，无需部署。
+{{% /alert %}}
 
 ## laf 对接 HTTP 示例
 
-{{% alert context="warning" %}}
-如果你不想额外部署服务，可以使用 [Laf](https://laf.dev/) 来快速开发上线接口，即写即发，无需部署。
-{{% /alert %}}
 
 下面是在 Laf 编写的 POST 请求示例：
 
@@ -250,4 +249,5 @@ export default async function (ctx: FunctionContext) {
 ## 相关示例
 
 - [谷歌搜索](/docs/workflow/examples/google_search/)
+- [发送飞书webhook](/docs/workflow/examples/feishu_webhook/)
 - [实验室预约（操作数据库）](/docs/workflow/examples/lab_appointment/)

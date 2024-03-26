@@ -73,7 +73,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       temperature = 0,
       maxToken = 4000,
       history = 6,
-      quoteQA = [],
+      quoteQA,
       userChatInput,
       isResponseAnswerText = true,
       systemPrompt = '',
@@ -114,6 +114,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   const { filterMessages } = getChatMessages({
     model: modelConstantsData,
     histories: chatHistories,
+    quoteQA,
     quoteText,
     quotePrompt,
     userChatInput,
@@ -269,13 +270,13 @@ function filterQuote({
       : '';
 
   return {
-    filterQuoteQA: filterQuoteQA,
     quoteText
   };
 }
 function getChatMessages({
   quotePrompt,
   quoteText,
+  quoteQA,
   histories = [],
   systemPrompt,
   userChatInput,
@@ -284,18 +285,20 @@ function getChatMessages({
 }: {
   quotePrompt?: string;
   quoteText: string;
+  quoteQA: ChatProps['params']['quoteQA'];
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
   inputFiles: UserChatItemValueItemType['file'][];
   model: LLMModelItemType;
 }) {
-  const replaceInputValue = quoteText
-    ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
-        quote: quoteText,
-        question: userChatInput
-      })
-    : userChatInput;
+  const replaceInputValue =
+    quoteQA !== undefined
+      ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
+          quote: quoteText,
+          question: userChatInput
+        })
+      : userChatInput;
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt(systemPrompt),

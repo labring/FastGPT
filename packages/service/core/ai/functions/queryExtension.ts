@@ -19,20 +19,28 @@ const defaultPrompt = `作为一个向量检索助手，你的任务是结合历
 历史记录: 
 """
 Q: 对话背景。
-A: 当前对话是关于 FatGPT 的介绍和使用等。
+A: 当前对话是关于 Nginx 的介绍和使用等。
 """
 原问题: 怎么下载
-检索词: ["FastGPT 如何下载？","下载 FastGPT 需要什么条件？","有哪些渠道可以下载 FastGPT？"]
+检索词: ["Nginx 如何下载？","下载 Nginx 需要什么条件？","有哪些渠道可以下载 Nginx？"]
 ----------------
 历史记录: 
 """
 Q: 对话背景。
-A: 当前对话是关于 FatGPT 的介绍和使用等。
+A: 当前对话是关于 Nginx 的介绍和使用等。
 Q: 报错 "no connection"
 A: 报错"no connection"可能是因为……
 """
 原问题: 怎么解决
-检索词: ["FastGPT 报错"no connection"如何解决？", "造成 'no connection' 报错的原因。", "FastGPT提示'no connection'，要怎么办？"]
+检索词: ["Nginx报错"no connection"如何解决？","造成'no connection'报错的原因。","Nginx提示'no connection'，要怎么办？"]
+----------------
+历史记录: 
+"""
+Q: 护产假多少天?
+A: 护产假的天数根据员工所在的城市而定。请提供您所在的城市，以便我回答您的问题。
+"""
+原问题: 沈阳
+检索词: ["沈阳的护产假多少天？"]
 ----------------
 历史记录: 
 """
@@ -41,14 +49,6 @@ A: FastGPT 的作者是 labring。
 """
 原问题: Tell me about him
 检索词: ["Introduce labring, the author of FastGPT." ," Background information on author labring." "," Why does labring do FastGPT?"]
-----------------
-历史记录: 
-"""
-Q: 对话背景。
-A: 当前对话是关于 FatGPT 的介绍和使用等。
-"""
-原问题: 高级编排怎么用
-检索词: ["FastGPT的高级编排是什么？","FastGPT高级编排的使用教程。","FastGPT高级编排有什么用？"]
 ----------------
 历史记录:
 """
