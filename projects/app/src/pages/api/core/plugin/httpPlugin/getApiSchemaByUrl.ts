@@ -6,7 +6,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const apiURL = req.body.url as string;
 
-    const api = await SwaggerParser.validate(apiURL);
+    const api = await SwaggerParser.bundle(apiURL);
 
     return jsonRes(res, {
       data: api
