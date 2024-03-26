@@ -24,7 +24,7 @@ const InformTable = () => {
     pageNum
   } = usePagination<UserInformSchema>({
     api: getInforms,
-    pageSize: isPc ? 20 : 10
+    pageSize: 20
   });
 
   return (

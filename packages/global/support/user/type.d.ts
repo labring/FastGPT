@@ -1,4 +1,4 @@
-import { InformTypeEnum, UserStatusEnum } from './constant';
+import { UserStatusEnum } from './constant';
 import { TeamItemType } from './team/type';
 
 export type UserModelSchema = {

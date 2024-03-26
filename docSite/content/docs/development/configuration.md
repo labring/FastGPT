@@ -33,8 +33,8 @@ llm模型全部合并
       "maxResponse": 4000, // 最大回复
       "quoteMaxToken": 13000, // 最大引用内容
       "maxTemperature": 1.2, // 最大温度
-      "charsPointsPrice": 0, 
-      "censor": false,
+      "charsPointsPrice": 0,  // n积分/1k token（商业版）
+      "censor": false, // 是否开启敏感校验（商业版）
       "vision": false, // 是否支持图片输入
       "datasetProcess": true, // 是否设置为知识库处理模型（QA），务必保证至少有一个为true，否则知识库会报错
       "usedInClassify": true, // 是否用于问题分类（务必保证至少有一个为true）

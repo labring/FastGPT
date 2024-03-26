@@ -30,7 +30,7 @@ const SystemMsgModal = ({}: {}) => {
 
   return (
     <MyModal isOpen={isOpen} iconSrc={LOGO_ICON} title={t('support.user.inform.System message')}>
-      <ModalBody>
+      <ModalBody overflow={'auto'}>
         <Markdown source={data?.content} />
       </ModalBody>
       <ModalFooter>
