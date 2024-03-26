@@ -8,7 +8,6 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 export const useSpeech = (props?: OutLinkChatAuthProps) => {
   const { t } = useTranslation();
   const mediaRecorder = useRef<MediaRecorder>();
-  // const mediaStream = useRef<MediaStream>();
   const [mediaStream, setMediaStream] = useState<MediaStream>();
   const { toast } = useToast();
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -54,6 +53,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
+
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       setIsSpeaking(true);
@@ -74,11 +74,18 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
 
       mediaRecorder.current.onstop = async () => {
         const formData = new FormData();
-        const blob = new Blob(chunks, { type: 'audio/webm' });
-
+        let options = {};
+        if (MediaRecorder.isTypeSupported('audio/webm')) {
+          options = { type: 'audio/webm' };
+        } else if (MediaRecorder.isTypeSupported('video/mp4')) {
+          options = { type: 'video/mp4' };
+        } else {
+          console.error('no suitable mimetype found for this device');
+        }
+        const blob = new Blob(chunks, options);
         const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
 
-        formData.append('file', blob, 'recording.webm');
+        formData.append('file', blob, 'recording.mp4');
         formData.append(
           'data',
           JSON.stringify({
@@ -112,7 +119,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
       };
 
       mediaRecorder.current.start();
-    } catch (error) {}
+    } catch (error) {
+      toast({
+        status: 'warning',
+        title: getErrText(error, 'Whisper error')
+      });
+      console.log(error);
+    }
   };
 
   const stopSpeak = () => {

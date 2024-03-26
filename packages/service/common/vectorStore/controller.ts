@@ -24,7 +24,8 @@ export const insertDatasetDataVector = async ({
 }) => {
   const { vectors, tokens } = await getVectorsByText({
     model,
-    input: query
+    input: query,
+    type: 'db'
   });
   const { insertId } = await getVectorObj().insert({
     ...props,

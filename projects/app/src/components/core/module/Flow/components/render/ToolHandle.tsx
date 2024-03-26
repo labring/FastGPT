@@ -14,39 +14,40 @@ import { useCallback } from 'react';
 type ToolHandleProps = BoxProps & {
   moduleId: string;
 };
-export const ToolTargetHandle = ({ moduleId, ...props }: ToolHandleProps) => {
+export const ToolTargetHandle = ({ moduleId }: ToolHandleProps) => {
   const { t } = useTranslation();
 
   const valueTypeMap = FlowValueTypeMap[ModuleIOValueTypeEnum.tools];
 
   return (
-    <Box position={'absolute'} left={'50%'} transform={'translate(-17px,-10px)'} {...props}>
-      <MyTooltip
-        label={t('app.module.type', {
-          type: t(valueTypeMap?.label),
-          description: valueTypeMap?.description
-        })}
+    <MyTooltip
+      label={t('app.module.type', {
+        type: t(valueTypeMap?.label),
+        description: valueTypeMap?.description
+      })}
+      shouldWrapChildren={false}
+    >
+      <Handle
+        style={{
+          borderRadius: '0',
+          backgroundColor: 'transparent'
+        }}
+        type="target"
+        id={ModuleOutputKeyEnum.selectedTools}
+        position={Position.Top}
       >
-        <Handle
-          style={{
-            width: '14px',
-            height: '14px',
-            border: '4px solid #5E8FFF',
-            borderRadius: '0',
-            backgroundColor: 'transparent',
-            transformOrigin: 'center',
-            transform: 'rotate(45deg)'
-          }}
-          type="target"
-          id={ModuleOutputKeyEnum.selectedTools}
-          position={Position.Top}
+        <Box
+          w={'14px'}
+          h={'14px'}
+          border={'4px solid #5E8FFF'}
+          transform={'translate(-40%,-30%) rotate(45deg)'}
         />
-      </MyTooltip>
-    </Box>
+      </Handle>
+    </MyTooltip>
   );
 };
 
-export const ToolSourceHandle = ({ moduleId, ...props }: ToolHandleProps) => {
+export const ToolSourceHandle = ({ moduleId }: ToolHandleProps) => {
   const { t } = useTranslation();
   const { setEdges, nodes } = useFlowProviderStore();
 
@@ -75,29 +76,30 @@ export const ToolSourceHandle = ({ moduleId, ...props }: ToolHandleProps) => {
   );
 
   return (
-    <Box position={'absolute'} left={'50%'} transform={'translate(-16px,-14px)'} {...props}>
-      <MyTooltip
-        label={t('app.module.type', {
-          type: t(valueTypeMap?.label),
-          description: valueTypeMap?.description
-        })}
+    <MyTooltip
+      label={t('app.module.type', {
+        type: t(valueTypeMap?.label),
+        description: valueTypeMap?.description
+      })}
+      shouldWrapChildren={false}
+    >
+      <Handle
+        style={{
+          borderRadius: '0',
+          backgroundColor: 'transparent'
+        }}
+        type="source"
+        id={ModuleOutputKeyEnum.selectedTools}
+        position={Position.Bottom}
+        onConnect={onConnect}
       >
-        <Handle
-          style={{
-            width: '14px',
-            height: '14px',
-            border: '4px solid #5E8FFF',
-            borderRadius: '0',
-            backgroundColor: 'transparent',
-            transformOrigin: 'center',
-            transform: 'rotate(45deg)'
-          }}
-          type="source"
-          id={ModuleOutputKeyEnum.selectedTools}
-          position={Position.Bottom}
-          onConnect={onConnect}
+        <Box
+          w={'14px'}
+          h={'14px'}
+          border={'4px solid #5E8FFF'}
+          transform={'translate(-40%,-30%) rotate(45deg)'}
         />
-      </MyTooltip>
-    </Box>
+      </Handle>
+    </MyTooltip>
   );
 };

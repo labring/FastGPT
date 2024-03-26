@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDisclosure, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import MyModal from '@fastgpt/web/components/common/MyModal';
+import MyModal from '../components/common/MyModal';
 
 export const useConfirm = (props?: {
   title?: string;

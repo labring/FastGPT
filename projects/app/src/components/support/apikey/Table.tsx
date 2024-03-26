@@ -18,7 +18,8 @@ import {
   MenuList,
   MenuItem,
   MenuButton,
-  Menu
+  Menu,
+  IconButton
 } from '@chakra-ui/react';
 import {
   getOpenApiKeys,
@@ -37,10 +38,11 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@/components/MyMenu';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -59,6 +61,10 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   const [baseUrl, setBaseUrl] = useState('https://fastgpt.in/api');
   const [editData, setEditData] = useState<EditProps>();
   const [apiKey, setApiKey] = useState('');
+  const { ConfirmModal, openConfirm } = useConfirm({
+    type: 'delete',
+    content: '确认删除该API密钥？删除后该密钥立即失效，对应的对话日志不会删除，请确认！'
+  });
 
   const { mutate: onclickRemove, isLoading: isDeleting } = useMutation({
     mutationFn: async (id: string) => delOpenApiById(id),
@@ -181,13 +187,12 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                   <MyMenu
                     offset={[-50, 5]}
                     Button={
-                      <MyIcon
+                      <IconButton
+                        icon={<MyIcon name={'more'} w={'14px'} />}
                         name={'more'}
-                        w={'14px'}
-                        p={2}
-                        _hover={{ bg: 'myWhite.600  ' }}
-                        cursor={'pointer'}
-                        borderRadius={'md'}
+                        variant={'whitePrimary'}
+                        size={'sm'}
+                        aria-label={''}
                       />
                     }
                     menuList={[
@@ -205,7 +210,8 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                       {
                         label: t('common.Delete'),
                         icon: 'delete',
-                        onClick: () => onclickRemove(_id)
+                        type: 'danger',
+                        onClick: openConfirm(() => onclickRemove(_id))
                       }
                     ]}
                   />
@@ -216,6 +222,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         </Table>
         <Loading loading={isGetting || isDeleting} fixed={false} />
       </TableContainer>
+
       {!!editData && (
         <EditKeyModal
           defaultData={editData}
@@ -231,6 +238,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           }}
         />
       )}
+      <ConfirmModal />
       <MyModal
         isOpen={!!apiKey}
         w={['400px', '600px']}

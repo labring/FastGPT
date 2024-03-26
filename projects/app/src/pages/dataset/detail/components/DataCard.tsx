@@ -25,7 +25,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { debounce } from 'lodash';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -302,7 +302,10 @@ const DataCard = () => {
               >
                 <Flex zIndex={1} alignItems={'center'} justifyContent={'space-between'}>
                   <Box
-                    border={theme.borders.base}
+                    borderWidth={'1px'}
+                    borderColor={'primary.200'}
+                    bg={'primary.50'}
+                    color={'primary.600'}
                     px={2}
                     fontSize={'sm'}
                     mr={1}
@@ -310,7 +313,7 @@ const DataCard = () => {
                   >
                     # {item.chunkIndex ?? '-'}
                   </Box>
-                  <Box className={'textEllipsis'} color={'myGray.500'} fontSize={'xs'}>
+                  <Box className={'textEllipsis'} fontSize={'xs'}>
                     ID:{item._id}
                   </Box>
                 </Flex>

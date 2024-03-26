@@ -15,7 +15,7 @@ import {
 import { useForm } from 'react-hook-form';
 import { defaultEditFormData } from './constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { onChangeNode } from '../../../FlowProvider';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/module/node/type';

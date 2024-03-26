@@ -15,7 +15,7 @@ import {
 import { useImportStore, type FormType } from '../Provider';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { chunksUpload, fileCollectionCreate } from '@/web/core/dataset/utils';

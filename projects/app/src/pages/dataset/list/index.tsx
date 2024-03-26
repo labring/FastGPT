@@ -1,19 +1,9 @@
 import React, { useMemo, useRef } from 'react';
-import {
-  Box,
-  Flex,
-  Grid,
-  useTheme,
-  useDisclosure,
-  Card,
-  MenuButton,
-  Image,
-  Button
-} from '@chakra-ui/react';
+import { Box, Flex, Grid, useDisclosure, Image, Button } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import PageContainer from '@/components/PageContainer';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -31,7 +21,7 @@ import dynamic from 'next/dynamic';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FolderImgUrl, FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import MyMenu from '@/components/MyMenu';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import EditFolderModal, { useEditFolder } from '../component/EditFolderModal';
@@ -389,6 +379,7 @@ const Kb = () => {
                           {t('common.Delete')}
                         </Flex>
                       ),
+                      type: 'danger',
                       onClick: () => {
                         openConfirm(
                           () => onclickDelDataset(dataset._id),

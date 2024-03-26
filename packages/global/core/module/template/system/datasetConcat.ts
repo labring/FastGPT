@@ -48,7 +48,6 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
       type: FlowNodeOutputTypeEnum.source,
       valueType: ModuleIOValueTypeEnum.datasetQuote,
       targets: []
-    },
-    Output_Template_Finish
+    }
   ]
 };

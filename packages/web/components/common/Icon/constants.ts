@@ -16,6 +16,7 @@ export const iconPaths = {
   'common/confirm/rightTip': () => import('./icons/common/confirm/rightTip.svg'),
   'common/courseLight': () => import('./icons/common/courseLight.svg'),
   'common/customTitleLight': () => import('./icons/common/customTitleLight.svg'),
+  'common/data': () => import('./icons/common/data.svg'),
   'common/editor/resizer': () => import('./icons/common/editor/resizer.svg'),
   'common/errorFill': () => import('./icons/common/errorFill.svg'),
   'common/file/move': () => import('./icons/common/file/move.svg'),

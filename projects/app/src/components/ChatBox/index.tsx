@@ -652,7 +652,7 @@ const ChatBox = (
         } catch (error) {}
       };
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId]
+    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
   );
   const onCloseUserLike = useCallback(
     (chat: ChatSiteItemType) => {
@@ -676,7 +676,7 @@ const ChatBox = (
         });
       };
     },
-    [appId, chatId, feedbackType]
+    [appId, chatId, feedbackType, teamId, teamToken]
   );
   const onADdUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
@@ -713,7 +713,7 @@ const ChatBox = (
         return () => setFeedbackId(chat.dataId);
       }
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId]
+    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
   );
   const onReadUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
@@ -938,7 +938,7 @@ const ChatBox = (
                             icon="core/app/markLight"
                             text={t('core.chat.Admin Mark Content')}
                           />
-                          <Box whiteSpace={'pre'}>
+                          <Box whiteSpace={'pre-wrap'}>
                             <Box color={'black'}>{item.adminFeedback.q}</Box>
                             <Box color={'myGray.600'}>{item.adminFeedback.a}</Box>
                           </Box>

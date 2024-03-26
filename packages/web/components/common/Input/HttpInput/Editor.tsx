@@ -5,7 +5,7 @@ import { ContentEditable } from '@lexical/react/LexicalContentEditable';
 import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin';
 import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin';
 import LexicalErrorBoundary from '@lexical/react/LexicalErrorBoundary';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import styles from './index.module.scss';
 import { EditorState, LexicalEditor } from 'lexical';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -78,7 +78,15 @@ export default function Editor({
   );
 
   return (
-    <Box position={'relative'} width={'full'} h={`${h}px`} cursor={'text'} overflowY={'visible'}>
+    <Flex
+      position={'relative'}
+      width={'full'}
+      minH={`${h}px`}
+      h={'full'}
+      flexDirection={'column'}
+      cursor={'text'}
+      overflowY={'visible'}
+    >
       <LexicalComposer initialConfig={initialConfig} key={key}>
         <PlainTextPlugin
           contentEditable={<ContentEditable className={styles.contentEditable} />}
@@ -125,6 +133,6 @@ export default function Editor({
       {focus && hasDropDownPlugin && (
         <DropDownMenu variables={dropdownVariables} setDropdownValue={setDropdownValue} />
       )}
-    </Box>
+    </Flex>
   );
 }

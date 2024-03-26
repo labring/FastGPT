@@ -42,6 +42,7 @@ export default function DropDownMenu({
       p={2}
       borderRadius={'md'}
       position={'absolute'}
+      top={'100%'}
       w={'auto'}
       zIndex={99999}
       maxH={'300px'}

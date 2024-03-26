@@ -3,7 +3,9 @@
   display: flex;
   flex-direction: column;
   justify-content: center;
+  flex-grow: 1;
   overflow: auto;
   padding-left: 8px;
+  padding-right: 8px;
   position: relative;
 }

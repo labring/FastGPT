@@ -1,6 +1,6 @@
 ---
-title: '接入微软、ChatGLM、本地模型等'
-description: '部署和接入 OneAPI，实现对各种大模型的支持'
+title: '部署和使用OneAPI，实现Azure、ChatGLM、本地模型接入'
+description: '部署和使用OneAPI，实现Azure、ChatGLM、本地模型接入'
 icon: 'Api'
 draft: false
 toc: true
@@ -13,9 +13,17 @@ weight: 708
 
 ## FastGPT 与 OneAPI 关系
 
+可以把 OneAPI 当做一个网关。
+
 ![](/imgs/sealos-fastgpt.webp)
 
-## MySQL 版本
+## 部署
+
+### docker 版本
+
+已加入最新的`docker-compose.yml`文件中。
+
+### Sealos - MySQL 版本
 
 MySQL 版本支持多实例，高并发。
 
@@ -25,7 +33,7 @@ MySQL 版本支持多实例，高并发。
 
 部署完后会跳转「应用管理」，数据库在另一个应用「数据库」中。需要等待 1~3 分钟数据库运行后才能访问成功。
 
-## SqlLite 版本
+### Sealos - SqlLite 版本
 
 SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非常便宜。
 
@@ -130,7 +138,7 @@ CHAT_API_KEY=sk-xxxxxx
       "customCQPrompt": "", // 自定义文本分类提示词（不支持工具和函数调用的模型
       "customExtractPrompt": "", // 自定义内容提取提示词
       "defaultSystemChatPrompt": "", // 对话默认携带的系统提示词
-      "defaultConfig":{}  // 对话默认配置（比如 GLM4 的 top_p
+      "defaultConfig":{}  // 请求API时，挟带一些默认配置（比如 GLM4 的 top_p）
     }
     ...
 ],

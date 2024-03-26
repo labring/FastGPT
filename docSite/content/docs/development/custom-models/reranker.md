@@ -44,7 +44,7 @@ weight: 910
 
 ### docker 部署
 
-+ 镜像名: `luanshaotong/reranker:v0.1`  
++ 镜像名: `luanshaotong/reranker:v0.2`  
 + 端口号: 6006
 + 大小：约8GB
 
@@ -56,12 +56,12 @@ ACCESS_TOKEN=mytoken
 **运行命令示例**
 - 无需GPU环境，使用CPU运行
 ```sh
-docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.1
+docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.2
 ```
 
 - 需要CUDA 11.7环境
 ```sh
-docker run -d --gpus all --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.1
+docker run -d --gpus all --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken luanshaotong/reranker:v0.2
 ```
 
 **docker-compose.yml示例**
@@ -69,7 +69,7 @@ docker run -d --gpus all --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken lu
 version: "3"
 services:
   reranker:
-    image: luanshaotong/reranker:v0.1
+    image: luanshaotong/reranker:v0.2
     container_name: reranker
     # GPU运行环境，如果宿主机未安装，将deploy配置隐藏即可
     deploy:

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, useTheme } from '@chakra-ui/react';
+import { Box, Button, Flex, useTheme } from '@chakra-ui/react';
 import { getInforms, readInform } from '@/web/support/user/inform/api';
 import type { UserInformSchema } from '@fastgpt/global/support/user/inform/type';
 import { formatTimeToChatTime } from '@/utils/tools';
@@ -7,8 +7,10 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
+import { useTranslation } from 'next-i18next';
 
 const InformTable = () => {
+  const { t } = useTranslation();
   const theme = useTheme();
   const { Loading } = useLoading();
   const { isPc } = useSystemStore();
@@ -22,7 +24,7 @@ const InformTable = () => {
     pageNum
   } = usePagination<UserInformSchema>({
     api: getInforms,
-    pageSize: isPc ? 20 : 10
+    pageSize: 20
   });
 
   return (
@@ -35,35 +37,44 @@ const InformTable = () => {
             py={2}
             px={4}
             borderRadius={'md'}
-            cursor={item.read ? 'default' : 'pointer'}
             position={'relative'}
             _notLast={{ mb: 3 }}
-            onClick={async () => {
-              if (!item.read) {
-                await readInform(item._id);
-                getData(pageNum);
-              }
-            }}
           >
-            <Flex alignItems={'center'} justifyContent={'space-between'}>
+            <Flex alignItems={'center'}>
               <Box fontWeight={'bold'}>{item.title}</Box>
-              <Box ml={2} color={'myGray.500'}>
-                {formatTimeToChatTime(item.time)}
+              <Box ml={2} color={'myGray.500'} flex={'1 0 0'}>
+                ({formatTimeToChatTime(item.time)})
               </Box>
+              {!item.read && (
+                <Button
+                  variant={'whitePrimary'}
+                  size={'xs'}
+                  onClick={async () => {
+                    if (!item.read) {
+                      await readInform(item._id);
+                      getData(pageNum);
+                    }
+                  }}
+                >
+                  {t('support.inform.Read')}
+                </Button>
+              )}
             </Flex>
-            <Box fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
+            <Box mt={2} fontSize={'sm'} color={'myGray.600'} whiteSpace={'pre-wrap'}>
               {item.content}
             </Box>
             {!item.read && (
-              <Box
-                w={'5px'}
-                h={'5px'}
-                borderRadius={'10px'}
-                bg={'red.600'}
-                position={'absolute'}
-                bottom={'8px'}
-                right={'8px'}
-              ></Box>
+              <>
+                <Box
+                  w={'5px'}
+                  h={'5px'}
+                  borderRadius={'10px'}
+                  bg={'red.600'}
+                  position={'absolute'}
+                  top={'8px'}
+                  left={'8px'}
+                />
+              </>
             )}
           </Box>
         ))}

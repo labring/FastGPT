@@ -17,7 +17,13 @@ export const getPluginPaths = (parentId?: string) =>
 
 // http plugin
 export const getApiSchemaByUrl = (url: string) =>
-  POST<Object>('/core/plugin/httpPlugin/getApiSchemaByUrl', { url });
+  POST<Object>(
+    '/core/plugin/httpPlugin/getApiSchemaByUrl',
+    { url },
+    {
+      timeout: 30000
+    }
+  );
 
 /* work flow */
 export const getPlugTemplates = () => GET<FlowNodeTemplateType[]>('/core/plugin/templates');

@@ -22,7 +22,7 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const theme = useTheme();
   return (
     <>
-      <NodeCard minW={'300px'} selected={selected} {...data}>
+      <NodeCard minW={'300px'} selected={selected} forbidMenu {...data}>
         <Container className="nodrag" borderTop={'2px solid'} borderTopColor={'myGray.200'}>
           <WelcomeText data={data} />
           <Box pt={4} pb={2}>
