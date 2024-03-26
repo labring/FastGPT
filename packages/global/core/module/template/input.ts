@@ -6,7 +6,7 @@ import { chatNodeSystemPromptTip } from './tip';
 
 export const Input_Template_Switch: FlowNodeInputItemType = {
   key: ModuleInputKeyEnum.switch,
-  type: FlowNodeInputTypeEnum.triggerAndFinish,
+  type: FlowNodeInputTypeEnum.hidden,
   label: '',
   description: 'core.module.input.description.Trigger',
   valueType: ModuleIOValueTypeEnum.any,

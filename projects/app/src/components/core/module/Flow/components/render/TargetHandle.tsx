@@ -27,8 +27,8 @@ const TargetHandle = ({ handleKey, valueType, ...props }: Props) => {
     <Box
       position={'absolute'}
       top={'50%'}
-      left={'-20px'}
-      transform={'translate(50%,-50%)'}
+      left={'-18px'}
+      transform={'translate(0,-50%)'}
       {...props}
     >
       <MyTooltip
