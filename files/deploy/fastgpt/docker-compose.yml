@@ -97,6 +97,7 @@ services:
       - PG_URL=postgresql://username:password@pg:5432/postgres
     volumes:
       - ./config.json:/app/data/config.json
+      - ./fastgpt/tmp:/app/tmp
   mysql:
     image: mysql:8.0.36
     container_name: mysql

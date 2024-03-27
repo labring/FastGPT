@@ -1,5 +1,5 @@
 import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
@@ -30,14 +30,15 @@ const PromptEditor = ({
   title?: string;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-
   const [, startSts] = useTransition();
-
   const { t } = useTranslation();
 
-  const onChangeInput = useCallback((editorState: EditorState) => {
-    const text = editorState.read(() => $getRoot().getTextContent());
-    const formatValue = text.replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
+  const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
+    const stringifiedEditorState = JSON.stringify(editorState.toJSON());
+    const parsedEditorState = editor.parseEditorState(stringifiedEditorState);
+    const editorStateTextString = parsedEditorState.read(() => $getRoot().getTextContent());
+
+    const formatValue = editorStateTextString.replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
     onChange?.(formatValue);
   }, []);
   const onBlurInput = useCallback((editor: LexicalEditor) => {

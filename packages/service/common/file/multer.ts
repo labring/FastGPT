@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { tmpFileDirPath } from './constants';
 
 type FileType = {
   fieldname: string;
@@ -23,9 +24,9 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
       },
       preservePath: true,
       storage: multer.diskStorage({
-        // destination: (_req, _file, cb) => {
-        //   cb(null, tmpFileDirPath);
-        // },
+        destination: (_req, _file, cb) => {
+          cb(null, tmpFileDirPath);
+        },
         filename: async (req, file, cb) => {
           const { ext } = path.parse(decodeURIComponent(file.originalname));
           cb(null, `${getNanoid()}${ext}`);

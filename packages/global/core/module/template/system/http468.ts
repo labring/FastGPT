@@ -122,6 +122,7 @@ export const HttpModule468: FlowNodeTemplateType = {
         outputType: FlowNodeOutputTypeEnum.source,
         valueType: ModuleIOValueTypeEnum.string
       }
-    }
+    },
+    Output_Template_Finish
   ]
 };

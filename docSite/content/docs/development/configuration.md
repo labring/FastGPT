@@ -26,7 +26,7 @@ llm模型全部合并
   },
   "llmModels": [
     {
-      "model": "gpt-3.5-turbo", // 模型名
+      "model": "gpt-3.5-turbo", // 模型名(对应OneAPI中渠道的模型名)
       "name": "gpt-3.5-turbo", // 别名
       "avatar": "/imgs/model/openai.svg", // 模型的logo
       "maxContext": 16000, // 最大上下文
@@ -97,14 +97,16 @@ llm模型全部合并
   ],
   "vectorModels": [
     {
-      "model": "text-embedding-ada-002",
-      "name": "Embedding-2",
-      "avatar": "/imgs/model/openai.svg",
-      "charsPointsPrice": 0,
-      "defaultToken": 700,
-      "maxToken": 3000,
-      "weight": 100,
-      "defaultConfig":{}  // 默认配置。例如，如果希望使用 embedding3-large 的话，可以传入 dimensions:1024，来返回1024维度的向量。（目前必须小于1536维度）
+      "model": "text-embedding-ada-002", // 模型名（与OneAPI对应）
+      "name": "Embedding-2", // 模型展示名
+      "avatar": "/imgs/model/openai.svg", // logo
+      "charsPointsPrice": 0, // n积分/1k token
+      "defaultToken": 700, // 默认文本分割时候的 token
+      "maxToken": 3000, // 最大 token
+      "weight": 100, // 优先训练权重
+      "defaultConfig":{},  // 自定义额外参数。例如，如果希望使用 embedding3-large 的话，可以传入 dimensions:1024，来返回1024维度的向量。（目前必须小于1536维度）
+      "dbConfig": {}, // 存储时的额外参数（非对称向量模型时候需要用到）
+      "queryConfig": {} // 参训时的额外参数
     }
   ],
   "reRankModels": [],

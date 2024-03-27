@@ -13,19 +13,21 @@ import { HttpParamAndHeaderItemType } from '../../module/api';
 import { CreateOnePluginParams } from '../controller';
 import { ModuleItemType } from '../../module/type';
 import { HttpImgUrl } from '../../../common/file/image/constants';
+import SwaggerParser from '@apidevtools/swagger-parser';
 
-export const str2OpenApiSchema = (yamlStr = ''): OpenApiJsonSchema => {
+export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
-    const data: OpenAPIV3.Document = (() => {
+    const data = (() => {
       try {
         return JSON.parse(yamlStr);
       } catch (jsonError) {
         return yaml.load(yamlStr, { schema: yaml.FAILSAFE_SCHEMA });
       }
     })();
+    const jsonSchema = (await SwaggerParser.parse(data)) as OpenAPIV3.Document;
 
-    const serverPath = data.servers?.[0].url || '';
-    const pathData = Object.keys(data.paths)
+    const serverPath = jsonSchema.servers?.[0].url || '';
+    const pathData = Object.keys(jsonSchema.paths)
       .map((path) => {
         const methodData: any = data.paths[path];
         return Object.keys(methodData)
@@ -55,7 +57,7 @@ export const str2OpenApiSchema = (yamlStr = ''): OpenApiJsonSchema => {
   }
 };
 
-export const httpApiSchema2Plugins = ({
+export const httpApiSchema2Plugins = async ({
   parentId,
   apiSchemaStr = '',
   customHeader = ''
@@ -63,8 +65,9 @@ export const httpApiSchema2Plugins = ({
   parentId: string;
   apiSchemaStr?: string;
   customHeader?: string;
-}): CreateOnePluginParams[] => {
-  const jsonSchema = str2OpenApiSchema(apiSchemaStr);
+}): Promise<CreateOnePluginParams[]> => {
+  const jsonSchema = await str2OpenApiSchema(apiSchemaStr);
+
   const baseUrl = jsonSchema.serverPath;
 
   return jsonSchema.pathData.map((item) => {
@@ -222,7 +225,7 @@ export const httpApiSchema2Plugins = ({
       }
     }
     if (item.request) {
-      const properties = item.request?.content?.['application/json']?.schema?.properties;
+      const properties = item.request?.content?.['application/json']?.schema?.properties || {};
       const keys = Object.keys(properties);
       if (keys.length > 0) {
         httpNodeBody = JSON.stringify(

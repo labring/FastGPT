@@ -14,10 +14,6 @@ const RenderList: {
   Component: React.ComponentType<RenderInputProps>;
 }[] = [
   {
-    types: [FlowNodeInputTypeEnum.triggerAndFinish],
-    Component: dynamic(() => import('./templates/TriggerAndFinish'))
-  },
-  {
     types: [FlowNodeInputTypeEnum.input],
     Component: dynamic(() => import('./templates/TextInput'))
   },

@@ -34,10 +34,9 @@ export default function Editor({
   showOpenModal?: boolean;
   onOpenModal?: () => void;
   variables: EditorVariablePickerType[];
-  onChange?: (editorState: EditorState) => void;
+  onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
-  currentValue?: string;
   placeholder?: string;
 }) {
   const [key, setKey] = useState(getNanoid(6));
@@ -112,9 +111,9 @@ export default function Editor({
         <HistoryPlugin />
         <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin
-          onChange={(e) => {
+          onChange={(editorState, editor) => {
             startSts(() => {
-              onChange?.(e);
+              onChange?.(editorState, editor);
             });
           }}
         />

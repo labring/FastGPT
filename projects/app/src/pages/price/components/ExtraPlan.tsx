@@ -39,6 +39,9 @@ const ExtraPlan = () => {
   const onclickBuyDatasetSize = useCallback(
     async ({ datasetSize, month }: { datasetSize: number; month: number }) => {
       try {
+        datasetSize = Math.ceil(datasetSize);
+        month = Math.ceil(month);
+
         const datasetSizePayAmount = datasetSize * month * extraDatasetPrice;
         if (datasetSizePayAmount === 0) {
           return toast({
@@ -80,6 +83,8 @@ const ExtraPlan = () => {
   const onclickBuyExtraPoints = useCallback(
     async ({ points }: { points: number }) => {
       try {
+        points = Math.ceil(points);
+
         const month = 1;
         const payAmount = points * month * extraPointsPrice;
 

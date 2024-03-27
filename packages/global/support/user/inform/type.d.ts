@@ -8,6 +8,10 @@ export type SendInformProps = {
 export type SendInform2UserProps = SendInformProps & {
   tmbId: string;
 };
+export type SendInform2User = SendInformProps & {
+  type: `${InformTypeEnum}`;
+  tmbId: string;
+};
 
 export type UserInformSchema = {
   _id: string;

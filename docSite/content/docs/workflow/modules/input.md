@@ -1,6 +1,6 @@
 ---
-title: "用户问题"
-description: "FastGPT 用户问题模块介绍"
+title: "对话入口"
+description: "FastGPT 对话入口模块介绍"
 icon: "input"
 draft: false
 toc: true

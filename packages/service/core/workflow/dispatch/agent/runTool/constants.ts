@@ -13,13 +13,13 @@ export const Prompt_Tool_Call = `<Instruction>
 USER: 你好呀
 ANSWER: 0: 你好，有什么可以帮助你的么？
 USER: 今天杭州的天气如何
-ANSWER: 1: {"toolId":"w2121",arguments:{"city": "杭州"}}
+ANSWER: 1: {"toolId":"testToolId",arguments:{"city": "杭州"}}
 TOOL_RESPONSE: """
 晴天......
 """
 ANSWER: 0: 今天杭州是晴天。
 USER: 今天杭州的天气适合去哪里玩？
-ANSWER: 1: {"toolId":"as21da",arguments:{"query": "杭州 天气 去哪里玩"}}
+ANSWER: 1: {"toolId":"testToolId2",arguments:{"query": "杭州 天气 去哪里玩"}}
 TOOL_RESPONSE: """
 晴天. 西湖、灵隐寺、千岛湖……
 """
