@@ -126,3 +126,6 @@ export const getTrainingQueueLen = (data: GetTrainingQueueProps) =>
 /* ================== file ======================== */
 export const getFileViewUrl = (fileId: string) =>
   GET<string>('/core/dataset/file/getPreviewUrl', { fileId });
+
+export const createImageDescription = (image: string, type: string) =>
+  GET<string>('/core/dataset/data/createImageDesc', { image, type });

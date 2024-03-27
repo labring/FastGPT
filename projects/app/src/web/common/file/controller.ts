@@ -100,3 +100,26 @@ export const compressImgFileAndUpload = async ({
     ...props
   });
 };
+
+export const uploadImage = async (file: File) => {
+  const result = await new Promise((resolve, reject) => {
+    const formData = new FormData();
+    formData.append('image', file);
+
+    fetch('/api/core/dataset/data/uploadImage', {
+      method: 'POST',
+      body: formData
+    })
+      .then((response) => response.json())
+      .then((result) => {
+        resolve({
+          success: 1,
+          file: { url: result.data.url }
+        });
+      })
+      .catch((error) => {
+        reject();
+      });
+  });
+  return result;
+};

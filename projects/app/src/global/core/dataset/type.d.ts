@@ -28,6 +28,7 @@ export type DatasetDataListItemType = {
   collectionId: string;
   q: string; // embedding content
   a: string; // bonus content
+  image: string;
   chunkIndex?: number;
   indexes: DatasetDataSchemaType['indexes'];
 };

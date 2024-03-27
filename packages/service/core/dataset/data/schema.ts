@@ -39,6 +39,10 @@ const DatasetDataSchema = new Schema({
     type: String,
     default: ''
   },
+  image: {
+    type: String,
+    default: ''
+  },
   fullTextToken: {
     type: String,
     default: ''

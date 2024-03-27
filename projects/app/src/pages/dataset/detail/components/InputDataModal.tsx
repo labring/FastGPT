@@ -1,18 +1,39 @@
-import React, { useMemo, useState } from 'react';
-import { Box, Flex, Button, Textarea, useTheme, Grid } from '@chakra-ui/react';
-import { UseFormRegister, useFieldArray, useForm } from 'react-hook-form';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import {
+  Box,
+  Flex,
+  Button,
+  Textarea,
+  useTheme,
+  Grid,
+  Image,
+  Menu,
+  MenuButton,
+  MenuList,
+  MenuItem,
+  useDisclosure,
+  MenuItemProps
+} from '@chakra-ui/react';
+import {
+  UseFormRegister,
+  UseFormSetValue,
+  UseFormWatch,
+  useFieldArray,
+  useForm
+} from 'react-hook-form';
 import {
   postInsertData2Dataset,
   putDatasetDataById,
   delOneDatasetDataById,
   getDatasetCollectionById,
-  getDatasetDataItemById
+  getDatasetDataItemById,
+  createImageDescription
 } from '@/web/core/dataset/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@/components/MyModal';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { CheckCircleIcon, ChevronDownIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@/web/common/hooks/useRequest';
@@ -29,10 +50,14 @@ import MyBox from '@/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import ImageUpload from './upload';
+import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
+import { uploadImage } from '@/web/common/file/controller';
 
 export type InputDataType = {
   q: string;
   a: string;
+  image: string;
   indexes: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id
   })[];
@@ -55,7 +80,7 @@ const InputDataModal = ({
 }: {
   collectionId: string;
   dataId?: string;
-  defaultValue?: { q: string; a?: string };
+  defaultValue?: { q: string; a?: string; image: string };
   onClose: () => void;
   onSuccess: (data: InputDataType & { dataId: string }) => void;
   onDelete?: () => void;
@@ -66,7 +91,7 @@ const InputDataModal = ({
   const [currentTab, setCurrentTab] = useState(TabEnum.content);
   const { vectorModelList } = useSystemStore();
 
-  const { register, handleSubmit, reset, control } = useForm<InputDataType>();
+  const { register, handleSubmit, reset, control, setValue, watch } = useForm<InputDataType>();
   const {
     fields: indexes,
     append: appendIndexes,
@@ -112,12 +137,14 @@ const InputDataModal = ({
           reset({
             q: res.q,
             a: res.a,
+            image: res.image,
             indexes: res.indexes
           });
         } else if (defaultValue) {
           reset({
             q: defaultValue.q,
-            a: defaultValue.a
+            a: defaultValue.a,
+            image: defaultValue.image
           });
         }
       },
@@ -156,6 +183,7 @@ const InputDataModal = ({
         collectionId: collection._id,
         q: e.q,
         a: e.a,
+        image: e.image,
         // remove dataId
         indexes:
           e.indexes?.map((index) => ({
@@ -193,7 +221,9 @@ const InputDataModal = ({
         ...e,
         indexes:
           e.indexes?.map((index) =>
-            index.defaultIndex ? getDefaultIndex({ q: e.q, a: e.a, dataId: index.dataId }) : index
+            index.defaultIndex
+              ? getDefaultIndex({ q: e.q, a: e.a, image: e.image, dataId: index.dataId })
+              : index
           ) || []
       });
 
@@ -264,7 +294,14 @@ const InputDataModal = ({
             {currentTab === TabEnum.index && <> {t('dataset.data.Index Edit')}</>}
           </Box>
           <Box flex={1} px={5} overflow={'auto'}>
-            {currentTab === TabEnum.content && <InputTab maxToken={maxToken} register={register} />}
+            {currentTab === TabEnum.content && (
+              <InputTab
+                maxToken={maxToken}
+                register={register}
+                setValue={setValue}
+                getValue={watch}
+              />
+            )}
             {currentTab === TabEnum.index && (
               <Grid gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={4}>
                 {indexes?.map((index, i) => (
@@ -370,14 +407,87 @@ enum InputTypeEnum {
 }
 const InputTab = ({
   maxToken,
-  register
+  register,
+  setValue,
+  getValue
 }: {
   maxToken: number;
   register: UseFormRegister<InputDataType>;
+  setValue: UseFormSetValue<InputDataType>;
+  getValue: UseFormWatch<InputDataType>;
 }) => {
   const { t } = useTranslation();
   const { isPc } = useSystemStore();
+  const [imageUrl, setImageUrl] = useState('');
+  const [imageItem, setImageItem] = useState('');
   const [inputType, setInputType] = useState(InputTypeEnum.q);
+  const ref = useRef<HTMLButtonElement>(null);
+  const menuItemStyles: MenuItemProps = {
+    borderRadius: 'sm',
+    py: 2,
+    display: 'flex',
+    alignItems: 'center',
+    _hover: {
+      backgroundColor: 'myWhite.600'
+    },
+    _notLast: {
+      mb: 2
+    }
+  };
+  const url = getValue('image');
+  useEffect(() => {
+    setImageUrl(url);
+  }, [url]);
+
+  const imageMaps = [
+    {
+      type: '1',
+      label: '关系图'
+    },
+    {
+      type: '2',
+      label: '流程图'
+    },
+    {
+      type: '3',
+      label: 'DAG 图'
+    },
+    {
+      type: '4',
+      label: 'ER 图'
+    }
+  ];
+  const { isOpen, onOpen, onClose } = useDisclosure();
+  const { File, onOpen: onOpenSelectFile } = useSelectFile({
+    fileType: '.jpg,.png',
+    multiple: false
+  });
+
+  const { mutate: onSelectFile, isLoading: isSelecting } = useRequest({
+    mutationFn: (e: File[]) => {
+      const file = e[0];
+      if (!file) return Promise.resolve(null);
+      return uploadImage(file);
+    },
+    onSuccess(data: { file: { url: string } }) {
+      if (data) {
+        setImageUrl(data.file.url);
+        setValue('image', data.file.url);
+      }
+    },
+    errorToast: t('common.avatar.Select Failed')
+  });
+  const { mutate: createDescription, isLoading: isRequest } = useRequest({
+    mutationFn: ({ image, type }) => {
+      return createImageDescription(image, type);
+    },
+    onSuccess(data: { description: string }) {
+      if (data) {
+        setValue('q', data.description);
+      }
+    },
+    errorToast: t('common.avatar.Select Failed')
+  });
 
   return (
     <Flex flexDirection={'column'} h={'100%'}>
@@ -417,15 +527,89 @@ const InputTab = ({
 
       <Box mt={3} flex={'1 0 0'}>
         {inputType === InputTypeEnum.q && (
-          <Textarea
-            placeholder={t('core.dataset.data.Data Content Placeholder', { maxToken })}
-            maxLength={maxToken}
-            h={'100%'}
-            bg={'myWhite.400'}
-            {...register(`q`, {
-              required: true
-            })}
-          />
+          <Box>
+            <Image src={imageUrl}></Image>
+            <Textarea
+              placeholder={t('core.dataset.data.Data Content Placeholder', { maxToken })}
+              maxLength={maxToken}
+              h={'100%'}
+              bg={'myWhite.400'}
+              {...register(`q`, {
+                required: true
+              })}
+            />
+            {/* <ImageUpload onSuccess={(data: { file: { url: React.SetStateAction<string>; }; }) => {
+              setImageUrl(data.file.url)
+            }} /> */}
+            <Button mt={4} colorScheme="whitePrimary" onClick={onOpenSelectFile}>
+              上传图片
+            </Button>
+            <Menu
+              autoSelect={false}
+              isOpen={isOpen}
+              onOpen={onOpen}
+              onClose={onClose}
+              strategy={'fixed'}
+              matchWidth
+            >
+              <MenuButton
+                as={Button}
+                ref={ref}
+                px={3}
+                mt={4}
+                ml={4}
+                rightIcon={<ChevronDownIcon />}
+                variant={'whitePrimary'}
+                textAlign={'left'}
+                _active={{
+                  transform: 'none'
+                }}
+                {...(isOpen
+                  ? {
+                      boxShadow: '0px 0px 4px #A8DBFF',
+                      borderColor: 'primary.500'
+                    }
+                  : {})}
+              >
+                {imageItem.label || '图片类型'}
+              </MenuButton>
+
+              <MenuList
+                w={'auto'}
+                p={'6px'}
+                border={'1px solid #fff'}
+                boxShadow={
+                  '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
+                }
+                zIndex={99}
+                maxH={'40vh'}
+                overflowY={'auto'}
+              >
+                {imageMaps.map((item) => (
+                  <MenuItem
+                    key={item.type}
+                    {...menuItemStyles}
+                    onClick={() => {
+                      setImageItem(item);
+                    }}
+                    whiteSpace={'pre-wrap'}
+                  >
+                    {item.label}
+                  </MenuItem>
+                ))}
+              </MenuList>
+            </Menu>
+            <Button
+              mt={4}
+              ml={4}
+              colorScheme="whitePrimary"
+              onClick={() => {
+                createDescription(imageUrl, imageItem.type);
+              }}
+            >
+              生成描述
+            </Button>
+          </Box>
         )}
         {inputType === InputTypeEnum.a && (
           <Textarea
@@ -440,6 +624,7 @@ const InputTab = ({
           />
         )}
       </Box>
+      <File onSelect={onSelectFile} />
     </Flex>
   );
 };

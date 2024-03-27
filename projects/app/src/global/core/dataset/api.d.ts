@@ -26,6 +26,7 @@ export type CreateDatasetParams = {
 
 /* ================= data ===================== */
 export type InsertOneDatasetDataProps = PushDatasetDataChunkProps & {
+  image: string;
   collectionId: string;
 };
 
@@ -33,6 +34,7 @@ export type UpdateDatasetDataProps = {
   id: string;
   q?: string; // embedding content
   a?: string; // bonus content
+  image?: string;
   indexes: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id
   })[];

@@ -11,7 +11,7 @@ import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { id, q = '', a, indexes = [] } = req.body as UpdateDatasetDataProps;
+    const { id, q = '', a, image, indexes = [] } = req.body as UpdateDatasetDataProps;
 
     // auth data permission
     const {
@@ -38,6 +38,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       dataId: id,
       q,
       a,
+      image,
       indexes,
       model: vectorModel
     });

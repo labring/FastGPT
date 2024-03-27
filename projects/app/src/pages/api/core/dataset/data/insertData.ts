@@ -20,7 +20,7 @@ import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
+    const { collectionId, q, a, indexes, image } = req.body as InsertOneDatasetDataProps;
 
     if (!q) {
       return Promise.reject('q is required');
@@ -82,6 +82,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       collectionId,
       q: formatQ,
       a: formatA,
+      image,
       chunkIndex: 0,
       model: vectorModelData.model,
       indexes: formatIndexes

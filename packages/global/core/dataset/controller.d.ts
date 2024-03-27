@@ -8,6 +8,7 @@ export type CreateDatasetDataProps = {
   chunkIndex?: number;
   q: string;
   a?: string;
+  image?: string;
   indexes?: Omit<DatasetDataIndexItemType, 'dataId'>[];
 };
 
@@ -15,6 +16,7 @@ export type UpdateDatasetDataProps = {
   dataId: string;
   q?: string;
   a?: string;
+  image?: string;
   indexes?: (Omit<DatasetDataIndexItemType, 'dataId'> & {
     dataId?: string; // pg data id
   })[];

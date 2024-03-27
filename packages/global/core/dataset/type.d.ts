@@ -79,6 +79,7 @@ export type DatasetDataSchemaType = {
   updateTime: Date;
   q: string; // large chunks or question
   a: string; // answer or custom content
+  image: string;
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
 };
@@ -98,6 +99,7 @@ export type DatasetTrainingSchemaType = {
   prompt: string;
   q: string;
   a: string;
+  image: string;
   chunkIndex: number;
   weight: number;
   indexes: Omit<DatasetDataIndexItemType, 'dataId'>[];
@@ -149,6 +151,7 @@ export type DatasetDataItemType = {
   sourceId?: string;
   q: string;
   a: string;
+  image: string;
   chunkIndex: number;
   indexes: DatasetDataIndexItemType[];
   isOwner: boolean;

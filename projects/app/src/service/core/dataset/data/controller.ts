@@ -63,6 +63,7 @@ export async function insertData2Dataset({
   collectionId,
   q,
   a = '',
+  image,
   chunkIndex = 0,
   indexes,
   model
@@ -107,7 +108,7 @@ export async function insertData2Dataset({
       })
     )
   );
-
+  debugger;
   // create mongo data
   const { _id } = await MongoDatasetData.create({
     teamId,
@@ -116,6 +117,7 @@ export async function insertData2Dataset({
     collectionId,
     q,
     a,
+    image,
     fullTextToken: jiebaSplit({ text: qaStr }),
     chunkIndex,
     indexes: indexes?.map((item, i) => ({
@@ -142,6 +144,7 @@ export async function updateData2Dataset({
   dataId,
   q,
   a,
+  image,
   indexes,
   model
 }: UpdateDatasetDataProps & { model: string }) {
@@ -251,6 +254,7 @@ export async function updateData2Dataset({
     // update mongo other data
     mongoData.q = q || mongoData.q;
     mongoData.a = a ?? mongoData.a;
+    mongoData.image = image || mongoData.image;
     mongoData.fullTextToken = jiebaSplit({ text: mongoData.q + mongoData.a });
     // @ts-ignore
     mongoData.indexes = newIndexes;
@@ -390,6 +394,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           id: String(data._id),
           q: data.q,
           a: data.a,
+          image: data.image,
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId?._id),
@@ -472,6 +477,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           sourceId: collection?.fileId || collection?.rawLink,
           q: item.q,
           a: item.a,
+          image: item.image,
           chunkIndex: item.chunkIndex,
           indexes: item.indexes,
           score: [{ type: SearchScoreTypeEnum.fullText, value: item.score, index }]
