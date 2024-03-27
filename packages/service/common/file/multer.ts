@@ -24,9 +24,9 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
       },
       preservePath: true,
       storage: multer.diskStorage({
-        destination: (_req, _file, cb) => {
-          cb(null, tmpFileDirPath);
-        },
+        // destination: (_req, _file, cb) => {
+        //   cb(null, tmpFileDirPath);
+        // },
         filename: async (req, file, cb) => {
           const { ext } = path.parse(decodeURIComponent(file.originalname));
           cb(null, `${getNanoid()}${ext}`);
