@@ -11,13 +11,13 @@ weight: 404
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/feishuwebhook1.png) | ![](/imgs/feishuwebhook2.png) |
+| ![](/imgs/feishuwebhook1.png) | ![](/imgs/feishuwebhook2.webp) |
 
 ## 1. 准备飞书机器人
 
 |                       |                       | |
 | --------------------- | --------------------- |--------------------- |
-| ![](/imgs/feishuwebhook3.png) | ![](/imgs/feishuwebhook4.png) |![](/imgs/feishuwebhook5.png) |
+| ![](/imgs/feishuwebhook3.png) | ![](/imgs/feishuwebhook4.webp) |![](/imgs/feishuwebhook5.png) |
 
 ## 2. 导入编排代码
 

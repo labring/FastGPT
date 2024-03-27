@@ -9,7 +9,7 @@ weight: 853
 
 | 如何获取知识库ID（datasetId） | 如何获取文件集合ID（collection_id） |
 | --------------------- | --------------------- |
-| ![](/imgs/getDatasetId.jpg) | ![](/imgs/getfile_id.png) |
+| ![](/imgs/getDatasetId.jpg) | ![](/imgs/getfile_id.webp) |
 
 
 

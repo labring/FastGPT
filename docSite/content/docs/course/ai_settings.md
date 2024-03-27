@@ -139,7 +139,7 @@ Tips: 建议根据不同的场景，每种知识库仅选择1类数据类型，�
 
 | 非严格模板效果 | 选择严格模板 | 严格模板效果 |
 | --- | --- | --- |
-| ![](/imgs/datasetprompt7.jpg) | ![](/imgs/datasetprompt8.jpg) |![](/imgs/datasetprompt9.jpg) |
+| ![](/imgs/datasetprompt7.webp) | ![](/imgs/datasetprompt8.jpg) |![](/imgs/datasetprompt9.jpg) |
 
 #### 提示词设计思路
 

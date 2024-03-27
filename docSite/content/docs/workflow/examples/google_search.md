@@ -9,8 +9,8 @@ weight: 402
 
 |                     |                       |
 | --------------------- | --------------------- |
-|        工具调用模式  ![](/imgs/google_search_3.png)            |            工具调用模式   ![](/imgs/google_search_4.png)        |
-| 非工具调用模式 ![](/imgs/google_search_1.jpg) | 非工具调用模式 ![](/imgs/google_search_2.jpg) |
+|        工具调用模式  ![](/imgs/google_search_3.png)            |            工具调用模式   ![](/imgs/google_search_4.webp)        |
+| 非工具调用模式 ![](/imgs/google_search_1.png) | 非工具调用模式 ![](/imgs/google_search_2.jpg) |
 
 
 如上图，利用 HTTP 模块，你可以外接一个搜索引擎作为AI回复的参考资料。这里以调用 Google Search API 为例。注意：本文主要是为了介绍 HTTP 模型，具体的搜索效果需要依赖提示词和搜索引擎，尤其是【搜索引擎】，简单的搜索引擎无法获取更详细的内容，这部分可能需要更多的调试。

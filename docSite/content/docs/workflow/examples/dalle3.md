@@ -9,7 +9,7 @@ weight: 404
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/demo-dalle1.png) | ![](/imgs/demo-dalle2.png) |
+| ![](/imgs/demo-dalle1.png) | ![](/imgs/demo-dalle2.webp) |
 
 ## OpenAI Dalle3 接口
 
