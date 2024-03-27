@@ -5,7 +5,7 @@ on:
     tags:
       - 'v*.*.*'
     branches:
-      - master
+      - main
 
 jobs:
   helm:
@@ -30,5 +30,6 @@ jobs:
             unset APP_VERSION
             unset HELM_VERSION
           fi
+          helm dependency update files/helm/fastgpt
           helm package files/helm/fastgpt --version ${HELM_VERSION}-helm --app-version ${APP_VERSION} -d bin
           helm push bin/fastgpt-${HELM_VERSION}-helm.tgz oci://${HELM_REPO}
