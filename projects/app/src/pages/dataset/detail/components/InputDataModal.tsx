@@ -50,7 +50,6 @@ import MyBox from '@/components/common/MyBox';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import ImageUpload from './upload';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { uploadImage } from '@/web/common/file/controller';
 
