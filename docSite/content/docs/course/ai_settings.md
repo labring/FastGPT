@@ -1,6 +1,6 @@
 ---
-title: "AI 高级配置说明"
-description: "FastGPT AI 高级配置说明"
+title: "AI 相关参数配置说明"
+description: "FastGPT AI 相关参数配置说明"
 icon: "sign_language"
 draft: false
 toc: true
@@ -9,17 +9,33 @@ weight: 102
 
 在 FastGPT 的 AI 对话模块中，有一个 AI 高级配置，里面包含了 AI 模型的参数配置，本文详细介绍这些配置的含义。
 
-## 返回AI内容
+|  |  | |
+| --- | --- | --- |
+| ![](/imgs/aichat0.png) | ![](/imgs/aichat02.png) | ![](/imgs/aichat2.png) |
+
+## 返回AI内容（高级编排特有）
 
 这是一个开关，打开的时候，当 AI 对话模块运行时，会将其输出的内容返回到浏览器（API响应）；如果关闭，AI 输出的内容不会返回到浏览器，但是生成的内容仍可以通过【AI回复】进行输出。你可以将【AI回复】连接到其他模块中。
 
-## 温度
+### 最大上下文
 
-可选范围0-10，越大代表生成的内容越自由扩散，越小代表约严谨。调节能力有限，知识库问答场景通常设置为0。
+代表模型最多容纳的文字数量。
 
-## 回复上限
+### 函数调用
 
-控制 AI 回复的最大 Tokens，较小的值可以一定程度上减少 AI 的废话，但也可能导致 AI 回复不完整。
+支持函数调用的模型，在使用工具时更加准确。
+
+### 温度 
+
+越低回答越严谨，少废话（实测下来，感觉差别不大）
+
+### 回复上限
+
+最大回复 token 数量。注意，是回复的Tokens！不是上下文 tokens。
+
+### 系统提示词
+
+被放置在上下文数组的最前面，role 为 system，用于引导模型。
 
 ## 引用模板 & 引用提示词
 
@@ -123,7 +139,7 @@ Tips: 建议根据不同的场景，每种知识库仅选择1类数据类型，�
 
 | 非严格模板效果 | 选择严格模板 | 严格模板效果 |
 | --- | --- | --- |
-| ![](/imgs/datasetprompt7.jpg) | ![](/imgs/datasetprompt8.jpg) |![](/imgs/datasetprompt9.jpg) |
+| ![](/imgs/datasetprompt7.webp) | ![](/imgs/datasetprompt8.jpg) |![](/imgs/datasetprompt9.jpg) |
 
 #### 提示词设计思路
 

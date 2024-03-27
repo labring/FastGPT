@@ -13,8 +13,7 @@ import {
   Tbody,
   Tr,
   Td,
-  IconButton,
-  useDisclosure
+  IconButton
 } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
@@ -37,12 +36,12 @@ import {
 import { str2OpenApiSchema } from '@fastgpt/global/core/plugin/httpPlugin/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { AddIcon } from '@chakra-ui/icons';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { EditFormType } from './type';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import { HttpHeaders } from '@/components/core/module/Flow/components/nodes/NodeHttp';
+import { OpenApiJsonSchema } from '@fastgpt/global/core/plugin/httpPlugin/type';
 
 export const defaultHttpPlugin: CreateOnePluginParams = {
   avatar: FolderImgUrl,
@@ -85,20 +84,7 @@ const HttpPluginEditModal = ({
     defaultValues: defaultPlugin
   });
   const apiSchemaStr = watch('metadata.apiSchemaStr');
-  const apiData = useMemo(() => {
-    if (!apiSchemaStr) {
-      return { pathData: [], serverPath: '' };
-    }
-    try {
-      return str2OpenApiSchema(apiSchemaStr);
-    } catch (err) {
-      toast({
-        status: 'warning',
-        title: t('plugin.Invalid Schema')
-      });
-      return { pathData: [], serverPath: '' };
-    }
-  }, [apiSchemaStr, t, toast]);
+  const [apiData, setApiData] = useState<OpenApiJsonSchema>({ pathData: [], serverPath: '' });
 
   const { mutate: onCreate, isLoading: isCreating } = useRequest({
     mutationFn: async (data: CreateOnePluginParams) => {
@@ -200,6 +186,23 @@ const HttpPluginEditModal = ({
       }),
     [customHeaders]
   );
+
+  useEffect(() => {
+    (async () => {
+      if (!apiSchemaStr) {
+        return setApiData({ pathData: [], serverPath: '' });
+      }
+      try {
+        setApiData(await str2OpenApiSchema(apiSchemaStr));
+      } catch (err) {
+        toast({
+          status: 'warning',
+          title: t('plugin.Invalid Schema')
+        });
+        setApiData({ pathData: [], serverPath: '' });
+      }
+    })();
+  }, [apiSchemaStr, t, toast]);
 
   return (
     <>

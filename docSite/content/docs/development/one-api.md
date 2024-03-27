@@ -1,6 +1,6 @@
 ---
 title: '部署和使用OneAPI，实现Azure、ChatGLM、本地模型接入'
-description: '部署和使用OneAPI，实现Azure、ChatGLM、本地模型接入'
+description: '部署和使用OneAPI，实现Azure、ChatGLM、本地模型接入。OneAPI使用教程'
 icon: 'Api'
 draft: false
 toc: true
@@ -41,7 +41,7 @@ SqlLite 版本不支持多实例，适合个人小流量使用，但是价格非
 
 **2. 打开 AppLaunchpad(应用管理) 工具**
 
-![step1](/imgs/oneapi-step1.jpg)
+![step1](/imgs/oneapi-step1.webp)
 
 **3. 点击创建新应用**
 
@@ -71,6 +71,13 @@ BATCH_UPDATE_INTERVAL=60
    2. OneAPI 会根据请求传入的`模型`来决定使用哪一个`Key`，如果一个模型对应了多个`Key`，则会随机调用。
 2. 令牌：访问 OneAPI 所需的凭证，只需要这`1`个凭证即可访问`OneAPI`上配置的模型。因此`FastGPT`中，只需要配置`OneAPI`的`baseurl`和`令牌`即可。
 
+### 大致工作流程
+
+1. 客户端请求 OneAPI
+2. 根据请求中的 `model` 参数，匹配对应的渠道（根据渠道里的模型进行匹配，必须完全一致）。如果匹配到多个渠道，则随机选择一个（同优先级）。
+3. OneAPI 向真正的地址发出请求。
+4. OneAPI 将结果返回给客户端。
+
 ### 1. 登录 One API
 
 打开 【One API 应用详情】，找到访问地址：
@@ -81,7 +88,7 @@ BATCH_UPDATE_INTERVAL=60
 
 ### 2. 创建渠道和令牌
 
-在 One API 中添加对应渠道，直接点击 【添加基础模型】，不要遗漏了向量模型
+在 One API 中添加对应渠道，直接点击 【添加基础模型】，不要遗漏了向量模型（Embedding）
 ![step6](/imgs/oneapi-step6.png)
 
 创建一个令牌
@@ -112,7 +119,7 @@ CHAT_API_KEY=sk-xxxxxx
 
 ### 2. 修改 FastGPT 配置文件
 
-可以在 `/projects/app/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是对话模型配置：
+可以在 `/projects/app/src/data/config.json` 里找到配置文件（本地开发需要复制成 config.local.json），配置文件中有一项是**对话模型配置**：
 
 ```json
 "llmModels": [
@@ -142,6 +149,24 @@ CHAT_API_KEY=sk-xxxxxx
     }
     ...
 ],
+```
+
+**添加向量模型:**
+
+```json
+"vectorModels": [
+  ......
+    {
+      "model": "text-embedding-ada-002",
+      "name": "Embedding-2",
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
+      "defaultToken": 700,
+      "maxToken": 3000,
+      "weight": 100
+    },
+  ......
+]
 ```
 
 ### 3. 重启 FastGPT

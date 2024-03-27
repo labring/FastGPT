@@ -75,7 +75,7 @@ const updateHttpChildrenPlugin = async ({
     '_id metadata'
   );
 
-  const schemaPlugins = httpApiSchema2Plugins({
+  const schemaPlugins = await httpApiSchema2Plugins({
     parentId: parent.id,
     apiSchemaStr: parent.metadata?.apiSchemaStr,
     customHeader: parent.metadata?.customHeaders

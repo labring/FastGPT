@@ -11,7 +11,7 @@ FastGPT V4.7版本加入了工具调用，可以兼容 GPTs 的 Actions。这意
 
 Gapier 是一个在线 GPTs Actions工具，提供了50多种现成工具，并且每天有免费额度进行测试，方便用户试用，官方地址为：[https://gapier.com/](https://gapier.com/)。
 
-![](/imgs/gapierToolResult1.png)
+![](/imgs/gapierToolResult1.webp)
 
 现在，我们开始把 Gapier 的工具导入到 FastGPT 中。
 
@@ -33,19 +33,19 @@ Gapier 是一个在线 GPTs Actions工具，提供了50多种现成工具，并�
 
 | Step1 | Step2 |
 | --- | --- | --- |
-| ![](/imgs/gapierTool8.png) | ![](/imgs/gapierTool9.png) |
+| ![](/imgs/gapierTool8.png) | ![](/imgs/gapierTool9.webp) |
 | Step3 | Step4 |
-| ![](/imgs/gapierTool10.png) | ![](/imgs/gapierTool11.png) |
+| ![](/imgs/gapierTool10.webp) | ![](/imgs/gapierTool11.png) |
 
 ### 高级编排
 
 | Step1 | Step2 |
 | --- | --- | --- |
-| ![](/imgs/gapierTool12.png) | ![](/imgs/gapierTool13.png) |
+| ![](/imgs/gapierTool12.webp) | ![](/imgs/gapierTool13.webp) |
 | Step3 | Step4 |
-| ![](/imgs/gapierTool14.png) | ![](/imgs/gapierTool15.png) |
+| ![](/imgs/gapierTool14.webp) | ![](/imgs/gapierTool15.webp) |
 
-![](/imgs/gapierTool16.png)
+![](/imgs/gapierTool16.webp)
 
 ## 3. 工具调用说明
 
@@ -57,4 +57,4 @@ Gapier 是一个在线 GPTs Actions工具，提供了50多种现成工具，并�
 
 线上版用户，可以在模型选择时，看到是否支持函数调用的标识。
 
-![](/imgs/gapierTool17.png)
+![](/imgs/gapierTool17.webp)

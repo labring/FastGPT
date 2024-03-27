@@ -28,8 +28,8 @@ const SourceHandle = ({ handleKey, valueType, ...props }: Props) => {
     <Box
       position={'absolute'}
       top={'50%'}
-      right={'-20px'}
-      transform={'translate(50%,-50%)'}
+      right={'-18px'}
+      transform={'translate(0,-50%)'}
       {...props}
     >
       <MyTooltip

@@ -27,3 +27,18 @@ export const guessBase64ImageType = (str: string) => {
   const firstChar = str.charAt(0);
   return imageTypeMap[firstChar] || defaultType;
 };
+
+export const clearDirFiles = (dirPath: string) => {
+  if (!fs.existsSync(dirPath)) {
+    return;
+  }
+
+  fs.readdirSync(dirPath).forEach((file) => {
+    const curPath = `${dirPath}/${file}`;
+    if (fs.lstatSync(curPath).isDirectory()) {
+      clearDirFiles(curPath);
+    } else {
+      fs.unlinkSync(curPath);
+    }
+  });
+};

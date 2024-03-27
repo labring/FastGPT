@@ -23,6 +23,8 @@ type StreamResponseType = {
   responseText: string;
   [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
 };
+class FatalError extends Error {}
+
 export const streamFetch = ({
   url = '/api/v1/chat/completions',
   data,
@@ -206,9 +208,12 @@ export const streamFetch = ({
         onclose() {
           finished = true;
         },
-        onerror(e) {
+        onerror(err) {
+          if (err instanceof FatalError) {
+            throw err;
+          }
           clearTimeout(timeoutId);
-          failedFinish(getErrText(e));
+          failedFinish(getErrText(err));
         },
         openWhenHidden: true
       });

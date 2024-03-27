@@ -15,7 +15,7 @@ FastGPT 在线使用：[https://fastgpt.in](https://fastgpt.in)
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/intro1.png) | ![](/imgs/intro2.png) |
+| ![](/imgs/intro1.webp) | ![](/imgs/intro2.png) |
 | ![](/imgs/intro3.png) | ![](/imgs/intro4.png) |
 
 ## FastGPT 能力

@@ -41,6 +41,7 @@ export const ToolTargetHandle = ({ moduleId }: ToolHandleProps) => {
           h={'14px'}
           border={'4px solid #5E8FFF'}
           transform={'translate(-40%,-30%) rotate(45deg)'}
+          pointerEvents={'none'}
         />
       </Handle>
     </MyTooltip>
@@ -98,6 +99,7 @@ export const ToolSourceHandle = ({ moduleId }: ToolHandleProps) => {
           h={'14px'}
           border={'4px solid #5E8FFF'}
           transform={'translate(-40%,-30%) rotate(45deg)'}
+          pointerEvents={'none'}
         />
       </Handle>
     </MyTooltip>

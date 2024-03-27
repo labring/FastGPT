@@ -4,7 +4,7 @@ import { BoxProps } from '@chakra-ui/react';
 
 const Container = ({ children, ...props }: BoxProps) => {
   return (
-    <Box px={'16px'} py={'10px'} position={'relative'} {...props}>
+    <Box px={4} py={'10px'} position={'relative'} {...props}>
       {children}
     </Box>
   );

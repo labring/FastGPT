@@ -7,9 +7,10 @@ toc: true
 weight: 402
 ---
 
-|                       |                       |
+|                     |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/google_search_1.jpg) | ![](/imgs/google_search_2.jpg) |
+|        工具调用模式  ![](/imgs/google_search_3.png)            |            工具调用模式   ![](/imgs/google_search_4.webp)        |
+| 非工具调用模式 ![](/imgs/google_search_1.png) | 非工具调用模式 ![](/imgs/google_search_2.jpg) |
 
 
 如上图，利用 HTTP 模块，你可以外接一个搜索引擎作为AI回复的参考资料。这里以调用 Google Search API 为例。注意：本文主要是为了介绍 HTTP 模型，具体的搜索效果需要依赖提示词和搜索引擎，尤其是【搜索引擎】，简单的搜索引擎无法获取更详细的内容，这部分可能需要更多的调试。
@@ -71,7 +72,411 @@ export default async function (ctx: FunctionContext) {
 
 {{% /details %}}
 
-## 模块编排
+## 模块编排 - 工具调用模式
+
+利用工具模块，则无需多余的操作，直接由模型决定是否调用谷歌搜索，并生成检索词即可。
+
+复制下面配置，点击「高级编排」右上角的导入按键，导入该配置，导入后将接口地址复制到「HTTP 模块」。
+
+{{% details title="编排配置" closed="true" %}}
+
+```json
+[
+  {
+    "moduleId": "userGuide",
+    "name": "core.module.template.User guide",
+    "intro": "core.app.tip.userGuideTip",
+    "avatar": "/imgs/module/userGuide.png",
+    "flowType": "userGuide",
+    "position": {
+      "x": -92.26884681344463,
+      "y": 710.9354029649536
+    },
+    "inputs": [
+      {
+        "key": "welcomeText",
+        "type": "hidden",
+        "valueType": "string",
+        "label": "core.app.Welcome Text",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "",
+        "connected": false
+      },
+      {
+        "key": "variables",
+        "type": "hidden",
+        "valueType": "any",
+        "label": "core.module.Variable",
+        "value": [],
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "questionGuide",
+        "valueType": "boolean",
+        "type": "switch",
+        "label": "",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": false,
+        "connected": false
+      },
+      {
+        "key": "tts",
+        "type": "hidden",
+        "valueType": "any",
+        "label": "",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": {
+          "type": "web"
+        },
+        "connected": false
+      }
+    ],
+    "outputs": []
+  },
+  {
+    "moduleId": "userChatInput",
+    "name": "core.module.template.Chat entrance",
+    "intro": "当用户发送一个内容后，流程将会从这个模块开始执行。",
+    "avatar": "/imgs/module/userChatInput.svg",
+    "flowType": "questionInput",
+    "position": {
+      "x": 241.60980819261408,
+      "y": 1330.9528898009685
+    },
+    "inputs": [
+      {
+        "key": "userChatInput",
+        "type": "systemInput",
+        "valueType": "string",
+        "label": "core.module.input.label.user question",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "source",
+        "valueType": "string",
+        "targets": [
+          {
+            "moduleId": "n84rvg",
+            "key": "userChatInput"
+          }
+        ]
+      }
+    ]
+  },
+  {
+    "moduleId": "n84rvg",
+    "name": "工具调用（实验）",
+    "intro": "通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。",
+    "avatar": "/imgs/module/tool.svg",
+    "flowType": "tools",
+    "showStatus": true,
+    "position": {
+      "x": 809.4264785615641,
+      "y": 873.3971746859133
+    },
+    "inputs": [
+      {
+        "key": "switch",
+        "type": "triggerAndFinish",
+        "label": "",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "model",
+        "type": "settingLLMModel",
+        "label": "core.module.input.label.aiModel",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "llmModelType": "all",
+        "value": "gpt-3.5-turbo",
+        "connected": false
+      },
+      {
+        "key": "temperature",
+        "type": "hidden",
+        "label": "",
+        "value": 0,
+        "valueType": "number",
+        "min": 0,
+        "max": 10,
+        "step": 1,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "maxToken",
+        "type": "hidden",
+        "label": "",
+        "value": 2000,
+        "valueType": "number",
+        "min": 100,
+        "max": 4000,
+        "step": 50,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "systemPrompt",
+        "type": "textarea",
+        "max": 3000,
+        "valueType": "string",
+        "label": "core.ai.Prompt",
+        "description": "core.app.tip.chatNodeSystemPromptTip",
+        "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "history",
+        "type": "numberInput",
+        "label": "core.module.input.label.chat history",
+        "required": true,
+        "min": 0,
+        "max": 30,
+        "valueType": "chatHistory",
+        "value": 6,
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "userChatInput",
+        "type": "custom",
+        "label": "",
+        "required": true,
+        "valueType": "string",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": true
+      }
+    ],
+    "outputs": [
+      {
+        "key": "userChatInput",
+        "label": "core.module.input.label.user question",
+        "type": "hidden",
+        "valueType": "string",
+        "targets": []
+      },
+      {
+        "key": "selectedTools",
+        "valueType": "tools",
+        "type": "hidden",
+        "targets": [
+          {
+            "moduleId": "3mbu91",
+            "key": "selectedTools"
+          }
+        ]
+      },
+      {
+        "key": "finish",
+        "label": "",
+        "description": "",
+        "valueType": "boolean",
+        "type": "hidden",
+        "targets": []
+      }
+    ]
+  },
+  {
+    "moduleId": "3mbu91",
+    "name": "HTTP 请求",
+    "intro": "调用谷歌搜索，查询相关内容。",
+    "avatar": "/imgs/module/http.png",
+    "flowType": "httpRequest468",
+    "showStatus": true,
+    "position": {
+      "x": 848.9794517815185,
+      "y": 1575.7019813927138
+    },
+    "inputs": [
+      {
+        "key": "switch",
+        "type": "triggerAndFinish",
+        "label": "",
+        "description": "core.module.input.description.Trigger",
+        "valueType": "any",
+        "showTargetInApp": true,
+        "showTargetInPlugin": true,
+        "connected": false
+      },
+      {
+        "key": "system_httpMethod",
+        "type": "custom",
+        "valueType": "string",
+        "label": "",
+        "value": "POST",
+        "required": true,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpReqUrl",
+        "type": "hidden",
+        "valueType": "string",
+        "label": "",
+        "description": "core.module.input.description.Http Request Url",
+        "placeholder": "https://api.ai.com/getInventory",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "value": "这里填写你的laf函数地址",
+        "connected": false
+      },
+      {
+        "key": "system_httpHeader",
+        "type": "custom",
+        "valueType": "any",
+        "value": [],
+        "label": "",
+        "description": "core.module.input.description.Http Request Header",
+        "placeholder": "core.module.input.description.Http Request Header",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpParams",
+        "type": "hidden",
+        "valueType": "any",
+        "value": [],
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "system_httpJsonBody",
+        "type": "hidden",
+        "valueType": "any",
+        "value": "{\r\n  \"searchKey\":\"{{query}}\"\r\n}",
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "connected": false
+      },
+      {
+        "key": "DYNAMIC_INPUT_KEY",
+        "type": "target",
+        "valueType": "any",
+        "label": "core.module.inputType.dynamicTargetInput",
+        "description": "core.module.input.description.dynamic input",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": true,
+        "hideInApp": true,
+        "connected": false
+      },
+      {
+        "key": "system_addInputParam",
+        "type": "addInputParam",
+        "valueType": "any",
+        "label": "",
+        "required": false,
+        "showTargetInApp": false,
+        "showTargetInPlugin": false,
+        "editField": {
+          "key": true,
+          "description": true,
+          "dataType": true
+        },
+        "defaultEditField": {
+          "label": "",
+          "key": "",
+          "description": "",
+          "inputType": "target",
+          "valueType": "string"
+        },
+        "connected": false
+      },
+      {
+        "valueType": "string",
+        "type": "hidden",
+        "key": "query",
+        "label": "query",
+        "toolDescription": "谷歌搜索检索词",
+        "required": true,
+        "connected": false
+      }
+    ],
+    "outputs": [
+      {
+        "key": "httpRawResponse",
+        "label": "原始响应",
+        "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+        "valueType": "any",
+        "type": "source",
+        "targets": []
+      },
+      {
+        "key": "system_addOutputParam",
+        "type": "addOutputParam",
+        "valueType": "any",
+        "label": "",
+        "targets": [],
+        "editField": {
+          "key": true,
+          "description": true,
+          "dataType": true,
+          "defaultValue": true
+        },
+        "defaultEditField": {
+          "label": "",
+          "key": "",
+          "description": "",
+          "outputType": "source",
+          "valueType": "string"
+        }
+      },
+      {
+        "type": "source",
+        "valueType": "string",
+        "key": "prompt",
+        "label": "prompt",
+        "description": "",
+        "required": false,
+        "edit": true,
+        "editField": {
+          "key": true,
+          "description": true,
+          "dataType": true,
+          "defaultValue": true
+        },
+        "targets": []
+      }
+    ]
+  }
+]
+```
+
+{{% /details %}}
+
+## 模块编排 - 非工具调用方式
 
 复制下面配置，点击「高级编排」右上角的导入按键，导入该配置，导入后将接口地址复制到「HTTP 模块」。
 
@@ -828,7 +1233,7 @@ export default async function (ctx: FunctionContext) {
         "required": false,
         "showTargetInApp": false,
         "showTargetInPlugin": false,
-        "value": "https://d8dns0.laf.dev/google_earch",
+        "value": "这里填写你的laf函数地址",
         "connected": false
       },
       {
@@ -977,9 +1382,11 @@ export default async function (ctx: FunctionContext) {
 
 {{% /details %}}
 
-## 流程说明
+
+### 流程说明
 
 1. 利用【内容提取】模块，将用户的问题提取成搜索关键词。
 2. 将搜索关键词传入【HTTP模块】，执行谷歌搜索。
 3. 利用【文本编辑模块】组合搜索结果和问题，生成一个适合模型回答的问题。
 4. 将新的问题发给【AI模块】，回答搜索结果。
+

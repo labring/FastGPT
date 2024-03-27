@@ -16,6 +16,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { ToolTargetHandle } from './ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
+import TriggerAndFinish from './RenderInput/templates/TriggerAndFinish';
 
 type Props = FlowModuleItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -208,6 +209,8 @@ const NodeCard = (props: Props) => {
             </Button>
           )}
         </Flex>
+        {/* switch */}
+        <TriggerAndFinish moduleId={moduleId} isTool={moduleIsTool} />
       </Box>
     );
   }, [

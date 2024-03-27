@@ -405,7 +405,7 @@ export const FlowProvider = ({
         toolInputs: inputs.filter((item) => isTool && item.toolDescription),
         commonInputs: inputs.filter((item) => {
           if (!isTool) return true;
-          return !item.toolDescription && item.key !== ModuleInputKeyEnum.switch;
+          return !item.toolDescription;
         })
       };
     },

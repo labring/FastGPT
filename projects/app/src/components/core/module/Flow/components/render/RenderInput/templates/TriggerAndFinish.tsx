@@ -7,10 +7,18 @@ import SourceHandle from '../../SourceHandle';
 import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useFlowProviderStore } from '../../../../FlowProvider';
 
-const TriggerAndFinish = ({ moduleId }: RenderInputProps) => {
+const TriggerAndFinish = ({ moduleId, isTool }: { moduleId: string; isTool: boolean }) => {
   const { t } = useTranslation();
   const { nodes } = useFlowProviderStore();
 
+  const inputs = useMemo(
+    () => nodes.find((node) => node.data.moduleId === moduleId)?.data?.inputs || [],
+    [moduleId, nodes]
+  );
+  const hasSwitch = useMemo(
+    () => inputs.some((input) => input.key === ModuleInputKeyEnum.switch),
+    [inputs]
+  );
   const outputs = useMemo(
     () => nodes.find((node) => node.data.moduleId === moduleId)?.data?.outputs || [],
     [moduleId, nodes]
@@ -20,8 +28,8 @@ const TriggerAndFinish = ({ moduleId }: RenderInputProps) => {
     [outputs]
   );
 
-  const Render = useMemo(
-    () => (
+  const Render = useMemo(() => {
+    return (
       <Flex
         className="nodrag"
         cursor={'default'}
@@ -30,21 +38,24 @@ const TriggerAndFinish = ({ moduleId }: RenderInputProps) => {
         position={'relative'}
       >
         <Box position={'relative'}>
-          <TargetHandle handleKey={ModuleInputKeyEnum.switch} valueType={'any'} />
-          {t('core.module.input.label.switch')}
+          {!isTool && (
+            <Box mt={2}>
+              <TargetHandle handleKey={ModuleInputKeyEnum.switch} valueType={'any'} />
+              {t('core.module.input.label.switch')}
+            </Box>
+          )}
         </Box>
         {hasFinishOutput && (
-          <Box position={'relative'}>
+          <Box position={'relative'} mt={2}>
             {t('core.module.output.label.running done')}
             <SourceHandle handleKey={ModuleOutputKeyEnum.finish} valueType={'boolean'} />
           </Box>
         )}
       </Flex>
-    ),
-    [hasFinishOutput, t]
-  );
+    );
+  }, [hasFinishOutput, isTool, t]);
 
-  return Render;
+  return hasSwitch ? Render : null;
 };
 
 export default React.memo(TriggerAndFinish);

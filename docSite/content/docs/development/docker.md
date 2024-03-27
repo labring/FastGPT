@@ -96,11 +96,13 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 
 ## 三、启动容器
 
-在 docker-compose.yml 同级目录下执行
+在 docker-compose.yml 同级目录下执行。请确保`docker-compose`版本最好在2.17以上，否则可能无法执行自动化命令。
 
 ```bash
 # 启动容器
 docker-compose up -d
+# 等待10s，OneAPI第一次总是要重启几次才能连上Mysql
+sleep 10
 # 重启一次oneapi(由于OneAPI的默认Key有点问题，不重启的话会提示找不到渠道，临时手动重启一次解决，等待作者修复)
 docker restart oneapi
 ```
@@ -109,7 +111,7 @@ docker restart oneapi
 
 可以通过`ip:3001`访问OneAPI，默认账号为`root`密码为`123456`。
 
-在OneApi中添加合适的AI模型渠道。
+在OneApi中添加合适的AI模型渠道。[点击查看相关教程](/docs/development/one-api/)
 
 ## 五、访问 FastGPT
 
