@@ -38,7 +38,7 @@
 
 **镜像和端口**
 
-+ 镜像名: `luanshaotong/reranker:v0.1`  
++ 镜像名: `luanshaotong/reranker:v0.2`  
 + 端口号: 6006
 
 ```
