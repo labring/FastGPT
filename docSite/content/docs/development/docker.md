@@ -96,7 +96,7 @@ curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data
 
 ## 三、启动容器
 
-在 docker-compose.yml 同级目录下执行
+在 docker-compose.yml 同级目录下执行。请确保`docker-compose`版本最好在2.17以上，否则可能无法执行自动化命令。
 
 ```bash
 # 启动容器
