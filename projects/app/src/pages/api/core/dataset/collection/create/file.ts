@@ -10,14 +10,11 @@ import { createOneCollection } from '@fastgpt/service/core/dataset/collection/co
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
-/**
- * Creates the multer uploader
- */
-const upload = getUploadModel({
-  maxSize: 500 * 1024 * 1024
-});
-
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  /* Creates the multer uploader */
+  const upload = getUploadModel({
+    maxSize: (global.feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024
+  });
   let filePaths: string[] = [];
   let fileId: string = '';
   const { datasetId } = req.query as { datasetId: string };
