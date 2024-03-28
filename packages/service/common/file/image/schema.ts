@@ -25,13 +25,13 @@ const ImageSchema = new Schema({
     enum: Object.keys(mongoImageTypeMap),
     required: true
   },
-
   metadata: {
     type: Object
   }
 });
 
 try {
+  // tts expired
   ImageSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 60 });
   ImageSchema.index({ type: 1 });
   ImageSchema.index({ createTime: 1 });

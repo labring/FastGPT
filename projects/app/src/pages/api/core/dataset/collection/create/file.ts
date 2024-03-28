@@ -9,6 +9,8 @@ import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   /* Creates the multer uploader */
@@ -42,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { fileMetadata, collectionMetadata, ...collectionData } = data;
 
-    // upload file and create collection
+    // 1. Upload file to fs
     fileId = await uploadFile({
       teamId,
       tmbId,
@@ -53,14 +55,37 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       metadata: fileMetadata
     });
 
-    // create collection
-    const { _id: collectionId } = await createOneCollection({
-      ...collectionData,
-      metadata: collectionMetadata,
-      teamId,
-      tmbId,
-      type: DatasetCollectionTypeEnum.file,
-      fileId
+    // 2. Create dataset collection and remove images ttl
+    const collectionId = await mongoSessionRun(async (session) => {
+      const { _id: collectionId } = await createOneCollection({
+        ...collectionData,
+        metadata: collectionMetadata,
+        teamId,
+        tmbId,
+        type: DatasetCollectionTypeEnum.file,
+        fileId,
+        session
+      });
+
+      if (collectionMetadata?.relatedImgId) {
+        const result = await MongoImage.updateMany(
+          {
+            teamId,
+            'metadata.relatedId': collectionMetadata.relatedImgId
+          },
+          {
+            // Remove expiredTime to avoid ttl expiration
+            $unset: {
+              expiredTime: 1
+            }
+          },
+          {
+            session
+          }
+        );
+      }
+
+      return collectionId;
     });
 
     jsonRes(res, {

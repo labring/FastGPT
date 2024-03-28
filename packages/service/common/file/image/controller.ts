@@ -14,7 +14,6 @@ export async function uploadMongoImg({
   teamId,
   expiredTime,
   metadata,
-
   shareId
 }: UploadImgProps & {
   teamId: string;
@@ -30,9 +29,8 @@ export async function uploadMongoImg({
     type,
     teamId,
     binary,
-    expiredTime: expiredTime,
+    expiredTime,
     metadata,
-
     shareId
   });
 

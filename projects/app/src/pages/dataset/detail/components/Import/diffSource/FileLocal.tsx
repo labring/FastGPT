@@ -19,6 +19,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
+import { addHours } from 'date-fns';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -54,7 +55,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
 
   useEffect(() => {
     setSources(successFiles);
-  }, [successFiles]);
+  }, [setSources, successFiles]);
 
   const { mutate: onSelectFile, isLoading } = useRequest({
     mutationFn: async (files: SelectFileItemType[]) => {
@@ -71,6 +72,7 @@ const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () =
                   getUploadBase64ImgController({
                     base64Img,
                     type: MongoImageTypeEnum.collectionImage,
+                    expiredTime: addHours(new Date(), 2),
                     metadata: {
                       relatedId
                     }
