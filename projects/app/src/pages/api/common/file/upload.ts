@@ -27,7 +27,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('bucketName is empty');
     }
 
-    const upLoadResults = await uploadFile({
+    const fileId = await uploadFile({
       teamId,
       tmbId,
       bucketName,
@@ -38,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     jsonRes(res, {
-      data: upLoadResults
+      data: fileId
     });
   } catch (error) {
     jsonRes(res, {
