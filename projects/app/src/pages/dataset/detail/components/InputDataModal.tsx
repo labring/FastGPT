@@ -295,9 +295,6 @@ const InputDataModal = ({
                       </Box>
                       <DeleteIcon
                         onClick={() => {
-                          if (indexes.length <= 1) {
-                            appendIndexes(getDefaultIndex({ dataId: `${Date.now()}` }));
-                          }
                           removeIndexes(i);
                         }}
                       />
