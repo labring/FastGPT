@@ -112,6 +112,7 @@ tolerations: []
 affinity: {}
 
 mongodb:
+  # -- Enable or disable the built-in MangoDB
   enabled: true
   architecture: replicaset
   auth:
@@ -119,13 +120,17 @@ mongodb:
     rootPassword: "123456"
 
 postgresql:
+  # -- Enable or disable the built-in PostgreSQL
   enabled: true
   image:
 #    registry: 172.11.0.6:30002
+    # -- The PostgreSQL image which include the pgvector extension. See also the source code from https://github.com/LinuxSuRen/pgvector-docker
     repository: linuxsuren/pgvector
     tag: v0.0.1
   global:
     postgresql:
       auth:
+        # -- The password of PostgreSQL, default username is `postgres`
         postgresPassword: postgres
+        # -- The default database of PostgreSQL
         database: postgres
