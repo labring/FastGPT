@@ -60,7 +60,7 @@ fastgpt.run 域名会弃用。
    - [x] 混合检索 & 重排
    - [x] Tool 模块
    - [ ] 嵌入 [Laf](https://github.com/labring/laf)，实现在线编写 HTTP 模块
-   - [ ] 插件封装功能
+   - [ ] 插件封装功能，支持低代码渲染
 
 `2` 知识库能力
    - [x] 多库复用，混用
@@ -68,9 +68,8 @@ fastgpt.run 域名会弃用。
    - [x] 支持知识库单独设置向量模型
    - [x] 源文件存储
    - [x] 支持手动输入，直接分段，QA 拆分导入
-   - [x] 支持 pdf，docx，txt，html，md，csv
+   - [x] 支持。txt， 。md， 。html， 。pdf， 。docx，pptx， 。csv， 。xlsx (有需要更多可 PR file loader)
    - [x] 支持 url 读取、CSV 批量导入
-   - [ ] 支持 PPT、Excel 导入
    - [ ] 支持文件阅读器
    - [ ] 更多的数据预处理方案
   

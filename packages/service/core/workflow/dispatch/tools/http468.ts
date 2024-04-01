@@ -165,6 +165,7 @@ async function fetchData({
       'Content-Type': 'application/json',
       ...headers
     },
+    timeout: 120000,
     params: params,
     data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined
   });

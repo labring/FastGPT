@@ -4,7 +4,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { readFileContent } from '@fastgpt/service/common/file/gridfs/controller';
+import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { authFile } from '@fastgpt/service/support/permission/auth/file';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 
@@ -19,7 +19,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     const { teamId } = await authFile({ req, authToken: true, fileId });
 
-    const { rawText } = await readFileContent({
+    const { rawText } = await readFileContentFromMongo({
       teamId,
       bucketName: BucketNameEnum.dataset,
       fileId,
