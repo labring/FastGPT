@@ -143,7 +143,7 @@ importers:
         version: 1.4.5-lts.1
       next:
         specifier: 13.5.2
-        version: 13.5.2(@babel/core@7.24.3)(react-dom@18.2.0)(react@18.2.0)(sass@1.72.0)
+        version: 13.5.2(react-dom@18.2.0)(react@18.2.0)
       nextjs-cors:
         specifier: ^2.1.2
         version: 2.2.0(next@13.5.2)
@@ -9716,7 +9716,7 @@ packages:
       next: ^8.1.1-canary.54 || ^9.0.0 || ^10.0.0-0 || ^11.0.0 || ^12.0.0 || ^13.0.0 || ^14.0.0
     dependencies:
       cors: 2.8.5
-      next: 13.5.2(@babel/core@7.24.3)(react-dom@18.2.0)(react@18.2.0)(sass@1.72.0)
+      next: 13.5.2(react-dom@18.2.0)(react@18.2.0)
     dev: false
 
   /node-cron@3.0.3:
