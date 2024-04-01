@@ -21,6 +21,7 @@
     "next": "13.5.2",
     "nextjs-cors": "^2.1.2",
     "node-cron": "^3.0.3",
+    "node-xlsx": "^0.23.0",
     "papaparse": "5.4.1",
     "pdfjs-dist": "4.0.269",
     "pg": "^8.10.0",

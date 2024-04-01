@@ -15,6 +15,7 @@ import { readWordFile } from '../read/word';
 import { readCsvRawText } from '../read/csv';
 import { MongoRwaTextBuffer } from '../../buffer/rawText/schema';
 import { readPptxRawText } from '../read/pptx';
+import { readXlsxRawText } from '../read/xlsx';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -218,18 +219,28 @@ export const readFileContent = async ({
         return readWordFile(params);
       case 'pptx':
         return readPptxRawText(params);
-      case 'csv':
-        const { rawText, formatText } = await readCsvRawText(params);
+      case 'xlsx':
+        const xlsxResult = await readXlsxRawText(params);
         if (csvFormat) {
           return {
-            rawText: formatText || ''
+            rawText: xlsxResult.formatText || ''
           };
         }
         return {
-          rawText: rawText
+          rawText: xlsxResult.rawText
+        };
+      case 'csv':
+        const csvResult = await readCsvRawText(params);
+        if (csvFormat) {
+          return {
+            rawText: csvResult.formatText || ''
+          };
+        }
+        return {
+          rawText: csvResult.rawText
         };
       default:
-        return Promise.reject('Only support .txt, .md, .html, .pdf, .docx, .csv');
+        return Promise.reject('Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx');
     }
   })();
 

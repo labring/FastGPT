@@ -44,7 +44,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         });
 
         return {
-          chunks: chunks.slice(0, 5).map((item) => ({
+          chunks: chunks.map((item) => ({
             q: item,
             a: ''
           }))
@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     })();
 
     jsonRes<{ q: string; a: string }[]>(res, {
-      data: chunks
+      data: chunks.slice(0, 5)
     });
   } catch (error) {
     jsonRes(res, {

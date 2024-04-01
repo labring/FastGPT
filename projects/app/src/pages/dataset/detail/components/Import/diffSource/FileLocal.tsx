@@ -14,7 +14,7 @@ const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
-const fileType = '.txt, .docx, .csv, .pdf, .md, .html, .pptx';
+const fileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
 
 const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {
   return (
