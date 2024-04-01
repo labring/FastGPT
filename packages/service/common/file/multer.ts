@@ -37,7 +37,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
     async doUpload<T = Record<string, any>>(
       req: NextApiRequest,
       res: NextApiResponse,
-      originBuckerName?: `${BucketNameEnum}`
+      originBucketName?: `${BucketNameEnum}`
     ) {
       return new Promise<{
         file: FileType;
@@ -52,7 +52,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
           }
 
           // check bucket name
-          const bucketName = (req.body?.bucketName || originBuckerName) as `${BucketNameEnum}`;
+          const bucketName = (req.body?.bucketName || originBucketName) as `${BucketNameEnum}`;
           if (bucketName && !bucketNameMap[bucketName]) {
             return reject('BucketName is invalid');
           }
