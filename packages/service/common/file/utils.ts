@@ -35,13 +35,8 @@ export const clearDirFiles = (dirPath: string) => {
     return;
   }
 
-  fs.readdirSync(dirPath).forEach((file) => {
-    const curPath = `${dirPath}/${file}`;
-    if (fs.lstatSync(curPath).isDirectory()) {
-      clearDirFiles(curPath);
-    } else {
-      fs.unlinkSync(curPath);
-    }
+  fs.rmdirSync(dirPath, {
+    recursive: true
   });
 };
 

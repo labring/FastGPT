@@ -7,13 +7,13 @@ import { compressBase64Img, type CompressImgProps } from '@fastgpt/web/common/fi
 /**
  * upload file to mongo gridfs
  */
-export const uploadFiles = ({
-  files,
+export const uploadFile2DB = ({
+  file,
   bucketName,
   metadata = {},
   percentListen
 }: {
-  files: File[];
+  file: File;
   bucketName: `${BucketNameEnum}`;
   metadata?: Record<string, any>;
   percentListen?: (percent: number) => void;
@@ -21,9 +21,7 @@ export const uploadFiles = ({
   const form = new FormData();
   form.append('metadata', JSON.stringify(metadata));
   form.append('bucketName', bucketName);
-  files.forEach((file) => {
-    form.append('file', file, encodeURIComponent(file.name));
-  });
+  form.append('file', file, encodeURIComponent(file.name));
   return postUploadFiles(form, (e) => {
     if (!e.total) return;
 

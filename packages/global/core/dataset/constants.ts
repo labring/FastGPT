@@ -73,6 +73,13 @@ export const DatasetCollectionSyncResultMap = {
 /* ------------ data -------------- */
 
 /* ------------ training -------------- */
+export enum ImportDataSourceEnum {
+  fileLocal = 'fileLocal',
+  fileLink = 'fileLink',
+  fileCustom = 'fileCustom',
+  csvTable = 'csvTable'
+}
+
 export enum TrainingModeEnum {
   chunk = 'chunk',
   auto = 'auto',

@@ -55,6 +55,7 @@ export type FastGPTFeConfigsType = {
   customApiDomain?: string;
   customSharePageDomain?: string;
 
+  uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
 };
 

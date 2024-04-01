@@ -101,6 +101,7 @@ export const iconPaths = {
   'core/dataset/mixedRecall': () => import('./icons/core/dataset/mixedRecall.svg'),
   'core/dataset/modeEmbedding': () => import('./icons/core/dataset/modeEmbedding.svg'),
   'core/dataset/rerank': () => import('./icons/core/dataset/rerank.svg'),
+  'core/dataset/splitLight': () => import('./icons/core/dataset/splitLight.svg'),
   'core/dataset/tableCollection': () => import('./icons/core/dataset/tableCollection.svg'),
   'core/dataset/websiteDataset': () => import('./icons/core/dataset/websiteDataset.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),

@@ -1,14 +1,16 @@
-import { delay } from '@fastgpt/global/common/system/utils';
 import { MongoDatasetTraining } from './schema';
 import type {
   PushDatasetDataChunkProps,
   PushDatasetDataProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
-import { getCollectionWithDataset } from '../controller';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
+import { ClientSession } from '../../../common/mongo';
+import { getLLMModel, getVectorModel } from '../../ai/model';
+import { addLog } from '../../../common/system/log';
+import { getCollectionWithDataset } from '../controller';
 
 export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => {
   try {
@@ -23,31 +25,52 @@ export const lockTrainingDataByTeamId = async (teamId: string): Promise<any> => 
   } catch (error) {}
 };
 
-export async function pushDataListToTrainingQueue({
-  teamId,
-  tmbId,
+export const pushDataListToTrainingQueueByCollectionId = async ({
   collectionId,
-  data,
-  prompt,
-  billId,
-  trainingMode = TrainingModeEnum.chunk
+  ...props
 }: {
   teamId: string;
   tmbId: string;
-} & PushDatasetDataProps): Promise<PushDatasetDataResponse> {
-  const vectorModelList = global.vectorModels;
-  const datasetModelList = global.llmModels;
-
+  session?: ClientSession;
+} & PushDatasetDataProps) => {
   const {
-    datasetId: { _id: datasetId, vectorModel, agentModel }
+    datasetId: { _id: datasetId, agentModel, vectorModel }
   } = await getCollectionWithDataset(collectionId);
+  return pushDataListToTrainingQueue({
+    ...props,
+    datasetId,
+    collectionId,
+    agentModel,
+    vectorModel
+  });
+};
 
+export async function pushDataListToTrainingQueue({
+  teamId,
+  tmbId,
+  datasetId,
+  collectionId,
+  agentModel,
+  vectorModel,
+  data,
+  prompt,
+  billId,
+  trainingMode = TrainingModeEnum.chunk,
+  session
+}: {
+  teamId: string;
+  tmbId: string;
+  datasetId: string;
+  agentModel: string;
+  vectorModel: string;
+  session?: ClientSession;
+} & PushDatasetDataProps): Promise<PushDatasetDataResponse> {
   const checkModelValid = async () => {
-    const agentModelData = datasetModelList?.find((item) => item.model === agentModel);
+    const agentModelData = getLLMModel(agentModel);
     if (!agentModelData) {
       return Promise.reject(`File model ${agentModel} is inValid`);
     }
-    const vectorModelData = vectorModelList?.find((item) => item.model === vectorModel);
+    const vectorModelData = getVectorModel(vectorModel);
     if (!vectorModelData) {
       return Promise.reject(`Vector model ${vectorModel} is inValid`);
     }
@@ -124,52 +147,43 @@ export async function pushDataListToTrainingQueue({
   });
 
   // insert data to db
-  const insertData = async (dataList: PushDatasetDataChunkProps[], retry = 3): Promise<number> => {
-    try {
-      const results = await MongoDatasetTraining.insertMany(
-        dataList.map((item, i) => ({
-          teamId,
-          tmbId,
-          datasetId,
-          collectionId,
-          billId,
-          mode: trainingMode,
-          prompt,
-          model,
-          q: item.q,
-          a: item.a,
-          chunkIndex: item.chunkIndex ?? 0,
-          weight: weight ?? 0,
-          indexes: item.indexes
-        }))
-      );
-      await delay(500);
-      return results.length;
-    } catch (error) {
-      if (retry > 0) {
-        await delay(500);
-        return insertData(dataList, retry - 1);
-      }
-      return Promise.reject(error);
-    }
-  };
+  const insertLen = filterResult.success.length;
+  const failedDocuments: PushDatasetDataChunkProps[] = [];
 
-  let insertLen = 0;
-  const chunkSize = 50;
-  const chunkList = filterResult.success.reduce(
-    (acc, cur) => {
-      const lastChunk = acc[acc.length - 1];
-      if (lastChunk.length < chunkSize) {
-        lastChunk.push(cur);
-      } else {
-        acc.push([cur]);
+  // 使用 insertMany 批量插入
+  try {
+    await MongoDatasetTraining.insertMany(
+      filterResult.success.map((item) => ({
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        billId,
+        mode: trainingMode,
+        prompt,
+        model,
+        q: item.q,
+        a: item.a,
+        chunkIndex: item.chunkIndex ?? 0,
+        weight: weight ?? 0,
+        indexes: item.indexes
+      })),
+      {
+        session
       }
-      return acc;
-    },
-    [[]] as PushDatasetDataChunkProps[][]
-  );
-  for await (const chunks of chunkList) {
-    insertLen += await insertData(chunks);
+    );
+  } catch (error: any) {
+    addLog.error(`Insert error`, error);
+    // 如果有错误，将失败的文档添加到失败列表中
+    error.writeErrors.forEach((writeError: any) => {
+      failedDocuments.push(data[writeError.index]);
+    });
+    console.log('failed', failedDocuments);
+  }
+
+  // 对于失败的文档，尝试单独插入
+  for await (const item of failedDocuments) {
+    await MongoDatasetTraining.create(item);
   }
 
   delete filterResult.success;
