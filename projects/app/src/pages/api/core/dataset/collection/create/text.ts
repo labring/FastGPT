@@ -19,6 +19,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/controller';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -55,9 +56,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       insertLen: predictDataLimitLength(trainingType, chunks)
     });
 
-    // 3. create collection and training bill
-    const [{ _id: collectionId }, { billId }] = await Promise.all([
-      createOneCollection({
+    const createResult = await mongoSessionRun(async (session) => {
+      // 3. create collection
+      const { _id: collectionId } = await createOneCollection({
         ...body,
         teamId,
         tmbId,
@@ -70,34 +71,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         qaPrompt,
 
         hashRawText: hashStr(text),
-        rawTextLength: text.length
-      }),
-      createTrainingUsage({
+        rawTextLength: text.length,
+        session
+      });
+
+      // 4. create training bill
+      const { billId } = await createTrainingUsage({
         teamId,
         tmbId,
         appName: name,
         billSource: UsageSourceEnum.training,
         vectorModel: getVectorModel(dataset.vectorModel)?.name,
-        agentModel: getLLMModel(dataset.agentModel)?.name
-      })
-    ]);
+        agentModel: getLLMModel(dataset.agentModel)?.name,
+        session
+      });
 
-    // 4. push chunks to training queue
-    const insertResults = await pushDataListToTrainingQueue({
-      teamId,
-      tmbId,
-      collectionId,
-      trainingMode: trainingType,
-      prompt: qaPrompt,
-      billId,
-      data: chunks.map((text, index) => ({
-        q: text,
-        chunkIndex: index
-      }))
+      // 5. push chunks to training queue
+      const insertResults = await pushDataListToTrainingQueue({
+        teamId,
+        tmbId,
+        datasetId: dataset._id,
+        collectionId,
+        agentModel: dataset.agentModel,
+        vectorModel: dataset.vectorModel,
+        trainingMode: trainingType,
+        prompt: qaPrompt,
+        billId,
+        data: chunks.map((text, index) => ({
+          q: text,
+          chunkIndex: index
+        })),
+        session
+      });
+
+      return { collectionId, results: insertResults };
     });
 
     jsonRes(res, {
-      data: { collectionId, results: insertResults }
+      data: createResult
     });
   } catch (err) {
     jsonRes(res, {

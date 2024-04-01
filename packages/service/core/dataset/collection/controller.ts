@@ -9,7 +9,6 @@ import {
   DatasetCollectionSchemaType
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetTraining } from '../training/schema';
-import { delay } from '@fastgpt/global/common/system/utils';
 import { MongoDatasetData } from '../data/schema';
 import { delImgByRelatedId } from '../../../common/file/image/controller';
 import { deleteDatasetDataVector } from '../../../common/vectorStore/controller';

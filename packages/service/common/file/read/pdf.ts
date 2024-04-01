@@ -1,5 +1,7 @@
-/* read file to txt */
-import * as pdfjsLib from 'pdfjs-dist';
+import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
+// @ts-ignore
+import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
+import { ReadFileByBufferParams, ReadFileResponse } from './type';
 
 type TokenType = {
   str: string;
@@ -11,9 +13,9 @@ type TokenType = {
   hasEOL: boolean;
 };
 
-export const readPdfFile = async ({ pdf }: { pdf: ArrayBuffer }) => {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/js/pdf.worker.js';
-
+export const readPdfFile = async ({
+  buffer
+}: ReadFileByBufferParams): Promise<ReadFileResponse> => {
   const readPDFPage = async (doc: any, pageNo: number) => {
     const page = await doc.getPage(pageNo);
     const tokenizedText = await page.getTextContent();
@@ -51,14 +53,19 @@ export const readPdfFile = async ({ pdf }: { pdf: ArrayBuffer }) => {
       .join('');
   };
 
-  const doc = await pdfjsLib.getDocument(pdf).promise;
+  const loadingTask = pdfjs.getDocument(buffer.buffer);
+  const doc = await loadingTask.promise;
+
   const pageTextPromises = [];
   for (let pageNo = 1; pageNo <= doc.numPages; pageNo++) {
     pageTextPromises.push(readPDFPage(doc, pageNo));
   }
   const pageTexts = await Promise.all(pageTextPromises);
 
+  loadingTask.destroy();
+
   return {
-    rawText: pageTexts.join('')
+    rawText: pageTexts.join(''),
+    metadata: {}
   };
 };

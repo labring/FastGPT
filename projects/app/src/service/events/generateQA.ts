@@ -13,7 +13,7 @@ import { checkTeamAiPointsAndLock } from './utils';
 import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
 import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -128,7 +128,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     });
 
     // get vector and insert
-    const { insertLen } = await pushDataListToTrainingQueue({
+    const { insertLen } = await pushDataListToTrainingQueueByCollectionId({
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,

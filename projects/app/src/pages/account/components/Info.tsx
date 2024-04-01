@@ -397,14 +397,22 @@ const PlanUsage = () => {
             <Box fontWeight={'bold'} fontSize="xl">
               {t(planName)}
             </Box>
-            <Flex mt="2" color={'#485264'} fontSize="sm">
-              <Box>{t('support.wallet.Plan expired time')}:</Box>
-              <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
-            </Flex>
-            {isFreeTeam && (
-              <Box mt="2" color={'#485264'} fontSize="sm">
-                免费版用户30天无任何使用记录时，系统会自动清理账号知识库。
-              </Box>
+
+            {isFreeTeam ? (
+              <>
+                <Flex mt="2" color={'#485264'} fontSize="sm">
+                  <Box>{t('support.wallet.Plan reset time')}:</Box>
+                  <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
+                </Flex>
+                <Box mt="2" color={'#485264'} fontSize="sm">
+                  免费版用户30天无任何使用记录时，系统会自动清理账号知识库。
+                </Box>
+              </>
+            ) : (
+              <Flex mt="2" color={'#485264'} fontSize="sm">
+                <Box>{t('support.wallet.Plan expired time')}:</Box>
+                <Box ml={2}>{formatTime2YMD(standardPlan?.expiredTime)}</Box>
+              </Flex>
             )}
           </Box>
           <Button onClick={() => router.push('/price')}>

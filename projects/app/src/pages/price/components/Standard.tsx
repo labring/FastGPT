@@ -101,7 +101,9 @@ const Standard = ({
         {t('support.wallet.subscription.Sub plan')}
       </Box>
       <Box mt={8} mb={10} color={'myGray.500'} fontSize={'lg'}>
-        {t('support.wallet.subscription.Sub plan tip')}
+        {t('support.wallet.subscription.Sub plan tip', {
+          title: feConfigs?.systemTitle
+        })}
       </Box>
       <Box>
         <RowTabs

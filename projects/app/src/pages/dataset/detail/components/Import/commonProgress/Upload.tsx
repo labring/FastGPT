@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import {
   Box,
   TableContainer,
@@ -8,164 +8,109 @@ import {
   Th,
   Td,
   Tbody,
-  Progress,
   Flex,
   Button
 } from '@chakra-ui/react';
 import { useImportStore, type FormType } from '../Provider';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { chunksUpload, fileCollectionCreate } from '@/web/core/dataset/utils';
-import { ImportSourceItemType } from '@/web/core/dataset/type';
-import { hashStr } from '@fastgpt/global/common/string/tools';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRouter } from 'next/router';
 import { TabEnum } from '../../../index';
-import { postCreateDatasetLinkCollection, postDatasetCollection } from '@/web/core/dataset/api';
-import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { checkTeamDatasetSizeLimit } from '@/web/support/user/team/api';
+import {
+  postCreateDatasetCsvTableCollection,
+  postCreateDatasetFileCollection,
+  postCreateDatasetLinkCollection,
+  postCreateDatasetTextCollection
+} from '@/web/core/dataset/api';
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import Tag from '@/components/Tag';
 
-const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
+const Upload = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { datasetDetail } = useDatasetStore();
-  const { parentId, sources, processParamsForm, chunkSize, totalChunks, uploadRate } =
+  const { importSource, parentId, sources, setSources, processParamsForm, chunkSize } =
     useImportStore();
-  const [uploadList, setUploadList] = useState<
-    (ImportSourceItemType & {
-      uploadedFileRate: number;
-      uploadedChunksRate: number;
-    })[]
-  >([]);
 
   const { handleSubmit } = processParamsForm;
 
   const { mutate: startUpload, isLoading } = useRequest({
     mutationFn: async ({ mode, customSplitChar, qaPrompt, webSelector }: FormType) => {
-      if (uploadList.length === 0) return;
-
-      await checkTeamDatasetSizeLimit(totalChunks);
-
-      let totalInsertion = 0;
+      if (sources.length === 0) return;
+      const filterWaitingSources = sources.filter((item) => item.createStatus === 'waiting');
 
       // Batch create collection and upload chunks
-      for await (const item of uploadList) {
-        // create collection
-        const collectionId = await (async () => {
-          const commonParams = {
-            parentId,
-            trainingType: mode,
-            datasetId: datasetDetail._id,
-            chunkSize,
-            chunkSplitter: customSplitChar,
-            qaPrompt,
-
-            name: item.sourceName,
-            rawTextLength: item.rawText.length,
-            hashRawText: hashStr(item.rawText)
-          };
-          if (item.file) {
-            return fileCollectionCreate({
-              file: item.file,
-              data: {
-                ...commonParams,
-                collectionMetadata: {
-                  relatedImgId: item.id
+      for await (const item of filterWaitingSources) {
+        setSources((state) =>
+          state.map((source) =>
+            source.id === item.id
+              ? {
+                  ...source,
+                  createStatus: 'creating'
                 }
-              },
-              percentListen: (e) => {
-                setUploadList((state) =>
-                  state.map((uploadItem) =>
-                    uploadItem.id === item.id
-                      ? {
-                          ...uploadItem,
-                          uploadedFileRate: e
-                        }
-                      : uploadItem
-                  )
-                );
-              }
-            });
-          } else if (item.link) {
-            const { collectionId } = await postCreateDatasetLinkCollection({
-              ...commonParams,
-              link: item.link,
-              metadata: {
-                webPageSelector: webSelector
-              }
-            });
-            setUploadList((state) =>
-              state.map((uploadItem) =>
-                uploadItem.id === item.id
-                  ? {
-                      ...uploadItem,
-                      uploadedFileRate: 100
-                    }
-                  : uploadItem
-              )
-            );
-            return collectionId;
-          } else if (item.rawText) {
-            // manual collection
-            return postDatasetCollection({
-              ...commonParams,
-              type: DatasetCollectionTypeEnum.virtual
-            });
-          }
-          return '';
-        })();
+              : source
+          )
+        );
 
-        if (!collectionId) continue;
-        if (item.link) continue;
+        // create collection
+        const commonParams = {
+          parentId,
+          trainingType: mode,
+          datasetId: datasetDetail._id,
+          chunkSize,
+          chunkSplitter: customSplitChar,
+          qaPrompt,
 
-        const billId = await postCreateTrainingUsage({
-          name: item.sourceName,
-          datasetId: datasetDetail._id
-        });
+          name: item.sourceName
+        };
+        if (importSource === ImportDataSourceEnum.fileLocal && item.dbFileId) {
+          await postCreateDatasetFileCollection({
+            ...commonParams,
+            fileId: item.dbFileId
+          });
+        } else if (importSource === ImportDataSourceEnum.fileLink && item.link) {
+          await postCreateDatasetLinkCollection({
+            ...commonParams,
+            link: item.link,
+            metadata: {
+              webPageSelector: webSelector
+            }
+          });
+        } else if (importSource === ImportDataSourceEnum.fileCustom && item.rawText) {
+          // manual collection
+          await postCreateDatasetTextCollection({
+            ...commonParams,
+            text: item.rawText
+          });
+        } else if (importSource === ImportDataSourceEnum.csvTable && item.dbFileId) {
+          await postCreateDatasetCsvTableCollection({
+            ...commonParams,
+            fileId: item.dbFileId
+          });
+        }
 
-        // upload chunks
-        const chunks = item.chunks;
-        const { insertLen } = await chunksUpload({
-          collectionId,
-          billId,
-          trainingMode: mode,
-          chunks,
-          rate: uploadRate,
-          onUploading: (e) => {
-            setUploadList((state) =>
-              state.map((uploadItem) =>
-                uploadItem.id === item.id
-                  ? {
-                      ...uploadItem,
-                      uploadedChunksRate: e
-                    }
-                  : uploadItem
-              )
-            );
-          },
-          prompt: qaPrompt
-        });
-        totalInsertion += insertLen;
+        setSources((state) =>
+          state.map((source) =>
+            source.id === item.id
+              ? {
+                  ...source,
+                  createStatus: 'finish'
+                }
+              : source
+          )
+        );
       }
-
-      return totalInsertion;
     },
-    onSuccess(num) {
-      if (showPreviewChunks) {
-        toast({
-          title: t('core.dataset.import.Import Success Tip', { num }),
-          status: 'success'
-        });
-      } else {
-        toast({
-          title: t('core.dataset.import.Upload success'),
-          status: 'success'
-        });
-      }
+    onSuccess() {
+      toast({
+        title: t('core.dataset.import.Import success'),
+        status: 'success'
+      });
 
       // close import page
       router.replace({
@@ -175,20 +120,20 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
         }
       });
     },
+    onError() {
+      setSources((state) =>
+        state.map((source) =>
+          source.createStatus === 'creating'
+            ? {
+                ...source,
+                createStatus: 'waiting'
+              }
+            : source
+        )
+      );
+    },
     errorToast: t('common.file.Upload failed')
   });
-
-  useEffect(() => {
-    setUploadList(
-      sources.map((item) => {
-        return {
-          ...item,
-          uploadedFileRate: item.file ? 0 : -1,
-          uploadedChunksRate: 0
-        };
-      })
-    );
-  }, []);
 
   return (
     <Box>
@@ -199,85 +144,35 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
               <Th borderLeftRadius={'md'} overflow={'hidden'} borderBottom={'none'} py={4}>
                 {t('core.dataset.import.Source name')}
               </Th>
-              {showPreviewChunks ? (
-                <>
-                  <Th borderBottom={'none'} py={4}>
-                    {t('core.dataset.Chunk amount')}
-                  </Th>
-                  <Th borderBottom={'none'} py={4}>
-                    {t('core.dataset.import.Upload file progress')}
-                  </Th>
-                  <Th borderRightRadius={'md'} overflow={'hidden'} borderBottom={'none'} py={4}>
-                    {t('core.dataset.import.Data file progress')}
-                  </Th>
-                </>
-              ) : (
-                <>
-                  <Th borderBottom={'none'} py={4}>
-                    {t('core.dataset.import.Upload status')}
-                  </Th>
-                </>
-              )}
+              <Th borderBottom={'none'} py={4}>
+                {t('core.dataset.import.Upload status')}
+              </Th>
             </Tr>
           </Thead>
           <Tbody>
-            {uploadList.map((item) => (
+            {sources.map((item) => (
               <Tr key={item.id}>
-                <Td display={'flex'} alignItems={'center'}>
-                  <MyIcon name={item.icon as any} w={'16px'} mr={1} />
-                  {item.sourceName}
+                <Td>
+                  <Flex alignItems={'center'}>
+                    <MyIcon name={item.icon as any} w={'16px'} mr={1} />
+                    <Box whiteSpace={'wrap'} maxW={'30vw'}>
+                      {item.sourceName}
+                    </Box>
+                  </Flex>
                 </Td>
-                {showPreviewChunks ? (
-                  <>
-                    <Td>{item.chunks.length}</Td>
-                    <Td>
-                      {item.uploadedFileRate === -1 ? (
-                        '-'
-                      ) : (
-                        <Flex alignItems={'center'} fontSize={'xs'}>
-                          <Progress
-                            value={item.uploadedFileRate}
-                            h={'6px'}
-                            w={'100%'}
-                            maxW={'210px'}
-                            size="sm"
-                            borderRadius={'20px'}
-                            colorScheme={'blue'}
-                            bg="myGray.200"
-                            hasStripe
-                            isAnimated
-                            mr={2}
-                          />
-                          {`${item.uploadedFileRate}%`}
-                        </Flex>
-                      )}
-                    </Td>
-                    <Td>
-                      <Flex alignItems={'center'} fontSize={'xs'}>
-                        <Progress
-                          value={item.uploadedChunksRate}
-                          h={'6px'}
-                          w={'100%'}
-                          maxW={'210px'}
-                          size="sm"
-                          borderRadius={'20px'}
-                          colorScheme={'purple'}
-                          bg="myGray.200"
-                          hasStripe
-                          isAnimated
-                          mr={2}
-                        />
-                        {`${item.uploadedChunksRate}%`}
-                      </Flex>
-                    </Td>
-                  </>
-                ) : (
-                  <>
-                    <Td color={item.uploadedFileRate === 100 ? 'green.600' : 'myGray.600'}>
-                      {item.uploadedFileRate === 100 ? t('common.Finish') : t('common.Waiting')}
-                    </Td>
-                  </>
-                )}
+                <Td>
+                  <Box display={'inline-block'}>
+                    {item.createStatus === 'waiting' && (
+                      <Tag colorSchema={'gray'}>{t('common.Waiting')}</Tag>
+                    )}
+                    {item.createStatus === 'creating' && (
+                      <Tag colorSchema={'blue'}>{t('common.Creating')}</Tag>
+                    )}
+                    {item.createStatus === 'finish' && (
+                      <Tag colorSchema={'green'}>{t('common.Finish')}</Tag>
+                    )}
+                  </Box>
+                </Td>
               </Tr>
             ))}
           </Tbody>
@@ -286,8 +181,8 @@ const Upload = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
 
       <Flex justifyContent={'flex-end'} mt={4}>
         <Button isLoading={isLoading} onClick={handleSubmit((data) => startUpload(data))}>
-          {uploadList.length > 0
-            ? `${t('core.dataset.import.Total files', { total: uploadList.length })} | `
+          {sources.length > 0
+            ? `${t('core.dataset.import.Total files', { total: sources.length })} | `
             : ''}
           {t('core.dataset.import.Start upload')}
         </Button>

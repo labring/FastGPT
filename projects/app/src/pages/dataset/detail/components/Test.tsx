@@ -1,19 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import {
-  Box,
-  Textarea,
-  Button,
-  Flex,
-  useTheme,
-  useDisclosure,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer
-} from '@chakra-ui/react';
+import { Box, Textarea, Button, Flex, useTheme, useDisclosure } from '@chakra-ui/react';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/store/searchTest';
 import { postSearchText } from '@/web/core/dataset/api';
@@ -36,10 +22,7 @@ import { useForm } from 'react-hook-form';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { fileDownload } from '@/web/common/file/utils';
-import { readCsvContent } from '@fastgpt/web/common/file/read/csv';
-import { delay } from '@fastgpt/global/common/system/utils';
 import QuoteItem from '@/components/core/dataset/QuoteItem';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 
@@ -134,34 +117,6 @@ const Test = ({ datasetId }: { datasetId: string }) => {
       });
     }
   });
-  // const { mutate: onFileTest, isLoading: fileTestIsLoading } = useRequest({
-  //   mutationFn: async ({ searchParams }: FormType) => {
-  //     if (!selectFile) return Promise.reject('File is not selected');
-  //     const { data } = await readCsvContent({ file: selectFile });
-  //     const testList = data.slice(0, 100);
-  //     const results: SearchTestResponse[] = [];
-
-  //     for await (const item of testList) {
-  //       try {
-  //         const result = await postSearchText({ datasetId, text: item[0].trim(), ...searchParams });
-  //         results.push(result);
-  //       } catch (error) {
-  //         await delay(500);
-  //       }
-  //     }
-
-  //     return results;
-  //   },
-  //   onSuccess(res: SearchTestResponse[]) {
-  //     console.log(res);
-  //   },
-  //   onError(err) {
-  //     toast({
-  //       title: getErrText(err),
-  //       status: 'error'
-  //     });
-  //   }
-  // });
 
   const onSelectFile = async (files: File[]) => {
     const file = files[0];

@@ -3,12 +3,17 @@ import { ErrType } from '../errorCode';
 /* dataset: 507000 */
 const startCode = 507000;
 export enum CommonErrEnum {
-  fileNotFound = 'fileNotFound'
+  fileNotFound = 'fileNotFound',
+  unAuthFile = 'unAuthFile'
 }
 const datasetErr = [
   {
     statusText: CommonErrEnum.fileNotFound,
     message: 'error.fileNotFound'
+  },
+  {
+    statusText: CommonErrEnum.unAuthFile,
+    message: 'error.unAuthFile'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

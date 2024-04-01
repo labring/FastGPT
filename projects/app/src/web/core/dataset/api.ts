@@ -8,13 +8,19 @@ import type {
 } from '@/global/core/api/datasetReq.d';
 import type {
   CreateDatasetCollectionParams,
+  CsvTableCreateDatasetCollectionParams,
   DatasetUpdateBody,
+  FileIdCreateDatasetCollectionParams,
   LinkCreateDatasetCollectionParams,
-  PostWebsiteSyncParams
+  PostWebsiteSyncParams,
+  TextCreateDatasetCollectionParams
 } from '@fastgpt/global/core/dataset/api.d';
 import type {
   GetTrainingQueueProps,
   GetTrainingQueueResponse,
+  PostPreviewFilesChunksProps,
+  PostPreviewFilesChunksResponse,
+  PostPreviewTableChunksResponse,
   SearchTestProps,
   SearchTestResponse
 } from '@/global/core/dataset/api.d';
@@ -23,10 +29,7 @@ import type {
   CreateDatasetParams,
   InsertOneDatasetDataProps
 } from '@/global/core/dataset/api.d';
-import type {
-  PushDatasetDataProps,
-  PushDatasetDataResponse
-} from '@fastgpt/global/core/dataset/api.d';
+import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionSyncResultEnum,
@@ -75,8 +78,14 @@ export const getDatasetCollectionById = (id: string) =>
   GET<DatasetCollectionItemType>(`/core/dataset/collection/detail`, { id });
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
+export const postCreateDatasetFileCollection = (data: FileIdCreateDatasetCollectionParams) =>
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/file`, data);
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
+export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);
+export const postCreateDatasetCsvTableCollection = (data: CsvTableCreateDatasetCollectionParams) =>
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/csvTable`, data);
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
@@ -94,12 +103,6 @@ export const getDatasetDataList = (data: GetDatasetDataListProps) =>
 
 export const getDatasetDataItemById = (id: string) =>
   GET<DatasetDataItemType>(`/core/dataset/data/detail`, { id });
-
-/**
- * push data to training queue
- */
-export const postChunks2Dataset = (data: PushDatasetDataProps) =>
-  POST<PushDatasetDataResponse>(`/core/dataset/data/pushData`, data);
 
 /**
  * insert one data to dataset (immediately insert)
@@ -122,6 +125,8 @@ export const delOneDatasetDataById = (id: string) =>
 /* get length of system training queue */
 export const getTrainingQueueLen = (data: GetTrainingQueueProps) =>
   GET<GetTrainingQueueResponse>(`/core/dataset/training/getQueueLen`, data);
+export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
+  POST<{ q: string; a: string }[]>('/core/dataset/file/getPreviewChunks', data);
 
 /* ================== file ======================== */
 export const getFileViewUrl = (fileId: string) =>
