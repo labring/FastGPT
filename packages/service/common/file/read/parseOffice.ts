@@ -1,5 +1,4 @@
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { fileTypeFromBuffer } from 'file-type';
 import fs from 'fs';
 import decompress from 'decompress';
 import { DOMParser } from '@xmldom/xmldom';
@@ -12,6 +11,11 @@ function getNewFileName(ext: string) {
   return `${DEFAULTDECOMPRESSSUBLOCATION}/${getNanoid()}.${ext}`;
 }
 
+const parseString = (xml: string) => {
+  let parser = new DOMParser();
+  return parser.parseFromString(xml, 'text/xml');
+};
+
 const parsePowerPoint = async ({
   filepath,
   decompressPath,
@@ -21,11 +25,6 @@ const parsePowerPoint = async ({
   decompressPath: string;
   encoding: BufferEncoding;
 }) => {
-  const parseString = (xml: string) => {
-    let parser = new DOMParser();
-    return parser.parseFromString(xml, 'text/xml');
-  };
-
   // Files regex that hold our content of interest
   const allFilesRegex = /ppt\/(notesSlides|slides)\/(notesSlide|slide)\d+.xml/g;
   const slidesRegex = /ppt\/slides\/slide\d+.xml/g;
@@ -75,21 +74,23 @@ const parsePowerPoint = async ({
   return responseArr.join('\n');
 };
 
-export const parseOffice = async (buffer: Buffer, encoding: BufferEncoding) => {
+export const parseOffice = async ({
+  buffer,
+  encoding,
+  extension
+}: {
+  buffer: Buffer;
+  encoding: BufferEncoding;
+  extension: string;
+}) => {
   // Prepare file for processing
   // create temp file subdirectory if it does not exist
   if (!fs.existsSync(DEFAULTDECOMPRESSSUBLOCATION)) {
     fs.mkdirSync(DEFAULTDECOMPRESSSUBLOCATION, { recursive: true });
   }
 
-  const data = await fileTypeFromBuffer(buffer);
-
-  if (!data) {
-    return Promise.reject('error');
-  }
-
   // temp file name
-  const filepath = getNewFileName(data.ext.toLowerCase());
+  const filepath = getNewFileName(extension);
   const decompressPath = `${DEFAULTDECOMPRESSSUBLOCATION}/${getNanoid()}`;
   //   const decompressPath = `${DEFAULTDECOMPRESSSUBLOCATION}/test`;
 
@@ -100,10 +101,9 @@ export const parseOffice = async (buffer: Buffer, encoding: BufferEncoding) => {
 
   const text = await (async () => {
     try {
-      switch (data.ext.toLowerCase()) {
+      switch (extension) {
         case 'pptx':
           return parsePowerPoint({ filepath, decompressPath, encoding });
-
         default:
           return Promise.reject('只能读取 .pptx 文件');
       }
