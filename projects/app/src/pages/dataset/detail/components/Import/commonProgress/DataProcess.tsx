@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Box,
   Flex,
@@ -21,11 +21,11 @@ import { TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
 import MyTooltip from '@/components/MyTooltip';
 import { useImportStore } from '../Provider';
-import Tag from '@/components/Tag';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import Preview from '../components/Preview';
+import Tag from '@/components/Tag';
 
 function DataProcess({
   showPreviewChunks = true,
@@ -38,17 +38,11 @@ function DataProcess({
   const { feConfigs } = useSystemStore();
   const {
     processParamsForm,
-    sources,
     chunkSizeField,
     minChunkSize,
     showChunkInput,
     showPromptInput,
     maxChunkSize,
-    totalChunkChars,
-    totalChunks,
-    predictPoints,
-    showRePreview,
-    splitSources2Chunks,
     priceTip
   } = useImportStore();
   const { getValues, setValue, register } = processParamsForm;
@@ -69,16 +63,10 @@ function DataProcess({
     });
   }, [feConfigs?.isPlus]);
 
-  useEffect(() => {
-    if (showPreviewChunks) {
-      splitSources2Chunks();
-    }
-  }, []);
-
   return (
     <Box h={'100%'} display={['block', 'flex']} gap={5}>
-      <Box flex={'1 0 0'} maxW={'600px'}>
-        <Flex fontWeight={'bold'} alignItems={'center'}>
+      <Box flex={'1 0 0'} minW={['auto', '540px']} maxW={'600px'}>
+        <Flex alignItems={'center'}>
           <MyIcon name={'common/settingLight'} w={'20px'} />
           <Box fontSize={'lg'}>{t('core.dataset.import.Data process params')}</Box>
         </Flex>
@@ -273,34 +261,18 @@ function DataProcess({
             }}
           ></LeftRadio>
         </Flex>
-        {showPreviewChunks && (
-          <Flex mt={5} alignItems={'center'} pl={'100px'} gap={3}>
-            <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
-              {t('core.dataset.Total chunks', { total: totalChunks })}
-            </Tag>
-            <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
-              {t('core.Total chars', { total: totalChunkChars })}
-            </Tag>
-            {feConfigs?.show_pay && (
-              <MyTooltip label={priceTip}>
-                <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
-                  {t('core.dataset.import.Estimated points', { points: predictPoints })}
-                </Tag>
-              </MyTooltip>
-            )}
-          </Flex>
-        )}
-        <Flex mt={5} gap={3} justifyContent={'flex-end'}>
-          {showPreviewChunks && showRePreview && (
-            <Button variant={'primaryOutline'} onClick={splitSources2Chunks}>
-              {t('core.dataset.import.Re Preview')}
-            </Button>
+        <Flex mt={5} alignItems={'center'} pl={'100px'} gap={3}>
+          {feConfigs?.show_pay && (
+            <MyTooltip label={priceTip}>
+              <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
+                {priceTip}
+              </Tag>
+            </MyTooltip>
           )}
+        </Flex>
+        <Flex mt={5} gap={3} justifyContent={'flex-end'}>
           <Button
             onClick={() => {
-              if (showRePreview) {
-                splitSources2Chunks();
-              }
               goToNext();
             }}
           >
@@ -308,7 +280,9 @@ function DataProcess({
           </Button>
         </Flex>
       </Box>
-      <Preview sources={sources} showPreviewChunks={showPreviewChunks} />
+      <Box flex={'1 0 0'} w={'0'}>
+        <Preview showPreviewChunks={showPreviewChunks} />
+      </Box>
 
       {isOpenCustomPrompt && (
         <PromptTextarea

@@ -77,15 +77,15 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
         let options = {};
         if (MediaRecorder.isTypeSupported('audio/webm')) {
           options = { type: 'audio/webm' };
-        } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-          options = { type: 'video/mp4' };
+        } else if (MediaRecorder.isTypeSupported('video/mp3')) {
+          options = { type: 'video/mp3' };
         } else {
           console.error('no suitable mimetype found for this device');
         }
         const blob = new Blob(chunks, options);
         const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
 
-        formData.append('file', blob, 'recording.mp4');
+        formData.append('file', blob, 'recording.mp3');
         formData.append(
           'data',
           JSON.stringify({

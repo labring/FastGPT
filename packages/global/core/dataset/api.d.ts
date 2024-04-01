@@ -44,13 +44,17 @@ export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   link: string;
 };
+export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  fileId: string;
+};
 export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
-  name: string;
-  rawTextLength: number;
-  hashRawText: string;
-
   fileMetadata?: Record<string, any>;
   collectionMetadata?: Record<string, any>;
+};
+export type CsvTableCreateDatasetCollectionParams = {
+  datasetId: string;
+  parentId?: string;
+  fileId: string;
 };
 
 /* ================= data ===================== */

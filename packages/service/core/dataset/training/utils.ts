@@ -2,6 +2,7 @@ import { DatasetTrainingSchemaType } from '@fastgpt/global/core/dataset/type';
 import { addLog } from '../../../common/system/log';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { MongoDatasetTraining } from './schema';
+import Papa from 'papaparse';
 
 export const checkInvalidChunkAndLock = async ({
   err,
@@ -38,4 +39,19 @@ export const checkInvalidChunkAndLock = async ({
     return true;
   }
   return false;
+};
+
+export const parseCsvTable2Chunks = (rawText: string) => {
+  const csvArr = Papa.parse(rawText).data as string[][];
+
+  const chunks = csvArr
+    .map((item) => ({
+      q: item[0] || '',
+      a: item[1] || ''
+    }))
+    .filter((item) => item.q || item.a);
+
+  return {
+    chunks
+  };
 };

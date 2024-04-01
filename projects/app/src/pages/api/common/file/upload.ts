@@ -10,15 +10,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   const upload = getUploadModel({
     maxSize: (global.feConfigs?.uploadFileMaxSize || 500) * 1024 * 1024
   });
-  let filePaths: string[] = [];
 
   try {
+    await connectToDatabase();
     const { teamId, tmbId } = await authCert({ req, authToken: true });
 
     const { file, bucketName, metadata } = await upload.doUpload(req, res);
-
-    filePaths = [file.path];
-    await connectToDatabase();
 
     if (!bucketName) {
       throw new Error('bucketName is empty');

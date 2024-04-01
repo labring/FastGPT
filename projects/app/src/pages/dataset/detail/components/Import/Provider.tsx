@@ -1,6 +1,5 @@
-import React, { useContext, useCallback, createContext, useState, useMemo, useEffect } from 'react';
+import React, { useContext, createContext, useState, useMemo, useEffect } from 'react';
 
-import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
@@ -8,6 +7,7 @@ import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import { UseFormReturn, useForm } from 'react-hook-form';
 import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 
 type ChunkSizeFieldType = 'embeddingChunkSize';
 export type FormType = {
@@ -29,14 +29,11 @@ type useImportStoreType = {
   showPromptInput: boolean;
   sources: ImportSourceItemType[];
   setSources: React.Dispatch<React.SetStateAction<ImportSourceItemType[]>>;
-  showRePreview: boolean;
-  totalChunkChars: number;
-  totalChunks: number;
   chunkSize: number;
-  predictPoints: number;
+  chunkOverlapRatio: number;
   priceTip: string;
   uploadRate: number;
-  splitSources2Chunks: () => void;
+  importSource: `${ImportDataSourceEnum}`;
 };
 const StateContext = createContext<useImportStoreType>({
   processParamsForm: {} as any,
@@ -49,23 +46,22 @@ const StateContext = createContext<useImportStoreType>({
   showChunkInput: false,
   showPromptInput: false,
   chunkSizeField: 'embeddingChunkSize',
-  showRePreview: false,
-  totalChunkChars: 0,
-  totalChunks: 0,
   chunkSize: 0,
-  predictPoints: 0,
+  chunkOverlapRatio: 0,
   priceTip: '',
   uploadRate: 50,
-  splitSources2Chunks: () => {}
+  importSource: ImportDataSourceEnum.fileLocal
 });
 
 export const useImportStore = () => useContext(StateContext);
 
 const Provider = ({
+  importSource,
   dataset,
   parentId,
   children
 }: {
+  importSource: `${ImportDataSourceEnum}`;
   dataset: DatasetItemType;
   parentId?: string;
   children: React.ReactNode;
@@ -86,7 +82,6 @@ const Provider = ({
 
   const { t } = useTranslation();
   const [sources, setSources] = useState<ImportSourceItemType[]>([]);
-  const [showRePreview, setShowRePreview] = useState(false);
 
   // watch form
   const mode = processParamsForm.watch('mode');
@@ -154,68 +149,15 @@ const Provider = ({
 
   const chunkSize = wayStaticPrams[way].chunkSize;
 
-  useEffect(() => {
-    setShowRePreview(true);
-  }, [mode, way, chunkSize, customSplitChar]);
-
-  const totalChunkChars = useMemo(
-    () => sources.reduce((sum, file) => sum + file.chunkChars, 0),
-    [sources]
-  );
-  const predictPoints = useMemo(() => {
-    const totalTokensPredict = totalChunkChars / 1000;
-    if (mode === TrainingModeEnum.auto) {
-      const price = totalTokensPredict * 1.3 * agentModel.charsPointsPrice;
-      return +price.toFixed(2);
-    }
-    if (mode === TrainingModeEnum.qa) {
-      const price = totalTokensPredict * 1.2 * agentModel.charsPointsPrice;
-      return +price.toFixed(2);
-    }
-
-    return +(totalTokensPredict * vectorModel.charsPointsPrice).toFixed(2);
-  }, [agentModel.charsPointsPrice, mode, totalChunkChars, vectorModel.charsPointsPrice]);
-  const totalChunks = useMemo(
-    () => sources.reduce((sum, file) => sum + file.chunks.length, 0),
-    [sources]
-  );
-
-  const splitSources2Chunks = useCallback(() => {
-    setSources((state) =>
-      state.map((file) => {
-        const { chunks, chars } = splitText2Chunks({
-          text: file.rawText,
-          chunkLen: chunkSize,
-          overlapRatio: selectModelStaticParam.chunkOverlapRatio,
-          customReg: customSplitChar ? [customSplitChar] : []
-        });
-
-        return {
-          ...file,
-          chunkChars: chars,
-          chunks: chunks.map((chunk, i) => ({
-            chunkIndex: i,
-            q: chunk,
-            a: ''
-          }))
-        };
-      })
-    );
-    setShowRePreview(false);
-  }, [chunkSize, customSplitChar, selectModelStaticParam.chunkOverlapRatio]);
-
-  const value = {
+  const value: useImportStoreType = {
     parentId,
     processParamsForm,
     ...selectModelStaticParam,
     sources,
     setSources,
-    showRePreview,
-    totalChunkChars,
-    totalChunks,
     chunkSize,
-    predictPoints,
-    splitSources2Chunks
+
+    importSource
   };
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;
 };

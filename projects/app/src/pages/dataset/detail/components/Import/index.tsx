@@ -6,21 +6,14 @@ import { useRouter } from 'next/router';
 import { TabEnum } from '../../index';
 import { useMyStep } from '@fastgpt/web/hooks/useStep';
 import dynamic from 'next/dynamic';
-import Provider from './Provider';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
+import Provider from './Provider';
 
 const FileLocal = dynamic(() => import('./diffSource/FileLocal'));
 const FileLink = dynamic(() => import('./diffSource/FileLink'));
 const FileCustomText = dynamic(() => import('./diffSource/FileCustomText'));
 const TableLocal = dynamic(() => import('./diffSource/TableLocal'));
-
-export enum ImportDataSourceEnum {
-  fileLocal = 'fileLocal',
-  fileLink = 'fileLink',
-  fileCustom = 'fileCustom',
-
-  tableLocal = 'tableLocal'
-}
 
 const ImportDataset = () => {
   const { t } = useTranslation();
@@ -65,7 +58,7 @@ const ImportDataset = () => {
         title: t('core.dataset.import.Upload data')
       }
     ],
-    [ImportDataSourceEnum.tableLocal]: [
+    [ImportDataSourceEnum.csvTable]: [
       {
         title: t('core.dataset.import.Select file')
       },
@@ -88,7 +81,7 @@ const ImportDataset = () => {
     if (source === ImportDataSourceEnum.fileLocal) return FileLocal;
     if (source === ImportDataSourceEnum.fileLink) return FileLink;
     if (source === ImportDataSourceEnum.fileCustom) return FileCustomText;
-    if (source === ImportDataSourceEnum.tableLocal) return TableLocal;
+    if (source === ImportDataSourceEnum.csvTable) return TableLocal;
   }, [source]);
 
   return ImportComponent ? (
@@ -142,7 +135,7 @@ const ImportDataset = () => {
           <MyStep />
         </Box>
       </Box>
-      <Provider dataset={datasetDetail} parentId={parentId}>
+      <Provider dataset={datasetDetail} parentId={parentId} importSource={source}>
         <Box flex={'1 0 0'} overflow={'auto'} position={'relative'}>
           <ImportComponent activeStep={activeStep} goToNext={goToNext} />
         </Box>

@@ -15,7 +15,8 @@ import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/train
 export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { collectionId, data } = req.body as PushDatasetDataProps;
+    const body = req.body as PushDatasetDataProps;
+    const { collectionId, data } = body;
 
     if (!collectionId || !Array.isArray(data)) {
       throw new Error('collectionId or data is empty');
@@ -42,9 +43,12 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     jsonRes<PushDatasetDataResponse>(res, {
       data: await pushDataListToTrainingQueue({
-        ...req.body,
+        ...body,
         teamId,
-        tmbId
+        tmbId,
+        datasetId: collection.datasetId._id,
+        agentModel: collection.datasetId.agentModel,
+        vectorModel: collection.datasetId.vectorModel
       })
     });
   } catch (err) {

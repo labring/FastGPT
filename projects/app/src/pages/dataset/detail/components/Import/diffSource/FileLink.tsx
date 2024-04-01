@@ -23,7 +23,7 @@ const LinkCollection = ({ activeStep, goToNext }: ImportDataComponentProps) => {
     <>
       {activeStep === 0 && <CustomLinkImport goToNext={goToNext} />}
       {activeStep === 1 && <DataProcess showPreviewChunks={false} goToNext={goToNext} />}
-      {activeStep === 2 && <Upload showPreviewChunks={false} />}
+      {activeStep === 2 && <Upload />}
     </>
   );
 };
@@ -128,10 +128,8 @@ const CustomLinkImport = ({ goToNext }: { goToNext: () => void }) => {
             setSources(
               newLinkList.map((link) => ({
                 id: getNanoid(32),
+                createStatus: 'waiting',
                 link,
-                rawText: '',
-                chunks: [],
-                chunkChars: 0,
                 sourceName: link,
                 icon: LinkCollectionIcon
               }))
