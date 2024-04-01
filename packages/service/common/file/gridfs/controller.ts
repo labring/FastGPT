@@ -14,6 +14,7 @@ import { readPdfFile } from '../read/pdf';
 import { readWordFile } from '../read/word';
 import { readCsvRawText } from '../read/csv';
 import { MongoRwaTextBuffer } from '../../buffer/rawText/schema';
+import { readPptxRawText } from '../read/pptx';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -215,6 +216,8 @@ export const readFileContent = async ({
         return readPdfFile(params);
       case 'docx':
         return readWordFile(params);
+      case 'pptx':
+        return readPptxRawText(params);
       case 'csv':
         const { rawText, formatText } = await readCsvRawText(params);
         if (csvFormat) {
@@ -230,13 +233,15 @@ export const readFileContent = async ({
     }
   })();
 
-  await MongoRwaTextBuffer.create({
-    sourceId: fileId,
-    rawText,
-    metadata: {
-      filename: file.filename
-    }
-  });
+  if (rawText.trim()) {
+    await MongoRwaTextBuffer.create({
+      sourceId: fileId,
+      rawText,
+      metadata: {
+        filename: file.filename
+      }
+    });
+  }
 
   return {
     rawText,

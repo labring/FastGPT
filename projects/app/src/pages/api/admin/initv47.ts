@@ -2,13 +2,6 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { MongoUsage } from '@fastgpt/service/support/wallet/usage/schema';
-import { connectionMongo } from '@fastgpt/service/common/mongo';
-import { checkFiles } from '../timerTask/dataset/checkInValidDatasetFiles';
-import { addHours } from 'date-fns';
-import { checkInvalid as checkInvalidImg } from '../timerTask/dataset/checkInvalidDatasetImage';
-import { checkInvalidCollection } from '../timerTask/dataset/checkInvalidMongoCollection';
-import { checkInvalidVector } from '../timerTask/dataset/checkInvalidVector';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 

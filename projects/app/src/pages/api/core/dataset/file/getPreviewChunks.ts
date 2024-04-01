@@ -42,14 +42,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
           overlapRatio,
           customReg: customSplitChar ? [customSplitChar] : []
         });
+
         return {
-          chunks: chunks
-            .slice(0, -1)
-            .slice(0, 5)
-            .map((item) => ({
-              q: item,
-              a: ''
-            }))
+          chunks: chunks.slice(0, 5).map((item) => ({
+            q: item,
+            a: ''
+          }))
         };
       }
       if (type === ImportDataSourceEnum.csvTable) {
