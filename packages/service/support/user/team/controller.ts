@@ -10,7 +10,6 @@ import { MongoTeam } from './teamSchema';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
-
   if (!tmb) {
     return Promise.reject('member not exist');
   }
@@ -27,7 +26,8 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> 
     role: tmb.role,
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
-    canWrite: tmb.role !== TeamMemberRoleEnum.visitor
+    canWrite: tmb.role !== TeamMemberRoleEnum.visitor,
+    lafAccount: tmb.teamId.lafAccount
   };
 }
 

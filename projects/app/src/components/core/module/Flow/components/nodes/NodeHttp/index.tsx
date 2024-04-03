@@ -88,7 +88,7 @@ enum TabEnum {
   headers = 'headers',
   body = 'body'
 }
-type PropsArrType = {
+export type PropsArrType = {
   key: string;
   type: string;
   value: string;
@@ -245,7 +245,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   );
 });
 
-function RenderHttpProps({
+export function RenderHttpProps({
   moduleId,
   inputs
 }: {

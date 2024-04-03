@@ -20,6 +20,7 @@ import { AiQueryExtension } from './system/queryExtension';
 
 import type { FlowNodeTemplateType, moduleTemplateListType } from '../../module/type.d';
 import { FlowNodeTemplateTypeEnum } from '../../module/constants';
+import { lafModule } from './system/laf';
 
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -35,7 +36,8 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule468,
-  AiQueryExtension
+  AiQueryExtension,
+  lafModule
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -51,7 +53,8 @@ export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
   ClassifyQuestionModule,
   ContextExtractModule,
   HttpModule468,
-  AiQueryExtension
+  AiQueryExtension,
+  lafModule
 ];
 
 /* all module */
@@ -73,7 +76,8 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
   RunPluginModule,
-  AiQueryExtension
+  AiQueryExtension,
+  lafModule
 ];
 
 export const moduleTemplatesList: moduleTemplateListType = [

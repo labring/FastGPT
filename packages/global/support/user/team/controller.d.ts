@@ -10,12 +10,18 @@ export type CreateTeamProps = {
   name: string;
   avatar?: string;
   defaultTeam?: boolean;
+  lafAccount?: lafAccount;
 };
 export type UpdateTeamProps = {
   teamId: string;
   name?: string;
   avatar?: string;
   teamDomain?: string;
+  lafAccount?: lafAccount;
+};
+export type lafAccount = {
+  token: string;
+  appid: string;
 };
 
 /* ------------- member ----------- */
