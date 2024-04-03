@@ -192,6 +192,7 @@ ${toolResponse}`}
               </Box>
             );
           }
+          return null;
         })}
       </Flex>
     );
