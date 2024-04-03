@@ -52,6 +52,7 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const router = useRouter();
   const [currentParent, setCurrentParent] = useState<RenderListProps['currentParent']>();
   const [searchKey, setSearchKey] = useState('');
+  const { feConfigs } = useSystemStore();
 
   const {
     basicNodeTemplates,
@@ -64,7 +65,12 @@ const ModuleTemplateList = ({ isOpen, onClose }: ModuleTemplateListProps) => {
 
   const templates = useMemo(() => {
     const map = {
-      [TemplateTypeEnum.basic]: basicNodeTemplates,
+      [TemplateTypeEnum.basic]: basicNodeTemplates.filter((item) => {
+        if (item.flowType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
+          return false;
+        }
+        return true;
+      }),
       [TemplateTypeEnum.systemPlugin]: systemNodeTemplates,
       [TemplateTypeEnum.teamPlugin]: teamPluginNodeTemplates.filter((item) =>
         searchKey ? item.pluginType !== PluginTypeEnum.folder : true

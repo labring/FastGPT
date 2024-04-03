@@ -117,3 +117,5 @@ export const RenderUploadFiles = ({
     </>
   ) : null;
 };
+
+export default RenderUploadFiles;

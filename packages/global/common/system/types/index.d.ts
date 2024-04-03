@@ -57,6 +57,7 @@ export type FastGPTFeConfigsType = {
 
   uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
+  lafEnv?: string;
 };
 
 export type SystemEnvType = {

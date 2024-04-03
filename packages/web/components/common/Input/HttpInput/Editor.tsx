@@ -36,7 +36,7 @@ export default function Editor({
   hasVariablePlugin?: boolean;
   hasDropDownPlugin?: boolean;
   variables: EditorVariablePickerType[];
-  onChange?: (editorState: EditorState) => void;
+  onChange?: (editorState: EditorState, editor: LexicalEditor) => void;
   onBlur?: (editor: LexicalEditor) => void;
   value?: string;
   currentValue?: string;
@@ -119,9 +119,9 @@ export default function Editor({
         <HistoryPlugin />
         <FocusPlugin focus={focus} setFocus={setFocus} />
         <OnChangePlugin
-          onChange={(e) => {
+          onChange={(editorState: EditorState, editor: LexicalEditor) => {
             startSts(() => {
-              onChange?.(e);
+              onChange?.(editorState, editor);
             });
           }}
         />

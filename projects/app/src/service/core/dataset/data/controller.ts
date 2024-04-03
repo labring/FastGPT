@@ -44,8 +44,7 @@ export async function insertData2Dataset({
   indexes =
     Array.isArray(indexes) && indexes.length > 0
       ? indexes.map((index) => ({
-          // @ts-ignore
-          ...index.toObject(),
+          text: index.text,
           dataId: undefined,
           defaultIndex: index.text.trim() === qaStr
         }))

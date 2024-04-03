@@ -6,16 +6,9 @@ import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { MongoFileSchema } from './schema';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { readFileRawText } from '../read/rawText';
 import { ReadFileByBufferParams } from '../read/type';
-import { readMarkdown } from '../read/markdown';
-import { readHtmlRawText } from '../read/html';
-import { readPdfFile } from '../read/pdf';
-import { readWordFile } from '../read/word';
-import { readCsvRawText } from '../read/csv';
 import { MongoRwaTextBuffer } from '../../buffer/rawText/schema';
-import { readPptxRawText } from '../read/pptx';
-import { readXlsxRawText } from '../read/xlsx';
+import { readFileRawContent } from '../read/utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -146,7 +139,7 @@ export const readFileEncode = async ({
   return encoding as BufferEncoding;
 };
 
-export const readFileContent = async ({
+export const readFileContentFromMongo = async ({
   teamId,
   bucketName,
   fileId,
@@ -205,47 +198,14 @@ export const readFileContent = async ({
     }
   };
 
-  const { rawText } = await (async () => {
-    switch (extension) {
-      case 'txt':
-        return readFileRawText(params);
-      case 'md':
-        return readMarkdown(params);
-      case 'html':
-        return readHtmlRawText(params);
-      case 'pdf':
-        return readPdfFile(params);
-      case 'docx':
-        return readWordFile(params);
-      case 'pptx':
-        return readPptxRawText(params);
-      case 'xlsx':
-        const xlsxResult = await readXlsxRawText(params);
-        if (csvFormat) {
-          return {
-            rawText: xlsxResult.formatText || ''
-          };
-        }
-        return {
-          rawText: xlsxResult.rawText
-        };
-      case 'csv':
-        const csvResult = await readCsvRawText(params);
-        if (csvFormat) {
-          return {
-            rawText: csvResult.formatText || ''
-          };
-        }
-        return {
-          rawText: csvResult.rawText
-        };
-      default:
-        return Promise.reject('Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx');
-    }
-  })();
+  const { rawText } = await readFileRawContent({
+    extension,
+    csvFormat,
+    params
+  });
 
   if (rawText.trim()) {
-    await MongoRwaTextBuffer.create({
+    MongoRwaTextBuffer.create({
       sourceId: fileId,
       rawText,
       metadata: {

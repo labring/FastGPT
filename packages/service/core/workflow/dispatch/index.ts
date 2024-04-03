@@ -37,6 +37,7 @@ import { dispatchRunTools } from './agent/runTool/index';
 import { ChatItemValueTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { DispatchFlowResponse } from './type';
 import { dispatchStopToolCall } from './agent/runTool/stopTool';
+import { dispatchLafRequest } from './tools/runLaf';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.historyNode]: dispatchHistory,
@@ -56,6 +57,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.queryExtension]: dispatchQueryExtension,
   [FlowNodeTypeEnum.tools]: dispatchRunTools,
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
+  [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
 
   // none
   [FlowNodeTypeEnum.userGuide]: () => Promise.resolve()

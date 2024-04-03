@@ -9,6 +9,7 @@ import { DispatchNodeResponseKeyEnum } from './runtime/constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
 import { UserModelSchema } from 'support/user/type';
 import {
+  ChatItemType,
   ChatItemValueItemType,
   ToolRunResponseItemType,
   UserChatItemValueItemType

@@ -19,6 +19,9 @@ llm模型全部合并
 
 ```json
 {
+  "feConfigs": {
+    "lafEnv": "https://laf.dev" // laf环境
+  },
   "systemEnv": {
     "vectorMaxProcess": 15,
     "qaMaxProcess": 15,
@@ -164,7 +167,7 @@ llm模型全部合并
             "model": "bge-reranker-base", // 随意
             "name": "检索重排-base", // 随意
             "charsPointsPrice": 0,
-            "requestUrl": "{{host}}/api/v1/rerank",
+            "requestUrl": "{{host}}/v1/rerank",
             "requestAuth": "安全凭证，已自动补 Bearer"
         }
     ]

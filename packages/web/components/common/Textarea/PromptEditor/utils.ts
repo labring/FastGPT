@@ -209,9 +209,8 @@ export function editorStateToText(editor: LexicalEditor) {
   const stringifiedEditorState = JSON.stringify(editor.getEditorState().toJSON());
   const parsedEditorState = editor.parseEditorState(stringifiedEditorState);
   const editorStateTextString = parsedEditorState.read(() => $getRoot().getTextContent());
-  const compressedText = editorStateTextString.replace(/\n+/g, '\n\n');
 
-  return compressedText;
+  return editorStateTextString;
 }
 
 const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;

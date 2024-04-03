@@ -35,6 +35,14 @@ const TeamSchema = new Schema({
     lastWebsiteSyncTime: {
       type: Date
     }
+  },
+  lafAccount: {
+    token: {
+      type: String
+    },
+    appid: {
+      type: String
+    }
   }
 });
 

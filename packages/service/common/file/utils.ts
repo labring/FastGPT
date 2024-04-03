@@ -55,8 +55,8 @@ export const clearTmpUploadFiles = () => {
       fs.stat(filePath, (err, stats) => {
         if (err) return;
 
-        // 如果文件是在1小时前上传的，则认为是临时文件并删除它
-        if (Date.now() - stats.mtime.getTime() > 1 * 60 * 60 * 1000) {
+        // 如果文件是在2小时前上传的，则认为是临时文件并删除它
+        if (Date.now() - stats.mtime.getTime() > 2 * 60 * 60 * 1000) {
           fs.unlink(filePath, (err) => {
             if (err) return;
             console.log(`Deleted temp file: ${filePath}`);

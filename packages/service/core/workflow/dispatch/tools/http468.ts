@@ -61,7 +61,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     chatId,
     responseChatItemId,
     ...variables,
-    histories: histories.slice(0, 10),
+    histories: histories.slice(-10),
     ...body
   };
 
@@ -165,6 +165,7 @@ async function fetchData({
       'Content-Type': 'application/json',
       ...headers
     },
+    timeout: 120000,
     params: params,
     data: ['POST', 'PUT', 'PATCH'].includes(method) ? body : undefined
   });

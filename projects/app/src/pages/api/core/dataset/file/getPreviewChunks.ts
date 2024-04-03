@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { authFile } from '@fastgpt/service/support/permission/auth/file';
 import { PostPreviewFilesChunksProps } from '@/global/core/dataset/api';
-import { readFileContent } from '@fastgpt/service/common/file/gridfs/controller';
+import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { parseCsvTable2Chunks } from '@fastgpt/service/core/dataset/training/utils';
@@ -28,7 +28,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         const { file, teamId } = await authFile({ req, authToken: true, fileId: sourceId });
         const fileId = String(file._id);
 
-        const { rawText } = await readFileContent({
+        const { rawText } = await readFileContentFromMongo({
           teamId,
           bucketName: BucketNameEnum.dataset,
           fileId,
@@ -53,7 +53,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       if (type === ImportDataSourceEnum.csvTable) {
         const { file, teamId } = await authFile({ req, authToken: true, fileId: sourceId });
         const fileId = String(file._id);
-        const { rawText } = await readFileContent({
+        const { rawText } = await readFileContentFromMongo({
           teamId,
           bucketName: BucketNameEnum.dataset,
           fileId,
