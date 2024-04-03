@@ -49,7 +49,7 @@ const TeamMenu = dynamic(() => import('@/components/support/user/team/TeamMenu')
 const PayModal = dynamic(() => import('./PayModal'));
 const UpdatePswModal = dynamic(() => import('./UpdatePswModal'));
 const OpenAIAccountModal = dynamic(() => import('./OpenAIAccountModal'));
-const LafAccountModal = dynamic(() => import('./LafAccountModal'));
+const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const Account = () => {

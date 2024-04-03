@@ -64,7 +64,7 @@ Tips: 可以通过点击上下文按键查看完整的上下文组成，便于�
 
 FastGPT 知识库采用 QA 对(不一定都是问答格式，仅代表两个变量)的格式存储，在转义成字符串时候会根据**引用模板**来进行格式化。知识库包含多个可用变量： q, a, sourceId（数据的ID）, index(第n个数据), source(数据的集合名、文件名)，score(距离得分，0-1) 可以通过 {{q}} {{a}} {{sourceId}} {{index}} {{source}} {{score}} 按需引入。下面一个模板例子：
 
-可以通过 [知识库结构讲解](/docs/course/datasetEngine/) 了解详细的知识库的结构。
+可以通过 [知识库结构讲解](/docs/course/dataset_engine/) 了解详细的知识库的结构。
 
 #### 引用模板
 

@@ -1,36 +1,34 @@
-import axios from 'axios';
+import { GET, POST, PUT } from '@/web/common/api/lafRequest';
 
-export const pat2Token = async (env: string, pat: string) => {
-  try {
-    return await axios.post(`https://${env}/v1/auth/pat2token`, {
-      pat: pat
-    });
-  } catch (err: any) {
-    throw new Error(err);
-  }
-};
+export const postLafPat2Token = (pat: string) => POST<string>(`/v1/auth/pat2token`, { pat });
 
-export const getLafProfile = async (env: string, token: string) => {
-  if (!token) return null;
-  return await axios.get(`https://${env}/v1/user/profile`, {
-    headers: {
-      Authorization: `Bearer ${token}`
+export const getLafApplications = (token: string) =>
+  GET<
+    {
+      appid: string;
+      name: string;
+      state: 'Running' | 'Failed' | 'Stopped';
+    }[]
+  >(
+    `/v1/applications`,
+    {},
+    {
+      headers: {
+        Authorization: `Bearer ${token}`
+      }
     }
-  });
-};
+  );
 
-export const getLafApplications = async (env: string, token: string) => {
-  return await axios.get(`https://${env}/v1/applications`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-};
-
-export const getLafAppDetail = async (env: string, token: string, appid: string) => {
-  return await axios.get(`https://${env}/v1/applications/${appid}`, {
-    headers: {
-      Authorization: `Bearer ${token}`
-    }
-  });
-};
+export const getLafAppDetail = (appid: string) =>
+  GET<{
+    appid: string;
+    name: string;
+    openapi_token: string;
+    domain: {
+      _id: string;
+      appid: string;
+      domain: string;
+      state: string;
+      phase: string;
+    };
+  }>(`/v1/applications/${appid}`);

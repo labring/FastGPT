@@ -148,6 +148,7 @@
     "Status": "状态",
     "Submit failed": "提交失败",
     "Submit success": "提交成功",
+    "Sync success": "同步成功",
     "System version": "系统版本",
     "Team": "团队",
     "Team Tags Set": "标签",
@@ -821,6 +822,7 @@
       "Http request props": "请求参数",
       "Http request settings": "请求配置",
       "Input Type": "输入类型",
+      "Laf sync params": "同步参数",
       "Plugin output must connect": "自定义输出必须全部连接",
       "QueryExtension": {
         "placeholder": "例如:\n关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。",
@@ -913,6 +915,9 @@
         "switch": "开关",
         "target": "外部数据",
         "textarea": "段落输入"
+      },
+      "laf": {
+        "Select laf function": "选择laf函数"
       },
       "output": {
         "Add Output": "添加出参",
@@ -1316,6 +1321,9 @@
     "user": {
       "AI point standard": "AI积分标准",
       "Avatar": "头像",
+      "Go laf env": "点击前往 laf 获取 PAT 凭证。",
+      "Laf account course": "查看绑定 laf 账号教程。",
+      "Laf account intro": "绑定你的laf账号后，你将可以在工作流中使用 laf 模块，实现在线编写代码。",
       "Need to login": "请先登录",
       "Price": "计费标准",
       "User self info": "个人信息",
@@ -1545,7 +1553,6 @@
     "apikey": {
       "key": "API 秘钥"
     },
-    "laf intro": "laf 是开源的云开发平台，提供云函数、云数据库、云存储等开箱即用的应用资源。             让开发者专注于业务开发，无需折腾服务器，快速释放创意。",
     "promotion": {
       "pay": "好友充值",
       "register": "好友注册"

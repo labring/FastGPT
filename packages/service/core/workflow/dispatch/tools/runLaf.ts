@@ -12,13 +12,9 @@ import { addLog } from '../../../../common/system/log';
 import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
 
 type LafRequestProps = ModuleDispatchProps<{
-  [ModuleInputKeyEnum.abandon_httpUrl]: string;
-  [ModuleInputKeyEnum.httpMethod]: string;
   [ModuleInputKeyEnum.httpReqUrl]: string;
-  [ModuleInputKeyEnum.httpJsonBody]: string;
   [DYNAMIC_INPUT_KEY]: Record<string, any>;
   [key: string]: any;
-  toolModules: any;
 }>;
 type LafResponse = DispatchNodeResultType<{
   [ModuleOutputKeyEnum.failed]?: boolean;
@@ -35,13 +31,7 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
     variables,
     module: { outputs },
     histories,
-    params: {
-      system_httpMethod: httpMethod = 'POST',
-      system_httpReqUrl: httpReqUrl,
-      system_httpJsonBody: httpJsonBody,
-      [DYNAMIC_INPUT_KEY]: dynamicInput,
-      ...body
-    }
+    params: { system_httpReqUrl: httpReqUrl, [DYNAMIC_INPUT_KEY]: dynamicInput, ...body }
   } = props;
 
   if (!httpReqUrl) {
@@ -53,28 +43,26 @@ export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafRes
     chatId,
     responseChatItemId,
     ...variables,
-    histories: histories.slice(0, 10),
     ...body
   };
 
   httpReqUrl = replaceVariable(httpReqUrl, concatVariables);
 
-  const requestBody = await (() => {
-    if (!httpJsonBody) return { [DYNAMIC_INPUT_KEY]: dynamicInput };
-    httpJsonBody = replaceVariable(httpJsonBody, concatVariables);
-    try {
-      const jsonParse = JSON.parse(httpJsonBody);
-      const removeSignJson = removeUndefinedSign(jsonParse);
-      return { [DYNAMIC_INPUT_KEY]: dynamicInput, ...removeSignJson };
-    } catch (error) {
-      console.log(error);
-      return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);
-    }
-  })();
+  const requestBody = {
+    systemParams: {
+      appId,
+      chatId,
+      responseChatItemId,
+      histories: histories.slice(0, 10)
+    },
+    variables,
+    ...dynamicInput,
+    ...body
+  };
 
   try {
     const { formatResponse, rawResponse } = await fetchData({
-      method: httpMethod,
+      method: 'POST',
       url: httpReqUrl,
       body: requestBody
     });

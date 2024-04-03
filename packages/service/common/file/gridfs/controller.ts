@@ -205,7 +205,7 @@ export const readFileContentFromMongo = async ({
   });
 
   if (rawText.trim()) {
-    await MongoRwaTextBuffer.create({
+    MongoRwaTextBuffer.create({
       sourceId: fileId,
       rawText,
       metadata: {

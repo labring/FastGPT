@@ -7,10 +7,13 @@ import {
   useDisclosure,
   MenuButton,
   Box,
-  css
+  css,
+  Flex
 } from '@chakra-ui/react';
 import type { ButtonProps, MenuItemProps } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
+import { useLoading } from '../../../hooks/useLoading';
+import MyIcon from '../Icon';
 
 export type SelectProps = ButtonProps & {
   value?: string;
@@ -20,14 +23,16 @@ export type SelectProps = ButtonProps & {
     label: string | React.ReactNode;
     value: string;
   }[];
+  isLoading?: boolean;
   onchange?: (val: any) => void;
 };
 
 const MySelect = (
-  { placeholder, value, width = '100%', list, onchange, ...props }: SelectProps,
+  { placeholder, value, width = '100%', list, onchange, isLoading = false, ...props }: SelectProps,
   selectRef: any
 ) => {
   const ref = useRef<HTMLButtonElement>(null);
+  const { Loading } = useLoading();
   const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
     py: 2,
@@ -78,7 +83,10 @@ const MySelect = (
             : {})}
           {...props}
         >
-          {selectItem?.alias || selectItem?.label || placeholder}
+          <Flex alignItems={'center'}>
+            {isLoading && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
+            {selectItem?.alias || selectItem?.label || placeholder}
+          </Flex>
         </MenuButton>
 
         <MenuList

@@ -1,5 +1,5 @@
 import { TeamMemberRoleEnum } from './constant';
-import { TeamMemberSchema } from './type';
+import { LafAccountType, TeamMemberSchema } from './type';
 
 export type AuthTeamRoleProps = {
   teamId: string;
@@ -10,18 +10,14 @@ export type CreateTeamProps = {
   name: string;
   avatar?: string;
   defaultTeam?: boolean;
-  lafAccount?: lafAccount;
+  lafAccount?: LafAccountType;
 };
 export type UpdateTeamProps = {
   teamId: string;
   name?: string;
   avatar?: string;
   teamDomain?: string;
-  lafAccount?: lafAccount;
-};
-export type lafAccount = {
-  token: string;
-  appid: string;
+  lafAccount?: null | LafAccountType;
 };
 
 /* ------------- member ----------- */

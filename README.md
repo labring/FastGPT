@@ -113,7 +113,7 @@ fastgpt.run 域名会弃用。
 * [多模型配置](https://doc.fastgpt.in/docs/development/one-api/)
 * [版本更新/升级介绍](https://doc.fastgpt.in/docs/development/upgrading)
 * [OpenAPI API 文档](https://doc.fastgpt.in/docs/development/openapi/)
-* [知识库结构详解](https://doc.fastgpt.in/docs/course/datasetengine/)
+* [知识库结构详解](https://doc.fastgpt.in/docs/course/dataset_engine/)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">

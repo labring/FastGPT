@@ -49,8 +49,7 @@ const defaultFeConfigs: FastGPTFeConfigsType = {
   },
   scripts: [],
   favicon: '/favicon.ico',
-  uploadFileMaxSize: 500,
-  lafEnv: 'laf.dev'
+  uploadFileMaxSize: 500
 };
 
 export async function getInitConfig() {
@@ -91,6 +90,7 @@ export async function initSystemConfig() {
   // get config from database
   const config: FastGPTConfigFileType = {
     feConfigs: {
+      ...fileRes?.feConfigs,
       ...defaultFeConfigs,
       ...(dbConfig.feConfigs || {}),
       isPlus: !!FastGPTProUrl
