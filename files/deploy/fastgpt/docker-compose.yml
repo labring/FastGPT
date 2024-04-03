@@ -51,7 +51,7 @@ services:
           })
         }' > /data/initReplicaSet.js
         # 启动MongoDB服务
-        exec docker-entrypoint.sh "$@" &
+        exec docker-entrypoint.sh "$$@" &
 
         # 等待MongoDB服务启动
         until mongo -u myusername -p mypassword --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
@@ -63,7 +63,7 @@ services:
         mongo -u myusername -p mypassword --authenticationDatabase admin /data/initReplicaSet.js
 
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
-        wait $!
+        wait $$!
   fastgpt:
     container_name: fastgpt
     image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.7 # git
