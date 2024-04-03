@@ -130,7 +130,7 @@ export async function pushDataListToTrainingQueue({
     const text = item.q + item.a;
 
     // count q token
-    const token = countPromptTokens(item.q);
+    const token = item.q.length;
 
     if (token > maxToken) {
       filterResult.overToken.push(item);
