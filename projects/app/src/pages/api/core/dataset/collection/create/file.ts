@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import {
   delFileByFileIdList,
-  readFileContent
+  readFileContentFromMongo
 } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     });
 
     // 1. read file
-    const { rawText, filename } = await readFileContent({
+    const { rawText, filename } = await readFileContentFromMongo({
       teamId,
       bucketName: BucketNameEnum.dataset,
       fileId

@@ -2,12 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { checkFiles } from '../timerTask/dataset/checkInValidDatasetFiles';
 import { addHours } from 'date-fns';
-import { checkInvalidCollection } from '../timerTask/dataset/checkInvalidMongoCollection';
-import { checkInvalidVector } from '../timerTask/dataset/checkInvalidVector';
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { MongoDatasetCollection } from '@fastgpt/service/core/dataset/collection/schema';
+import {
+  checkInvalidDatasetFiles,
+  checkInvalidDatasetData,
+  checkInvalidVector
+} from '@/service/common/system/cronTask';
 
 let deleteImageAmount = 0;
 async function checkInvalidImg(start: Date, end: Date, limit = 50) {
@@ -60,11 +62,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     (async () => {
       try {
         console.log('执行脏数据清理任务');
-        const end = addHours(new Date(), -1);
+        // 360天 ~ 2小时前
+        const end = addHours(new Date(), -2);
         const start = addHours(new Date(), -360 * 24);
-        await checkFiles(start, end);
+        await checkInvalidDatasetFiles(start, end);
         await checkInvalidImg(start, end);
-        await checkInvalidCollection(start, end);
+        await checkInvalidDatasetData(start, end);
         await checkInvalidVector(start, end);
         console.log('执行脏数据清理任务完毕');
       } catch (error) {

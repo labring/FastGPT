@@ -11,5 +11,5 @@ export const formatFileSize = (bytes: number): string => {
 };
 
 export const detectFileEncoding = (buffers: string | Buffer) => {
-  return detect(buffers)?.encoding || 'utf-8';
+  return (detect(buffers)?.encoding || 'utf-8') as BufferEncoding;
 };

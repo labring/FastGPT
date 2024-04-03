@@ -214,9 +214,6 @@ export const FlowProvider = ({
         if (source?.flowType === FlowNodeTypeEnum.classifyQuestion && !type) {
           return ModuleIOValueTypeEnum.boolean;
         }
-        if (source?.flowType === FlowNodeTypeEnum.tools) {
-          return ModuleIOValueTypeEnum.tools;
-        }
         if (source?.flowType === FlowNodeTypeEnum.pluginInput) {
           return source?.inputs.find((input) => input.key === connect.sourceHandle)?.valueType;
         }

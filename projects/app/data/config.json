@@ -1,4 +1,7 @@
 {
+  "feConfigs": {
+    "lafEnv": "https://laf.dev"
+  },
   "systemEnv": {
     "openapiPrefix": "fastgpt",
     "vectorMaxProcess": 15,
