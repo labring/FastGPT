@@ -123,7 +123,7 @@ fastgpt.run 域名会弃用。
 
 wx 扫一下加入：
 
-![](https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg)
+![](https://oss.laf.run/cofxat-test/fastgpt-qr-code2.jpg)
 
 <a href="#readme">
     <img src="https://img.shields.io/badge/-返回顶部-7d09f1.svg" alt="#" align="right">
