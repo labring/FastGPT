@@ -31,9 +31,9 @@ weight: 910
 
 3 个模型代码分别为：
 
-1. [https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-base](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-base)
-2. [https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-large](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-reranker-large)
-3. [https://github.com/labring/FastGPT/tree/main/python/reranker/bge-rerank-v2-m3](https://github.com/labring/FastGPT/tree/main/python/reranker/bge-rerank-v2-m3)
+1. [https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-base](https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-base)
+2. [https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-large](https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-reranker-large)
+3. [https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-rerank-v2-m3](https://github.com/labring/FastGPT/tree/main/python/bge-rerank/bge-rerank-v2-m3)
 
 ### 3. 安装依赖
 
