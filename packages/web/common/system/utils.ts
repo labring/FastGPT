@@ -7,3 +7,7 @@ export const getUserFingerprint = async () => {
   const result = await fp.get();
   console.log(result.visitorId);
 };
+
+export const hasHttps = () => {
+  return window.location.protocol === 'https:';
+};

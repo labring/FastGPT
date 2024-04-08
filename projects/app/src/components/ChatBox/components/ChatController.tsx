@@ -2,21 +2,18 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { Flex, FlexProps, Image, css, useTheme } from '@chakra-ui/react';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
-import { AppTTSConfigType } from '@fastgpt/global/core/module/type';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatChatValue2InputType } from '../utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { useChatProviderStore } from '../Provider';
 
 export type ChatControllerProps = {
-  isChatting: boolean;
+  isLastChild: boolean;
   chat: ChatSiteItemType;
-  setChatHistories?: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   showVoiceIcon?: boolean;
-  ttsConfig?: AppTTSConfigType;
   onRetry?: () => void;
   onDelete?: () => void;
   onMark?: () => void;
@@ -27,33 +24,29 @@ export type ChatControllerProps = {
 };
 
 const ChatController = ({
-  isChatting,
   chat,
-  setChatHistories,
+  isLastChild,
   showVoiceIcon,
-  ttsConfig,
   onReadUserDislike,
   onCloseUserLike,
   onMark,
   onRetry,
   onDelete,
   onAddUserDislike,
-  onAddUserLike,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken
-}: OutLinkChatAuthProps & ChatControllerProps & FlexProps) => {
+  onAddUserLike
+}: ChatControllerProps & FlexProps) => {
   const theme = useTheme();
-  const { t } = useTranslation();
-  const { copyData } = useCopyData();
-  const { audioLoading, audioPlaying, hasAudio, playAudio, cancelAudio } = useAudioPlay({
-    ttsConfig,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
-  });
+  const {
+    isChatting,
+    setChatHistories,
+    audioLoading,
+    audioPlaying,
+    hasAudio,
+    playAudioByText,
+    cancelAudio,
+    audioPlayingChatId,
+    setAudioPlayingChatId
+  } = useChatProviderStore();
   const controlIconStyle = {
     w: '14px',
     cursor: 'pointer',
@@ -66,6 +59,11 @@ const ChatController = ({
     color: 'myGray.400',
     display: 'flex'
   };
+
+  const { t } = useTranslation();
+  const { copyData } = useCopyData();
+
+  const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
   return (
     <Flex
@@ -86,7 +84,7 @@ const ChatController = ({
           {...controlIconStyle}
           name={'copy'}
           _hover={{ color: 'primary.600' }}
-          onClick={() => copyData(formatChatValue2InputType(chat.value).text || '')}
+          onClick={() => copyData(chatText)}
         />
       </MyTooltip>
       {!!onDelete && !isChatting && (
@@ -113,51 +111,65 @@ const ChatController = ({
       )}
       {showVoiceIcon &&
         hasAudio &&
-        (audioLoading ? (
-          <MyTooltip label={t('common.Loading')}>
-            <MyIcon {...controlIconStyle} name={'common/loading'} />
-          </MyTooltip>
-        ) : audioPlaying ? (
-          <Flex alignItems={'center'}>
-            <MyTooltip label={t('core.chat.tts.Stop Speech')}>
+        (() => {
+          const isPlayingChat = chat.dataId === audioPlayingChatId;
+          if (isPlayingChat && audioPlaying) {
+            return (
+              <Flex alignItems={'center'}>
+                <MyTooltip label={t('core.chat.tts.Stop Speech')}>
+                  <MyIcon
+                    {...controlIconStyle}
+                    borderRight={'none'}
+                    name={'core/chat/stopSpeech'}
+                    color={'#E74694'}
+                    onClick={cancelAudio}
+                  />
+                </MyTooltip>
+                <Image
+                  src="/icon/speaking.gif"
+                  w={'23px'}
+                  alt={''}
+                  borderRight={theme.borders.base}
+                />
+              </Flex>
+            );
+          }
+          if (isPlayingChat && audioLoading) {
+            return (
+              <MyTooltip label={t('common.Loading')}>
+                <MyIcon {...controlIconStyle} name={'common/loading'} />
+              </MyTooltip>
+            );
+          }
+          return (
+            <MyTooltip label={t('core.app.TTS start')}>
               <MyIcon
                 {...controlIconStyle}
-                borderRight={'none'}
-                name={'core/chat/stopSpeech'}
-                color={'#E74694'}
-                onClick={() => cancelAudio()}
+                name={'common/voiceLight'}
+                _hover={{ color: '#E74694' }}
+                onClick={async () => {
+                  setAudioPlayingChatId(chat.dataId);
+                  const response = await playAudioByText({
+                    buffer: chat.ttsBuffer,
+                    text: chatText
+                  });
+
+                  if (!setChatHistories || !response.buffer) return;
+                  setChatHistories((state) =>
+                    state.map((item) =>
+                      item.dataId === chat.dataId
+                        ? {
+                            ...item,
+                            ttsBuffer: response.buffer
+                          }
+                        : item
+                    )
+                  );
+                }}
               />
             </MyTooltip>
-            <Image src="/icon/speaking.gif" w={'23px'} alt={''} borderRight={theme.borders.base} />
-          </Flex>
-        ) : (
-          <MyTooltip label={t('core.app.TTS')}>
-            <MyIcon
-              {...controlIconStyle}
-              name={'common/voiceLight'}
-              _hover={{ color: '#E74694' }}
-              onClick={async () => {
-                const response = await playAudio({
-                  buffer: chat.ttsBuffer,
-                  chatItemId: chat.dataId,
-                  text: formatChatValue2InputType(chat.value).text || ''
-                });
-
-                if (!setChatHistories || !response.buffer) return;
-                setChatHistories((state) =>
-                  state.map((item) =>
-                    item.dataId === chat.dataId
-                      ? {
-                          ...item,
-                          ttsBuffer: response.buffer
-                        }
-                      : item
-                  )
-                );
-              }}
-            />
-          </MyTooltip>
-        ))}
+          );
+        })()}
       {!!onMark && (
         <MyTooltip label={t('core.chat.Mark')}>
           <MyIcon

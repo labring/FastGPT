@@ -210,6 +210,7 @@ const OutLink = () => {
 
       const history = res.history.map((item) => ({
         ...item,
+        dataId: item.dataId || nanoid(),
         status: ChatStatusEnum.finish
       }));
 

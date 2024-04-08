@@ -38,8 +38,14 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
           {
             key: ModuleInputKeyEnum.tts,
             type: FlowNodeInputTypeEnum.hidden,
-            label: 'core.app.TTS',
+            label: '',
             value: formData.userGuide.tts
+          },
+          {
+            key: ModuleInputKeyEnum.whisper,
+            type: FlowNodeInputTypeEnum.hidden,
+            label: '',
+            value: formData.userGuide.whisper
           }
         ],
         outputs: [],

@@ -121,6 +121,7 @@ const ChatTest = (
         <Box flex={1}>
           <ChatBox
             ref={ChatBoxRef}
+            appId={app._id}
             appAvatar={app.avatar}
             userAvatar={userInfo?.avatar}
             showMarkIcon

@@ -15,7 +15,7 @@ weight: 355
 - 触发执行
 - 核中核模块
 
-![](/imgs/Laf1.webp)
+![](/imgs/laf1.webp)
 
 ## 介绍
 
@@ -34,7 +34,7 @@ Laf 提供了 PAT(访问凭证) 来实现 Laf 平台外的快捷登录，可以�
 
 > 如果需要解绑则取消绑定后，点击“更新”即可
 
-![](/imgs/Laf2.webp)
+![](/imgs/laf2.webp)
 
 为了更便捷地调用 Laf 云函数，可以参照下面的代码编写云函数，以便 openAPI 识别
 
@@ -76,11 +76,11 @@ export default async function (ctx: FunctionContext): Promise<IResponse> {
 
 具体操作可以是，进入 Laf 的函数页面，新建函数（注意 fastgpt 只会调用 post 请求的函数），然后复制上面的代码或者点击更多模板搜索“fastgpt”，使用下面的模板
 
-![](/imgs/Laf3.webp)
+![](/imgs/laf3.webp)
 
 这样就能直接通过点击“同步参数”，一键填写输入输出
 
-![](/imgs/Laf4.webp)
+![](/imgs/laf4.webp)
 
 当然也可以手动添加，手动修改后的参数不会被“同步参数”修改
 

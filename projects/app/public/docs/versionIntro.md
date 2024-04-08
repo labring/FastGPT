@@ -1,13 +1,10 @@
 ### FastGPT V4.7
 
-1. 新增 - 工具调用模块，可以让LLM模型根据用户意图，动态的选择其他模型或插件执行。
-2. 新增 - 分类和内容提取支持 functionCall 模式。部分模型支持 functionCall 不支持 ToolCall，也可以使用了。需要把 LLM 模型配置文件里的 `functionCall` 设置为 `true`， `toolChoice`设置为 `false`。如果 `toolChoice` 为 true，会走 tool 模式。
-3. 新增 - HTTP插件，可实现OpenAPI快速生成插件。
-4. 优化 - 高级编排性能。
-5. 优化 - AI模型选择。
-6. 优化 - 手动输入知识库弹窗。
-7. 优化 - 变量输入弹窗。
-8. 优化 - 浏览器读取文件自动推断编码，减少乱码情况。
-9. [点击查看高级编排介绍文档](https://doc.fastgpt.in/docs/workflow/intro)
-10. [使用文档](https://doc.fastgpt.in/docs/intro/)
-11. [点击查看商业版](https://doc.fastgpt.in/docs/commercial/)
+1. 新增 - 语音输入完整配置。支持选择是否打开语音输入（包括分享页面），支持语音输入后自动发送，支持语音输入后自动语音播放（流式）。
+2. 新增 - Pptx 和 xlsx 文件读取。但所有文件读取都放服务端，会消耗更多的服务器资源，以及无法在上传时预览更多内容。
+3. 新增 - 集成 Laf 云函数，可以读取 Laf 账号中的云函数作为 HTTP 模块。
+4. 修改 - csv导入模板，取消 header 校验，自动获取前两列。
+5. 修复 - 问题补全历史记录BUG
+6. [点击查看高级编排介绍文档](https://doc.fastgpt.in/docs/workflow/intro)
+7. [使用文档](https://doc.fastgpt.in/docs/intro/)
+8. [点击查看商业版](https://doc.fastgpt.in/docs/commercial/)

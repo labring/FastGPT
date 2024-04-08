@@ -1,4 +1,4 @@
-name: preview-docs
+name: Preview FastGPT docs
 
 on:
   pull_request_target:
@@ -47,7 +47,7 @@ jobs:
 
       - name: Add cdn for images
         run: |
-          sed -i "s#\](/imgs/#\](https://cdn.jsdelivr.us/gh/yangchuansheng/fastgpt-imgs@main/imgs/#g" $(grep -rl "\](/imgs/" docSite/content/docs)
+          sed -i "s#\](/imgs/#\](https://cdn.jsdelivr.net/gh/yangchuansheng/fastgpt-imgs@main/imgs/#g" $(grep -rl "\](/imgs/" docSite/content/docs)
 
       # Step 3 - Install Hugo (specific version)
       - name: Install Hugo

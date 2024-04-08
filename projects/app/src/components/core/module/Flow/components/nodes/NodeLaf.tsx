@@ -26,6 +26,7 @@ import RenderToolInput from '../render/RenderToolInput';
 import RenderInput from '../render/RenderInput';
 import RenderOutput from '../render/RenderOutput';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -52,7 +53,11 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
     );
   }
 
-  const { data: lafData, isLoading: isLoadingFunctions } = useQuery(
+  const {
+    data: lafData,
+    isLoading: isLoadingFunctions,
+    refetch: refetchFunction
+  } = useQuery(
     ['getLafFunctionList'],
     async () => {
       // load laf app detail
@@ -97,98 +102,99 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
     [lafFunctionSelectList, requestUrl?.value]
   );
 
-  const onSyncParams = useCallback(() => {
-    const lafFunction = lafData?.lafFunctions.find((item) => item.requestUrl === selectedFunction);
+  const { mutate: onSyncParams, isLoading: isSyncing } = useRequest({
+    mutationFn: async () => {
+      await refetchFunction();
+      const lafFunction = lafData?.lafFunctions.find(
+        (item) => item.requestUrl === selectedFunction
+      );
 
-    if (!lafFunction) return;
+      if (!lafFunction) return;
 
-    const bodyParams =
-      lafFunction?.request?.content?.['application/json']?.schema?.properties || {};
+      const bodyParams =
+        lafFunction?.request?.content?.['application/json']?.schema?.properties || {};
 
-    const requiredParams =
-      lafFunction?.request?.content?.['application/json']?.schema?.required || [];
+      const requiredParams =
+        lafFunction?.request?.content?.['application/json']?.schema?.required || [];
 
-    const allParams = [
-      ...Object.keys(bodyParams).map((key) => ({
-        name: key,
-        desc: bodyParams[key].description,
-        required: requiredParams?.includes(key) || false,
-        value: `{{${key}}}`,
-        type: 'string'
-      }))
-    ].filter((item) => !inputs.find((input) => input.key === item.name));
+      const allParams = [
+        ...Object.keys(bodyParams).map((key) => ({
+          name: key,
+          desc: bodyParams[key].description,
+          required: requiredParams?.includes(key) || false,
+          value: `{{${key}}}`,
+          type: 'string'
+        }))
+      ].filter((item) => !inputs.find((input) => input.key === item.name));
 
-    // add params
-    allParams.forEach((param) => {
-      onChangeNode({
-        moduleId,
-        type: 'addInput',
-        key: param.name,
-        value: {
+      // add params
+      allParams.forEach((param) => {
+        onChangeNode({
+          moduleId,
+          type: 'addInput',
           key: param.name,
-          valueType: ModuleIOValueTypeEnum.string,
-          label: param.name,
-          type: FlowNodeInputTypeEnum.target,
-          required: param.required,
-          description: param.desc || '',
-          toolDescription: param.desc || '未设置参数描述',
-          edit: true,
-          editField: {
-            key: true,
-            name: true,
-            description: true,
-            required: true,
-            dataType: true,
-            inputType: true,
-            isToolInput: true
-          },
-          connected: false
-        }
+          value: {
+            key: param.name,
+            valueType: ModuleIOValueTypeEnum.string,
+            label: param.name,
+            type: FlowNodeInputTypeEnum.target,
+            required: param.required,
+            description: param.desc || '',
+            toolDescription: param.desc || '未设置参数描述',
+            edit: true,
+            editField: {
+              key: true,
+              name: true,
+              description: true,
+              required: true,
+              dataType: true,
+              inputType: true,
+              isToolInput: true
+            },
+            connected: false
+          }
+        });
       });
-    });
 
-    const responseParams =
-      lafFunction?.response?.default.content?.['application/json'].schema.properties || {};
-    const requiredResponseParams =
-      lafFunction?.response?.default.content?.['application/json'].schema.required || [];
+      const responseParams =
+        lafFunction?.response?.default.content?.['application/json'].schema.properties || {};
+      const requiredResponseParams =
+        lafFunction?.response?.default.content?.['application/json'].schema.required || [];
 
-    const allResponseParams = [
-      ...Object.keys(responseParams).map((key) => ({
-        valueType: responseParams[key].type,
-        name: key,
-        desc: responseParams[key].description,
-        required: requiredResponseParams?.includes(key) || false
-      }))
-    ].filter((item) => !outputs.find((output) => output.key === item.name));
-    allResponseParams.forEach((param) => {
-      onChangeNode({
-        moduleId,
-        type: 'addOutput',
-        key: param.name,
-        value: {
+      const allResponseParams = [
+        ...Object.keys(responseParams).map((key) => ({
+          valueType: responseParams[key].type,
+          name: key,
+          desc: responseParams[key].description,
+          required: requiredResponseParams?.includes(key) || false
+        }))
+      ].filter((item) => !outputs.find((output) => output.key === item.name));
+      allResponseParams.forEach((param) => {
+        onChangeNode({
+          moduleId,
+          type: 'addOutput',
           key: param.name,
-          valueType: param.valueType,
-          label: param.name,
-          type: FlowNodeOutputTypeEnum.source,
-          required: param.required,
-          description: param.desc || '',
-          edit: true,
-          editField: {
-            key: true,
-            description: true,
-            dataType: true,
-            defaultValue: true
-          },
-          targets: []
-        }
+          value: {
+            key: param.name,
+            valueType: param.valueType,
+            label: param.name,
+            type: FlowNodeOutputTypeEnum.source,
+            required: param.required,
+            description: param.desc || '',
+            edit: true,
+            editField: {
+              key: true,
+              description: true,
+              dataType: true,
+              defaultValue: true
+            },
+            targets: []
+          }
+        });
       });
-    });
-
-    toast({
-      status: 'success',
-      title: t('common.Sync success')
-    });
-  }, [inputs, lafData?.lafFunctions, moduleId, outputs, selectedFunction, t, toast]);
+    },
+    successToast: t('common.Sync success')
+  });
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
@@ -214,7 +220,7 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
         {/* auto set params and go to edit */}
         {!!selectedFunction && (
           <Flex justifyContent={'flex-end'} mt={2} gap={2}>
-            <Button variant={'grayBase'} size={'sm'} onClick={onSyncParams}>
+            <Button isLoading={isSyncing} variant={'grayBase'} size={'sm'} onClick={onSyncParams}>
               {t('core.module.Laf sync params')}
             </Button>
             <Button

@@ -109,7 +109,7 @@ export type ChatItemType = (UserChatItemType | SystemChatItemType | AIChatItemTy
 };
 
 export type ChatSiteItemType = (UserChatItemType | SystemChatItemType | AIChatItemType) & {
-  dataId?: string;
+  dataId: string;
   status: `${ChatStatusEnum}`;
   moduleName?: string;
   ttsBuffer?: Uint8Array;

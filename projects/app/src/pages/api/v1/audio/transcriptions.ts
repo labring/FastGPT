@@ -7,6 +7,8 @@ import fs from 'fs';
 import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 import { authChatCert } from '@/service/support/permission/auth/chat';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/module/utils';
 
 const upload = getUploadModel({
   maxSize: 2
@@ -18,8 +20,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   try {
     const {
       file,
-      data: { duration, teamId: spaceTeamId, teamToken }
+      data: { appId, duration, teamId: spaceTeamId, teamToken }
     } = await upload.doUpload<{
+      appId: string;
       duration: number;
       shareId?: string;
       teamId?: string;
@@ -31,14 +34,24 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
 
     filePaths = [file.path];
 
-    const { teamId, tmbId } = await authChatCert({ req, authToken: true });
-
     if (!global.whisperModel) {
       throw new Error('whisper model not found');
     }
 
     if (!file) {
       throw new Error('file not found');
+    }
+
+    // auth role
+    const { teamId, tmbId } = await authChatCert({ req, authToken: true });
+    // auth app
+    const app = await MongoApp.findById(appId, 'modules').lean();
+    if (!app) {
+      throw new Error('app not found');
+    }
+    const { whisperConfig } = splitGuideModule(getGuideModule(app?.modules));
+    if (!whisperConfig?.open) {
+      throw new Error('Whisper is not open in the app');
     }
 
     const ai = getAIApi();

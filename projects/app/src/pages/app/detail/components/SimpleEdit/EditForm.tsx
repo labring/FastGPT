@@ -6,7 +6,7 @@ import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import { chatNodeSystemPromptTip, welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
+import { welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRouter } from 'next/router';
@@ -20,7 +20,7 @@ import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import VariableEdit from '@/components/core/module/Flow/components/modules/VariableEdit';
+import VariableEdit from '@/components/core/app/VariableEdit';
 import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
@@ -28,14 +28,26 @@ import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
 import { SettingAIDataType } from '@fastgpt/global/core/module/node/type';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
+import { TTSTypeEnum } from '@/constants/app';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
 const ToolSelectModal = dynamic(() => import('./ToolSelectModal'));
-const TTSSelect = dynamic(
-  () => import('@/components/core/module/Flow/components/modules/TTSSelect')
-);
-const QGSwitch = dynamic(() => import('@/components/core/module/Flow/components/modules/QGSwitch'));
+const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
+const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
+const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
+
+const BoxStyles: BoxProps = {
+  px: 5,
+  py: '16px',
+  borderBottomWidth: '1px',
+  borderBottomColor: 'borderColor.low'
+};
+const LabelStyles: BoxProps = {
+  w: ['60px', '100px'],
+  flexShrink: 0,
+  fontSize: ['sm', 'md']
+};
 
 const EditForm = ({
   divRef,
@@ -131,18 +143,6 @@ const EditForm = ({
   );
   useQuery(['loadAllDatasets'], loadAllDatasets);
 
-  const BoxStyles: BoxProps = {
-    px: 5,
-    py: '16px',
-    borderBottomWidth: '1px',
-    borderBottomColor: 'borderColor.low'
-  };
-  const LabelStyles: BoxProps = {
-    w: ['60px', '100px'],
-    flexShrink: 0,
-    fontSize: ['sm', 'md']
-  };
-
   return (
     <Box>
       {/* title */}
@@ -154,7 +154,7 @@ const EditForm = ({
         py={4}
         justifyContent={'space-between'}
         alignItems={'center'}
-        zIndex={10}
+        zIndex={100}
         px={4}
         {...(isSticky && {
           borderBottom: theme.borders.base,
@@ -409,6 +409,18 @@ const EditForm = ({
               value={getValues('userGuide.tts')}
               onChange={(e) => {
                 setValue('userGuide.tts', e);
+                setRefresh((state) => !state);
+              }}
+            />
+          </Box>
+
+          {/* whisper */}
+          <Box {...BoxStyles}>
+            <WhisperConfig
+              isOpenAudio={getValues('userGuide.tts').type !== TTSTypeEnum.none}
+              value={getValues('userGuide.whisper')}
+              onChange={(e) => {
+                setValue('userGuide.whisper', e);
                 setRefresh((state) => !state);
               }}
             />

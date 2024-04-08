@@ -17,20 +17,9 @@ from FlagEmbedding import FlagReranker
 from pydantic import Field, BaseModel, validator
 from typing import Optional, List
 
-def response(code, msg, data=None):
-    time = str(datetime.datetime.now())
-    if data is None:
-        data = []
-    result = {
-        "code": code,
-        "message": msg,
-        "data": data,
-        "time": time
-    }
-    return result
-
-def success(data=None, msg=''):
-    return
+app = FastAPI()
+security = HTTPBearer()
+env_bearer_token = 'ACCESS_TOKEN'
 
 class QADocs(BaseModel):
     query: Optional[str]
@@ -44,44 +33,37 @@ class Singleton(type):
         return cls._instance
 
 
-RERANK_MODEL_PATH = os.path.join(os.path.dirname(__file__), "bge-reranker-base")
+RERANK_MODEL_PATH = os.path.join(os.path.dirname(__file__), "bge-reranker-large")
 
-class Reranker(metaclass=Singleton):
+class ReRanker(metaclass=Singleton):
     def __init__(self, model_path):
-        self.reranker = FlagReranker(model_path,
-                                     use_fp16=False)
+        self.reranker = FlagReranker(model_path, use_fp16=False)
 
     def compute_score(self, pairs: List[List[str]]):
         if len(pairs) > 0:
-            result = self.reranker.compute_score(pairs)
+            result = self.reranker.compute_score(pairs, normalize=True)
             if isinstance(result, float):
                 result = [result]
             return result
         else:
             return None
 
-
 class Chat(object):
     def __init__(self, rerank_model_path: str = RERANK_MODEL_PATH):
-        self.reranker = Reranker(rerank_model_path)
+        self.reranker = ReRanker(rerank_model_path)
 
     def fit_query_answer_rerank(self, query_docs: QADocs) -> List:
         if query_docs is None or len(query_docs.documents) == 0:
             return []
-        new_docs = []
-        pair = []
-        for answer in query_docs.documents:
-            pair.append([query_docs.query, answer])
-        scores = self.reranker.compute_score(pair)
-        for index, score in enumerate(scores):
-            new_docs.append({"index": index, "text": query_docs.documents[index], "score": 1 / (1 + np.exp(-score))})
-        #results = [{"document": {"text": documents["text"]}, "index": documents["index"], "relevance_score": documents["score"]} for documents in list(sorted(new_docs, key=lambda x: x["score"], reverse=True))]
-        results = [{"index": documents["index"], "relevance_score": documents["score"]} for documents in list(sorted(new_docs, key=lambda x: x["score"], reverse=True))]
-        return {"results": results}
 
-app = FastAPI()
-security = HTTPBearer()
-env_bearer_token = 'ACCESS_TOKEN'
+        pair = [[query_docs.query, doc] for doc in query_docs.documents]
+        scores = self.reranker.compute_score(pair)
+
+        new_docs = []
+        for index, score in enumerate(scores):
+            new_docs.append({"index": index, "text": query_docs.documents[index], "score": score})
+        results = [{"index": documents["index"], "relevance_score": documents["score"]} for documents in list(sorted(new_docs, key=lambda x: x["score"], reverse=True))]
+        return results
 
 @app.post('/v1/rerank')
 async def handle_post_request(docs: QADocs, credentials: HTTPAuthorizationCredentials = Security(security)):
@@ -89,8 +71,12 @@ async def handle_post_request(docs: QADocs, credentials: HTTPAuthorizationCreden
     if env_bearer_token is not None and token != env_bearer_token:
         raise HTTPException(status_code=401, detail="Invalid token")
     chat = Chat()
-    qa_docs_with_rerank = chat.fit_query_answer_rerank(docs)
-    return response(200, msg="重排成功", data=qa_docs_with_rerank)
+    try:
+        results = chat.fit_query_answer_rerank(docs)
+        return {"results": results}
+    except Exception as e:
+        print(f"报错：\n{e}")
+        return {"error": "重排出错"}
 
 if __name__ == "__main__":
     token = os.getenv("ACCESS_TOKEN")
