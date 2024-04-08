@@ -1,6 +1,6 @@
 import type { LLMModelItemType } from '../ai/model.d';
 import { AppTypeEnum } from './constants';
-import { AppSchema, AppSimpleEditFormType } from './type';
+import { AppSchema } from './type';
 
 export type CreateAppParams = {
   name?: string;

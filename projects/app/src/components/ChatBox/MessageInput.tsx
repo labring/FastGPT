@@ -1,7 +1,7 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+import React, { useRef, useEffect, useCallback, useTransition } from 'react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -12,32 +12,28 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from './type';
 import { textareaMinH } from './constants';
 import { UseFormReturn, useFieldArray } from 'react-hook-form';
+import { useChatProviderStore } from './Provider';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const MessageInput = ({
   onSendMessage,
   onStop,
-  isChatting,
   TextareaDom,
   showFileSelector = false,
   resetInputVal,
-  shareId,
-  outLinkUid,
-  teamId,
-  teamToken,
-  chatForm
-}: OutLinkChatAuthProps & {
-  onSendMessage: (val: ChatBoxInputType) => void;
+  chatForm,
+  appId
+}: {
+  onSendMessage: (val: ChatBoxInputType & { autoTTSResponse?: boolean }) => void;
   onStop: () => void;
-  isChatting: boolean;
   showFileSelector?: boolean;
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
+  appId?: string;
 }) => {
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -52,15 +48,8 @@ const MessageInput = ({
     name: 'files'
   });
 
-  const {
-    isSpeaking,
-    isTransCription,
-    stopSpeak,
-    startSpeak,
-    speakingTimeString,
-    renderAudioGraph,
-    stream
-  } = useSpeech({ shareId, outLinkUid, teamId, teamToken });
+  const { shareId, outLinkUid, teamId, teamToken, isChatting, whisperConfig, autoTTSResponse } =
+    useChatProviderStore();
   const { isPc, whisperModel } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
@@ -163,6 +152,16 @@ const MessageInput = ({
     replaceFile([]);
   }, [TextareaDom, fileList, onSendMessage, replaceFile]);
 
+  /* whisper init */
+  const {
+    isSpeaking,
+    isTransCription,
+    stopSpeak,
+    startSpeak,
+    speakingTimeString,
+    renderAudioGraph,
+    stream
+  } = useSpeech({ appId, shareId, outLinkUid, teamId, teamToken });
   useEffect(() => {
     if (!stream) {
       return;
@@ -180,6 +179,28 @@ const MessageInput = ({
     };
     renderCurve();
   }, [renderAudioGraph, stream]);
+  const finishWhisperTranscription = useCallback(
+    (text: string) => {
+      if (!text) return;
+      if (whisperConfig?.autoSend) {
+        onSendMessage({
+          text,
+          files: fileList,
+          autoTTSResponse
+        });
+        replaceFile([]);
+      } else {
+        resetInputVal({ text });
+      }
+    },
+    [autoTTSResponse, fileList, onSendMessage, replaceFile, resetInputVal, whisperConfig?.autoSend]
+  );
+  const onWhisperRecord = useCallback(() => {
+    if (isSpeaking) {
+      return stopSpeak();
+    }
+    startSpeak(finishWhisperTranscription);
+  }, [finishWhisperTranscription, isSpeaking, startSpeak, stopSpeak]);
 
   return (
     <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
@@ -369,7 +390,7 @@ const MessageInput = ({
             bottom={['10px', '12px']}
           >
             {/* voice-input */}
-            {!shareId && !havInput && !isChatting && !!whisperModel && (
+            {whisperConfig.open && !havInput && !isChatting && !!whisperModel && (
               <>
                 <canvas
                   ref={canvasRef}
@@ -380,32 +401,49 @@ const MessageInput = ({
                     zIndex: 0
                   }}
                 />
-                <Flex
-                  mr={2}
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  flexShrink={0}
-                  h={['26px', '32px']}
-                  w={['26px', '32px']}
-                  borderRadius={'md'}
-                  cursor={'pointer'}
-                  _hover={{ bg: '#F5F5F8' }}
-                  onClick={() => {
-                    if (isSpeaking) {
-                      return stopSpeak();
-                    }
-                    startSpeak((text) => resetInputVal({ text }));
-                  }}
-                >
-                  <MyTooltip label={isSpeaking ? t('core.chat.Stop Speak') : t('core.chat.Record')}>
+                {isSpeaking && (
+                  <MyTooltip label={t('core.chat.Cancel Speak')}>
+                    <Flex
+                      mr={2}
+                      alignItems={'center'}
+                      justifyContent={'center'}
+                      flexShrink={0}
+                      h={['26px', '32px']}
+                      w={['26px', '32px']}
+                      borderRadius={'md'}
+                      cursor={'pointer'}
+                      _hover={{ bg: '#F5F5F8' }}
+                      onClick={() => stopSpeak(true)}
+                    >
+                      <MyIcon
+                        name={'core/chat/cancelSpeak'}
+                        width={['20px', '22px']}
+                        height={['20px', '22px']}
+                      />
+                    </Flex>
+                  </MyTooltip>
+                )}
+                <MyTooltip label={isSpeaking ? t('core.chat.Finish Speak') : t('core.chat.Record')}>
+                  <Flex
+                    mr={2}
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    flexShrink={0}
+                    h={['26px', '32px']}
+                    w={['26px', '32px']}
+                    borderRadius={'md'}
+                    cursor={'pointer'}
+                    _hover={{ bg: '#F5F5F8' }}
+                    onClick={onWhisperRecord}
+                  >
                     <MyIcon
-                      name={isSpeaking ? 'core/chat/stopSpeechFill' : 'core/chat/recordFill'}
+                      name={isSpeaking ? 'core/chat/finishSpeak' : 'core/chat/recordFill'}
                       width={['20px', '22px']}
                       height={['20px', '22px']}
                       color={isSpeaking ? 'primary.500' : 'myGray.600'}
                     />
-                  </MyTooltip>
-                </Flex>
+                  </Flex>
+                </MyTooltip>
               </>
             )}
             {/* send and stop icon */}

@@ -7,14 +7,14 @@ import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
 import { welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
 import { onChangeNode } from '../../FlowProvider';
 
-import VariableEdit from '../modules/VariableEdit';
+import VariableEdit from '../../../../app/VariableEdit';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import Container from '../modules/Container';
 import NodeCard from '../render/NodeCard';
-import type { VariableItemType } from '@fastgpt/global/core/module/type.d';
-import QGSwitch from '@/components/core/module/Flow/components/modules/QGSwitch';
-import TTSSelect from '@/components/core/module/Flow/components/modules/TTSSelect';
+import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
+import QGSwitch from '@/components/core/app/QGSwitch';
+import TTSSelect from '@/components/core/app/TTSSelect';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import { useTranslation } from 'next-i18next';
 

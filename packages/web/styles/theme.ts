@@ -205,7 +205,7 @@ const Button = defineStyleConfig({
         bg: 'primary.50'
       },
       _disabled: {
-        bg: 'myGray.50'
+        bg: 'myGray.50 !important'
       }
     },
     grayDanger: {

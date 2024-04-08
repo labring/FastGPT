@@ -1,4 +1,4 @@
-import { VariableItemType } from '@fastgpt/global/core/module/type';
+import { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import React, { useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';

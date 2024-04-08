@@ -106,7 +106,7 @@ Project tech stack: NextJs + TS + ChakraUI + Mongo + Postgres (Vector plugin)
 
 - **⚡ Deployment**
 
-  [![](https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
+  [![](https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg)](https://cloud.sealos.io/?openapp=system-fastdeploy%3FtemplateName%3Dfastgpt)
 
   Give it a 2-4 minute wait after deployment as it sets up the database. Initially, it might be a tad slow since we're using the basic settings.
 

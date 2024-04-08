@@ -156,7 +156,7 @@ llm模型全部合并
 
 请使用 4.6.6-alpha 以上版本，配置文件中的 `reRankModels` 为重排模型，虽然是数组，不过目前仅有第1个生效。
 
-1. [部署 ReRank 模型](/docs/development/custom-models/reranker/)
+1. [部署 ReRank 模型](/docs/development/custom-models/bge-rerank/)
 1. 找到 FastGPT 的配置文件中的 `reRankModels`， 4.6.6 以前是 `ReRankModels`。
 2. 修改对应的值：（记得去掉注释）
 

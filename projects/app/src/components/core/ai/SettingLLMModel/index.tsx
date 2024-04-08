@@ -55,7 +55,7 @@ const SettingLLMModel = ({ llmModelType = LLMModelTypeEnum.all, defaultData, onC
         leftIcon={
           <Avatar
             borderRadius={'0'}
-            src={selectedModel.avatar || HUGGING_FACE_ICON}
+            src={selectedModel?.avatar || HUGGING_FACE_ICON}
             fallbackSrc={HUGGING_FACE_ICON}
             w={'18px'}
           />

@@ -6,10 +6,12 @@ import {
   variableMap
 } from './constants';
 import { FlowNodeInputItemType, FlowNodeOutputItemType } from './node/type';
-import { AppTTSConfigType, ModuleItemType, VariableItemType } from './type';
+import { ModuleItemType } from './type';
+import type { VariableItemType, AppTTSConfigType, AppWhisperConfigType } from '../app/type';
 import { Input_Template_Switch } from './template/input';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import { Output_Template_Finish } from './template/output';
+import { defaultWhisperConfig } from '../app/constants';
 
 /* module  */
 export const getGuideModule = (modules: ModuleItemType[]) =>
@@ -30,11 +32,16 @@ export const splitGuideModule = (guideModules?: ModuleItemType) => {
     (item) => item.key === ModuleInputKeyEnum.tts
   )?.value || { type: 'web' };
 
+  const whisperConfig: AppWhisperConfigType =
+    guideModules?.inputs?.find((item) => item.key === ModuleInputKeyEnum.whisper)?.value ||
+    defaultWhisperConfig;
+
   return {
     welcomeText,
     variableModules,
     questionGuide,
-    ttsConfig
+    ttsConfig,
+    whisperConfig
   };
 };
 

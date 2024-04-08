@@ -99,6 +99,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
       <Box flex={1}>
         <ChatBox
           ref={ChatBoxRef}
+          appId={appDetail._id}
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon

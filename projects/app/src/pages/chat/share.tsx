@@ -141,6 +141,7 @@ const OutLink = ({
       /* post message to report result */
       const result: ChatSiteItemType[] = GPTMessages2Chats(prompts).map((item) => ({
         ...item,
+        dataId: item.dataId || nanoid(),
         status: 'finish'
       }));
 
@@ -183,6 +184,7 @@ const OutLink = ({
         });
         const history = res.history.map((item) => ({
           ...item,
+          dataId: item.dataId || nanoid(),
           status: ChatStatusEnum.finish
         }));
 

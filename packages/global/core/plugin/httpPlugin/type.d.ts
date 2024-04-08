@@ -5,6 +5,7 @@ export type PathDataType = {
   path: string;
   params: any[];
   request: any;
+  response: any;
 };
 
 export type OpenApiJsonSchema = {
