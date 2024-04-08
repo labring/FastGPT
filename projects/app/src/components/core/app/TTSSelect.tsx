@@ -72,6 +72,11 @@ const TTSSelect = ({
     [audioSpeechModelList, onChange, value]
   );
 
+  const onCloseTTSModal = useCallback(() => {
+    cancelAudio();
+    onClose();
+  }, [cancelAudio, onClose]);
+
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
@@ -100,7 +105,7 @@ const TTSSelect = ({
           </>
         }
         isOpen={isOpen}
-        onClose={onClose}
+        onClose={onCloseTTSModal}
         w={'500px'}
       >
         <ModalBody px={[5, 16]} py={[4, 8]}>
