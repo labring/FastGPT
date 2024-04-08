@@ -232,7 +232,7 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
                 );
 
                 if (!lafFunction) return;
-                const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}`;
+                const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}?templateid=fastgptflow`;
                 window.open(url, '_blank');
               }}
             >

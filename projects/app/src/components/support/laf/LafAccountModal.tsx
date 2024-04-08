@@ -13,6 +13,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { LafAccountType } from '@fastgpt/global/support/user/team/type.d';
 import { postLafPat2Token, getLafApplications } from '@/web/support/laf/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getDocPath } from '@/web/common/system/doc';
 
 const LafAccountModal = ({
   defaultData = {
@@ -100,7 +101,7 @@ const LafAccountModal = ({
         <Box fontSize={'sm'} color={'myGray.500'}>
           <Box>{t('support.user.Laf account intro')}</Box>
           <Box textDecoration={'underline'}>
-            <Link href={`https://doc.laf.run/zh/`} isExternal>
+            <Link href={getDocPath('/docs/workflow/modules/laf/')} isExternal>
               {t('support.user.Laf account course')}
             </Link>
           </Box>
@@ -171,12 +172,14 @@ const LafAccountModal = ({
         )}
       </ModalBody>
       <ModalFooter>
-        <Button mr={3} variant={'whiteBase'} onClick={onClose}>
+        <Button variant={'whiteBase'} onClick={onClose}>
           {t('common.Close')}
         </Button>
-        <Button isLoading={isUpdating} onClick={handleSubmit((data) => onSubmit(data))}>
-          {t('common.Update')}
-        </Button>
+        {appid && (
+          <Button ml={3} isLoading={isUpdating} onClick={handleSubmit((data) => onSubmit(data))}>
+            {t('common.Update')}
+          </Button>
+        )}
       </ModalFooter>
     </MyModal>
   );
