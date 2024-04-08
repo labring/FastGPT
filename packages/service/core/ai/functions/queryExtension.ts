@@ -118,7 +118,7 @@ A: ${chatBg}
   const historyFewShot = histories
     .map((item) => {
       const role = item.obj === 'Human' ? 'Q' : 'A';
-      return `${role}: ${chatValue2RuntimePrompt(item.value)}`;
+      return `${role}: ${chatValue2RuntimePrompt(item.value).text}`;
     })
     .join('\n');
   const concatFewShot = `${systemFewShot}${historyFewShot}`.trim();
