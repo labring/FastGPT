@@ -1,7 +1,7 @@
 ---
 title: "Laf 函数调用"
 description: "FastGPT Laf 函数调用模块介绍"
-icon: "Laf"
+icon: "code"
 draft: false
 toc: true
 weight: 355
