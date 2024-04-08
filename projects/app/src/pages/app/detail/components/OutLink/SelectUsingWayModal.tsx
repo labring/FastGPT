@@ -102,7 +102,7 @@ const SelectUsingWayModal = ({ share, onClose }: { share: OutLinkSchema; onClose
   data-open-icon="${getValues('scriptOpenIcon')}"
   data-close-icon="${getValues('scriptCloseIcon')}"
   defer
-/>
+></script>
 <script>
 console.log("Chat box loaded")
 </script>`
