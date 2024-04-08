@@ -275,6 +275,7 @@
       "App intro": "应用介绍",
       "App params config": "应用配置",
       "Chat Variable": "对话框变量",
+      "Config whisper": "配置语音输入",
       "External using": "外部使用途径",
       "Make a brief introduction of your app": "给你的 AI 应用一个介绍",
       "Max histories": "聊天记录数量",
@@ -295,8 +296,9 @@
       "Share link desc": "分享链接给其他用户，无需登录即可直接进行使用",
       "Share link desc detail": "可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的余额，请保管好链接！",
       "Simple Config Tip": "仅包含基础功能，复杂 agent 功能请使用高级编排。",
-      "TTS": "语音播报",
+      "TTS": "语音播放",
       "TTS Tip": "开启后，每次对话后可使用语音播放功能。使用该功能可能产生额外费用。",
+      "TTS start": "朗读内容",
       "Team tags": "团队标签",
       "Temperature": "温度",
       "Tool call": "工具调用",
@@ -309,6 +311,9 @@
         "This plugin cannot be called as a tool": "该工具无法在简易模式中使用"
       },
       "Welcome Text": "对话开场白",
+      "Whisper": "语音输入",
+      "Whisper Tip": "配置语音输入相关参数",
+      "Whisper config": "语音输入配置",
       "create app": "创建属于你的 AI 应用",
       "deterministic": "严谨",
       "edit": {
@@ -395,11 +400,23 @@
         "Test Listen": "试听",
         "Test Listen Text": "你好，这是语音测试，如果你能听到这句话，说明语音播放功能正常",
         "Web": "浏览器自带(免费)"
+      },
+      "whisper": {
+        "Auto send": "自动发送",
+        "Auto send tip": "语音输入完毕后直接发送，不需要再手动点击发送按键",
+        "Auto tts response": "自动语音回复",
+        "Auto tts response tip": "通过语音输入发送的问题，会直接以语音的形式响应，请确保打开了语音播报功能。",
+        "Close": "关闭",
+        "Not tts tip": "你没有开启语音播放，该功能无法使用",
+        "Open": "开启",
+        "Switch": "开启语音输入"
       }
     },
     "chat": {
       "Admin Mark Content": "纠正后的回复",
       "Audio Speech Error": "语音播报异常",
+      "Cancel Speak": "取消语音输入",
+      "Canceled Speak": "语音输入已取消",
       "Chat API is error or undefined": "对话接口报错或返回为空",
       "Confirm to clear history": "确认清空该应用的在线聊天记录？分享和 API 调用的记录不会被清空。",
       "Confirm to clear share chat history": "确认删除所有聊天记录？",
@@ -415,6 +432,7 @@
       "Feedback Submit": "提交反馈",
       "Feedback Success": "反馈成功!",
       "Feedback Update Failed": "更新反馈状态失败",
+      "Finish Speak": "语音输入完成",
       "History": "记录",
       "History Amount": "{{amount}}条记录",
       "Mark": "标注预期回答",
@@ -1473,7 +1491,7 @@
       "usage": {
         "Ai model": "AI模型",
         "App name": "应用名",
-        "Audio Speech": "语音播报",
+        "Audio Speech": "语音播放",
         "Bill Module": "扣费模块",
         "Chars length": "文本长度",
         "Data Length": "数据长度",

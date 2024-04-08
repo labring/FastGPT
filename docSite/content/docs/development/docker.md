@@ -32,7 +32,7 @@ FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、A
 
 可选择 [Sealos 快速部署 OneAPI](/docs/development/one-api)，更多部署方法可参考该项目的 [README](https://github.com/songquanpeng/one-api)，也可以直接通过以下按钮一键部署：
 
-<a href="https://template.cloud.sealos.io/deploy?templateName=one-api" rel="external" target="_blank"><img src="https://cdn.jsdelivr.us/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
+<a href="https://template.cloud.sealos.io/deploy?templateName=one-api" rel="external" target="_blank"><img src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
 
 ## 一、安装 Docker 和 docker-compose
 

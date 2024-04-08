@@ -25,6 +25,7 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
+import { useChatProviderStore } from '../Provider';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -56,11 +57,9 @@ const ChatItem = ({
     status: `${ChatStatusEnum}`;
     name: string;
   };
-  isLastChild?: boolean;
   questionGuides?: string[];
   children?: React.ReactNode;
 } & ChatControllerProps) => {
-  const theme = useTheme();
   const styleMap: BoxProps =
     type === ChatRoleEnum.Human
       ? {
@@ -77,7 +76,9 @@ const ChatItem = ({
           textAlign: 'left',
           bg: 'myGray.50'
         };
-  const { chat, isChatting } = chatControllerProps;
+
+  const { isChatting } = useChatProviderStore();
+  const { chat } = chatControllerProps;
 
   const ContentCard = useMemo(() => {
     if (type === 'Human') {
@@ -209,7 +210,7 @@ ${toolResponse}`}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Box order={styleMap.order} ml={styleMap.ml}>
-            <ChatController {...chatControllerProps} />
+            <ChatController {...chatControllerProps} isLastChild={isLastChild} />
           </Box>
         )}
         <ChatAvatar src={avatar} type={type} />

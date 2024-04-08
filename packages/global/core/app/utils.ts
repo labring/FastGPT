@@ -9,6 +9,7 @@ import type { FlowNodeInputItemType } from '../module/node/type.d';
 import { getGuideModule, splitGuideModule } from '../module/utils';
 import { ModuleItemType } from '../module/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
+import { defaultWhisperConfig } from './constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
@@ -36,7 +37,8 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       questionGuide: false,
       tts: {
         type: 'web'
-      }
+      },
+      whisper: defaultWhisperConfig
     }
   };
 };
@@ -107,14 +109,15 @@ export const appModules2Form = ({ modules }: { modules: ModuleItemType[] }) => {
         ModuleInputKeyEnum.datasetSearchExtensionBg
       );
     } else if (module.flowType === FlowNodeTypeEnum.userGuide) {
-      const { welcomeText, variableModules, questionGuide, ttsConfig } = splitGuideModule(
-        getGuideModule(modules)
-      );
+      const { welcomeText, variableModules, questionGuide, ttsConfig, whisperConfig } =
+        splitGuideModule(getGuideModule(modules));
+
       defaultAppForm.userGuide = {
         welcomeText: welcomeText,
         variables: variableModules,
         questionGuide: questionGuide,
-        tts: ttsConfig
+        tts: ttsConfig,
+        whisper: whisperConfig
       };
     } else if (module.flowType === FlowNodeTypeEnum.pluginModule) {
       defaultAppForm.selectedTools.push({

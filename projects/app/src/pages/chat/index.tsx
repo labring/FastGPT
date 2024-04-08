@@ -146,6 +146,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
         const res = await getInitChatInfo({ appId, chatId });
         const history = res.history.map((item) => ({
           ...item,
+          dataId: item.dataId || nanoid(),
           status: ChatStatusEnum.finish
         }));
 
