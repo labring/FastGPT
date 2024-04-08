@@ -16,7 +16,10 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChevronRightIcon } from '@chakra-ui/icons';
 import { useQuery } from '@tanstack/react-query';
 import dynamic from 'next/dynamic';
-import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/module/node/constant';
+import {
+  FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum
+} from '@fastgpt/global/core/module/node/constant';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Divider from '../modules/Divider';
 import RenderToolInput from '../render/RenderToolInput';
@@ -31,7 +34,7 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
   const { data, selected } = props;
-  const { moduleId, inputs } = data;
+  const { moduleId, inputs, outputs } = data;
 
   const requestUrl = inputs.find((item) => item.key === ModuleInputKeyEnum.httpReqUrl);
 
@@ -144,11 +147,48 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
       });
     });
 
+    const responseParams =
+      lafFunction?.response?.default.content?.['application/json'].schema.properties || {};
+    const requiredResponseParams =
+      lafFunction?.response?.default.content?.['application/json'].schema.required || [];
+
+    const allResponseParams = [
+      ...Object.keys(responseParams).map((key) => ({
+        valueType: responseParams[key].type,
+        name: key,
+        desc: responseParams[key].description,
+        required: requiredResponseParams?.includes(key) || false
+      }))
+    ].filter((item) => !outputs.find((output) => output.key === item.name));
+    allResponseParams.forEach((param) => {
+      onChangeNode({
+        moduleId,
+        type: 'addOutput',
+        key: param.name,
+        value: {
+          key: param.name,
+          valueType: param.valueType,
+          label: param.name,
+          type: FlowNodeOutputTypeEnum.source,
+          required: param.required,
+          description: param.desc || '',
+          edit: true,
+          editField: {
+            key: true,
+            description: true,
+            dataType: true,
+            defaultValue: true
+          },
+          targets: []
+        }
+      });
+    });
+
     toast({
       status: 'success',
       title: t('common.Sync success')
     });
-  }, [inputs, lafData?.lafFunctions, moduleId, selectedFunction, t, toast]);
+  }, [inputs, lafData?.lafFunctions, moduleId, outputs, selectedFunction, t, toast]);
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
@@ -174,9 +214,9 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
         {/* auto set params and go to edit */}
         {!!selectedFunction && (
           <Flex justifyContent={'flex-end'} mt={2} gap={2}>
-            {/* <Button variant={'whiteBase'} size={'sm'} onClick={onSyncParams}>
+            <Button variant={'grayBase'} size={'sm'} onClick={onSyncParams}>
               {t('core.module.Laf sync params')}
-            </Button> */}
+            </Button>
             <Button
               variant={'grayBase'}
               size={'sm'}

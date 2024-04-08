@@ -43,7 +43,8 @@ export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema
               name: methodInfo.operationId || path,
               description: methodInfo.description || methodInfo.summary,
               params: methodInfo.parameters,
-              request: methodInfo?.requestBody
+              request: methodInfo?.requestBody,
+              response: methodInfo.responses
             };
             return result;
           });
