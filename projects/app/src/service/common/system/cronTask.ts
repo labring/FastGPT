@@ -2,6 +2,7 @@ import {
   delFileByFileIdList,
   getGFSCollection
 } from '@fastgpt/service/common/file/gridfs/controller';
+import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { addLog } from '@fastgpt/service/common/system/log';
 import {
   deleteDatasetDataVector,
@@ -72,15 +73,19 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
         $lte: end
       }
     },
-    '_id teamId collectionId'
+    '_id teamId datasetId collectionId'
   ).lean();
 
   // 2. 合并所有的collectionId
-  const map = new Map<string, { teamId: string; collectionId: string }>();
+  const map = new Map<string, { teamId: string; datasetId: string; collectionId: string }>();
   for (const item of rows) {
     const collectionId = String(item.collectionId);
     if (!map.has(collectionId)) {
-      map.set(collectionId, { teamId: item.teamId, collectionId });
+      map.set(collectionId, {
+        teamId: item.teamId,
+        datasetId: item.datasetId,
+        collectionId
+      });
     }
   }
   const list = Array.from(map.values());
@@ -92,21 +97,28 @@ export async function checkInvalidDatasetData(start: Date, end: Date) {
       // 3. 查看该collection是否存在，不存在，则删除对应的数据
       const collection = await MongoDatasetCollection.findOne({ _id: item.collectionId });
       if (!collection) {
-        const result = await Promise.all([
-          MongoDatasetTraining.deleteMany({
+        await mongoSessionRun(async (session) => {
+          await MongoDatasetTraining.deleteMany(
+            {
+              teamId: item.teamId,
+              collectionId: item.collectionId
+            },
+            { session }
+          );
+          await MongoDatasetData.deleteMany(
+            {
+              teamId: item.teamId,
+              collectionId: item.collectionId
+            },
+            { session }
+          );
+          await deleteDatasetDataVector({
             teamId: item.teamId,
-            collectionId: item.collectionId
-          }),
-          MongoDatasetData.deleteMany({
-            teamId: item.teamId,
-            collectionId: item.collectionId
-          }),
-          deleteDatasetDataVector({
-            teamId: item.teamId,
-            collectionIds: [String(item.collectionId)]
-          })
-        ]);
-        console.log(result);
+            datasetIds: [item.datasetId],
+            collectionIds: [item.collectionId]
+          });
+        });
+
         console.log('collection is not found', item);
         continue;
       }

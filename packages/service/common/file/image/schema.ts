@@ -35,6 +35,7 @@ try {
   ImageSchema.index({ expiredTime: 1 }, { expireAfterSeconds: 60 });
   ImageSchema.index({ type: 1 });
   ImageSchema.index({ createTime: 1 });
+  // delete related img
   ImageSchema.index({ teamId: 1, 'metadata.relatedId': 1 });
 } catch (error) {
   console.log(error);

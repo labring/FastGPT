@@ -26,13 +26,7 @@ export async function initPg() {
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);`
     );
     await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_index ON ${PgDatasetTableName} USING btree(team_id, dataset_id);`
-    );
-    await PgClient.query(
-      ` CREATE INDEX CONCURRENTLY IF NOT EXISTS team_collection_index ON ${PgDatasetTableName} USING btree(team_id, collection_id);`
-    );
-    await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_id_index ON ${PgDatasetTableName} USING btree(team_id, id);`
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${PgDatasetTableName} USING btree(team_id, dataset_id, collection_id);`
     );
     await PgClient.query(
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${PgDatasetTableName} USING btree(createtime);`
@@ -83,31 +77,33 @@ export const deleteDatasetDataVector = async (
     retry?: number;
   }
 ): Promise<any> => {
-  const { teamId, id, datasetIds, collectionIds, idList, retry = 2 } = props;
+  const { teamId, retry = 2 } = props;
 
   const teamIdWhere = `team_id='${String(teamId)}' AND`;
 
   const where = await (() => {
-    if (id) return `${teamIdWhere} id=${id}`;
+    if ('id' in props && props.id) return `${teamIdWhere} id=${props.id}`;
 
-    if (datasetIds) {
-      return `${teamIdWhere} dataset_id IN (${datasetIds
+    if ('datasetIds' in props && props.datasetIds) {
+      const datasetIdWhere = `dataset_id IN (${props.datasetIds
         .map((id) => `'${String(id)}'`)
         .join(',')})`;
+
+      if ('collectionIds' in props && props.collectionIds) {
+        return `${teamIdWhere} ${datasetIdWhere} AND collection_id IN (${props.collectionIds
+          .map((id) => `'${String(id)}'`)
+          .join(',')})`;
+      }
+
+      return `${teamIdWhere} ${datasetIdWhere}`;
     }
 
-    if (collectionIds) {
-      return `${teamIdWhere} collection_id IN (${collectionIds
-        .map((id) => `'${String(id)}'`)
-        .join(',')})`;
-    }
-
-    if (idList) {
-      return `${teamIdWhere} id IN (${idList.map((id) => `'${String(id)}'`).join(',')})`;
+    if ('idList' in props && props.idList) {
+      return `${teamIdWhere} id IN (${props.idList.map((id) => `'${String(id)}'`).join(',')})`;
     }
     return Promise.reject('deleteDatasetData: no where');
   })();
-
+  console.log(where, '===');
   try {
     await PgClient.delete(PgDatasetTableName, {
       where: [where]

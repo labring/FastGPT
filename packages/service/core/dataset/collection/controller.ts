@@ -118,6 +118,37 @@ export function createDefaultCollection({
   );
 }
 
+/* delete collection related images/files */
+export const delCollectionRelatedSource = async ({
+  collections,
+  session
+}: {
+  collections: (CollectionWithDatasetType | DatasetCollectionSchemaType)[];
+  session: ClientSession;
+}) => {
+  if (collections.length === 0) return;
+
+  const teamId = collections[0].teamId;
+
+  if (!teamId) return Promise.reject('teamId is not exist');
+
+  const fileIdList = collections.map((item) => item?.fileId || '').filter(Boolean);
+  const relatedImageIds = collections
+    .map((item) => item?.metadata?.relatedImgId || '')
+    .filter(Boolean);
+
+  // delete images
+  await delImgByRelatedId({
+    teamId,
+    relateIds: relatedImageIds,
+    session
+  });
+  // delete files
+  await delFileByFileIdList({
+    bucketName: BucketNameEnum.dataset,
+    fileIdList
+  });
+};
 /**
  * delete collection and it related data
  */
@@ -134,26 +165,32 @@ export async function delCollectionAndRelatedSources({
 
   if (!teamId) return Promise.reject('teamId is not exist');
 
+  const datasetIds = Array.from(
+    new Set(
+      collections.map((item) => {
+        if (typeof item.datasetId === 'string') {
+          return String(item.datasetId);
+        }
+        return String(item.datasetId._id);
+      })
+    )
+  );
   const collectionIds = collections.map((item) => String(item._id));
-  const fileIdList = collections.map((item) => item?.fileId || '').filter(Boolean);
-  const relatedImageIds = collections
-    .map((item) => item?.metadata?.relatedImgId || '')
-    .filter(Boolean);
+
+  await delCollectionRelatedSource({ collections, session });
 
   // delete training data
   await MongoDatasetTraining.deleteMany({
     teamId,
+    datasetIds: { $in: datasetIds },
     collectionId: { $in: collectionIds }
   });
-
   // delete dataset.datas
-  await MongoDatasetData.deleteMany({ teamId, collectionId: { $in: collectionIds } }, { session });
-  // delete imgs
-  await delImgByRelatedId({
-    teamId,
-    relateIds: relatedImageIds,
-    session
-  });
+  await MongoDatasetData.deleteMany(
+    { teamId, datasetIds: { $in: datasetIds }, collectionId: { $in: collectionIds } },
+    { session }
+  );
+
   // delete collections
   await MongoDatasetCollection.deleteMany(
     {
@@ -163,9 +200,5 @@ export async function delCollectionAndRelatedSources({
   );
 
   // no session delete: delete files, vector data
-  await deleteDatasetDataVector({ teamId, collectionIds });
-  await delFileByFileIdList({
-    bucketName: BucketNameEnum.dataset,
-    fileIdList
-  });
+  await deleteDatasetDataVector({ teamId, datasetIds, collectionIds });
 }
