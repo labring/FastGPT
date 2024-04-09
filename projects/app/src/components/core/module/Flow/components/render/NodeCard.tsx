@@ -246,7 +246,6 @@ const NodeCard = (props: Props) => {
 
   return (
     <Box
-      className="nowheel"
       minW={minW}
       maxW={maxW}
       bg={'white'}
