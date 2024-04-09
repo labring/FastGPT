@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, IconButton, useTheme, useDisclosure, Button } from '@chakra-ui/react';
 import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
@@ -14,6 +14,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
 import { ModuleItemType } from '@fastgpt/global/core/module/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
+import MyMenu from '@/components/MyMenu';
 
 const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
 const PreviewPlugin = dynamic(() => import('./Preview'));
@@ -137,38 +138,37 @@ const Header = ({ plugin, onClose }: Props) => {
             }}
           />
         </MyTooltip>
-        <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
+        <Box ml={[3, 5]} fontSize={['md', '2xl']} flex={1}>
           {plugin.name}
         </Box>
 
-        <MyTooltip label={t('app.Import Configs')}>
-          <IconButton
-            mr={[3, 6]}
-            icon={<MyIcon name={'common/importLight'} w={['14px', '16px']} />}
-            variant={'whitePrimary'}
-            size={'smSquare'}
-            aria-label={'save'}
-            onClick={onOpenImport}
-          />
-        </MyTooltip>
-        <MyTooltip label={t('app.Export Configs')}>
-          <IconButton
-            mr={[3, 6]}
-            icon={<MyIcon name={'export'} w={['14px', '16px']} />}
-            size={'smSquare'}
-            variant={'whitePrimary'}
-            aria-label={'save'}
-            onClick={async () => {
-              const modules = await flow2ModulesAndCheck();
-              if (modules) {
-                copyData(filterExportModules(modules), t('app.Export Config Successful'));
+        <MyMenu
+          Button={
+            <IconButton
+              mr={[3, 5]}
+              icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+              aria-label={''}
+              size={'sm'}
+              variant={'whitePrimary'}
+            />
+          }
+          menuList={[
+            { label: t('app.Import Configs'), icon: 'common/importLight', onClick: onOpenImport },
+            {
+              label: t('app.Export Configs'),
+              icon: 'export',
+              onClick: async () => {
+                const modules = await flow2ModulesAndCheck();
+                if (modules) {
+                  copyData(filterExportModules(modules), t('app.Export Config Successful'));
+                }
               }
-            }}
-          />
-        </MyTooltip>
+            }
+          ]}
+        />
         <MyTooltip label={t('module.Preview Plugin')}>
           <IconButton
-            mr={[3, 6]}
+            mr={[3, 5]}
             icon={<MyIcon name={'core/modules/previewLight'} w={['14px', '16px']} />}
             size={'smSquare'}
             aria-label={'save'}
@@ -181,20 +181,19 @@ const Header = ({ plugin, onClose }: Props) => {
             }}
           />
         </MyTooltip>
-        <MyTooltip label={t('module.Save Config')}>
-          <IconButton
-            icon={<MyIcon name={'save'} w={['14px', '16px']} />}
-            size={'smSquare'}
-            isLoading={isLoading}
-            aria-label={'save'}
-            onClick={async () => {
-              const modules = await flow2ModulesAndCheck();
-              if (modules) {
-                onclickSave(modules);
-              }
-            }}
-          />
-        </MyTooltip>
+        <Button
+          size={'sm'}
+          isLoading={isLoading}
+          leftIcon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
+          onClick={async () => {
+            const modules = await flow2ModulesAndCheck();
+            if (modules) {
+              onclickSave(modules);
+            }
+          }}
+        >
+          {t('common.Save')}
+        </Button>
       </Flex>
       {isOpenImport && <ImportSettings onClose={onCloseImport} />}
       {!!previewModules && (

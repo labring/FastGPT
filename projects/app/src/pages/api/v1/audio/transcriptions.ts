@@ -9,6 +9,7 @@ import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 import { authChatCert } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/module/utils';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
 const upload = getUploadModel({
   maxSize: 2
@@ -20,15 +21,16 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   try {
     const {
       file,
-      data: { appId, duration, teamId: spaceTeamId, teamToken }
-    } = await upload.doUpload<{
-      appId: string;
-      duration: number;
-      shareId?: string;
-      teamId?: string;
-      teamToken?: string;
-    }>(req, res);
+      data: { appId, duration, shareId, outLinkUid, teamId: spaceTeamId, teamToken }
+    } = await upload.doUpload<
+      OutLinkChatAuthProps & {
+        appId: string;
+        duration: number;
+      }
+    >(req, res);
 
+    req.body.shareId = shareId;
+    req.body.outLinkUid = outLinkUid;
     req.body.teamId = spaceTeamId;
     req.body.teamToken = teamToken;
 

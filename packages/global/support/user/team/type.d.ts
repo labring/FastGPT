@@ -81,4 +81,5 @@ export type TeamTagItemType = {
 export type LafAccountType = {
   token: string;
   appid: string;
+  pat: string;
 };

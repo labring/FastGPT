@@ -1,10 +1,9 @@
-export type DeleteDatasetVectorProps = {
+export type DeleteDatasetVectorProps = (
+  | { id: string }
+  | { datasetIds: string[]; collectionIds?: string[] }
+  | { idList: string[] }
+) & {
   teamId: string;
-
-  id?: string;
-  datasetIds?: string[];
-  collectionIds?: string[];
-  idList?: string[];
 };
 
 export type InsertVectorProps = {

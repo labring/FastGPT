@@ -18,7 +18,8 @@ import { getDocPath } from '@/web/common/system/doc';
 const LafAccountModal = ({
   defaultData = {
     token: '',
-    appid: ''
+    appid: '',
+    pat: ''
   },
   onClose
 }: {
@@ -140,7 +141,7 @@ const LafAccountModal = ({
                 onResetForm();
                 putUpdateTeam({
                   teamId: userInfo?.team.teamId || '',
-                  lafAccount: { token: '', appid: '' }
+                  lafAccount: { token: '', appid: '', pat: '' }
                 });
               }}
             >

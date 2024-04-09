@@ -27,7 +27,7 @@ weight: 404
 [
   {
     "moduleId": "userGuide",
-    "name": "core.module.template.User guide",
+    "name": "core.module.template.App system setting",
     "intro": "core.app.tip.userGuideTip",
     "avatar": "/imgs/module/userGuide.png",
     "flowType": "userGuide",

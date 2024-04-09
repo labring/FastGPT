@@ -1,4 +1,4 @@
-import { GET, POST, PUT } from '@/web/common/api/lafRequest';
+import { GET, POST } from '@/web/common/api/lafRequest';
 
 export const postLafPat2Token = (pat: string) => POST<string>(`/v1/auth/pat2token`, { pat });
 

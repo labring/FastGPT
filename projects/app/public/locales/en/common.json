@@ -230,7 +230,8 @@
       "Amount": "{{amount}}{{unit}}"
     },
     "speech": {
-      "error tip": "Speech Failed"
+      "error tip": "Speech Failed",
+      "not support": "Your browser does not support voice input"
     },
     "system": {
       "Commercial version function": "Commercial version special function",
@@ -250,7 +251,7 @@
   },
   "core": {
     "Chat": "Chat",
-    "Chat test": "Chat test",
+    "Chat test": "Test",
     "Max Token": "MaxTokens",
     "Start chat": "Start chat",
     "Total chars": "Total chars: {{total}}",
@@ -423,6 +424,7 @@
       "Converting to text": "Converting to text...",
       "Custom History Title": "Custom history title",
       "Custom History Title Description": "If set to empty, chat history will be followed automatically.",
+      "Debug test": "Test",
       "Exit Chat": "Exit",
       "Failed to initialize chat": "Failed to initialize chat",
       "Feedback Failed": "Feedback Failed",

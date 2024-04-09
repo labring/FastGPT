@@ -1,5 +1,5 @@
 import { getErrText } from '../error/utils';
-import { countPromptTokens } from './tiktoken';
+import { replaceRegChars } from './tools';
 
 /**
  * text split into chunks
@@ -31,7 +31,7 @@ export const splitText2Chunks = (props: {
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const stepReges: { reg: RegExp; maxLen: number }[] = [
     ...customReg.map((text) => ({
-      reg: new RegExp(`(${text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'g'),
+      reg: new RegExp(`(${replaceRegChars(text)})`, 'g'),
       maxLen: chunkLen * 1.4
     })),
     { reg: /^(#\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },

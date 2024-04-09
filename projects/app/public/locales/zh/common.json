@@ -230,7 +230,8 @@
       "Amount": "{{amount}}{{unit}}"
     },
     "speech": {
-      "error tip": "语音转文字失败"
+      "error tip": "语音转文字失败",
+      "not support": "您的浏览器不支持语音输入"
     },
     "system": {
       "Commercial version function": "商业版特有功能",
@@ -250,7 +251,7 @@
   },
   "core": {
     "Chat": "对话",
-    "Chat test": "测试对话",
+    "Chat test": "测试",
     "Max Token": "单条数据上限",
     "Start chat": "立即对话",
     "Total chars": "总字数: {{total}}",
@@ -423,6 +424,7 @@
       "Converting to text": "正在转换为文本...",
       "Custom History Title": "自定义历史记录标题",
       "Custom History Title Description": "如果设置为空，会自动跟随聊天记录。",
+      "Debug test": "调试预览",
       "Exit Chat": "退出聊天",
       "Failed to initialize chat": "初始化聊天失败",
       "Feedback Failed": "提交反馈异常",
@@ -608,8 +610,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -996,6 +997,7 @@
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
+        "App system setting": "系统配置",
         "http body placeholder": "与APIFox相同的语法",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"

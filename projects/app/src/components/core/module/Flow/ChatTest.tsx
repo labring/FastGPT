@@ -8,6 +8,7 @@ import React, {
   useImperativeHandle,
   ForwardedRef
 } from 'react';
+import { SmallCloseIcon } from '@chakra-ui/icons';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { streamFetch } from '@/web/common/api/fetch';
@@ -18,6 +19,7 @@ import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d
 import { getGuideModule } from '@fastgpt/global/core/module/utils';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { useTranslation } from 'next-i18next';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -35,6 +37,7 @@ const ChatTest = (
   },
   ref: ForwardedRef<ChatTestComponentRef>
 ) => {
+  const { t } = useTranslation();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const { userInfo } = useUserStore();
   const isOpen = useMemo(() => modules && modules.length > 0, [modules]);
@@ -100,9 +103,9 @@ const ChatTest = (
       >
         <Flex py={4} px={5} whiteSpace={'nowrap'}>
           <Box fontSize={'xl'} fontWeight={'bold'} flex={1}>
-            调试预览
+            {t('core.chat.Debug test')}
           </Box>
-          <MyTooltip label={'重置'}>
+          <MyTooltip label={t('core.chat.Restart')}>
             <IconButton
               className="chat"
               size={'smSquare'}
@@ -115,6 +118,16 @@ const ChatTest = (
                 ChatBoxRef.current?.resetHistory([]);
                 ChatBoxRef.current?.resetVariables();
               }}
+            />
+          </MyTooltip>
+          <MyTooltip label={t('common.Close')}>
+            <IconButton
+              ml={[3, 6]}
+              icon={<SmallCloseIcon fontSize={'22px'} />}
+              variant={'grayBase'}
+              size={'smSquare'}
+              aria-label={''}
+              onClick={onClose}
             />
           </MyTooltip>
         </Flex>
@@ -132,7 +145,7 @@ const ChatTest = (
           />
         </Box>
       </Flex>
-      <Box
+      {/* <Box
         zIndex={2}
         display={isOpen ? 'block' : 'none'}
         position={'fixed'}
@@ -141,7 +154,7 @@ const ChatTest = (
         bottom={0}
         right={0}
         onClick={onClose}
-      />
+      /> */}
     </>
   );
 };
