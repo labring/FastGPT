@@ -246,7 +246,6 @@ const NodeCard = (props: Props) => {
 
   return (
     <Box
-      className="nowheel"
       minW={minW}
       maxW={maxW}
       bg={'white'}
@@ -262,7 +261,7 @@ const NodeCard = (props: Props) => {
       }}
     >
       {Header}
-      {children}
+      <Box className="nowheel">{children}</Box>
       {RenderModal}
     </Box>
   );

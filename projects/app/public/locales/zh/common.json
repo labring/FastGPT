@@ -610,8 +610,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -998,6 +997,7 @@
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
+        "App system setting": "系统配置",
         "http body placeholder": "与APIFox相同的语法",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"

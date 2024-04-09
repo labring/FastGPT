@@ -88,7 +88,7 @@ Response:
 [
   {
     "moduleId": "userGuide",
-    "name": "core.module.template.User guide",
+    "name": "core.module.template.App system setting",
     "flowType": "userGuide",
     "position": {
       "x": 454.98510354678695,

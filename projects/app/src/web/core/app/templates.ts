@@ -17,7 +17,7 @@ export const appTemplates: (AppItemType & {
     modules: [
       {
         moduleId: 'userGuide',
-        name: 'core.module.template.User guide',
+        name: 'core.module.template.App system setting',
         avatar: '/imgs/module/userGuide.png',
         flowType: 'userGuide',
         position: {
@@ -300,7 +300,7 @@ export const appTemplates: (AppItemType & {
     modules: [
       {
         moduleId: 'userGuide',
-        name: 'core.module.template.User guide',
+        name: 'core.module.template.App system setting',
         avatar: '/imgs/module/userGuide.png',
         flowType: 'userGuide',
         position: {
@@ -616,7 +616,7 @@ export const appTemplates: (AppItemType & {
     modules: [
       {
         moduleId: 'userGuide',
-        name: 'core.module.template.User guide',
+        name: 'core.module.template.App system setting',
         intro: 'core.app.tip.userGuideTip',
         avatar: '/imgs/module/userGuide.png',
         flowType: 'userGuide',
@@ -1651,7 +1651,7 @@ export const appTemplates: (AppItemType & {
       },
       {
         moduleId: 'q9equb',
-        name: 'core.module.template.User guide',
+        name: 'core.module.template.App system setting',
         flowType: 'userGuide',
         position: {
           x: -272.66416216517086,

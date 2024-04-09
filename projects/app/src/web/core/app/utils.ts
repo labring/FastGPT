@@ -14,7 +14,7 @@ export async function postForm2Modules(data: AppSimpleEditFormType) {
   function userGuideTemplate(formData: AppSimpleEditFormType): ModuleItemType[] {
     return [
       {
-        name: 'core.module.template.User guide',
+        name: '系统配置',
         flowType: FlowNodeTypeEnum.userGuide,
         inputs: [
           {
