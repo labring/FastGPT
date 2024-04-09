@@ -3,8 +3,11 @@ import ReactFlow, {
   Background,
   Connection,
   Controls,
+  ControlButton,
+  MiniMap,
   NodeProps,
-  ReactFlowProvider
+  ReactFlowProvider,
+  useReactFlow
 } from 'reactflow';
 import { Box, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
@@ -20,6 +23,8 @@ import 'reactflow/dist/style.css';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { FlowModuleItemType } from '@fastgpt/global/core/module/type';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyTooltip from '@/components/MyTooltip';
 
 const NodeSimple = dynamic(() => import('./components/nodes/NodeSimple'));
 const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
@@ -54,18 +59,9 @@ const edgeTypes = {
 const Container = React.memo(function Container() {
   const { toast } = useToast();
   const { t } = useTranslation();
+
   const { reactFlowWrapper, nodes, onNodesChange, edges, onEdgesChange, onConnect } =
     useFlowProviderStore();
-
-  const memoRenderTools = useMemo(
-    () => (
-      <>
-        <Background />
-        <Controls position={'bottom-right'} style={{ display: 'flex' }} showInteractive={false} />
-      </>
-    ),
-    []
-  );
 
   const customOnConnect = useCallback(
     (connect: Connection) => {
@@ -105,7 +101,7 @@ const Container = React.memo(function Container() {
       onEdgesChange={onEdgesChange}
       onConnect={customOnConnect}
     >
-      {memoRenderTools}
+      <FlowController />
     </ReactFlow>
   );
 });
@@ -168,3 +164,40 @@ const Flow = ({ Header, ...data }: { Header: React.ReactNode }) => {
 };
 
 export default React.memo(Flow);
+
+const FlowController = React.memo(function FlowController() {
+  const { fitView } = useReactFlow();
+  return (
+    <>
+      <MiniMap
+        style={{
+          height: 78,
+          width: 126,
+          marginBottom: 35
+        }}
+        pannable
+      />
+      <Controls
+        position={'bottom-right'}
+        style={{
+          display: 'flex',
+          marginBottom: 5,
+          background: 'white',
+          borderRadius: '6px',
+          overflow: 'hidden',
+          boxShadow:
+            '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)'
+        }}
+        showInteractive={false}
+        showFitView={false}
+      >
+        <MyTooltip label={'页面居中'}>
+          <ControlButton className="custom-workflow-fix_view" onClick={() => fitView()}>
+            <MyIcon name={'core/modules/fixview'} w={'14px'} />
+          </ControlButton>
+        </MyTooltip>
+      </Controls>
+      <Background />
+    </>
+  );
+});

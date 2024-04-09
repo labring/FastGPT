@@ -166,7 +166,7 @@ export const FlowProvider = ({
   }, [nodes]);
 
   const onFixView = useCallback(() => {
-    const btn = document.querySelector('.react-flow__controls-fitview') as HTMLButtonElement;
+    const btn = document.querySelector('.custom-workflow-fix_view') as HTMLButtonElement;
 
     setTimeout(() => {
       btn && btn.click();

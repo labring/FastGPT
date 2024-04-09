@@ -107,6 +107,7 @@ export const iconPaths = {
   'core/dataset/tableCollection': () => import('./icons/core/dataset/tableCollection.svg'),
   'core/dataset/websiteDataset': () => import('./icons/core/dataset/websiteDataset.svg'),
   'core/modules/basicNode': () => import('./icons/core/modules/basicNode.svg'),
+  'core/modules/fixview': () => import('./icons/core/modules/fixview.svg'),
   'core/modules/flowLight': () => import('./icons/core/modules/flowLight.svg'),
   'core/modules/previewLight': () => import('./icons/core/modules/previewLight.svg'),
   'core/modules/systemPlugin': () => import('./icons/core/modules/systemPlugin.svg'),

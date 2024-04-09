@@ -230,7 +230,8 @@
       "Amount": "{{amount}}{{unit}}"
     },
     "speech": {
-      "error tip": "Speech Failed"
+      "error tip": "Speech Failed",
+      "not support": "Your browser does not support voice input"
     },
     "system": {
       "Commercial version function": "Commercial version special function",

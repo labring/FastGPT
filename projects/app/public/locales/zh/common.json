@@ -230,7 +230,8 @@
       "Amount": "{{amount}}{{unit}}"
     },
     "speech": {
-      "error tip": "语音转文字失败"
+      "error tip": "语音转文字失败",
+      "not support": "您的浏览器不支持语音输入"
     },
     "system": {
       "Commercial version function": "商业版特有功能",
