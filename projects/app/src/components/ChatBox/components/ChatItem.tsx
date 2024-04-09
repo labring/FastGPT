@@ -94,7 +94,7 @@ const ChatItem = ({
 
     /* AI */
     return (
-      <Flex flexDirection={'column'} gap={2}>
+      <Flex flexDirection={'column'} key={chat.dataId} gap={2}>
         {chat.value.map((value, i) => {
           const key = `${chat.dataId}-ai-${i}`;
           if (value.text) {
