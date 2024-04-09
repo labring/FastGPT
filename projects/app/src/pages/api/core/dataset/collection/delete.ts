@@ -29,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       teamId,
       datasetId: collection.datasetId._id,
       collectionId,
-      fields: '_id teamId fileId metadata'
+      fields: '_id teamId datasetId fileId metadata'
     });
 
     // delete

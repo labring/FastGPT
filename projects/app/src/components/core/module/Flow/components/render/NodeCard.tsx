@@ -261,7 +261,7 @@ const NodeCard = (props: Props) => {
       }}
     >
       {Header}
-      {children}
+      <Box className="nowheel">{children}</Box>
       {RenderModal}
     </Box>
   );

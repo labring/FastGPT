@@ -70,6 +70,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     // Duplicate data check
     await hasSameValue({
       teamId,
+      datasetId,
       collectionId,
       q: formatQ,
       a: formatA

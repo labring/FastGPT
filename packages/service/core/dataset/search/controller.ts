@@ -93,6 +93,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       {
         teamId,
         datasetId: { $in: datasetIds },
+        collectionId: { $in: results.map((item) => item.collectionId) },
         'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
       },
       'datasetId collectionId q a chunkIndex indexes'

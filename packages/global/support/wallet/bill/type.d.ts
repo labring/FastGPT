@@ -18,6 +18,7 @@ export type BillSchemaType = {
     month?: number;
     datasetSize?: number;
     extraPoints?: number;
+    invoice: boolean;
   };
   username: string;
 };

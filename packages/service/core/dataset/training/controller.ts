@@ -6,7 +6,6 @@ import type {
 } from '@fastgpt/global/core/dataset/api.d';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { simpleText } from '@fastgpt/global/common/string/tools';
-import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { ClientSession } from '../../../common/mongo';
 import { getLLMModel, getVectorModel } from '../../ai/model';
 import { addLog } from '../../../common/system/log';

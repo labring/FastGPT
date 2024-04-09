@@ -5,6 +5,8 @@ import axios, {
   AxiosProgressEvent
 } from 'axios';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { putUpdateTeam } from '@/web/support/user/team/api';
+import { LafAccountType } from '@fastgpt/global/support/user/team/type';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -72,21 +74,33 @@ function responseSuccess(response: AxiosResponse<ResponseDataType>) {
 /**
  * 响应数据检查
  */
-function checkRes(data: ResponseDataType) {
-  if (data === undefined) {
-    console.log('error->', data, 'data is empty');
+function checkRes(
+  res: ResponseDataType,
+  url: string,
+  data: any,
+  requestConfig: ConfigType,
+  method: Method
+) {
+  if (res === undefined) {
+    console.log('error->', res, 'res is empty');
     return Promise.reject('服务器异常');
-  } else if (data.error) {
-    return responseError(data.error);
+  } else if (res.error) {
+    return responseError(data.error, url, data, requestConfig, method);
   }
 
-  return data.data;
+  return res.data;
 }
 
 /**
  * 响应错误
  */
-function responseError(err: any) {
+function responseError(
+  err: any,
+  url: string,
+  data: any,
+  requestConfig: ConfigType,
+  method: Method
+) {
   console.log('error->', '请求错误', err);
 
   if (!err) {
@@ -97,6 +111,25 @@ function responseError(err: any) {
   }
 
   if (err?.response?.data) {
+    const code = err?.response?.data?.statusCode;
+    if (code === 401) {
+      return POST<string>(`/v1/auth/pat2token`, {
+        pat: useUserStore.getState().userInfo?.team?.lafAccount?.pat
+      })
+        .then((res) => {
+          putUpdateTeam({
+            teamId: useUserStore.getState().userInfo?.team.teamId || '',
+            lafAccount: {
+              ...useUserStore.getState().userInfo?.team?.lafAccount,
+              token: res
+            } as LafAccountType
+          });
+          return request(url, data, requestConfig, method);
+        })
+        .catch((err) => {
+          return Promise.reject({ message: '登录凭证过期' });
+        });
+    }
     return Promise.reject(err?.response?.data);
   }
   return Promise.reject(err);
@@ -115,12 +148,9 @@ instance.interceptors.request.use(startInterceptors, (err) => Promise.reject(err
 /* 响应拦截 */
 instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err));
 
-function request(
-  url: string,
-  data: any,
-  { cancelToken, maxQuantity, ...config }: ConfigType,
-  method: Method
-): any {
+function request(url: string, data: any, requestConfig: ConfigType, method: Method): any {
+  const { cancelToken, maxQuantity, ...config } = requestConfig;
+
   /* 去空 */
   for (const key in data) {
     if (data[key] === null || data[key] === undefined) {
@@ -140,8 +170,8 @@ function request(
       signal: cancelToken?.signal,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
-    .then((res) => checkRes(res.data))
-    .catch((err) => responseError(err))
+    .then((res) => checkRes(res.data, url, data, requestConfig, method))
+    .catch((err) => responseError(err, url, data, requestConfig, method))
     .finally(() => requestFinish({ url }));
 }
 

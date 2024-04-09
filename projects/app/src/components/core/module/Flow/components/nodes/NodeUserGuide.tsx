@@ -15,8 +15,10 @@ import NodeCard from '../render/NodeCard';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import QGSwitch from '@/components/core/app/QGSwitch';
 import TTSSelect from '@/components/core/app/TTSSelect';
+import WhisperConfig from '@/components/core/app/WhisperConfig';
 import { splitGuideModule } from '@fastgpt/global/core/module/utils';
 import { useTranslation } from 'next-i18next';
+import { TTSTypeEnum } from '@/constants/app';
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
   const theme = useTheme();
@@ -30,6 +32,9 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowModuleItemType>) => {
           </Box>
           <Box pt={3} borderTop={theme.borders.base}>
             <TTSGuide data={data} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+            <WhisperGuide data={data} />
           </Box>
           <Box mt={3} pt={3} borderTop={theme.borders.base}>
             <QuestionGuide data={data} />
@@ -157,6 +162,29 @@ function TTSGuide({ data }: { data: FlowModuleItemType }) {
           type: 'updateInput',
           value: {
             ...inputs.find((item) => item.key === ModuleInputKeyEnum.tts),
+            value: e
+          }
+        });
+      }}
+    />
+  );
+}
+
+function WhisperGuide({ data }: { data: FlowModuleItemType }) {
+  const { inputs, moduleId } = data;
+  const { ttsConfig, whisperConfig } = splitGuideModule({ inputs } as ModuleItemType);
+
+  return (
+    <WhisperConfig
+      isOpenAudio={ttsConfig.type !== TTSTypeEnum.none}
+      value={whisperConfig}
+      onChange={(e) => {
+        onChangeNode({
+          moduleId,
+          key: ModuleInputKeyEnum.whisper,
+          type: 'updateInput',
+          value: {
+            ...inputs.find((item) => item.key === ModuleInputKeyEnum.whisper),
             value: e
           }
         });

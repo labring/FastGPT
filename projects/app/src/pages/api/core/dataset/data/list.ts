@@ -6,6 +6,7 @@ import type { GetDatasetDataListProps } from '@/global/core/api/datasetReq';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { PagingData } from '@/types';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -28,7 +29,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       per: 'r'
     });
 
-    searchText = searchText.replace(/'/g, '');
+    searchText = replaceRegChars(searchText).replace(/'/g, '');
 
     const match = {
       teamId,

@@ -92,7 +92,7 @@ docker run -d --name reranker -p 6006:6006 -e ACCESS_TOKEN=mytoken --gpus all re
 version: "3"
 services:
   reranker:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/rerank:v0.2
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/bge-rerank-base:v0.1
     container_name: reranker
     # GPU运行环境，如果宿主机未安装，将deploy配置隐藏即可
     deploy:
