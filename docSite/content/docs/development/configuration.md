@@ -20,7 +20,7 @@ llm模型全部合并
 ```json
 {
   "feConfigs": {
-    "lafEnv": "https://laf.dev" // laf环境
+    "lafEnv": "https://laf.dev" // laf环境。 https://laf.run （杭州阿里云） ,或者私有化的laf环境。如果使用 Laf openapi 功能，需要最新版的 laf 。
   },
   "systemEnv": {
     "vectorMaxProcess": 15,
