@@ -124,7 +124,7 @@ const ChatTest = (
             <IconButton
               ml={[3, 6]}
               icon={<SmallCloseIcon fontSize={'22px'} />}
-              variant={'whiteBase'}
+              variant={'grayBase'}
               size={'smSquare'}
               aria-label={''}
               onClick={onClose}
