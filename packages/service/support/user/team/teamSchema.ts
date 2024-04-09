@@ -42,6 +42,9 @@ const TeamSchema = new Schema({
     },
     appid: {
       type: String
+    },
+    pat: {
+      type: String
     }
   }
 });

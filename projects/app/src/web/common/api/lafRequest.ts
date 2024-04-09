@@ -5,6 +5,8 @@ import axios, {
   AxiosProgressEvent
 } from 'axios';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { putUpdateTeam } from '@/web/support/user/team/api';
+import { LafAccountType } from '@fastgpt/global/support/user/team/type';
 
 interface ConfigType {
   headers?: { [key: string]: string };
@@ -86,7 +88,7 @@ function checkRes(data: ResponseDataType) {
 /**
  * 响应错误
  */
-function responseError(err: any) {
+function responseError(err: any, requestData?: any) {
   console.log('error->', '请求错误', err);
 
   if (!err) {
@@ -97,6 +99,30 @@ function responseError(err: any) {
   }
 
   if (err?.response?.data) {
+    const code = err?.response?.data?.statusCode;
+    if (code === 401) {
+      return POST<string>(`/v1/auth/pat2token`, {
+        pat: useUserStore.getState().userInfo?.team?.lafAccount?.pat
+      })
+        .then((res) => {
+          putUpdateTeam({
+            teamId: useUserStore.getState().userInfo?.team.teamId || '',
+            lafAccount: {
+              ...useUserStore.getState().userInfo?.team?.lafAccount,
+              token: res
+            } as LafAccountType
+          });
+          return request(
+            requestData.url,
+            requestData.params,
+            { ...requestData.config, headers: { Authorization: `Bearer ${res}` } },
+            requestData.method
+          );
+        })
+        .catch((err) => {
+          return Promise.reject({ message: '登录凭证过期' });
+        });
+    }
     return Promise.reject(err?.response?.data);
   }
   return Promise.reject(err);
@@ -141,7 +167,17 @@ function request(
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))
-    .catch((err) => responseError(err))
+    .catch((err) =>
+      responseError(err, {
+        baseURL: '/api/lafApi',
+        url,
+        method,
+        data: ['POST', 'PUT'].includes(method) ? data : null,
+        params: !['POST', 'PUT'].includes(method) ? data : null,
+        signal: cancelToken?.signal,
+        ...config // 用户自定义配置，可以覆盖前面的配置
+      })
+    )
     .finally(() => requestFinish({ url }));
 }
 
