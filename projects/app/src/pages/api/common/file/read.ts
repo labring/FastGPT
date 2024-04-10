@@ -2,11 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authFileToken } from '@fastgpt/service/support/permission/controller';
-import {
-  getDownloadStream,
-  getFileById,
-  readFileEncode
-} from '@fastgpt/service/common/file/gridfs/controller';
+import { getDownloadStream, getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -21,9 +17,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       throw new Error('fileId is empty');
     }
 
-    const [file, encoding, fileStream] = await Promise.all([
+    const [file, { fileStream, encoding }] = await Promise.all([
       getFileById({ bucketName, fileId }),
-      readFileEncode({ bucketName, fileId }),
       getDownloadStream({ bucketName, fileId })
     ]);
 

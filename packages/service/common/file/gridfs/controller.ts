@@ -9,6 +9,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ReadFileByBufferParams } from '../read/type';
 import { MongoRwaTextBuffer } from '../../buffer/rawText/schema';
 import { readFileRawContent } from '../read/utils';
+import { PassThrough } from 'stream';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -113,31 +114,34 @@ export async function getDownloadStream({
   fileId: string;
 }) {
   const bucket = getGridBucket(bucketName);
+  const stream = bucket.openDownloadStream(new Types.ObjectId(fileId));
+  const copyStream = stream.pipe(new PassThrough());
 
-  return bucket.openDownloadStream(new Types.ObjectId(fileId));
-}
-
-export const readFileEncode = async ({
-  bucketName,
-  fileId
-}: {
-  bucketName: `${BucketNameEnum}`;
-  fileId: string;
-}) => {
-  const encodeStream = await getDownloadStream({ bucketName, fileId });
+  /* get encoding */
   let buffers: Buffer = Buffer.from([]);
-  for await (const chunk of encodeStream) {
-    buffers = Buffer.concat([buffers, chunk]);
-    if (buffers.length > 10) {
-      encodeStream.abort();
-      break;
-    }
-  }
-
+  await (() => {
+    return new Promise<Buffer>((resolve, reject) => {
+      let buffers = Buffer.from([]);
+      stream.on('data', (chunk) => {
+        buffers = Buffer.concat([buffers, chunk]);
+        if (buffers.length > 10) {
+          // stream.destroy();
+          resolve(buffers);
+        }
+      });
+      stream.on('error', (err) => {
+        reject(err);
+      });
+    });
+  })();
   const encoding = detectFileEncoding(buffers);
 
-  return encoding as BufferEncoding;
-};
+  return {
+    fileStream: copyStream,
+    encoding
+    // encoding: 'utf-8'
+  };
+}
 
 export const readFileContentFromMongo = async ({
   teamId,
@@ -162,9 +166,8 @@ export const readFileContentFromMongo = async ({
     };
   }
 
-  const [file, encoding, fileStream] = await Promise.all([
+  const [file, { encoding, fileStream }] = await Promise.all([
     getFileById({ bucketName, fileId }),
-    readFileEncode({ bucketName, fileId }),
     getDownloadStream({ bucketName, fileId })
   ]);
 
