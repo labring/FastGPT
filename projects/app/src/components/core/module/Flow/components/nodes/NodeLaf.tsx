@@ -255,7 +255,7 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
                 );
 
                 if (!lafFunction) return;
-                const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}?templateid=fastgptflow`;
+                const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}?templateid=FastGPT_Laf`;
                 window.open(url, '_blank');
               }}
             >
