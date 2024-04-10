@@ -103,7 +103,7 @@ export const deleteDatasetDataVector = async (
     }
     return Promise.reject('deleteDatasetData: no where');
   })();
-  console.log(where, '===');
+
   try {
     await PgClient.delete(PgDatasetTableName, {
       where: [where]
