@@ -126,6 +126,9 @@ importers:
       file-type:
         specifier: ^19.0.0
         version: 19.0.0
+      iconv-lite:
+        specifier: ^0.6.3
+        version: 0.6.3
       json5:
         specifier: ^2.2.3
         version: 2.2.3
@@ -9970,6 +9973,7 @@ packages:
   /path2d-polyfill@2.1.1:
     resolution: {integrity: sha512-4Rka5lN+rY/p0CdD8+E+BFv51lFaFvJOrlOhyQ+zjzyQrzyh3ozmxd1vVGGDdIbUFSBtIZLSnspxTgPT0iJhvA==}
     engines: {node: '>=18'}
+    deprecated: this package has been deprecated
     requiresBuild: true
     dependencies:
       path2d: 0.1.1

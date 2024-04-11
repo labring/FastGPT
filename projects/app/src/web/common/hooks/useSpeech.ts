@@ -121,6 +121,9 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
           }
         }
 
+        // close media stream
+        stream.getTracks().forEach((track) => track.stop());
+
         setIsTransCription(false);
         setIsSpeaking(false);
       };

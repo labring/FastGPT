@@ -6,7 +6,11 @@ export const readPptxRawText = async ({
   buffer,
   encoding
 }: ReadFileByBufferParams): Promise<ReadFileResponse> => {
-  const result = await parseOffice({ buffer, encoding, extension: 'pptx' });
+  const result = await parseOffice({
+    buffer,
+    encoding: encoding as BufferEncoding,
+    extension: 'pptx'
+  });
 
   return {
     rawText: result

@@ -9,6 +9,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ReadFileByBufferParams } from '../read/type';
 import { MongoRwaTextBuffer } from '../../buffer/rawText/schema';
 import { readFileRawContent } from '../read/utils';
+import { PassThrough } from 'stream';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -113,31 +114,39 @@ export async function getDownloadStream({
   fileId: string;
 }) {
   const bucket = getGridBucket(bucketName);
+  const stream = bucket.openDownloadStream(new Types.ObjectId(fileId));
+  const copyStream = stream.pipe(new PassThrough());
 
-  return bucket.openDownloadStream(new Types.ObjectId(fileId));
+  /* get encoding */
+  const buffer = await (() => {
+    return new Promise<Buffer>((resolve, reject) => {
+      let tmpBuffer: Buffer = Buffer.from([]);
+
+      stream.on('data', (chunk) => {
+        if (tmpBuffer.length < 20) {
+          tmpBuffer = Buffer.concat([tmpBuffer, chunk]);
+        }
+        if (tmpBuffer.length >= 20) {
+          resolve(tmpBuffer);
+        }
+      });
+      stream.on('end', () => {
+        resolve(tmpBuffer);
+      });
+      stream.on('error', (err) => {
+        reject(err);
+      });
+    });
+  })();
+
+  const encoding = detectFileEncoding(buffer);
+
+  return {
+    fileStream: copyStream,
+    encoding
+    // encoding: 'utf-8'
+  };
 }
-
-export const readFileEncode = async ({
-  bucketName,
-  fileId
-}: {
-  bucketName: `${BucketNameEnum}`;
-  fileId: string;
-}) => {
-  const encodeStream = await getDownloadStream({ bucketName, fileId });
-  let buffers: Buffer = Buffer.from([]);
-  for await (const chunk of encodeStream) {
-    buffers = Buffer.concat([buffers, chunk]);
-    if (buffers.length > 10) {
-      encodeStream.abort();
-      break;
-    }
-  }
-
-  const encoding = detectFileEncoding(buffers);
-
-  return encoding as BufferEncoding;
-};
 
 export const readFileContentFromMongo = async ({
   teamId,
@@ -162,9 +171,8 @@ export const readFileContentFromMongo = async ({
     };
   }
 
-  const [file, encoding, fileStream] = await Promise.all([
+  const [file, { encoding, fileStream }] = await Promise.all([
     getFileById({ bucketName, fileId }),
-    readFileEncode({ bucketName, fileId }),
     getDownloadStream({ bucketName, fileId })
   ]);
 
@@ -176,12 +184,12 @@ export const readFileContentFromMongo = async ({
 
   const fileBuffers = await (() => {
     return new Promise<Buffer>((resolve, reject) => {
-      let buffers = Buffer.from([]);
+      let buffer = Buffer.from([]);
       fileStream.on('data', (chunk) => {
-        buffers = Buffer.concat([buffers, chunk]);
+        buffer = Buffer.concat([buffer, chunk]);
       });
       fileStream.on('end', () => {
-        resolve(buffers);
+        resolve(buffer);
       });
       fileStream.on('error', (err) => {
         reject(err);
