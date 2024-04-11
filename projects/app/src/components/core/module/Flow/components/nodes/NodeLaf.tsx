@@ -90,10 +90,23 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
 
   const lafFunctionSelectList = useMemo(
     () =>
-      lafData?.lafFunctions.map((item) => ({
-        label: item.description ? `${item.name} (${item.description})` : item.name,
-        value: item.requestUrl
-      })) || [],
+      lafData?.lafFunctions.map((item) => {
+        const functionName = item.path.slice(1);
+        return {
+          alias: functionName,
+          label: item.description ? (
+            <Box>
+              <Box>{functionName}</Box>
+              <Box fontSize={'xs'} color={'gray.500'}>
+                {item.description}
+              </Box>
+            </Box>
+          ) : (
+            functionName
+          ),
+          value: item.requestUrl
+        };
+      }) || [],
     [lafData?.lafFunctions]
   );
 
@@ -110,6 +123,16 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
       );
 
       if (!lafFunction) return;
+
+      // update intro
+      if (lafFunction.description) {
+        onChangeNode({
+          moduleId,
+          type: 'attr',
+          key: 'intro',
+          value: lafFunction.description
+        });
+      }
 
       const bodyParams =
         lafFunction?.request?.content?.['application/json']?.schema?.properties || {};
@@ -232,7 +255,7 @@ const NodeLaf = (props: NodeProps<FlowModuleItemType>) => {
                 );
 
                 if (!lafFunction) return;
-                const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}?templateid=fastgptflow`;
+                const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}?templateid=FastGPT_Laf`;
                 window.open(url, '_blank');
               }}
             >

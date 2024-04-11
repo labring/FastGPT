@@ -10,7 +10,7 @@ export async function authDatasetData({
 }: AuthModeType & {
   dataId: string;
 }) {
-  // get pg data
+  // get mongo dataset.data
   const datasetData = await MongoDatasetData.findById(dataId);
 
   if (!datasetData) {
