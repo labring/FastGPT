@@ -34,6 +34,7 @@ import ParentPaths from '@/components/common/ParentPaths';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import { getToken } from '@/web/support/user/auth';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -90,18 +91,35 @@ const Kb = () => {
     mutationFn: async (dataset: DatasetItemType) => {
       setLoading(true);
       await checkTeamExportDatasetLimit(dataset._id);
-      const a = document.createElement('a');
-      a.href = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
-      a.download = `${dataset.name}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const url = `/api/core/dataset/exportAll?datasetId=${dataset._id}`;
+      const name = `${dataset.name}.csv`;
+      localDownLoadWithToken(url, name, getToken());
     },
     onSettled() {
       setLoading(false);
     },
     errorToast: t('dataset.Export Dataset Limit Error')
   });
+
+  const localDownLoadWithToken = (url: string | URL, filename: string, token: string) => {
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader("token", token);
+    xhr.responseType = 'blob';
+    xhr.onload = function (e) {
+      if (this.status == 200) {
+        var blob = this.response;
+        var a = document.createElement('a');
+        var url = URL.createObjectURL(blob);
+        a.href = url;
+        a.download = filename;
+        a.click();
+        window.URL.revokeObjectURL(url);
+      }
+    };
+    xhr.send();
+  };
+
 
   const { data, refetch, isFetching } = useQuery(
     ['loadDataset', parentId],
@@ -238,7 +256,7 @@ const Kb = () => {
                   parentId: dragTargetId
                 });
                 refetch();
-              } catch (error) {}
+              } catch (error) { }
               setDragTargetId(undefined);
             }}
             _hover={{
@@ -301,41 +319,41 @@ const Kb = () => {
                   menuList={[
                     ...(dataset.permission === PermissionTypeEnum.private
                       ? [
-                          {
-                            label: (
-                              <Flex alignItems={'center'}>
-                                <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
-                                {t('permission.Set Public')}
-                              </Flex>
-                            ),
-                            onClick: () => {
-                              updateDataset({
-                                id: dataset._id,
-                                permission: PermissionTypeEnum.public
-                              });
-                            }
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
+                              {t('permission.Set Public')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            updateDataset({
+                              id: dataset._id,
+                              permission: PermissionTypeEnum.public
+                            });
                           }
-                        ]
+                        }
+                      ]
                       : [
-                          {
-                            label: (
-                              <Flex alignItems={'center'}>
-                                <MyIcon
-                                  name={'support/permission/privateLight'}
-                                  w={'14px'}
-                                  mr={2}
-                                />
-                                {t('permission.Set Private')}
-                              </Flex>
-                            ),
-                            onClick: () => {
-                              updateDataset({
-                                id: dataset._id,
-                                permission: PermissionTypeEnum.private
-                              });
-                            }
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon
+                                name={'support/permission/privateLight'}
+                                w={'14px'}
+                                mr={2}
+                              />
+                              {t('permission.Set Private')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            updateDataset({
+                              id: dataset._id,
+                              permission: PermissionTypeEnum.private
+                            });
                           }
-                        ]),
+                        }
+                      ]),
                     {
                       label: (
                         <Flex alignItems={'center'}>
