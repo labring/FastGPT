@@ -173,7 +173,6 @@ export function registerLexicalTextEntity<T extends TextNode>(
 
 export function textToEditorState(text: string = '') {
   const paragraph = text?.split('\n');
-
   return JSON.stringify({
     root: {
       children: paragraph.map((p) => {
@@ -206,11 +205,23 @@ export function textToEditorState(text: string = '') {
 }
 
 export function editorStateToText(editor: LexicalEditor) {
-  const stringifiedEditorState = JSON.stringify(editor.getEditorState().toJSON());
-  const parsedEditorState = editor.parseEditorState(stringifiedEditorState);
-  const editorStateTextString = parsedEditorState.read(() => $getRoot().getTextContent());
-
-  return editorStateTextString;
+  const editorStateTextString: string[] = [];
+  const paragraphs = editor.getEditorState().toJSON().root.children;
+  paragraphs.forEach((paragraph: any) => {
+    const children = paragraph.children;
+    const paragraphText: string[] = [];
+    children.forEach((child: any) => {
+      if (child.type === 'linebreak') {
+        paragraphText.push(`
+`);
+      } else if (child.text) {
+        paragraphText.push(child.text);
+      }
+    });
+    editorStateTextString.push(paragraphText.join(''));
+  });
+  return editorStateTextString.join(`
+`);
 }
 
 const varRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
