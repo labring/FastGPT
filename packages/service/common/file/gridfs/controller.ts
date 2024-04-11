@@ -118,23 +118,28 @@ export async function getDownloadStream({
   const copyStream = stream.pipe(new PassThrough());
 
   /* get encoding */
-  let buffers: Buffer = Buffer.from([]);
-  await (() => {
+  const buffer = await (() => {
     return new Promise<Buffer>((resolve, reject) => {
-      let buffers = Buffer.from([]);
+      let tmpBuffer: Buffer = Buffer.from([]);
+
       stream.on('data', (chunk) => {
-        buffers = Buffer.concat([buffers, chunk]);
-        if (buffers.length > 10) {
-          // stream.destroy();
-          resolve(buffers);
+        if (tmpBuffer.length < 20) {
+          tmpBuffer = Buffer.concat([tmpBuffer, chunk]);
         }
+        if (tmpBuffer.length >= 20) {
+          resolve(tmpBuffer);
+        }
+      });
+      stream.on('end', () => {
+        resolve(tmpBuffer);
       });
       stream.on('error', (err) => {
         reject(err);
       });
     });
   })();
-  const encoding = detectFileEncoding(buffers);
+
+  const encoding = detectFileEncoding(buffer);
 
   return {
     fileStream: copyStream,
@@ -179,12 +184,12 @@ export const readFileContentFromMongo = async ({
 
   const fileBuffers = await (() => {
     return new Promise<Buffer>((resolve, reject) => {
-      let buffers = Buffer.from([]);
+      let buffer = Buffer.from([]);
       fileStream.on('data', (chunk) => {
-        buffers = Buffer.concat([buffers, chunk]);
+        buffer = Buffer.concat([buffer, chunk]);
       });
       fileStream.on('end', () => {
-        resolve(buffers);
+        resolve(buffer);
       });
       fileStream.on('error', (err) => {
         reject(err);

@@ -1,7 +1,7 @@
 export type ReadFileByBufferParams = {
   teamId: string;
   buffer: Buffer;
-  encoding: BufferEncoding;
+  encoding: string;
   metadata?: Record<string, any>;
 };
 

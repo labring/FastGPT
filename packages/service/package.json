@@ -13,6 +13,7 @@
     "decompress": "^4.2.1",
     "encoding": "^0.1.13",
     "file-type": "^19.0.0",
+    "iconv-lite": "^0.6.3",
     "json5": "^2.2.3",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.6.0",
