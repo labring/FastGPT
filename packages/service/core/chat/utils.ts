@@ -6,6 +6,7 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { guessBase64ImageType } from '../../common/file/utils';
 
 /* slice chat context by tokens */
 const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -238,11 +239,23 @@ export const loadChatImgToBase64 = async (content: string | ChatCompletionConten
     content.map(async (item) => {
       if (item.type === 'text') return item;
       // load image
-      const response = await axios.get(item.image_url.url, {
-        responseType: 'arraybuffer'
-      });
-      const base64 = Buffer.from(response.data).toString('base64');
-      item.image_url.url = `data:${response.headers['content-type']};base64,${base64}`;
+      const imageUrl = item.image_url.url;
+      if (imageUrl.startsWith('data:') || imageUrl.startsWith('http')) {
+        // full base64 or url
+        const response = await axios.get(imageUrl, {
+          responseType: 'arraybuffer'
+        });
+        const base64 = Buffer.from(response.data).toString('base64');
+        let imageType = response.headers['content-type'];
+        if (imageType === undefined) {
+          imageType = guessBase64ImageType(base64);
+        }
+        item.image_url.url = `data:${imageType};base64,${base64}`;
+      } else {
+        // base64 only
+        const imageType = guessBase64ImageType(imageUrl);
+        item.image_url.url = `data:${imageType};base64,${imageUrl}`;
+      }
       return item;
     })
   );
