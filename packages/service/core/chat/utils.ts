@@ -6,6 +6,7 @@ import type {
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { guessBase64ImageType } from '../../common/file/utils';
 
 /* slice chat context by tokens */
 const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -242,7 +243,11 @@ export const loadChatImgToBase64 = async (content: string | ChatCompletionConten
         responseType: 'arraybuffer'
       });
       const base64 = Buffer.from(response.data).toString('base64');
-      item.image_url.url = `data:${response.headers['content-type']};base64,${base64}`;
+      let imageType = response.headers['content-type'];
+      if (imageType === undefined) {
+        imageType = guessBase64ImageType(base64);
+      }
+      item.image_url.url = `data:${imageType};base64,${base64}`;
       return item;
     })
   );
