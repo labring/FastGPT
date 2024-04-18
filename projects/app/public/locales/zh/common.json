@@ -566,6 +566,7 @@
       "Set Empty Result Tip": ",未搜索到内容时回复指定内容",
       "Set Website Config": "开始配置网站信息",
       "Similarity": "相关度",
+      "Start export": "已开始导出",
       "Sync Time": "最后更新时间",
       "Table collection": "表格数据集",
       "Text collection": "文本数据集",
@@ -610,7 +611,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -966,6 +968,7 @@
         "AI support tool tip": "支持函数调用的模型，可以更好的使用工具调用。",
         "Ai chat": "AI 对话",
         "Ai chat intro": "AI 大模型对话",
+        "App system setting": "系统配置",
         "Assigned reply": "指定回复",
         "Assigned reply intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
         "Basic Node": "基础功能",
@@ -997,7 +1000,6 @@
         "Tool module": "工具",
         "UnKnow Module": "未知模块",
         "User guide": "用户引导",
-        "App system setting": "系统配置",
         "http body placeholder": "与APIFox相同的语法",
         "textEditor": "文本加工",
         "textEditor intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。"

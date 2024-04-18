@@ -46,6 +46,14 @@ export const UserGuideModule: FlowNodeTemplateType = {
       label: '',
       showTargetInApp: false,
       showTargetInPlugin: false
+    },
+    {
+      key: ModuleInputKeyEnum.whisper,
+      type: FlowNodeInputTypeEnum.hidden,
+      valueType: ModuleIOValueTypeEnum.any,
+      label: '',
+      showTargetInApp: false,
+      showTargetInPlugin: false
     }
   ],
   outputs: []
