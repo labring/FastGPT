@@ -92,9 +92,15 @@ const Kb = () => {
       setLoading(true);
       await checkTeamExportDatasetLimit(dataset._id);
 
-      xmlDownloadFetch({
+      await xmlDownloadFetch({
         url: `/api/core/dataset/exportAll?datasetId=${dataset._id}`,
         filename: `${dataset.name}.csv`
+      });
+    },
+    onSuccess() {
+      toast({
+        status: 'success',
+        title: t('core.dataset.Start export')
       });
     },
     onSettled() {

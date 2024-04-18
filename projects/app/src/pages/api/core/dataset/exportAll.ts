@@ -71,7 +71,6 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     cursor.on('end', () => {
       cursor.close();
       res.end();
-      updateExportDatasetLimit(teamId);
     });
 
     cursor.on('error', (err) => {
@@ -79,6 +78,8 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
       res.status(500);
       res.end();
     });
+
+    updateExportDatasetLimit(teamId);
   } catch (err) {
     res.status(500);
     addLog.error(`export dataset error`, err);
