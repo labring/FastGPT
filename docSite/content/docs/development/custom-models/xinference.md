@@ -1,6 +1,11 @@
-# 接入Xinference
-
-将FastGPT接入私有化模型Xinference
+---
+title: '接入 Xinference'
+description: '将 Xinference 接入 FastGPT'
+icon:'model training'
+draft: false
+toc: true
+weight: 910
+---
 
 ## Xinference简介
 
