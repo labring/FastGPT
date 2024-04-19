@@ -48,6 +48,7 @@ Xinference默认会在本地启动一个worker，端点为：`http://127.0.0.1:9
 
 从页面复制模型 ID `Running Models`，例如：`qwen1.5-chat`
 
+![图片xinference-running-models](https://github.com/EthanD4869/xinference-pic/blob/main/qwen1.5-chat.png?raw=true)
 
 ## 接入One API
 
@@ -92,9 +93,3 @@ Authorization 为 sk-aaabbbcccdddeeefffggghhhiiijjjkkk。model 为刚刚在 One 
   }
 ]
 ```
-
-## 测试使用
-
-qwen1.5-chat 模型的使用方法如下：
-
-模型选择 qwen1.5-chat 即可
