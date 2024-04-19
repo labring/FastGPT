@@ -106,6 +106,7 @@ FastGPT 商业版共包含了2个应用（fastgpt, fastgpt-plus）和2个数据�
 
 ```
 SYSTEM_NAME=FastGPT
+SYSTEM_DESCRIPTION=
 SYSTEM_FAVICON=/favicon.ico
 HOME_URL=/app/list
 ```
