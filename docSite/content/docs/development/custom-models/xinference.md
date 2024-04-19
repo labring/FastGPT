@@ -1,7 +1,7 @@
 ---
 title: '接入 Xinference'
 description: '将 Xinference 接入 FastGPT'
-icon: 'model_training'
+con: 'model_training'
 draft: false
 toc: true
 weight: 910
