@@ -4,7 +4,7 @@ description: '接入 bge-rerank 重排模型'
 icon: 'sort'
 draft: false
 toc: true
-weight: 910
+weight: 920
 ---
 
 ## 不同模型推荐配置
