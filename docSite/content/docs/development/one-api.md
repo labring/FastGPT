@@ -1,7 +1,7 @@
 ---
-title: '部署和使用OneAPI，实现Azure、ChatGLM、本地模型接入'
-description: '部署和使用OneAPI，实现Azure、ChatGLM、本地模型接入。OneAPI使用教程'
-icon: 'Api'
+title: '使用 One API 接入 Azure、ChatGLM 和本地模型'
+description: '部署和使用 One API，实现 Azure、ChatGLM 和本地模型的接入。'
+icon: 'api'
 draft: false
 toc: true
 weight: 708
@@ -9,19 +9,19 @@ weight: 708
 
 * 默认情况下，FastGPT 只配置了 GPT 的模型，如果你需要接入其他模型，需要进行一些额外配置。
 * [One API](https://github.com/songquanpeng/one-api) 是一个 OpenAI 接口管理 & 分发系统，可以通过标准的 OpenAI API 格式访问所有的大模型，开箱即用。
-* FastGPT 可以通过接入 OneAPI 来实现对不同大模型的支持。OneAPI 的部署方法也很简单。
+* FastGPT 可以通过接入 One API 来实现对不同大模型的支持。One API 的部署方法也很简单。
 
-## FastGPT 与 OneAPI 关系
+## FastGPT 与 One API 关系
 
-可以把 OneAPI 当做一个网关。
+可以把 One API 当做一个网关。
 
 ![](/imgs/sealos-fastgpt.webp)
 
 ## 部署
 
-### docker 版本
+### Docker 版本
 
-已加入最新的`docker-compose.yml`文件中。
+已加入最新的 `docker-compose.yml` 文件中。
 
 ### Sealos - MySQL 版本
 
@@ -62,21 +62,21 @@ BATCH_UPDATE_ENABLED=true
 BATCH_UPDATE_INTERVAL=60
 ```
 
-## One API使用教程
+## One API 使用教程
 
 ### 概念
 
 1. 渠道：
    1. OneApi 中一个渠道对应一个 `Api Key`，这个 `Api Key` 可以是GPT、微软、ChatGLM、文心一言的。一个`Api Key`通常可以调用同一个厂商的多个模型。
-   2. OneAPI 会根据请求传入的`模型`来决定使用哪一个`Key`，如果一个模型对应了多个`Key`，则会随机调用。
-2. 令牌：访问 OneAPI 所需的凭证，只需要这`1`个凭证即可访问`OneAPI`上配置的模型。因此`FastGPT`中，只需要配置`OneAPI`的`baseurl`和`令牌`即可。
+   2. One API 会根据请求传入的`模型`来决定使用哪一个`Key`，如果一个模型对应了多个`Key`，则会随机调用。
+2. 令牌：访问 One API 所需的凭证，只需要这`1`个凭证即可访问`One API`上配置的模型。因此`FastGPT`中，只需要配置`One API`的`baseurl`和`令牌`即可。
 
 ### 大致工作流程
 
-1. 客户端请求 OneAPI
+1. 客户端请求 One API
 2. 根据请求中的 `model` 参数，匹配对应的渠道（根据渠道里的模型进行匹配，必须完全一致）。如果匹配到多个渠道，则随机选择一个（同优先级）。
-3. OneAPI 向真正的地址发出请求。
-4. OneAPI 将结果返回给客户端。
+3. One API 向真正的地址发出请求。
+4. One API 将结果返回给客户端。
 
 ### 1. 登录 One API
 
@@ -96,7 +96,7 @@ BATCH_UPDATE_INTERVAL=60
 
 ### 3. 修改账号余额
 
-OneAPI 默认 root 用户只有 200刀，可以自行修改编辑。
+One API 默认 root 用户只有 200刀，可以自行修改编辑。
 
 ### 4. 修改 FastGPT 的环境变量
 
