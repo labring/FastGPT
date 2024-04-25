@@ -56,7 +56,7 @@ export const runToolWithFunctionCall = async (
     > = {};
     item.toolParams.forEach((item) => {
       properties[item.key] = {
-        type: 'string',
+        type: item.valueType || 'string',
         description: item.toolDescription || ''
       };
     });
