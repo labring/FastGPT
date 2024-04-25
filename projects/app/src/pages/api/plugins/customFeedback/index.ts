@@ -6,28 +6,19 @@ import { authRequestFromLocal } from '@fastgpt/service/support/permission/auth/c
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 type Props = HttpBodyType<{
-  appId: string;
-  chatId?: string;
-  responseChatItemId?: string;
-  defaultFeedback: string;
   customFeedback: string;
 }>;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     const {
-      appId,
-      chatId,
-      responseChatItemId: chatItemId,
-      defaultFeedback,
-      customFeedback
+      customFeedback,
+      system_addInputParam: { appId, chatId, responseChatItemId: chatItemId }
     } = req.body as Props;
 
     await authRequestFromLocal({ req });
 
-    const feedback = customFeedback || defaultFeedback;
-
-    if (!feedback) {
+    if (!customFeedback) {
       return res.json({});
     }
 
@@ -37,13 +28,13 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         appId,
         chatId,
         chatItemId,
-        feedbacks: [feedback]
+        feedbacks: [customFeedback]
       });
     }, 60000);
 
     if (!chatId || !chatItemId) {
       return res.json({
-        [NodeOutputKeyEnum.answerText]: `\\n\\n**自动反馈调试**: ${feedback}\\n\\n`
+        [NodeOutputKeyEnum.answerText]: `\\n\\n**自动反馈调试**: "${customFeedback}"\\n\\n`
       });
     }
 

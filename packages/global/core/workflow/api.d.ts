@@ -3,7 +3,7 @@ import { NodeInputKeyEnum } from './constants';
 
 export type SelectedDatasetType = { datasetId: string; vectorModel: VectorModelItemType }[];
 
-export type HttpBodyType<T = any> = {
+export type HttpBodyType<T = Record<string, any>> = {
   [NodeInputKeyEnum.addInputParam]: Record<string, any>;
 } & T;
 export type HttpQueryType = {

@@ -84,6 +84,8 @@ Response:
 
 ## 编排代码
 
+{{% details title="编排配置" closed="true" %}}
+
 ```json
 {
   "nodes": [
@@ -465,3 +467,5 @@ Response:
   ]
 }
 ```
+
+{{% /details %}}
