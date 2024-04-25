@@ -8,6 +8,7 @@ import {
   getGuideModule,
   splitGuideModule
 } from '@fastgpt/global/core/workflow/utils';
+import { getSystemVariables } from '@/web/core/app/utils';
 
 const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
@@ -26,12 +27,8 @@ const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
           label: item.label
         }))
     );
-    const systemVariables = [
-      {
-        key: 'cTime',
-        label: t('core.module.http.Current time')
-      }
-    ];
+
+    const systemVariables = getSystemVariables(t);
 
     return [...globalVariables, ...moduleVariables, ...systemVariables];
   }, [nodeList, inputs, t]);

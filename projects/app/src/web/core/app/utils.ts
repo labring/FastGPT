@@ -9,6 +9,7 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import { TFunction } from 'next-i18next';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
@@ -719,11 +720,27 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
   };
 }
 
-export const getSystemVariables = (): EditorVariablePickerType[] => {
+export const getSystemVariables = (t: TFunction): EditorVariablePickerType[] => {
   return [
     {
-      label: '当前时间',
-      key: 'cTime'
+      key: 'appId',
+      label: t('core.module.http.AppId')
+    },
+    {
+      key: 'chatId',
+      label: t('core.module.http.ChatId')
+    },
+    {
+      key: 'responseChatItemId',
+      label: t('core.module.http.ResponseChatItemId')
+    },
+    {
+      key: 'histories',
+      label: t('core.module.http.Histories')
+    },
+    {
+      key: 'cTime',
+      label: t('core.module.http.Current time')
     }
   ];
 };

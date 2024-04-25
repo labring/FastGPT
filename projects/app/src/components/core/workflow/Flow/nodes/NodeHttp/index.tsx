@@ -40,6 +40,7 @@ import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import RenderToolInput from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
+import { getSystemVariables } from '@/web/core/app/utils';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
@@ -291,32 +292,9 @@ export function RenderHttpProps({
     const globalVariables = formatEditorVariablePickerIcon(
       splitGuideModule(getGuideModule(nodeList))?.variableModules || []
     );
-    const systemVariables = [
-      {
-        key: 'appId',
-        label: t('core.module.http.AppId')
-      },
-      {
-        key: 'chatId',
-        label: t('core.module.http.ChatId')
-      },
-      {
-        key: 'responseChatItemId',
-        label: t('core.module.http.ResponseChatItemId')
-      },
-      {
-        key: 'variables',
-        label: t('core.module.http.Variables')
-      },
-      {
-        key: 'histories',
-        label: t('core.module.http.Histories')
-      },
-      {
-        key: 'cTime',
-        label: t('core.module.http.Current time')
-      }
-    ];
+
+    const systemVariables = getSystemVariables(t);
+
     const moduleVariables = formatEditorVariablePickerIcon(
       inputs
         .filter((input) => input.canEdit || input.toolDescription)

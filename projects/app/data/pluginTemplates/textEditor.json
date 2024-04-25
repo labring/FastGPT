@@ -191,7 +191,7 @@
           "key": "system_httpJsonBody",
           "renderTypeList": ["hidden"],
           "valueType": "any",
-          "value": "{\r\n  \"text\":\"{{text}}\"\r\n}",
+          "value": "{\r\n  \"text\":\"{{text}}\",\r\n  \"system_addInputParam\": {{system_addInputParam}}\r\n}",
           "label": "",
           "required": false
         }

@@ -70,18 +70,23 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     responseChatItemId,
     ...variables,
     histories: histories.slice(-10),
-    ...body
+    ...body,
+    ...dynamicInput
+  };
+  const allVariables = {
+    [NodeInputKeyEnum.addInputParam]: concatVariables,
+    ...concatVariables
   };
 
-  httpReqUrl = replaceVariable(httpReqUrl, concatVariables);
+  httpReqUrl = replaceVariable(httpReqUrl, allVariables);
   // parse header
   const headers = await (() => {
     try {
       if (!httpHeader || httpHeader.length === 0) return {};
       // array
       return httpHeader.reduce((acc: Record<string, string>, item) => {
-        const key = replaceVariable(item.key, concatVariables);
-        const value = replaceVariable(item.value, concatVariables);
+        const key = replaceVariable(item.key, allVariables);
+        const value = replaceVariable(item.value, allVariables);
         acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
         return acc;
       }, {});
@@ -90,23 +95,18 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     }
   })();
   const params = httpParams.reduce((acc: Record<string, string>, item) => {
-    const key = replaceVariable(item.key, concatVariables);
-    const value = replaceVariable(item.value, concatVariables);
+    const key = replaceVariable(item.key, allVariables);
+    const value = replaceVariable(item.value, allVariables);
     acc[key] = valueTypeFormat(value, WorkflowIOValueTypeEnum.string);
     return acc;
   }, {});
   const requestBody = await (() => {
-    const dynamicInputBody = {
-      ...dynamicInput,
-      ...concatVariables
-    };
-
-    if (!httpJsonBody) return { [NodeInputKeyEnum.addInputParam]: dynamicInputBody };
-    httpJsonBody = replaceVariable(httpJsonBody, dynamicInputBody);
+    if (!httpJsonBody) return {};
     try {
+      httpJsonBody = replaceVariable(httpJsonBody, allVariables);
       const jsonParse = JSON.parse(httpJsonBody);
       const removeSignJson = removeUndefinedSign(jsonParse);
-      return { [NodeInputKeyEnum.addInputParam]: dynamicInput, ...removeSignJson };
+      return removeSignJson;
     } catch (error) {
       console.log(error);
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);

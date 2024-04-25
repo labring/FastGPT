@@ -23,6 +23,7 @@ import PromptTemplate from '@/components/PromptTemplate';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
+import { getSystemVariables } from '@/web/core/app/utils';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -51,12 +52,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
       splitGuideModule(getGuideModule(nodeList))?.variableModules || []
     );
 
-    const systemVariables = [
-      {
-        key: 'cTime',
-        label: t('core.module.http.Current time')
-      }
-    ];
+    const systemVariables = getSystemVariables(t);
 
     return [...globalVariables, ...systemVariables];
   }, [nodeList, t]);

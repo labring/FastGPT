@@ -103,8 +103,8 @@ const EditForm = ({
   const datasetSearchSetting = watch('dataset');
   const variables = watch('userGuide.variables');
   const formatVariables = useMemo(
-    () => formatEditorVariablePickerIcon([...getSystemVariables(), ...variables]),
-    [variables]
+    () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...variables]),
+    [t, variables]
   );
   const searchMode = watch('dataset.searchMode');
 

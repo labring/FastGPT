@@ -12,10 +12,7 @@ type Props = HttpBodyType<{
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const {
-      text,
-      [NodeInputKeyEnum.addInputParam]: { ...obj }
-    } = req.body as Props;
+    const { text, [NodeInputKeyEnum.addInputParam]: obj } = req.body as Props;
 
     await authRequestFromLocal({ req });
 
