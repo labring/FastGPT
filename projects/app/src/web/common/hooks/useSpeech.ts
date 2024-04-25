@@ -51,7 +51,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => 
   }, []);
 
   const startSpeak = async (onFinish: (text: string) => void) => {
-    if (!navigator.mediaDevices.getUserMedia) {
+    if (!navigator?.mediaDevices?.getUserMedia) {
       return toast({
         status: 'warning',
         title: t('common.speech.not support')

@@ -5,7 +5,7 @@ import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Input, Textarea } from '@chakra-ui/react';
 import ChatAvatar from './ChatAvatar';
 import { MessageCardStyle } from '../constants';
-import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatBoxInputFormType } from '../type.d';

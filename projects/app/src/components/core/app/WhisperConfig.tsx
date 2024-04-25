@@ -32,14 +32,13 @@ const WhisperConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/whisper'} mr={2} w={'20px'} />
-      <Box>{t('core.app.Whisper')}</Box>
+      <Box fontWeight={'medium'}>{t('core.app.Whisper')}</Box>
       <Box flex={1} />
       <MyTooltip label={t('core.app.Config whisper')}>
         <Button
           variant={'transparentBase'}
           iconSpacing={1}
           size={'sm'}
-          fontSize={'md'}
           mr={'-5px'}
           onClick={onOpen}
         >

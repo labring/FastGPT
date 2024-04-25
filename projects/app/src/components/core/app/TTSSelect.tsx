@@ -80,7 +80,7 @@ const TTSSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
-      <Box>{t('core.app.TTS')}</Box>
+      <Box fontWeight={'medium'}>{t('core.app.TTS')}</Box>
       <MyTooltip label={t('core.app.TTS Tip')} forceShow>
         <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
       </MyTooltip>
@@ -90,7 +90,6 @@ const TTSSelect = ({
           variant={'transparentBase'}
           iconSpacing={1}
           size={'sm'}
-          fontSize={'md'}
           mr={'-5px'}
           onClick={onOpen}
         >

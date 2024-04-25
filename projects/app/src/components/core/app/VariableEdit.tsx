@@ -25,7 +25,7 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
-import { VariableInputEnum, variableMap } from '@fastgpt/global/core/module/constants';
+import { VariableInputEnum, variableMap } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useForm } from 'react-hook-form';
@@ -34,11 +34,11 @@ import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyTooltip from '@/components/MyTooltip';
-import { variableTip } from '@fastgpt/global/core/module/template/tip';
+import { variableTip } from '@fastgpt/global/core/workflow/template/tip';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyRadio from '@/components/common/MyRadio';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 
 const VariableEdit = ({
   variables,
@@ -98,7 +98,7 @@ const VariableEdit = ({
     <Box>
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <Box ml={2} flex={1}>
+        <Box ml={2} flex={1} fontWeight={'medium'}>
           {t('core.module.Variable')}
           <MyTooltip label={t(variableTip)} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
@@ -110,7 +110,6 @@ const VariableEdit = ({
           iconSpacing={1}
           size={'sm'}
           mr={'-5px'}
-          fontSize={'md'}
           onClick={() => {
             resetEdit({ variable: addVariable() });
             onOpenEdit();

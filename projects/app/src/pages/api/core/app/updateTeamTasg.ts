@@ -4,8 +4,8 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@fastgpt/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getLLMModel } from '@fastgpt/service/core/ai/model';
 
 /* 获取我的模型 */
@@ -29,9 +29,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       let maxTokens = 3000;
 
       modules.forEach((item) => {
-        if (item.flowType === FlowNodeTypeEnum.chatNode) {
+        if (item.flowNodeType === FlowNodeTypeEnum.chatNode) {
           const model =
-            item.inputs.find((item) => item.key === ModuleInputKeyEnum.aiModel)?.value || '';
+            item.inputs.find((item) => item.key === NodeInputKeyEnum.aiModel)?.value || '';
           const chatModel = getLLMModel(model);
           const quoteMaxToken = chatModel.quoteMaxToken || 3000;
 
@@ -40,9 +40,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       });
 
       modules.forEach((item) => {
-        if (item.flowType === FlowNodeTypeEnum.datasetSearchNode) {
+        if (item.flowNodeType === FlowNodeTypeEnum.datasetSearchNode) {
           item.inputs.forEach((input) => {
-            if (input.key === ModuleInputKeyEnum.datasetMaxTokens) {
+            if (input.key === NodeInputKeyEnum.datasetMaxTokens) {
               const val = input.value as number;
               if (val > maxTokens) {
                 input.value = maxTokens;

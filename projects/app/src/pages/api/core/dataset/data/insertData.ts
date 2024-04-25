@@ -6,7 +6,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
-import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
+import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
@@ -60,7 +60,7 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
     }));
 
     // token check
-    const token = countPromptTokens(formatQ, 'system');
+    const token = await countPromptTokens(formatQ + formatA, '');
     const vectorModelData = getVectorModel(vectorModel);
 
     if (token > vectorModelData.maxToken) {

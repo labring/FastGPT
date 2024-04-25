@@ -26,12 +26,18 @@ const UsageSchema = new Schema({
     required: true
   },
   appName: {
+    // usage name
     type: String,
     default: ''
   },
   appId: {
     type: Schema.Types.ObjectId,
     ref: 'apps',
+    required: false
+  },
+  pluginId: {
+    type: Schema.Types.ObjectId,
+    ref: 'plugins',
     required: false
   },
   time: {

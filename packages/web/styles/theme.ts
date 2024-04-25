@@ -181,6 +181,28 @@ const Button = defineStyleConfig({
         color: 'myGray.600 !important'
       }
     },
+    whiteFlow: {
+      color: 'myGray.600',
+      border: '1px solid',
+      borderColor: 'myGray.200',
+      height: '40px',
+      bg: 'white',
+      px: '12px',
+      py: '0',
+      borderRadius: '6px',
+      transition: 'background 0.1s',
+      _hover: {
+        color: 'primary.600',
+        background: 'primary.1',
+        borderColor: 'primary.300'
+      },
+      _active: {
+        color: 'primary.600'
+      },
+      _disabled: {
+        color: 'myGray.600 !important'
+      }
+    },
     whiteDanger: {
       color: 'myGray.600',
       border: '1px solid',

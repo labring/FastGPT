@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { AddIcon, QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useForm, useFieldArray } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { appModules2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
+import { appWorkflow2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import { welcomeTextTip } from '@fastgpt/global/core/module/template/tip';
+import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRouter } from 'next/router';
@@ -14,7 +14,7 @@ import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
-import { postForm2Modules } from '@/web/core/app/utils';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
@@ -23,15 +23,16 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import MyTextarea from '@/components/common/Textarea/MyTextarea/index';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
-import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/module/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import SettingLLMModel from '@/components/core/ai/SettingLLMModel';
-import { SettingAIDataType } from '@fastgpt/global/core/module/node/type';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import { TTSTypeEnum } from '@/constants/app';
+import { getSystemVariables } from '@/web/core/app/utils';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/module/DatasetSelectModal'));
-const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 const ToolSelectModal = dynamic(() => import('./ToolSelectModal'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
 const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
@@ -60,6 +61,7 @@ const EditForm = ({
   const router = useRouter();
   const { t } = useTranslation();
   const { appDetail, updateAppDetail } = useAppStore();
+
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc, llmModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
@@ -100,7 +102,10 @@ const EditForm = ({
   const selectLLMModel = watch('aiSettings.model');
   const datasetSearchSetting = watch('dataset');
   const variables = watch('userGuide.variables');
-  const formatVariables = useMemo(() => formatEditorVariablePickerIcon(variables), [variables]);
+  const formatVariables = useMemo(
+    () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...variables]),
+    [t, variables]
+  );
   const searchMode = watch('dataset.searchMode');
 
   const selectDatasets = useMemo(
@@ -115,10 +120,11 @@ const EditForm = ({
   /* on save app */
   const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
-      const modules = await postForm2Modules(data);
+      const { nodes, edges } = form2AppWorkflow(data);
 
       await updateAppDetail(appDetail._id, {
-        modules,
+        modules: nodes,
+        edges,
         type: AppTypeEnum.simple,
         permission: undefined
       });
@@ -130,8 +136,8 @@ const EditForm = ({
   useQuery(
     ['init', appDetail],
     () => {
-      const formatVal = appModules2Form({
-        modules: appDetail.modules
+      const formatVal = appWorkflow2Form({
+        nodes: appDetail.modules
       });
       reset(formatVal);
       setRefresh(!refresh);
@@ -475,7 +481,7 @@ const EditForm = ({
           onRemoveTool={(e) => {
             setValue(
               'selectedTools',
-              selectedTools.filter((item) => item.id !== e.id)
+              selectedTools.filter((item) => item.pluginId !== e.pluginId)
             );
           }}
           onClose={onCloseToolsSelect}

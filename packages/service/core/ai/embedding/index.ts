@@ -1,6 +1,6 @@
 import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../config';
-import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
+import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
 
 type GetVectorProps = {
@@ -40,9 +40,14 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
           return Promise.reject(res.data?.err?.message || 'Embedding API Error');
         }
 
+        const [tokens, vectors] = await Promise.all([
+          countPromptTokens(input),
+          Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
+        ]);
+
         return {
-          tokens: countPromptTokens(input),
-          vectors: await Promise.all(res.data.map((item) => unityDimensional(item.embedding)))
+          tokens,
+          vectors
         };
       });
 

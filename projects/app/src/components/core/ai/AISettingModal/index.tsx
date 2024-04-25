@@ -14,8 +14,8 @@ import {
 } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
-import type { SettingAIDataType } from '@fastgpt/global/core/module/node/type.d';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
@@ -42,7 +42,7 @@ const AIChatSettingsModal = ({
     defaultValues: defaultData
   });
   const model = watch('model');
-  const showResponseAnswerText = watch(ModuleInputKeyEnum.aiChatIsResponseText) !== undefined;
+  const showResponseAnswerText = watch(NodeInputKeyEnum.aiChatIsResponseText) !== undefined;
   const showMaxHistoriesSlider = watch('maxHistories') !== undefined;
   const selectedModel = llmModelList.find((item) => item.model === model) || llmModelList[0];
 
@@ -72,7 +72,7 @@ const AIChatSettingsModal = ({
   return (
     <MyModal
       isOpen
-      iconSrc="/imgs/module/AI.png"
+      iconSrc="/imgs/workflow/AI.png"
       onClose={onClose}
       title={
         <>
@@ -136,7 +136,7 @@ const AIChatSettingsModal = ({
             <QuestionTip ml={1} label={t('core.module.template.AI support tool tip')} />
           </Box>
           <Box flex={1} ml={'10px'}>
-            {selectedModel?.usedInToolCall ? '支持' : '不支持'}
+            {selectedModel?.toolChoice || selectedModel?.functionCall ? '支持' : '不支持'}
           </Box>
         </Flex>
         <Flex mt={8}>
@@ -152,9 +152,9 @@ const AIChatSettingsModal = ({
               width={'95%'}
               min={0}
               max={10}
-              value={getValues(ModuleInputKeyEnum.aiChatTemperature)}
+              value={getValues(NodeInputKeyEnum.aiChatTemperature)}
               onChange={(e) => {
-                setValue(ModuleInputKeyEnum.aiChatTemperature, e);
+                setValue(NodeInputKeyEnum.aiChatTemperature, e);
                 setRefresh(!refresh);
               }}
             />
@@ -174,9 +174,9 @@ const AIChatSettingsModal = ({
               min={100}
               max={tokenLimit}
               step={50}
-              value={getValues(ModuleInputKeyEnum.aiChatMaxToken)}
+              value={getValues(NodeInputKeyEnum.aiChatMaxToken)}
               onChange={(val) => {
-                setValue(ModuleInputKeyEnum.aiChatMaxToken, val);
+                setValue(NodeInputKeyEnum.aiChatMaxToken, val);
                 setRefresh(!refresh);
               }}
             />
@@ -215,11 +215,11 @@ const AIChatSettingsModal = ({
             </Box>
             <Box flex={1} ml={'10px'}>
               <Switch
-                isChecked={getValues(ModuleInputKeyEnum.aiChatIsResponseText)}
+                isChecked={getValues(NodeInputKeyEnum.aiChatIsResponseText)}
                 size={'lg'}
                 onChange={(e) => {
                   const value = e.target.checked;
-                  setValue(ModuleInputKeyEnum.aiChatIsResponseText, value);
+                  setValue(NodeInputKeyEnum.aiChatIsResponseText, value);
                   setRefresh((state) => !state);
                 }}
               />

@@ -76,5 +76,5 @@ export const getSystemTime = (timeZone: string) => {
   const timezoneDiff = getTimezoneOffset(timeZone);
   const now = Date.now();
   const targetTime = now + timezoneDiff * 60 * 60 * 1000;
-  return dayjs(targetTime).format('YYYY-MM-DD HH:mm:ss');
+  return dayjs(targetTime).format('YYYY-MM-DD HH:mm:ss dddd');
 };

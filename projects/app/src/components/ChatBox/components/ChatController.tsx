@@ -1,5 +1,4 @@
 import { useCopyData } from '@/web/common/hooks/useCopyData';
-import { useAudioPlay } from '@/web/common/utils/voice';
 import { Flex, FlexProps, Image, css, useTheme } from '@chakra-ui/react';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';

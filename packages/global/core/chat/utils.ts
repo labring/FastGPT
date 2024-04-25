@@ -1,5 +1,5 @@
-import { DispatchNodeResponseType } from '../module/runtime/type';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../module/node/constant';
+import { DispatchNodeResponseType } from '../workflow/runtime/type';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../workflow/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
 import { ChatHistoryItemResType, ChatItemType } from './type.d';
 

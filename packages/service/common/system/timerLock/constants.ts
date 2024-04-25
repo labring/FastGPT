@@ -3,7 +3,8 @@ export enum TimerIdEnum {
   checkInvalidDatasetData = 'checkInvalidDatasetData',
   checkInvalidVector = 'checkInvalidVector',
   clearExpiredSubPlan = 'clearExpiredSubPlan',
-  updateStandardPlan = 'updateStandardPlan'
+  updateStandardPlan = 'updateStandardPlan',
+  scheduleTriggerApp = 'scheduleTriggerApp'
 }
 
 export const timerIdMap = {
@@ -11,5 +12,6 @@ export const timerIdMap = {
   [TimerIdEnum.checkInvalidDatasetData]: 'checkInvalidDatasetData',
   [TimerIdEnum.checkInvalidVector]: 'checkInvalidVector',
   [TimerIdEnum.clearExpiredSubPlan]: 'clearExpiredSubPlan',
-  [TimerIdEnum.updateStandardPlan]: 'updateStandardPlan'
+  [TimerIdEnum.updateStandardPlan]: 'updateStandardPlan',
+  [TimerIdEnum.scheduleTriggerApp]: 'scheduleTriggerApp'
 };

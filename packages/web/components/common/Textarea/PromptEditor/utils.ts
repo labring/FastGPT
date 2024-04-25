@@ -171,8 +171,9 @@ export function registerLexicalTextEntity<T extends TextNode>(
   return [removePlainTextTransform, removeReverseNodeTransform];
 }
 
-export function textToEditorState(text: string = '') {
-  const paragraph = text?.split('\n');
+export function textToEditorState(text = '') {
+  const paragraph = typeof text === 'string' ? text?.split('\n') : [''];
+
   return JSON.stringify({
     root: {
       children: paragraph.map((p) => {

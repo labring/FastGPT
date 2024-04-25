@@ -1,8 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { HttpBodyType } from '@fastgpt/global/core/module/api.d';
+import type { HttpBodyType } from '@fastgpt/global/core/workflow/api.d';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { authRequestFromLocal } from '@fastgpt/service/support/permission/auth/common';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 type Props = HttpBodyType<{
   text: string;
@@ -11,10 +12,7 @@ type Props = HttpBodyType<{
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
-    const {
-      text,
-      DYNAMIC_INPUT_KEY: { ...obj }
-    } = req.body as Props;
+    const { text, [NodeInputKeyEnum.addInputParam]: obj } = req.body as Props;
 
     await authRequestFromLocal({ req });
 
