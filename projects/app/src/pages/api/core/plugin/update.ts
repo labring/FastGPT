@@ -76,8 +76,7 @@ const updateHttpChildrenPlugin = async ({
   const dbPlugins = await MongoPlugin.find(
     {
       parentId: parent.id,
-      teamId,
-      version: 'v2'
+      teamId
     },
     '_id metadata'
   );
@@ -105,7 +104,8 @@ const updateHttpChildrenPlugin = async ({
               pluginUid: plugin.name
             },
             teamId,
-            tmbId
+            tmbId,
+            version: 'v2'
           }
         ],
         {
@@ -118,7 +118,14 @@ const updateHttpChildrenPlugin = async ({
   for await (const plugin of schemaPlugins) {
     const dbPlugin = dbPlugins.find((p) => plugin.name === p.metadata?.pluginUid);
     if (dbPlugin) {
-      await MongoPlugin.findByIdAndUpdate(dbPlugin._id, plugin, { session });
+      await MongoPlugin.findByIdAndUpdate(
+        dbPlugin._id,
+        {
+          ...plugin,
+          version: 'v2'
+        },
+        { session }
+      );
     }
   }
 };
