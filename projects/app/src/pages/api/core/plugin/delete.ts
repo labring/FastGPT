@@ -15,7 +15,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     if (!pluginId) {
       throw new Error('缺少参数');
     }
-    await authPluginCrud({ req, authToken: true, id: pluginId, per: 'owner' });
+    await authPluginCrud({ req, authToken: true, pluginId, per: 'owner' });
 
     await mongoSessionRun(async (session) => {
       await MongoPlugin.deleteMany(

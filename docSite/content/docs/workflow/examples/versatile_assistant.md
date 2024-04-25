@@ -164,9 +164,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
 ```json
 [
   {
-    "moduleId": "userChatInput",
+    "nodeId": "userChatInput",
     "name": "用户问题(对话入口)",
-    "flowType": "questionInput",
+    "flowNodeType": "questionInput",
     "position": {
       "x": 464.32198615344566,
       "y": 1602.2698463081606
@@ -187,31 +187,31 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "toho1d",
+            "nodeId": "toho1d",
             "key": "userChatInput"
           },
           {
-            "moduleId": "rov9zf",
+            "nodeId": "rov9zf",
             "key": "content"
           },
           {
-            "moduleId": "6q1n0a",
+            "nodeId": "6q1n0a",
             "key": "userChatInput"
           },
           {
-            "moduleId": "i0u1iy",
+            "nodeId": "i0u1iy",
             "key": "userChatInput"
           },
           {
-            "moduleId": "uo68aj",
+            "nodeId": "uo68aj",
             "key": "userChatInput"
           },
           {
-            "moduleId": "3k4zw1",
+            "nodeId": "3k4zw1",
             "key": "content"
           },
           {
-            "moduleId": "01fwnb",
+            "nodeId": "01fwnb",
             "key": "userChatInput"
           }
         ]
@@ -219,9 +219,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "history",
+    "nodeId": "history",
     "name": "聊天记录",
-    "flowType": "historyNode",
+    "flowNodeType": "historyNode",
     "position": {
       "x": 452.5466249541586,
       "y": 1276.3930310334215
@@ -251,27 +251,27 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "toho1d",
+            "nodeId": "toho1d",
             "key": "history"
           },
           {
-            "moduleId": "6q1n0a",
+            "nodeId": "6q1n0a",
             "key": "history"
           },
           {
-            "moduleId": "rov9zf",
+            "nodeId": "rov9zf",
             "key": "history"
           },
           {
-            "moduleId": "uo68aj",
+            "nodeId": "uo68aj",
             "key": "history"
           },
           {
-            "moduleId": "3k4zw1",
+            "nodeId": "3k4zw1",
             "key": "history"
           },
           {
-            "moduleId": "01fwnb",
+            "nodeId": "01fwnb",
             "key": "history"
           }
         ]
@@ -279,9 +279,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "toho1d",
+    "nodeId": "toho1d",
     "name": "问题分类",
-    "flowType": "classifyQuestion",
+    "flowNodeType": "classifyQuestion",
     "showStatus": true,
     "position": {
       "x": 942.1068912757241,
@@ -345,7 +345,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "rov9zf",
+            "nodeId": "rov9zf",
             "key": "switch"
           }
         ]
@@ -368,7 +368,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "i0u1iy",
+            "nodeId": "i0u1iy",
             "key": "switch"
           }
         ]
@@ -379,7 +379,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "3m320f",
+            "nodeId": "3m320f",
             "key": "switch"
           }
         ]
@@ -390,7 +390,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "3k4zw1",
+            "nodeId": "3k4zw1",
             "key": "switch"
           }
         ]
@@ -398,9 +398,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "rov9zf",
+    "nodeId": "rov9zf",
     "name": "文本内容提取",
-    "flowType": "contentExtract",
+    "flowNodeType": "contentExtract",
     "showStatus": true,
     "position": {
       "x": 1632.5948304111266,
@@ -463,7 +463,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "4gy7tw",
+            "nodeId": "4gy7tw",
             "key": "switch"
           }
         ]
@@ -475,7 +475,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "eu1xhx",
+            "nodeId": "eu1xhx",
             "key": "switch"
           }
         ]
@@ -496,7 +496,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "4gy7tw",
+            "nodeId": "4gy7tw",
             "key": "city"
           }
         ]
@@ -504,9 +504,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "eu1xhx",
+    "nodeId": "eu1xhx",
     "name": "指定回复",
-    "flowType": "answerNode",
+    "flowNodeType": "answerNode",
     "position": {
       "x": 2137.9125850753494,
       "y": 326.06694967444105
@@ -541,9 +541,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "4gy7tw",
+    "nodeId": "4gy7tw",
     "name": "HTTP模块",
-    "flowType": "httpRequest",
+    "flowNodeType": "httpRequest",
     "showStatus": true,
     "position": {
       "x": 2156.411722495609,
@@ -585,7 +585,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "edit": true,
         "targets": [
           {
-            "moduleId": "6q1n0a",
+            "nodeId": "6q1n0a",
             "key": "systemPrompt"
           }
         ],
@@ -598,7 +598,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "6q1n0a",
+            "nodeId": "6q1n0a",
             "key": "switch"
           }
         ]
@@ -606,9 +606,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "6q1n0a",
+    "nodeId": "6q1n0a",
     "name": "AI 对话",
-    "flowType": "chatNode",
+    "flowNodeType": "chatNode",
     "showStatus": true,
     "position": {
       "x": 2771.9325168087653,
@@ -764,9 +764,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "i0u1iy",
+    "nodeId": "i0u1iy",
     "name": "AI 对话",
-    "flowType": "chatNode",
+    "flowNodeType": "chatNode",
     "showStatus": true,
     "position": {
       "x": 1636.416225126142,
@@ -922,9 +922,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "3m320f",
+    "nodeId": "3m320f",
     "name": "HTTP模块",
-    "flowType": "httpRequest",
+    "flowNodeType": "httpRequest",
     "showStatus": true,
     "position": {
       "x": 1640.5198770218628,
@@ -957,7 +957,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "edit": true,
         "targets": [
           {
-            "moduleId": "uo68aj",
+            "nodeId": "uo68aj",
             "key": "systemPrompt"
           }
         ],
@@ -970,7 +970,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "uo68aj",
+            "nodeId": "uo68aj",
             "key": "switch"
           }
         ]
@@ -978,9 +978,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "uo68aj",
+    "nodeId": "uo68aj",
     "name": "AI 对话",
-    "flowType": "chatNode",
+    "flowNodeType": "chatNode",
     "showStatus": true,
     "position": {
       "x": 2248.9999960823247,
@@ -1136,9 +1136,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "qoccls",
+    "nodeId": "qoccls",
     "name": "聊天记录",
-    "flowType": "historyNode",
+    "flowNodeType": "historyNode",
     "position": {
       "x": 448.94080110453046,
       "y": 990.48670949044
@@ -1168,7 +1168,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "i0u1iy",
+            "nodeId": "i0u1iy",
             "key": "history"
           }
         ]
@@ -1176,9 +1176,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "3k4zw1",
+    "nodeId": "3k4zw1",
     "name": "文本内容提取",
-    "flowType": "contentExtract",
+    "flowNodeType": "contentExtract",
     "showStatus": true,
     "position": {
       "x": 1608.4732867173993,
@@ -1264,7 +1264,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "3ojl65",
+            "nodeId": "3ojl65",
             "key": "searchKey"
           }
         ]
@@ -1272,9 +1272,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "3ojl65",
+    "nodeId": "3ojl65",
     "name": "HTTP模块",
-    "flowType": "httpRequest",
+    "flowNodeType": "httpRequest",
     "showStatus": true,
     "position": {
       "x": 2250.5435150325084,
@@ -1324,7 +1324,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "edit": true,
         "targets": [
           {
-            "moduleId": "01fwnb",
+            "nodeId": "01fwnb",
             "key": "systemPrompt"
           }
         ],
@@ -1337,7 +1337,7 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
         "type": "source",
         "targets": [
           {
-            "moduleId": "01fwnb",
+            "nodeId": "01fwnb",
             "key": "switch"
           }
         ]
@@ -1345,9 +1345,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "01fwnb",
+    "nodeId": "01fwnb",
     "name": "AI 对话",
-    "flowType": "chatNode",
+    "flowNodeType": "chatNode",
     "showStatus": true,
     "position": {
       "x": 2913.2501313416833,
@@ -1503,9 +1503,9 @@ PS2：配置中的问题分类还包含着“联网搜索”，这个是另一�
     ]
   },
   {
-    "moduleId": "kq35bj",
+    "nodeId": "kq35bj",
     "name": "用户引导",
-    "flowType": "userGuide",
+    "flowNodeType": "userGuide",
     "position": {
       "x": 359.84546622310677,
       "y": 686.3487640909323

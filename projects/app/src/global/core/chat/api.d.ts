@@ -1,5 +1,5 @@
 import type { AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
-import { ModuleItemType } from '../module/type';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { AdminFbkType, ChatItemType } from '@fastgpt/global/core/chat/type';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
 
@@ -34,7 +34,7 @@ export type InitChatResponse = {
   variables: Record<string, any>;
   history: ChatItemType[];
   app: {
-    userGuideModule?: ModuleItemType;
+    userGuideModule?: StoreNodeItemType;
     chatModels?: string[];
     name: string;
     avatar: string;

@@ -14,7 +14,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       name = 'APP',
       avatar,
       type = AppTypeEnum.advanced,
-      modules
+      modules,
+      edges
     } = req.body as CreateAppParams;
 
     if (!name || !Array.isArray(modules)) {
@@ -34,7 +35,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       teamId,
       tmbId,
       modules,
-      type
+      edges,
+      type,
+      version: 'v2'
     });
 
     jsonRes(res, {

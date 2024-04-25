@@ -53,4 +53,4 @@ export const uniqueImageTypeList = Object.entries(mongoImageTypeMap)
 
 export const FolderIcon = 'file/fill/folder';
 export const FolderImgUrl = '/imgs/files/folder.svg';
-export const HttpImgUrl = '/imgs/module/http.png';
+export const HttpImgUrl = '/imgs/workflow/http.png';

@@ -11,7 +11,7 @@ const QGSwitch = (props: SwitchProps) => {
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <Box>{t('core.app.Question Guide')}</Box>
+      <Box fontWeight={'medium'}>{t('core.app.Question Guide')}</Box>
       <MyTooltip label={t('core.app.Question Guide Tip')} forceShow>
         <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
       </MyTooltip>

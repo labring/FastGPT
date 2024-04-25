@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useCallback, useMemo } from 'react';
 
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -9,7 +9,7 @@ import { HUGGING_FACE_ICON, LOGO_ICON } from '@fastgpt/global/common/system/cons
 import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '../Avatar';
 
-const AIModelSelector = ({ list, ...props }: SelectProps) => {
+const AIModelSelector = ({ list, onchange, ...props }: SelectProps) => {
   const { t } = useTranslation();
   const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
   const router = useRouter();
@@ -50,19 +50,20 @@ const AIModelSelector = ({ list, ...props }: SelectProps) => {
       : avatarList;
   }, [feConfigs.show_pay, avatarList, t]);
 
+  const onSelect = useCallback(
+    (e: string) => {
+      if (e === 'price') {
+        router.push(AI_POINT_USAGE_CARD_ROUTE);
+        return;
+      }
+      onchange?.(e);
+    },
+    [onchange, router]
+  );
+
   return (
     <>
-      <MySelect
-        list={expandList}
-        {...props}
-        onchange={(e) => {
-          if (e === 'price') {
-            router.push(AI_POINT_USAGE_CARD_ROUTE);
-            return;
-          }
-          props.onchange?.(e);
-        }}
-      />
+      <MySelect list={expandList} {...props} onchange={onSelect} />
     </>
   );
 };

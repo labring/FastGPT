@@ -17,7 +17,7 @@ type Props = {
   teamId: string;
   tmbId: string;
   variables?: Record<string, any>;
-  updateUseTime: boolean;
+  isUpdateUseTime: boolean;
   source: `${ChatSourceEnum}`;
   shareId?: string;
   outLinkUid?: string;
@@ -31,7 +31,7 @@ export async function saveChat({
   teamId,
   tmbId,
   variables,
-  updateUseTime,
+  isUpdateUseTime,
   source,
   shareId,
   outLinkUid,
@@ -91,8 +91,8 @@ export async function saveChat({
       }
     });
 
-    if (updateUseTime && source === ChatSourceEnum.online) {
-      MongoApp.findByIdAndUpdate(appId, {
+    if (isUpdateUseTime) {
+      await MongoApp.findByIdAndUpdate(appId, {
         updateTime: new Date()
       });
     }

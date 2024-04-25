@@ -23,9 +23,9 @@ weight: 401
 ```json
 [
   {
-    "moduleId": "userChatInput",
+    "nodeId": "userChatInput",
     "name": "用户问题(对话入口)",
-    "flowType": "questionInput",
+    "flowNodeType": "questionInput",
     "position": {
       "x": 59.03170043915989,
       "y": 1604.8595605938747
@@ -46,11 +46,11 @@ weight: 401
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "chatModule",
+            "nodeId": "chatModule",
             "key": "userChatInput"
           },
           {
-            "moduleId": "ymqh0t",
+            "nodeId": "ymqh0t",
             "key": "switch"
           }
         ]
@@ -58,9 +58,9 @@ weight: 401
     ]
   },
   {
-    "moduleId": "history",
+    "nodeId": "history",
     "name": "聊天记录",
-    "flowType": "historyNode",
+    "flowNodeType": "historyNode",
     "position": {
       "x": 38.19233923987295,
       "y": 1184.4581738905642
@@ -90,7 +90,7 @@ weight: 401
         "type": "source",
         "targets": [
           {
-            "moduleId": "chatModule",
+            "nodeId": "chatModule",
             "key": "history"
           }
         ]
@@ -98,9 +98,9 @@ weight: 401
     ]
   },
   {
-    "moduleId": "chatModule",
+    "nodeId": "chatModule",
     "name": "AI 对话",
-    "flowType": "chatNode",
+    "flowNodeType": "chatNode",
     "showStatus": true,
     "position": {
       "x": 943.1225685246793,
@@ -246,7 +246,7 @@ weight: 401
         "type": "source",
         "targets": [
           {
-            "moduleId": "ojeopv",
+            "nodeId": "ojeopv",
             "key": "switch"
           }
         ]
@@ -254,9 +254,9 @@ weight: 401
     ]
   },
   {
-    "moduleId": "ymqh0t",
+    "nodeId": "ymqh0t",
     "name": "指定回复",
-    "flowType": "answerNode",
+    "flowNodeType": "answerNode",
     "position": {
       "x": 435.27459673941917,
       "y": 1081.9477378716076
@@ -288,7 +288,7 @@ weight: 401
         "type": "source",
         "targets": [
           {
-            "moduleId": "chatModule",
+            "nodeId": "chatModule",
             "key": "switch"
           }
         ]
@@ -296,9 +296,9 @@ weight: 401
     ]
   },
   {
-    "moduleId": "ojeopv",
+    "nodeId": "ojeopv",
     "name": "指定回复",
-    "flowType": "answerNode",
+    "flowNodeType": "answerNode",
     "position": {
       "x": 1573.4540253108476,
       "y": 1551.9808807287498

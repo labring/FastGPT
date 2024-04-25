@@ -59,7 +59,7 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
       style={{ width: '900px' }}
       isOpen
       onClose={onClose}
-      iconSrc="/imgs/module/ai.svg"
+      iconSrc="/imgs/workflow/ai.svg"
       title={t('core.app.Team tags')}
     >
       <ModalBody>

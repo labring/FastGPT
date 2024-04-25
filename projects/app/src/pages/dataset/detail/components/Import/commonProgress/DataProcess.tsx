@@ -25,7 +25,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import Preview from '../components/Preview';
-import Tag from '@/components/Tag';
+import Tag from '@fastgpt/web/components/common/Tag/index';
 
 function DataProcess({
   showPreviewChunks = true,

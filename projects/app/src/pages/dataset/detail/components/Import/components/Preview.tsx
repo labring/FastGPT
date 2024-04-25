@@ -4,7 +4,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 
 import { useImportStore } from '../Provider';
-import MyMenu from '@/components/MyMenu';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import dynamic from 'next/dynamic';
 const PreviewRawText = dynamic(() => import('./PreviewRawText'));

@@ -20,7 +20,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { FolderImgUrl, FolderIcon } from '@fastgpt/global/common/file/image/constants';
-import MyMenu from '@/components/MyMenu';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
@@ -149,7 +149,7 @@ const Kb = () => {
           }))}
           FirstPathDom={
             <Flex flex={1} alignItems={'center'}>
-              <Image src={'/imgs/module/db.png'} alt={''} mr={2} h={'24px'} />
+              <Image src={'/imgs/workflow/db.png'} alt={''} mr={2} h={'24px'} />
               <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
                 {t('core.dataset.My Dataset')}
               </Box>
@@ -189,7 +189,7 @@ const Kb = () => {
               {
                 label: (
                   <Flex>
-                    <Image src={'/imgs/module/db.png'} alt={''} w={'20px'} mr={1} />
+                    <Image src={'/imgs/workflow/db.png'} alt={''} w={'20px'} mr={1} />
                     {t('core.dataset.Dataset')}
                   </Flex>
                 ),

@@ -1,43 +1,49 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { ModuleIOValueTypeEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import {
+  WorkflowIOValueTypeEnum,
+  NodeOutputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import {
+  RuntimeEdgeItemType,
+  RuntimeNodeItemType
+} from '@fastgpt/global/core/workflow/runtime/type';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 
-export const setEntryEntries = (modules: ModuleItemType[]) => {
-  const initRunningModuleType: Record<string, boolean> = {
-    [FlowNodeTypeEnum.historyNode]: true,
-    [FlowNodeTypeEnum.questionInput]: true,
-    [FlowNodeTypeEnum.pluginInput]: true
-  };
-
-  modules.forEach((item) => {
-    if (initRunningModuleType[item.flowType]) {
-      item.isEntry = true;
-    }
-  });
-  return modules;
+export const filterToolNodeIdByEdges = ({
+  nodeId,
+  edges
+}: {
+  nodeId: string;
+  edges: RuntimeEdgeItemType[];
+}) => {
+  return edges
+    .filter(
+      (edge) => edge.source === nodeId && edge.targetHandle === NodeOutputKeyEnum.selectedTools
+    )
+    .map((edge) => edge.target);
 };
 
-export const checkTheModuleConnectedByTool = (
-  modules: ModuleItemType[],
-  module: ModuleItemType
-) => {
-  let sign = false;
-  const toolModules = modules.filter((item) => item.flowType === FlowNodeTypeEnum.tools);
+// export const checkTheModuleConnectedByTool = (
+//   modules: StoreNodeItemType[],
+//   node: StoreNodeItemType
+// ) => {
+//   let sign = false;
+//   const toolModules = modules.filter((item) => item.flowNodeType === FlowNodeTypeEnum.tools);
 
-  toolModules.forEach((item) => {
-    const toolOutput = item.outputs.find(
-      (output) => output.key === ModuleOutputKeyEnum.selectedTools
-    );
-    toolOutput?.targets.forEach((target) => {
-      if (target.moduleId === module.moduleId) {
-        sign = true;
-      }
-    });
-  });
+//   toolModules.forEach((item) => {
+//     const toolOutput = item.outputs.find(
+//       (output) => output.key === NodeOutputKeyEnum.selectedTools
+//     );
+//     toolOutput?.targets.forEach((target) => {
+//       if (target.moduleId === node.moduleId) {
+//         sign = true;
+//       }
+//     });
+//   });
 
-  return sign;
-};
+//   return sign;
+// };
 
 export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
   if (!history) return [];
@@ -48,7 +54,7 @@ export const getHistories = (history?: ChatItemType[] | number, histories: ChatI
 };
 
 /* value type format */
-export const valueTypeFormat = (value: any, type?: `${ModuleIOValueTypeEnum}`) => {
+export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
   if (value === undefined) return;
 
   if (type === 'string') {
@@ -57,6 +63,16 @@ export const valueTypeFormat = (value: any, type?: `${ModuleIOValueTypeEnum}`) =
   }
   if (type === 'number') return Number(value);
   if (type === 'boolean') return Boolean(value);
+  try {
+    if (type === WorkflowIOValueTypeEnum.datasetQuote && !Array.isArray(value)) {
+      return JSON.parse(value);
+    }
+    if (type === WorkflowIOValueTypeEnum.selectDataset && !Array.isArray(value)) {
+      return JSON.parse(value);
+    }
+  } catch (error) {
+    return value;
+  }
 
   return value;
 };

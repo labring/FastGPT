@@ -1,5 +1,5 @@
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 export function checkChatSupportSelectFileByChatModels(models: string[] = []) {
@@ -14,10 +14,11 @@ export function checkChatSupportSelectFileByChatModels(models: string[] = []) {
   return false;
 }
 
-export function checkChatSupportSelectFileByModules(modules: ModuleItemType[] = []) {
+export function checkChatSupportSelectFileByModules(modules: StoreNodeItemType[] = []) {
   const chatModules = modules.filter(
     (item) =>
-      item.flowType === FlowNodeTypeEnum.chatNode || item.flowType === FlowNodeTypeEnum.tools
+      item.flowNodeType === FlowNodeTypeEnum.chatNode ||
+      item.flowNodeType === FlowNodeTypeEnum.tools
   );
   const models: string[] = chatModules.map(
     (item) => item.inputs.find((item) => item.key === 'model')?.value || ''

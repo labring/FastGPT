@@ -6,7 +6,19 @@
   border-radius: var(--chakra-radii-md);
   padding: 8px 12px;
   background: var(--chakra-colors-gray-50);
-  font-size: 13px;
+  font-size: 14px;
+  overflow-y: auto;
+}
+
+.contentEditable_isFlow {
+  position: relative;
+  height: 100%;
+  width: 100%;
+  border: 1px solid var(--chakra-colors-myGray-200);
+  border-radius: var(--chakra-radii-sm);
+  padding: 6px 8px;
+  background: #fff;
+  font-size: 14px;
   overflow-y: auto;
 }
 

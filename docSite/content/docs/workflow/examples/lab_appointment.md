@@ -84,9 +84,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
 ```json
 [
   {
-    "moduleId": "userChatInput",
+    "nodeId": "userChatInput",
     "name": "用户问题(对话入口)",
-    "flowType": "questionInput",
+    "flowNodeType": "questionInput",
     "position": {
       "x": 309.7143912167367,
       "y": 1501.2761754220846
@@ -110,7 +110,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "hlw67t",
+            "nodeId": "hlw67t",
             "key": "userChatInput"
           }
         ]
@@ -118,9 +118,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "98xq69",
+    "nodeId": "98xq69",
     "name": "文本内容提取",
-    "flowType": "contentExtract",
+    "flowNodeType": "contentExtract",
     "showStatus": true,
     "position": {
       "x": 2026.044690845613,
@@ -235,7 +235,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "source",
         "targets": [
           {
-            "moduleId": "wgwpx2",
+            "nodeId": "wgwpx2",
             "key": "info"
           }
         ]
@@ -267,9 +267,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "eg5upi",
+    "nodeId": "eg5upi",
     "name": "指定回复",
-    "flowType": "answerNode",
+    "flowNodeType": "answerNode",
     "position": {
       "x": 3644.154318570156,
       "y": 2087.496890856384
@@ -310,9 +310,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "kge59i",
+    "nodeId": "kge59i",
     "name": "用户引导",
-    "flowType": "userGuide",
+    "flowNodeType": "userGuide",
     "position": {
       "x": 271.18826350548954,
       "y": 777.38470952276
@@ -380,9 +380,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     "outputs": []
   },
   {
-    "moduleId": "hlw67t",
+    "nodeId": "hlw67t",
     "name": "问题分类",
-    "flowType": "classifyQuestion",
+    "flowNodeType": "classifyQuestion",
     "showStatus": true,
     "position": {
       "x": 763.6974006305715,
@@ -476,7 +476,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "l11c2w",
+            "nodeId": "l11c2w",
             "key": "switch"
           }
         ]
@@ -487,11 +487,11 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "98xq69",
+            "nodeId": "98xq69",
             "key": "switch"
           },
           {
-            "moduleId": "mhw4md",
+            "nodeId": "mhw4md",
             "key": "switch"
           }
         ]
@@ -502,7 +502,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "hidden",
         "targets": [
           {
-            "moduleId": "l5xe4u",
+            "nodeId": "l5xe4u",
             "key": "switch"
           }
         ]
@@ -538,11 +538,11 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "98xq69",
+            "nodeId": "98xq69",
             "key": "content"
           },
           {
-            "moduleId": "mhw4md",
+            "nodeId": "mhw4md",
             "key": "content"
           }
         ]
@@ -550,9 +550,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "l5xe4u",
+    "nodeId": "l5xe4u",
     "name": "指定回复",
-    "flowType": "answerNode",
+    "flowNodeType": "answerNode",
     "position": {
       "x": 1108.6507148112876,
       "y": 2292.8493299728207
@@ -593,9 +593,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "bjfklc",
+    "nodeId": "bjfklc",
     "name": "AI 对话",
-    "flowType": "chatNode",
+    "flowNodeType": "chatNode",
     "showStatus": true,
     "position": {
       "x": 2365.8777933722004,
@@ -780,9 +780,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "ee1fo3",
+    "nodeId": "ee1fo3",
     "name": "用户问题(对话入口)",
-    "flowType": "questionInput",
+    "flowNodeType": "questionInput",
     "position": {
       "x": 1133.7087158919899,
       "y": 638.1461154935015
@@ -806,7 +806,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "l11c2w",
+            "nodeId": "l11c2w",
             "key": "userChatInput"
           }
         ]
@@ -814,9 +814,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "mhw4md",
+    "nodeId": "mhw4md",
     "name": "文本内容提取",
-    "flowType": "contentExtract",
+    "flowNodeType": "contentExtract",
     "showStatus": true,
     "position": {
       "x": 1998.6877686115522,
@@ -930,7 +930,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "type": "source",
         "targets": [
           {
-            "moduleId": "wgwpx2",
+            "nodeId": "wgwpx2",
             "key": "action"
           }
         ]
@@ -938,9 +938,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "wgwpx2",
+    "nodeId": "wgwpx2",
     "name": "core.module.template.Http request",
-    "flowType": "httpRequest468",
+    "flowNodeType": "httpRequest468",
     "showStatus": true,
     "position": {
       "x": 2864.4878467558747,
@@ -1020,7 +1020,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "key": "DYNAMIC_INPUT_KEY",
         "type": "target",
         "valueType": "any",
-        "label": "core.module.inputType.dynamicTargetInput",
+        "label": "core.workflow.inputType.dynamicTargetInput",
         "description": "core.module.input.description.dynamic input",
         "required": false,
         "showTargetInApp": false,
@@ -1132,7 +1132,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         },
         "targets": [
           {
-            "moduleId": "eg5upi",
+            "nodeId": "eg5upi",
             "key": "text"
           }
         ]
@@ -1140,9 +1140,9 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
     ]
   },
   {
-    "moduleId": "l11c2w",
+    "nodeId": "l11c2w",
     "name": "core.module.template.Dataset search",
-    "flowType": "datasetSearchNode",
+    "flowNodeType": "datasetSearchNode",
     "showStatus": true,
     "position": {
       "x": 1694.7658061553766,
@@ -1259,7 +1259,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "string",
         "targets": [
           {
-            "moduleId": "bjfklc",
+            "nodeId": "bjfklc",
             "key": "userChatInput"
           }
         ]
@@ -1285,7 +1285,7 @@ HTTP 模块允许你调用任意 GET/POST 类型的 HTTP 接口，从而实现�
         "valueType": "datasetQuote",
         "targets": [
           {
-            "moduleId": "bjfklc",
+            "nodeId": "bjfklc",
             "key": "quoteQA"
           }
         ]

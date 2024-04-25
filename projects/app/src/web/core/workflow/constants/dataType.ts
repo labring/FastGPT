@@ -1,47 +1,47 @@
-import { ModuleIOValueTypeEnum } from '@fastgpt/global/core/module/constants';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 export const FlowValueTypeMap = {
-  [ModuleIOValueTypeEnum.string]: {
+  [WorkflowIOValueTypeEnum.string]: {
     handlerStyle: {
       borderColor: '#36ADEF'
     },
     label: 'core.module.valueType.string',
-    value: ModuleIOValueTypeEnum.string,
+    value: WorkflowIOValueTypeEnum.string,
     description: ''
   },
-  [ModuleIOValueTypeEnum.number]: {
+  [WorkflowIOValueTypeEnum.number]: {
     handlerStyle: {
       borderColor: '#FB7C3C'
     },
     label: 'core.module.valueType.number',
-    value: ModuleIOValueTypeEnum.number,
+    value: WorkflowIOValueTypeEnum.number,
     description: ''
   },
-  [ModuleIOValueTypeEnum.boolean]: {
+  [WorkflowIOValueTypeEnum.boolean]: {
     handlerStyle: {
       borderColor: '#E7D118'
     },
     label: 'core.module.valueType.boolean',
-    value: ModuleIOValueTypeEnum.boolean,
+    value: WorkflowIOValueTypeEnum.boolean,
     description: ''
   },
-  [ModuleIOValueTypeEnum.chatHistory]: {
+  [WorkflowIOValueTypeEnum.chatHistory]: {
     handlerStyle: {
       borderColor: '#00A9A6'
     },
     label: 'core.module.valueType.chatHistory',
-    value: ModuleIOValueTypeEnum.chatHistory,
+    value: WorkflowIOValueTypeEnum.chatHistory,
     description: `{
   obj: System | Human | AI;
   value: string;
 }[]`
   },
-  [ModuleIOValueTypeEnum.datasetQuote]: {
+  [WorkflowIOValueTypeEnum.datasetQuote]: {
     handlerStyle: {
       borderColor: '#A558C9'
     },
     label: 'core.module.valueType.datasetQuote',
-    value: ModuleIOValueTypeEnum.datasetQuote,
+    value: WorkflowIOValueTypeEnum.datasetQuote,
     description: `{
   id: string;
   datasetId: string;
@@ -52,36 +52,44 @@ export const FlowValueTypeMap = {
   a: string
 }[]`
   },
-  [ModuleIOValueTypeEnum.any]: {
+  [WorkflowIOValueTypeEnum.any]: {
     handlerStyle: {
       borderColor: '#9CA2A8'
     },
     label: 'core.module.valueType.any',
-    value: ModuleIOValueTypeEnum.any,
+    value: WorkflowIOValueTypeEnum.any,
     description: ''
   },
-  [ModuleIOValueTypeEnum.selectApp]: {
+  [WorkflowIOValueTypeEnum.selectApp]: {
     handlerStyle: {
       borderColor: '#6a6efa'
     },
     label: 'core.module.valueType.selectApp',
-    value: ModuleIOValueTypeEnum.selectApp,
+    value: WorkflowIOValueTypeEnum.selectApp,
     description: ''
   },
-  [ModuleIOValueTypeEnum.selectDataset]: {
+  [WorkflowIOValueTypeEnum.selectDataset]: {
     handlerStyle: {
       borderColor: '#21ba45'
     },
     label: 'core.module.valueType.selectDataset',
-    value: ModuleIOValueTypeEnum.selectDataset,
+    value: WorkflowIOValueTypeEnum.selectDataset,
     description: ''
   },
-  [ModuleIOValueTypeEnum.tools]: {
+  [WorkflowIOValueTypeEnum.tools]: {
     handlerStyle: {
       borderColor: '#21ba45'
     },
     label: 'core.module.valueType.tools',
-    value: ModuleIOValueTypeEnum.tools,
+    value: WorkflowIOValueTypeEnum.tools,
+    description: ''
+  },
+  [WorkflowIOValueTypeEnum.dynamic]: {
+    handlerStyle: {
+      borderColor: '#9CA2A8'
+    },
+    label: '动态数据',
+    value: WorkflowIOValueTypeEnum.any,
     description: ''
   }
 };

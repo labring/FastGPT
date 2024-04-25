@@ -86,14 +86,10 @@ export const useConfirm = (props?: {
         }, []);
 
         return (
-          <MyModal
-            isOpen={isOpen}
-            onClose={onClose}
-            iconSrc={iconSrc}
-            title={title}
-            maxW={['90vw', '500px']}
-          >
-            <ModalBody pt={5}>{customContent}</ModalBody>
+          <MyModal isOpen={isOpen} iconSrc={iconSrc} title={title} maxW={['90vw', '500px']}>
+            <ModalBody pt={5} whiteSpace={'pre-wrap'}>
+              {customContent}
+            </ModalBody>
             {!hideFooter && (
               <ModalFooter>
                 {showCancel && (

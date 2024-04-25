@@ -33,7 +33,7 @@ const DatasetSelectContainer = ({
 
   return (
     <MyModal
-      iconSrc="/imgs/module/db.png"
+      iconSrc="/imgs/workflow/db.png"
       title={
         <Box fontWeight={'normal'}>
           <ParentPaths
