@@ -61,6 +61,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const { nodes } = await getWorkflowStore();
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+
     if (!checkResults) {
       const storeNodes = flowNode2StoreNodes({ nodes, edges });
 

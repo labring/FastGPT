@@ -18,8 +18,8 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.contentExtract,
   templateType: FlowNodeTemplateTypeEnum.functionCall,
   flowNodeType: FlowNodeTypeEnum.contentExtract,
-  sourceHandle: getHandleConfig(false, false, false, false),
-  targetHandle: getHandleConfig(true, false, true, true),
+  sourceHandle: getHandleConfig(true, true, true, true),
+  targetHandle: getHandleConfig(true, true, true, true),
   avatar: '/imgs/workflow/extract.png',
   name: '文本内容提取',
   intro: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
@@ -59,21 +59,21 @@ export const ContextExtractModule: FlowNodeTemplateType = {
     }
   ],
   outputs: [
-    {
-      id: NodeOutputKeyEnum.success,
-      key: NodeOutputKeyEnum.success,
-      label: '字段完全提取',
-      valueType: WorkflowIOValueTypeEnum.boolean,
-      type: FlowNodeOutputTypeEnum.source
-    },
-    {
-      id: NodeOutputKeyEnum.failed,
-      key: NodeOutputKeyEnum.failed,
-      label: '提取字段缺失',
-      description: '存在一个或多个字段未提取成功。尽管使用了默认值也算缺失。',
-      valueType: WorkflowIOValueTypeEnum.boolean,
-      type: FlowNodeOutputTypeEnum.source
-    },
+    // {
+    //   id: NodeOutputKeyEnum.success,
+    //   key: NodeOutputKeyEnum.success,
+    //   label: '字段完全提取',
+    //   valueType: WorkflowIOValueTypeEnum.boolean,
+    //   type: FlowNodeOutputTypeEnum.source
+    // },
+    // {
+    //   id: NodeOutputKeyEnum.failed,
+    //   key: NodeOutputKeyEnum.failed,
+    //   label: '提取字段缺失',
+    //   description: '存在一个或多个字段未提取成功。尽管使用了默认值也算缺失。',
+    //   valueType: WorkflowIOValueTypeEnum.boolean,
+    //   type: FlowNodeOutputTypeEnum.source
+    // },
     {
       id: NodeOutputKeyEnum.contextExtractFields,
       key: NodeOutputKeyEnum.contextExtractFields,

@@ -372,6 +372,11 @@ export const v1Workflow2V2 = (
         if (output.key === 'pluginStart') return false;
         if (node.flowType !== FlowTypeEnum.questionInput && output.key === 'userChatInput')
           return false;
+        if (
+          node.flowType === FlowTypeEnum.contentExtract &&
+          (output.key === 'success' || output.key === 'failed')
+        )
+          return;
 
         return true;
       });
