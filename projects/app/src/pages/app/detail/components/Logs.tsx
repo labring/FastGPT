@@ -25,7 +25,7 @@ import ChatBox from '@/components/ChatBox';
 import type { ComponentRef } from '@/components/ChatBox/type.d';
 import { useQuery } from '@tanstack/react-query';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import Tag from '@/components/Tag';
+import Tag from '@fastgpt/web/components/common/Tag/index';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { addDays } from 'date-fns';
 import MyBox from '@/components/common/MyBox';
@@ -255,6 +255,7 @@ const DetailLogsModal = ({
     const { text } = formatChatValue2InputType(history[history.length - 2]?.value);
     return text?.slice(0, 8);
   }, [history]);
+  const chatModels = chat?.app?.chatModels;
 
   return (
     <>
@@ -292,10 +293,10 @@ const DetailLogsModal = ({
                 <MyIcon name={'history'} w={'14px'} />
                 <Box ml={1}>{`${history.length}条记录`}</Box>
               </Tag>
-              {!!chat?.app?.chatModels && (
+              {!!chatModels && chatModels.length > 0 && (
                 <Tag ml={2} colorSchema={'green'}>
                   <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
-                  <Box ml={1}>{chat.app.chatModels.join(',')}</Box>
+                  <Box ml={1}>{chatModels.join(',')}</Box>
                 </Tag>
               )}
               <Box flex={1} />

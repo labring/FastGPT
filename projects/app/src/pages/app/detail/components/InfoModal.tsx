@@ -122,7 +122,7 @@ const InfoModal = ({
     <MyModal
       isOpen={true}
       onClose={onClose}
-      iconSrc="/imgs/module/ai.svg"
+      iconSrc="/imgs/workflow/ai.svg"
       title={t('core.app.setting')}
     >
       <ModalBody>

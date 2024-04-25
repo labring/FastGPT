@@ -1,9 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import { getGuideModule } from '@fastgpt/global/core/module/utils';
-import { getChatModelNameListByModules } from '@/service/core/app/module';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { getChatModelNameListByModules } from '@/service/core/app/workflow';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type { InitChatResponse, InitTeamChatProps } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoApp } from '@fastgpt/service/core/app/schema';

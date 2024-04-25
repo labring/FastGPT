@@ -597,7 +597,7 @@ const Other = () => {
             userSelect={'none'}
             onClick={onOpenLaf}
           >
-            <Image src="/imgs/module/laf.png" w={'18px'} alt="laf" />
+            <Image src="/imgs/workflow/laf.png" w={'18px'} alt="laf" />
             <Box ml={2} flex={1}>
               laf 账号
             </Box>

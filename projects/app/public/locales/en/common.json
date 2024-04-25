@@ -108,6 +108,9 @@
     "Load Failed": "Load Failed",
     "Loading": "Loading",
     "More settings": "More settings",
+    "MultipleRowSelect": {
+      "No data": "No data"
+    },
     "Name": "Name",
     "Name Can": "Name Can't Be Empty",
     "Name is empty": "Name is empty",
@@ -276,8 +279,12 @@
       "App intro": "App intro",
       "App params config": "App Config",
       "Chat Variable": "",
+      "Config schedule plan": "Config schedule config",
       "Config whisper": "Config whisper",
       "External using": "External use",
+      "Interval timer config": "Interval timer config",
+      "Interval timer run": "Timed execution",
+      "Interval timer tip": "Applications can be executed periodically",
       "Make a brief introduction of your app": "Make a brief introduction of your app",
       "Max histories": "Dialog round",
       "Max tokens": "Max tokens",
@@ -293,6 +300,7 @@
       "Select app from template": "Select from the template",
       "Select quote template": "Select quote template",
       "Set a name for your app": "App name",
+      "Setting ai property": "Click Configure AI model properties",
       "Share link": "Share",
       "Share link desc": "Share links with other users and use them directly without logging in",
       "Share link desc detail": "You can share the model directly with other users to have a conversation, and the other user can have a conversation directly without logging in. Note that this function will consume the balance of your account, please keep the link!",
@@ -306,6 +314,7 @@
       "Tool call tip": "The AI model automatically selects one or more tools to use. If this feature is enabled, the knowledge base call is also called as a tool. Please try to choose the AI model that supports \"function call\", the effect is better.",
       "ToolCall": {
         "No plugin": "No plugins",
+        "Parameter setting": "",
         "Setting tool": "Setting tool",
         "System": "System",
         "Team": "Team",
@@ -357,6 +366,15 @@
         "Select Using Way": "Select use mode",
         "Show History": "Show History",
         "Web Link": "Web Link"
+      },
+      "schedule": {
+        "Default prompt": "Default prompt",
+        "Default prompt placeholder": "Default problem when executing the application",
+        "Every day": "Every {{hour}} hour",
+        "Every month": "{{day}} {{hour}}:00 Every month",
+        "Every week": "Every week {{day}} {{hour}}:00",
+        "Interval": "Per {{interval}} hour",
+        "Open schedule": "Enable schedule"
       },
       "setting": "App Setting",
       "share": {
@@ -415,6 +433,7 @@
     },
     "chat": {
       "Admin Mark Content": "Corrected response",
+      "Audio Not Support": "The device does not support voice play",
       "Audio Speech Error": "Audio Speech Error",
       "Cancel Speak": "Cancel speak",
       "Canceled Speak": "Voice input has been cancelled",
@@ -505,6 +524,7 @@
         "module http body": "Body",
         "module http result": "Response",
         "module http url": "Request Url",
+        "module if else Result": "if-else Result",
         "module limit": "Count Limit",
         "module maxToken": "MaxTokens",
         "module model": "Model",
@@ -831,6 +851,7 @@
         "Input description": "",
         "label": "Dataset quote"
       },
+      "Default Value": "Default value",
       "Default value": "Default ",
       "Default value placeholder": "Null characters are returned by default",
       "Edit intro": "Edit",
@@ -842,13 +863,22 @@
       "Http request settings": "Request settings",
       "Input Type": "Input Type",
       "Laf sync params": "Sync params",
+      "Max Length": "Max Length",
+      "Max Length placeholder": "The max length of input text",
+      "Max Value": "Max Value",
+      "Min Value": "",
+      "Model List": "Model list",
+      "No Config Tips": "no configuration",
+      "Output Type": "Output Type",
       "Plugin output must connect": "Custom outputs must all be connected",
+      "Plugin tool Description": "",
       "QueryExtension": {
         "placeholder": "Questions about python introduction and usage, etc. The current conversation is related to the game GTA5.",
         "tip": "Describes the scope of the current conversation, making it easier for the AI to complete first or vague questions, thereby enhancing the knowledge base's ability to continue conversations.If \n is empty, the question completion function is not used in the first conversation. "
       },
       "Quote prompt setting": "Quote prompt setting",
       "Qupte prompt setting": "",
+      "Select Data List": "Data list",
       "Select app": "Select app",
       "Setting quote prompt": "Setting quote prompt",
       "Unlink tip": "[{{name}}] An unfilled or unconnected parameter exists",
@@ -857,7 +887,8 @@
       "Variable import": "Variable import",
       "edit": {
         "Field Already Exist": "Key already exist",
-        "Field Edit": "Field Edit"
+        "Field Edit": "Field Edit",
+        "Field Name Cannot Be Empty": "Field Name Cannot Be Empty"
       },
       "extract": {
         "Add field": "Add",
@@ -890,8 +921,10 @@
       "input": {
         "Add Input": "Add Input",
         "Input Number": "Input: {{length}}",
+        "add": "Add condition",
         "description": {
           "Background": "",
+          "HTTP Dynamic Input": "Receive output values from preceding nodes as variables, which can be used as parameters in HTTP requests.",
           "Http Request Header": "User-defined request header, please strictly fill in the JSON string.\n1. Make sure the last attribute has no commas\n2. Make sure key contains double quotes\nFor example: {\"Authorization\":\"Bearer xxx\"}",
           "Http Request Url": "New HTTP request address. If two 'request addresses' appear, the module can be deleted and rejoined, and the latest module configuration will be pulled.",
           "Quote": "Object array format, structure:\n[{q:' question ',a:' answer '}]",
@@ -923,17 +956,6 @@
         "placeholder": {
           "Classify background": "For example:\n1.AIGC (Artificial Intelligence Generates content) refers to the automatic or semi-automatic generation of digital content, such as text, images, music, videos, and so on, using artificial intelligence technologies. AIGC technologies include, but are not limited to, natural language processing, computer vision, machine learning, and deep learning. These technologies can create new content or modify existing content to meet specific creative, educational, entertainment or information needs."
         }
-      },
-      "inputType": {
-        "chat history": "History",
-        "dynamicTargetInput": "dynamic Target Input",
-        "input": "Input",
-        "selectApp": "App Selector",
-        "selectDataset": "Dataset Selector",
-        "selectLLMModel": "Select Chat Model",
-        "switch": "Switch",
-        "target": "Target Data",
-        "textarea": "Textarea"
       },
       "laf": {
         "Select laf function": ""
@@ -1051,6 +1073,63 @@
     "shareChat": {
       "Init Error": "Init Chat Error",
       "Init History Error": "Init History Error"
+    },
+    "workflow": {
+      "Add variable": "Add",
+      "Can not delete node": "Can not delete the node",
+      "Change input type tip": "Changing the input type will empty the entered values, please confirm!",
+      "Check Failed": "Workflow verification fails. Check whether the node or connection is normal",
+      "Confirm stop debug": "Do you want to terminate debugging? Debugging information is not retained.",
+      "Copy node": "Copy node",
+      "Custom inputs": "Inputs",
+      "Custom outputs": "Outputs",
+      "Custom variable": "Custom variable",
+      "Dataset quote": "Dataset quote",
+      "Debug": "Debug",
+      "Debug Node": "Workflow Debug",
+      "Failed": "Running failed",
+      "Not intro": "This node is not introduced",
+      "Run from here": "Run from here",
+      "Run result": "Run result",
+      "Running": "Running",
+      "Skipped": "Skipped",
+      "Stop debug": "Stop",
+      "Success": "Running success",
+      "Value type": "Type",
+      "chat": {
+        "Quote prompt": "Quote prompt"
+      },
+      "debug": {
+        "Done": "Done",
+        "Hide result": "Hide result",
+        "Not result": "Not result",
+        "Run result": "",
+        "Show result": "Show result"
+      },
+      "inputType": {
+        "JSON Editor": "JSON Editor",
+        "Manual input": "",
+        "Manual select": "Select",
+        "Reference": "Reference",
+        "Required": "Required",
+        "Select edit field": "Editable field",
+        "Select input default value": "Default value",
+        "Select input type": "Configurable input types",
+        "Select input type placeholder": "Please select a configurable input type",
+        "chat history": "History",
+        "dynamicTargetInput": "dynamic Target Input",
+        "input": "Input",
+        "number input": "number input",
+        "selectApp": "App Selector",
+        "selectDataset": "Dataset Selector",
+        "selectLLMModel": "Select Chat Model",
+        "switch": "Switch",
+        "target": "Target Data",
+        "textarea": "Textarea"
+      },
+      "tool": {
+        "Select Tool": "Select Tool"
+      }
     }
   },
   "dataset": {

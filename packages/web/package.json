@@ -13,6 +13,7 @@
     "@fastgpt/global": "workspace:*",
     "@fingerprintjs/fingerprintjs": "^4.2.1",
     "@lexical/react": "0.12.6",
+    "@lexical/selection": "^0.14.5",
     "@lexical/text": "0.12.6",
     "@lexical/utils": "0.12.6",
     "@monaco-editor/react": "^4.6.0",
@@ -20,7 +21,6 @@
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
     "i18next": "23.10.0",
-    "joplin-turndown-plugin-gfm": "^1.0.12",
     "lexical": "0.12.6",
     "lodash": "^4.17.21",
     "mammoth": "^1.6.0",
@@ -30,14 +30,12 @@
     "react": "18.2.0",
     "react-day-picker": "^8.7.1",
     "react-dom": "18.2.0",
-    "react-i18next": "13.5.0",
-    "turndown": "^7.1.2"
+    "react-i18next": "13.5.0"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.191",
     "@types/papaparse": "^5.3.7",
     "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0",
-    "@types/turndown": "^5.0.4"
+    "@types/react-dom": "18.2.0"
   }
 }

@@ -5,31 +5,45 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ChatBox from '@/components/ChatBox';
 import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
-import { ModuleItemType } from '@fastgpt/global/core/module/type';
-import { ModuleInputKeyEnum } from '@fastgpt/global/core/module/constants';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getGuideModule } from '@fastgpt/global/core/module/utils';
+import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import {
+  getDefaultEntryNodeIds,
+  initWorkflowEdgeStatus,
+  storeNodes2RuntimeNodes
+} from '@fastgpt/global/core/workflow/runtime/utils';
 
 const ChatTest = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const { appDetail } = useAppStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const [modules, setModules] = useState<ModuleItemType[]>([]);
+  const [workflowData, setWorkflowData] = useState<{
+    nodes: StoreNodeItemType[];
+    edges: StoreEdgeItemType[];
+  }>({
+    nodes: [],
+    edges: []
+  });
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
-      let historyMaxLen = 0;
+      if (!workflowData) return Promise.reject('workflowData is empty');
 
-      modules.forEach((module) => {
-        module.inputs.forEach((input) => {
+      /* get histories */
+      let historyMaxLen = 6;
+      workflowData?.nodes.forEach((node) => {
+        node.inputs.forEach((input) => {
           if (
-            (input.key === ModuleInputKeyEnum.history ||
-              input.key === ModuleInputKeyEnum.historyMaxAmount) &&
+            (input.key === NodeInputKeyEnum.history ||
+              input.key === NodeInputKeyEnum.historyMaxAmount) &&
             typeof input.value === 'number'
           ) {
             historyMaxLen = Math.max(historyMaxLen, input.value);
@@ -44,7 +58,11 @@ const ChatTest = ({ appId }: { appId: string }) => {
         data: {
           history,
           prompt: chatList[chatList.length - 2].value,
-          modules,
+          nodes: storeNodes2RuntimeNodes(
+            workflowData.nodes,
+            getDefaultEntryNodeIds(workflowData.nodes)
+          ),
+          edges: initWorkflowEdgeStatus(workflowData.edges),
           variables,
           appId,
           appName: `调试-${appDetail.name}`
@@ -55,7 +73,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
 
       return { responseText, responseData };
     },
-    [modules, appId, appDetail.name]
+    [workflowData, appId, appDetail.name]
   );
 
   const resetChatBox = useCallback(() => {
@@ -65,7 +83,10 @@ const ChatTest = ({ appId }: { appId: string }) => {
 
   useEffect(() => {
     resetChatBox();
-    setModules(appDetail.modules);
+    setWorkflowData({
+      nodes: appDetail.modules || [],
+      edges: appDetail.edges || []
+    });
   }, [appDetail, resetChatBox]);
 
   return (
@@ -103,8 +124,8 @@ const ChatTest = ({ appId }: { appId: string }) => {
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon
-          userGuideModule={getGuideModule(modules)}
-          showFileSelector={checkChatSupportSelectFileByModules(modules)}
+          userGuideModule={getGuideModule(workflowData.nodes)}
+          showFileSelector={checkChatSupportSelectFileByModules(workflowData.nodes)}
           onStartChat={startChat}
           onDelMessage={() => {}}
         />

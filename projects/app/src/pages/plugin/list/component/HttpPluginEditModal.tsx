@@ -40,7 +40,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { EditFormType } from './type';
 import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
-import { HttpHeaders } from '@/components/core/module/Flow/components/nodes/NodeHttp';
+import { HttpHeaders } from '@/components/core/workflow/Flow/nodes/NodeHttp';
 import { OpenApiJsonSchema } from '@fastgpt/global/core/plugin/httpPlugin/type';
 
 export const defaultHttpPlugin: CreateOnePluginParams = {
@@ -150,7 +150,7 @@ const HttpPluginEditModal = ({
     [setValue, t, toast]
   );
 
-  const { mutate: onclickDelPlugin, isLoading: isDeleting } = useRequest({
+  const { mutate: onClickDelPlugin, isLoading: isDeleting } = useRequest({
     mutationFn: async () => {
       if (!defaultPlugin.id) return;
 
@@ -209,7 +209,7 @@ const HttpPluginEditModal = ({
       <MyModal
         isOpen
         onClose={onClose}
-        iconSrc="/imgs/module/http.png"
+        iconSrc="/imgs/workflow/http.png"
         title={isEdit ? t('plugin.Edit Http Plugin') : t('plugin.Import Plugin')}
         w={['90vw', '600px']}
         h={['90vh', '80vh']}
@@ -512,7 +512,7 @@ const HttpPluginEditModal = ({
               isLoading={isDeleting}
               onClick={(e) => {
                 e.stopPropagation();
-                openConfirm(onclickDelPlugin)();
+                openConfirm(onClickDelPlugin)();
               }}
             />
           )}

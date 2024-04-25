@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
-import { moduleTemplatesFlat } from '@fastgpt/global/core/module/template/constants';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 
 import Tabs from '../Tabs';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -34,12 +34,13 @@ function Row({
         {t(label)}:
       </Box>
       <Box
-        borderRadius={'md'}
+        borderRadius={'sm'}
         fontSize={'sm'}
+        bg={'myGray.50'}
         {...(isCodeBlock
           ? { transform: 'translateY(-3px)' }
           : value
-            ? { px: 3, py: 1, border: theme.borders.base }
+            ? { px: 3, py: 2, border: theme.borders.base }
             : {})}
       >
         {value && <Markdown source={strValue} />}
@@ -86,12 +87,14 @@ const WholeResponseModal = ({
 
 export default WholeResponseModal;
 
-const ResponseBox = React.memo(function ResponseBox({
+export const ResponseBox = React.memo(function ResponseBox({
   response,
-  showDetail
+  showDetail,
+  hideTabs = false
 }: {
   response: ChatHistoryItemResType[];
   showDetail: boolean;
+  hideTabs?: boolean;
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
@@ -105,7 +108,7 @@ const ResponseBox = React.memo(function ResponseBox({
               mr={2}
               src={
                 item.moduleLogo ||
-                moduleTemplatesFlat.find((template) => item.moduleType === template.flowType)
+                moduleTemplatesFlat.find((template) => item.moduleType === template.flowNodeType)
                   ?.avatar
               }
               alt={''}
@@ -125,9 +128,11 @@ const ResponseBox = React.memo(function ResponseBox({
 
   return (
     <>
-      <Box>
-        <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
-      </Box>
+      {!hideTabs && (
+        <Box>
+          <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
+        </Box>
+      )}
       <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
         <>
           <Row label={t('core.chat.response.module name')} value={t(activeModule.moduleName)} />
@@ -222,6 +227,7 @@ const ResponseBox = React.memo(function ResponseBox({
 
         {/* classify question */}
         <>
+          <Row label={t('core.chat.response.module cq result')} value={activeModule?.cqResult} />
           <Row
             label={t('core.chat.response.module cq')}
             value={(() => {
@@ -229,7 +235,14 @@ const ResponseBox = React.memo(function ResponseBox({
               return activeModule.cqList.map((item) => `* ${item.value}`).join('\n');
             })()}
           />
-          <Row label={t('core.chat.response.module cq result')} value={activeModule?.cqResult} />
+        </>
+
+        {/* if-else */}
+        <>
+          <Row
+            label={t('core.chat.response.module if else Result')}
+            value={activeModule?.ifElseResult}
+          />
         </>
 
         {/* extract */}

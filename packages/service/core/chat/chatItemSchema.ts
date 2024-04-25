@@ -9,8 +9,8 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { appCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 
 export const ChatItemCollectionName = 'chatitems';
 

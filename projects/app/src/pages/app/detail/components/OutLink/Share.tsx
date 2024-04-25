@@ -42,7 +42,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
-import MyMenu from '@/components/MyMenu';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));

@@ -15,7 +15,6 @@ import MyTooltip from '@/components/MyTooltip';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getDefaultIndex } from '@fastgpt/global/core/dataset/utils';
 import { DatasetDataIndexItemType } from '@fastgpt/global/core/dataset/type';
@@ -145,7 +144,9 @@ const InputDataModal = ({
         setCurrentTab(TabEnum.content);
         return Promise.reject(t('dataset.data.input is empty'));
       }
-      if (countPromptTokens(e.q) >= maxToken) {
+
+      const totalLength = e.q.length + (e.a?.length || 0);
+      if (totalLength >= maxToken * 1.4) {
         return Promise.reject(t('core.dataset.data.Too Long'));
       }
 

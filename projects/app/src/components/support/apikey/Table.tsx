@@ -41,7 +41,7 @@ import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import MyTooltip from '@/components/MyTooltip';
 import { getDocPath } from '@/web/common/system/doc';
-import MyMenu from '@/components/MyMenu';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 type EditProps = EditApiKeyProps & { _id?: string };

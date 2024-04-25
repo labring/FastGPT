@@ -3,7 +3,6 @@ import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 
 export const defaultApp: AppDetailType = {
   _id: '',
-  userId: 'userId',
   name: '应用加载中',
   type: 'simple',
   avatar: '/icon/logo.svg',
@@ -15,7 +14,9 @@ export const defaultApp: AppDetailType = {
   permission: 'private',
   isOwner: false,
   canWrite: false,
-  teamTags: ['']
+  teamTags: [],
+  edges: [],
+  version: 'v2'
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Tooltip, TooltipProps, useMediaQuery } from '@chakra-ui/react';
+import { Tooltip, TooltipProps, css, useMediaQuery } from '@chakra-ui/react';
 
 interface Props extends TooltipProps {
   forceShow?: boolean;

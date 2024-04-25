@@ -7,9 +7,9 @@ toc: true
 weight: 401
 ---
 
-![](/imgs/demo-fix-evidence1.png)
+![](/imgs/demo-fix-evidence1.jpg)
 
-![](/imgs/demo-fix-evidence2.png)
+![](/imgs/demo-fix-evidence2.jpg)
 
 
 如上图，可以通过指定回复编排一个固定的开头和结尾内容。
@@ -21,318 +21,411 @@ weight: 401
 {{% details title="编排配置" closed="true" %}}
 
 ```json
-[
-  {
-    "moduleId": "userChatInput",
-    "name": "用户问题(对话入口)",
-    "flowType": "questionInput",
-    "position": {
-      "x": 59.03170043915989,
-      "y": 1604.8595605938747
+{
+  "nodes": [
+    {
+      "nodeId": "7z5g5h",
+      "name": "流程开始",
+      "intro": "",
+      "avatar": "/imgs/workflow/userChatInput.svg",
+      "flowNodeType": "workflowStart",
+      "position": {
+        "x": -269.50851681351924,
+        "y": 1657.6123698022448
+      },
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "问题输入",
+          "required": true,
+          "toolDescription": "用户问题",
+          "type": "systemInput",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0,
+          "value": [
+            "7z5g5h",
+            "userChatInput"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "type": "static",
+          "key": "userChatInput",
+          "valueType": "string",
+          "label": "core.module.input.label.user question"
+        }
+      ]
     },
-    "inputs": [
-      {
-        "key": "userChatInput",
-        "type": "systemInput",
-        "label": "用户问题",
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "userChatInput",
-        "label": "用户问题",
-        "type": "source",
-        "valueType": "string",
-        "targets": [
-          {
-            "moduleId": "chatModule",
-            "key": "userChatInput"
-          },
-          {
-            "moduleId": "ymqh0t",
-            "key": "switch"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "history",
-    "name": "聊天记录",
-    "flowType": "historyNode",
-    "position": {
-      "x": 38.19233923987295,
-      "y": 1184.4581738905642
+    {
+      "nodeId": "nlfwkc",
+      "name": "AI 对话",
+      "intro": "AI 大模型对话",
+      "avatar": "/imgs/workflow/AI.png",
+      "flowNodeType": "chatNode",
+      "showStatus": true,
+      "position": {
+        "x": 907.2058332478431,
+        "y": 1348.9992737142143
+      },
+      "inputs": [
+        {
+          "key": "model",
+          "renderTypeList": [
+            "settingLLMModel",
+            "reference"
+          ],
+          "label": "core.module.input.label.aiModel",
+          "valueType": "string",
+          "type": "selectLLMModel",
+          "required": true,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "value": "gpt-3.5-turbo",
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "temperature",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "value": 0,
+          "valueType": "number",
+          "min": 0,
+          "max": 10,
+          "step": 1,
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "maxToken",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "value": 2000,
+          "valueType": "number",
+          "min": 100,
+          "max": 4000,
+          "step": 50,
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "isResponseAnswerText",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "value": true,
+          "valueType": "boolean",
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "quoteTemplate",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string",
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "quotePrompt",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "valueType": "string",
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "systemPrompt",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "max": 300,
+          "valueType": "string",
+          "label": "core.ai.Prompt",
+          "description": "core.app.tip.chatNodeSystemPromptTip",
+          "placeholder": "core.app.tip.chatNodeSystemPromptTip",
+          "type": "textarea",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "value": "",
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "history",
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
+          "valueType": "chatHistory",
+          "label": "core.module.input.label.chat history",
+          "required": true,
+          "min": 0,
+          "max": 30,
+          "value": 6,
+          "type": "numberInput",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "valueType": "string",
+          "label": "问题输入",
+          "required": true,
+          "toolDescription": "用户问题",
+          "type": "custom",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": true,
+          "selectedTypeIndex": 0,
+          "value": [
+            "7z5g5h",
+            "userChatInput"
+          ]
+        },
+        {
+          "key": "quoteQA",
+          "renderTypeList": [
+            "settingDatasetQuotePrompt"
+          ],
+          "label": "",
+          "debugLabel": "知识库引用",
+          "description": "core.module.Dataset quote.Input description",
+          "valueType": "datasetQuote",
+          "type": "target",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": true,
+          "selectedTypeIndex": 0,
+          "value": [
+            "fljhzy",
+            "quoteQA"
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "answerText",
+          "type": "static",
+          "key": "answerText",
+          "valueType": "string",
+          "label": "core.module.output.label.Ai response content",
+          "description": "core.module.output.description.Ai response content"
+        },
+        {
+          "id": "history",
+          "type": "static",
+          "key": "history",
+          "valueType": "chatHistory",
+          "label": "core.module.output.label.New context",
+          "description": "core.module.output.description.New context"
+        }
+      ]
     },
-    "inputs": [
-      {
-        "key": "maxContext",
-        "type": "numberInput",
-        "label": "最长记录数",
-        "value": 6,
-        "min": 0,
-        "max": 50,
-        "connected": true
+    {
+      "nodeId": "q9equb",
+      "name": "core.module.template.App system setting",
+      "intro": "可以配置应用的系统参数。",
+      "avatar": "/imgs/workflow/userGuide.png",
+      "flowNodeType": "userGuide",
+      "position": {
+        "x": -275.92529567956024,
+        "y": 1094.1001488133452
       },
-      {
-        "key": "history",
-        "type": "hidden",
-        "label": "聊天记录",
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "history",
-        "label": "聊天记录",
-        "valueType": "chatHistory",
-        "type": "source",
-        "targets": [
-          {
-            "moduleId": "chatModule",
-            "key": "history"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "chatModule",
-    "name": "AI 对话",
-    "flowType": "chatNode",
-    "showStatus": true,
-    "position": {
-      "x": 943.1225685246793,
-      "y": 891.3094521573212
+      "inputs": [
+        {
+          "key": "welcomeText",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "core.app.Welcome Text",
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "value": "你好，我是电影《星际穿越》 AI 助手，有什么可以帮助你的？\n[导演是谁]\n[剧情介绍]\n[票房分析]",
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "variables",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "core.module.Variable",
+          "value": [],
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "questionGuide",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "",
+          "type": "switch",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "tts",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "type": "hidden",
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false,
+          "selectedTypeIndex": 0
+        },
+        {
+          "key": "whisper",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": ""
+        },
+        {
+          "key": "scheduleTrigger",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": null
+        }
+      ],
+      "outputs": []
     },
-    "inputs": [
-      {
-        "key": "model",
-        "type": "custom",
-        "label": "对话模型",
-        "value": "gpt-3.5-turbo",
-        "list": [
-          {
-            "label": "FastGPT-4k",
-            "value": "gpt-3.5-turbo"
-          },
-          {
-            "label": "FastGPT-16k",
-            "value": "gpt-3.5-turbo-16k"
-          },
-          {
-            "label": "文心一言",
-            "value": "ERNIE-Bot"
-          },
-          {
-            "label": "FastGPT-Plus",
-            "value": "gpt-4"
-          },
-          {
-            "label": "glm2(演示娱乐)",
-            "value": "glm2-6b"
-          }
-        ],
-        "connected": true
+    {
+      "nodeId": "tc90wz",
+      "name": "指定回复",
+      "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+      "avatar": "/imgs/workflow/reply.png",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 159.49274056478237,
+        "y": 1621.4635230667668
       },
-      {
-        "key": "temperature",
-        "type": "slider",
-        "label": "温度",
-        "value": 0,
-        "min": 0,
-        "max": 10,
-        "step": 1,
-        "markList": [
-          {
-            "label": "严谨",
-            "value": 0
-          },
-          {
-            "label": "发散",
-            "value": 10
-          }
-        ],
-        "connected": true
-      },
-      {
-        "key": "maxToken",
-        "type": "custom",
-        "label": "回复上限",
-        "value": 2000,
-        "min": 100,
-        "max": 4000,
-        "step": 50,
-        "markList": [
-          {
-            "label": "100",
-            "value": 100
-          },
-          {
-            "label": "4000",
-            "value": 4000
-          }
-        ],
-        "connected": true
-      },
-      {
-        "key": "systemPrompt",
-        "type": "textarea",
-        "label": "系统提示词",
-        "max": 300,
-        "valueType": "string",
-        "description": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
-        "placeholder": "模型固定的引导词，通过调整该内容，可以引导模型聊天方向。该内容会被固定在上下文的开头。可使用变量，例如 {{language}}",
-        "value": "",
-        "connected": true
-      },
-      {
-        "key": "limitPrompt",
-        "type": "textarea",
-        "valueType": "string",
-        "label": "限定词",
-        "max": 500,
-        "description": "限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。不建议内容太长，会影响上下文，可使用变量，例如 {{language}}。可在文档中找到对应的限定例子",
-        "placeholder": "限定模型对话范围，会被放置在本次提问前，拥有强引导和限定性。不建议内容太长，会影响上下文，可使用变量，例如 {{language}}。可在文档中找到对应的限定例子",
-        "value": "",
-        "connected": true
-      },
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "触发器",
-        "valueType": "any",
-        "connected": true
-      },
-      {
-        "key": "quoteQA",
-        "type": "target",
-        "label": "引用内容",
-        "description": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
-        "valueType": "datasetQuote",
-        "connected": false
-      },
-      {
-        "key": "history",
-        "type": "target",
-        "label": "聊天记录",
-        "valueType": "chatHistory",
-        "connected": true
-      },
-      {
-        "key": "userChatInput",
-        "type": "target",
-        "label": "用户问题",
-        "required": true,
-        "valueType": "string",
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "answerText",
-        "label": "AI回复",
-        "description": "将在 stream 回复完毕后触发",
-        "valueType": "string",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "finish",
-        "label": "回复结束",
-        "description": "AI 回复完成后触发",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": [
-          {
-            "moduleId": "ojeopv",
-            "key": "switch"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "ymqh0t",
-    "name": "指定回复",
-    "flowType": "answerNode",
-    "position": {
-      "x": 435.27459673941917,
-      "y": 1081.9477378716076
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "any",
+          "label": "core.module.input.label.Response content",
+          "description": "core.module.input.description.Response content",
+          "placeholder": "core.module.input.description.Response content",
+          "type": "textarea",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "value": "这是开头\\n",
+          "connected": false,
+          "selectedTypeIndex": 0
+        }
+      ],
+      "outputs": []
     },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "触发器",
-        "valueType": "any",
-        "connected": true
+    {
+      "nodeId": "U5T3dMVY4wj7",
+      "name": "指定回复",
+      "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+      "avatar": "/imgs/workflow/reply.png",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 1467.0625486167608,
+        "y": 1597.346243737531
       },
-      {
-        "key": "text",
-        "type": "textarea",
-        "valueType": "string",
-        "value": "这是AI作答：\n\n---\n\n",
-        "label": "回复的内容",
-        "description": "可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容",
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "finish",
-        "label": "回复结束",
-        "description": "回复完成后触发",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": [
-          {
-            "moduleId": "chatModule",
-            "key": "switch"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "ojeopv",
-    "name": "指定回复",
-    "flowType": "answerNode",
-    "position": {
-      "x": 1573.4540253108476,
-      "y": 1551.9808807287498
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "string",
+          "label": "core.module.input.label.Response content",
+          "description": "core.module.input.description.Response content",
+          "placeholder": "core.module.input.description.Response content",
+          "value": "这是结尾"
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "edges": [
+    {
+      "source": "7z5g5h",
+      "target": "tc90wz",
+      "sourceHandle": "7z5g5h-source-right",
+      "targetHandle": "tc90wz-target-left"
     },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "触发器",
-        "valueType": "any",
-        "connected": true
-      },
-      {
-        "key": "text",
-        "type": "textarea",
-        "valueType": "string",
-        "value": "\\n\n---\n\n这是固定的结尾",
-        "label": "回复的内容",
-        "description": "可以使用 \\n 来实现换行。也可以通过外部模块输入实现回复，外部模块输入时会覆盖当前填写的内容",
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "finish",
-        "label": "回复结束",
-        "description": "回复完成后触发",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      }
-    ]
-  }
-]
+    {
+      "source": "tc90wz",
+      "target": "nlfwkc",
+      "sourceHandle": "tc90wz-source-right",
+      "targetHandle": "nlfwkc-target-left"
+    },
+    {
+      "source": "nlfwkc",
+      "target": "U5T3dMVY4wj7",
+      "sourceHandle": "nlfwkc-source-right",
+      "targetHandle": "U5T3dMVY4wj7-target-left"
+    }
+  ]
+}
 ```
 
 {{% /details %}}

@@ -40,7 +40,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { setToken } from '@/web/support/user/auth';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { FormDataType, defaultForm } from './EditModal';
-import MyMenu from '@/components/MyMenu';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

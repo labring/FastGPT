@@ -25,7 +25,7 @@
     "Connection type is different": "连接的类型不一致",
     "Copy Module Config": "复制配置",
     "Dataset Quote Template": "知识库问答模式",
-    "Export Config Successful": "已复制配置，请注意检查是否有重要数据",
+    "Export Config Successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
     "Export Configs": "导出配置",
     "Feedback Count": "用户反馈",
     "Import Configs": "导入配置",
@@ -108,6 +108,9 @@
     "Load Failed": "加载失败",
     "Loading": "加载中...",
     "More settings": "更多设置",
+    "MultipleRowSelect": {
+      "No data": "没有可选值"
+    },
     "Name": "名称",
     "Name Can": "名称不能为空",
     "Name is empty": "名称不能为空",
@@ -276,8 +279,12 @@
       "App intro": "应用介绍",
       "App params config": "应用配置",
       "Chat Variable": "对话框变量",
+      "Config schedule plan": "配置定时执行",
       "Config whisper": "配置语音输入",
       "External using": "外部使用途径",
+      "Interval timer config": "定时执行配置",
+      "Interval timer run": "定时执行",
+      "Interval timer tip": "可定时执行应用",
       "Make a brief introduction of your app": "给你的 AI 应用一个介绍",
       "Max histories": "聊天记录数量",
       "Max tokens": "回复上限",
@@ -293,6 +300,7 @@
       "Select app from template": "从模板中选择",
       "Select quote template": "选择引用提示模板",
       "Set a name for your app": "给应用设置一个名称",
+      "Setting ai property": "点击配置AI模型相关属性",
       "Share link": "免登录窗口",
       "Share link desc": "分享链接给其他用户，无需登录即可直接进行使用",
       "Share link desc detail": "可以直接分享该模型给其他用户去进行对话，对方无需登录即可直接进行对话。注意，这个功能会消耗你账号的余额，请保管好链接！",
@@ -306,6 +314,7 @@
       "Tool call tip": "通过AI模型自动选择一个或多个工具进行使用。如果启动该功能，知识库调用也会被当做一个工具调用。请尽量选择支持“函数调用”的AI模型，效果更好。",
       "ToolCall": {
         "No plugin": "没有可用的插件",
+        "Parameter setting": "输入参数",
         "Setting tool": "配置工具",
         "System": "系统",
         "Team": "团队",
@@ -357,6 +366,15 @@
         "Select Using Way": "选择使用方式",
         "Show History": "展示历史对话",
         "Web Link": "网络链接"
+      },
+      "schedule": {
+        "Default prompt": "默认问题",
+        "Default prompt placeholder": "执行应用时的默认问题",
+        "Every day": "每天{{hour}}:00",
+        "Every month": "每月{{day}}号{{hour}}:00",
+        "Every week": "每周{{day}} {{hour}}:00",
+        "Interval": "每{{interval}}小时",
+        "Open schedule": "定时执行"
       },
       "setting": "应用信息设置",
       "share": {
@@ -415,6 +433,7 @@
     },
     "chat": {
       "Admin Mark Content": "纠正后的回复",
+      "Audio Not Support": "设备不支持语音播放",
       "Audio Speech Error": "语音播报异常",
       "Cancel Speak": "取消语音输入",
       "Canceled Speak": "语音输入已取消",
@@ -505,6 +524,7 @@
         "module http body": "请求体",
         "module http result": "响应体",
         "module http url": "请求地址",
+        "module if else Result": "判断器结果",
         "module limit": "单次搜索上限",
         "module maxToken": "最大响应 Tokens",
         "module model": "模型",
@@ -611,8 +631,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -833,6 +852,7 @@
         "Input description": "可接收知识库搜索的结果。",
         "label": "知识库引用"
       },
+      "Default Value": "默认值",
       "Default value": "默认值",
       "Default value placeholder": "不填则默认返回空字符",
       "Edit intro": "编辑描述",
@@ -844,13 +864,22 @@
       "Http request settings": "请求配置",
       "Input Type": "输入类型",
       "Laf sync params": "同步参数",
+      "Max Length": "最大长度",
+      "Max Length placeholder": "输入文本的最大长度",
+      "Max Value": "最大值",
+      "Min Value": "最小值",
+      "Model List": "模型列表",
+      "No Config Tips": "无可配置项",
+      "Output Type": "输出类型",
       "Plugin output must connect": "自定义输出必须全部连接",
+      "Plugin tool Description": "工具参数需要描述",
       "QueryExtension": {
         "placeholder": "例如:\n关于 python 的介绍和使用等问题。\n当前对话与游戏《GTA5》有关。",
         "tip": "描述当前对话的范围，便于AI补全首次问题或模糊的问题，从而增强知识库连续对话的能力。建议开启该功能后，都简单的描述在对话的背景，否则容易造成补全对象不准确。"
       },
       "Quote prompt setting": "引用提示词配置",
       "Qupte prompt setting": "",
+      "Select Data List": "数据列表",
       "Select app": "选择应用",
       "Setting quote prompt": "配置引用提示词",
       "Unlink tip": "【{{name}}】存在未填或未连接参数",
@@ -859,7 +888,8 @@
       "Variable import": "外部参数输入",
       "edit": {
         "Field Already Exist": "key 重复",
-        "Field Edit": "字段编辑"
+        "Field Edit": "字段编辑",
+        "Field Name Cannot Be Empty": "字段名不能为空"
       },
       "extract": {
         "Add field": "新增字段",
@@ -892,8 +922,10 @@
       "input": {
         "Add Input": "添加入参",
         "Input Number": "入参: {{length}}",
+        "add": "添加条件",
         "description": {
           "Background": "你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。",
+          "HTTP Dynamic Input": "接收前方节点的输出值作为变量，这些变量可以被HTTP请求参数使用。",
           "Http Request Header": "自定义请求头，请严格填入JSON字符串。\n1. 确保最后一个属性没有逗号\n2. 确保 key 包含双引号\n例如: {\"Authorization\":\"Bearer xxx\"}",
           "Http Request Url": "新的HTTP请求地址。如果出现两个“请求地址”，可以删除该模块重新加入，会拉取最新的模块配置。",
           "Quote": "对象数组格式，结构：\n [{q:'问题',a:'回答'}]",
@@ -925,17 +957,6 @@
         "placeholder": {
           "Classify background": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。"
         }
-      },
-      "inputType": {
-        "chat history": "历史记录",
-        "dynamicTargetInput": "动态外部数据",
-        "input": "输入框",
-        "selectApp": "应用选择",
-        "selectDataset": "知识库选择",
-        "selectLLMModel": "对话模型选择",
-        "switch": "开关",
-        "target": "外部数据",
-        "textarea": "段落输入"
       },
       "laf": {
         "Select laf function": "选择laf函数"
@@ -1053,6 +1074,63 @@
     "shareChat": {
       "Init Error": "初始化对话框失败",
       "Init History Error": "初始化聊天记录失败"
+    },
+    "workflow": {
+      "Add variable": "新增变量",
+      "Can not delete node": "该节点不允许删除",
+      "Change input type tip": "修改输入类型会清空已填写的值，请确认！",
+      "Check Failed": "工作流校验失败，请检查节点是否正确填值，以及连线是否正常",
+      "Confirm stop debug": "确认终止调试？调试信息将会不保留。",
+      "Copy node": "已复制节点",
+      "Custom inputs": "自定义输入",
+      "Custom outputs": "自定义输出",
+      "Custom variable": "自定义变量",
+      "Dataset quote": "知识库引用",
+      "Debug": "调试",
+      "Debug Node": "Debug模式",
+      "Failed": "运行失败",
+      "Not intro": "这个节点没有介绍~\\",
+      "Run from here": "从这里开始运行",
+      "Run result": "",
+      "Running": "运行中",
+      "Skipped": "跳过运行",
+      "Stop debug": "停止调试",
+      "Success": "运行成功",
+      "Value type": "数据类型",
+      "chat": {
+        "Quote prompt": "引用提示词"
+      },
+      "debug": {
+        "Done": "完成调试",
+        "Hide result": "隐藏结果",
+        "Not result": "无运行结果",
+        "Run result": "运行结果",
+        "Show result": "展示结果"
+      },
+      "inputType": {
+        "JSON Editor": "JSON 输入框",
+        "Manual input": "手动输入",
+        "Manual select": "手动选择",
+        "Reference": "变量引用",
+        "Required": "必填",
+        "Select edit field": "可编辑内容",
+        "Select input default value": "默认值",
+        "Select input type": "可配置的输入类型",
+        "Select input type placeholder": "请选择可配置的输入类型",
+        "chat history": "历史记录",
+        "dynamicTargetInput": "动态外部数据",
+        "input": "单行输入框",
+        "number input": "数字输入框",
+        "selectApp": "应用选择",
+        "selectDataset": "知识库选择",
+        "selectLLMModel": "对话模型选择",
+        "switch": "开关",
+        "target": "外部数据",
+        "textarea": "多行输入框"
+      },
+      "tool": {
+        "Select Tool": "选择工具"
+      }
     }
   },
   "dataset": {

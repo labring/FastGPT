@@ -13,19 +13,25 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     await connectToDatabase();
     const body = req.body as UpdatePluginParams;
 
-    const { id, ...props } = body;
+    const { id, modules, edges, ...props } = body;
 
-    const { teamId, tmbId } = await authPluginCrud({ req, authToken: true, id, per: 'owner' });
+    const { teamId, tmbId } = await authPluginCrud({
+      req,
+      authToken: true,
+      pluginId: id,
+      per: 'owner'
+    });
 
     const updateData = {
       name: props.name,
       intro: props.intro,
       avatar: props.avatar,
       parentId: props.parentId,
-      ...(props.modules &&
-        props.modules.length > 0 && {
-          modules: props.modules
-        }),
+      version: 'v2',
+      ...(modules && {
+        modules: modules
+      }),
+      ...(edges && { edges }),
       metadata: props.metadata
     };
 
@@ -98,7 +104,8 @@ const updateHttpChildrenPlugin = async ({
               pluginUid: plugin.name
             },
             teamId,
-            tmbId
+            tmbId,
+            version: 'v2'
           }
         ],
         {
@@ -111,7 +118,14 @@ const updateHttpChildrenPlugin = async ({
   for await (const plugin of schemaPlugins) {
     const dbPlugin = dbPlugins.find((p) => plugin.name === p.metadata?.pluginUid);
     if (dbPlugin) {
-      await MongoPlugin.findByIdAndUpdate(dbPlugin._id, plugin, { session });
+      await MongoPlugin.findByIdAndUpdate(
+        dbPlugin._id,
+        {
+          ...plugin,
+          version: 'v2'
+        },
+        { session }
+      );
     }
   }
 };

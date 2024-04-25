@@ -1,5 +1,5 @@
 import type { NextApiResponse } from 'next';
-import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { proxyError, ERROR_RESPONSE, ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import { addLog } from '../system/log';
 import { clearCookie } from '../../support/permission/controller';

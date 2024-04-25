@@ -9,7 +9,7 @@ weight: 404
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/demo-dalle1.png) | ![](/imgs/demo-dalle2.webp) |
+| ![](/imgs/demo-dalle1.webp) | ![](/imgs/demo-dalle2.webp) |
 
 ## OpenAI Dalle3 接口
 
@@ -44,14 +44,14 @@ Response
 
 ## 编排思路
 
-1. 通过 AI 来优化图片绘制的提示词（这部省略了，自己找提示词即可）
-2. 通过`HTTP 模块`调用 Dalle3 接口，获取图片的 URL。
-3. 通过`文本加工`来构建`Markdown`的图片格式。
-4. 通过`指定回复`来直接输出图片链接。
+1. 通过 AI 来优化图片绘制的提示词（这步省略了，自己找提示词即可）
+2. 通过 `【HTTP 请求】模块` 调用 Dalle3 接口，获取图片的 URL。
+3. 通过 `【文本加工】模块` 来构建 `Markdown` 的图片格式。
+4. 通过 `【指定回复】模块` 来直接输出图片链接。
 
 ### 1. 构建 HTTP 模块
 
-请求参数直接复制 Dalle3 接口的即可，并求改 prompt 为变量。需要增加一个`Headers.Authorization`。
+请求参数直接复制 Dalle3 接口的即可，并求改 prompt 为变量。需要增加一个 `Headers.Authorization` 。
 
 Body:
 
@@ -70,448 +70,402 @@ Headers:
 
 Response:
 
-响应值需要根据Dalle3接口的返回值进行获取，我们只绘制了1张图片，所以只需要取第一张图片的URL即可。给 HTTP 模块增加一个`key`为`data[0].url`的输出值。
+响应值需要根据 Dalle3 接口的返回值进行获取，我们只绘制了1张图片，所以只需要取第一张图片的 URL 即可。给 HTTP 模块增加一个自定义输出 `data[0].url` 。
 
 ### 2. 文本加工 - 构建图片链接
 
-在`Markdown`语法中`![图片描述](图片链接)`表示插入图片，图片链接由`HTTP模块`输出。
+在 `Markdown` 语法中 `![图片描述](图片链接)` 表示插入图片，图片链接由【HTTP 请求】模块输出。
 
-因此可以增加一个输入来接收`HTTP模块`的图片链接输出，并在`文本内容`中通过变量来引用图片链接，从而得到一个完整的`Markdown`图片格式。
+因此可以增加一个输入来接收 `【HTTP 请求】模块` 的图片链接输出，并在 `【文本加工】模块 - 文本` 中通过变量来引用图片链接，从而得到一个完整的 `Markdown` 图片格式。
 
 ### 3. 指定回复
 
-指定回复可以直接输出传入的内容到客户端，因此可以直接输出加工好的`Markdown`图片格式即可。
+指定回复可以直接输出传入的内容到客户端，因此可以直接输出加工好的 `Markdown` 图片格式即可。
 
 ## 编排代码
 
+{{% details title="编排配置" closed="true" %}}
+
 ```json
-[
-  {
-    "moduleId": "userGuide",
-    "name": "core.module.template.App system setting",
-    "flowType": "userGuide",
-    "position": {
-      "x": 454.98510354678695,
-      "y": 721.4016845336229
-    },
-    "inputs": [
-      {
-        "key": "welcomeText",
-        "type": "hidden",
-        "valueType": "string",
-        "label": "core.app.Welcome Text",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
+{
+  "nodes": [
+    {
+      "nodeId": "userGuide",
+      "name": "系统配置",
+      "intro": "可以配置应用的系统参数",
+      "avatar": "/imgs/workflow/userGuide.png",
+      "flowNodeType": "userGuide",
+      "position": {
+        "x": 531.2422736065552,
+        "y": -486.7611729549753
       },
-      {
-        "key": "variables",
-        "type": "hidden",
-        "valueType": "any",
-        "label": "core.module.Variable",
-        "value": [],
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "questionGuide",
-        "valueType": "boolean",
-        "type": "switch",
-        "label": "",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "tts",
-        "type": "hidden",
-        "valueType": "any",
-        "label": "",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      }
-    ],
-    "outputs": []
-  },
-  {
-    "moduleId": "userChatInput",
-    "name": "core.module.template.Chat entrance",
-    "flowType": "questionInput",
-    "position": {
-      "x": 597.8136543694757,
-      "y": 1709.9244174501202
-    },
-    "inputs": [
-      {
-        "key": "userChatInput",
-        "type": "systemInput",
-        "valueType": "string",
-        "label": "core.module.input.label.user question",
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "userChatInput",
-        "label": "core.module.input.label.user question",
-        "type": "source",
-        "valueType": "string",
-        "targets": [
-          {
-            "moduleId": "mqgfub",
-            "key": "prompt"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "mqgfub",
-    "name": "Dalle3绘图",
-    "flowType": "httpRequest468",
-    "showStatus": true,
-    "position": {
-      "x": 1071.8956245626034,
-      "y": 1236.690825267034
-    },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "description": "core.module.input.description.Trigger",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "system_httpMethod",
-        "type": "custom",
-        "valueType": "string",
-        "label": "",
-        "value": "POST",
-        "required": true,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "system_httpReqUrl",
-        "type": "hidden",
-        "valueType": "string",
-        "label": "",
-        "description": "core.module.input.description.Http Request Url",
-        "placeholder": "https://api.ai.com/getInventory",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "value": "https://api.openai.com/v1/images/generations",
-        "connected": false
-      },
-      {
-        "key": "system_httpHeader",
-        "type": "custom",
-        "valueType": "any",
-        "value": [
-          {
-            "key": "Authorization",
-            "type": "string",
-            "value": "sk-xxx"
-          }
-        ],
-        "label": "",
-        "description": "core.module.input.description.Http Request Header",
-        "placeholder": "core.module.input.description.Http Request Header",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "system_httpParams",
-        "type": "hidden",
-        "valueType": "any",
-        "value": [],
-        "label": "",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "system_httpJsonBody",
-        "type": "hidden",
-        "valueType": "any",
-        "value": "{\r\n    \"model\": \"dall-e-3\",\r\n    \"prompt\": \"{{prompt}}\",\r\n    \"n\": 1,\r\n    \"size\": \"1024x1024\"\r\n  }",
-        "label": "",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "connected": false
-      },
-      {
-        "key": "DYNAMIC_INPUT_KEY",
-        "type": "target",
-        "valueType": "any",
-        "label": "core.module.inputType.dynamicTargetInput",
-        "description": "core.module.input.description.dynamic input",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": true,
-        "hideInApp": true,
-        "connected": false
-      },
-      {
-        "key": "prompt",
-        "valueType": "string",
-        "label": "prompt",
-        "type": "target",
-        "required": true,
-        "description": "",
-        "edit": true,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true
-        },
-        "connected": true
-      },
-      {
-        "key": "system_addInputParam",
-        "type": "addInputParam",
-        "valueType": "any",
-        "label": "",
-        "required": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true
-        },
-        "defaultEditField": {
-          "label": "",
-          "key": "",
-          "description": "",
-          "inputType": "target",
+      "inputs": [
+        {
+          "key": "welcomeText",
+          "renderTypeList": [
+            "hidden"
+          ],
           "valueType": "string",
-          "required": true
+          "label": "core.app.Welcome Text",
+          "value": ""
         },
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "finish",
-        "label": "core.module.output.label.running done",
-        "description": "core.module.output.description.running done",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      },
-      {
-        "key": "system_addOutputParam",
-        "type": "addOutputParam",
-        "valueType": "any",
-        "label": "",
-        "targets": [],
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "dataType": true
+        {
+          "key": "variables",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "core.app.Chat Variable",
+          "value": []
         },
-        "defaultEditField": {
+        {
+          "key": "questionGuide",
+          "valueType": "boolean",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "label": "core.app.Question Guide",
+          "value": false
+        },
+        {
+          "key": "tts",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
           "label": "",
-          "key": "",
-          "description": "",
-          "outputType": "source",
-          "valueType": "string"
+          "value": {
+            "type": "web"
+          }
+        },
+        {
+          "key": "whisper",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": {
+            "open": false,
+            "autoSend": false,
+            "autoTTSResponse": false
+          }
+        },
+        {
+          "key": "scheduleTrigger",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "label": "",
+          "value": null
         }
-      },
-      {
-        "type": "source",
-        "valueType": "string",
-        "key": "data[0].url",
-        "label": "url",
-        "description": "",
-        "edit": true,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "dataType": true
-        },
-        "targets": [
-          {
-            "moduleId": "nl6mr9",
-            "key": "url"
-          }
-        ]
-      }
-    ]
-  },
-  {
-    "moduleId": "xy76o2",
-    "name": "core.module.template.Assigned reply",
-    "flowType": "answerNode",
-    "position": {
-      "x": 2204.027057268489,
-      "y": 1256.786345213533
+      ],
+      "outputs": []
     },
-    "inputs": [
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "description": "core.module.input.description.Trigger",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
+    {
+      "nodeId": "448745",
+      "name": "流程开始",
+      "intro": "",
+      "avatar": "/imgs/workflow/userChatInput.svg",
+      "flowNodeType": "workflowStart",
+      "position": {
+        "x": 532.1275542407774,
+        "y": 46.03775600322817
       },
-      {
-        "key": "text",
-        "type": "textarea",
-        "valueType": "any",
-        "label": "core.module.input.label.Response content",
-        "description": "core.module.input.description.Response content",
-        "placeholder": "core.module.input.description.Response content",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": true
-      }
-    ],
-    "outputs": [
-      {
-        "key": "finish",
-        "label": "core.module.output.label.running done",
-        "description": "core.module.output.description.running done",
-        "valueType": "boolean",
-        "type": "source",
-        "targets": []
-      }
-    ]
-  },
-  {
-    "moduleId": "nl6mr9",
-    "name": "core.module.template.textEditor",
-    "flowType": "pluginModule",
-    "showStatus": false,
-    "position": {
-      "x": 1690.1826860670342,
-      "y": 1262.3858719789062
-    },
-    "inputs": [
-      {
-        "key": "pluginId",
-        "type": "hidden",
-        "label": "",
-        "value": "community-textEditor",
-        "valueType": "string",
-        "connected": false,
-        "showTargetInApp": false,
-        "showTargetInPlugin": false
-      },
-      {
-        "key": "switch",
-        "type": "target",
-        "label": "core.module.input.label.switch",
-        "description": "core.module.input.description.Trigger",
-        "valueType": "any",
-        "showTargetInApp": true,
-        "showTargetInPlugin": true,
-        "connected": false
-      },
-      {
-        "key": "textarea",
-        "valueType": "string",
-        "label": "文本内容",
-        "type": "textarea",
-        "required": true,
-        "description": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
-        "edit": false,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true,
-          "inputType": true
-        },
-        "connected": false,
-        "placeholder": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
-        "value": "![]({{url}})"
-      },
-      {
-        "key": "url",
-        "valueType": "string",
-        "label": "url",
-        "type": "target",
-        "required": true,
-        "description": "",
-        "edit": true,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true,
-          "inputType": false
-        },
-        "connected": true
-      },
-      {
-        "key": "DYNAMIC_INPUT_KEY",
-        "valueType": "any",
-        "label": "需要加工的输入",
-        "type": "addInputParam",
-        "required": false,
-        "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。非字符串类型，会自动转成字符串类型。",
-        "edit": false,
-        "editField": {
-          "key": true,
-          "name": true,
-          "description": true,
-          "required": true,
-          "dataType": true,
-          "inputType": false
-        },
-        "defaultEditField": {
-          "label": "",
-          "key": "",
-          "description": "",
-          "inputType": "target",
+      "inputs": [
+        {
+          "key": "userChatInput",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
           "valueType": "string",
+          "label": "用户问题",
+          "required": true,
+          "toolDescription": "用户问题"
+        }
+      ],
+      "outputs": [
+        {
+          "id": "userChatInput",
+          "key": "userChatInput",
+          "label": "core.module.input.label.user question",
+          "valueType": "string",
+          "type": "static"
+        }
+      ]
+    },
+    {
+      "nodeId": "tMyUnRL5jIrC",
+      "name": "HTTP 请求",
+      "intro": "可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）",
+      "avatar": "/imgs/workflow/http.png",
+      "flowNodeType": "httpRequest468",
+      "showStatus": true,
+      "position": {
+        "x": 921.2377506442713,
+        "y": -483.94114977914256
+      },
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "valueType": "dynamic",
+          "label": "",
+          "required": false,
+          "description": "core.module.input.description.HTTP Dynamic Input",
+          "editField": {
+            "key": true,
+            "valueType": true
+          }
+        },
+        {
+          "key": "prompt",
+          "valueType": "string",
+          "label": "prompt",
+          "renderTypeList": [
+            "reference"
+          ],
+          "description": "",
+          "canEdit": true,
+          "editField": {
+            "key": true,
+            "valueType": true
+          },
+          "value": [
+            "448745",
+            "userChatInput"
+          ]
+        },
+        {
+          "key": "system_httpMethod",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "string",
+          "label": "",
+          "value": "POST",
           "required": true
         },
-        "connected": false
-      }
-    ],
-    "outputs": [
-      {
-        "key": "text",
-        "valueType": "string",
-        "label": "core.module.output.label.text",
-        "type": "source",
-        "edit": false,
-        "targets": [
-          {
-            "moduleId": "xy76o2",
-            "key": "text"
+        {
+          "key": "system_httpReqUrl",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "string",
+          "label": "",
+          "description": "core.module.input.description.Http Request Url",
+          "placeholder": "https://api.ai.com/getInventory",
+          "required": false,
+          "value": "https://api.openai.com/v1/images/generations"
+        },
+        {
+          "key": "system_httpHeader",
+          "renderTypeList": [
+            "custom"
+          ],
+          "valueType": "any",
+          "value": [
+            {
+              "key": "Authorization",
+              "type": "string",
+              "value": "Bearer sk-zsfBsxEU3ApSFGYxF4CdB97e9556412588421823371b9f7b"
+            }
+          ],
+          "label": "",
+          "description": "core.module.input.description.Http Request Header",
+          "placeholder": "core.module.input.description.Http Request Header",
+          "required": false
+        },
+        {
+          "key": "system_httpParams",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "renderTypeList": [
+            "hidden"
+          ],
+          "valueType": "any",
+          "value": "{\n  \"model\": \"dall-e-3\",\n  \"prompt\": \"{{prompt}}\",\n  \"n\": 1,\n  \"size\": \"1024x1024\"\n}",
+          "label": "",
+          "required": false
+        }
+      ],
+      "outputs": [
+        {
+          "id": "system_addOutputParam",
+          "key": "system_addOutputParam",
+          "type": "dynamic",
+          "valueType": "dynamic",
+          "label": "",
+          "editField": {
+            "key": true,
+            "valueType": true
           }
-        ]
-      }
-    ]
-  }
-]
+        },
+        {
+          "id": "httpRawResponse",
+          "key": "httpRawResponse",
+          "label": "原始响应",
+          "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
+          "valueType": "any",
+          "type": "static"
+        },
+        {
+          "id": "DeKGGioBwaMf",
+          "type": "dynamic",
+          "key": "data[0].url",
+          "valueType": "string",
+          "label": "data[0].url"
+        }
+      ]
+    },
+    {
+      "nodeId": "CO3POL8svbbi",
+      "name": "文本加工",
+      "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
+      "avatar": "/imgs/workflow/textEditor.svg",
+      "flowNodeType": "pluginModule",
+      "showStatus": false,
+      "position": {
+        "x": 1417.5940290051137,
+        "y": -478.81889618104356
+      },
+      "inputs": [
+        {
+          "key": "system_addInputParam",
+          "valueType": "dynamic",
+          "label": "动态外部数据",
+          "renderTypeList": [
+            "addInputParam"
+          ],
+          "required": false,
+          "description": "",
+          "canEdit": false,
+          "value": "",
+          "editField": {
+            "key": true
+          },
+          "dynamicParamDefaultValue": {
+            "inputType": "reference",
+            "valueType": "string",
+            "required": true
+          }
+        },
+        {
+          "key": "url",
+          "valueType": "string",
+          "label": "url",
+          "renderTypeList": [
+            "reference"
+          ],
+          "required": true,
+          "description": "",
+          "canEdit": true,
+          "editField": {
+            "key": true
+          },
+          "value": [
+            "tMyUnRL5jIrC",
+            "DeKGGioBwaMf"
+          ]
+        },
+        {
+          "key": "文本",
+          "valueType": "string",
+          "label": "文本",
+          "renderTypeList": [
+            "textarea"
+          ],
+          "required": true,
+          "description": "",
+          "canEdit": false,
+          "value": "![]({{url}})",
+          "editField": {
+            "key": true
+          },
+          "maxLength": "",
+          "dynamicParamDefaultValue": {
+            "inputType": "reference",
+            "valueType": "string",
+            "required": true
+          }
+        }
+      ],
+      "outputs": [
+        {
+          "id": "text",
+          "type": "static",
+          "key": "text",
+          "valueType": "string",
+          "label": "text",
+          "description": ""
+        }
+      ],
+      "pluginId": "community-textEditor"
+    },
+    {
+      "nodeId": "7mapnCgHfKW6",
+      "name": "指定回复",
+      "intro": "该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。",
+      "avatar": "/imgs/workflow/reply.png",
+      "flowNodeType": "answerNode",
+      "position": {
+        "x": 1922.5628399315042,
+        "y": -471.67391598231796
+      },
+      "inputs": [
+        {
+          "key": "text",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "string",
+          "label": "core.module.input.label.Response content",
+          "description": "core.module.input.description.Response content",
+          "placeholder": "core.module.input.description.Response content",
+          "selectedTypeIndex": 1,
+          "value": [
+            "CO3POL8svbbi",
+            "text"
+          ]
+        }
+      ],
+      "outputs": []
+    }
+  ],
+  "edges": [
+    {
+      "source": "448745",
+      "target": "tMyUnRL5jIrC",
+      "sourceHandle": "448745-source-right",
+      "targetHandle": "tMyUnRL5jIrC-target-left"
+    },
+    {
+      "source": "tMyUnRL5jIrC",
+      "target": "CO3POL8svbbi",
+      "sourceHandle": "tMyUnRL5jIrC-source-right",
+      "targetHandle": "CO3POL8svbbi-target-left"
+    },
+    {
+      "source": "CO3POL8svbbi",
+      "target": "7mapnCgHfKW6",
+      "sourceHandle": "CO3POL8svbbi-source-right",
+      "targetHandle": "7mapnCgHfKW6-target-left"
+    }
+  ]
+}
 ```
+
+{{% /details %}}

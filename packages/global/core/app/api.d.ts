@@ -7,6 +7,7 @@ export type CreateAppParams = {
   avatar?: string;
   type?: `${AppTypeEnum}`;
   modules: AppSchema['modules'];
+  edges?: AppSchema['edges'];
 };
 
 export interface AppUpdateParams {
@@ -15,6 +16,7 @@ export interface AppUpdateParams {
   avatar?: string;
   intro?: string;
   modules?: AppSchema['modules'];
+  edges?: AppSchema['edges'];
   permission?: AppSchema['permission'];
   teamTags?: AppSchema['teamTags'];
 }

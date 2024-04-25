@@ -24,7 +24,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               ...body,
               parentId: null,
               teamId,
-              tmbId
+              tmbId,
+              version: 'v2'
             }
           ],
           { session }
@@ -43,7 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               pluginUid: item.name
             },
             teamId,
-            tmbId
+            tmbId,
+            version: 'v2'
           })),
           {
             session
@@ -59,7 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const { _id } = await MongoPlugin.create({
         ...body,
         teamId,
-        tmbId
+        tmbId,
+        version: 'v2'
       });
       jsonRes(res, {
         data: _id

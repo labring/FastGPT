@@ -5,6 +5,7 @@ import type { AppTTSConfigType } from '@fastgpt/global/core/app/type.d';
 import { TTSTypeEnum } from '@/constants/app';
 import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
+import { getToken } from '@/web/support/user/auth';
 
 const contentType = 'audio/mpeg';
 const splitMarker = 'SPLIT_MARKER';
@@ -13,8 +14,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
   const { t } = useTranslation();
   const { ttsConfig, shareId, outLinkUid, teamId, teamToken } = props || {};
   const { toast } = useToast();
-  const audioRef = useRef<HTMLAudioElement>(new Audio());
-  const audio = audioRef.current;
+  const audioRef = useRef<HTMLAudioElement>();
   const [audioLoading, setAudioLoading] = useState(false);
   const [audioPlaying, setAudioPlaying] = useState(false);
   const audioController = useRef(new AbortController());
@@ -40,7 +40,8 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
       const response = await fetch('/api/core/chat/item/getSpeech', {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json'
+          'Content-Type': 'application/json',
+          token: getToken()
         },
         signal: audioController.current.signal,
         body: JSON.stringify({
@@ -93,30 +94,39 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
       window.speechSynthesis?.cancel();
       audioController.current.abort('');
     } catch (error) {}
-    if (audio) {
-      audio.pause();
-      audio.src = '';
+    if (audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current.src = '';
     }
     setAudioPlaying(false);
-  }, [audio]);
+  }, []);
 
   /* Perform a voice playback */
   const playAudioByText = useCallback(
     async ({ text, buffer }: { text: string; buffer?: Uint8Array }) => {
       const playAudioBuffer = (buffer: Uint8Array) => {
+        if (!audioRef.current) return;
         const audioUrl = URL.createObjectURL(new Blob([buffer], { type: 'audio/mpeg' }));
 
-        audio.src = audioUrl;
-        audio.play();
+        audioRef.current.src = audioUrl;
+        audioRef.current.play();
       };
       const readAudioStream = (stream: ReadableStream<Uint8Array>) => {
-        if (!audio) return;
+        if (!audioRef.current) return;
+
+        if (!MediaSource) {
+          toast({
+            status: 'error',
+            title: t('core.chat.Audio Not Support')
+          });
+          return;
+        }
 
         // Create media source and play audio
         const ms = new MediaSource();
         const url = URL.createObjectURL(ms);
-        audio.src = url;
-        audio.play();
+        audioRef.current.src = url;
+        audioRef.current.play();
 
         let u8Arr: Uint8Array = new Uint8Array();
         return new Promise<Uint8Array>(async (resolve, reject) => {
@@ -132,7 +142,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
           try {
             while (true) {
               const { done, value } = await reader.read();
-              if (done || audio.paused) {
+              if (done || audioRef.current?.paused) {
                 resolve(u8Arr);
                 if (sourceBuffer.updating) {
                   await new Promise((resolve) => (sourceBuffer.onupdateend = resolve));
@@ -161,7 +171,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
           cancelAudio();
 
           // tts play
-          if (audio && ttsConfig?.type === TTSTypeEnum.model) {
+          if (audioRef.current && ttsConfig?.type === TTSTypeEnum.model) {
             /* buffer tts */
             if (buffer) {
               playAudioBuffer(buffer);
@@ -188,7 +198,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
         }
       });
     },
-    [audio, cancelAudio, getAudioStream, playWebAudio, t, toast, ttsConfig?.type]
+    [cancelAudio, getAudioStream, playWebAudio, t, toast, ttsConfig?.type]
   );
 
   // segmented params
@@ -199,7 +209,13 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
 
   /* Segmented voice playback */
   const startSegmentedAudio = useCallback(async () => {
-    if (!audio) return;
+    if (!audioRef.current) return;
+    if (!MediaSource) {
+      return toast({
+        status: 'error',
+        title: t('core.chat.Audio Not Support')
+      });
+    }
     cancelAudio();
 
     /* reset all source */
@@ -223,15 +239,15 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
     const ms = new MediaSource();
     segmentedMediaSource.current = ms;
     const url = URL.createObjectURL(ms);
-    audio.src = url;
-    audio.play();
+    audioRef.current.src = url;
+    audioRef.current.play();
 
     await new Promise((resolve) => {
       ms.onsourceopen = resolve;
     });
     const sourceBuffer = ms.addSourceBuffer(contentType);
     segmentedSourceBuffer.current = sourceBuffer;
-  }, [audio, cancelAudio]);
+  }, [cancelAudio, t, toast]);
   const finishSegmentedAudio = useCallback(() => {
     appendAudioPromise.current = appendAudioPromise.current.finally(() => {
       if (segmentedMediaSource.current?.readyState === 'open') {
@@ -256,7 +272,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
           while (true) {
             const { done, value } = await reader.read();
 
-            if (done || !audio?.played) {
+            if (done || !audioRef.current?.played) {
               buffer.updating && (await new Promise((resolve) => (buffer.onupdateend = resolve)));
               return resolve(u8Arr);
             }
@@ -273,7 +289,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
         }
       });
     },
-    [audio?.played, getAudioStream, segmentedSourceBuffer]
+    [getAudioStream, segmentedSourceBuffer]
   );
   /* split audio text and fetch tts */
   const splitText2Audio = useCallback(
@@ -314,6 +330,9 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
 
   // listen audio status
   useEffect(() => {
+    const audio = new Audio();
+    audioRef.current = audio;
+
     audio.onplay = () => {
       setAudioPlaying(true);
     };
@@ -341,7 +360,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
   }, []);
 
   return {
-    audio,
+    audio: audioRef.current,
     audioLoading,
     audioPlaying,
     setAudioPlaying,

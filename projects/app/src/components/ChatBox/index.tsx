@@ -21,9 +21,9 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { Box, Flex, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
-import { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import { VariableInputEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
+import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -52,7 +52,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import ChatProvider, { useChatProviderStore } from './Provider';
 
 import ChatItem from './components/ChatItem';
@@ -79,7 +79,7 @@ type Props = OutLinkChatAuthProps & {
   showEmptyIntro?: boolean;
   appAvatar?: string;
   userAvatar?: string;
-  userGuideModule?: ModuleItemType;
+  userGuideModule?: StoreNodeItemType;
   showFileSelector?: boolean;
   active?: boolean; // can use
   appId: string;
@@ -588,7 +588,7 @@ const ChatBox = (
         setLoading(false);
       };
     },
-    [chatHistories, onDelMessage, sendPrompt, setLoading, toast]
+    [chatHistories, onDelMessage, sendPrompt, setChatHistories, setLoading, toast]
   );
   // delete one message(One human and the ai response)
   const delOneMessage = useCallback(
