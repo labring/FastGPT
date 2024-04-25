@@ -237,14 +237,11 @@ export async function dispatchWorkFlow({
     const params: Record<string, any> = {};
     node.inputs.forEach((input) => {
       // replace {{}} variables
-      let value =
-        input.valueType === WorkflowIOValueTypeEnum.string
-          ? replaceVariable(input.value, variables)
-          : input.value;
+      let value = replaceVariable(input.value, variables);
 
       // replace reference variables
       value = getReferenceVariableValue({
-        value: input.value,
+        value,
         nodes: runtimeNodes,
         variables
       });

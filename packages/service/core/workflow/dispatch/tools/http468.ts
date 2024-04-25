@@ -106,7 +106,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     try {
       const jsonParse = JSON.parse(httpJsonBody);
       const removeSignJson = removeUndefinedSign(jsonParse);
-      return { [NodeInputKeyEnum.addInputParam]: dynamicInputBody, ...removeSignJson };
+      return { [NodeInputKeyEnum.addInputParam]: dynamicInput, ...removeSignJson };
     } catch (error) {
       console.log(error);
       return Promise.reject(`Invalid JSON body: ${httpJsonBody}`);

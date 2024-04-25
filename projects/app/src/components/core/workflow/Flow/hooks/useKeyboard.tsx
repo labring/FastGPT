@@ -13,16 +13,31 @@ export const useKeyboard = () => {
 
   const [isDowningCtrl, setIsDowningCtrl] = useState(false);
 
+  const hasInputtingElement = useCallback(() => {
+    const activeElement = document.activeElement;
+
+    if (activeElement) {
+      const tagName = activeElement.tagName.toLowerCase();
+      const className = activeElement.className.toLowerCase();
+      if (tagName === 'input' || tagName === 'textarea') return true;
+      if (className.includes('prompteditor')) return true;
+    }
+
+    return false;
+  }, []);
+
   const onCopy = useCallback(async () => {
+    if (hasInputtingElement()) return;
     const { nodes } = await getWorkflowStore();
     const selectedNodes = nodes.filter(
       (node) => node.selected && !node.data?.isError && node.data?.unique !== true
     );
     if (selectedNodes.length === 0) return;
     copyData(JSON.stringify(selectedNodes), t('core.workflow.Copy node'));
-  }, [copyData, t]);
+  }, [copyData, hasInputtingElement, t]);
 
   const onParse = useCallback(async () => {
+    if (hasInputtingElement()) return;
     const copyResult = await navigator.clipboard.readText();
     try {
       const parseData = JSON.parse(copyResult) as Node<FlowNodeItemType, string | undefined>[];
@@ -55,7 +70,7 @@ export const useKeyboard = () => {
           .concat(newNodes)
       );
     } catch (error) {}
-  }, [setNodes]);
+  }, [hasInputtingElement, setNodes]);
 
   const handleKeyDown = useCallback(
     (event: KeyboardEvent) => {

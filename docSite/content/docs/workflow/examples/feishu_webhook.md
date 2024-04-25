@@ -11,7 +11,7 @@ weight: 404
 
 |                       |                       |
 | --------------------- | --------------------- |
-| ![](/imgs/feishuwebhook1.png) | ![](/imgs/feishuwebhook2.webp) |
+| ![](/imgs/feishuwebhook1.webp) | ![](/imgs/feishuwebhook2.webp) |
 
 ## 1. 准备飞书机器人
 
