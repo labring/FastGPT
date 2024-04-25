@@ -16,6 +16,7 @@ import dynamic from 'next/dynamic';
 import { EditNodeFieldType } from '@fastgpt/global/core/workflow/node/type';
 import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import ValueTypeLabel from '../ValueTypeLabel';
 const FieldEditModal = dynamic(() => import('../FieldEditModal'));
 
 type Props = {
@@ -84,18 +85,7 @@ const InputLabel = ({ nodeId, input }: Props) => {
         </Box>
         {/* value type */}
         {renderType === FlowNodeInputTypeEnum.reference && !!valueTypeLabel && (
-          <Box
-            bg={'myGray.100'}
-            color={'myGray.500'}
-            border={'base'}
-            borderRadius={'sm'}
-            ml={2}
-            px={1}
-            py={0.5}
-            fontSize={'11px'}
-          >
-            {valueTypeLabel}
-          </Box>
+          <ValueTypeLabel>{valueTypeLabel}</ValueTypeLabel>
         )}
         {/* edit config */}
         {canEdit && (

@@ -24,6 +24,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import { getSystemVariables } from '@/web/core/app/utils';
+import ValueTypeLabel from '../../ValueTypeLabel';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -151,6 +152,8 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
           <Box position={'relative'} color={'myGray.600'} fontWeight={'medium'}>
             {t('core.module.Dataset quote.label')}
           </Box>
+          <ValueTypeLabel>{t('core.module.valueType.datasetQuote')}</ValueTypeLabel>
+
           <MyTooltip label={t('core.module.Setting quote prompt')}>
             <MyIcon
               ml={1}
