@@ -160,6 +160,7 @@ const getFunctionCallSchema = async ({
             content: `我正在执行一个函数，需要你提供一些参数，请以 JSON 字符串格式返回这些参数，要求：
 """
 ${description ? `- ${description}` : ''}
+- 不是每个参数都是必须生成的，如果没有合适的参数值，不要生成该参数，或返回空字符串。
 - 需要结合前面的对话内容，一起生成合适的参数。
 """
 
