@@ -542,122 +542,6 @@ export default async function (ctx: FunctionContext) {
       ]
     },
     {
-      "nodeId": "hgDD87USKMBN",
-      "name": "文本内容提取",
-      "intro": "可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等",
-      "avatar": "/imgs/workflow/extract.png",
-      "flowNodeType": "contentExtract",
-      "showStatus": true,
-      "position": {
-        "x": 509.12056995756654,
-        "y": -486.9601529132095
-      },
-      "inputs": [
-        {
-          "key": "model",
-          "renderTypeList": [
-            "selectLLMModel",
-            "reference"
-          ],
-          "label": "core.module.input.label.aiModel",
-          "required": true,
-          "valueType": "string",
-          "llmModelType": "extractFields",
-          "value": "gpt-3.5-turbo"
-        },
-        {
-          "key": "description",
-          "renderTypeList": [
-            "textarea",
-            "reference"
-          ],
-          "valueType": "string",
-          "label": "提取要求描述",
-          "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\n该输入框可使用全局变量。",
-          "placeholder": "例如: \n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
-          "value": "你是谷歌搜索机器人，根据当前问题和对话记录生成搜索词。你需要自行判断是否需要进行网络实时查询：\n- 如果需查询则生成搜索词。\n- 如果不需要查询则不返回字段。"
-        },
-        {
-          "key": "history",
-          "renderTypeList": [
-            "numberInput",
-            "reference"
-          ],
-          "valueType": "chatHistory",
-          "label": "core.module.input.label.chat history",
-          "required": true,
-          "min": 0,
-          "max": 30,
-          "value": 6
-        },
-        {
-          "key": "content",
-          "renderTypeList": [
-            "reference",
-            "textarea"
-          ],
-          "label": "需要提取的文本",
-          "required": true,
-          "valueType": "string",
-          "toolDescription": "需要检索的内容",
-          "value": [
-            "448745",
-            "userChatInput"
-          ]
-        },
-        {
-          "key": "extractKeys",
-          "renderTypeList": [
-            "custom"
-          ],
-          "label": "",
-          "valueType": "any",
-          "description": "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
-          "value": [
-            {
-              "required": false,
-              "defaultValue": "",
-              "desc": "搜索词",
-              "key": "searchKey",
-              "enum": ""
-            }
-          ]
-        }
-      ],
-      "outputs": [
-        {
-          "id": "success",
-          "key": "success",
-          "label": "字段完全提取",
-          "valueType": "boolean",
-          "type": "source"
-        },
-        {
-          "id": "failed",
-          "key": "failed",
-          "label": "提取字段缺失",
-          "description": "存在一个或多个字段未提取成功。尽管使用了默认值也算缺失。",
-          "valueType": "boolean",
-          "type": "source"
-        },
-        {
-          "id": "fields",
-          "key": "fields",
-          "label": "完整提取结果",
-          "description": "一个 JSON 字符串，例如：{\"name:\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",
-          "valueType": "string",
-          "type": "static"
-        },
-        {
-          "id": "CMRsZ6QGaxtV",
-          "key": "searchKey",
-          "label": "提取结果-搜索词",
-          "valueType": "string",
-          "type": "static"
-        }
-      ]
-    },
-    {
       "nodeId": "TWD5BAqIIFaj",
       "name": "判断器",
       "intro": "根据一定的条件，执行不同的分支。",
@@ -665,8 +549,8 @@ export default async function (ctx: FunctionContext) {
       "flowNodeType": "ifElseNode",
       "showStatus": true,
       "position": {
-        "x": 1217.046640238617,
-        "y": 340.6565333440734
+        "x": 1187.4821088468154,
+        "y": -143.83989103517257
       },
       "inputs": [
         {
@@ -689,11 +573,11 @@ export default async function (ctx: FunctionContext) {
           "value": [
             {
               "variable": [
-                "hgDD87USKMBN",
-                "failed"
+                "lG52GzzMm65z",
+                "6yF19MRD3nuB"
               ],
-              "condition": "equalTo",
-              "value": "true"
+              "condition": "isEmpty",
+              "value": ""
             }
           ]
         }
@@ -723,8 +607,8 @@ export default async function (ctx: FunctionContext) {
       "flowNodeType": "httpRequest468",
       "showStatus": true,
       "position": {
-        "x": 1217.6049019178688,
-        "y": -597.3778323414249
+        "x": 1992.0328696814468,
+        "y": 127.08080019458595
       },
       "inputs": [
         {
@@ -755,8 +639,8 @@ export default async function (ctx: FunctionContext) {
             "valueType": true
           },
           "value": [
-            "hgDD87USKMBN",
-            "CMRsZ6QGaxtV"
+            "lG52GzzMm65z",
+            "6yF19MRD3nuB"
           ]
         },
         {
@@ -865,8 +749,8 @@ export default async function (ctx: FunctionContext) {
       "flowNodeType": "chatNode",
       "showStatus": true,
       "position": {
-        "x": 1955.2635939402003,
-        "y": 168.4419404219916
+        "x": 1982.442841318768,
+        "y": -664.9716343803625
       },
       "inputs": [
         {
@@ -1011,8 +895,8 @@ export default async function (ctx: FunctionContext) {
       "flowNodeType": "pluginModule",
       "showStatus": false,
       "position": {
-        "x": 1945.2841684646087,
-        "y": -618.5686416627316
+        "x": 2479.5913201989906,
+        "y": 288.52613614690904
       },
       "inputs": [
         {
@@ -1113,8 +997,8 @@ export default async function (ctx: FunctionContext) {
       "flowNodeType": "chatNode",
       "showStatus": true,
       "position": {
-        "x": 2703.883899404409,
-        "y": -607.9682060622981
+        "x": 3199.17223136331,
+        "y": -100.06379812849427
       },
       "inputs": [
         {
@@ -1245,27 +1129,110 @@ export default async function (ctx: FunctionContext) {
           "type": "static"
         }
       ]
+    },
+    {
+      "nodeId": "lG52GzzMm65z",
+      "name": "文本内容提取",
+      "intro": "可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等",
+      "avatar": "/imgs/workflow/extract.png",
+      "flowNodeType": "contentExtract",
+      "showStatus": true,
+      "position": {
+        "x": 535.331344778598,
+        "y": -437.1382636373696
+      },
+      "inputs": [
+        {
+          "key": "model",
+          "renderTypeList": [
+            "selectLLMModel",
+            "reference"
+          ],
+          "label": "core.module.input.label.aiModel",
+          "required": true,
+          "valueType": "string",
+          "llmModelType": "extractFields",
+          "value": "gpt-3.5-turbo"
+        },
+        {
+          "key": "description",
+          "renderTypeList": [
+            "textarea",
+            "reference"
+          ],
+          "valueType": "string",
+          "label": "提取要求描述",
+          "description": "给AI一些对应的背景知识或要求描述，引导AI更好的完成任务。\n该输入框可使用全局变量。",
+          "placeholder": "例如: \n1. 当前时间为: {{cTime}}。你是一个实验室预约助手，你的任务是帮助用户预约实验室，从文本中获取对应的预约信息。\n2. 你是谷歌搜索助手，需要从文本中提取出合适的搜索词。",
+          "value": "你是谷歌搜索机器人，根据当前问题和对话记录生成搜索词。你需要自行判断是否需要进行网络实时查询：\n- 如果需查询则生成搜索词。\n- 如果不需要查询则不返回字段。"
+        },
+        {
+          "key": "history",
+          "renderTypeList": [
+            "numberInput",
+            "reference"
+          ],
+          "valueType": "chatHistory",
+          "label": "core.module.input.label.chat history",
+          "required": true,
+          "min": 0,
+          "max": 30,
+          "value": 6
+        },
+        {
+          "key": "content",
+          "renderTypeList": [
+            "reference",
+            "textarea"
+          ],
+          "label": "需要提取的文本",
+          "required": true,
+          "valueType": "string",
+          "toolDescription": "需要检索的内容",
+          "value": [
+            "448745",
+            "userChatInput"
+          ]
+        },
+        {
+          "key": "extractKeys",
+          "renderTypeList": [
+            "custom"
+          ],
+          "label": "",
+          "valueType": "any",
+          "description": "由 '描述' 和 'key' 组成一个目标字段，可提取多个目标字段",
+          "value": [
+            {
+              "required": false,
+              "defaultValue": "",
+              "desc": "搜索词",
+              "key": "searchKey",
+              "enum": ""
+            }
+          ]
+        }
+      ],
+      "outputs": [
+        {
+          "id": "fields",
+          "key": "fields",
+          "label": "完整提取结果",
+          "description": "一个 JSON 字符串，例如：{\"name:\":\"YY\",\"Time\":\"2023/7/2 18:00\"}",
+          "valueType": "string",
+          "type": "static"
+        },
+        {
+          "id": "6yF19MRD3nuB",
+          "key": "searchKey",
+          "label": "提取结果-搜索词",
+          "valueType": "string",
+          "type": "static"
+        }
+      ]
     }
   ],
   "edges": [
-    {
-      "source": "448745",
-      "target": "hgDD87USKMBN",
-      "sourceHandle": "448745-source-right",
-      "targetHandle": "hgDD87USKMBN-target-left"
-    },
-    {
-      "source": "hgDD87USKMBN",
-      "target": "TWD5BAqIIFaj",
-      "sourceHandle": "hgDD87USKMBN-source-failed",
-      "targetHandle": "TWD5BAqIIFaj-target-left"
-    },
-    {
-      "source": "hgDD87USKMBN",
-      "target": "1ljV0oTq4zeC",
-      "sourceHandle": "hgDD87USKMBN-source-success",
-      "targetHandle": "1ljV0oTq4zeC-target-left"
-    },
     {
       "source": "TWD5BAqIIFaj",
       "target": "Nc6hBdb3l9Pe",
@@ -1283,6 +1250,24 @@ export default async function (ctx: FunctionContext) {
       "target": "EX0g9oK3sCOC",
       "sourceHandle": "FYLw1BokYUad-source-right",
       "targetHandle": "EX0g9oK3sCOC-target-left"
+    },
+    {
+      "source": "448745",
+      "target": "lG52GzzMm65z",
+      "sourceHandle": "448745-source-right",
+      "targetHandle": "lG52GzzMm65z-target-left"
+    },
+    {
+      "source": "lG52GzzMm65z",
+      "target": "TWD5BAqIIFaj",
+      "sourceHandle": "lG52GzzMm65z-source-right",
+      "targetHandle": "TWD5BAqIIFaj-target-left"
+    },
+    {
+      "source": "TWD5BAqIIFaj",
+      "target": "1ljV0oTq4zeC",
+      "sourceHandle": "TWD5BAqIIFaj-source-ELSE",
+      "targetHandle": "1ljV0oTq4zeC-target-left"
     }
   ]
 }
