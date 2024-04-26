@@ -1043,7 +1043,12 @@
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",
         "string": "String",
-        "tools": "tools"
+        "tools": "tools",
+        "object": "Object",
+        "arrayString": "Array String",
+        "arrayObject": "Array Object",
+        "arrayNumber": "Array Number",
+        "arrayBoolean": "Array Boolean"
       },
       "variable": {
         "External type": "External",

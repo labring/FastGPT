@@ -9,14 +9,20 @@ import { Position } from 'reactflow';
 import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutputItemType }) => {
   const { t } = useTranslation();
   const { label = '', description, valueType } = output;
 
   const valueTypeLabel = useMemo(
-    () => (valueType ? t(FlowValueTypeMap[valueType]?.label) : '-'),
-    [t, valueType]
+    () => (valueType ? FlowValueTypeMap[valueType]?.tag : '-'),
+    [valueType]
+  );
+
+  const valueTypeDescription = useMemo(
+    () => (valueType ? FlowValueTypeMap[valueType]?.description : '-'),
+    [valueType]
   );
 
   const Render = useMemo(() => {
@@ -34,11 +40,17 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
               }
             : {})}
         >
-          <Box position={'relative'} mr={1}>
+          <Box
+            position={'relative'}
+            mr={1}
+            ml={output.type === FlowNodeOutputTypeEnum.source ? 1 : 0}
+          >
             {t(label)}
           </Box>
           {description && <QuestionTip label={t(description)} />}
-          <ValueTypeLabel>{valueTypeLabel}</ValueTypeLabel>
+          <MyTooltip label={valueTypeDescription}>
+            <ValueTypeLabel>{valueTypeLabel}</ValueTypeLabel>
+          </MyTooltip>
         </Flex>
         {output.type === FlowNodeOutputTypeEnum.source && (
           <SourceHandle
@@ -50,7 +62,16 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
         )}
       </Box>
     );
-  }, [description, output.key, output.type, label, nodeId, t, valueTypeLabel]);
+  }, [
+    output.type,
+    output.key,
+    t,
+    label,
+    description,
+    valueTypeDescription,
+    valueTypeLabel,
+    nodeId
+  ]);
 
   return Render;
 };

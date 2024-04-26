@@ -149,13 +149,6 @@ const FieldEditModal = ({
     [showDynamicInputSelect, t]
   );
 
-  const dataTypeSelectList = Object.values(FlowValueTypeMap)
-    .slice(0, -2)
-    .map((item) => ({
-      label: t(item.label),
-      value: item.value
-    }));
-
   const { register, getValues, setValue, handleSubmit, watch } = useForm<EditNodeFieldType>({
     defaultValues: {
       ...defaultValue,
@@ -224,6 +217,15 @@ const FieldEditModal = ({
     return inputType === FlowNodeInputTypeEnum.addInputParam;
   }, [inputType]);
 
+  const slicedTypeMap = showInputTypeSelect
+    ? Object.values(FlowValueTypeMap).slice(0, -2)
+    : Object.values(FlowValueTypeMap).slice(0, -4);
+
+  const dataTypeSelectList = slicedTypeMap.map((item) => ({
+    label: t(item.label),
+    value: item.value
+  }));
+
   const onSubmitSuccess = useCallback(
     (data: EditNodeFieldType) => {
       data.key = data?.key?.trim();
@@ -270,7 +272,7 @@ const FieldEditModal = ({
         changeKey: !keys.includes(data.key)
       });
     },
-    [defaultField.key, keys, onSubmit, showValueTypeSelect, t, toast]
+    [defaultField.key, inputTypeList, keys, onSubmit, showValueTypeSelect, t, toast]
   );
   const onSubmitError = useCallback(
     (e: Object) => {

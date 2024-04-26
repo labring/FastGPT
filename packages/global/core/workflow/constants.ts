@@ -14,10 +14,16 @@ export enum WorkflowIOValueTypeEnum {
   string = 'string',
   number = 'number',
   boolean = 'boolean',
+  object = 'object',
+  arrayString = 'arrayString',
+  arrayNumber = 'arrayNumber',
+  arrayBoolean = 'arrayBoolean',
+  arrayObject = 'arrayObject',
   any = 'any',
 
   chatHistory = 'chatHistory',
   datasetQuote = 'datasetQuote',
+
   dynamic = 'dynamic',
 
   // plugin special type

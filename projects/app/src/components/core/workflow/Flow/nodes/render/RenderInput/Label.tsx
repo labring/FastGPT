@@ -37,14 +37,13 @@ const InputLabel = ({ nodeId, input }: Props) => {
     renderTypeList,
     valueType,
     canEdit,
-    key,
-    value
+    key
   } = input;
   const [editField, setEditField] = useState<EditNodeFieldType>();
 
   const valueTypeLabel = useMemo(
-    () => (valueType ? t(FlowValueTypeMap[valueType]?.label) : ''),
-    [t, valueType]
+    () => (valueType ? FlowValueTypeMap[valueType]?.tag : ''),
+    [valueType]
   );
 
   const onChangeRenderType = useCallback(

@@ -10,7 +10,9 @@ const ValueTypeLabel = ({ children }: { children: React.ReactNode }) => {
       borderRadius={'sm'}
       ml={2}
       px={1}
-      py={0.5}
+      h={6}
+      display={'flex'}
+      alignItems={'center'}
       fontSize={'11px'}
     >
       {children}
