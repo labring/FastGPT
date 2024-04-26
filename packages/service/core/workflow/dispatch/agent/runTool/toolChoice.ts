@@ -63,7 +63,7 @@ export const runToolWithToolChoice = async (
     > = {};
     item.toolParams.forEach((item) => {
       properties[item.key] = {
-        type: 'string',
+        type: item.valueType || 'string',
         description: item.toolDescription || ''
       };
     });
@@ -86,7 +86,34 @@ export const runToolWithToolChoice = async (
     messages,
     maxTokens: toolModel.maxContext - 300 // filter token. not response maxToken
   });
-
+  const formativeMessages = filterMessages.map((item) => {
+    if (item.role === 'assistant' && item.tool_calls) {
+      return {
+        ...item,
+        tool_calls: item.tool_calls.map((tool) => ({
+          id: tool.id,
+          type: tool.type,
+          function: tool.function
+        }))
+      };
+    }
+    return item;
+  });
+  // console.log(
+  //   JSON.stringify(
+  //     {
+  //       ...toolModel?.defaultConfig,
+  //       model: toolModel.model,
+  //       temperature: 0,
+  //       stream,
+  //       messages: formativeMessages,
+  //       tools,
+  //       tool_choice: 'auto'
+  //     },
+  //     null,
+  //     2
+  //   )
+  // );
   /* Run llm */
   const ai = getAIApi({
     timeout: 480000
@@ -97,7 +124,7 @@ export const runToolWithToolChoice = async (
       model: toolModel.model,
       temperature: 0,
       stream,
-      messages: filterMessages,
+      messages: formativeMessages,
       tools,
       tool_choice: 'auto'
     },
