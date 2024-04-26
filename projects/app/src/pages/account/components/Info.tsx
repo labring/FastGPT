@@ -564,25 +564,27 @@ const Other = () => {
             </Box>
           </Link>
         )}
-        <Link
-          href={feConfigs.chatbotUrl}
-          target="_blank"
-          display={'flex'}
-          py={3}
-          px={6}
-          bg={'white'}
-          border={theme.borders.sm}
-          borderWidth={'1.5px'}
-          borderRadius={'md'}
-          alignItems={'center'}
-          userSelect={'none'}
-          textDecoration={'none !important'}
-        >
-          <MyIcon name={'core/app/aiLight'} w={'18px'} />
-          <Box ml={2} flex={1}>
-            {t('common.system.Help Chatbot')}
-          </Box>
-        </Link>
+        {feConfigs?.chatbotUrl && (
+          <Link
+            href={feConfigs.chatbotUrl}
+            target="_blank"
+            display={'flex'}
+            py={3}
+            px={6}
+            bg={'white'}
+            border={theme.borders.sm}
+            borderWidth={'1.5px'}
+            borderRadius={'md'}
+            alignItems={'center'}
+            userSelect={'none'}
+            textDecoration={'none !important'}
+          >
+            <MyIcon name={'core/app/aiLight'} w={'18px'} />
+            <Box ml={2} flex={1}>
+              {t('common.system.Help Chatbot')}
+            </Box>
+          </Link>
+        )}
 
         {feConfigs?.lafEnv && userInfo?.team.role === TeamMemberRoleEnum.owner && (
           <Flex
