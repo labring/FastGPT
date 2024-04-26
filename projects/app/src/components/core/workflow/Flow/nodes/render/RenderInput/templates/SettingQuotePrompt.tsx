@@ -20,7 +20,7 @@ import {
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import PromptTemplate from '@/components/PromptTemplate';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import { getSystemVariables } from '@/web/core/app/utils';
@@ -152,7 +152,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
           <Box position={'relative'} color={'myGray.600'} fontWeight={'medium'}>
             {t('core.module.Dataset quote.label')}
           </Box>
-          <ValueTypeLabel>{t('core.module.valueType.datasetQuote')}</ValueTypeLabel>
+          <ValueTypeLabel valueType={WorkflowIOValueTypeEnum.datasetQuote} />
 
           <MyTooltip label={t('core.module.Setting quote prompt')}>
             <MyIcon

@@ -1428,7 +1428,7 @@
     "user": {
       "AI point standard": "AI积分标准",
       "Avatar": "头像",
-      "Go laf env": "点击前往 laf 获取 PAT 凭证。",
+      "Go laf env": "点击前往 {{env}} 获取 PAT 凭证。",
       "Laf account course": "查看绑定 laf 账号教程。",
       "Laf account intro": "绑定你的laf账号后，你将可以在工作流中使用 laf 模块，实现在线编写代码。",
       "Need to login": "请先登录",
