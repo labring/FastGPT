@@ -217,9 +217,7 @@ const FieldEditModal = ({
     return inputType === FlowNodeInputTypeEnum.addInputParam;
   }, [inputType]);
 
-  const slicedTypeMap = showInputTypeSelect
-    ? Object.values(FlowValueTypeMap).slice(0, -2)
-    : Object.values(FlowValueTypeMap).slice(0, -4);
+  const slicedTypeMap = Object.values(FlowValueTypeMap).slice(0, -1);
 
   const dataTypeSelectList = slicedTypeMap.map((item) => ({
     label: t(item.label),

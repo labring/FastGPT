@@ -15,7 +15,7 @@ import {
   FlowNodeTemplateType,
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type';
-import { VARIABLE_NODE_ID } from './constants';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { getHandleId, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';

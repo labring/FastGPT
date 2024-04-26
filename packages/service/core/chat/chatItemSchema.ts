@@ -7,7 +7,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { appCollectionName } from '../app/schema';
+import { AppCollectionName } from '../app/schema';
 import { userCollectionName } from '../../support/user/schema';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -40,7 +40,7 @@ const ChatItemSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: appCollectionName,
+    ref: AppCollectionName,
     required: true
   },
   time: {

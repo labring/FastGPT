@@ -28,10 +28,7 @@ export enum WorkflowIOValueTypeEnum {
 
   // plugin special type
   selectApp = 'selectApp',
-  selectDataset = 'selectDataset',
-
-  // tool
-  tools = 'tools'
+  selectDataset = 'selectDataset'
 }
 
 /* reg: modulename key */
@@ -179,3 +176,5 @@ export enum RuntimeEdgeStatusEnum {
   'active' = 'active',
   'skipped' = 'skipped'
 }
+
+export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';

@@ -54,7 +54,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     content: t('core.app.edit.Out Ad Edit')
   });
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { updateAppDetail } = useAppStore();
+  const { publishApp } = useAppStore();
   const { edges, onUpdateNodeError } = useFlowProviderStore();
   const [isSaving, setIsSaving] = useState(false);
 
@@ -79,11 +79,10 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     async ({ nodes, edges }: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
       setIsSaving(true);
       try {
-        await updateAppDetail(app._id, {
-          modules: nodes,
+        await publishApp(app._id, {
+          nodes,
           edges,
           type: AppTypeEnum.advanced,
-          permission: undefined,
           //@ts-ignore
           version: 'v2'
         });
@@ -100,7 +99,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       }
       setIsSaving(false);
     },
-    [ChatTestRef, app._id, t, toast, updateAppDetail]
+    [ChatTestRef, app._id, t, toast, publishApp]
   );
 
   const saveAndBack = useCallback(async () => {

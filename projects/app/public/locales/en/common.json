@@ -1035,20 +1035,20 @@
       },
       "valueType": {
         "any": "Any",
+        "arrayBoolean": "Array Boolean",
+        "arrayNumber": "Array Number",
+        "arrayObject": "Array Object",
+        "arrayString": "Array String",
         "boolean": "Boolean",
         "chatHistory": "History",
         "datasetQuote": "Dataset Quote",
         "dynamicTargetInput": "Dynamic Input",
         "number": "Number",
+        "object": "Object",
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",
         "string": "String",
-        "tools": "tools",
-        "object": "Object",
-        "arrayString": "Array String",
-        "arrayObject": "Array Object",
-        "arrayNumber": "Array Number",
-        "arrayBoolean": "Array Boolean"
+        "tools": "tools"
       },
       "variable": {
         "External type": "External",
@@ -1133,6 +1133,7 @@
         "textarea": "Textarea"
       },
       "tool": {
+        "Handle": "Tool handle",
         "Select Tool": "Select Tool"
       }
     }

@@ -60,7 +60,7 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { appDetail, updateAppDetail } = useAppStore();
+  const { appDetail, publishApp } = useAppStore();
 
   const { loadAllDatasets, allDatasets } = useDatasetStore();
   const { isPc, llmModelList } = useSystemStore();
@@ -122,11 +122,10 @@ const EditForm = ({
     mutationFn: async (data: AppSimpleEditFormType) => {
       const { nodes, edges } = form2AppWorkflow(data);
 
-      await updateAppDetail(appDetail._id, {
-        modules: nodes,
+      await publishApp(appDetail._id, {
+        nodes,
         edges,
-        type: AppTypeEnum.simple,
-        permission: undefined
+        type: AppTypeEnum.simple
       });
     },
     successToast: t('common.Save Success'),

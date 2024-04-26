@@ -8,7 +8,6 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
-import { VARIABLE_NODE_ID } from '../../../../../../projects/app/src/web/core/workflow/constants';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{

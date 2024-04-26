@@ -28,13 +28,13 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { appDetail } = useAppStore();
   const { toast } = useToast();
-  const { replaceAppDetail } = useAppStore();
+  const { updateAppDetail } = useAppStore();
   const [selectedTags, setSelectedTags] = useState<string[]>(appDetail?.teamTags || []);
 
   // submit config
   const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
     mutationFn: async () => {
-      await replaceAppDetail(appDetail._id, {
+      await updateAppDetail(appDetail._id, {
         teamTags: selectedTags
       });
     },

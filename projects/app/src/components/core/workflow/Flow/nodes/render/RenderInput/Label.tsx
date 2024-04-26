@@ -1,7 +1,4 @@
-import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io.d';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useFlowProviderStore } from '../../../FlowProvider';
@@ -14,7 +11,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import dynamic from 'next/dynamic';
 import { EditNodeFieldType } from '@fastgpt/global/core/workflow/node/type';
-import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import ValueTypeLabel from '../ValueTypeLabel';
 const FieldEditModal = dynamic(() => import('../FieldEditModal'));
@@ -40,11 +36,6 @@ const InputLabel = ({ nodeId, input }: Props) => {
     key
   } = input;
   const [editField, setEditField] = useState<EditNodeFieldType>();
-
-  const valueTypeLabel = useMemo(
-    () => (valueType ? FlowValueTypeMap[valueType]?.tag : ''),
-    [valueType]
-  );
 
   const onChangeRenderType = useCallback(
     (e: string) => {
@@ -83,9 +74,7 @@ const InputLabel = ({ nodeId, input }: Props) => {
           )}
         </Box>
         {/* value type */}
-        {renderType === FlowNodeInputTypeEnum.reference && !!valueTypeLabel && (
-          <ValueTypeLabel>{valueTypeLabel}</ValueTypeLabel>
-        )}
+        {renderType === FlowNodeInputTypeEnum.reference && <ValueTypeLabel valueType={valueType} />}
         {/* edit config */}
         {canEdit && (
           <>
@@ -206,8 +195,7 @@ const InputLabel = ({ nodeId, input }: Props) => {
     selectedTypeIndex,
     t,
     toolDescription,
-    valueType,
-    valueTypeLabel
+    valueType
   ]);
 
   return RenderLabel;

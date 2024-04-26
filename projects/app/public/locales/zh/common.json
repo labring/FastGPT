@@ -631,7 +631,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1036,20 +1037,20 @@
       },
       "valueType": {
         "any": "任意",
+        "arrayBoolean": "布尔数组",
+        "arrayNumber": "数字数组",
+        "arrayObject": "对象数组",
+        "arrayString": "字符串数组",
         "boolean": "布尔",
         "chatHistory": "历史记录",
         "datasetQuote": "知识库类型",
         "dynamicTargetInput": "动态字段输入",
         "number": "数字",
+        "object": "对象",
         "selectApp": "应用选择",
         "selectDataset": "知识库选择",
         "string": "字符串",
-        "tools": "工具调用",
-        "object": "对象",
-        "arrayString": "字符串数组",
-        "arrayObject": "对象数组",
-        "arrayNumber": "数字数组",
-        "arrayBoolean": "布尔数组"
+        "tools": "工具调用"
       },
       "variable": {
         "External type": "外部传入",
@@ -1134,6 +1135,7 @@
         "textarea": "多行输入框"
       },
       "tool": {
+        "Handle": "工具连接器",
         "Select Tool": "选择工具"
       }
     }

@@ -297,7 +297,6 @@ const ConditionSelect = ({
       valueType === WorkflowIOValueTypeEnum.datasetQuote ||
       valueType === WorkflowIOValueTypeEnum.dynamic ||
       valueType === WorkflowIOValueTypeEnum.selectApp ||
-      valueType === WorkflowIOValueTypeEnum.tools ||
       valueType === WorkflowIOValueTypeEnum.arrayBoolean ||
       valueType === WorkflowIOValueTypeEnum.arrayNumber ||
       valueType === WorkflowIOValueTypeEnum.arrayObject ||

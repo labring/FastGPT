@@ -18,9 +18,10 @@ export const jsonRes = <T = any>(
     message?: string;
     data?: T;
     error?: any;
+    url?: string;
   }
 ) => {
-  const { code = 200, message = '', data = null, error } = props || {};
+  const { code = 200, message = '', data = null, error, url } = props || {};
 
   const errResponseKey = typeof error === 'string' ? error : error?.message;
   // Specified error
@@ -47,7 +48,7 @@ export const jsonRes = <T = any>(
       msg = error?.error?.message;
     }
 
-    addLog.error(`response error: ${msg}`, error);
+    addLog.error(`Api response error: ${url}, ${msg}`, error);
   }
 
   res.status(code).json({

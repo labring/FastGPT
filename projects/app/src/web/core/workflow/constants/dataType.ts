@@ -2,56 +2,47 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 
 export const FlowValueTypeMap = {
   [WorkflowIOValueTypeEnum.string]: {
-    label: 'core.module.valueType.string',
-    tag: 'String',
+    label: 'string',
     value: WorkflowIOValueTypeEnum.string,
     description: ''
   },
   [WorkflowIOValueTypeEnum.number]: {
-    label: 'core.module.valueType.number',
-    tag: 'Number',
+    label: 'number',
     value: WorkflowIOValueTypeEnum.number,
     description: ''
   },
   [WorkflowIOValueTypeEnum.boolean]: {
-    label: 'core.module.valueType.boolean',
-    tag: 'Boolean',
+    label: 'boolean',
     value: WorkflowIOValueTypeEnum.boolean,
     description: ''
   },
   [WorkflowIOValueTypeEnum.object]: {
-    label: 'core.module.valueType.object',
-    tag: 'Object',
+    label: 'object',
     value: WorkflowIOValueTypeEnum.object,
     description: ''
   },
   [WorkflowIOValueTypeEnum.arrayString]: {
-    label: 'core.module.valueType.arrayString',
-    tag: 'Array<String>',
+    label: 'array<string>',
     value: WorkflowIOValueTypeEnum.arrayString,
     description: ''
   },
   [WorkflowIOValueTypeEnum.arrayNumber]: {
-    label: 'core.module.valueType.arrayNumber',
-    tag: 'Array<Number>',
+    label: 'array<number>',
     value: WorkflowIOValueTypeEnum.arrayNumber,
     description: ''
   },
   [WorkflowIOValueTypeEnum.arrayBoolean]: {
-    label: 'core.module.valueType.arrayBoolean',
-    tag: 'Array<Boolean>',
+    label: 'array<boolean>',
     value: WorkflowIOValueTypeEnum.arrayBoolean,
     description: ''
   },
   [WorkflowIOValueTypeEnum.arrayObject]: {
-    label: 'core.module.valueType.arrayObject',
-    tag: 'Array<Object>',
+    label: 'array<object>',
     value: WorkflowIOValueTypeEnum.arrayObject,
     description: ''
   },
   [WorkflowIOValueTypeEnum.chatHistory]: {
-    label: 'core.module.valueType.chatHistory',
-    tag: '历史记录（Array<Object>）',
+    label: '历史记录',
     value: WorkflowIOValueTypeEnum.chatHistory,
     description: `{
   obj: System | Human | AI;
@@ -59,8 +50,7 @@ export const FlowValueTypeMap = {
 }[]`
   },
   [WorkflowIOValueTypeEnum.datasetQuote]: {
-    label: 'core.module.valueType.datasetQuote',
-    tag: '知识库类型 （Array<Object>）',
+    label: '知识库引用',
     value: WorkflowIOValueTypeEnum.datasetQuote,
     description: `{
   id: string;
@@ -72,33 +62,23 @@ export const FlowValueTypeMap = {
   a: string
 }[]`
   },
-  [WorkflowIOValueTypeEnum.any]: {
-    label: 'core.module.valueType.any',
-    tag: 'Any',
-    value: WorkflowIOValueTypeEnum.any,
-    description: ''
-  },
   [WorkflowIOValueTypeEnum.selectApp]: {
-    label: 'core.module.valueType.selectApp',
-    tag: '',
+    label: '选择应用',
     value: WorkflowIOValueTypeEnum.selectApp,
     description: ''
   },
   [WorkflowIOValueTypeEnum.selectDataset]: {
-    label: 'core.module.valueType.selectDataset',
-    tag: '',
+    label: '选择知识库',
     value: WorkflowIOValueTypeEnum.selectDataset,
     description: ''
   },
-  [WorkflowIOValueTypeEnum.tools]: {
-    label: 'core.module.valueType.tools',
-    tag: '',
-    value: WorkflowIOValueTypeEnum.tools,
+  [WorkflowIOValueTypeEnum.any]: {
+    label: 'any',
+    value: WorkflowIOValueTypeEnum.any,
     description: ''
   },
   [WorkflowIOValueTypeEnum.dynamic]: {
     label: '动态数据',
-    tag: '',
     value: WorkflowIOValueTypeEnum.any,
     description: ''
   }

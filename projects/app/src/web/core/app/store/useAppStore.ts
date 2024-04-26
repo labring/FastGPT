@@ -1,10 +1,12 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { getMyApps, getModelById, putAppById, replaceAppById } from '@/web/core/app/api';
+import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
 import { defaultApp } from '@/constants/app';
-import type { AppUpdateParams } from '@fastgpt/global/core/app/api.d';
+import type { AppUpdateParams } from '@/global/core/app/api.d';
 import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
+import { PostPublishAppProps } from '@/global/core/app/api';
+import { postPublishApp } from '../versionApi';
 
 type State = {
   myApps: AppListItemType[];
@@ -12,7 +14,7 @@ type State = {
   appDetail: AppDetailType;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppDetailType>;
   updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
-  replaceAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
+  publishApp(appId: string, data: PostPublishAppProps): Promise<void>;
   clearAppModules(): void;
 };
 
@@ -44,19 +46,22 @@ export const useAppStore = create<State>()(
           set((state) => {
             state.appDetail = {
               ...state.appDetail,
-              ...data
+              ...data,
+              modules: data?.nodes || state.appDetail.modules
             };
           });
         },
-        async replaceAppDetail(appId: string, data: AppUpdateParams) {
-          await replaceAppById(appId, { ...get().appDetail, ...data });
+        async publishApp(appId: string, data: PostPublishAppProps) {
+          await postPublishApp(appId, data);
           set((state) => {
             state.appDetail = {
               ...state.appDetail,
-              ...data
+              ...data,
+              modules: data?.nodes || state.appDetail.modules
             };
           });
         },
+
         clearAppModules() {
           set((state) => {
             state.appDetail = {

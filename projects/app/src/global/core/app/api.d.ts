@@ -1,6 +1,5 @@
-import type { LLMModelItemType } from '../ai/model.d';
-import { AppTypeEnum } from './constants';
-import { AppSchema } from './type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppSchema } from '@fastgpt/global/core/app/type';
 
 export type CreateAppParams = {
   name?: string;
@@ -10,13 +9,19 @@ export type CreateAppParams = {
   edges?: AppSchema['edges'];
 };
 
-export interface AppUpdateParams {
+export type AppUpdateParams = {
   name?: string;
   type?: `${AppTypeEnum}`;
   avatar?: string;
   intro?: string;
-  modules?: AppSchema['modules'];
+  nodes?: AppSchema['modules'];
   edges?: AppSchema['edges'];
   permission?: AppSchema['permission'];
   teamTags?: AppSchema['teamTags'];
-}
+};
+
+export type PostPublishAppProps = {
+  type: `${AppTypeEnum}`;
+  nodes: AppSchema['modules'];
+  edges: AppSchema['edges'];
+};

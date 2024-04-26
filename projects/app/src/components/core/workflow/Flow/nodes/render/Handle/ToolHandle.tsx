@@ -28,17 +28,9 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
     (connectingEdge?.handleId !== NodeOutputKeyEnum.selectedTools ||
       edges.some((edge) => edge.targetHandle === getHandleId(nodeId, 'target', 'top')));
 
-  const valueTypeMap = FlowValueTypeMap[WorkflowIOValueTypeEnum.tools];
-
   const Render = useMemo(() => {
     return (
-      <MyTooltip
-        label={t('app.module.type', {
-          type: t(valueTypeMap?.label),
-          description: valueTypeMap?.description
-        })}
-        shouldWrapChildren={false}
-      >
+      <MyTooltip label={t('core.workflow.tool.Handle')} shouldWrapChildren={false}>
         <Handle
           style={{
             borderRadius: '0',
@@ -63,7 +55,7 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
         </Handle>
       </MyTooltip>
     );
-  }, [handleId, hidden, t, valueTypeMap?.description, valueTypeMap?.label]);
+  }, [handleId, hidden, t]);
 
   return Render;
 };
@@ -71,8 +63,6 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
 export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
   const { t } = useTranslation();
   const { setEdges } = useFlowProviderStore();
-
-  const valueTypeMap = FlowValueTypeMap[WorkflowIOValueTypeEnum.tools];
 
   /* onConnect edge, delete tool input and switch */
   const onConnect = useCallback(
@@ -90,13 +80,7 @@ export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
 
   const Render = useMemo(() => {
     return (
-      <MyTooltip
-        label={t('app.module.type', {
-          type: t(valueTypeMap?.label),
-          description: valueTypeMap?.description
-        })}
-        shouldWrapChildren={false}
-      >
+      <MyTooltip label={t('core.workflow.tool.Handle')} shouldWrapChildren={false}>
         <Handle
           style={{
             borderRadius: '0',
@@ -120,7 +104,7 @@ export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
         </Handle>
       </MyTooltip>
     );
-  }, [onConnect, t, valueTypeMap?.description, valueTypeMap?.label]);
+  }, [onConnect, t]);
 
   return Render;
 };

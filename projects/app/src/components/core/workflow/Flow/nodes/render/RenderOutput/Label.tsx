@@ -6,24 +6,12 @@ import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/const
 import { SourceHandle } from '../Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { Position } from 'reactflow';
-import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import ValueTypeLabel from '../ValueTypeLabel';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutputItemType }) => {
   const { t } = useTranslation();
   const { label = '', description, valueType } = output;
-
-  const valueTypeLabel = useMemo(
-    () => (valueType ? FlowValueTypeMap[valueType]?.tag : '-'),
-    [valueType]
-  );
-
-  const valueTypeDescription = useMemo(
-    () => (valueType ? FlowValueTypeMap[valueType]?.description : '-'),
-    [valueType]
-  );
 
   const Render = useMemo(() => {
     return (
@@ -48,9 +36,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
             {t(label)}
           </Box>
           {description && <QuestionTip label={t(description)} />}
-          <MyTooltip label={valueTypeDescription}>
-            <ValueTypeLabel>{valueTypeLabel}</ValueTypeLabel>
-          </MyTooltip>
+          <ValueTypeLabel valueType={valueType} />
         </Flex>
         {output.type === FlowNodeOutputTypeEnum.source && (
           <SourceHandle
@@ -62,16 +48,7 @@ const OutputLabel = ({ nodeId, output }: { nodeId: string; output: FlowNodeOutpu
         )}
       </Box>
     );
-  }, [
-    output.type,
-    output.key,
-    t,
-    label,
-    description,
-    valueTypeDescription,
-    valueTypeLabel,
-    nodeId
-  ]);
+  }, [output.type, output.key, t, label, description, valueType, nodeId]);
 
   return Render;
 };

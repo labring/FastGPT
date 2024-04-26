@@ -8,7 +8,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const appCollectionName = 'apps';
+export const AppCollectionName = 'apps';
 
 const AppSchema = new Schema({
   teamId: {
@@ -46,6 +46,8 @@ const AppSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+
+  // tmp store
   modules: {
     type: Array,
     default: []
@@ -92,6 +94,6 @@ try {
 }
 
 export const MongoApp: Model<AppType> =
-  models[appCollectionName] || model(appCollectionName, AppSchema);
+  models[AppCollectionName] || model(AppCollectionName, AppSchema);
 
 MongoApp.syncIndexes();
