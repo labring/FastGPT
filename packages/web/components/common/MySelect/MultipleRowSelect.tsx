@@ -54,21 +54,20 @@ const MultipleRowSelect = ({
                   bg: 'primary.50',
                   color: 'primary.600'
                 }}
+                onClick={() => {
+                  const newValue = [...cloneValue];
+                  newValue[index] = item.value;
+                  setCloneValue(newValue);
+                  if (!hasChildren) {
+                    onSelect(newValue);
+                    onClose();
+                  }
+                }}
                 {...(item.value === selectedValue
                   ? {
                       color: 'primary.600'
                     }
-                  : {
-                      onClick: () => {
-                        const newValue = [...cloneValue];
-                        newValue[index] = item.value;
-                        setCloneValue(newValue);
-                        if (!hasChildren) {
-                          onSelect(newValue);
-                          onClose();
-                        }
-                      }
-                    })}
+                  : {})}
               >
                 {item.label}
               </Flex>

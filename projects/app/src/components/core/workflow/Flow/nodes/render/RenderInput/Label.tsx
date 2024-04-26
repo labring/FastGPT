@@ -78,29 +78,31 @@ const InputLabel = ({ nodeId, input }: Props) => {
         {/* edit config */}
         {canEdit && (
           <>
-            <MyIcon
-              name={'common/settingLight'}
-              w={'14px'}
-              cursor={'pointer'}
-              ml={3}
-              color={'myGray.600'}
-              _hover={{ color: 'primary.500' }}
-              onClick={() =>
-                setEditField({
-                  inputType: renderTypeList[0],
-                  valueType: valueType,
-                  key,
-                  label,
-                  description,
-                  isToolInput: !!toolDescription,
-                  defaultValue: input.defaultValue,
-                  maxLength: input.maxLength,
-                  max: input.max,
-                  min: input.min,
-                  dynamicParamDefaultValue: input.dynamicParamDefaultValue
-                })
-              }
-            />
+            {input.editField && Object.keys(input.editField).length > 0 && (
+              <MyIcon
+                name={'common/settingLight'}
+                w={'14px'}
+                cursor={'pointer'}
+                ml={3}
+                color={'myGray.600'}
+                _hover={{ color: 'primary.500' }}
+                onClick={() =>
+                  setEditField({
+                    inputType: renderTypeList[0],
+                    valueType: valueType,
+                    key,
+                    label,
+                    description,
+                    isToolInput: !!toolDescription,
+                    defaultValue: input.defaultValue,
+                    maxLength: input.maxLength,
+                    max: input.max,
+                    min: input.min,
+                    dynamicParamDefaultValue: input.dynamicParamDefaultValue
+                  })
+                }
+              />
+            )}
             <MyIcon
               className="delete"
               name={'delete'}
