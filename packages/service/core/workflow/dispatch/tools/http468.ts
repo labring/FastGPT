@@ -149,7 +149,8 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
         headers: Object.keys(headers).length > 0 ? headers : undefined,
         httpResult: rawResponse
       },
-      [DispatchNodeResponseKeyEnum.toolResponses]: results,
+      [DispatchNodeResponseKeyEnum.toolResponses]:
+        Object.keys(results).length > 0 ? results : rawResponse,
       [NodeOutputKeyEnum.httpRawResponse]: rawResponse,
       ...results
     };
