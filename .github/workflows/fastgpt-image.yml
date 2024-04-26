@@ -6,7 +6,7 @@ on:
       - 'projects/app/**'
       - 'packages/**'
     tags:
-      - 'v*.*.*'
+      - 'v*'
 jobs:
   build-fastgpt-images:
     runs-on: ubuntu-20.04
