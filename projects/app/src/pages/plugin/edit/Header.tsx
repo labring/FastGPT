@@ -15,7 +15,6 @@ import {
   getWorkflowStore,
   useFlowProviderStore
 } from '@/components/core/workflow/Flow/FlowProvider';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   checkWorkflowNodeAndConnection,
   filterSensitiveNodesData

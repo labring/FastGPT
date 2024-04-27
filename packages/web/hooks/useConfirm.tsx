@@ -59,7 +59,7 @@ export const useConfirm = (props?: {
     onClose,
     ConfirmModal: useCallback(
       ({
-        closeText = t('common.Close'),
+        closeText = t('common.Cancel'),
         confirmText = t('common.Confirm'),
         isLoading,
         bg,

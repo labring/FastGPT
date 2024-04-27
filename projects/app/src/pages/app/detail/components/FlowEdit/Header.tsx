@@ -256,7 +256,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <Button
             size={'sm'}
             isLoading={isSaving}
-            leftIcon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
+            leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
             onClick={openConfigPublish(onclickPublish)}
           >
             {t('core.app.Publish')}

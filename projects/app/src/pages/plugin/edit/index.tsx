@@ -43,18 +43,16 @@ const Render = ({ pluginId }: Props) => {
       '检测到您的高级编排为旧版，系统将为您自动格式化成新版工作流。\n\n由于版本差异较大，会导致许多工作流无法正常排布，请重新手动连接工作流。如仍异常，可尝试删除对应节点后重新添加。\n\n你可以直接点击测试进行调试，无需点击保存，点击保存为新版工作流。'
   });
 
+  const workflowStringData = JSON.stringify({
+    nodes: pluginDetail?.modules || [],
+    edges: pluginDetail?.edges || []
+  });
+
   useEffect(() => {
     if (isV2Workflow) {
-      initData(
-        JSON.parse(
-          JSON.stringify({
-            nodes: pluginDetail?.modules || [],
-            edges: pluginDetail?.edges || []
-          })
-        )
-      );
+      initData(JSON.parse(workflowStringData));
     }
-  }, [initData, isV2Workflow, pluginDetail?.edges, pluginDetail?.modules]);
+  }, [initData, isV2Workflow, workflowStringData]);
 
   useEffect(() => {
     if (!isV2Workflow && pluginDetail) {

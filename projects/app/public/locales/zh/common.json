@@ -638,8 +638,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -697,7 +696,7 @@
         "Data file progress": "数据上传进度",
         "Data process params": "数据处理参数",
         "Down load csv template": "点击下载 CSV 模板",
-        "Embedding Estimated Price Tips": "仅使用索引模型，消耗少量Tokens: {{price}}积分/1k Tokens",
+        "Embedding Estimated Price Tips": "仅使用索引模型，消耗少量AI积分: {{price}}积分/1k Tokens",
         "Estimated Price": "预估价格: {{amount}}{{unit}}",
         "Estimated Price Tips": "QA计费为\n输入: {{charsPointsPrice}}积分/1k Tokens",
         "Estimated points": "预估消耗 {{points}} 积分",
@@ -724,7 +723,7 @@
         "Preview chunks": "预览分段（最多5段）",
         "Preview raw text": "预览源文本（最多3000字）",
         "Process way": "处理方式",
-        "QA Estimated Price Tips": "需调用文件处理模型，需要消耗较多Tokens: {{price}}积分/1k Tokens",
+        "QA Estimated Price Tips": "需调用文件处理模型，需要消耗较多AI积分: {{price}}积分/1k Tokens",
         "QA Import": "QA拆分",
         "QA Import Tip": "根据一定规则，将文本拆成一段较大的段落，调用 AI 为该段落生成问答对。有非常高的检索精度，但是会丢失很多内容细节。",
         "Re Preview": "重新生成预览",
