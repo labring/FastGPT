@@ -19,17 +19,15 @@ const Render = ({ app, onClose }: Props) => {
 
   const { initData } = useFlowProviderStore();
 
+  const workflowStringData = JSON.stringify({
+    nodes: app.modules || [],
+    edges: app.edges || []
+  });
+
   useEffect(() => {
     if (!isV2Workflow) return;
-    initData(
-      JSON.parse(
-        JSON.stringify({
-          nodes: app.modules || [],
-          edges: app.edges || []
-        })
-      )
-    );
-  }, [isV2Workflow, app.edges, app.modules]);
+    initData(JSON.parse(workflowStringData));
+  }, [isV2Workflow, initData, workflowStringData]);
 
   useEffect(() => {
     if (!isV2Workflow) {
@@ -37,7 +35,7 @@ const Render = ({ app, onClose }: Props) => {
         initData(JSON.parse(JSON.stringify(v1Workflow2V2((app.modules || []) as any))));
       })();
     }
-  }, [app.modules, isV2Workflow, openConfirm]);
+  }, [app.modules, initData, isV2Workflow, openConfirm]);
 
   const memoRender = useMemo(() => {
     return <Flow Header={<Header app={app} onClose={onClose} />} />;

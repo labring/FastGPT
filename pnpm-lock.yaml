@@ -356,9 +356,6 @@ importers:
       '@fortaine/fetch-event-source':
         specifier: ^3.0.6
         version: 3.0.6
-      '@node-rs/jieba':
-        specifier: 1.10.0
-        version: 1.10.0
       '@tanstack/react-query':
         specifier: ^4.24.10
         version: 4.24.10(react-dom@18.2.0)(react@18.2.0)

@@ -1,17 +1,6 @@
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import {
-  Box,
-  Table,
-  Thead,
-  Tbody,
-  Tr,
-  Th,
-  Td,
-  TableContainer,
-  Button,
-  Flex
-} from '@chakra-ui/react';
+import { Box, Table, Thead, Tbody, Tr, Th, Td, TableContainer, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import type {
   EditInputFieldMapType,

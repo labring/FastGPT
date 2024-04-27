@@ -4,6 +4,7 @@ import cronParser from 'cron-parser';
 export const formatTime2YMDHM = (time?: Date) =>
   time ? dayjs(time).format('YYYY-MM-DD HH:mm') : '';
 export const formatTime2YMD = (time?: Date) => (time ? dayjs(time).format('YYYY-MM-DD') : '');
+export const formatTime2HM = (time: Date = new Date()) => dayjs(time).format('HH:mm');
 
 /* cron time parse */
 export const cronParser2Fields = (cronString: string) => {

@@ -1,1 +1,0 @@
-export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';

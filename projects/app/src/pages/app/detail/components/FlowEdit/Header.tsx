@@ -24,6 +24,10 @@ import {
   checkWorkflowNodeAndConnection,
   filterSensitiveNodesData
 } from '@/web/core/workflow/utils';
+import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useQuery } from '@tanstack/react-query';
+import { formatTime2HM } from '@fastgpt/global/common/string/time';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 
@@ -50,13 +54,14 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { toast } = useToast();
   const { t } = useTranslation();
   const { copyData } = useCopyData();
-  const { openConfirm: openConfirmOut, ConfirmModal } = useConfirm({
-    content: t('core.app.edit.Out Ad Edit')
+  const { openConfirm: openConfigPublish, ConfirmModal } = useConfirm({
+    content: t('core.app.Publish Confirm')
   });
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { updateAppDetail } = useAppStore();
+  const { publishApp, updateAppDetail } = useAppStore();
   const { edges, onUpdateNodeError } = useFlowProviderStore();
   const [isSaving, setIsSaving] = useState(false);
+  const [saveLabel, setSaveLabel] = useState(t('core.app.Onclick to save'));
 
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const { nodes } = await getWorkflowStore();
@@ -75,48 +80,95 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     }
   }, [edges, onUpdateNodeError, t, toast]);
 
-  const onclickSave = useCallback(
-    async ({ nodes, edges }: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
-      setIsSaving(true);
+  const onclickSave = useCallback(async () => {
+    const { nodes } = await getWorkflowStore();
+
+    if (nodes.length === 0) return null;
+    setIsSaving(true);
+
+    const storeWorkflow = flowNode2StoreNodes({ nodes, edges });
+
+    try {
+      await updateAppDetail(app._id, {
+        ...storeWorkflow,
+        type: AppTypeEnum.advanced,
+        //@ts-ignore
+        version: 'v2'
+      });
+
+      setSaveLabel(
+        t('core.app.Auto Save time', {
+          time: formatTime2HM()
+        })
+      );
+      ChatTestRef.current?.resetChatTest();
+    } catch (error) {}
+
+    setIsSaving(false);
+
+    return null;
+  }, [updateAppDetail, app._id, edges, ChatTestRef, t]);
+
+  const onclickPublish = useCallback(async () => {
+    setIsSaving(true);
+    const data = await flowData2StoreDataAndCheck();
+    if (data) {
       try {
-        await updateAppDetail(app._id, {
-          modules: nodes,
-          edges,
+        await publishApp(app._id, {
+          ...data,
           type: AppTypeEnum.advanced,
-          permission: undefined,
           //@ts-ignore
           version: 'v2'
         });
         toast({
           status: 'success',
-          title: t('common.Save Success')
+          title: t('core.app.Publish Success')
         });
         ChatTestRef.current?.resetChatTest();
       } catch (error) {
         toast({
           status: 'warning',
-          title: getErrText(error, t('common.Save Failed'))
+          title: getErrText(error, t('core.app.Publish Failed'))
         });
       }
-      setIsSaving(false);
-    },
-    [ChatTestRef, app._id, t, toast, updateAppDetail]
-  );
+    }
+
+    setIsSaving(false);
+  }, [flowData2StoreDataAndCheck, publishApp, app._id, toast, t, ChatTestRef]);
 
   const saveAndBack = useCallback(async () => {
     try {
-      const data = await flowData2StoreDataAndCheck();
-      if (data) {
-        await onclickSave(data);
-      }
+      await onclickSave();
       onClose();
-    } catch (error) {
-      toast({
-        status: 'warning',
-        title: getErrText(error)
-      });
+    } catch (error) {}
+  }, [onClose, onclickSave]);
+
+  const onExportWorkflow = useCallback(async () => {
+    const data = await flowData2StoreDataAndCheck();
+    if (data) {
+      copyData(
+        JSON.stringify(
+          {
+            nodes: filterSensitiveNodesData(data.nodes),
+            edges: data.edges
+          },
+          null,
+          2
+        ),
+        t('app.Export Config Successful')
+      );
     }
-  }, [flowData2StoreDataAndCheck, onClose, onclickSave, toast]);
+  }, [copyData, flowData2StoreDataAndCheck, t]);
+
+  useBeforeunload({
+    callback: onclickSave,
+    tip: t('core.common.tip.leave page')
+  });
+
+  useQuery(['autoSave'], onclickSave, {
+    refetchInterval: 20 * 1000,
+    enabled: !!app._id
+  });
 
   const Render = useMemo(() => {
     return (
@@ -139,11 +191,28 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             variant={'whiteBase'}
             aria-label={''}
             isLoading={isSaving}
-            onClick={openConfirmOut(saveAndBack, onClose)}
+            onClick={saveAndBack}
           />
-          <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
-            {app.name}
+          <Box ml={[3, 5]}>
+            <Box fontSize={['md', 'lg']} fontWeight={'bold'}>
+              {app.name}
+            </Box>
+            <MyTooltip label={t('core.app.Onclick to save')}>
+              <Box
+                fontSize={'sm'}
+                mt={1}
+                display={'inline-block'}
+                borderRadius={'xs'}
+                cursor={'pointer'}
+                onClick={onclickSave}
+                color={'myGray.500'}
+              >
+                {saveLabel}
+              </Box>
+            </MyTooltip>
           </Box>
+
+          <Box flex={1} />
 
           <MyMenu
             Button={
@@ -164,22 +233,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
               {
                 label: t('app.Export Configs'),
                 icon: 'export',
-                onClick: async () => {
-                  const data = await flowData2StoreDataAndCheck();
-                  if (data) {
-                    copyData(
-                      JSON.stringify(
-                        {
-                          nodes: filterSensitiveNodesData(data.nodes),
-                          edges: data.edges
-                        },
-                        null,
-                        2
-                      ),
-                      t('app.Export Config Successful')
-                    );
-                  }
-                }
+                onClick: onExportWorkflow
               }
             ]}
           />
@@ -202,34 +256,27 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <Button
             size={'sm'}
             isLoading={isSaving}
-            leftIcon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
-            onClick={async () => {
-              const modules = await flowData2StoreDataAndCheck();
-              if (modules) {
-                onclickSave(modules);
-              }
-            }}
+            leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
+            onClick={openConfigPublish(onclickPublish)}
           >
-            {t('common.Save')}
+            {t('core.app.Publish')}
           </Button>
         </Flex>
-        <ConfirmModal
-          closeText={t('core.app.edit.UnSave')}
-          confirmText={t('core.app.edit.Save and out')}
-        />
+        <ConfirmModal confirmText={t('core.app.Publish')} />
       </>
     );
   }, [
     ConfirmModal,
     app.name,
-    copyData,
     flowData2StoreDataAndCheck,
     isSaving,
-    onClose,
+    onExportWorkflow,
     onOpenImport,
+    onclickPublish,
     onclickSave,
-    openConfirmOut,
+    openConfigPublish,
     saveAndBack,
+    saveLabel,
     setWorkflowTestData,
     t,
     theme.borders.base

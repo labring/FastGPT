@@ -14,6 +14,7 @@ import { MongoTeam } from '@fastgpt/service/support/user/team/teamSchema';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -46,12 +47,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // get app and history
-    const { history } = await getChatItems({
-      appId,
-      chatId,
-      limit: 30,
-      field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
-    });
+    const [{ history }, { nodes }] = await Promise.all([
+      getChatItems({
+        appId,
+        chatId,
+        limit: 30,
+        field: `dataId obj value userGoodFeedback userBadFeedback adminFeedback ${DispatchNodeResponseKeyEnum.nodeResponse}`
+      }),
+      getAppLatestVersion(app._id, app)
+    ]);
 
     // pick share response field
     history.forEach((item) => {
@@ -69,8 +73,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         variables: chat?.variables || {},
         history,
         app: {
-          userGuideModule: getGuideModule(app.modules),
-          chatModels: getChatModelNameListByModules(app.modules),
+          userGuideModule: getGuideModule(nodes),
+          chatModels: getChatModelNameListByModules(nodes),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro

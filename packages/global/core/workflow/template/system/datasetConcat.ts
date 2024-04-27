@@ -10,16 +10,26 @@ import {
   NodeOutputKeyEnum,
   FlowNodeTemplateTypeEnum
 } from '../../constants';
-import { Input_Template_Dataset_Quote } from '../input';
 import { getNanoid } from '../../../../common/string/tools';
 import { getHandleConfig } from '../utils';
 import { FlowNodeInputItemType } from '../../type/io.d';
 
-export const getOneQuoteInputTemplate = (key = getNanoid()): FlowNodeInputItemType => ({
-  ...Input_Template_Dataset_Quote,
+const defaultQuoteKey = 'defaultQuoteKey';
+
+export const getOneQuoteInputTemplate = ({
+  key = getNanoid(),
+  index
+}: {
+  key?: string;
+  index: number;
+}): FlowNodeInputItemType => ({
   key,
-  renderTypeList: [FlowNodeInputTypeEnum.custom],
-  description: ''
+  renderTypeList: [FlowNodeInputTypeEnum.reference],
+  label: `引用${index}`,
+  debugLabel: '知识库引用',
+  canEdit: key !== defaultQuoteKey,
+  description: '',
+  valueType: WorkflowIOValueTypeEnum.datasetQuote
 });
 
 export const DatasetConcatModule: FlowNodeTemplateType = {
@@ -37,7 +47,7 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.datasetMaxTokens,
       renderTypeList: [FlowNodeInputTypeEnum.custom],
       label: '最大 Tokens',
-      value: 1500,
+      value: 3000,
       valueType: WorkflowIOValueTypeEnum.number
     },
     {
@@ -45,7 +55,7 @@ export const DatasetConcatModule: FlowNodeTemplateType = {
       renderTypeList: [FlowNodeInputTypeEnum.custom],
       label: ''
     },
-    getOneQuoteInputTemplate()
+    getOneQuoteInputTemplate({ key: defaultQuoteKey, index: 1 })
   ],
   outputs: [
     {

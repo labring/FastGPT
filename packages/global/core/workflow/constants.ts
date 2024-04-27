@@ -14,18 +14,21 @@ export enum WorkflowIOValueTypeEnum {
   string = 'string',
   number = 'number',
   boolean = 'boolean',
+  object = 'object',
+  arrayString = 'arrayString',
+  arrayNumber = 'arrayNumber',
+  arrayBoolean = 'arrayBoolean',
+  arrayObject = 'arrayObject',
   any = 'any',
 
   chatHistory = 'chatHistory',
   datasetQuote = 'datasetQuote',
+
   dynamic = 'dynamic',
 
   // plugin special type
   selectApp = 'selectApp',
-  selectDataset = 'selectDataset',
-
-  // tool
-  tools = 'tools'
+  selectDataset = 'selectDataset'
 }
 
 /* reg: modulename key */
@@ -173,3 +176,5 @@ export enum RuntimeEdgeStatusEnum {
   'active' = 'active',
   'skipped' = 'skipped'
 }
+
+export const VARIABLE_NODE_ID = 'VARIABLE_NODE_ID';

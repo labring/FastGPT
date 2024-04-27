@@ -73,6 +73,7 @@
     "Confirm Import": "Import",
     "Confirm Move": "Move here",
     "Confirm Update": "Update",
+    "Confirm to leave the page": "Are you sure to leave this page?",
     "Copy": "Copy",
     "Copy Successful": "Copy Successful",
     "Course": "",
@@ -278,6 +279,7 @@
       "Api request desc": "Access to the existing system through API, or enterprise micro, flying book, etc",
       "App intro": "App intro",
       "App params config": "App Config",
+      "Auto Save time": "Auto-saved: {{time}}",
       "Chat Variable": "",
       "Config schedule plan": "Config schedule config",
       "Config whisper": "Config whisper",
@@ -289,6 +291,11 @@
       "Max histories": "Dialog round",
       "Max tokens": "Max tokens",
       "Name and avatar": "Avatar & Name",
+      "Onclick to save": "Save",
+      "Publish": "Publish",
+      "Publish Confirm": "Sure to release the app? App status is immediately updated across all publishing channels.",
+      "Publish Failed": "Publish error",
+      "Publish Success": "Publish Success",
       "Question Guide": "Question Guide",
       "Question Guide Tip": "At the end of the conversation, three leading questions will be asked.",
       "Quote prompt": "Quote prompt",
@@ -1035,11 +1042,16 @@
       },
       "valueType": {
         "any": "Any",
+        "arrayBoolean": "Array Boolean",
+        "arrayNumber": "Array Number",
+        "arrayObject": "Array Object",
+        "arrayString": "Array String",
         "boolean": "Boolean",
         "chatHistory": "History",
         "datasetQuote": "Dataset Quote",
         "dynamicTargetInput": "Dynamic Input",
         "number": "Number",
+        "object": "Object",
         "selectApp": "Select App",
         "selectDataset": "Select Dataset",
         "string": "String",
@@ -1128,6 +1140,7 @@
         "textarea": "Textarea"
       },
       "tool": {
+        "Handle": "Tool handle",
         "Select Tool": "Select Tool"
       }
     }

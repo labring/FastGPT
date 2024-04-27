@@ -6,7 +6,7 @@ import { VariableInputEnum } from '../workflow/constants';
 import { SelectedDatasetType } from '../workflow/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
-import { StoreEdgeItemType } from 'core/workflow/type/edge';
+import { StoreEdgeItemType } from '../workflow/type/edge';
 
 export interface AppSchema {
   _id: string;
@@ -18,6 +18,7 @@ export interface AppSchema {
   avatar: string;
   intro: string;
   updateTime: number;
+
   modules: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 

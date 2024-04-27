@@ -22,7 +22,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       }}
       {...data}
     >
-      <Container borderTop={'2px solid'} borderTopColor={'myGray.200'} textAlign={'end'}>
+      <Container>
         <IOTitle text={t('common.Output')} />
         <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
       </Container>

@@ -5,21 +5,14 @@ import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import dynamic from 'next/dynamic';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import Container from '../components/Container';
 import { EditInputFieldMapType, EditNodeFieldType } from '@fastgpt/global/core/workflow/node/type';
-import {
-  FlowNodeInputItemType,
-  FlowNodeOutputItemType
-} from '@fastgpt/global/core/workflow/type/io';
+import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { useFlowProviderStore } from '../FlowProvider';
 import RenderInput from './render/RenderInput';
-import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 const FieldEditModal = dynamic(() => import('./render/FieldEditModal'));
 
@@ -37,7 +30,7 @@ const createEditField: EditInputFieldMapType = {
 
 const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
+  const { nodeId, inputs } = data;
   const { onChangeNode } = useFlowProviderStore();
 
   const [createField, setCreateField] = useState<EditNodeFieldType>();
@@ -92,13 +85,6 @@ const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               description: data.description,
               canEdit: true,
               editField: createEditField
-            };
-            const newOutput: FlowNodeOutputItemType = {
-              id: getNanoid(),
-              key: data.key,
-              valueType: data.valueType,
-              label: data.label,
-              type: FlowNodeOutputTypeEnum.static
             };
 
             onChangeNode({

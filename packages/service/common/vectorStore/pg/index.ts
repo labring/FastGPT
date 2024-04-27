@@ -169,7 +169,16 @@ class PgClass {
   }
   async query<T extends QueryResultRow = any>(sql: string) {
     const pg = await connectPg();
-    return pg.query<T>(sql);
+    const start = Date.now();
+    return pg.query<T>(sql).then((res) => {
+      const time = Date.now() - start;
+
+      if (time > 300) {
+        addLog.warn(`pg query time: ${time}ms, sql: ${sql}`);
+      }
+
+      return res;
+    });
   }
 }
 

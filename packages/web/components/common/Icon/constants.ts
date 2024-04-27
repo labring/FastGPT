@@ -40,6 +40,7 @@ export const iconPaths = {
   'common/paramsLight': () => import('./icons/common/paramsLight.svg'),
   'common/playFill': () => import('./icons/common/playFill.svg'),
   'common/playLight': () => import('./icons/common/playLight.svg'),
+  'common/publishFill': () => import('./icons/common/publishFill.svg'),
   'common/questionLight': () => import('./icons/common/questionLight.svg'),
   'common/refreshLight': () => import('./icons/common/refreshLight.svg'),
   'common/resultLight': () => import('./icons/common/resultLight.svg'),
