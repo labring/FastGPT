@@ -4,7 +4,7 @@ import { FlowNodeTypeEnum } from '../node/constant';
 import { StoreNodeItemType } from '../type';
 import { StoreEdgeItemType } from '../type/edge';
 import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
-import { VARIABLE_NODE_ID } from '../../../../../projects/app/src/web/core/workflow/constants/index';
+import { VARIABLE_NODE_ID } from '../constants';
 
 export const initWorkflowEdgeStatus = (edges: StoreEdgeItemType[]): RuntimeEdgeItemType[] => {
   return (

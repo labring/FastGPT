@@ -8,6 +8,7 @@ import {
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
@@ -20,20 +21,21 @@ function checkCondition(condition: VariableConditionEnum, variableValue: any, va
     [VariableConditionEnum.isNotEmpty]: () => !!variableValue,
     [VariableConditionEnum.equalTo]: () => variableValue === value,
     [VariableConditionEnum.notEqual]: () => variableValue !== value,
-    [VariableConditionEnum.greaterThan]: () => variableValue > Number(value),
-    [VariableConditionEnum.lessThan]: () => variableValue < Number(value),
-    [VariableConditionEnum.greaterThanOrEqualTo]: () => variableValue >= Number(value),
-    [VariableConditionEnum.lessThanOrEqualTo]: () => variableValue <= Number(value),
-    [VariableConditionEnum.include]: () => variableValue.includes(value),
-    [VariableConditionEnum.notInclude]: () => !variableValue.includes(value),
-    [VariableConditionEnum.startWith]: () => variableValue.startsWith(value),
-    [VariableConditionEnum.endWith]: () => variableValue.endsWith(value),
-    [VariableConditionEnum.lengthEqualTo]: () => variableValue.length === Number(value),
-    [VariableConditionEnum.lengthNotEqualTo]: () => variableValue.length !== Number(value),
-    [VariableConditionEnum.lengthGreaterThan]: () => variableValue.length > Number(value),
-    [VariableConditionEnum.lengthGreaterThanOrEqualTo]: () => variableValue.length >= Number(value),
-    [VariableConditionEnum.lengthLessThan]: () => variableValue.length < Number(value),
-    [VariableConditionEnum.lengthLessThanOrEqualTo]: () => variableValue.length <= Number(value)
+    [VariableConditionEnum.greaterThan]: () => Number(variableValue) > Number(value),
+    [VariableConditionEnum.lessThan]: () => Number(variableValue) < Number(value),
+    [VariableConditionEnum.greaterThanOrEqualTo]: () => Number(variableValue) >= Number(value),
+    [VariableConditionEnum.lessThanOrEqualTo]: () => Number(variableValue) <= Number(value),
+    [VariableConditionEnum.include]: () => variableValue?.includes(value),
+    [VariableConditionEnum.notInclude]: () => !variableValue?.includes(value),
+    [VariableConditionEnum.startWith]: () => variableValue?.startsWith(value),
+    [VariableConditionEnum.endWith]: () => variableValue?.endsWith(value),
+    [VariableConditionEnum.lengthEqualTo]: () => variableValue?.length === Number(value),
+    [VariableConditionEnum.lengthNotEqualTo]: () => variableValue?.length !== Number(value),
+    [VariableConditionEnum.lengthGreaterThan]: () => variableValue?.length > Number(value),
+    [VariableConditionEnum.lengthGreaterThanOrEqualTo]: () =>
+      variableValue?.length >= Number(value),
+    [VariableConditionEnum.lengthLessThan]: () => variableValue?.length < Number(value),
+    [VariableConditionEnum.lengthLessThanOrEqualTo]: () => variableValue?.length <= Number(value)
   };
 
   return (operations[condition] || (() => false))();
@@ -43,15 +45,18 @@ export const dispatchIfElse = async (props: Props): Promise<DispatchNodeResultTy
   const {
     params,
     runtimeNodes,
+    variables,
     node: { nodeId }
   } = props;
   const { condition, ifElseList } = params;
   const listResult = ifElseList.map((item) => {
     const { variable, condition: variableCondition, value } = item;
 
-    const variableValue = runtimeNodes
-      .find((node) => node.nodeId === variable[0])
-      ?.outputs?.find((item) => item.id === variable[1])?.value;
+    const variableValue = getReferenceVariableValue({
+      value: variable,
+      variables,
+      nodes: runtimeNodes
+    });
 
     return checkCondition(variableCondition as VariableConditionEnum, variableValue, value || '');
   });

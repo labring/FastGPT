@@ -10,13 +10,11 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
 import { useFlowProviderStore } from '../FlowProvider';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import RenderOutput from './render/RenderOutput';
-import Reference from './render/RenderInput/templates/Reference';
 import IOTitle from '../components/IOTitle';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -47,46 +45,13 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     return maxTokens;
   }, [llmModelList, nodeList]);
 
-  const RenderQuoteList = useMemo(() => {
-    return (
-      <Box mt={-2}>
-        {quotes.map((quote, i) => (
-          <Box key={quote.key} _notLast={{ mb: 4 }}>
-            <Flex alignItems={'center'}>
-              <Box fontWeight={'medium'} color={'myGray.600'}>
-                {t('core.chat.Quote')}
-                {i + 1}
-              </Box>
-              <MyIcon
-                ml={2}
-                w={'14px'}
-                name={'delete'}
-                cursor={'pointer'}
-                color={'myGray.600'}
-                _hover={{ color: 'red.600' }}
-                onClick={() => {
-                  onChangeNode({
-                    nodeId,
-                    type: 'delInput',
-                    key: quote.key
-                  });
-                }}
-              />
-            </Flex>
-            <Reference nodeId={nodeId} item={quote} />
-          </Box>
-        ))}
-      </Box>
-    );
-  }, [nodeId, onChangeNode, quotes, t]);
-
   const onAddField = useCallback(() => {
     onChangeNode({
       nodeId,
       type: 'addInput',
-      value: getOneQuoteInputTemplate()
+      value: getOneQuoteInputTemplate({ index: quotes.length + 1 })
     });
-  }, [nodeId, onChangeNode]);
+  }, [nodeId, onChangeNode, quotes.length]);
 
   const CustomComponent = useMemo(() => {
     return {
@@ -141,7 +106,7 @@ const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     <NodeCard minW={'400px'} selected={selected} {...data}>
       <Container position={'relative'}>
         <RenderInput nodeId={nodeId} flowInputList={inputs} CustomComponent={CustomComponent} />
-        {RenderQuoteList}
+        {/* {RenderQuoteList} */}
       </Container>
       <Container>
         <IOTitle text={t('common.Output')} />

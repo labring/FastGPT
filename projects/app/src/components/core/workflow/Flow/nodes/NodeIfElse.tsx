@@ -123,7 +123,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                         onChangeNode({
                           nodeId,
                           type: 'updateInput',
-                          key: 'condition',
+                          key: NodeInputKeyEnum.condition,
                           value: {
                             ...conditionInput,
                             value: conditionInput.value === 'OR' ? 'AND' : 'OR'
@@ -297,7 +297,11 @@ const ConditionSelect = ({
       valueType === WorkflowIOValueTypeEnum.datasetQuote ||
       valueType === WorkflowIOValueTypeEnum.dynamic ||
       valueType === WorkflowIOValueTypeEnum.selectApp ||
-      valueType === WorkflowIOValueTypeEnum.tools
+      valueType === WorkflowIOValueTypeEnum.arrayBoolean ||
+      valueType === WorkflowIOValueTypeEnum.arrayNumber ||
+      valueType === WorkflowIOValueTypeEnum.arrayObject ||
+      valueType === WorkflowIOValueTypeEnum.arrayString ||
+      valueType === WorkflowIOValueTypeEnum.object
     )
       return arrayConditionList;
 

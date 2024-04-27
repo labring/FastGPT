@@ -14,7 +14,7 @@ import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNo
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { systemConfigNode2VariableNode } from './adapt';
-import { VARIABLE_NODE_ID } from './constants';
+import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export const nodeTemplate2FlowNode = ({

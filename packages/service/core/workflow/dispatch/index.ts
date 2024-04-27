@@ -220,9 +220,16 @@ export async function dispatchWorkFlow({
     ).then((result) => {
       const flat = result.flat();
       if (flat.length === 0) return;
-      // update output
+
+      // Update the node output at the end of the run and get the next nodes
       const nextNodes = flat.map((item) => nodeOutput(item.node, item.result)).flat();
-      return checkNodeCanRun(nextNodes);
+
+      // Remove repeat nodes(Make sure that the node is only executed once)
+      const filterNextNodes = nextNodes.filter(
+        (node, index, self) => self.findIndex((t) => t.nodeId === node.nodeId) === index
+      );
+
+      return checkNodeCanRun(filterNextNodes);
     });
   }
   // 运行完一轮后，清除连线的状态，避免污染进程

@@ -35,6 +35,7 @@ const nextConfig = {
     if (isServer) {
       config.externals.push('isolated-vm');
       config.externals.push('worker_threads');
+      config.externals.push('@node-rs/jieba');
 
       if (config.name === 'server') {
         // config.output.globalObject = 'self';

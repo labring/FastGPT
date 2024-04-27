@@ -2,34 +2,47 @@ import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants
 
 export const FlowValueTypeMap = {
   [WorkflowIOValueTypeEnum.string]: {
-    handlerStyle: {
-      borderColor: '#36ADEF'
-    },
-    label: 'core.module.valueType.string',
+    label: 'string',
     value: WorkflowIOValueTypeEnum.string,
     description: ''
   },
   [WorkflowIOValueTypeEnum.number]: {
-    handlerStyle: {
-      borderColor: '#FB7C3C'
-    },
-    label: 'core.module.valueType.number',
+    label: 'number',
     value: WorkflowIOValueTypeEnum.number,
     description: ''
   },
   [WorkflowIOValueTypeEnum.boolean]: {
-    handlerStyle: {
-      borderColor: '#E7D118'
-    },
-    label: 'core.module.valueType.boolean',
+    label: 'boolean',
     value: WorkflowIOValueTypeEnum.boolean,
     description: ''
   },
+  [WorkflowIOValueTypeEnum.object]: {
+    label: 'object',
+    value: WorkflowIOValueTypeEnum.object,
+    description: ''
+  },
+  [WorkflowIOValueTypeEnum.arrayString]: {
+    label: 'array<string>',
+    value: WorkflowIOValueTypeEnum.arrayString,
+    description: ''
+  },
+  [WorkflowIOValueTypeEnum.arrayNumber]: {
+    label: 'array<number>',
+    value: WorkflowIOValueTypeEnum.arrayNumber,
+    description: ''
+  },
+  [WorkflowIOValueTypeEnum.arrayBoolean]: {
+    label: 'array<boolean>',
+    value: WorkflowIOValueTypeEnum.arrayBoolean,
+    description: ''
+  },
+  [WorkflowIOValueTypeEnum.arrayObject]: {
+    label: 'array<object>',
+    value: WorkflowIOValueTypeEnum.arrayObject,
+    description: ''
+  },
   [WorkflowIOValueTypeEnum.chatHistory]: {
-    handlerStyle: {
-      borderColor: '#00A9A6'
-    },
-    label: 'core.module.valueType.chatHistory',
+    label: '历史记录',
     value: WorkflowIOValueTypeEnum.chatHistory,
     description: `{
   obj: System | Human | AI;
@@ -37,10 +50,7 @@ export const FlowValueTypeMap = {
 }[]`
   },
   [WorkflowIOValueTypeEnum.datasetQuote]: {
-    handlerStyle: {
-      borderColor: '#A558C9'
-    },
-    label: 'core.module.valueType.datasetQuote',
+    label: '知识库引用',
     value: WorkflowIOValueTypeEnum.datasetQuote,
     description: `{
   id: string;
@@ -52,42 +62,22 @@ export const FlowValueTypeMap = {
   a: string
 }[]`
   },
-  [WorkflowIOValueTypeEnum.any]: {
-    handlerStyle: {
-      borderColor: '#9CA2A8'
-    },
-    label: 'core.module.valueType.any',
-    value: WorkflowIOValueTypeEnum.any,
-    description: ''
-  },
   [WorkflowIOValueTypeEnum.selectApp]: {
-    handlerStyle: {
-      borderColor: '#6a6efa'
-    },
-    label: 'core.module.valueType.selectApp',
+    label: '选择应用',
     value: WorkflowIOValueTypeEnum.selectApp,
     description: ''
   },
   [WorkflowIOValueTypeEnum.selectDataset]: {
-    handlerStyle: {
-      borderColor: '#21ba45'
-    },
-    label: 'core.module.valueType.selectDataset',
+    label: '选择知识库',
     value: WorkflowIOValueTypeEnum.selectDataset,
     description: ''
   },
-  [WorkflowIOValueTypeEnum.tools]: {
-    handlerStyle: {
-      borderColor: '#21ba45'
-    },
-    label: 'core.module.valueType.tools',
-    value: WorkflowIOValueTypeEnum.tools,
+  [WorkflowIOValueTypeEnum.any]: {
+    label: 'any',
+    value: WorkflowIOValueTypeEnum.any,
     description: ''
   },
   [WorkflowIOValueTypeEnum.dynamic]: {
-    handlerStyle: {
-      borderColor: '#9CA2A8'
-    },
     label: '动态数据',
     value: WorkflowIOValueTypeEnum.any,
     description: ''

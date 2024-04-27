@@ -36,6 +36,7 @@ import { postWorkflowDebug } from '@/web/core/workflow/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -83,7 +84,7 @@ export type useFlowProviderStoreType = {
     sourceHandle?: string | undefined;
     targetHandle?: string | undefined;
   }) => void;
-  initData: (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => void;
+  initData: (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => Promise<void>;
   splitToolInputs: (
     inputs: FlowNodeInputItemType[],
     nodeId: string
@@ -147,7 +148,10 @@ const StateContext = createContext<useFlowProviderStoreType>({
   hasToolNode: false,
   connectingEdge: undefined,
   basicNodeTemplates: [],
-  initData: function (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }): void {
+  initData: function (e: {
+    nodes: StoreNodeItemType[];
+    edges: StoreEdgeItemType[];
+  }): Promise<void> {
     throw new Error('Function not implemented.');
   },
   hoverNodeId: undefined,
@@ -608,16 +612,14 @@ export const FlowProvider = ({
   );
 
   const initData = useCallback(
-    (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
+    async (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
       setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })));
 
       setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })));
 
-      setTimeout(() => {
-        onFixView();
-      }, 100);
+      await delay(200);
     },
-    [setEdges, setNodes, onFixView]
+    [setEdges, setNodes]
   );
 
   useEffect(() => {

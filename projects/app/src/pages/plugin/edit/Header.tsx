@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure, Button } from '@chakra-ui/react';
 import { PluginItemSchema } from '@fastgpt/global/core/plugin/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -7,16 +7,14 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { filterExportModules, flowNode2StoreNodes } from '@/components/core/workflow/utils';
+import { flowNode2StoreNodes } from '@/components/core/workflow/utils';
 import { putUpdatePlugin } from '@/web/core/plugin/api';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import {
   getWorkflowStore,
   useFlowProviderStore
 } from '@/components/core/workflow/Flow/FlowProvider';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   checkWorkflowNodeAndConnection,
   filterSensitiveNodesData
@@ -51,107 +49,109 @@ const Header = ({ plugin, onClose }: Props) => {
   }, [edges, onUpdateNodeError, t, toast]);
 
   const { mutate: onclickSave, isLoading } = useRequest({
-    mutationFn: ({ nodes, edges }: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
-      return putUpdatePlugin({
-        id: plugin._id,
-        modules: nodes,
-        edges
-      });
-    },
-    successToast: '保存配置成功',
-    errorToast: '保存配置异常'
+    mutationFn: async () => {
+      const workflow = await flowData2StoreDataAndCheck();
+      if (workflow) {
+        await putUpdatePlugin({
+          id: plugin._id,
+          modules: workflow.nodes,
+          edges: workflow.edges
+        });
+        toast({
+          status: 'success',
+          title: t('common.Save Success')
+        });
+      }
+    }
   });
 
-  return (
-    <>
-      <Flex
-        py={3}
-        px={[2, 5, 8]}
-        borderBottom={theme.borders.base}
-        alignItems={'center'}
-        userSelect={'none'}
-      >
-        <MyTooltip label={t('common.Back')} offset={[10, 10]}>
-          <IconButton
-            size={'smSquare'}
-            icon={<MyIcon name={'common/backLight'} w={'14px'} />}
-            variant={'whiteBase'}
-            aria-label={''}
-            onClick={() => {
-              onClose();
-            }}
-          />
-        </MyTooltip>
-        <Box ml={[3, 5]} fontSize={['md', '2xl']} flex={1}>
-          {plugin.name}
-        </Box>
+  const onCopy = useCallback(async () => {
+    const data = await flowData2StoreDataAndCheck();
+    if (data) {
+      copyData(
+        JSON.stringify(
+          {
+            nodes: filterSensitiveNodesData(data.nodes),
+            edges: data.edges
+          },
+          null,
+          2
+        ),
+        t('app.Export Config Successful')
+      );
+    }
+  }, [copyData, flowData2StoreDataAndCheck, t]);
 
-        <MyMenu
-          Button={
-            <IconButton
-              mr={[3, 5]}
-              icon={<MyIcon name={'more'} w={'14px'} p={2} />}
-              aria-label={''}
-              size={'sm'}
-              variant={'whitePrimary'}
-            />
-          }
-          menuList={[
-            { label: t('app.Import Configs'), icon: 'common/importLight', onClick: onOpenImport },
-            {
-              label: t('app.Export Configs'),
-              icon: 'export',
-              onClick: async () => {
-                const data = await flowData2StoreDataAndCheck();
-                if (data) {
-                  copyData(
-                    JSON.stringify(
-                      {
-                        nodes: filterSensitiveNodesData(data.nodes),
-                        edges: data.edges
-                      },
-                      null,
-                      2
-                    ),
-                    t('app.Export Config Successful')
-                  );
-                }
-              }
-            }
-          ]}
-        />
-        {/* <MyTooltip label={t('module.Preview Plugin')}>
-          <IconButton
-            mr={[3, 5]}
-            icon={<MyIcon name={'core/modules/previewLight'} w={['14px', '16px']} />}
-            size={'smSquare'}
-            aria-label={'save'}
-            variant={'whitePrimary'}
-            onClick={async () => {
-              const modules = await flowData2StoreDataAndCheck();
-              if (modules) {
-                setPreviewModules(modules);
-              }
-            }}
-          />
-        </MyTooltip> */}
-        <Button
-          size={'sm'}
-          isLoading={isLoading}
-          leftIcon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
-          onClick={async () => {
-            const modules = await flowData2StoreDataAndCheck();
-            if (modules) {
-              onclickSave(modules);
-            }
-          }}
+  const Render = useMemo(() => {
+    return (
+      <>
+        <Flex
+          py={3}
+          px={[2, 5, 8]}
+          borderBottom={theme.borders.base}
+          alignItems={'center'}
+          userSelect={'none'}
         >
-          {t('common.Save')}
-        </Button>
-      </Flex>
-      {isOpenImport && <ImportSettings onClose={onCloseImport} />}
-    </>
-  );
+          <MyTooltip label={t('common.Back')} offset={[10, 10]}>
+            <IconButton
+              size={'smSquare'}
+              icon={<MyIcon name={'common/backLight'} w={'14px'} />}
+              variant={'whiteBase'}
+              aria-label={''}
+              onClick={() => {
+                onClose();
+              }}
+            />
+          </MyTooltip>
+          <Box ml={[3, 5]} fontSize={['md', '2xl']} flex={1}>
+            {plugin.name}
+          </Box>
+
+          <MyMenu
+            Button={
+              <IconButton
+                mr={[3, 5]}
+                icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+                aria-label={''}
+                size={'sm'}
+                variant={'whitePrimary'}
+              />
+            }
+            menuList={[
+              { label: t('app.Import Configs'), icon: 'common/importLight', onClick: onOpenImport },
+              {
+                label: t('app.Export Configs'),
+                icon: 'export',
+                onClick: onCopy
+              }
+            ]}
+          />
+          <Button
+            size={'sm'}
+            isLoading={isLoading}
+            leftIcon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
+            onClick={onclickSave}
+          >
+            {t('common.Save')}
+          </Button>
+        </Flex>
+        {isOpenImport && <ImportSettings onClose={onCloseImport} />}
+      </>
+    );
+  }, [
+    isLoading,
+    isOpenImport,
+    onClose,
+    onCloseImport,
+    onCopy,
+    onOpenImport,
+    onclickSave,
+    plugin.name,
+    t,
+    theme.borders.base
+  ]);
+
+  return Render;
 };
 
 export default React.memo(Header);

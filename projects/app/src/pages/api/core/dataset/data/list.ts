@@ -7,62 +7,57 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { PagingData } from '@/types';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
+import { NextAPI } from '@/service/middle/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
-    let {
-      pageNum = 1,
-      pageSize = 10,
-      searchText = '',
-      collectionId
-    } = req.body as GetDatasetDataListProps;
+async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  let {
+    pageNum = 1,
+    pageSize = 10,
+    searchText = '',
+    collectionId
+  } = req.body as GetDatasetDataListProps;
 
-    pageSize = Math.min(pageSize, 30);
+  pageSize = Math.min(pageSize, 30);
 
-    // 凭证校验
-    const { teamId, collection } = await authDatasetCollection({
-      req,
-      authToken: true,
-      authApiKey: true,
-      collectionId,
-      per: 'r'
-    });
+  // 凭证校验
+  const { teamId, collection } = await authDatasetCollection({
+    req,
+    authToken: true,
+    authApiKey: true,
+    collectionId,
+    per: 'r'
+  });
 
-    searchText = replaceRegChars(searchText).replace(/'/g, '');
+  searchText = replaceRegChars(searchText).replace(/'/g, '');
 
-    const match = {
-      teamId,
-      datasetId: collection.datasetId._id,
-      collectionId,
-      ...(searchText
-        ? {
-            $or: [{ q: new RegExp(searchText, 'i') }, { a: new RegExp(searchText, 'i') }]
-          }
-        : {})
-    };
+  const match = {
+    teamId,
+    datasetId: collection.datasetId._id,
+    collectionId,
+    ...(searchText
+      ? {
+          $or: [{ q: new RegExp(searchText, 'i') }, { a: new RegExp(searchText, 'i') }]
+        }
+      : {})
+  };
 
-    const [data, total] = await Promise.all([
-      MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex')
-        .sort({ chunkIndex: 1, updateTime: -1 })
-        .skip((pageNum - 1) * pageSize)
-        .limit(pageSize)
-        .lean(),
-      MongoDatasetData.countDocuments(match)
-    ]);
+  const [data, total] = await Promise.all([
+    MongoDatasetData.find(match, '_id datasetId collectionId q a chunkIndex')
+      .sort({ chunkIndex: 1, updateTime: -1 })
+      .skip((pageNum - 1) * pageSize)
+      .limit(pageSize)
+      .lean(),
+    MongoDatasetData.countDocuments(match)
+  ]);
 
-    jsonRes<PagingData<DatasetDataListItemType>>(res, {
-      data: {
-        pageNum,
-        pageSize,
-        data,
-        total
-      }
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  jsonRes<PagingData<DatasetDataListItemType>>(res, {
+    data: {
+      pageNum,
+      pageSize,
+      data,
+      total
+    }
+  });
 }
+
+export default NextAPI(handler);

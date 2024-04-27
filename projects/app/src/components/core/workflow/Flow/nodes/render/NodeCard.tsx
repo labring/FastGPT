@@ -513,11 +513,14 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
         {/* result */}
         {debugResult.showResult && (
           <Card
+            className="nowheel"
             position={'absolute'}
             right={'-430px'}
             top={0}
             zIndex={10}
             w={'420px'}
+            maxH={'540px'}
+            overflowY={'auto'}
             border={'base'}
           >
             {/* Status header */}
