@@ -13,6 +13,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
+import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 
 type Props = { pluginId: string };
 
@@ -53,7 +54,7 @@ const Render = ({ pluginId }: Props) => {
         )
       );
     }
-  }, [isV2Workflow, pluginDetail?.edges, pluginDetail?.modules]);
+  }, [initData, isV2Workflow, pluginDetail?.edges, pluginDetail?.modules]);
 
   useEffect(() => {
     if (!isV2Workflow && pluginDetail) {
@@ -61,7 +62,11 @@ const Render = ({ pluginId }: Props) => {
         initData(JSON.parse(JSON.stringify(v1Workflow2V2((pluginDetail.modules || []) as any))));
       })();
     }
-  }, [isV2Workflow, openConfirm, pluginDetail]);
+  }, [initData, isV2Workflow, openConfirm, pluginDetail]);
+
+  useBeforeunload({
+    tip: t('core.common.tip.leave page')
+  });
 
   return pluginDetail ? (
     <>
