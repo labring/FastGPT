@@ -239,8 +239,8 @@ importers:
         specifier: workspace:*
         version: link:../global
       '@fingerprintjs/fingerprintjs':
-        specifier: ^4.2.1
-        version: 4.2.1
+        specifier: ^4.3.0
+        version: 4.3.0
       '@lexical/react':
         specifier: 0.12.6
         version: 0.12.6(lexical@0.12.6)(react-dom@18.2.0)(react@18.2.0)(yjs@13.6.14)
@@ -3366,8 +3366,8 @@ packages:
       - supports-color
     dev: true
 
-  /@fingerprintjs/fingerprintjs@4.2.1:
-    resolution: {integrity: sha512-uW+GVUNTgCXbVPEbgnbf5Aor22e1dyYR0JRwdUiZBaikfxr7KlhV9y0aahA1FB99fEeQVvhCEvTcPIFSYTy9Pw==}
+  /@fingerprintjs/fingerprintjs@4.3.0:
+    resolution: {integrity: sha512-eZYh6XVvMp5iyoT9y+/llGxqoACr01JeBTfy6NAMaQ6K2a3nZmyPKoYv5V89QNN8jUqzgXeTOICClEUtktLdtw==}
     dependencies:
       tslib: 2.6.2
     dev: false

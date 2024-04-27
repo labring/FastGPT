@@ -1,7 +1,9 @@
-import Markdown from '@/components/Markdown';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
 import { Box, Card } from '@chakra-ui/react';
 import React from 'react';
+
+import dynamic from 'next/dynamic';
+const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
 const Empty = () => {
   const { data: chatProblem } = useMarkdown({ url: '/chatProblem.md' });
