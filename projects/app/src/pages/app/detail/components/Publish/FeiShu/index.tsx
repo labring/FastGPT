@@ -11,7 +11,6 @@ import {
   Td,
   Tbody
 } from '@chakra-ui/react';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
@@ -19,21 +18,16 @@ import { getShareChatList, delShareChatById } from '@/web/support/outLink/api';
 import { formatTimeToChatTime } from '@/utils/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { defaultFeishuOutLinkForm } from '@/constants/app';
-import type {
-  FeishuType,
-  OutLinkEditType,
-  OutLinkSchema
-} from '@fastgpt/global/support/outLink/type.d';
-import { OutlinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
+import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyTooltip from '@/components/MyTooltip';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import FeiShuEditModal from './Modal/FeiShuEditModal';
-const SelectUsingWayModal = dynamic(() => import('./Modal/SelectUsingWayModal'));
+
+const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
 
 const FeiShu = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
@@ -41,24 +35,20 @@ const FeiShu = ({ appId }: { appId: string }) => {
   const { feConfigs } = useSystemStore();
   const { copyData } = useCopyData();
   const [editFeiShuLinkData, setEditFeiShuLinkData] = useState<OutLinkEditType<FeishuType>>();
-  const [selectedLinkData, setSelectedLinkData] = useState<OutLinkSchema<FeishuType>>();
   const { toast } = useToast();
   const {
     isFetching,
     data: shareChatList = [],
     refetch: refetchShareChatList
   } = useQuery(['initShareChatList', appId], () =>
-    getShareChatList<FeishuType>({ appId, type: OutlinkTypeEnum.feishu })
+    getShareChatList<FeishuType>({ appId, type: PublishChannelEnum.feishu })
   );
 
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
         <Box fontWeight={'bold'} fontSize={['md', 'xl']}>
-          {t('core.app.FeiShu Bot')}
-          <MyTooltip forceShow label={t('core.app.FeiShu Bot Dec')}>
-            <QuestionOutlineIcon ml={1} />
-          </MyTooltip>
+          {t('core.app.publish.Fei shu bot publish')}
         </Box>
         <Button
           variant={'whitePrimary'}
@@ -81,16 +71,13 @@ const FeiShu = ({ appId }: { appId: string }) => {
             <Tr>
               <Th>{t('common.Name')}</Th>
               <Th>{t('support.outlink.Usage points')}</Th>
-              <Th>{t('core.app.share.Is response quote')}</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>{t('core.app.share.Ip limit title')}</Th>
                   <Th>{t('common.Expired Time')}</Th>
-                  <Th>{t('core.app.share.Role check')}</Th>
                 </>
               )}
               <Th>{t('common.Last use time')}</Th>
-              <Th>{t('core.app.App params config')}</Th>
               <Th></Th>
             </Tr>
           </Thead>
@@ -108,7 +95,6 @@ const FeiShu = ({ appId }: { appId: string }) => {
                       }`
                     : ''}
                 </Td>
-                <Td>{item.responseDetail ? '✔' : '✖'}</Td>
                 {feConfigs?.isPlus && (
                   <>
                     <Td>{item?.limit?.QPM || '-'}</Td>
@@ -117,7 +103,6 @@ const FeiShu = ({ appId }: { appId: string }) => {
                         ? dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
                         : '-'}
                     </Td>
-                    <Th>{item?.limit?.hookUrl ? '✔' : '✖'}</Th>
                   </>
                 )}
                 <Td>
@@ -136,13 +121,6 @@ const FeiShu = ({ appId }: { appId: string }) => {
                       />
                     }
                     menuList={[
-                      {
-                        label: t('core.app.outLink.Select Mode'),
-                        icon: 'copy',
-                        onClick: () => {
-                          setSelectedLinkData(item);
-                        }
-                      },
                       {
                         label: t('common.Edit'),
                         icon: 'edit',
@@ -182,11 +160,9 @@ const FeiShu = ({ appId }: { appId: string }) => {
       {editFeiShuLinkData && (
         <FeiShuEditModal
           appId={appId}
-          // type={'feishu' as OutLinkTypeEnum}
+          // type={'feishu' as PublishChannelEnum}
           defaultData={editFeiShuLinkData}
           onCreate={(id) => {
-            const url = `${location.origin}/chat/share?shareId=${id}`;
-            copyData(url, t('core.app.share.Create link tip'));
             refetchShareChatList();
             setEditFeiShuLinkData(undefined);
           }}
@@ -199,12 +175,6 @@ const FeiShu = ({ appId }: { appId: string }) => {
             setEditFeiShuLinkData(undefined);
           }}
           onClose={() => setEditFeiShuLinkData(undefined)}
-        />
-      )}
-      {!!selectedLinkData && (
-        <SelectUsingWayModal
-          share={selectedLinkData}
-          onClose={() => setSelectedLinkData(undefined)}
         />
       )}
       {shareChatList.length === 0 && !isFetching && (

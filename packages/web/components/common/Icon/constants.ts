@@ -65,6 +65,7 @@ export const iconPaths = {
   'core/app/headphones': () => import('./icons/core/app/headphones.svg'),
   'core/app/logsLight': () => import('./icons/core/app/logsLight.svg'),
   'core/app/markLight': () => import('./icons/core/app/markLight.svg'),
+  'core/app/publish/lark': () => import('./icons/core/app/publish/lark.svg'),
   'core/app/questionGuide': () => import('./icons/core/app/questionGuide.svg'),
   'core/app/schedulePlan': () => import('./icons/core/app/schedulePlan.svg'),
   'core/app/simpleMode/ai': () => import('./icons/core/app/simpleMode/ai.svg'),

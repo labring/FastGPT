@@ -1,4 +1,4 @@
-export enum OutlinkTypeEnum {
+export enum PublishChannelEnum {
   share = 'share',
   iframe = 'iframe',
   apikey = 'apikey',

@@ -3,7 +3,7 @@ import { Flex, Box, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/rea
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@/components/MyTooltip';
-import { OutlinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
@@ -37,11 +37,10 @@ const FeiShuEditModal = ({
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (e: OutLinkEditType<FeishuType>) => {
-      console.log(e);
       createShareChat({
         ...e,
         appId,
-        type: OutlinkTypeEnum.feishu
+        type: PublishChannelEnum.feishu
       });
     },
     errorToast: t('common.Create Failed'),

@@ -374,6 +374,11 @@
         "Show History": "Show History",
         "Web Link": "Web Link"
       },
+      "publish": {
+        "Fei Shu Bot Desc": "Access the Lark robot",
+        "Fei shu bot": "Lark",
+        "Fei shu bot publish": "Posted to Lark Robot"
+      },
       "schedule": {
         "Default prompt": "Default prompt",
         "Default prompt placeholder": "Default problem when executing the application",

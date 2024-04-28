@@ -6,6 +6,7 @@ import { TTSTypeEnum } from '@/constants/app';
 import { useTranslation } from 'next-i18next';
 import type { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat.d';
 import { getToken } from '@/web/support/user/auth';
+import { useMount } from 'ahooks';
 
 const contentType = 'audio/mpeg';
 const splitMarker = 'SPLIT_MARKER';
@@ -329,7 +330,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
   );
 
   // listen audio status
-  useEffect(() => {
+  useMount(() => {
     const audio = new Audio();
     audioRef.current = audio;
 
@@ -357,7 +358,7 @@ export const useAudioPlay = (props?: OutLinkChatAuthProps & { ttsConfig?: AppTTS
       audio.remove();
       window.removeEventListener('beforeunload', listen);
     };
-  }, []);
+  });
 
   return {
     audio: audioRef.current,

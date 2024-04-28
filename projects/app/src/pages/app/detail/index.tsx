@@ -21,7 +21,7 @@ import { useTranslation } from 'next-i18next';
 const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
 });
-const OutLink = dynamic(() => import('./components/OutLink'), {});
+const Publish = dynamic(() => import('./components/Publish'), {});
 const Logs = dynamic(() => import('./components/Logs'), {});
 
 enum TabEnum {
@@ -179,7 +179,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
               <FlowEdit app={appDetail} onClose={onCloseFlowEdit} />
             )}
             {currentTab === TabEnum.logs && <Logs appId={appId} />}
-            {currentTab === TabEnum.publish && <OutLink appId={appId} />}
+            {currentTab === TabEnum.publish && <Publish appId={appId} />}
           </Box>
         </Flex>
       </PageContainer>

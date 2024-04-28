@@ -374,6 +374,11 @@
         "Show History": "展示历史对话",
         "Web Link": "网络链接"
       },
+      "publish": {
+        "Fei Shu Bot Desc": "接入到飞书机器人中",
+        "Fei shu bot": "飞书",
+        "Fei shu bot publish": "发布到飞书机器人"
+      },
       "schedule": {
         "Default prompt": "默认问题",
         "Default prompt placeholder": "执行应用时的默认问题",
@@ -638,7 +643,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",

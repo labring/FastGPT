@@ -1,7 +1,6 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { OutLinkSchema as SchemaType } from '@fastgpt/global/support/outLink/type';
-import { OutlinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
@@ -30,7 +29,7 @@ const OutLinkSchema = new Schema({
   },
   type: {
     type: String,
-    default: OutlinkTypeEnum.share
+    required: true
   },
   name: {
     type: String,
