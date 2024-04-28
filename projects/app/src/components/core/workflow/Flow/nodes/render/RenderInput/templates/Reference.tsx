@@ -7,6 +7,7 @@ import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
@@ -34,21 +35,34 @@ type SelectProps = {
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useFlowProviderStore();
+  const { onChangeNode, nodes } = useFlowProviderStore();
 
   const onSelect = useCallback(
     (e: any) => {
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: item.key,
-        value: {
-          ...item,
-          value: e
-        }
-      });
+      const workflowStartNode = nodes.find((node) => node.type === 'workflowStart');
+      if (e[0] === workflowStartNode?.id && e[1] !== NodeOutputKeyEnum.userChatInput) {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: item.key,
+          value: {
+            ...item,
+            value: [VARIABLE_NODE_ID, e[1]]
+          }
+        });
+      } else {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: item.key,
+          value: {
+            ...item,
+            value: e
+          }
+        });
+      }
     },
-    [item, nodeId, onChangeNode]
+    [item, nodeId, nodes, onChangeNode]
   );
 
   const { referenceList, formatValue } = useReference({
@@ -144,7 +158,12 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
     if (!value) {
       return;
     }
-    const firstColumn = list.find((item) => item.value === value[0]);
+    let firstColumn = undefined;
+    if (value[0] === VARIABLE_NODE_ID) {
+      firstColumn = list[list.length - 1];
+    } else {
+      firstColumn = list.find((item) => item.value === value[0]);
+    }
     if (!firstColumn) {
       return;
     }

@@ -153,6 +153,7 @@
     "Submit failed": "提交失败",
     "Submit success": "提交成功",
     "Sync success": "同步成功",
+    "System Output": "系统输出",
     "System version": "系统版本",
     "Team": "团队",
     "Team Tags Set": "标签",
@@ -965,7 +966,8 @@
           "chat history": "聊天记录",
           "switch": "触发器",
           "textEditor textarea": "文本编辑",
-          "user question": "用户问题"
+          "user question": "用户问题",
+          "system params": "系统参数"
         },
         "placeholder": {
           "Classify background": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。"

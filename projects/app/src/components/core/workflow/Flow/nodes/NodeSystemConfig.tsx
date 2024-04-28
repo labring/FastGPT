@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useTransition } from 'react';
+import React, { useMemo, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Flex, Textarea, useTheme } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -6,7 +6,6 @@ import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workfl
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 
-import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import QGSwitch from '@/components/core/app/QGSwitch';
 import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
@@ -14,7 +13,6 @@ import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/constants/app';
 import { useFlowProviderStore } from '../FlowProvider';
-import VariableEdit from '../../../app/VariableEdit';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import NodeCard from './render/NodeCard';
@@ -38,10 +36,7 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       >
         <Box px={4} py={'10px'} position={'relative'} borderRadius={'md'} className="nodrag">
           <WelcomeText data={data} />
-          <Box pt={4} pb={2}>
-            <ChatStartVariable data={data} />
-          </Box>
-          <Box pt={3} borderTop={theme.borders.base}>
+          <Box pt={3}>
             <TTSGuide data={data} />
           </Box>
           <Box mt={3} pt={3} borderTop={theme.borders.base}>
@@ -104,35 +99,6 @@ function WelcomeText({ data }: { data: FlowNodeItemType }) {
       )}
     </>
   );
-}
-
-function ChatStartVariable({ data }: { data: FlowNodeItemType }) {
-  const { inputs, nodeId } = data;
-  const { onChangeNode } = useFlowProviderStore();
-
-  const variables = useMemo(
-    () =>
-      (inputs.find((item) => item.key === NodeInputKeyEnum.variables)
-        ?.value as VariableItemType[]) || [],
-    [inputs]
-  );
-
-  const updateVariables = useCallback(
-    (value: VariableItemType[]) => {
-      onChangeNode({
-        nodeId,
-        key: NodeInputKeyEnum.variables,
-        type: 'updateInput',
-        value: {
-          ...inputs.find((item) => item.key === NodeInputKeyEnum.variables),
-          value
-        }
-      });
-    },
-    [inputs, nodeId, onChangeNode]
-  );
-
-  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
 }
 
 function QuestionGuide({ data }: { data: FlowNodeItemType }) {

@@ -130,12 +130,22 @@ export const computedNodeInputReference = ({
   const systemConfigNode = nodes.find(
     (item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig
   );
-
+  let result = sourceNodes;
   if (systemConfigNode) {
-    sourceNodes.unshift(systemConfigNode2VariableNode(systemConfigNode));
+    const variableNode = systemConfigNode2VariableNode(systemConfigNode);
+    result = sourceNodes.map((item) => {
+      if (item.flowNodeType === FlowNodeTypeEnum.workflowStart) {
+        return {
+          ...item,
+          outputs: item.outputs.concat(variableNode.outputs)
+        };
+      } else {
+        return item;
+      }
+    });
   }
 
-  return sourceNodes;
+  return result;
 };
 
 /* Connection rules */
