@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useTransition } from 'react';
+import React, { useEffect, useMemo, useState, useTransition } from 'react';
 import { Box, Flex, Grid, BoxProps, useTheme, useDisclosure, Button } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon, QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
@@ -30,6 +30,8 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import { TTSTypeEnum } from '@/constants/app';
 import { getSystemVariables } from '@/web/core/app/utils';
+import { useContextSelector } from 'use-context-selector';
+import { SimpleEditContext } from './Context';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -60,12 +62,15 @@ const EditForm = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { appDetail, publishApp } = useAppStore();
+  const { publishApp } = useAppStore();
 
-  const { loadAllDatasets, allDatasets } = useDatasetStore();
+  const { allDatasets } = useDatasetStore();
   const { isPc, llmModelList } = useSystemStore();
   const [refresh, setRefresh] = useState(false);
   const [, startTst] = useTransition();
+
+  const appDetail = useContextSelector(SimpleEditContext, (state) => state.app);
+  const setApp = useContextSelector(SimpleEditContext, (state) => state.setApp);
 
   const { setValue, getValues, reset, handleSubmit, control, watch } =
     useForm<AppSimpleEditFormType>({
@@ -118,7 +123,7 @@ const EditForm = ({
   }, [selectLLMModel, llmModelList]);
 
   /* on save app */
-  const { mutate: onSubmitSave, isLoading: isSaving } = useRequest({
+  const { mutate: onSubmitPublish, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
       const { nodes, edges } = form2AppWorkflow(data);
 
@@ -146,7 +151,21 @@ const EditForm = ({
       enabled: !!appDetail._id
     }
   );
-  useQuery(['loadAllDatasets'], loadAllDatasets);
+
+  useEffect(() => {
+    const wat = watch((data) => {
+      const { nodes, edges } = form2AppWorkflow(data as AppSimpleEditFormType);
+      setApp((state) => ({
+        ...state,
+        modules: nodes,
+        edges
+      }));
+    });
+
+    return () => {
+      wat.unsubscribe();
+    };
+  }, []);
 
   return (
     <Box>
@@ -177,16 +196,23 @@ const EditForm = ({
         <Button
           isLoading={isSaving}
           size={['sm', 'md']}
+          leftIcon={
+            appDetail.type === AppTypeEnum.simple ? (
+              <MyIcon name={'common/publishFill'} w={['14px', '16px']} />
+            ) : undefined
+          }
           variant={appDetail.type === AppTypeEnum.simple ? 'primary' : 'whitePrimary'}
           onClick={() => {
             if (appDetail.type !== AppTypeEnum.simple) {
-              openConfirmSave(handleSubmit((data) => onSubmitSave(data)))();
+              openConfirmSave(handleSubmit((data) => onSubmitPublish(data)))();
             } else {
-              handleSubmit((data) => onSubmitSave(data))();
+              handleSubmit((data) => onSubmitPublish(data))();
             }
           }}
         >
-          {isPc ? t('core.app.Save and preview') : t('common.Save')}
+          {appDetail.type !== AppTypeEnum.simple
+            ? t('core.app.Change to simple mode')
+            : t('core.app.Publish')}
         </Button>
       </Flex>
 
