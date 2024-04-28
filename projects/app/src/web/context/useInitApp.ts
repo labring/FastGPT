@@ -56,7 +56,9 @@ export const useInitApp = () => {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
           appName: navigator.appName
-        }
+        },
+        error: event,
+        url: location.href
       });
     };
     // add window error track

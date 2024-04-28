@@ -26,6 +26,10 @@ const nextConfig = {
           test: /\.svg$/i,
           issuer: /\.[jt]sx?$/,
           use: ['@svgr/webpack']
+        },
+        {
+          test: /\.node$/,
+          use: [{ loader: 'nextjs-node-loader' }]
         }
       ]),
       exprContextCritical: false,
@@ -33,9 +37,7 @@ const nextConfig = {
     };
 
     if (isServer) {
-      config.externals.push('isolated-vm');
       config.externals.push('worker_threads');
-      config.externals.push('@node-rs/jieba');
 
       if (nextRuntime === 'nodejs') {
         // config.output.globalObject = 'self';
@@ -76,6 +78,7 @@ const nextConfig = {
   },
   transpilePackages: ['@fastgpt/*'],
   experimental: {
+    // 外部包独立打包
     serverComponentsExternalPackages: ['mongoose', 'pg'],
     // 指定导出包优化，按需引入包模块
     optimizePackageImports: ['mongoose', 'pg'],
