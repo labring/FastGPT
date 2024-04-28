@@ -3,7 +3,7 @@ import { NodeProps } from 'reactflow';
 import { Box, Flex, Textarea, useTheme } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 
 import QGSwitch from '@/components/core/app/QGSwitch';
@@ -21,6 +21,11 @@ import { WorkflowContext } from '../../context';
 import { VariableItemType } from '@fastgpt/global/core/app/type';
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
+import {
+  FlowNodeOutputTypeEnum,
+  FlowNodeTypeEnum
+} from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const theme = useTheme();
@@ -40,10 +45,10 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       >
         <Box px={4} py={'10px'} position={'relative'} borderRadius={'md'} className="nodrag">
           <WelcomeText data={data} />
-          <Box pt={3}>
+          <Box pt={4}>
             <ChatStartVariable data={data} />
           </Box>
-          <Box pt={3}>
+          <Box mt={3} pt={3} borderTop={theme.borders.base}>
             <TTSGuide data={data} />
           </Box>
           <Box mt={3} pt={3} borderTop={theme.borders.base}>
@@ -120,6 +125,7 @@ function ChatStartVariable({ data }: { data: FlowNodeItemType }) {
   );
 
   const updateVariables = useMemoizedFn((value: VariableItemType[]) => {
+    // update system config node
     onChangeNode({
       nodeId,
       key: NodeInputKeyEnum.variables,

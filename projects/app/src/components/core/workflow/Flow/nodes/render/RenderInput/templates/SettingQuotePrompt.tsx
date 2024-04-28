@@ -26,6 +26,8 @@ import { getSystemVariables } from '@/web/core/app/utils';
 import ValueTypeLabel from '../../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { useCreation } from 'ahooks';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -51,14 +53,10 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const aiChatQuoteTemplate = watch('quoteTemplate');
   const aiChatQuotePrompt = watch('quotePrompt');
 
-  const variables = useMemo(() => {
-    const globalVariables = formatEditorVariablePickerIcon(
-      splitGuideModule(getGuideModule(nodeList))?.variableModules || []
-    );
+  const variables = useCreation(() => {
+    const globalVariables = getWorkflowGlobalVariables(nodeList, t);
 
-    const systemVariables = getSystemVariables(t);
-
-    return [...globalVariables, ...systemVariables];
+    return globalVariables;
   }, [nodeList, t]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{

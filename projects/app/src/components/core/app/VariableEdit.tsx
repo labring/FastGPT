@@ -13,7 +13,6 @@ import {
   Switch,
   Input,
   FormControl,
-  Image,
   Table,
   Thead,
   Tbody,
@@ -21,7 +20,6 @@ import {
   Th,
   Td,
   TableContainer,
-  BoxProps,
   useDisclosure
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
@@ -42,12 +40,10 @@ import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/ut
 
 const VariableEdit = ({
   variables,
-  onChange,
-  isFlow = false
+  onChange
 }: {
   variables: VariableItemType[];
   onChange: (data: VariableItemType[]) => void;
-  isFlow?: boolean;
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
@@ -99,15 +95,15 @@ const VariableEdit = ({
   return (
     <Box>
       <Flex alignItems={'center'}>
-        {!isFlow && <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />}
-        <Box ml={isFlow ? 0 : 2} flex={1} fontWeight={'medium'} color={isFlow ? 'myGray.600' : ''}>
+        <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
+        <Box ml={2} flex={1} fontWeight={'medium'}>
           {t('core.module.Variable')}
           <MyTooltip label={t(variableTip)} forceShow>
             <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
           </MyTooltip>
         </Box>
         <Button
-          variant={isFlow ? 'whitePrimary' : 'transparentBase'}
+          variant={'transparentBase'}
           leftIcon={<SmallAddIcon />}
           iconSpacing={1}
           size={'sm'}
@@ -125,7 +121,7 @@ const VariableEdit = ({
           <TableContainer>
             <Table bg={'white'}>
               <Thead>
-                <Tr bg={isFlow ? 'white' : 'myGray.50'}>
+                <Tr bg={'myGray.50'}>
                   <Th w={'18px !important'} p={0} />
                   <Th>{t('core.module.variable.variable name')}</Th>
                   <Th>{t('core.module.variable.key')}</Th>

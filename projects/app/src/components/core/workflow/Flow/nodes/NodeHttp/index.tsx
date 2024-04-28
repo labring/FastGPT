@@ -42,6 +42,7 @@ import IOTitle from '../../components/IOTitle';
 import { getSystemVariables } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
@@ -290,11 +291,7 @@ export function RenderHttpProps({
 
   // get variable
   const variables = useMemo(() => {
-    const globalVariables = formatEditorVariablePickerIcon(
-      splitGuideModule(getGuideModule(nodeList))?.variableModules || []
-    );
-
-    const systemVariables = getSystemVariables(t);
+    const globalVariables = getWorkflowGlobalVariables(nodeList, t);
 
     const moduleVariables = formatEditorVariablePickerIcon(
       inputs
@@ -305,7 +302,7 @@ export function RenderHttpProps({
         }))
     );
 
-    return [...moduleVariables, ...globalVariables, ...systemVariables];
+    return [...moduleVariables, ...globalVariables];
   }, [inputs, nodeList, t]);
 
   const variableText = useMemo(() => {

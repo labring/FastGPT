@@ -105,7 +105,8 @@ export const useReference = ({
     const sourceNodes = computedNodeInputReference({
       nodeId,
       nodes: nodeList,
-      edges: edges
+      edges: edges,
+      t
     });
 
     if (!sourceNodes) return [];
@@ -164,12 +165,7 @@ export const ReferSelector = ({ placeholder, value, list = [], onSelect }: Selec
     if (!value) {
       return;
     }
-    let firstColumn = undefined;
-    if (value[0] === VARIABLE_NODE_ID) {
-      firstColumn = list[list.length - 1];
-    } else {
-      firstColumn = list.find((item) => item.value === value[0]);
-    }
+    const firstColumn = list.find((item) => item.value === value[0]);
     if (!firstColumn) {
       return;
     }

@@ -963,9 +963,9 @@
           "anyInput": "Any input",
           "chat history": "chat history",
           "switch": "Trigger",
+          "system params": "System params",
           "textEditor textarea": "Text edit",
-          "user question": "User question",
-          "system params": "System params"
+          "user question": "User question"
         },
         "placeholder": {
           "Classify background": "For example:\n1.AIGC (Artificial Intelligence Generates content) refers to the automatic or semi-automatic generation of digital content, such as text, images, music, videos, and so on, using artificial intelligence technologies. AIGC technologies include, but are not limited to, natural language processing, computer vision, machine learning, and deep learning. These technologies can create new content or modify existing content to meet specific creative, educational, entertainment or information needs."
@@ -1115,6 +1115,7 @@
       "Stop debug": "Stop",
       "Success": "Running success",
       "Value type": "Type",
+      "Variable outputs": "Variables",
       "chat": {
         "Quote prompt": "Quote prompt"
       },

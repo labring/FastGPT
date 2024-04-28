@@ -101,13 +101,13 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           time: formatTime2HM()
         })
       );
-      ChatTestRef.current?.resetChatTest();
+      // ChatTestRef.current?.resetChatTest();
     } catch (error) {}
 
     setIsSaving(false);
 
     return null;
-  }, [updateAppDetail, app._id, edges, ChatTestRef, t]);
+  }, [updateAppDetail, app._id, edges, t]);
 
   const onclickPublish = useCallback(async () => {
     setIsSaving(true);
