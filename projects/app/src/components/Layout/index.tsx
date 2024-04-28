@@ -10,6 +10,7 @@ import { getUnreadCount } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
 
 import Auth from './auth';
+
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
 const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/UpdateInviteModal'));
@@ -112,14 +113,13 @@ const Layout = ({ children }: { children: JSX.Element }) => {
             </Box>
           </>
         )}
-
-        {!!userInfo && <UpdateInviteModal />}
-        {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
-        {!!userInfo && <SystemMsgModal />}
-        {!!userInfo && importantInforms.length > 0 && (
-          <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
-        )}
       </Box>
+      {!!userInfo && <UpdateInviteModal />}
+      {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
+      {!!userInfo && <SystemMsgModal />}
+      {!!userInfo && importantInforms.length > 0 && (
+        <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
+      )}
       <Loading loading={loading} zIndex={999999} />
     </>
   );

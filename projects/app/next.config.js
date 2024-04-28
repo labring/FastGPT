@@ -7,7 +7,7 @@ const nextConfig = {
   output: 'standalone',
   reactStrictMode: process.env.NODE_ENV === 'development' ? false : true,
   compress: true,
-  webpack(config, { isServer }) {
+  webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
       '@mongodb-js/zstd': false,
       '@aws-sdk/credential-providers': false,
@@ -26,6 +26,10 @@ const nextConfig = {
           test: /\.svg$/i,
           issuer: /\.[jt]sx?$/,
           use: ['@svgr/webpack']
+        },
+        {
+          test: /\.node$/,
+          use: [{ loader: 'nextjs-node-loader' }]
         }
       ]),
       exprContextCritical: false,
@@ -33,11 +37,9 @@ const nextConfig = {
     };
 
     if (isServer) {
-      config.externals.push('isolated-vm');
       config.externals.push('worker_threads');
-      config.externals.push('@node-rs/jieba');
 
-      if (config.name === 'server') {
+      if (nextRuntime === 'nodejs') {
         // config.output.globalObject = 'self';
 
         const oldEntry = config.entry;
@@ -76,7 +78,10 @@ const nextConfig = {
   },
   transpilePackages: ['@fastgpt/*'],
   experimental: {
+    // 外部包独立打包
     serverComponentsExternalPackages: ['mongoose', 'pg'],
+    // 指定导出包优化，按需引入包模块
+    optimizePackageImports: ['mongoose', 'pg'],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };

@@ -25,6 +25,7 @@
     "@fortaine/fetch-event-source": "^3.0.6",
     "@tanstack/react-query": "^4.24.10",
     "@types/nprogress": "^0.2.0",
+    "ahooks": "^3.7.11",
     "axios": "^1.5.1",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
@@ -57,7 +58,9 @@
     "remark-math": "^5.1.1",
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
-    "zustand": "^4.3.5"
+    "zustand": "^4.3.5",
+    "nextjs-node-loader": "^1.1.5",
+    "@node-rs/jieba": "1.10.0"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
