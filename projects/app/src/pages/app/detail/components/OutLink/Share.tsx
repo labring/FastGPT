@@ -32,8 +32,8 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/app';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { OutlinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -47,7 +47,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
-const Share = ({ appId }: { appId: string }) => {
+const Share = ({ appId }: { appId: string; type: OutlinkTypeEnum }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
@@ -64,7 +64,9 @@ const Share = ({ appId }: { appId: string }) => {
     isFetching,
     data: shareChatList = [],
     refetch: refetchShareChatList
-  } = useQuery(['initShareChatList', appId], () => getShareChatList(appId));
+  } = useQuery(['initShareChatList', appId], () =>
+    getShareChatList({ appId, type: OutlinkTypeEnum.share })
+  );
 
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
@@ -137,7 +139,7 @@ const Share = ({ appId }: { appId: string }) => {
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : t('common.Un used')}</Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
-                    onClick={() => setSelectedLinkData(item)}
+                    onClick={() => setSelectedLinkData(item as OutLinkSchema)}
                     size={'sm'}
                     mr={3}
                     variant={'whitePrimary'}
@@ -201,7 +203,7 @@ const Share = ({ appId }: { appId: string }) => {
       {!!editLinkData && (
         <EditLinkModal
           appId={appId}
-          type={'share'}
+          type={OutlinkTypeEnum.share}
           defaultData={editLinkData}
           onCreate={(id) => {
             const url = `${location.origin}/chat/share?shareId=${id}`;
@@ -242,7 +244,7 @@ function EditLinkModal({
   onEdit
 }: {
   appId: string;
-  type: `${OutLinkTypeEnum}`;
+  type: OutlinkTypeEnum;
   defaultData: OutLinkEditType;
   onClose: () => void;
   onCreate: (id: string) => void;

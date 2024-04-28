@@ -9,15 +9,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   try {
     await connectToDatabase();
 
-    const { appId } = req.query as {
+    const { appId, type } = req.query as {
       appId: string;
+      type: string;
     };
 
     const { teamId, tmbId, isOwner } = await authApp({ req, authToken: true, appId, per: 'w' });
 
     const data = await MongoOutLink.find({
       appId,
-      ...(isOwner ? { teamId } : { tmbId })
+      ...(isOwner ? { teamId } : { tmbId }),
+      type: type
     }).sort({
       _id: -1
     });
