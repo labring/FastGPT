@@ -6,7 +6,8 @@ import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react'
 import { useTranslation } from 'next-i18next';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { getSystemMsgModalData } from '@/web/support/user/inform/api';
-import Markdown from '@/components/Markdown';
+import dynamic from 'next/dynamic';
+const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
 const SystemMsgModal = ({}: {}) => {
   const { t } = useTranslation();

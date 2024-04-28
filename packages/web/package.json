@@ -11,7 +11,7 @@
     "@emotion/react": "^11.11.1",
     "@emotion/styled": "^11.11.0",
     "@fastgpt/global": "workspace:*",
-    "@fingerprintjs/fingerprintjs": "^4.2.1",
+    "@fingerprintjs/fingerprintjs": "^4.3.0",
     "@lexical/react": "0.12.6",
     "@lexical/selection": "^0.14.5",
     "@lexical/text": "0.12.6",
