@@ -1,16 +1,18 @@
 import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import { Box, Button, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
 import { SelectAppItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import Avatar from '@/components/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
 import { useTranslation } from 'next-i18next';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { filterAppIds, onChangeNode } = useFlowProviderStore();
+  const filterAppIds = useContextSelector(WorkflowContext, (ctx) => ctx.filterAppIds);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const {
     isOpen: isOpenSelectApp,
@@ -20,7 +22,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
 
   const value = item.value as SelectAppItemType | undefined;
 
-  const filterAppString = useMemo(() => filterAppIds.join(','), [filterAppIds]);
+  const filterAppString = useMemo(() => filterAppIds?.join(',') || '', [filterAppIds]);
 
   const Render = useMemo(() => {
     return (

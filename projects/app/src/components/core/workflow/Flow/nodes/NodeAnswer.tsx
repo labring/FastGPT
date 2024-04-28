@@ -4,15 +4,16 @@ import NodeCard from './render/NodeCard';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import Container from '../components/Container';
 import RenderInput from './render/RenderInput';
-import { useFlowProviderStore } from '../FlowProvider';
 import RenderToolInput from './render/RenderToolInput';
 import { useTranslation } from 'next-i18next';
 import IOTitle from '../components/IOTitle';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const NodeAnswer = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs, outputs } = data;
-  const { splitToolInputs } = useFlowProviderStore();
+  const { nodeId, inputs } = data;
+  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const { toolInputs, commonInputs } = splitToolInputs(inputs, nodeId);
 
   return (

@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, ButtonProps } from '@chakra-ui/react';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
@@ -12,6 +11,9 @@ import {
 } from '@fastgpt/global/core/workflow/constants';
 import type { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
@@ -35,11 +37,14 @@ type SelectProps = {
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const { onChangeNode, nodes } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const onSelect = useCallback(
     (e: any) => {
-      const workflowStartNode = nodes.find((node) => node.type === 'workflowStart');
+      const workflowStartNode = nodeList.find(
+        (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
+      );
       if (e[0] === workflowStartNode?.id && e[1] !== NodeOutputKeyEnum.userChatInput) {
         onChangeNode({
           nodeId,
@@ -62,7 +67,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
         });
       }
     },
-    [item, nodeId, nodes, onChangeNode]
+    [item, nodeId, nodeList, onChangeNode]
   );
 
   const { referenceList, formatValue } = useReference({
@@ -93,7 +98,8 @@ export const useReference = ({
   value?: any;
 }) => {
   const { t } = useTranslation();
-  const { nodeList, edges } = useFlowProviderStore();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
 
   const referenceList = useMemo(() => {
     const sourceNodes = computedNodeInputReference({

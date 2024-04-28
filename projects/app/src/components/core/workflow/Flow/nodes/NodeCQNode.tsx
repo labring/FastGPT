@@ -11,16 +11,16 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
-import { useFlowProviderStore } from '../FlowProvider';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SourceHandle } from './render/Handle';
-import IOTitle from '../components/IOTitle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const NodeCQNode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const CustomComponent = useMemo(
     () => ({

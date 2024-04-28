@@ -7,12 +7,13 @@ import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
 import { useTranslation } from 'next-i18next';
 import { Box } from '@chakra-ui/react';
-import { useFlowProviderStore } from '../FlowProvider';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { VariableItemType } from '@fastgpt/global/core/app/type';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import OutputLabel from './render/RenderOutput/Label';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const systemParams = {
   id: 'userChatInput',
@@ -25,8 +26,6 @@ const systemParams = {
 const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
-  const { nodes } = useFlowProviderStore();
-  const userGuideData = nodes.find((item) => item.id === 'userGuide')?.data;
 
   return (
     <NodeCard
@@ -48,43 +47,9 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <Box pb={2}>
           <OutputLabel nodeId={nodeId} output={systemParams} />
         </Box>
-        {userGuideData && (
-          <Box pb={2}>
-            <ChatStartVariable data={userGuideData} />
-          </Box>
-        )}
       </Container>
     </NodeCard>
   );
 };
-
-function ChatStartVariable({ data }: { data: FlowNodeItemType }) {
-  const { inputs, nodeId } = data;
-  const { onChangeNode } = useFlowProviderStore();
-
-  const variables = useMemo(
-    () =>
-      (inputs.find((item) => item.key === NodeInputKeyEnum.variables)
-        ?.value as VariableItemType[]) || [],
-    [inputs]
-  );
-
-  const updateVariables = useCallback(
-    (value: VariableItemType[]) => {
-      onChangeNode({
-        nodeId,
-        key: NodeInputKeyEnum.variables,
-        type: 'updateInput',
-        value: {
-          ...inputs.find((item) => item.key === NodeInputKeyEnum.variables),
-          value
-        }
-      });
-    },
-    [inputs, nodeId, onChangeNode]
-  );
-
-  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} isFlow />;
-}
 
 export default React.memo(NodeStart);

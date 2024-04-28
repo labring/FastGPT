@@ -5,7 +5,6 @@ import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import Container from '../components/Container';
 import { Box, Button, Center, Flex, useDisclosure } from '@chakra-ui/react';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useFlowProviderStore } from '../FlowProvider';
 import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
@@ -32,6 +31,8 @@ import {
 } from '@fastgpt/global/core/workflow/type/io';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../components/IOTitle';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -42,7 +43,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
   const { data, selected } = props;
   const { nodeId, inputs, outputs } = data;
 
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const requestUrl = inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl);
 
@@ -293,7 +294,7 @@ const ConfigLaf = () => {
 const RenderIO = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
-  const { splitToolInputs } = useFlowProviderStore();
+  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const { commonInputs, toolInputs, isTool } = splitToolInputs(inputs, nodeId);
 
   return (

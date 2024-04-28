@@ -20,7 +20,6 @@ import {
   useDisclosure
 } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
-import { useFlowProviderStore } from '../../FlowProvider';
 import { useTranslation } from 'next-i18next';
 import Tabs from '@/components/Tabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -41,6 +40,8 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import RenderToolInput from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
 import { getSystemVariables } from '@/web/core/app/utils';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../../context';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
@@ -105,7 +106,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
   const { t } = useTranslation();
   const { toast } = useToast();
   const [_, startSts] = useTransition();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
 
@@ -277,7 +278,7 @@ export function RenderHttpProps({
 }) {
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
-  const { nodeList } = useFlowProviderStore();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod)?.value;
   const params = inputs.find((item) => item.key === NodeInputKeyEnum.httpParams);
@@ -407,7 +408,7 @@ const RenderForm = ({
 }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const [list, setList] = useState<PropsArrType[]>(input.value || []);
   const [updateTrigger, setUpdateTrigger] = useState(false);
@@ -601,7 +602,7 @@ const RenderJson = ({
   variables: EditorVariablePickerType[];
 }) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const [_, startSts] = useTransition();
 
   const Render = useMemo(() => {
@@ -650,7 +651,7 @@ const RenderPropsItem = ({ text, num }: { text: string; num: number }) => {
 const NodeHttp = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs, outputs } = data;
-  const { splitToolInputs } = useFlowProviderStore();
+  const splitToolInputs = useContextSelector(WorkflowContext, (v) => v.splitToolInputs);
   const { toolInputs, commonInputs, isTool } = splitToolInputs(inputs, nodeId);
 
   const CustomComponents = useMemo(

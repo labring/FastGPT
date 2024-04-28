@@ -26,7 +26,6 @@ import ExtractFieldModal, { defaultField } from './ExtractFieldModal';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { useFlowProviderStore } from '../../FlowProvider';
 import RenderToolInput from '../render/RenderToolInput';
 import {
   FlowNodeInputItemType,
@@ -34,12 +33,17 @@ import {
 } from '@fastgpt/global/core/workflow/type/io.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../../components/IOTitle';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../../context';
 
 const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
   const { inputs, outputs, nodeId } = data;
-  const { splitToolInputs, onChangeNode } = useFlowProviderStore();
-  const { toolInputs, commonInputs } = splitToolInputs(inputs, nodeId);
+
   const { t } = useTranslation();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
+  const { toolInputs, commonInputs } = splitToolInputs(inputs, nodeId);
   const [editExtractFiled, setEditExtractField] = useState<ContextExtractAgentItemType>();
 
   const CustomComponent = useMemo(

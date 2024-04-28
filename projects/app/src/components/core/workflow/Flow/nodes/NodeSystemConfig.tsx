@@ -12,11 +12,15 @@ import WhisperConfig from '@/components/core/app/WhisperConfig';
 import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/constants/app';
-import { useFlowProviderStore } from '../FlowProvider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
+import { VariableItemType } from '@fastgpt/global/core/app/type';
+import { useMemoizedFn } from 'ahooks';
+import VariableEdit from '@/components/core/app/VariableEdit';
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const theme = useTheme();
@@ -36,6 +40,9 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       >
         <Box px={4} py={'10px'} position={'relative'} borderRadius={'md'} className="nodrag">
           <WelcomeText data={data} />
+          <Box pt={3}>
+            <ChatStartVariable data={data} />
+          </Box>
           <Box pt={3}>
             <TTSGuide data={data} />
           </Box>
@@ -60,7 +67,7 @@ function WelcomeText({ data }: { data: FlowNodeItemType }) {
   const { t } = useTranslation();
   const { inputs, nodeId } = data;
   const [, startTst] = useTransition();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const welcomeText = inputs.find((item) => item.key === NodeInputKeyEnum.welcomeText);
 
@@ -101,9 +108,35 @@ function WelcomeText({ data }: { data: FlowNodeItemType }) {
   );
 }
 
+function ChatStartVariable({ data }: { data: FlowNodeItemType }) {
+  const { inputs, nodeId } = data;
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  const variables = useMemo(
+    () =>
+      (inputs.find((item) => item.key === NodeInputKeyEnum.variables)
+        ?.value as VariableItemType[]) || [],
+    [inputs]
+  );
+
+  const updateVariables = useMemoizedFn((value: VariableItemType[]) => {
+    onChangeNode({
+      nodeId,
+      key: NodeInputKeyEnum.variables,
+      type: 'updateInput',
+      value: {
+        ...inputs.find((item) => item.key === NodeInputKeyEnum.variables),
+        value
+      }
+    });
+  });
+
+  return <VariableEdit variables={variables} onChange={(e) => updateVariables(e)} />;
+}
+
 function QuestionGuide({ data }: { data: FlowNodeItemType }) {
   const { inputs, nodeId } = data;
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const questionGuide = useMemo(
     () =>
@@ -134,7 +167,7 @@ function QuestionGuide({ data }: { data: FlowNodeItemType }) {
 
 function TTSGuide({ data }: { data: FlowNodeItemType }) {
   const { inputs, nodeId } = data;
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const { ttsConfig } = splitGuideModule({ inputs } as StoreNodeItemType);
 
   return (
@@ -157,7 +190,7 @@ function TTSGuide({ data }: { data: FlowNodeItemType }) {
 
 function WhisperGuide({ data }: { data: FlowNodeItemType }) {
   const { inputs, nodeId } = data;
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const { ttsConfig, whisperConfig } = splitGuideModule({ inputs } as StoreNodeItemType);
 
   return (
@@ -181,7 +214,7 @@ function WhisperGuide({ data }: { data: FlowNodeItemType }) {
 
 function ScheduledTrigger({ data }: { data: FlowNodeItemType }) {
   const { inputs, nodeId } = data;
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const { scheduledTriggerConfig } = splitGuideModule({ inputs } as StoreNodeItemType);
 
   return (

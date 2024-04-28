@@ -1,6 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import { Box, Button, Flex, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -10,9 +9,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import DatasetParamsModal, { DatasetParamsProps } from '@/components/core/app/DatasetParamsModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
-  const { nodeList, onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
 

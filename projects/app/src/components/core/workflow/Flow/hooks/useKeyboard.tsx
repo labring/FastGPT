@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useState } from 'react';
-import { getWorkflowStore, useFlowProviderStore } from '../FlowProvider';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useTranslation } from 'next-i18next';
 import { Node } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext, getWorkflowStore } from '../../context';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const { setNodes } = useFlowProviderStore();
+  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const { copyData } = useCopyData();
 
   const [isDowningCtrl, setIsDowningCtrl] = useState(false);
@@ -29,6 +30,7 @@ export const useKeyboard = () => {
   const onCopy = useCallback(async () => {
     if (hasInputtingElement()) return;
     const { nodes } = await getWorkflowStore();
+
     const selectedNodes = nodes.filter(
       (node) => node.selected && !node.data?.isError && node.data?.unique !== true
     );

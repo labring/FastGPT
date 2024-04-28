@@ -1,15 +1,17 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import {
   formatEditorVariablePickerIcon,
   getGuideModule,
   splitGuideModule
 } from '@fastgpt/global/core/workflow/utils';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
-  const { nodeList, onChangeNode } = useFlowProviderStore();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   // get variable
   const variables = useMemo(() => {
