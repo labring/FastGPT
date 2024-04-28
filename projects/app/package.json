@@ -25,6 +25,7 @@
     "@fortaine/fetch-event-source": "^3.0.6",
     "@tanstack/react-query": "^4.24.10",
     "@types/nprogress": "^0.2.0",
+    "ahooks": "^3.7.11",
     "axios": "^1.5.1",
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
