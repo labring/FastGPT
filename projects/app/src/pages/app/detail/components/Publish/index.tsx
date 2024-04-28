@@ -26,13 +26,13 @@ const OutLink = ({ appId }: { appId: string }) => {
       title: t('core.app.Api request'),
       desc: t('core.app.Api request desc'),
       value: PublishChannelEnum.apikey
-    },
-    {
-      icon: 'core/app/publish/lark',
-      title: t('core.app.publish.Fei shu bot'),
-      desc: t('core.app.publish.Fei Shu Bot Desc'),
-      value: PublishChannelEnum.feishu
     }
+    // {
+    //   icon: 'core/app/publish/lark',
+    //   title: t('core.app.publish.Fei shu bot'),
+    //   desc: t('core.app.publish.Fei Shu Bot Desc'),
+    //   value: PublishChannelEnum.feishu
+    // }
   ]);
 
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
