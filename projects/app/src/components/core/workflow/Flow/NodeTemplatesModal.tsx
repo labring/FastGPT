@@ -259,7 +259,7 @@ const RenderList = React.memo(function RenderList({
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
 
   const formatTemplates = useMemo<nodeTemplateListType>(() => {
-    const copy: nodeTemplateListType = JSON.parse(JSON.stringify(moduleTemplatesList));
+    const copy: nodeTemplateListType = JSON.parse(JSON.stringify(moduleTemplatesList(t)));
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;

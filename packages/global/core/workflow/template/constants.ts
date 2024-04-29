@@ -22,6 +22,7 @@ import type { FlowNodeTemplateType, nodeTemplateListType } from '../type';
 import { FlowNodeTemplateTypeEnum } from '../../workflow/constants';
 import { lafModule } from './system/laf';
 import { ifElseNode } from './system/ifElse/index';
+import { TFunction } from 'next-i18next';
 
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -84,30 +85,30 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   ifElseNode
 ];
 
-export const moduleTemplatesList: nodeTemplateListType = [
+export const moduleTemplatesList = (t: TFunction): nodeTemplateListType => [
   {
     type: FlowNodeTemplateTypeEnum.systemInput,
-    label: 'core.module.template.System input module',
+    label: t('core.module.template.System input module'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.textAnswer,
-    label: 'core.module.template.Response module',
+    label: t('core.module.template.Response module'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.functionCall,
-    label: 'core.module.template.Function module',
+    label: t('core.module.template.Function module'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.tools,
-    label: 'core.module.template.Tool module',
+    label: t('core.module.template.Tool module'),
     list: []
   },
   {
     type: FlowNodeTemplateTypeEnum.externalCall,
-    label: 'core.module.template.External module',
+    label: t('core.module.template.External module'),
     list: []
   },
   {
@@ -117,7 +118,7 @@ export const moduleTemplatesList: nodeTemplateListType = [
   },
   {
     type: FlowNodeTemplateTypeEnum.other,
-    label: '其他',
+    label: t('common.Other'),
     list: []
   }
 ];
