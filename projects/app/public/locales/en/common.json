@@ -456,7 +456,7 @@
       "Speaking": "I'm listening...",
       "Start Chat": "Start Chat",
       "Stop Speak": "Stop Speak",
-      "Type a message": "Enter your question here",
+      "Type a message": "Enter your question here, Send [Enter]/Wrap [Ctrl(Alt) + Enter]",
       "Unpin": "Unpin",
       "You need to a chat app": "You don't have apps available",
       "error": {
