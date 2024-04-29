@@ -286,7 +286,7 @@ type ResponseType = {
     pluginOutput?: Record<string, any>; // 插件输出
     pluginDetail?: ChatHistoryItemResType[]; // 插件详情
 
-    tfSwitchResult?: boolean; // 判断器结果
+    isElseResult?: boolean; // 判断器结果
 }
 ```
 

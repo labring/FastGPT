@@ -11,9 +11,12 @@
     "date-fns": "2.30.0",
     "dayjs": "^1.11.7",
     "decompress": "^4.2.1",
+    "domino-ext": "^2.1.4",
     "encoding": "^0.1.13",
     "file-type": "^19.0.0",
     "iconv-lite": "^0.6.3",
+    "joplin-turndown-plugin-gfm": "^1.0.12",
+    "js-tiktoken": "^1.0.7",
     "json5": "^2.2.3",
     "jsonwebtoken": "^9.0.2",
     "mammoth": "^1.6.0",
@@ -26,7 +29,8 @@
     "papaparse": "5.4.1",
     "pdfjs-dist": "4.0.269",
     "pg": "^8.10.0",
-    "tunnel": "^0.0.6"
+    "tunnel": "^0.0.6",
+    "turndown": "^7.1.2"
   },
   "devDependencies": {
     "@types/cookie": "^0.5.2",
@@ -36,6 +40,7 @@
     "@types/node-cron": "^3.0.11",
     "@types/papaparse": "5.3.7",
     "@types/pg": "^8.6.6",
-    "@types/tunnel": "^0.0.4"
+    "@types/tunnel": "^0.0.4",
+    "@types/turndown": "^5.0.4"
   }
 }

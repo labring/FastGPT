@@ -1,8 +1,10 @@
 import React from 'react';
 import { Card, Box, Flex } from '@chakra-ui/react';
 import { useMarkdown } from '@/web/common/hooks/useMarkdown';
-import Markdown from '@/components/Markdown';
-import Avatar from '@/components/Avatar';
+
+import dynamic from 'next/dynamic';
+const Markdown = dynamic(() => import('@/components/Markdown'));
+const Avatar = dynamic(() => import('@/components/Avatar'));
 
 const Empty = ({
   showChatProblem,

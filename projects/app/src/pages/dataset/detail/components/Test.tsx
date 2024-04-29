@@ -28,7 +28,7 @@ import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
-const DatasetParamsModal = dynamic(() => import('@/components/core/module/DatasetParamsModal'));
+const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
 
 type FormType = {
   inputText: string;

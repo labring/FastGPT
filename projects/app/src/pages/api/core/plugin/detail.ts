@@ -7,7 +7,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
   try {
     const { id } = req.query as { id: string };
     await connectToDatabase();
-    const { plugin } = await authPluginCrud({ req, authToken: true, id, per: 'r' });
+    const { plugin } = await authPluginCrud({ req, authToken: true, pluginId: id, per: 'r' });
 
     jsonRes(res, {
       data: plugin

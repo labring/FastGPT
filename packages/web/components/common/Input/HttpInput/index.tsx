@@ -34,6 +34,7 @@ const HttpInput = ({
 
   const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
     const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+    setCurrentValue(text);
     onChange?.(text);
   }, []);
   const onBlurInput = useCallback((editor: LexicalEditor) => {
@@ -42,9 +43,6 @@ const HttpInput = ({
       onBlur?.(text);
     });
   }, []);
-  useEffect(() => {
-    setCurrentValue(value);
-  }, [value]);
 
   return (
     <>

@@ -8,7 +8,7 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import FillTag from '@fastgpt/web/components/common/Tag/Fill';
+import FillTag from '@fastgpt/web/components/common/Tag/index';
 
 const ChatHeader = ({
   history,

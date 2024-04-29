@@ -2,13 +2,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { getGuideModule } from '@fastgpt/global/core/module/utils';
-import { getChatModelNameListByModules } from '@/service/core/app/module';
+import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -40,14 +41,17 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // get app and history
-    const { history } = await getChatItems({
-      appId,
-      chatId,
-      limit: 30,
-      field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
-        DispatchNodeResponseKeyEnum.nodeResponse
-      } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`
-    });
+    const [{ history }, { nodes }] = await Promise.all([
+      getChatItems({
+        appId,
+        chatId,
+        limit: 30,
+        field: `dataId obj value adminFeedback userBadFeedback userGoodFeedback ${
+          DispatchNodeResponseKeyEnum.nodeResponse
+        } ${loadCustomFeedbacks ? 'customFeedbacks' : ''}`
+      }),
+      getAppLatestVersion(app._id, app)
+    ]);
 
     jsonRes<InitChatResponse>(res, {
       data: {
@@ -58,8 +62,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         variables: chat?.variables || {},
         history,
         app: {
-          userGuideModule: getGuideModule(app.modules),
-          chatModels: getChatModelNameListByModules(app.modules),
+          userGuideModule: getGuideModule(nodes),
+          chatModels: getChatModelNameListByModules(nodes),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro

@@ -85,7 +85,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
 
   return (
     <MyModal
-      iconSrc="/imgs/module/db.png"
+      iconSrc="/imgs/workflow/db.png"
       title={t('core.dataset.Create dataset')}
       isOpen
       onClose={onClose}

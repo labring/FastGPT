@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { withNextCors } from '@fastgpt/service/common/middle/cors';
 import { getUploadModel } from '@fastgpt/service/common/file/multer';
 import { removeFilesByPaths } from '@fastgpt/service/common/file/utils';
 import fs from 'fs';
@@ -8,14 +7,15 @@ import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 import { authChatCert } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/module/utils';
+import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { NextAPI } from '@/service/middle/entry';
 
 const upload = getUploadModel({
   maxSize: 2
 });
 
-export default withNextCors(async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let filePaths: string[] = [];
 
   try {
@@ -81,7 +81,9 @@ export default withNextCors(async function handler(req: NextApiRequest, res: Nex
   }
 
   removeFilesByPaths(filePaths);
-});
+}
+
+export default NextAPI(handler);
 
 export const config = {
   api: {

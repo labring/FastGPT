@@ -1,7 +1,7 @@
 import React from 'react';
 import { ModalBody, Box, useTheme } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { DispatchNodeResponseType } from '@fastgpt/global/core/module/runtime/type.d';
+import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
 
 const ContextModal = ({
   context = [],

@@ -26,8 +26,7 @@ import {
   postCreateDatasetLinkCollection,
   postCreateDatasetTextCollection
 } from '@/web/core/dataset/api';
-import { getErrText } from '@fastgpt/global/common/error/utils';
-import Tag from '@/components/Tag';
+import Tag from '@fastgpt/web/components/common/Tag/index';
 
 const Upload = () => {
   const { t } = useTranslation();

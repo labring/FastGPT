@@ -82,22 +82,6 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const onCloseFlowEdit = useCallback(() => setCurrentTab(TabEnum.simpleEdit), [setCurrentTab]);
 
-  useEffect(() => {
-    const listen =
-      process.env.NODE_ENV === 'production'
-        ? (e: any) => {
-            e.preventDefault();
-            e.returnValue = t('core.common.tip.leave page');
-          }
-        : () => {};
-    window.addEventListener('beforeunload', listen);
-
-    return () => {
-      window.removeEventListener('beforeunload', listen);
-      clearAppModules();
-    };
-  }, []);
-
   useQuery([appId], () => loadAppDetail(appId, true), {
     onError(err: any) {
       toast({

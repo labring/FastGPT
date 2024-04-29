@@ -8,13 +8,9 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const appCollectionName = 'apps';
+export const AppCollectionName = 'apps';
 
 const AppSchema = new Schema({
-  userId: {
-    type: Schema.Types.ObjectId,
-    ref: 'user'
-  },
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName,
@@ -34,6 +30,10 @@ const AppSchema = new Schema({
     default: 'advanced',
     enum: Object.keys(AppTypeMap)
   },
+  version: {
+    type: String,
+    enum: ['v1', 'v2']
+  },
   avatar: {
     type: String,
     default: '/icon/logo.svg'
@@ -46,10 +46,32 @@ const AppSchema = new Schema({
     type: Date,
     default: () => new Date()
   },
+
+  // tmp store
   modules: {
     type: Array,
     default: []
   },
+  edges: {
+    type: Array,
+    default: []
+  },
+
+  scheduledTriggerConfig: {
+    cronString: {
+      type: String
+    },
+    timezone: {
+      type: String
+    },
+    defaultPrompt: {
+      type: String
+    }
+  },
+  scheduledTriggerNextTime: {
+    type: Date
+  },
+
   inited: {
     type: Boolean
   },
@@ -66,11 +88,12 @@ const AppSchema = new Schema({
 try {
   AppSchema.index({ updateTime: -1 });
   AppSchema.index({ teamId: 1 });
+  AppSchema.index({ scheduledTriggerConfig: 1, intervalNextTime: -1 });
 } catch (error) {
   console.log(error);
 }
 
 export const MongoApp: Model<AppType> =
-  models[appCollectionName] || model(appCollectionName, AppSchema);
+  models[AppCollectionName] || model(AppCollectionName, AppSchema);
 
 MongoApp.syncIndexes();

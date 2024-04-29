@@ -13,7 +13,10 @@ images: []
 
 1. `docker ps -a` 查看所有容器运行状态，检查是否全部 running，如有异常，尝试`docker logs 容器名`查看对应日志。
 2. 容器都运行正常的，`docker logs 容器名` 查看报错日志
-3. 无法解决时，可以找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的日志，否则很难排查。
+3. 带有`requestId`的，都是 OneAPI 提示错误，大部分都是因为模型接口报错。
+4. 无法解决时，可以找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的日志，否则很难排查。
+
+
 
 
 ## 二、通用问题
@@ -28,8 +31,8 @@ images: []
 
 ### 其他模型没法进行问题分类/内容提取
 
-需要给其他模型配置`toolChoice=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。
-问题分类基本可用，内容提取不太行。
+1. 看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置`toolChoice=false`和`functionCall=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。问题分类基本可用，内容提取不太行。
+2. 如果已经配置正常，并且没有错误日志，则说明可能提示词不太适合该模型，可以通过修改`customCQPrompt`来自定义提示词。
    
 ### 页面崩溃
 
@@ -91,3 +94,8 @@ FastGPT 模型配置文件中的 model 必须与 OneAPI 渠道中的模型对应
 OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并重启容器（先 docker-compose down 然后再 docker-compose up -d 运行一次）。
 
 可以`exec`进入容器，`env`查看环境变量是否生效。
+
+### bad_response_status_code bad response status code 503
+
+1. 模型服务不可用
+2. ....
