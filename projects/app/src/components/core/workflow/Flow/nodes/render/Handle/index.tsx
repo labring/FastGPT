@@ -203,10 +203,11 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
     if (connectingEdge?.handleId && !connectingEdge.handleId?.includes('source')) return false;
 
     // Same source node
-    if (connectedEdges.some((item) => item.target === nodeId)) return false;
+    if (connectedEdges.some((item) => item.target === nodeId && item.targetHandle !== handleId))
+      return false;
 
     return true;
-  }, [connectedEdges, connectingEdge?.handleId, edges, node, nodeId]);
+  }, [connectedEdges, connectingEdge?.handleId, edges, handleId, node, nodeId]);
 
   const RenderHandle = useMemo(() => {
     return (
