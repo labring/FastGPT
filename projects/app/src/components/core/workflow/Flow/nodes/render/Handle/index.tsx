@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 import { Handle, Position } from 'reactflow';
-import { useFlowProviderStore } from '../../../FlowProvider';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { handleHighLightStyle, sourceCommonStyle, handleConnectedStyle, handleSize } from './style';
 import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 type Props = {
   nodeId: string;
@@ -23,7 +24,11 @@ const MySourceHandle = React.memo(function MySourceHandle({
   highlightStyle: Record<string, any>;
   connectedStyle: Record<string, any>;
 }) {
-  const { nodes, hoverNodeId, edges, connectingEdge } = useFlowProviderStore();
+  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+
+  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
+  const hoverNodeId = useContextSelector(WorkflowContext, (v) => v.hoverNodeId);
 
   const node = useMemo(() => nodes.find((node) => node.data.nodeId === nodeId), [nodes, nodeId]);
   const connected = edges.some((edge) => edge.sourceHandle === handleId);
@@ -136,8 +141,10 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
   highlightStyle: Record<string, any>;
   connectedStyle: Record<string, any>;
 }) {
-  const { nodeList, edges, connectingEdge } = useFlowProviderStore();
+  const connectingEdge = useContextSelector(WorkflowContext, (ctx) => ctx.connectingEdge);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
 
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const node = useMemo(() => nodeList.find((node) => node.nodeId === nodeId), [nodeList, nodeId]);
   const connected = edges.some((edge) => edge.targetHandle === handleId);
   const connectedEdges = edges.filter((edge) => edge.target === nodeId);
@@ -194,12 +201,13 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
       return false;
     }
     if (connectingEdge?.handleId && !connectingEdge.handleId?.includes('source')) return false;
-    // Same source node
 
-    if (connectedEdges.some((item) => item.sourceHandle === connectingEdge?.handleId)) return false;
+    // Same source node
+    if (connectedEdges.some((item) => item.target === nodeId && item.targetHandle !== handleId))
+      return false;
 
     return true;
-  }, [connectedEdges, connectingEdge?.handleId, edges, node, nodeId]);
+  }, [connectedEdges, connectingEdge?.handleId, edges, handleId, node, nodeId]);
 
   const RenderHandle = useMemo(() => {
     return (

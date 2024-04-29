@@ -125,6 +125,7 @@ export const appWorkflow2Form = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
 
       defaultAppForm.selectedTools.push({
         id: node.pluginId,
+        pluginId: node.pluginId,
         name: node.name,
         avatar: node.avatar,
         intro: node.intro || '',

@@ -21,7 +21,7 @@ import { useTranslation } from 'next-i18next';
 const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
 });
-const OutLink = dynamic(() => import('./components/OutLink'), {});
+const Publish = dynamic(() => import('./components/Publish'), {});
 const Logs = dynamic(() => import('./components/Logs'), {});
 
 enum TabEnum {
@@ -39,7 +39,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { appId } = router.query as { appId: string };
-  const { appDetail, loadAppDetail, clearAppModules } = useAppStore();
+  const { appDetail, loadAppDetail } = useAppStore();
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -82,7 +82,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const onCloseFlowEdit = useCallback(() => setCurrentTab(TabEnum.simpleEdit), [setCurrentTab]);
 
-  useQuery([appId], () => loadAppDetail(appId, true), {
+  const { isSuccess, isLoading } = useQuery([appId], () => loadAppDetail(appId, true), {
     onError(err: any) {
       toast({
         title: err?.message || t('core.app.error.Get app failed'),
@@ -100,88 +100,90 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       <Head>
         <title>{appDetail.name}</title>
       </Head>
-      <PageContainer>
-        <Flex flexDirection={['column', 'row']} h={'100%'}>
-          {/* pc tab */}
-          <Box
-            display={['none', 'flex']}
-            flexDirection={'column'}
-            p={4}
-            w={'180px'}
-            borderRight={theme.borders.base}
-          >
-            <Flex mb={4} alignItems={'center'}>
-              <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'md'} />
-              <Box ml={2} fontWeight={'bold'}>
+      <PageContainer isLoading={isLoading}>
+        {isSuccess && (
+          <Flex flexDirection={['column', 'row']} h={'100%'}>
+            {/* pc tab */}
+            <Box
+              display={['none', 'flex']}
+              flexDirection={'column'}
+              p={4}
+              w={'180px'}
+              borderRight={theme.borders.base}
+            >
+              <Flex mb={4} alignItems={'center'}>
+                <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'md'} />
+                <Box ml={2} fontWeight={'bold'}>
+                  {appDetail.name}
+                </Box>
+              </Flex>
+              <SideTabs
+                flex={1}
+                mx={'auto'}
+                mt={2}
+                w={'100%'}
+                list={tabList}
+                activeId={currentTab}
+                onChange={(e: any) => {
+                  if (e === 'startChat') {
+                    router.push(`/chat?appId=${appId}`);
+                  } else {
+                    setCurrentTab(e);
+                  }
+                }}
+              />
+              <Flex
+                alignItems={'center'}
+                cursor={'pointer'}
+                py={2}
+                px={3}
+                borderRadius={'md'}
+                _hover={{ bg: 'myGray.100' }}
+                onClick={() => router.replace('/app/list')}
+              >
+                <IconButton
+                  mr={3}
+                  icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
+                  bg={'white'}
+                  boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
+                  size={'smSquare'}
+                  borderRadius={'50%'}
+                  aria-label={''}
+                />
+                {t('app.My Apps')}
+              </Flex>
+            </Box>
+            {/* phone tab */}
+            <Box display={['block', 'none']} textAlign={'center'} py={3}>
+              <Box className="textlg" fontSize={'xl'} fontWeight={'bold'}>
                 {appDetail.name}
               </Box>
-            </Flex>
-            <SideTabs
-              flex={1}
-              mx={'auto'}
-              mt={2}
-              w={'100%'}
-              list={tabList}
-              activeId={currentTab}
-              onChange={(e: any) => {
-                if (e === 'startChat') {
-                  router.push(`/chat?appId=${appId}`);
-                } else {
-                  setCurrentTab(e);
-                }
-              }}
-            />
-            <Flex
-              alignItems={'center'}
-              cursor={'pointer'}
-              py={2}
-              px={3}
-              borderRadius={'md'}
-              _hover={{ bg: 'myGray.100' }}
-              onClick={() => router.replace('/app/list')}
-            >
-              <IconButton
-                mr={3}
-                icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
-                bg={'white'}
-                boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
-                size={'smSquare'}
-                borderRadius={'50%'}
-                aria-label={''}
+              <Tabs
+                mx={'auto'}
+                mt={2}
+                w={'100%'}
+                list={tabList}
+                size={'sm'}
+                activeId={currentTab}
+                onChange={(e: any) => {
+                  if (e === 'startChat') {
+                    router.push(`/chat?appId=${appId}`);
+                  } else {
+                    setCurrentTab(e);
+                  }
+                }}
               />
-              {t('app.My Apps')}
-            </Flex>
-          </Box>
-          {/* phone tab */}
-          <Box display={['block', 'none']} textAlign={'center'} py={3}>
-            <Box className="textlg" fontSize={'xl'} fontWeight={'bold'}>
-              {appDetail.name}
             </Box>
-            <Tabs
-              mx={'auto'}
-              mt={2}
-              w={'100%'}
-              list={tabList}
-              size={'sm'}
-              activeId={currentTab}
-              onChange={(e: any) => {
-                if (e === 'startChat') {
-                  router.push(`/chat?appId=${appId}`);
-                } else {
-                  setCurrentTab(e);
-                }
-              }}
-            />
-          </Box>
-          <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
-            {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
-            {currentTab === TabEnum.adEdit && appDetail && (
-              <FlowEdit app={appDetail} onClose={onCloseFlowEdit} />
-            )}
-            {currentTab === TabEnum.logs && <Logs appId={appId} />}
-            {currentTab === TabEnum.publish && <OutLink appId={appId} />}
-          </Box>
-        </Flex>
+            <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
+              {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
+              {currentTab === TabEnum.adEdit && appDetail && (
+                <FlowEdit app={appDetail} onClose={onCloseFlowEdit} />
+              )}
+              {currentTab === TabEnum.logs && <Logs appId={appId} />}
+              {currentTab === TabEnum.publish && <Publish appId={appId} />}
+            </Box>
+          </Flex>
+        )}
       </PageContainer>
     </>
   );

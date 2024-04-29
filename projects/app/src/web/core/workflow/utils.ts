@@ -13,9 +13,17 @@ import {
 import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNode';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { systemConfigNode2VariableNode } from './adapt';
+import { getGlobalVariableNode } from './adapt';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
+import {
+  formatEditorVariablePickerIcon,
+  getGuideModule,
+  splitGuideModule
+} from '@fastgpt/global/core/workflow/utils';
+import { getSystemVariables } from '../app/utils';
+import { TFunction } from 'next-i18next';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -97,11 +105,13 @@ export const storeEdgesRenderEdge = ({ edge }: { edge: StoreEdgeItemType }) => {
 export const computedNodeInputReference = ({
   nodeId,
   nodes,
-  edges
+  edges,
+  t
 }: {
   nodeId: string;
   nodes: FlowNodeItemType[];
   edges: Edge[];
+  t: TFunction;
 }) => {
   // get current node
   const node = nodes.find((item) => item.nodeId === nodeId);
@@ -126,14 +136,7 @@ export const computedNodeInputReference = ({
   };
   findSourceNode(nodeId);
 
-  // add system config node
-  const systemConfigNode = nodes.find(
-    (item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig
-  );
-
-  if (systemConfigNode) {
-    sourceNodes.unshift(systemConfigNode2VariableNode(systemConfigNode));
-  }
+  sourceNodes.unshift(getGlobalVariableNode(nodes, t));
 
   return sourceNodes;
 };
@@ -231,4 +234,18 @@ export const filterSensitiveNodesData = (nodes: StoreNodeItemType[]) => {
     return node;
   });
   return cloneNodes;
+};
+
+/* get workflowStart output to global variables */
+export const getWorkflowGlobalVariables = (
+  nodes: FlowNodeItemType[],
+  t: TFunction
+): EditorVariablePickerType[] => {
+  const globalVariables = formatEditorVariablePickerIcon(
+    splitGuideModule(getGuideModule(nodes))?.variableModules || []
+  );
+
+  const systemVariables = getSystemVariables(t);
+
+  return [...globalVariables, ...systemVariables];
 };

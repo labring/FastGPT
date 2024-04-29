@@ -9,19 +9,21 @@ import { useTranslation } from 'next-i18next';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { getOneQuoteInputTemplate } from '@fastgpt/global/core/workflow/template/system/datasetConcat';
-import { useFlowProviderStore } from '../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MySlider from '@/components/Slider';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import RenderOutput from './render/RenderOutput';
 import IOTitle from '../components/IOTitle';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const NodeDatasetConcat = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { llmModelList } = useSystemStore();
-  const { nodeList, onChangeNode } = useFlowProviderStore();
   const { nodeId, inputs, outputs } = data;
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const quotes = useMemo(
     () => inputs.filter((item) => item.valueType === WorkflowIOValueTypeEnum.datasetQuote),

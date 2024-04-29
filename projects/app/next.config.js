@@ -76,7 +76,7 @@ const nextConfig = {
 
     return config;
   },
-  transpilePackages: ['@fastgpt/*'],
+  transpilePackages: ['@fastgpt/*', 'ahooks'],
   experimental: {
     // 外部包独立打包
     serverComponentsExternalPackages: ['mongoose', 'pg'],

@@ -153,6 +153,7 @@
     "Submit failed": "Submit failed",
     "Submit success": "Update Success",
     "Sync success": "",
+    "System Output": "System Output",
     "System version": "System version",
     "Team": "Team",
     "Team Tags Set": "Team Tags",
@@ -280,6 +281,7 @@
       "App intro": "App intro",
       "App params config": "App Config",
       "Auto Save time": "Auto-saved: {{time}}",
+      "Change to simple mode": "Switch easy mode",
       "Chat Variable": "",
       "Config schedule plan": "Config schedule config",
       "Config whisper": "Config whisper",
@@ -373,6 +375,11 @@
         "Select Using Way": "Select use mode",
         "Show History": "Show History",
         "Web Link": "Web Link"
+      },
+      "publish": {
+        "Fei Shu Bot Desc": "Access the Lark robot",
+        "Fei shu bot": "Lark",
+        "Fei shu bot publish": "Posted to Lark Robot"
       },
       "schedule": {
         "Default prompt": "Default prompt",
@@ -957,6 +964,7 @@
           "anyInput": "Any input",
           "chat history": "chat history",
           "switch": "Trigger",
+          "system params": "System params",
           "textEditor textarea": "Text edit",
           "user question": "User question"
         },
@@ -1108,6 +1116,7 @@
       "Stop debug": "Stop",
       "Success": "Running success",
       "Value type": "Type",
+      "Variable outputs": "Variables",
       "chat": {
         "Quote prompt": "Quote prompt"
       },

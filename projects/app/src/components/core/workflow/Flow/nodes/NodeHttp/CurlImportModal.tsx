@@ -7,7 +7,8 @@ import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useForm } from 'react-hook-form';
 import parse from '@bany/curl-to-json';
-import { useFlowProviderStore } from '../../FlowProvider';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../../context';
 
 type RequestMethod = 'get' | 'post' | 'put' | 'delete' | 'patch';
 const methodMap: { [K in RequestMethod]: string } = {
@@ -28,7 +29,8 @@ const CurlImportModal = ({
   onClose: () => void;
 }) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
   const { register, handleSubmit } = useForm({
     defaultValues: {
       curlContent: ''

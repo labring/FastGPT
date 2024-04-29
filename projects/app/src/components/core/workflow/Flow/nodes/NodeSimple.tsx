@@ -7,9 +7,10 @@ import RenderInput from './render/RenderInput';
 import RenderOutput from './render/RenderOutput';
 import RenderToolInput from './render/RenderToolInput';
 import { useTranslation } from 'next-i18next';
-import { useFlowProviderStore } from '../FlowProvider';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import IOTitle from '../components/IOTitle';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const NodeSimple = ({
   data,
@@ -18,7 +19,7 @@ const NodeSimple = ({
   maxW
 }: NodeProps<FlowNodeItemType> & { minW?: string | number; maxW?: string | number }) => {
   const { t } = useTranslation();
-  const { splitToolInputs } = useFlowProviderStore();
+  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
   const { nodeId, inputs, outputs } = data;
   const { toolInputs, commonInputs } = splitToolInputs(inputs, nodeId);
 

@@ -1,21 +1,22 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import {
-  formatEditorVariablePickerIcon,
-  getGuideModule,
-  splitGuideModule
-} from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { useCreation } from 'ahooks';
+import { useTranslation } from 'next-i18next';
 
 const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
-  const { nodeList, onChangeNode } = useFlowProviderStore();
+  const { t } = useTranslation();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   // get variable
-  const variables = useMemo(() => {
-    const globalVariables = formatEditorVariablePickerIcon(
-      splitGuideModule(getGuideModule(nodeList))?.variableModules || []
-    );
+  const variables = useCreation(() => {
+    const globalVariables = getWorkflowGlobalVariables(nodeList, t);
+
     const moduleVariables = formatEditorVariablePickerIcon(
       inputs
         .filter((input) => input.canEdit)

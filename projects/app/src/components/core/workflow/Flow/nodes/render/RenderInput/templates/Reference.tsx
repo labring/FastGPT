@@ -1,16 +1,19 @@
 import React, { useCallback, useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Flex, Box, ButtonProps } from '@chakra-ui/react';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { computedNodeInputReference } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import {
   NodeOutputKeyEnum,
+  VARIABLE_NODE_ID,
   WorkflowIOValueTypeEnum
 } from '@fastgpt/global/core/workflow/constants';
 import type { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 import dynamic from 'next/dynamic';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
@@ -34,21 +37,37 @@ type SelectProps = {
 
 const Reference = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const onSelect = useCallback(
     (e: any) => {
-      onChangeNode({
-        nodeId,
-        type: 'updateInput',
-        key: item.key,
-        value: {
-          ...item,
-          value: e
-        }
-      });
+      const workflowStartNode = nodeList.find(
+        (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
+      );
+      if (e[0] === workflowStartNode?.id && e[1] !== NodeOutputKeyEnum.userChatInput) {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: item.key,
+          value: {
+            ...item,
+            value: [VARIABLE_NODE_ID, e[1]]
+          }
+        });
+      } else {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: item.key,
+          value: {
+            ...item,
+            value: e
+          }
+        });
+      }
     },
-    [item, nodeId, onChangeNode]
+    [item, nodeId, nodeList, onChangeNode]
   );
 
   const { referenceList, formatValue } = useReference({
@@ -79,13 +98,15 @@ export const useReference = ({
   value?: any;
 }) => {
   const { t } = useTranslation();
-  const { nodeList, edges } = useFlowProviderStore();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
 
   const referenceList = useMemo(() => {
     const sourceNodes = computedNodeInputReference({
       nodeId,
       nodes: nodeList,
-      edges: edges
+      edges: edges,
+      t
     });
 
     if (!sourceNodes) return [];

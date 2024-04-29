@@ -13,7 +13,6 @@ import {
   Switch,
   Input,
   FormControl,
-  Image,
   Table,
   Thead,
   Tbody,
@@ -21,7 +20,6 @@ import {
   Th,
   Td,
   TableContainer,
-  BoxProps,
   useDisclosure
 } from '@chakra-ui/react';
 import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';

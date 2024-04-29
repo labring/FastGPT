@@ -2,7 +2,6 @@ import { storeNodes2RuntimeNodes } from '@fastgpt/global/core/workflow/runtime/u
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { useCallback, useState } from 'react';
-import { getWorkflowStore, useFlowProviderStore } from '../FlowProvider';
 import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -25,6 +24,8 @@ import {
 import { useForm } from 'react-hook-form';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { checkInputIsReference } from '@fastgpt/global/core/workflow/utils';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext, getWorkflowStore } from '../../context';
 
 const MyRightDrawer = dynamic(
   () => import('@fastgpt/web/components/common/MyDrawer/MyRightDrawer')
@@ -35,7 +36,10 @@ export const useDebug = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  const { edges, setNodes, onStartNodeDebug, onUpdateNodeError } = useFlowProviderStore();
+  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
+  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const onStartNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStartNodeDebug);
 
   const [runtimeNodeId, setRuntimeNodeId] = useState<string>();
   const [runtimeNodes, setRuntimeNodes] = useState<RuntimeNodeItemType[]>();

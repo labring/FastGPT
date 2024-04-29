@@ -9,10 +9,6 @@ import dynamic from 'next/dynamic';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/workflow/Flow/ChatTest';
-import {
-  getWorkflowStore,
-  useFlowProviderStore
-} from '@/components/core/workflow/Flow/FlowProvider';
 import { flowNode2StoreNodes } from '@/components/core/workflow/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -28,6 +24,8 @@ import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useQuery } from '@tanstack/react-query';
 import { formatTime2HM } from '@fastgpt/global/common/string/time';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 
@@ -59,9 +57,11 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   });
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { publishApp, updateAppDetail } = useAppStore();
-  const { edges, onUpdateNodeError } = useFlowProviderStore();
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+
   const [isSaving, setIsSaving] = useState(false);
   const [saveLabel, setSaveLabel] = useState(t('core.app.Onclick to save'));
+  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
 
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const { nodes } = await getWorkflowStore();
@@ -101,13 +101,13 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           time: formatTime2HM()
         })
       );
-      ChatTestRef.current?.resetChatTest();
+      // ChatTestRef.current?.resetChatTest();
     } catch (error) {}
 
     setIsSaving(false);
 
     return null;
-  }, [updateAppDetail, app._id, edges, ChatTestRef, t]);
+  }, [updateAppDetail, app._id, edges, t]);
 
   const onclickPublish = useCallback(async () => {
     setIsSaving(true);

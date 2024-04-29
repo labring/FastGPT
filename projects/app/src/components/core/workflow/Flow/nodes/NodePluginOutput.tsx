@@ -11,8 +11,9 @@ import { EditInputFieldMapType, EditNodeFieldType } from '@fastgpt/global/core/w
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import { useFlowProviderStore } from '../FlowProvider';
 import RenderInput from './render/RenderInput';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const FieldEditModal = dynamic(() => import('./render/FieldEditModal'));
 
@@ -31,7 +32,7 @@ const createEditField: EditInputFieldMapType = {
 const NodePluginOutput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs } = data;
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const [createField, setCreateField] = useState<EditNodeFieldType>();
 

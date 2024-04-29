@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
 import { Switch } from '@chakra-ui/react';
-import { useFlowProviderStore } from '../../../../FlowProvider';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 const SwitchRender = ({ item, nodeId }: RenderInputProps) => {
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const Render = useMemo(() => {
     return (

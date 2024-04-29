@@ -12,13 +12,11 @@ import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import {
-  getWorkflowStore,
-  useFlowProviderStore
-} from '@/components/core/workflow/Flow/FlowProvider';
-import {
   checkWorkflowNodeAndConnection,
   filterSensitiveNodesData
 } from '@/web/core/workflow/utils';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 
@@ -29,11 +27,13 @@ const Header = ({ plugin, onClose }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { copyData } = useCopyData();
-  const { edges, onUpdateNodeError } = useFlowProviderStore();
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const { nodes } = await getWorkflowStore();
+
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
     if (!checkResults) {
       const storeNodes = flowNode2StoreNodes({ nodes, edges });
