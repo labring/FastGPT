@@ -704,7 +704,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
         ...pluginTool.map((tool) => tool.edges).flat()
       ]
     };
-    console.log(config);
+
     return config;
   }
 

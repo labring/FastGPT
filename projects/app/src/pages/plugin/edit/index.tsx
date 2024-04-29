@@ -13,7 +13,7 @@ import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
-import { WorkflowContext, WorkflowContextProvider } from '@/components/core/workflow/context';
+import WorkflowContextProvider, { WorkflowContext } from '@/components/core/workflow/context';
 import { useContextSelector } from 'use-context-selector';
 
 type Props = { pluginId: string };

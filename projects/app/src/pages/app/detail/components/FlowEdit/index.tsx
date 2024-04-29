@@ -5,7 +5,7 @@ import Flow from '@/components/core/workflow/Flow';
 import { appSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
-import { WorkflowContext, WorkflowContextProvider } from '@/components/core/workflow/context';
+import WorkflowContextProvider, { WorkflowContext } from '@/components/core/workflow/context';
 import { useContextSelector } from 'use-context-selector';
 
 type Props = { app: AppSchema; onClose: () => void };

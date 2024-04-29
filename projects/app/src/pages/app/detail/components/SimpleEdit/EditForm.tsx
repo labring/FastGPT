@@ -1,10 +1,8 @@
-import React, { useEffect, useMemo, useState, useTransition } from 'react';
+import React, { useMemo, useTransition } from 'react';
 import { Box, Flex, Grid, BoxProps, useTheme, useDisclosure, Button } from '@chakra-ui/react';
-import { useQuery } from '@tanstack/react-query';
 import { AddIcon, QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
-import { useForm, useFieldArray } from 'react-hook-form';
+import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { appWorkflow2Form, getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
 import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -30,8 +28,6 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import DeleteIcon, { hoverDeleteStyles } from '@fastgpt/web/components/common/Icon/delete';
 import { TTSTypeEnum } from '@/constants/app';
 import { getSystemVariables } from '@/web/core/app/utils';
-import { useContextSelector } from 'use-context-selector';
-import { SimpleEditContext } from './Context';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -53,29 +49,24 @@ const LabelStyles: BoxProps = {
 };
 
 const EditForm = ({
+  editForm,
   divRef,
   isSticky
 }: {
+  editForm: UseFormReturn<AppSimpleEditFormType, any>;
   divRef: React.RefObject<HTMLDivElement>;
   isSticky: boolean;
 }) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
-  const { publishApp } = useAppStore();
+  const { publishApp, appDetail } = useAppStore();
 
   const { allDatasets } = useDatasetStore();
-  const { isPc, llmModelList } = useSystemStore();
-  const [refresh, setRefresh] = useState(false);
+  const { llmModelList } = useSystemStore();
   const [, startTst] = useTransition();
 
-  const appDetail = useContextSelector(SimpleEditContext, (state) => state.app);
-  const setApp = useContextSelector(SimpleEditContext, (state) => state.setApp);
-
-  const { setValue, getValues, reset, handleSubmit, control, watch } =
-    useForm<AppSimpleEditFormType>({
-      defaultValues: getDefaultAppForm()
-    });
+  const { setValue, getValues, handleSubmit, control, watch } = editForm;
 
   const { fields: datasets, replace: replaceKbList } = useFieldArray({
     control,
@@ -112,6 +103,9 @@ const EditForm = ({
     [t, variables]
   );
   const searchMode = watch('dataset.searchMode');
+  const tts = getValues('userGuide.tts');
+  const whisperConfig = getValues('userGuide.whisper');
+  const postQuestionGuide = getValues('userGuide.questionGuide');
 
   const selectDatasets = useMemo(
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
@@ -136,36 +130,6 @@ const EditForm = ({
     successToast: t('common.Save Success'),
     errorToast: t('common.Save Failed')
   });
-
-  useQuery(
-    ['init', appDetail],
-    () => {
-      const formatVal = appWorkflow2Form({
-        nodes: appDetail.modules
-      });
-      reset(formatVal);
-      setRefresh(!refresh);
-      return formatVal;
-    },
-    {
-      enabled: !!appDetail._id
-    }
-  );
-
-  useEffect(() => {
-    const wat = watch((data) => {
-      const { nodes, edges } = form2AppWorkflow(data as AppSimpleEditFormType);
-      setApp((state) => ({
-        ...state,
-        modules: nodes,
-        edges
-      }));
-    });
-
-    return () => {
-      wat.unsubscribe();
-    };
-  }, []);
 
   return (
     <Box>
@@ -298,7 +262,7 @@ const EditForm = ({
                 {t('common.Params')}
               </Button>
             </Flex>
-            {getValues('dataset.datasets').length > 0 && (
+            {datasetSearchSetting.datasets?.length > 0 && (
               <Box my={3}>
                 <SearchParamsTip
                   searchMode={searchMode}
@@ -408,7 +372,6 @@ const EditForm = ({
               variables={variables}
               onChange={(e) => {
                 setValue('userGuide.variables', e);
-                setRefresh(!refresh);
               }}
             />
           </Box>
@@ -437,10 +400,9 @@ const EditForm = ({
           {/* tts */}
           <Box {...BoxStyles}>
             <TTSSelect
-              value={getValues('userGuide.tts')}
+              value={tts}
               onChange={(e) => {
                 setValue('userGuide.tts', e);
-                setRefresh((state) => !state);
               }}
             />
           </Box>
@@ -448,11 +410,10 @@ const EditForm = ({
           {/* whisper */}
           <Box {...BoxStyles}>
             <WhisperConfig
-              isOpenAudio={getValues('userGuide.tts').type !== TTSTypeEnum.none}
-              value={getValues('userGuide.whisper')}
+              isOpenAudio={tts.type !== TTSTypeEnum.none}
+              value={whisperConfig}
               onChange={(e) => {
                 setValue('userGuide.whisper', e);
-                setRefresh((state) => !state);
               }}
             />
           </Box>
@@ -460,12 +421,10 @@ const EditForm = ({
           {/* question guide */}
           <Box {...BoxStyles} borderBottom={'none'}>
             <QGSwitch
-              isChecked={getValues('userGuide.questionGuide')}
+              isChecked={postQuestionGuide}
               size={'lg'}
               onChange={(e) => {
-                const value = e.target.checked;
-                setValue('userGuide.questionGuide', value);
-                setRefresh((state) => !state);
+                setValue('userGuide.questionGuide', e.target.checked);
               }}
             />
           </Box>
@@ -494,8 +453,6 @@ const EditForm = ({
               ...getValues('dataset'),
               ...e
             });
-
-            setRefresh((state) => !state);
           }}
         />
       )}

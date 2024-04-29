@@ -16,25 +16,36 @@ import {
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { useCreation } from 'ahooks';
-import { useContextSelector } from 'use-context-selector';
-import { SimpleEditContext } from './Context';
+import { useCreation, useMemoizedFn, useSafeState } from 'ahooks';
+import { UseFormReturn } from 'react-hook-form';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 
-const ChatTest = ({ appId }: { appId: string }) => {
+const ChatTest = ({
+  editForm,
+  appId
+}: {
+  editForm: UseFormReturn<AppSimpleEditFormType, any>;
+  appId: string;
+}) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const appDetail = useContextSelector(SimpleEditContext, (state) => state.app);
+  const { appDetail } = useAppStore();
 
-  const workflowData = useCreation(
-    () => ({
-      nodes: appDetail.modules || [],
-      edges: appDetail.edges || []
-    }),
-    [appDetail]
+  const { watch } = editForm;
+
+  const [workflowData, setWorkflowData] = useSafeState({
+    nodes: appDetail.modules || [],
+    edges: appDetail.edges || []
+  });
+  const userGuideModule = useCreation(
+    () => getGuideModule(workflowData.nodes),
+    [workflowData.nodes]
   );
 
-  const startChat = useCallback(
+  const startChat = useMemoizedFn(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
       if (!workflowData) return Promise.reject('workflowData is empty');
 
@@ -73,13 +84,23 @@ const ChatTest = ({ appId }: { appId: string }) => {
       });
 
       return { responseText, responseData };
-    },
-    [workflowData, appId, appDetail.name]
+    }
   );
 
   const resetChatBox = useCallback(() => {
     ChatBoxRef.current?.resetHistory([]);
     ChatBoxRef.current?.resetVariables();
+  }, []);
+
+  useEffect(() => {
+    const wat = watch((data) => {
+      const { nodes, edges } = form2AppWorkflow(data as AppSimpleEditFormType);
+      setWorkflowData({ nodes, edges });
+    });
+
+    return () => {
+      wat.unsubscribe();
+    };
   }, []);
 
   return (
@@ -117,7 +138,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon
-          userGuideModule={getGuideModule(workflowData.nodes)}
+          userGuideModule={userGuideModule}
           showFileSelector={checkChatSupportSelectFileByModules(workflowData.nodes)}
           onStartChat={startChat}
           onDelMessage={() => {}}

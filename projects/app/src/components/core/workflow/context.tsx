@@ -204,7 +204,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   }
 });
 
-export const WorkflowContextProvider = ({
+const WorkflowContextProvider = ({
   children,
   value
 }: {
@@ -668,6 +668,8 @@ export const WorkflowContextProvider = ({
     </WorkflowContext.Provider>
   );
 };
+
+export default WorkflowContextProvider;
 
 type GetWorkflowStoreResponse = {
   nodes: Node<FlowNodeItemType>[];
