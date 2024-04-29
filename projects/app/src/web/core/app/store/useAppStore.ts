@@ -16,6 +16,7 @@ type State = {
   updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
   publishApp(appId: string, data: PostPublishAppProps): Promise<void>;
   clearAppModules(): void;
+  setAppDetail(data: AppDetailType): void;
 };
 
 export const useAppStore = create<State>()(
@@ -59,6 +60,11 @@ export const useAppStore = create<State>()(
               ...data,
               modules: data?.nodes || state.appDetail.modules
             };
+          });
+        },
+        setAppDetail(data: AppDetailType) {
+          set((state) => {
+            state.appDetail = data;
           });
         },
 

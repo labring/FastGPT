@@ -1,6 +1,6 @@
 import React, { forwardRef } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
-import Loading from '@fastgpt/web/components/common/MyLoading';
+import Loading from '../MyLoading';
 
 type Props = BoxProps & {
   isLoading?: boolean;

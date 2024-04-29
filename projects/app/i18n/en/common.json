@@ -117,6 +117,7 @@
     "Name is empty": "Name is empty",
     "New Create": "Create",
     "Next Step": "Next",
+    "No more data": "No more",
     "Not open": "Close",
     "Number of words": "{{amount}} words",
     "OK": "OK",
@@ -1101,6 +1102,7 @@
       "Check Failed": "Workflow verification fails. Check whether the node or connection is normal",
       "Confirm stop debug": "Do you want to terminate debugging? Debugging information is not retained.",
       "Copy node": "Copy node",
+      "Current workflow": "Current workflow",
       "Custom inputs": "Inputs",
       "Custom outputs": "Outputs",
       "Custom variable": "Custom variable",
@@ -1147,6 +1149,11 @@
         "switch": "Switch",
         "target": "Target Data",
         "textarea": "Textarea"
+      },
+      "publish": {
+        "OnRevert version": "Click back to that version",
+        "OnRevert version confirm": "Are you sure to roll back the version?",
+        "histories": "Publiish histories"
       },
       "tool": {
         "Handle": "Tool handle",
