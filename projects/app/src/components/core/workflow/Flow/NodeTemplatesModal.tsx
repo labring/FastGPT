@@ -1,14 +1,5 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Box,
-  Card,
-  Flex,
-  IconButton,
-  Input,
-  InputGroup,
-  InputLeftElement,
-  css
-} from '@chakra-ui/react';
+import { Box, Flex, IconButton, Input, InputGroup, InputLeftElement, css } from '@chakra-ui/react';
 import type {
   FlowNodeTemplateType,
   nodeTemplateListType
@@ -16,8 +7,6 @@ import type {
 import { useViewport, XYPosition } from 'reactflow';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
-import { useFlowProviderStore } from './FlowProvider';
-import { customAlphabet } from 'nanoid';
 import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
@@ -36,6 +25,9 @@ import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { useQuery } from '@tanstack/react-query';
 import { debounce } from 'lodash';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../context';
+import { useCreation } from 'ahooks';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -62,7 +54,9 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const [currentParent, setCurrentParent] = useState<RenderListProps['currentParent']>();
   const [searchKey, setSearchKey] = useState('');
   const { feConfigs } = useSystemStore();
-  const { nodes, basicNodeTemplates, hasToolNode } = useFlowProviderStore();
+  const basicNodeTemplates = useContextSelector(WorkflowContext, (v) => v.basicNodeTemplates);
+  const hasToolNode = useContextSelector(WorkflowContext, (v) => v.hasToolNode);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const {
     systemNodeTemplates,
@@ -72,12 +66,12 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   } = useWorkflowStore();
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
-  const templatesString = useMemo(() => {
+  const templates = useCreation(() => {
     const map = {
       [TemplateTypeEnum.basic]: basicNodeTemplates.filter((item) => {
         // unique node filter
         if (item.unique) {
-          const nodeExist = nodes.some((node) => node.data.flowNodeType === item.flowNodeType);
+          const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
           if (nodeExist) {
             return false;
           }
@@ -97,12 +91,12 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         searchKey ? item.pluginType !== PluginTypeEnum.folder : true
       )
     };
-    return JSON.stringify(map[templateType]);
+    return map[templateType];
   }, [
     basicNodeTemplates,
     feConfigs.lafEnv,
     hasToolNode,
-    nodes,
+    nodeList,
     searchKey,
     systemNodeTemplates,
     teamPluginNodeTemplates,
@@ -132,135 +126,120 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     })
   );
 
-  const Render = useMemo(() => {
-    const parseTemplates = JSON.parse(templatesString) as FlowNodeTemplateType[];
-    return (
-      <>
-        <Box
-          zIndex={2}
-          display={isOpen ? 'block' : 'none'}
-          position={'absolute'}
-          top={0}
-          left={0}
-          bottom={0}
-          w={`${sliderWidth}px`}
-          onClick={onClose}
-        />
-        <Flex
-          zIndex={3}
-          flexDirection={'column'}
-          position={'absolute'}
-          top={'10px'}
-          left={0}
-          pt={'20px'}
-          pb={4}
-          h={isOpen ? 'calc(100% - 20px)' : '0'}
-          w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
-          bg={'white'}
-          boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-          borderRadius={'0 20px 20px 0'}
-          transition={'.2s ease'}
-          userSelect={'none'}
-          overflow={isOpen ? 'none' : 'hidden'}
-        >
-          <Box mb={2} pl={'20px'} pr={'10px'} whiteSpace={'nowrap'} overflow={'hidden'}>
-            <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
-              <RowTabs
-                list={[
-                  {
-                    icon: 'core/modules/basicNode',
-                    label: t('core.module.template.Basic Node'),
-                    value: TemplateTypeEnum.basic
-                  },
-                  {
-                    icon: 'core/modules/systemPlugin',
-                    label: t('core.module.template.System Plugin'),
-                    value: TemplateTypeEnum.systemPlugin
-                  },
-                  {
-                    icon: 'core/modules/teamPlugin',
-                    label: t('core.module.template.Team Plugin'),
-                    value: TemplateTypeEnum.teamPlugin
-                  }
-                ]}
-                py={'5px'}
-                value={templateType}
-                onChange={onChangeTab}
-              />
-              {/* close icon */}
-              <IconButton
-                size={'sm'}
-                icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.700'} />}
-                w={'26px'}
-                h={'26px'}
-                borderColor={'myGray.300'}
-                variant={'grayBase'}
-                aria-label={''}
-                onClick={onClose}
+  return (
+    <>
+      <Box
+        zIndex={2}
+        display={isOpen ? 'block' : 'none'}
+        position={'absolute'}
+        top={0}
+        left={0}
+        bottom={0}
+        w={`${sliderWidth}px`}
+        onClick={onClose}
+      />
+      <Flex
+        zIndex={3}
+        flexDirection={'column'}
+        position={'absolute'}
+        top={'10px'}
+        left={0}
+        pt={'20px'}
+        pb={4}
+        h={isOpen ? 'calc(100% - 20px)' : '0'}
+        w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
+        bg={'white'}
+        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
+        borderRadius={'0 20px 20px 0'}
+        transition={'.2s ease'}
+        userSelect={'none'}
+        overflow={isOpen ? 'none' : 'hidden'}
+      >
+        <Box mb={2} pl={'20px'} pr={'10px'} whiteSpace={'nowrap'} overflow={'hidden'}>
+          <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
+            <RowTabs
+              list={[
+                {
+                  icon: 'core/modules/basicNode',
+                  label: t('core.module.template.Basic Node'),
+                  value: TemplateTypeEnum.basic
+                },
+                {
+                  icon: 'core/modules/systemPlugin',
+                  label: t('core.module.template.System Plugin'),
+                  value: TemplateTypeEnum.systemPlugin
+                },
+                {
+                  icon: 'core/modules/teamPlugin',
+                  label: t('core.module.template.Team Plugin'),
+                  value: TemplateTypeEnum.teamPlugin
+                }
+              ]}
+              py={'5px'}
+              value={templateType}
+              onChange={onChangeTab}
+            />
+            {/* close icon */}
+            <IconButton
+              size={'sm'}
+              icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.700'} />}
+              w={'26px'}
+              h={'26px'}
+              borderColor={'myGray.300'}
+              variant={'grayBase'}
+              aria-label={''}
+              onClick={onClose}
+            />
+          </Flex>
+          {templateType === TemplateTypeEnum.teamPlugin && (
+            <Flex mt={2} alignItems={'center'} h={10}>
+              <InputGroup mr={4} h={'full'}>
+                <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
+                  <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} ml={3} />
+                </InputLeftElement>
+                <Input
+                  h={'full'}
+                  bg={'myGray.50'}
+                  placeholder={t('plugin.Search plugin')}
+                  onChange={debounce((e) => setSearchKey(e.target.value), 200)}
+                />
+              </InputGroup>
+              <Box flex={1} />
+              <Flex
+                alignItems={'center'}
+                cursor={'pointer'}
+                _hover={{
+                  color: 'primary.600'
+                }}
+                onClick={() => router.push('/plugin/list')}
+              >
+                <Box>去创建</Box>
+                <MyIcon name={'common/rightArrowLight'} w={'14px'} />
+              </Flex>
+            </Flex>
+          )}
+          {templateType === TemplateTypeEnum.teamPlugin && !searchKey && currentParent && (
+            <Flex alignItems={'center'} mt={2}>
+              <ParentPaths
+                paths={[currentParent]}
+                FirstPathDom={null}
+                onClick={() => {
+                  setCurrentParent(undefined);
+                }}
+                fontSize="md"
               />
             </Flex>
-            {templateType === TemplateTypeEnum.teamPlugin && (
-              <Flex mt={2} alignItems={'center'} h={10}>
-                <InputGroup mr={4} h={'full'}>
-                  <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
-                    <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} ml={3} />
-                  </InputLeftElement>
-                  <Input
-                    h={'full'}
-                    bg={'myGray.50'}
-                    placeholder={t('plugin.Search plugin')}
-                    onChange={debounce((e) => setSearchKey(e.target.value), 200)}
-                  />
-                </InputGroup>
-                <Box flex={1} />
-                <Flex
-                  alignItems={'center'}
-                  cursor={'pointer'}
-                  _hover={{
-                    color: 'primary.600'
-                  }}
-                  onClick={() => router.push('/plugin/list')}
-                >
-                  <Box>去创建</Box>
-                  <MyIcon name={'common/rightArrowLight'} w={'14px'} />
-                </Flex>
-              </Flex>
-            )}
-            {templateType === TemplateTypeEnum.teamPlugin && !searchKey && currentParent && (
-              <Flex alignItems={'center'} mt={2}>
-                <ParentPaths
-                  paths={[currentParent]}
-                  FirstPathDom={null}
-                  onClick={() => {
-                    setCurrentParent(undefined);
-                  }}
-                  fontSize="md"
-                />
-              </Flex>
-            )}
-          </Box>
-          <RenderList
-            templates={parseTemplates}
-            onClose={onClose}
-            currentParent={currentParent}
-            setCurrentParent={setCurrentParent}
-          />
-        </Flex>
-      </>
-    );
-  }, [
-    currentParent,
-    isOpen,
-    onChangeTab,
-    onClose,
-    router,
-    searchKey,
-    t,
-    templateType,
-    templatesString
-  ]);
-
-  return Render;
+          )}
+        </Box>
+        <RenderList
+          templates={templates}
+          onClose={onClose}
+          currentParent={currentParent}
+          setCurrentParent={setCurrentParent}
+        />
+      </Flex>
+    </>
+  );
 };
 
 export default React.memo(NodeTemplatesModal);
@@ -276,7 +255,8 @@ const RenderList = React.memo(function RenderList({
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
   const { toast } = useToast();
-  const { reactFlowWrapper, setNodes } = useFlowProviderStore();
+  const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
+  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
 
   const formatTemplates = useMemo<nodeTemplateListType>(() => {
     const copy: nodeTemplateListType = JSON.parse(JSON.stringify(moduleTemplatesList));

@@ -5,17 +5,18 @@ import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import type { OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
 import { customAlphabet } from 'nanoid';
-import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 24);
 
 /* create a shareChat */
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
-    const { appId, ...props } = req.body as OutLinkEditType & {
-      appId: string;
-      type: `${OutLinkTypeEnum}`;
-    };
+    const { appId, ...props } = req.body as OutLinkEditType &
+      OutLinkEditType & {
+        appId: string;
+        type: PublishChannelEnum;
+      };
 
     const { teamId, tmbId } = await authApp({ req, authToken: true, appId, per: 'w' });
 

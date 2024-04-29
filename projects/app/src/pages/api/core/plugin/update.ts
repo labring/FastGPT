@@ -28,10 +28,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       avatar: props.avatar,
       parentId: props.parentId,
       version: 'v2',
-      ...(modules && {
+      ...(modules?.length && {
         modules: modules
       }),
-      ...(edges && { edges }),
+      ...(edges?.length && { edges }),
       metadata: props.metadata
     };
 

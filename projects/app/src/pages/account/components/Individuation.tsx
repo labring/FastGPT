@@ -1,8 +1,7 @@
-import { Box, Card, Flex, Select } from '@chakra-ui/react';
-import React, { useCallback, useRef } from 'react';
+import { Box, Card, Flex } from '@chakra-ui/react';
+import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { timezoneList } from '@fastgpt/global/common/time/timezone';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { UserType } from '@fastgpt/global/support/user/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';

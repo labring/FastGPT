@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import NodeCard from './render/NodeCard';
 import { useTranslation } from 'next-i18next';
-import { useFlowProviderStore } from '../FlowProvider';
 import { Box, Button, Flex, background } from '@chakra-ui/react';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -25,11 +24,13 @@ import {
 import { stringConditionList } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [], outputs } = data;
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const condition = useMemo(
     () =>
@@ -274,7 +275,7 @@ const ConditionSelect = ({
   variable?: ReferenceValueProps;
   onSelect: (e: VariableConditionEnum) => void;
 }) => {
-  const { nodeList } = useFlowProviderStore();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   // get condition type
   const valueType = useMemo(() => {
@@ -337,7 +338,7 @@ const ConditionValueInput = ({
   condition?: VariableConditionEnum;
   onChange: (e: string) => void;
 }) => {
-  const { nodeList } = useFlowProviderStore();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   // get value type
   const valueType = useMemo(() => {

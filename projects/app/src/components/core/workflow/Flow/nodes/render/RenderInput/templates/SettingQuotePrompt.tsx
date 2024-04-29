@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import type { RenderInputProps } from '../type';
 import { Box, BoxProps, Button, Flex, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { PromptTemplateItem } from '@fastgpt/global/core/ai/type';
@@ -25,6 +24,10 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import Reference from './Reference';
 import { getSystemVariables } from '@/web/core/app/utils';
 import ValueTypeLabel from '../../ValueTypeLabel';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { useCreation } from 'ahooks';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -38,7 +41,9 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const { inputs = [], nodeId } = props;
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
-  const { nodeList, onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+
   const { watch, setValue, handleSubmit } = useForm({
     defaultValues: {
       quoteTemplate: inputs.find((input) => input.key === 'quoteTemplate')?.value || '',
@@ -48,14 +53,10 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   const aiChatQuoteTemplate = watch('quoteTemplate');
   const aiChatQuotePrompt = watch('quotePrompt');
 
-  const variables = useMemo(() => {
-    const globalVariables = formatEditorVariablePickerIcon(
-      splitGuideModule(getGuideModule(nodeList))?.variableModules || []
-    );
+  const variables = useCreation(() => {
+    const globalVariables = getWorkflowGlobalVariables(nodeList, t);
 
-    const systemVariables = getSystemVariables(t);
-
-    return [...globalVariables, ...systemVariables];
+    return globalVariables;
   }, [nodeList, t]);
 
   const [selectTemplateData, setSelectTemplateData] = useState<{

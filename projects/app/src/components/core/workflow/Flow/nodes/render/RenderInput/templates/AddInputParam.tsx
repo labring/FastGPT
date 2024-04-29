@@ -5,18 +5,21 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import { useTranslation } from 'next-i18next';
 import { EditNodeFieldType } from '@fastgpt/global/core/workflow/node/type';
 import dynamic from 'next/dynamic';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import Reference from './Reference';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 const FieldEditModal = dynamic(() => import('../../FieldEditModal'));
 
 const AddInputParam = (props: RenderInputProps) => {
   const { item, inputs, nodeId } = props;
   const { t } = useTranslation();
-  const { onChangeNode, mode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const mode = useContextSelector(WorkflowContext, (ctx) => ctx.mode);
+
   const inputValue = useMemo(() => (item.value || []) as FlowNodeInputItemType[], [item.value]);
 
   const [editField, setEditField] = useState<EditNodeFieldType>();

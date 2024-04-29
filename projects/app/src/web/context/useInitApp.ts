@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { clientInitData } from '@/web/common/system/staticData';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
+import { useMemoizedFn, useMount } from 'ahooks';
 
 export const useInitApp = () => {
   const router = useRouter();
@@ -14,7 +15,7 @@ export const useInitApp = () => {
   const [scripts, setScripts] = useState<FastGPTFeConfigsType['scripts']>([]);
   const [title, setTitle] = useState(process.env.SYSTEM_NAME || 'AI');
 
-  const initFetch = useCallback(async () => {
+  const initFetch = useMemoizedFn(async () => {
     const {
       feConfigs: { scripts, isPlus, show_git, systemTitle }
     } = await clientInitData();
@@ -35,18 +36,18 @@ export const useInitApp = () => {
 
     setScripts(scripts || []);
     setInitd();
-  }, [loadGitStar, setInitd]);
+  });
 
-  const initUserLanguage = useCallback(() => {
+  const initUserLanguage = useMemoizedFn(() => {
     // get default language
     const targetLng = change2DefaultLng(i18n.language);
     if (targetLng) {
       setLngStore(targetLng);
       router.replace(router.asPath, undefined, { locale: targetLng });
     }
-  }, []);
+  });
 
-  useEffect(() => {
+  useMount(() => {
     initFetch();
     initUserLanguage();
 
@@ -67,7 +68,7 @@ export const useInitApp = () => {
     return () => {
       window.removeEventListener('error', errorTrack);
     };
-  }, []);
+  });
 
   useEffect(() => {
     hiId && localStorage.setItem('inviterId', hiId);

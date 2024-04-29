@@ -16,13 +16,14 @@
     "@chakra-ui/react": "2.8.1",
     "@chakra-ui/styled-system": "2.9.1",
     "@chakra-ui/system": "2.6.1",
-    "@emotion/react": "^11.11.1",
-    "@emotion/styled": "^11.11.0",
+    "@emotion/react": "11.11.1",
+    "@emotion/styled": "11.11.0",
     "@fastgpt/global": "workspace:*",
     "@fastgpt/plugins": "workspace:*",
     "@fastgpt/service": "workspace:*",
     "@fastgpt/web": "workspace:*",
     "@fortaine/fetch-event-source": "^3.0.6",
+    "@node-rs/jieba": "1.10.0",
     "@tanstack/react-query": "^4.24.10",
     "@types/nprogress": "^0.2.0",
     "ahooks": "^3.7.11",
@@ -39,10 +40,11 @@
     "js-yaml": "^4.1.0",
     "jsonwebtoken": "^9.0.2",
     "lodash": "^4.17.21",
-    "mermaid": "10.2.3",
+    "mermaid": "^10.2.3",
     "nanoid": "^4.0.1",
     "next": "13.5.2",
     "next-i18next": "15.2.0",
+    "nextjs-node-loader": "^1.1.5",
     "nprogress": "^0.2.0",
     "react": "18.2.0",
     "react-day-picker": "^8.7.1",
@@ -58,9 +60,8 @@
     "remark-math": "^5.1.1",
     "request-ip": "^3.3.0",
     "sass": "^1.58.3",
-    "zustand": "^4.3.5",
-    "nextjs-node-loader": "^1.1.5",
-    "@node-rs/jieba": "1.10.0"
+    "use-context-selector": "^1.4.4",
+    "zustand": "^4.3.5"
   },
   "devDependencies": {
     "@svgr/webpack": "^6.5.1",
@@ -76,6 +77,7 @@
     "@types/request-ip": "^0.0.37",
     "eslint": "8.34.0",
     "eslint-config-next": "13.1.6",
+    "nextjs-node-loader": "^1.1.5",
     "typescript": "4.9.5"
   }
 }

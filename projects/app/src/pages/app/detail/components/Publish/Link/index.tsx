@@ -32,8 +32,8 @@ import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
 import { defaultOutLinkForm } from '@/constants/app';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
+import { useRequest } from '@/web/common/hooks/useRequest';
+import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -47,7 +47,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
-const Share = ({ appId }: { appId: string }) => {
+const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   const { t } = useTranslation();
   const { Loading, setIsLoading } = useLoading();
   const { feConfigs } = useSystemStore();
@@ -64,7 +64,9 @@ const Share = ({ appId }: { appId: string }) => {
     isFetching,
     data: shareChatList = [],
     refetch: refetchShareChatList
-  } = useQuery(['initShareChatList', appId], () => getShareChatList(appId));
+  } = useQuery(['initShareChatList', appId], () =>
+    getShareChatList({ appId, type: PublishChannelEnum.share })
+  );
 
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
@@ -95,12 +97,16 @@ const Share = ({ appId }: { appId: string }) => {
           <Thead>
             <Tr>
               <Th>{t('common.Name')}</Th>
+              {feConfigs?.isPlus && (
+                <>
+                  <Th>{t('common.Expired Time')}</Th>
+                </>
+              )}
               <Th>{t('support.outlink.Usage points')}</Th>
               <Th>{t('core.app.share.Is response quote')}</Th>
               {feConfigs?.isPlus && (
                 <>
                   <Th>{t('core.app.share.Ip limit title')}</Th>
-                  <Th>{t('common.Expired Time')}</Th>
                   <Th>{t('core.app.share.Role check')}</Th>
                 </>
               )}
@@ -112,6 +118,15 @@ const Share = ({ appId }: { appId: string }) => {
             {shareChatList.map((item) => (
               <Tr key={item._id}>
                 <Td>{item.name}</Td>
+                {feConfigs?.isPlus && (
+                  <>
+                    <Td>
+                      {item.limit?.expiredTime
+                        ? dayjs(item.limit.expiredTime).format('YYYY-MM-DD HH:mm')
+                        : '-'}
+                    </Td>
+                  </>
+                )}
                 <Td>
                   {Math.round(item.usagePoints)}
                   {feConfigs?.isPlus
@@ -126,18 +141,14 @@ const Share = ({ appId }: { appId: string }) => {
                 {feConfigs?.isPlus && (
                   <>
                     <Td>{item?.limit?.QPM || '-'}</Td>
-                    <Td>
-                      {item?.limit?.expiredTime
-                        ? dayjs(item.limit?.expiredTime).format('YYYY/MM/DD\nHH:mm')
-                        : '-'}
-                    </Td>
+
                     <Th>{item?.limit?.hookUrl ? '✔' : '✖'}</Th>
                   </>
                 )}
                 <Td>{item.lastTime ? formatTimeToChatTime(item.lastTime) : t('common.Un used')}</Td>
                 <Td display={'flex'} alignItems={'center'}>
                   <Button
-                    onClick={() => setSelectedLinkData(item)}
+                    onClick={() => setSelectedLinkData(item as OutLinkSchema)}
                     size={'sm'}
                     mr={3}
                     variant={'whitePrimary'}
@@ -201,7 +212,7 @@ const Share = ({ appId }: { appId: string }) => {
       {!!editLinkData && (
         <EditLinkModal
           appId={appId}
-          type={'share'}
+          type={PublishChannelEnum.share}
           defaultData={editLinkData}
           onCreate={(id) => {
             const url = `${location.origin}/chat/share?shareId=${id}`;
@@ -242,7 +253,7 @@ function EditLinkModal({
   onEdit
 }: {
   appId: string;
-  type: `${OutLinkTypeEnum}`;
+  type: PublishChannelEnum;
   defaultData: OutLinkEditType;
   onClose: () => void;
   onCreate: (id: string) => void;
@@ -299,6 +310,22 @@ function EditLinkModal({
           <>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
+                {t('common.Expired Time')}
+              </Flex>
+              <Input
+                type="datetime-local"
+                defaultValue={
+                  defaultData.limit?.expiredTime
+                    ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
+                    : ''
+                }
+                onChange={(e) => {
+                  setValue('limit.expiredTime', new Date(e.target.value));
+                }}
+              />
+            </Flex>
+            <Flex alignItems={'center'} mt={4}>
+              <Flex flex={'0 0 90px'} alignItems={'center'}>
                 QPM
                 <MyTooltip label={t('outlink.QPM Tips' || '')}>
                   <QuestionOutlineIcon ml={1} />
@@ -330,22 +357,7 @@ function EditLinkModal({
                 })}
               />
             </Flex>
-            <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('common.Expired Time')}
-              </Flex>
-              <Input
-                type="datetime-local"
-                defaultValue={
-                  defaultData.limit?.expiredTime
-                    ? dayjs(defaultData.limit?.expiredTime).format('YYYY-MM-DDTHH:mm')
-                    : ''
-                }
-                onChange={(e) => {
-                  setValue('limit.expiredTime', new Date(e.target.value));
-                }}
-              />
-            </Flex>
+
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
                 {t('outlink.token auth')}

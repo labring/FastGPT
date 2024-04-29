@@ -704,7 +704,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
         ...pluginTool.map((tool) => tool.edges).flat()
       ]
     };
-    console.log(config);
+
     return config;
   }
 
@@ -724,23 +724,28 @@ export const getSystemVariables = (t: TFunction): EditorVariablePickerType[] => 
   return [
     {
       key: 'appId',
-      label: t('core.module.http.AppId')
+      label: t('core.module.http.AppId'),
+      valueType: WorkflowIOValueTypeEnum.string
     },
     {
       key: 'chatId',
-      label: t('core.module.http.ChatId')
+      label: t('core.module.http.ChatId'),
+      valueType: WorkflowIOValueTypeEnum.string
     },
     {
       key: 'responseChatItemId',
-      label: t('core.module.http.ResponseChatItemId')
+      label: t('core.module.http.ResponseChatItemId'),
+      valueType: WorkflowIOValueTypeEnum.string
     },
     {
       key: 'histories',
-      label: t('core.module.http.Histories')
+      label: t('core.module.http.Histories'),
+      valueType: WorkflowIOValueTypeEnum.chatHistory
     },
     {
       key: 'cTime',
-      label: t('core.module.http.Current time')
+      label: t('core.module.http.Current time'),
+      valueType: WorkflowIOValueTypeEnum.string
     }
   ];
 };

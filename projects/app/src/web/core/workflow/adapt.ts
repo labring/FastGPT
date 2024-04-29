@@ -16,7 +16,7 @@ import {
   StoreNodeItemType
 } from '@fastgpt/global/core/workflow/type';
 import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { getHandleId, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { LLMModelTypeEnum } from '@fastgpt/global/core/ai/constants';
 import {
@@ -24,8 +24,10 @@ import {
   FlowNodeOutputItemType
 } from '@fastgpt/global/core/workflow/type/io';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
+import { getWorkflowGlobalVariables } from './utils';
+import { TFunction } from 'next-i18next';
 
-export const systemConfigNode2VariableNode = (node: FlowNodeItemType) => {
+export const getGlobalVariableNode = (nodes: FlowNodeItemType[], t: TFunction) => {
   const template: FlowNodeTemplateType = {
     id: FlowNodeTypeEnum.globalVariable,
     templateType: FlowNodeTemplateTypeEnum.other,
@@ -41,17 +43,17 @@ export const systemConfigNode2VariableNode = (node: FlowNodeItemType) => {
     outputs: []
   };
 
-  const { variableModules } = splitGuideModule(node);
+  const globalVariables = getWorkflowGlobalVariables(nodes, t);
 
   const variableNode: FlowNodeItemType = {
     nodeId: VARIABLE_NODE_ID,
     ...template,
-    outputs: variableModules.map((item) => ({
+    outputs: globalVariables.map((item) => ({
       id: item.key,
-      type: FlowNodeOutputTypeEnum.dynamic,
+      type: FlowNodeOutputTypeEnum.static,
       label: item.label,
       key: item.key,
-      valueType: WorkflowIOValueTypeEnum.any
+      valueType: item.valueType || WorkflowIOValueTypeEnum.any
     }))
   };
 

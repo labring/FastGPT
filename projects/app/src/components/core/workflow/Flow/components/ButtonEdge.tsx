@@ -1,12 +1,16 @@
 import React, { useCallback, useMemo } from 'react';
 import { BezierEdge, getBezierPath, EdgeLabelRenderer, EdgeProps } from 'reactflow';
-import { useFlowProviderStore } from '../FlowProvider';
 import { Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../context';
 
 const ButtonEdge = (props: EdgeProps) => {
-  const { nodes, setEdges, workflowDebugData } = useFlowProviderStore();
+  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
+  const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
+  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
+
   const {
     id,
     sourceX,

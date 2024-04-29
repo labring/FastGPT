@@ -1,10 +1,11 @@
 import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { useFlowProviderStore } from '../../../../FlowProvider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { WorkflowContext } from '@/components/core/workflow/context';
+import { useContextSelector } from 'use-context-selector';
 
 const SelectRender = ({ item, nodeId }: RenderInputProps) => {
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const Render = useMemo(() => {
     return (

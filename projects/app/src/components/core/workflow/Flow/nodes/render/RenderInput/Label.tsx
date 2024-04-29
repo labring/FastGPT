@@ -1,7 +1,6 @@
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useFlowProviderStore } from '../../../FlowProvider';
 import { Box, Flex } from '@chakra-ui/react';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -13,17 +12,20 @@ import dynamic from 'next/dynamic';
 import { EditNodeFieldType } from '@fastgpt/global/core/workflow/node/type';
 import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import ValueTypeLabel from '../ValueTypeLabel';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 const FieldEditModal = dynamic(() => import('../FieldEditModal'));
 
 type Props = {
   nodeId: string;
   input: FlowNodeInputItemType;
-  mode?: 'app' | 'plugin';
 };
 
 const InputLabel = ({ nodeId, input }: Props) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useFlowProviderStore();
+
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
   const {
     description,
     toolDescription,

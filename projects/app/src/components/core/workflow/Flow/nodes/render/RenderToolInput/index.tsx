@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import type {
   FlowNodeInputItemType,
   FlowNodeOutputItemType
@@ -19,7 +19,8 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dynamic from 'next/dynamic';
 import { defaultEditFormData } from './constants';
-import { useFlowProviderStore } from '../../../FlowProvider';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 const EditFieldModal = dynamic(() => import('./EditFieldModal'));
 
 const RenderToolInput = ({
@@ -32,8 +33,9 @@ const RenderToolInput = ({
   canEdit?: boolean;
 }) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useFlowProviderStore();
-  const [editField, setEditField] = React.useState<FlowNodeInputItemType>();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+
+  const [editField, setEditField] = useState<FlowNodeInputItemType>();
 
   return (
     <>

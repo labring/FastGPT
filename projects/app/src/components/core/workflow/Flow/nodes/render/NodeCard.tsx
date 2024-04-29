@@ -6,7 +6,6 @@ import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useFlowProviderStore } from '../../FlowProvider';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -21,6 +20,8 @@ import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '../../../context';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -55,7 +56,9 @@ const NodeCard = (props: Props) => {
     pluginId
   } = props;
 
-  const { nodeList, setHoverNodeId, onUpdateNodeError } = useFlowProviderStore();
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
+  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
 
   const showToolHandle = useMemo(
     () => isTool && !!nodeList.find((item) => item?.flowNodeType === FlowNodeTypeEnum.tools),
@@ -105,44 +108,40 @@ const NodeCard = (props: Props) => {
     intro
   ]);
 
-  const Render = useMemo(() => {
-    return (
-      <Box
-        minW={minW}
-        maxW={maxW}
-        bg={'white'}
-        borderWidth={'1px'}
-        borderRadius={'md'}
-        boxShadow={'1'}
-        _hover={{
-          boxShadow: '4',
-          '& .controller-menu': {
-            display: 'flex'
-          },
-          '& .controller-debug': {
-            display: 'block'
+  return (
+    <Box
+      minW={minW}
+      maxW={maxW}
+      bg={'white'}
+      borderWidth={'1px'}
+      borderRadius={'md'}
+      boxShadow={'1'}
+      _hover={{
+        boxShadow: '4',
+        '& .controller-menu': {
+          display: 'flex'
+        },
+        '& .controller-debug': {
+          display: 'block'
+        }
+      }}
+      onMouseEnter={() => setHoverNodeId(nodeId)}
+      onMouseLeave={() => setHoverNodeId(undefined)}
+      {...(isError
+        ? {
+            borderColor: 'red.500',
+            onMouseDownCapture: () => onUpdateNodeError(nodeId, false)
           }
-        }}
-        onMouseEnter={() => setHoverNodeId(nodeId)}
-        onMouseLeave={() => setHoverNodeId(undefined)}
-        {...(isError
-          ? {
-              borderColor: 'red.500',
-              onMouseDownCapture: () => onUpdateNodeError(nodeId, false)
-            }
-          : {
-              borderColor: selected ? 'primary.600' : 'borderColor.base'
-            })}
-      >
-        {Header}
-        {children}
-        <ConnectionSourceHandle nodeId={nodeId} />
-        <ConnectionTargetHandle nodeId={nodeId} />
-      </Box>
-    );
-  }, [Header, children, isError, maxW, minW, nodeId, onUpdateNodeError, selected, setHoverNodeId]);
-
-  return Render;
+        : {
+            borderColor: selected ? 'primary.600' : 'borderColor.base'
+          })}
+    >
+      {Header}
+      {children}
+      <ConnectionSourceHandle nodeId={nodeId} />
+      <ConnectionTargetHandle nodeId={nodeId} />
+    </Box>
+  );
 };
 
 export default React.memo(NodeCard);
@@ -180,7 +179,10 @@ const MenuRender = React.memo(function MenuRender({
     type: 'delete'
   });
 
-  const { setNodes, setEdges, onResetNode, onChangeNode } = useFlowProviderStore();
+  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
+  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
+  const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
@@ -383,7 +385,8 @@ const NodeIntro = React.memo(function NodeIntro({
   intro?: string;
 }) {
   const { t } = useTranslation();
-  const { onChangeNode, splitToolInputs } = useFlowProviderStore();
+  const splitToolInputs = useContextSelector(WorkflowContext, (ctx) => ctx.splitToolInputs);
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const moduleIsTool = useMemo(() => {
     const { isTool } = splitToolInputs([], nodeId);
@@ -442,8 +445,12 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
   debugResult: FlowNodeItemType['debugResult'];
 }) {
   const { t } = useTranslation();
-  const { onChangeNode, onStopNodeDebug, onNextNodeDebug, workflowDebugData } =
-    useFlowProviderStore();
+
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onStopNodeDebug = useContextSelector(WorkflowContext, (v) => v.onStopNodeDebug);
+  const onNextNodeDebug = useContextSelector(WorkflowContext, (v) => v.onNextNodeDebug);
+  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
+
   const { openConfirm, ConfirmModal } = useConfirm({
     content: t('core.workflow.Confirm stop debug')
   });

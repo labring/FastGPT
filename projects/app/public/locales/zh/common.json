@@ -153,6 +153,7 @@
     "Submit failed": "提交失败",
     "Submit success": "提交成功",
     "Sync success": "同步成功",
+    "System Output": "系统输出",
     "System version": "系统版本",
     "Team": "团队",
     "Team Tags Set": "标签",
@@ -280,6 +281,7 @@
       "App intro": "应用介绍",
       "App params config": "应用配置",
       "Auto Save time": "自动保存: {{time}}",
+      "Change to simple mode": "切换简易模式",
       "Chat Variable": "对话框变量",
       "Config schedule plan": "配置定时执行",
       "Config whisper": "配置语音输入",
@@ -373,6 +375,11 @@
         "Select Using Way": "选择使用方式",
         "Show History": "展示历史对话",
         "Web Link": "网络链接"
+      },
+      "publish": {
+        "Fei Shu Bot Desc": "接入到飞书机器人中",
+        "Fei shu bot": "飞书",
+        "Fei shu bot publish": "发布到飞书机器人"
       },
       "schedule": {
         "Default prompt": "默认问题",
@@ -638,7 +645,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -958,6 +966,7 @@
           "anyInput": "",
           "chat history": "聊天记录",
           "switch": "触发器",
+          "system params": "系统参数",
           "textEditor textarea": "文本编辑",
           "user question": "用户问题"
         },
@@ -1109,6 +1118,7 @@
       "Stop debug": "停止调试",
       "Success": "运行成功",
       "Value type": "数据类型",
+      "Variable outputs": "全局变量",
       "chat": {
         "Quote prompt": "引用提示词"
       },

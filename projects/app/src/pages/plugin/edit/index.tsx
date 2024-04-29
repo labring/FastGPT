@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import Header from './Header';
 import Flow from '@/components/core/workflow/Flow';
-import FlowProvider, { useFlowProviderStore } from '@/components/core/workflow/Flow/FlowProvider';
 import { pluginSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useQuery } from '@tanstack/react-query';
@@ -14,6 +13,8 @@ import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
+import WorkflowContextProvider, { WorkflowContext } from '@/components/core/workflow/context';
+import { useContextSelector } from 'use-context-selector';
 
 type Props = { pluginId: string };
 
@@ -21,7 +22,7 @@ const Render = ({ pluginId }: Props) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { toast } = useToast();
-  const { initData } = useFlowProviderStore();
+  const initData = useContextSelector(WorkflowContext, (v) => v.initData);
 
   const { data: pluginDetail } = useQuery(
     ['getOnePlugin', pluginId],
@@ -78,9 +79,11 @@ const Render = ({ pluginId }: Props) => {
 
 export default function FlowEdit(props: any) {
   return (
-    <FlowProvider mode={'plugin'} basicNodeTemplates={pluginSystemModuleTemplates}>
+    <WorkflowContextProvider
+      value={{ mode: 'plugin', basicNodeTemplates: pluginSystemModuleTemplates }}
+    >
       <Render {...props} />
-    </FlowProvider>
+    </WorkflowContextProvider>
   );
 }
 

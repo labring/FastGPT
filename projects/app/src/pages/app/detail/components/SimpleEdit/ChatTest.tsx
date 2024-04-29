@@ -1,11 +1,9 @@
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import ChatBox from '@/components/ChatBox';
 import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
@@ -13,27 +11,41 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   getDefaultEntryNodeIds,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { useCreation, useMemoizedFn, useSafeState } from 'ahooks';
+import { UseFormReturn } from 'react-hook-form';
+import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 
-const ChatTest = ({ appId }: { appId: string }) => {
+const ChatTest = ({
+  editForm,
+  appId
+}: {
+  editForm: UseFormReturn<AppSimpleEditFormType, any>;
+  appId: string;
+}) => {
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
-  const { appDetail } = useAppStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const [workflowData, setWorkflowData] = useState<{
-    nodes: StoreNodeItemType[];
-    edges: StoreEdgeItemType[];
-  }>({
-    nodes: [],
-    edges: []
-  });
+  const { appDetail } = useAppStore();
 
-  const startChat = useCallback(
+  const { watch } = editForm;
+
+  const [workflowData, setWorkflowData] = useSafeState({
+    nodes: appDetail.modules || [],
+    edges: appDetail.edges || []
+  });
+  const userGuideModule = useCreation(
+    () => getGuideModule(workflowData.nodes),
+    [workflowData.nodes]
+  );
+
+  const startChat = useMemoizedFn(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
       if (!workflowData) return Promise.reject('workflowData is empty');
 
@@ -72,8 +84,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
       });
 
       return { responseText, responseData };
-    },
-    [workflowData, appId, appDetail.name]
+    }
   );
 
   const resetChatBox = useCallback(() => {
@@ -82,12 +93,15 @@ const ChatTest = ({ appId }: { appId: string }) => {
   }, []);
 
   useEffect(() => {
-    resetChatBox();
-    setWorkflowData({
-      nodes: appDetail.modules || [],
-      edges: appDetail.edges || []
+    const wat = watch((data) => {
+      const { nodes, edges } = form2AppWorkflow(data as AppSimpleEditFormType);
+      setWorkflowData({ nodes, edges });
     });
-  }, [appDetail, resetChatBox]);
+
+    return () => {
+      wat.unsubscribe();
+    };
+  }, []);
 
   return (
     <Flex
@@ -124,7 +138,7 @@ const ChatTest = ({ appId }: { appId: string }) => {
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon
-          userGuideModule={getGuideModule(workflowData.nodes)}
+          userGuideModule={userGuideModule}
           showFileSelector={checkChatSupportSelectFileByModules(workflowData.nodes)}
           onStartChat={startChat}
           onDelMessage={() => {}}

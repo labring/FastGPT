@@ -11,7 +11,8 @@ import VariableTable from '../VariableTable';
 import { EditNodeFieldType } from '@fastgpt/global/core/workflow/node/type';
 import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
-import { useFlowProviderStore } from '../../../FlowProvider';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 const RenderList: {
   types: `${FlowNodeOutputTypeEnum}`[];
@@ -26,7 +27,7 @@ const RenderOutput = ({
   flowOutputList: FlowNodeOutputItemType[];
 }) => {
   const { t } = useTranslation();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const outputString = useMemo(() => JSON.stringify(flowOutputList), [flowOutputList]);
   const copyOutputs = useMemo(() => {

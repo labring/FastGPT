@@ -108,7 +108,9 @@ const LafAccountModal = ({
           </Box>
           <Box>
             <Link textDecoration={'underline'} href={`${feConfigs.lafEnv}/`} isExternal>
-              {t('support.user.Go laf env', { env: feConfigs.lafEnv })}
+              {t('support.user.Go laf env', {
+                env: feConfigs.lafEnv?.split('//')[1]
+              })}
             </Link>
           </Box>
         </Box>

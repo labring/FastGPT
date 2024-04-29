@@ -2,10 +2,11 @@ import React, { useEffect, useMemo } from 'react';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import Header from './Header';
 import Flow from '@/components/core/workflow/Flow';
-import FlowProvider, { useFlowProviderStore } from '@/components/core/workflow/Flow/FlowProvider';
 import { appSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
+import WorkflowContextProvider, { WorkflowContext } from '@/components/core/workflow/context';
+import { useContextSelector } from 'use-context-selector';
 
 type Props = { app: AppSchema; onClose: () => void };
 
@@ -17,7 +18,7 @@ const Render = ({ app, onClose }: Props) => {
       '检测到您的高级编排为旧版，系统将为您自动格式化成新版工作流。\n\n由于版本差异较大，会导致许多工作流无法正常排布，请重新手动连接工作流。如仍异常，可尝试删除对应节点后重新添加。\n\n你可以直接点击测试进行调试，无需点击保存，点击保存为新版工作流。'
   });
 
-  const { initData } = useFlowProviderStore();
+  const initData = useContextSelector(WorkflowContext, (v) => v.initData);
 
   const workflowStringData = JSON.stringify({
     nodes: app.modules || [],
@@ -53,13 +54,15 @@ export default React.memo(function FlowEdit(props: Props) {
   const filterAppIds = useMemo(() => [props.app._id], [props.app._id]);
 
   return (
-    <FlowProvider
-      appId={props.app._id}
-      mode={'app'}
-      filterAppIds={filterAppIds}
-      basicNodeTemplates={appSystemModuleTemplates}
+    <WorkflowContextProvider
+      value={{
+        appId: props.app._id,
+        mode: 'app',
+        filterAppIds,
+        basicNodeTemplates: appSystemModuleTemplates
+      }}
     >
       <Render {...props} />
-    </FlowProvider>
+    </WorkflowContextProvider>
   );
 });

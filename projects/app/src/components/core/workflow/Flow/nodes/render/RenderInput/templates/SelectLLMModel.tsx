@@ -3,11 +3,12 @@ import type { RenderInputProps } from '../type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { llmModelTypeFilterMap } from '@fastgpt/global/core/ai/constants';
 import AIModelSelector from '@/components/Select/AIModelSelector';
-import { useFlowProviderStore } from '../../../../FlowProvider';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext } from '@/components/core/workflow/context';
 
 const SelectAiModelRender = ({ item, nodeId }: RenderInputProps) => {
   const { llmModelList } = useSystemStore();
-  const { onChangeNode } = useFlowProviderStore();
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const modelList = useMemo(
     () =>
