@@ -27,7 +27,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import Head from 'next/head';
-import MyBox from '@/components/common/MyBox';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const DataCard = dynamic(() => import('./components/DataCard'));
 const Test = dynamic(() => import('./components/Test'));
