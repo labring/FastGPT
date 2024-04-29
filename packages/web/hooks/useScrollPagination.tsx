@@ -1,10 +1,9 @@
-import { useRef, useState, useMemo, useEffect } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
-import { useMutation } from '@tanstack/react-query';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { PaginationProps, PaginationResponse } from '../common/fetch/type';
-import { useMemoizedFn, useMount, useScroll, useVirtualList } from 'ahooks';
+import { useBoolean, useLockFn, useMemoizedFn, useMount, useScroll, useVirtualList } from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 
@@ -31,14 +30,12 @@ export function useScrollPagination<
   const containerRef = useRef<HTMLDivElement>(null);
   const wrapperRef = useRef(null);
 
-  const requesting = useRef(false);
+  const noMore = useRef(false);
 
   const { toast } = useToast();
   const [current, setCurrent] = useState(1);
-  const [total, setTotal] = useState(0);
   const [data, setData] = useState<TData['list']>([]);
-
-  const hasMore = useMemo(() => data.length === 0 || data.length < total, [data.length, total]);
+  const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
   const [list] = useVirtualList(data, {
     containerTarget: containerRef,
@@ -47,37 +44,38 @@ export function useScrollPagination<
     overscan
   });
 
-  const { mutate, isLoading } = useMutation({
-    mutationFn: async (num: number = current) => {
-      if (requesting.current || !hasMore) return;
+  const loadData = useLockFn(async (num: number = current) => {
+    if (noMore.current) return;
 
-      requesting.current = true;
+    setTrue();
 
-      try {
-        const res = await api({
-          current: num,
-          pageSize,
-          ...defaultParams
-        } as TParams);
+    try {
+      const res = await api({
+        current: num,
+        pageSize,
+        ...defaultParams
+      } as TParams);
 
-        setCurrent(num);
-        setTotal(res.total);
+      setCurrent(num);
 
-        if (num === 1) {
-          setData(res.list);
-        } else {
-          setData((prev) => [...prev, ...res.list]);
-        }
-      } catch (error: any) {
-        toast({
-          title: getErrText(error, '获取数据异常'),
-          status: 'error'
-        });
-        console.log(error);
+      if (num === 1) {
+        // reload
+        setData(res.list);
+        noMore.current = res.list.length >= res.total;
+      } else {
+        const totalLength = data.length + res.list.length;
+        noMore.current = totalLength >= res.total;
+        setData((prev) => [...prev, ...res.list]);
       }
-
-      requesting.current = false;
+    } catch (error: any) {
+      toast({
+        title: getErrText(error, '获取数据异常'),
+        status: 'error'
+      });
+      console.log(error);
     }
+
+    setFalse();
   });
 
   const ScrollList = useMemoizedFn(
@@ -89,7 +87,7 @@ export function useScrollPagination<
       return (
         <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
           <Box ref={wrapperRef}>{children}</Box>
-          {!hasMore && (
+          {noMore.current && (
             <Box pb={2} textAlign={'center'} color={'myGray.600'} fontSize={'sm'}>
               {t('common.No more data')}
             </Box>
@@ -100,7 +98,7 @@ export function useScrollPagination<
   );
 
   useMount(() => {
-    mutate(1);
+    loadData(1);
   });
 
   const scroll = useScroll(containerRef);
@@ -110,7 +108,7 @@ export function useScrollPagination<
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
     if (scrollTop + clientHeight >= scrollHeight - 100) {
-      mutate(current + 1);
+      loadData(current + 1);
     }
   }, [scroll]);
 
@@ -119,6 +117,6 @@ export function useScrollPagination<
     list,
     isLoading,
     ScrollList,
-    fetchData: mutate as (num: number) => Promise<null>
+    fetchData: loadData
   };
 }
