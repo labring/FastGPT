@@ -3,7 +3,9 @@ import {
   BoxProps,
   Card,
   Flex,
+  Tag,
   useTheme,
+  Button,
   Accordion,
   AccordionItem,
   AccordionButton,
@@ -209,11 +211,6 @@ ${toolResponse}`}
     <>
       {/* control icon */}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
-        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
-          <Box order={styleMap.order} ml={styleMap.ml}>
-            <ChatController {...chatControllerProps} isLastChild={isLastChild} />
-          </Box>
-        )}
         <ChatAvatar src={avatar} type={type} />
 
         {!!chatStatusMap && statusBoxData && isLastChild && (
@@ -245,6 +242,20 @@ ${toolResponse}`}
           {children}
         </Card>
       </Box>
+      <Flex
+        mt={['6px', 2]}
+        mr={2}
+        w={'100%'}
+        alignItems={'right'}
+        gap={2}
+        justifyContent={styleMap.justifyContent}
+      >
+        {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
+          <Box order={styleMap.order} ml={styleMap.ml}>
+            <ChatController {...chatControllerProps} isLastChild={isLastChild} />
+          </Box>
+        )}
+      </Flex>
     </>
   );
 };

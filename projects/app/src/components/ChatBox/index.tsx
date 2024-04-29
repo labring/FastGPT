@@ -745,6 +745,45 @@ const ChatBox = (
     },
     [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
   );
+  const onEdit = useCallback(
+    (chat: ChatSiteItemType) => {
+      const chatText = formatChatValue2InputType(chat.value).text || '';
+      console.log(chatText);
+      if (
+        feedbackType !== FeedbackTypeEnum.user ||
+        chat.obj !== ChatRoleEnum.AI ||
+        chat.userGoodFeedback
+      ) {
+        return;
+      }
+      if (chat.userBadFeedback) {
+        return () => {
+          if (!chat.dataId || !chatId || !appId) return;
+          setChatHistories((state) =>
+            state.map((chatItem) =>
+              chatItem.dataId === chat.dataId
+                ? { ...chatItem, userBadFeedback: undefined }
+                : chatItem
+            )
+          );
+          try {
+            updateChatUserFeedback({
+              appId,
+              chatId,
+              chatItemId: chat.dataId,
+              shareId,
+              teamId,
+              teamToken,
+              outLinkUid
+            });
+          } catch (error) {}
+        };
+      } else {
+        return () => setFeedbackId(chat.dataId);
+      }
+    },
+    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
+  );
   const onReadUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
       if (feedbackType !== FeedbackTypeEnum.admin || chat.obj !== ChatRoleEnum.AI) return;
@@ -932,7 +971,8 @@ const ChatBox = (
                         onAddUserLike: onAddUserLike(item),
                         onCloseUserLike: onCloseUserLike(item),
                         onAddUserDislike: onADdUserDislike(item),
-                        onReadUserDislike: onReadUserDislike(item)
+                        onReadUserDislike: onReadUserDislike(item),
+                        onEdit: onEdit(item)
                       })}
                     >
                       <ResponseTags

@@ -86,5 +86,5 @@ def helper(url, level, result, visited, idf_calculator):
         print(f"Error processing {url}: {e}")
 
 # # 主程序部分，仅作为函数调用示例：
-# summary = get_summary('https://zhihu.com', 2)
-# print(summary)
+summary = get_summary('https://zhihu.com', 2)
+print(summary)

@@ -152,6 +152,7 @@ function request(
 
   return instance
     .request({
+      // baseURL: '/api',
       baseURL: '/api',
       url,
       method,

@@ -3,6 +3,22 @@ const { i18n } = require('./next-i18next.config');
 const path = require('path');
 
 const nextConfig = {
+  async rewrites() {
+    return [
+      {
+        source: '/api/:path*',
+        destination: 'http://192.168.110.235:3000/api/:path*'
+      }
+    ];
+  },
+  headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [{ key: 'Access-Control-Allow-Origin', value: '*' }]
+      }
+    ];
+  },
   i18n,
   output: 'standalone',
   reactStrictMode: process.env.NODE_ENV === 'development' ? false : true,
