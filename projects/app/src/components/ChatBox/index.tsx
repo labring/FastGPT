@@ -746,43 +746,31 @@ const ChatBox = (
     [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
   );
   const onEdit = useCallback(
-    (chat: ChatSiteItemType) => {
-      const chatText = formatChatValue2InputType(chat.value).text || '';
-      console.log(chatText);
-      if (
-        feedbackType !== FeedbackTypeEnum.user ||
-        chat.obj !== ChatRoleEnum.AI ||
-        chat.userGoodFeedback
-      ) {
-        return;
-      }
-      if (chat.userBadFeedback) {
-        return () => {
-          if (!chat.dataId || !chatId || !appId) return;
-          setChatHistories((state) =>
-            state.map((chatItem) =>
-              chatItem.dataId === chat.dataId
-                ? { ...chatItem, userBadFeedback: undefined }
-                : chatItem
-            )
-          );
-          try {
-            updateChatUserFeedback({
-              appId,
-              chatId,
-              chatItemId: chat.dataId,
-              shareId,
-              teamId,
-              teamToken,
-              outLinkUid
-            });
-          } catch (error) {}
-        };
-      } else {
-        return () => setFeedbackId(chat.dataId);
-      }
+    (chat: ChatSiteItemType, q = '') => {
+      if (chat.obj !== ChatRoleEnum.AI) return;
+
+      return () => {
+        if (!chat.dataId) return;
+        console.log(chat);
+        if (chat.adminFeedback) {
+          setAdminMarkData({
+            chatItemId: chat.dataId,
+            datasetId: chat.adminFeedback.datasetId,
+            collectionId: chat.adminFeedback.collectionId,
+            dataId: chat.adminFeedback.dataId,
+            q: chat.adminFeedback.q || q || '',
+            a: chat.adminFeedback.a
+          });
+        } else {
+          setAdminMarkData({
+            chatItemId: chat.dataId,
+            q,
+            a: formatChatValue2InputType(chat.value).text
+          });
+        }
+      };
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
+    [showMarkIcon]
   );
   const onReadUserDislike = useCallback(
     (chat: ChatSiteItemType) => {

@@ -10,8 +10,8 @@
   },
   "llmModels": [
     {
-      "model": "ERNIE-3.5-8K",
-      "name": "ERNIE-3.5-8K",
+      "model": "qwen-plus",
+      "name": "qwen-plus",
       "maxContext": 16000,
       "avatar": "/imgs/model/openai.svg",
       "maxResponse": 4000,
@@ -81,8 +81,8 @@
   ],
   "vectorModels": [
     {
-      "model": "Embedding-V1",
-      "name": "Embedding-V1",
+      "model": "text-embedding-v1",
+      "name": "text-embedding-v1",
       "avatar": "/imgs/model/openai.svg",
       "charsPointsPrice": 0,
       "defaultToken": 512,
