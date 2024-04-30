@@ -1,5 +1,5 @@
-import { ReadFileByBufferParams, ReadFileResponse } from './type.d';
 import iconv from 'iconv-lite';
+import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
 
 const rawEncodingList = [
   'ascii',
@@ -17,7 +17,7 @@ const rawEncodingList = [
 ];
 
 // 加载源文件内容
-export const readFileRawText = ({ buffer, encoding }: ReadFileByBufferParams): ReadFileResponse => {
+export const readFileRawText = ({ buffer, encoding }: ReadRawTextByBuffer): ReadFileResponse => {
   const content = rawEncodingList.includes(encoding)
     ? buffer.toString(encoding as BufferEncoding)
     : iconv.decode(buffer, 'gbk');
