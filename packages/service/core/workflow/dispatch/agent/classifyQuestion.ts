@@ -131,7 +131,9 @@ const completions = async ({
   console.log(answer, '----');
 
   const id =
-    agents.find((item) => answer.includes(item.key) || answer.includes(item.value))?.key || '';
+    agents.find((item) => answer.includes(item.key))?.key ||
+    agents.find((item) => answer.includes(item.value))?.key ||
+    '';
 
   return {
     tokens: await countMessagesTokens(messages),
