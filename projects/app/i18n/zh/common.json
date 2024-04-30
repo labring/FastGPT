@@ -117,6 +117,7 @@
     "Name is empty": "名称不能为空",
     "New Create": "新建",
     "Next Step": "下一步",
+    "No more data": "没有更多了~",
     "Not open": "未开启",
     "Number of words": "{{amount}}字",
     "OK": "好的",
@@ -1103,6 +1104,7 @@
       "Check Failed": "工作流校验失败，请检查节点是否正确填值，以及连线是否正常",
       "Confirm stop debug": "确认终止调试？调试信息将会不保留。",
       "Copy node": "已复制节点",
+      "Current workflow": "当前工作流",
       "Custom inputs": "自定义输入",
       "Custom outputs": "自定义输出",
       "Custom variable": "自定义变量",
@@ -1149,6 +1151,11 @@
         "switch": "开关",
         "target": "外部数据",
         "textarea": "多行输入框"
+      },
+      "publish": {
+        "OnRevert version": "点击回退到该版本",
+        "OnRevert version confirm": "确认回退该版本？",
+        "histories": "发布记录"
       },
       "tool": {
         "Handle": "工具连接器",

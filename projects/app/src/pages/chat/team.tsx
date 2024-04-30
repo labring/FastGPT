@@ -32,7 +32,7 @@ import type { ChatHistoryItemType } from '@fastgpt/global/core/chat/type.d';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import MyBox from '@/components/common/MyBox';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import SliderApps from './components/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 

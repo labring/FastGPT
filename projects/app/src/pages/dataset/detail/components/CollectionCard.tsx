@@ -60,7 +60,7 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
-import MyBox from '@/components/common/MyBox';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 

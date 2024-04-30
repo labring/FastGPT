@@ -22,12 +22,15 @@ import {
 } from '@/web/core/workflow/utils';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useQuery } from '@tanstack/react-query';
 import { formatTime2HM } from '@fastgpt/global/common/string/time';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
+import { useInterval } from 'ahooks';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
+const PublishHistories = dynamic(
+  () => import('@/components/core/workflow/components/PublishHistoriesSlider')
+);
 
 type Props = { app: AppSchema; onClose: () => void };
 
@@ -55,13 +58,23 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { openConfirm: openConfigPublish, ConfirmModal } = useConfirm({
     content: t('core.app.Publish Confirm')
   });
-  const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const { publishApp, updateAppDetail } = useAppStore();
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveLabel, setSaveLabel] = useState(t('core.app.Onclick to save'));
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
+
+  const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
+
+  const isShowVersionHistories = useContextSelector(
+    WorkflowContext,
+    (v) => v.isShowVersionHistories
+  );
+  const setIsShowVersionHistories = useContextSelector(
+    WorkflowContext,
+    (v) => v.setIsShowVersionHistories
+  );
 
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const { nodes } = await getWorkflowStore();
@@ -81,6 +94,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   }, [edges, onUpdateNodeError, t, toast]);
 
   const onclickSave = useCallback(async () => {
+    if (isShowVersionHistories) return;
     const { nodes } = await getWorkflowStore();
 
     if (nodes.length === 0) return null;
@@ -107,7 +121,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     setIsSaving(false);
 
     return null;
-  }, [updateAppDetail, app._id, edges, t]);
+  }, [isShowVersionHistories, edges, updateAppDetail, app._id, t]);
 
   const onclickPublish = useCallback(async () => {
     setIsSaving(true);
@@ -160,15 +174,16 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     }
   }, [copyData, flowData2StoreDataAndCheck, t]);
 
+  // effect
   useBeforeunload({
     callback: onclickSave,
     tip: t('core.common.tip.leave page')
   });
 
-  useQuery(['autoSave'], onclickSave, {
-    refetchInterval: 20 * 1000,
-    enabled: !!app._id
-  });
+  useInterval(() => {
+    if (!app._id) return;
+    onclickSave();
+  }, 20000);
 
   const Render = useMemo(() => {
     return (
@@ -180,6 +195,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           alignItems={'center'}
           userSelect={'none'}
           bg={'myGray.25'}
+          h={'67px'}
         >
           <IconButton
             size={'smSquare'}
@@ -193,23 +209,25 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             isLoading={isSaving}
             onClick={saveAndBack}
           />
-          <Box ml={[3, 5]}>
+          <Box ml={[2, 4]}>
             <Box fontSize={['md', 'lg']} fontWeight={'bold'}>
               {app.name}
             </Box>
-            <MyTooltip label={t('core.app.Onclick to save')}>
-              <Box
-                fontSize={'sm'}
-                mt={1}
-                display={'inline-block'}
-                borderRadius={'xs'}
-                cursor={'pointer'}
-                onClick={onclickSave}
-                color={'myGray.500'}
-              >
-                {saveLabel}
-              </Box>
-            </MyTooltip>
+            {!isShowVersionHistories && (
+              <MyTooltip label={t('core.app.Onclick to save')}>
+                <Box
+                  fontSize={'sm'}
+                  mt={1}
+                  display={'inline-block'}
+                  borderRadius={'xs'}
+                  cursor={'pointer'}
+                  onClick={onclickSave}
+                  color={'myGray.500'}
+                >
+                  {saveLabel}
+                </Box>
+              </MyTooltip>
+            )}
           </Box>
 
           <Box flex={1} />
@@ -217,7 +235,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           <MyMenu
             Button={
               <IconButton
-                mr={[3, 5]}
+                mr={[2, 4]}
                 icon={<MyIcon name={'more'} w={'14px'} p={2} />}
                 aria-label={''}
                 size={'sm'}
@@ -238,10 +256,19 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             ]}
           />
 
-          <Button
-            mr={[3, 5]}
+          <IconButton
+            mr={[2, 4]}
+            icon={<MyIcon name={'history'} w={'18px'} />}
+            aria-label={''}
             size={'sm'}
-            leftIcon={<MyIcon name={'core/chat/chatLight'} w={['14px', '16px']} />}
+            w={'30px'}
+            variant={'whitePrimary'}
+            onClick={() => setIsShowVersionHistories(true)}
+          />
+
+          <Button
+            size={'sm'}
+            leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
             variant={'whitePrimary'}
             onClick={async () => {
               const data = await flowData2StoreDataAndCheck();
@@ -250,17 +277,20 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
               }
             }}
           >
-            {t('core.Chat test')}
+            {t('core.workflow.Debug')}
           </Button>
 
-          <Button
-            size={'sm'}
-            isLoading={isSaving}
-            leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
-            onClick={openConfigPublish(onclickPublish)}
-          >
-            {t('core.app.Publish')}
-          </Button>
+          {!isShowVersionHistories && (
+            <Button
+              ml={[2, 4]}
+              size={'sm'}
+              isLoading={isSaving}
+              leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
+              onClick={openConfigPublish(onclickPublish)}
+            >
+              {t('core.app.Publish')}
+            </Button>
+          )}
         </Flex>
         <ConfirmModal confirmText={t('core.app.Publish')} />
       </>
@@ -275,8 +305,10 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     onclickPublish,
     onclickSave,
     openConfigPublish,
+    isShowVersionHistories,
     saveAndBack,
     saveLabel,
+    setIsShowVersionHistories,
     setWorkflowTestData,
     t,
     theme.borders.base
@@ -286,6 +318,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     <>
       {Render}
       {isOpenImport && <ImportSettings onClose={onCloseImport} />}
+      {isShowVersionHistories && <PublishHistories />}
     </>
   );
 });

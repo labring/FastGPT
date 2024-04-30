@@ -25,3 +25,10 @@ export type PostPublishAppProps = {
   nodes: AppSchema['modules'];
   edges: AppSchema['edges'];
 };
+
+export type PostRevertAppProps = {
+  versionId: string;
+  // edit workflow
+  editNodes: AppSchema['modules'];
+  editEdges: AppSchema['edges'];
+};

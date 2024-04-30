@@ -4,7 +4,7 @@
     "typescript.tsdk": "node_modules/typescript/lib",
     "prettier.prettierPath": "",
     "i18n-ally.localesPaths": [
-        "projects/app/public/locales",
+        "projects/app/i18n",
     ],
     "i18n-ally.enabledParsers": ["json"],
     "i18n-ally.keystyle": "nested",
