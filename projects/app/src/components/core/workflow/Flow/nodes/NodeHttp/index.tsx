@@ -28,18 +28,13 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
-import {
-  formatEditorVariablePickerIcon,
-  getGuideModule,
-  splitGuideModule
-} from '@fastgpt/global/core/workflow/utils';
+import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import dynamic from 'next/dynamic';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import RenderToolInput from '../render/RenderToolInput';
 import IOTitle from '../../components/IOTitle';
-import { getSystemVariables } from '@/web/core/app/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
@@ -106,7 +101,6 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
 }) {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const [_, startSts] = useTransition();
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
@@ -116,20 +110,19 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
 
   const onChangeUrl = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      startSts(() => {
-        onChangeNode({
-          nodeId,
-          type: 'updateInput',
-          key: NodeInputKeyEnum.httpReqUrl,
-          value: {
-            ...requestUrl,
-            value: e.target.value
-          }
-        });
+      onChangeNode({
+        nodeId,
+        type: 'updateInput',
+        key: NodeInputKeyEnum.httpReqUrl,
+        value: {
+          ...requestUrl,
+          value: e.target.value
+        }
       });
     },
     [nodeId, onChangeNode, requestUrl]
   );
+
   const onBlurUrl = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const val = e.target.value;
