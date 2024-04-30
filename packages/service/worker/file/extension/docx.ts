@@ -10,10 +10,9 @@ export const readDocsFile = async ({ buffer }: ReadRawTextByBuffer): Promise<Rea
     const { value: html } = await mammoth.convertToHtml({
       buffer
     });
-    console.log('doc-read1', html);
 
     const rawText = html2md(html);
-    console.log('doc-read2', rawText);
+
     return {
       rawText
     };

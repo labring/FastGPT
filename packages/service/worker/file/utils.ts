@@ -1,8 +1,6 @@
 import TurndownService from 'turndown';
-//@ts-ignore
-import domino from 'domino';
-//@ts-ignore
-import * as turndownPluginGfm from 'joplin-turndown-plugin-gfm';
+const domino = require('domino-ext');
+const turndownPluginGfm = require('joplin-turndown-plugin-gfm');
 
 export const html2md = (html: string): string => {
   const turndownService = new TurndownService({
@@ -34,9 +32,9 @@ export const html2md = (html: string): string => {
 
     turndownService.use(turndownPluginGfm.gfm);
 
-    // @ts-ignore
     return turndownService.turndown(document);
   } catch (error) {
+    console.log('html 2 markdown error', error);
     return '';
   }
 };
