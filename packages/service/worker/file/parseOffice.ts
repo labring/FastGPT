@@ -2,8 +2,8 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import fs from 'fs';
 import decompress from 'decompress';
 import { DOMParser } from '@xmldom/xmldom';
-import { clearDirFiles } from '../utils';
-import { addLog } from '../../system/log';
+import { clearDirFiles } from '../../common/file/utils';
+import { addLog } from '../../common/system/log';
 
 const DEFAULTDECOMPRESSSUBLOCATION = '/tmp';
 
