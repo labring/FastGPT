@@ -9,3 +9,16 @@ export type AuthResponseType = {
   appId?: string;
   apikey?: string;
 };
+
+export type MetaDataType = {
+  owner: string; // user id, objectId
+  defaultPermission: number;
+};
+
+export type ResourcePermissionType = {
+  metaData: MetaDataType;
+  userPermissionTable: Array<{
+    user: string;
+    permission: number;
+  }>;
+};

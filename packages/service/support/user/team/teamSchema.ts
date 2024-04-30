@@ -3,6 +3,7 @@ const { Schema, model, models } = connectionMongo;
 import { TeamSchema as TeamType } from '@fastgpt/global/support/user/team/type.d';
 import { userCollectionName } from '../../user/schema';
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
+import { ResourcePermissonSchema } from '../../permission/resourcePermission/schema';
 
 const TeamSchema = new Schema({
   name: {
@@ -46,6 +47,9 @@ const TeamSchema = new Schema({
     pat: {
       type: String
     }
+  },
+  resourcePermission: {
+    type: ResourcePermissonSchema
   }
 });
 
