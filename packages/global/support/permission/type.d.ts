@@ -13,6 +13,7 @@ export type AuthResponseType = {
 export type MetaDataType = {
   owner: string; // user id, objectId
   defaultPermission: number;
+  ownerPermission: number; // the permission of owner, which should be always the hihhest permission
 };
 
 export type ResourcePermissionType = {

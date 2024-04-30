@@ -24,7 +24,8 @@ export const ResourcePermissonSchema = new Schema({
       ref: TeamMemberCollectionName,
       required: true
     },
-    defaultPermission: Number
+    ownerPermission: Number, // permission of the owner, which should be always the highest permission
+    defaultPermission: Number // default permission for the resource
   },
   userPermissionTable: [UserPermissionSchema]
   // groupPermission: {} // TODO: unimplemented
