@@ -36,10 +36,12 @@ import { createContext } from 'use-context-selector';
 import { defaultRunningStatus } from './constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
 type WorkflowContextType = {
+  appId?: string;
   mode: 'app' | 'plugin';
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
@@ -84,7 +86,6 @@ type WorkflowContextType = {
   initData: (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => Promise<void>;
 
   // debug
-  // debug
   workflowDebugData:
     | {
         runtimeNodes: RuntimeNodeItemType[];
@@ -103,6 +104,10 @@ type WorkflowContextType = {
     runtimeEdges: RuntimeEdgeItemType[];
   }) => Promise<void>;
   onStopNodeDebug: () => void;
+
+  // version history
+  isShowVersionHistories: boolean;
+  setIsShowVersionHistories: React.Dispatch<React.SetStateAction<boolean>>;
 };
 
 type ContextValueProps = Pick<
@@ -200,6 +205,10 @@ export const WorkflowContext = createContext<WorkflowContextType>({
     throw new Error('Function not implemented.');
   },
   onChangeNode: function (e: FlowNodeChangeProps): void {
+    throw new Error('Function not implemented.');
+  },
+  isShowVersionHistories: false,
+  setIsShowVersionHistories: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -616,6 +625,10 @@ const WorkflowContextProvider = ({
     [onNextNodeDebug, onStopNodeDebug]
   );
 
+  /* Version histories */
+  const [isShowVersionHistories, setIsShowVersionHistories] = useState(false);
+
+  /* event bus */
   useEffect(() => {
     eventBus.on(EventNameEnum.requestWorkflowStore, () => {
       eventBus.emit(EventNameEnum.receiveWorkflowStore, {
@@ -630,6 +643,7 @@ const WorkflowContextProvider = ({
   return (
     <WorkflowContext.Provider
       value={{
+        appId,
         reactFlowWrapper,
         ...value,
         // node
@@ -661,7 +675,11 @@ const WorkflowContextProvider = ({
         workflowDebugData,
         onNextNodeDebug,
         onStartNodeDebug,
-        onStopNodeDebug
+        onStopNodeDebug,
+
+        // version history
+        isShowVersionHistories,
+        setIsShowVersionHistories
       }}
     >
       {children}

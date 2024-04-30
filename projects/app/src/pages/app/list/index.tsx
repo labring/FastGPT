@@ -23,7 +23,6 @@ const MyApps = () => {
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { myApps, loadMyApps } = useAppStore();
-  const [teamsTags, setTeamTags] = useState([]);
   const { openConfirm, ConfirmModal } = useConfirm({
     title: '删除提示',
     content: '确认删除该应用所有信息？'

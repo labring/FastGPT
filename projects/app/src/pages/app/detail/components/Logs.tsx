@@ -28,7 +28,7 @@ import { getInitChatInfo } from '@/web/core/chat/api';
 import Tag from '@fastgpt/web/components/common/Tag/index';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { addDays } from 'date-fns';
-import MyBox from '@/components/common/MyBox';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/DateRangePicker';
 import { formatChatValue2InputType } from '@/components/ChatBox/utils';

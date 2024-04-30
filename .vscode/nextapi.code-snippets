@@ -17,7 +17,7 @@
 			"",
 			"type Response = {};",
 			"",
-			"async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<{}> {",
+			"async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<Response> {",
 			"    $1",
 			"    return {}",
 			"}",

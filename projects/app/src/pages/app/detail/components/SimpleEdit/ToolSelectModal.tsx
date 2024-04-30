@@ -29,7 +29,7 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { AddIcon } from '@chakra-ui/icons';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
-import MyBox from '@/components/common/MyBox';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import ParentPaths from '@/components/common/ParentPaths';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';

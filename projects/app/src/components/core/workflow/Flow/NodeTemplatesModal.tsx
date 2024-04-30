@@ -14,7 +14,7 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { moduleTemplatesList } from '@fastgpt/global/core/workflow/template/constants';
+import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -259,7 +259,7 @@ const RenderList = React.memo(function RenderList({
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
 
   const formatTemplates = useMemo<nodeTemplateListType>(() => {
-    const copy: nodeTemplateListType = JSON.parse(JSON.stringify(moduleTemplatesList));
+    const copy: nodeTemplateListType = JSON.parse(JSON.stringify(workflowNodeTemplateList(t)));
     templates.forEach((item) => {
       const index = copy.findIndex((template) => template.type === item.templateType);
       if (index === -1) return;

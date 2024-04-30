@@ -14,7 +14,7 @@
     ],
     "plugin.inlang.i18next": {
         "pathPattern": {
-            "common": "./projects/app/public/locales/{languageTag}/common.json"
+            "common": "./projects/app/i18n/{languageTag}/common.json"
         },
         "variableReferencePattern": [
             "{{", "}}"

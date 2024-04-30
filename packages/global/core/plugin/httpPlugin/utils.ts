@@ -14,6 +14,7 @@ import { CreateOnePluginParams } from '../controller';
 import { StoreNodeItemType } from '../../workflow/type';
 import { HttpImgUrl } from '../../../common/file/image/constants';
 import SwaggerParser from '@apidevtools/swagger-parser';
+import { getHandleId } from '../../../core/workflow/utils';
 
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
@@ -378,14 +379,14 @@ export const httpApiSchema2Plugins = async ({
       {
         source: pluginInputId,
         target: httpId,
-        sourcePort: `${pluginInputId}-source-right`,
-        targetPort: `${httpId}-target-left`
+        sourceHandle: getHandleId(pluginInputId, 'source', 'right'),
+        targetHandle: getHandleId(httpId, 'target', 'left')
       },
       {
         source: httpId,
         target: pluginOutputId,
-        sourcePort: `${httpId}-source-right`,
-        targetPort: `${pluginOutputId}-target-left`
+        sourceHandle: getHandleId(httpId, 'source', 'right'),
+        targetHandle: getHandleId(pluginOutputId, 'target', 'left')
       }
     ];
 
