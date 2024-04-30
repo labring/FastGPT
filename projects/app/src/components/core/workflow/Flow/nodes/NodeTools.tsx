@@ -10,10 +10,11 @@ import { ToolSourceHandle } from './render/Handle/ToolHandle';
 import { Box } from '@chakra-ui/react';
 import IOTitle from '../components/IOTitle';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import RenderOutput from './render/RenderOutput';
 
 const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
-  const { nodeId, inputs } = data;
+  const { nodeId, inputs, outputs } = data;
 
   return (
     <NodeCard minW={'350px'} selected={selected} {...data}>
@@ -21,7 +22,10 @@ const NodeTools = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <IOTitle text={t('common.Input')} />
         <RenderInput nodeId={nodeId} flowInputList={inputs} />
       </Container>
-
+      <Container>
+        <IOTitle text={t('common.Output')} />
+        <RenderOutput nodeId={nodeId} flowOutputList={outputs} />
+      </Container>
       <Box position={'relative'}>
         <Box borderBottomLeftRadius={'md'} borderBottomRadius={'md'} overflow={'hidden'}>
           <Divider

@@ -142,10 +142,8 @@ export async function dispatchWorkFlow({
     }
     if (assistantResponses) {
       chatAssistantResponse = chatAssistantResponse.concat(assistantResponses);
-    }
-
-    // save assistant text response
-    if (answerText) {
+    } else if (answerText) {
+      // save assistant text response
       const isResponseAnswerText =
         inputs.find((item) => item.key === NodeInputKeyEnum.aiChatIsResponseText)?.value ?? true;
       if (isResponseAnswerText) {

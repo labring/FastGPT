@@ -64,5 +64,14 @@ export const ToolModule: FlowNodeTemplateType = {
     Input_Template_History,
     Input_Template_UserChatInput
   ],
-  outputs: []
+  outputs: [
+    {
+      id: NodeOutputKeyEnum.answerText,
+      key: NodeOutputKeyEnum.answerText,
+      label: 'core.module.output.label.Ai response content',
+      description: 'core.module.output.description.Ai response content',
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.static
+    }
+  ]
 };
