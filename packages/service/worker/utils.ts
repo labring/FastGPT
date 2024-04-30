@@ -2,6 +2,7 @@ import { Worker } from 'worker_threads';
 import path from 'path';
 
 export enum WorkerNameEnum {
+  readFile = 'readFile',
   htmlStr2Md = 'htmlStr2Md',
   countGptMessagesTokens = 'countGptMessagesTokens'
 }

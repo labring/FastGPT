@@ -1,7 +1,7 @@
 import * as pdfjs from 'pdfjs-dist/legacy/build/pdf.mjs';
 // @ts-ignore
 import('pdfjs-dist/legacy/build/pdf.worker.min.mjs');
-import { ReadFileByBufferParams, ReadFileResponse } from './type';
+import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
 
 type TokenType = {
   str: string;
@@ -13,9 +13,7 @@ type TokenType = {
   hasEOL: boolean;
 };
 
-export const readPdfFile = async ({
-  buffer
-}: ReadFileByBufferParams): Promise<ReadFileResponse> => {
+export const readPdfFile = async ({ buffer }: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const readPDFPage = async (doc: any, pageNo: number) => {
     const page = await doc.getPage(pageNo);
     const tokenizedText = await page.getTextContent();
@@ -65,7 +63,6 @@ export const readPdfFile = async ({
   loadingTask.destroy();
 
   return {
-    rawText: pageTexts.join(''),
-    metadata: {}
+    rawText: pageTexts.join('')
   };
 };

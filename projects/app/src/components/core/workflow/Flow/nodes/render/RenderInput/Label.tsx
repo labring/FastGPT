@@ -58,7 +58,7 @@ const InputLabel = ({ nodeId, input }: Props) => {
   );
 
   const RenderLabel = useMemo(() => {
-    const renderType = renderTypeList[selectedTypeIndex || 0];
+    const renderType = renderTypeList?.[selectedTypeIndex || 0];
 
     return (
       <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>

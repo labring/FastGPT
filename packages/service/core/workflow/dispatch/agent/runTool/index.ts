@@ -23,7 +23,9 @@ import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_Tool_Call } from './constants';
 
-type Response = DispatchNodeResultType<{}>;
+type Response = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.answerText]: string;
+}>;
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
@@ -129,6 +131,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const flatUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
 
   return {
+    [NodeOutputKeyEnum.answerText]: assistantResponses
+      .filter((item) => item.text?.content)
+      .map((item) => item.text?.content || '')
+      .join(''),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,

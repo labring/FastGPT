@@ -19,24 +19,24 @@ export const dispatchAnswer = (props: Record<string, any>): AnswerResponse => {
     res,
     detail,
     stream,
-    node: { name },
     params: { text = '' }
   } = props as AnswerProps;
 
   const formatText = typeof text === 'string' ? text : JSON.stringify(text, null, 2);
+  const responseText = `\n${formatText}`;
 
   if (res && stream) {
     responseWrite({
       res,
       event: detail ? SseResponseEventEnum.fastAnswer : undefined,
       data: textAdaptGptResponse({
-        text: `\n${formatText}`
+        text: responseText
       })
     });
   }
 
   return {
-    [NodeOutputKeyEnum.answerText]: formatText,
+    [NodeOutputKeyEnum.answerText]: responseText,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       textOutput: formatText
     }
