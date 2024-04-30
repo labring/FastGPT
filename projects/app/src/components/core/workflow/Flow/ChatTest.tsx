@@ -68,7 +68,7 @@ const ChatTest = (
       const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
-      const { responseText, responseData } = await streamFetch({
+      const { responseText, responseData, newVariables } = await streamFetch({
         url: '/api/core/chat/chatTest',
         data: {
           history,
@@ -84,7 +84,7 @@ const ChatTest = (
         abortCtrl: controller
       });
 
-      return { responseText, responseData };
+      return { responseText, responseData, newVariables };
     },
     [app._id, app.name, edges, nodes]
   );

@@ -238,7 +238,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 };
 export default React.memo(NodeIfElse);
 
-const Reference = ({
+export const Reference = ({
   nodeId,
   variable,
   onSelect

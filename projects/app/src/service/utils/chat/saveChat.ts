@@ -69,6 +69,7 @@ export async function saveChat({
         chat.title = title;
         chat.updateTime = new Date();
         chat.metadata = metadataUpdate;
+        chat.variables = variables || {};
         await chat.save({ session });
       } else {
         await MongoChat.create(

@@ -95,7 +95,7 @@ const OutLink = ({
         '*'
       );
 
-      const { responseText, responseData } = await streamFetch({
+      const { responseText, responseData, newVariables } = await streamFetch({
         data: {
           messages: prompts,
           variables: {
@@ -169,7 +169,7 @@ const OutLink = ({
         '*'
       );
 
-      return { responseText, responseData, isNewChat: forbidRefresh.current };
+      return { responseText, responseData, isNewChat: forbidRefresh.current, newVariables };
     },
     [
       chatId,

@@ -91,6 +91,7 @@ type Props = OutLinkChatAuthProps & {
   onStartChat?: (e: StartChatFnProps) => Promise<{
     responseText: string;
     [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
+    newVariables?: Record<string, any>;
     isNewChat?: boolean;
   }>;
   onDelMessage?: (e: { contentId: string }) => void;
@@ -462,6 +463,7 @@ const ChatBox = (
           const {
             responseData,
             responseText,
+            newVariables,
             isNewChat = false
           } = await onStartChat({
             chatList: newChatList,
@@ -470,6 +472,7 @@ const ChatBox = (
             generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
             variables
           });
+          setValue('variables', newVariables || []);
 
           isNewChatReplace.current = isNewChat;
 
@@ -549,6 +552,7 @@ const ChatBox = (
       resetInputVal,
       setAudioPlayingChatId,
       setChatHistories,
+      setValue,
       splitText2Audio,
       startSegmentedAudio,
       t,

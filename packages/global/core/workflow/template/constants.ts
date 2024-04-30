@@ -22,6 +22,7 @@ import type { FlowNodeTemplateType, nodeTemplateListType } from '../type';
 import { FlowNodeTemplateTypeEnum } from '../../workflow/constants';
 import { lafModule } from './system/laf';
 import { ifElseNode } from './system/ifElse/index';
+import { variableUpdateModule } from './system/variableUpdate';
 
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -39,7 +40,8 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   HttpModule468,
   AiQueryExtension,
   lafModule,
-  ifElseNode
+  ifElseNode,
+  variableUpdateModule
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -57,7 +59,8 @@ export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
   HttpModule468,
   AiQueryExtension,
   lafModule,
-  ifElseNode
+  ifElseNode,
+  variableUpdateModule
 ];
 
 /* all module */
@@ -81,5 +84,6 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   RunPluginModule,
   AiQueryExtension,
   lafModule,
-  ifElseNode
+  ifElseNode,
+  variableUpdateModule
 ];

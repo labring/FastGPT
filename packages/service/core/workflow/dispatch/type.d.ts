@@ -19,4 +19,5 @@ export type DispatchFlowResponse = {
   };
   [DispatchNodeResponseKeyEnum.toolResponses]: ToolRunResponseItemType;
   [DispatchNodeResponseKeyEnum.assistantResponses]: AIChatItemValueItemType[];
+  newVariables: Record<string, string>;
 };

@@ -179,7 +179,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     const responseChatItemId: string | undefined = messages[messages.length - 1].dataId;
 
     /* start flow controller */
-    const { flowResponses, flowUsages, assistantResponses } = await (async () => {
+    const { flowResponses, flowUsages, assistantResponses, newVariables } = await (async () => {
       if (app.version === 'v2') {
         return dispatchWorkFlow({
           res,
@@ -247,7 +247,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         teamId,
         tmbId: tmbId,
-        variables,
+        variables: newVariables,
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
         shareId,
         outLinkUid: outLinkUserId,
@@ -287,6 +287,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         res,
         event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
+      });
+      responseWrite({
+        res,
+        event: SseResponseEventEnum.variables,
+        data: JSON.stringify(newVariables)
       });
 
       if (responseDetail && detail) {
