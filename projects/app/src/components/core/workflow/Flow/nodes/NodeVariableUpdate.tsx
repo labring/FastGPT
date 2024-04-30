@@ -92,7 +92,13 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           })();
 
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
-
+          const handleUpdate = (newValue: any) => {
+            onUpdateList(
+              updateList.map((update, i) =>
+                i === index ? { ...update, value: ['', newValue] } : update
+              )
+            );
+          };
           return (
             <Flex key={index}>
               <Container mt={4}>
@@ -145,115 +151,52 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       <MyIcon name={renderTypeData?.icon as any} w={'14px'} />
                     </Button>
                   </Flex>
-                  {updateItem.renderType === FlowNodeInputTypeEnum.reference && (
+                  {updateItem.renderType === FlowNodeInputTypeEnum.reference ? (
                     <Reference
                       nodeId={nodeId}
                       variable={updateItem.value}
-                      onSelect={(value) => {
-                        onUpdateList(
-                          updateList.map((update, i) => {
-                            if (i === index) {
-                              return {
-                                ...update,
-                                value
-                              };
-                            }
-                            return update;
-                          })
-                        );
-                      }}
+                      onSelect={handleUpdate}
                     />
-                  )}
-                  {updateItem.renderType !== FlowNodeInputTypeEnum.reference &&
-                    type === 'string' && (
-                      <Textarea
-                        bg={'white'}
-                        value={updateItem.value?.[1] || ''}
-                        w={'300px'}
-                        onChange={(e) => {
-                          onUpdateList(
-                            updateList.map((update, i) => {
-                              if (i === index) {
-                                return {
-                                  ...update,
-                                  value: ['', e.target.value]
-                                };
-                              }
-                              return update;
-                            })
-                          );
-                        }}
-                      />
-                    )}
-                  {updateItem.renderType !== FlowNodeInputTypeEnum.reference &&
-                    type === 'number' && (
-                      <NumberInput value={Number(updateItem.value?.[1]) || 0}>
-                        <NumberInputField
-                          bg={'white'}
-                          onChange={(e) => {
-                            onUpdateList(
-                              updateList.map((update, i) => {
-                                if (i === index) {
-                                  return {
-                                    ...update,
-                                    value: ['', e.target.value]
-                                  };
-                                }
-                                return update;
-                              })
-                            );
-                          }}
+                  ) : (
+                    <>
+                      {type === 'string' && (
+                        <Textarea
+                          bg="white"
+                          value={updateItem.value?.[1] || ''}
+                          w="300px"
+                          onChange={(e) => handleUpdate(e.target.value)}
                         />
-                        <NumberInputStepper>
-                          <NumberIncrementStepper />
-                          <NumberDecrementStepper />
-                        </NumberInputStepper>
-                      </NumberInput>
-                    )}
-                  {updateItem.renderType !== FlowNodeInputTypeEnum.reference &&
-                    type === 'boolean' && (
-                      <Switch
-                        size={'lg'}
-                        defaultChecked={updateItem.value?.[1] === 'true'}
-                        onChange={(e) => {
-                          onUpdateList(
-                            updateList.map((update, i) => {
-                              if (i === index) {
-                                return {
-                                  ...update,
-                                  value: ['', String(e.target.checked)]
-                                };
-                              }
-                              return update;
-                            })
-                          );
-                        }}
-                      />
-                    )}
-                  {updateItem.renderType !== FlowNodeInputTypeEnum.reference &&
-                    type !== 'string' &&
-                    type !== 'number' &&
-                    type !== 'boolean' && (
-                      <JsonEditor
-                        bg={'white'}
-                        resize
-                        w={'300px'}
-                        value={updateItem.value?.[1] || ''}
-                        onChange={(e) => {
-                          onUpdateList(
-                            updateList.map((update, i) => {
-                              if (i === index) {
-                                return {
-                                  ...update,
-                                  value: ['', e]
-                                };
-                              }
-                              return update;
-                            })
-                          );
-                        }}
-                      />
-                    )}
+                      )}
+                      {type === 'number' && (
+                        <NumberInput value={Number(updateItem.value?.[1]) || 0}>
+                          <NumberInputField
+                            bg="white"
+                            onChange={(e) => handleUpdate(e.target.value)}
+                          />
+                          <NumberInputStepper>
+                            <NumberIncrementStepper />
+                            <NumberDecrementStepper />
+                          </NumberInputStepper>
+                        </NumberInput>
+                      )}
+                      {type === 'boolean' && (
+                        <Switch
+                          size="lg"
+                          defaultChecked={updateItem.value?.[1] === 'true'}
+                          onChange={(e) => handleUpdate(String(e.target.checked))}
+                        />
+                      )}
+                      {type !== 'string' && type !== 'number' && type !== 'boolean' && (
+                        <JsonEditor
+                          bg="white"
+                          resize
+                          w="300px"
+                          value={updateItem.value?.[1] || ''}
+                          onChange={(e) => handleUpdate(e)}
+                        />
+                      )}
+                    </>
+                  )}
                 </Flex>
               </Container>
               <MyIcon
