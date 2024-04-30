@@ -332,6 +332,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                       <Th>{t('common.Username')}</Th>
                       <Th>{t('user.team.Role')}</Th>
                       <Th>{t('common.Status')}</Th>
+                      <Th>{t('common.Permission')}</Th>
                       <Th></Th>
                     </Tr>
                   </Thead>
@@ -348,6 +349,8 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
                         <Td color={TeamMemberStatusMap[item.status].color}>
                           {t(TeamMemberStatusMap[item.status]?.label || '')}
                         </Td>
+                        {/* TODO: Permission */}
+                        <Td>{item.permission}</Td>
                         <Td>
                           {userInfo?.team?.role === TeamMemberRoleEnum.owner &&
                             item.role !== TeamMemberRoleEnum.owner && (
