@@ -1,6 +1,6 @@
 import mammoth from 'mammoth';
 import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
-import { html2md } from '../utils';
+import { html2md } from '../../htmlStr2Md/utils';
 
 /**
  * read docx to markdown

@@ -38,7 +38,7 @@ import IOTitle from '../../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
-import { useCreation, useMemoizedFn } from 'ahooks';
+import { useMemoizedFn } from 'ahooks';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
@@ -106,16 +106,10 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
 
   const { isOpen: isOpenCurl, onOpen: onOpenCurl, onClose: onCloseCurl } = useDisclosure();
 
-  const requestMethods = useCreation(
-    () => inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod),
-    [inputs]
-  );
-  const requestUrl = useCreation(
-    () => inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl),
-    [inputs]
-  );
+  const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod);
+  const requestUrl = inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl);
 
-  const onChangeUrl = useMemoizedFn((e: React.ChangeEvent<HTMLInputElement>) => {
+  const onChangeUrl = (e: React.ChangeEvent<HTMLInputElement>) => {
     onChangeNode({
       nodeId,
       type: 'updateInput',
@@ -125,8 +119,8 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
         value: e.target.value
       }
     });
-  });
-  const onBlurUrl = useMemoizedFn((e: React.ChangeEvent<HTMLInputElement>) => {
+  };
+  const onBlurUrl = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     // 拆分params和url
     const url = val.split('?')[0];
@@ -176,7 +170,7 @@ const RenderHttpMethodAndUrl = React.memo(function RenderHttpMethodAndUrl({
         title: t('core.module.http.Url and params have been split')
       });
     }
-  });
+  };
 
   return (
     <Box>
