@@ -1158,7 +1158,9 @@
       "tool": {
         "Handle": "Tool handle",
         "Select Tool": "Select Tool"
-      }
+      },
+      "value": "Value",
+      "variable": "Variable"
     }
   },
   "dataset": {

@@ -7,7 +7,7 @@ import {
 } from '../../../constants';
 import { getHandleConfig } from '../../utils';
 
-export const variableUpdateModule: FlowNodeTemplateType = {
+export const variableUpdateNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.variableUpdate,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.variableUpdate,

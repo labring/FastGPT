@@ -9,7 +9,6 @@ export enum FlowNodeInputTypeEnum { // render ui
   JSONEditor = 'JSONEditor',
 
   addInputParam = 'addInputParam', // params input
-  addVariableUpdate = 'addVariableUpdate', // variable update
 
   // special input
   selectApp = 'selectApp',
@@ -56,9 +55,6 @@ export const FlowNodeInputMap: Record<
     icon: 'core/workflow/inputType/jsonEditor'
   },
   [FlowNodeInputTypeEnum.addInputParam]: {
-    icon: 'core/workflow/inputType/dynamic'
-  },
-  [FlowNodeInputTypeEnum.addVariableUpdate]: {
     icon: 'core/workflow/inputType/dynamic'
   },
   [FlowNodeInputTypeEnum.selectApp]: {

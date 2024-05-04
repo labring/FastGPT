@@ -28,6 +28,7 @@ import { Reference } from './NodeIfElse';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { SmallAddIcon } from '@chakra-ui/icons';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -77,7 +78,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
       <Box px={4} pb={4}>
-        {/* <RenderInput nodeId={nodeId} flowInputList={inputs} /> */}
         {updateList.map((updateItem, index) => {
           const type = (() => {
             const variable = updateItem.variable;
@@ -103,7 +103,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             <Flex key={index}>
               <Container mt={4}>
                 <Flex alignItems={'center'}>
-                  <Flex w={'60px'}>变量</Flex>
+                  <Flex w={'60px'}>{t('core.workflow.variable')}</Flex>
                   <Reference
                     nodeId={nodeId}
                     variable={updateItem.variable}
@@ -121,35 +121,54 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       );
                     }}
                   />
+                  <Box flex={1} />
+                  <MyIcon
+                    className="delete"
+                    name={'delete'}
+                    w={'14px'}
+                    color={'myGray.600'}
+                    cursor={'pointer'}
+                    ml={2}
+                    _hover={{ color: 'red.500' }}
+                    onClick={() => {
+                      onUpdateList(updateList.filter((_, i) => i !== index));
+                    }}
+                  />
                 </Flex>
                 <Flex mt={2} w={'full'} alignItems={'center'}>
                   <Flex w={'60px'} flex={0}>
-                    <Box>值</Box>
-                    <Button
-                      size={'xs'}
-                      bg={'white'}
-                      borderRadius={'xs'}
-                      mx={2}
-                      onClick={() => {
-                        onUpdateList(
-                          updateList.map((update, i) => {
-                            if (i === index) {
-                              return {
-                                ...update,
-                                value: ['', ''],
-                                renderType:
-                                  updateItem.renderType === FlowNodeInputTypeEnum.input
-                                    ? FlowNodeInputTypeEnum.reference
-                                    : FlowNodeInputTypeEnum.input
-                              };
-                            }
-                            return update;
-                          })
-                        );
-                      }}
+                    <Box>{t('core.workflow.value')}</Box>
+                    <MyTooltip
+                      label={
+                        menuList.find((item) => item.renderType === updateItem.renderType)?.label
+                      }
                     >
-                      <MyIcon name={renderTypeData?.icon as any} w={'14px'} />
-                    </Button>
+                      <Button
+                        size={'xs'}
+                        bg={'white'}
+                        borderRadius={'xs'}
+                        mx={2}
+                        onClick={() => {
+                          onUpdateList(
+                            updateList.map((update, i) => {
+                              if (i === index) {
+                                return {
+                                  ...update,
+                                  value: ['', ''],
+                                  renderType:
+                                    updateItem.renderType === FlowNodeInputTypeEnum.input
+                                      ? FlowNodeInputTypeEnum.reference
+                                      : FlowNodeInputTypeEnum.input
+                                };
+                              }
+                              return update;
+                            })
+                          );
+                        }}
+                      >
+                        <MyIcon name={renderTypeData?.icon as any} w={'14px'} />
+                      </Button>
+                    </MyTooltip>
                   </Flex>
                   {updateItem.renderType === FlowNodeInputTypeEnum.reference ? (
                     <Reference
@@ -199,18 +218,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   )}
                 </Flex>
               </Container>
-              <MyIcon
-                className="delete"
-                name={'delete'}
-                w={'14px'}
-                color={'myGray.600'}
-                cursor={'pointer'}
-                ml={2}
-                _hover={{ color: 'red.500' }}
-                onClick={() => {
-                  onUpdateList(updateList.filter((_, i) => i !== index));
-                }}
-              />
             </Flex>
           );
         })}

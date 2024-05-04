@@ -18,11 +18,10 @@ import { PluginOutputModule } from './system/pluginOutput';
 import { RunPluginModule } from './system/runPlugin';
 import { AiQueryExtension } from './system/queryExtension';
 
-import type { FlowNodeTemplateType, nodeTemplateListType } from '../type';
-import { FlowNodeTemplateTypeEnum } from '../../workflow/constants';
+import type { FlowNodeTemplateType } from '../type';
 import { lafModule } from './system/laf';
 import { ifElseNode } from './system/ifElse/index';
-import { variableUpdateModule } from './system/variableUpdate';
+import { variableUpdateNode } from './system/variableUpdate';
 
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -41,7 +40,7 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   AiQueryExtension,
   lafModule,
   ifElseNode,
-  variableUpdateModule
+  variableUpdateNode
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -60,7 +59,7 @@ export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
   AiQueryExtension,
   lafModule,
   ifElseNode,
-  variableUpdateModule
+  variableUpdateNode
 ];
 
 /* all module */
@@ -85,5 +84,5 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   AiQueryExtension,
   lafModule,
   ifElseNode,
-  variableUpdateModule
+  variableUpdateNode
 ];
