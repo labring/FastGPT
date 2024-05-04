@@ -37,7 +37,7 @@ export function useScrollPagination<
   const [data, setData] = useState<TData['list']>([]);
   const [isLoading, { setTrue, setFalse }] = useBoolean(false);
 
-  const [list] = useVirtualList(data, {
+  const [list] = useVirtualList<TData['list'][0]>(data, {
     containerTarget: containerRef,
     wrapperTarget: wrapperRef,
     itemHeight,

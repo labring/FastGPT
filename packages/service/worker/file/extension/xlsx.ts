@@ -1,10 +1,10 @@
-import { ReadFileByBufferParams, ReadFileResponse } from './type.d';
+import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
 import xlsx from 'node-xlsx';
 import Papa from 'papaparse';
 
 export const readXlsxRawText = async ({
   buffer
-}: ReadFileByBufferParams): Promise<ReadFileResponse> => {
+}: ReadRawTextByBuffer): Promise<ReadFileResponse> => {
   const result = xlsx.parse(buffer, {
     skipHidden: false,
     defval: ''

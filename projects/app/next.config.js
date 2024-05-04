@@ -51,11 +51,15 @@ const nextConfig = {
               ...entries,
               'worker/htmlStr2Md': path.resolve(
                 process.cwd(),
-                '../../packages/service/worker/htmlStr2Md.ts'
+                '../../packages/service/worker/htmlStr2Md/index.ts'
               ),
               'worker/countGptMessagesTokens': path.resolve(
                 process.cwd(),
                 '../../packages/service/worker/tiktoken/countGptMessagesTokens.ts'
+              ),
+              'worker/readFile': path.resolve(
+                process.cwd(),
+                '../../packages/service/worker/file/read.ts'
               )
             };
           }
@@ -82,7 +86,12 @@ const nextConfig = {
     serverComponentsExternalPackages: ['mongoose', 'pg'],
     // 指定导出包优化，按需引入包模块
     optimizePackageImports: ['mongoose', 'pg'],
-    outputFileTracingRoot: path.join(__dirname, '../../')
+    outputFileTracingRoot: path.join(__dirname, '../../'),
+    outputFileTracingIncludes: {
+      '/api/common/file/previewContent.ts': [
+        path.resolve(process.cwd(), '../../packages/service/worker/**/*')
+      ]
+    }
   }
 };
 
