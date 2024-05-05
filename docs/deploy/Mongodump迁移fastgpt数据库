@@ -1,1 +1,104 @@
+前提说明：
 
+
+A环境：我在阿里云上部署的fastgpt，需要挪到B环境。
+
+
+B环境：是新环境，而且特殊一点的是，NAS（群晖或者QNAP）部署了fastgpt，mongo必须改成4.2或者4.4版本（其实云端更方便，支持fastgpt mongo默认版本）
+
+
+C环境：妥善考虑，用本地电脑作为C环境过渡，保存相关文件并分离操作
+
+‍
+## STEP 0
+1. 进入 docker mongo 【A环境】
+1.1 docker exec -it mongo sh
+1.2 mongo -u 'username' -p 'password'
+1.3 >> show dbs
+看到fastgpt数据库，以及其它几个，确定下导出数据库名称
+准备：
+检查数据库，容器和宿主机都创建一下 backup 目录 【A环境 + C环境】
+
+【A环境】fastgpt源头
+容器：（先进入mongo的docker容器）
+mkdir -p /data/backup [使用docker-compose部署，这个backup目录理论上会同步到本地持久化目录里]
+
+如果没同步到本地，也可以手动建一下，配合docker cp 操作，把文件拷到本地用
+
+【C环境】宿主机 
+到fastgpt目录，进入mongo目录，有data目录，下面建backup
+mkdir -p /fastgpt/mongo/data/backup
+‍
+## STEP 1
+2.mongodump 导出 【A环境】
+2.1 导出 使用mongodump在源头容器中导出数据文件
+导出的文件是在容器的/data/backup中，因为fastgpt配置文件已经建立了data的持久化，所以你去本地fast/mongo/data应该就能看到这个导出的目录：backup，里面有文件，
+
+docker exec -it mongo bash -c "mongodump --db fastgpt -u 'username' -p 'password' --authenticationDatabase admin --out /data/backup"
+
+当然你也可以进入mongo容器后，使用mongodump指令操作
+mongodump --host 127.0.0.1:27017 --db fastgpt -u "username" -p "password" --authenticationDatabase admin --out /data/backup
+‍
+mongodump导出的文件这时候已经出现在/data/backup目录里，并应该是被同步到mongo持久化目录，看下A环境fastgpt/mongo/data/backup目录里。
+
+补充：如果有需要，也可以手工导出到宿主机【A环境】 你也可以使用:
+docker cp mongo:/data/backup  <A环境fastgpt备份目录：/fastgpt/data/backup>
+‍
+ 
+### STEP2 检查
+稳妥起见，压缩这个文件目录，并把压缩文件(tar.gz结尾），下载到本地或者服务器【A环境 -> C环境】
+
+具体操作如下：
+
+2.1.先进入源头系统的 fastgpt/mongo/data 目录
+
+cd /usr/fastgpt/mongo/data   【A环境】
+
+2.2 执行，压缩文件
+`tar -czvf ../fastgpt-mongo-backup-$(date +%Y-%m-%d).tar.gz ./  【A环境】
+
+2.3 下载到本地 【A环境-》C环境】
+
+scp  -i /云服务器的pem文件路径/<pem文件名>.pem root@<服务器IP>:/usr/fastgpt/mongo/data/backup/fastgptbackup-2024-05-03.tar.gz(上面压缩的文件名) /Users/qinxiaoqiang/Downloads/fastgpt2<下载C环境的目标路径>
+
+
+2.4 检查 【C环境】
+导出后在宿主机目录解压缩，放在指定目录比如. < user/fastgpt/mongobackup/data>，方便比较和检查。
+
+tar -xvzf fastgptbackup-2024-05-03.tar.gz -C user/fastgpt/mongobackup/data
+
+解压缩后里面是bson文件，这个动作主要是看文件是否完整。
+​​
+
+‍
+### STEP 3 
+3.1 上传准备：【C环境】进入宿主机fastgpt安装目录
+3.1.1 上传到新系统所在的 docker 容器里备用 【C环境】
+docker cp user/fastgpt/mongobackup/data mongo:/tmp/backup
+‍
+3.1.2 清空docker compose 运行后建立的 mongo/data 持久化目录 【C环境】
+这样会把 docker 容器的 mongo/db 目录也清空了，否则 mongorestore 导入会报错；
+另外这样做的好处是初始化mongo数据库，之前我迁移的时候mongo容器会报错，“restart”
+
+cd /fastgpt安装目录/mongo/data
+rm -rf *
+‍
+
+3.2.恢复： mongorestore 恢复 [C环境】
+简单一点的办法，回到本地，用 docker 命令一键导入，当然你也可以在容器里操作
+docker exec -it mongo mongorestore -u "username" -p "password" --authenticationDatabase admin /tmp/backup/ --db fastgpt
+​回复应该有2万个文件，数量不对的话就有问题了。
+
+‍
+
+5.重启容器 【C环境】
+docker compose restart
+docker logs -f mongo 
+
+
+6. 登陆：
+基本就能看到原来的数据库内容导入系统了
+
+​​
+
+‍
