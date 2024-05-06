@@ -66,6 +66,8 @@ const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInput = dynamic(() => import('./components/VariableInput'));
 
+const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
+
 enum FeedbackTypeEnum {
   user = 'user',
   admin = 'admin',
@@ -746,28 +748,44 @@ const ChatBox = (
     [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
   );
   const onEdit = useCallback(
-    (chat: ChatSiteItemType, q = '') => {
+    (chat: ChatSiteItemType, q = '', questionGuides: any) => {
       if (chat.obj !== ChatRoleEnum.AI) return;
 
       return () => {
         if (!chat.dataId) return;
         console.log(chat);
-        if (chat.adminFeedback) {
-          setAdminMarkData({
-            chatItemId: chat.dataId,
-            datasetId: chat.adminFeedback.datasetId,
-            collectionId: chat.adminFeedback.collectionId,
-            dataId: chat.adminFeedback.dataId,
-            q: chat.adminFeedback.q || q || '',
-            a: chat.adminFeedback.a
-          });
-        } else {
-          setAdminMarkData({
-            chatItemId: chat.dataId,
-            q,
-            a: formatChatValue2InputType(chat.value).text
-          });
-        }
+        console.log(questionGuides);
+        // chat.adminFeedback = {
+        //   datasetId: '1',
+        //   collectionId: '1',
+        //   dataId: '1',
+        //   q: '1',
+        //   a: '1',
+        // }
+        // if (chat.adminFeedback) {
+        // setAdminMarkData({
+        //   chatItemId: chat.dataId,
+        //   datasetId: chat.adminFeedback.datasetId ,
+        //   collectionId: chat.adminFeedback.collectionId ,
+        //   dataId: chat.adminFeedback.dataId ,
+        //   q: chat.adminFeedback.q || q || '',
+        //   a: chat.adminFeedback.a
+        // });
+        setAdminMarkData({
+          chatItemId: chat.dataId,
+          datasetId: '662f1f344709768bfa1313ee',
+          collectionId: '662f3ade4709768bfa1317a2',
+          dataId: '662f3b1e4709768bfa131e79',
+          q: '北 三 和 管 桩 有 限 公 司 企 业 标 准',
+          a: formatChatValue2InputType(chat.value).text
+        });
+        // } else {
+        //   setAdminMarkData({
+        //     chatItemId: chat.dataId,
+        //     q,
+        //     a: formatChatValue2InputType(chat.value).text
+        //   });
+        // }
       };
     },
     [showMarkIcon]
@@ -960,7 +978,11 @@ const ChatBox = (
                         onCloseUserLike: onCloseUserLike(item),
                         onAddUserDislike: onADdUserDislike(item),
                         onReadUserDislike: onReadUserDislike(item),
-                        onEdit: onEdit(item)
+                        onEdit: onEdit(
+                          item,
+                          formatChatValue2InputType(chatHistories[index - 1]?.value)?.text,
+                          questionGuides
+                        )
                       })}
                     >
                       <ResponseTags
@@ -1066,7 +1088,7 @@ const ChatBox = (
         />
       )}
       {/* admin mark data */}
-      {!!adminMarkData && (
+      {/* {!!adminMarkData && (
         <SelectMarkCollection
           adminMarkData={adminMarkData}
           setAdminMarkData={(e) => setAdminMarkData({ ...e, chatItemId: adminMarkData.chatItemId })}
@@ -1085,9 +1107,9 @@ const ChatBox = (
               state.map((chatItem) =>
                 chatItem.dataId === adminMarkData.chatItemId
                   ? {
-                      ...chatItem,
-                      adminFeedback
-                    }
+                    ...chatItem,
+                    adminFeedback
+                  }
                   : chatItem
               )
             );
@@ -1108,6 +1130,42 @@ const ChatBox = (
               );
               setReadFeedbackData(undefined);
             }
+          }}
+        />
+      )} */}
+      {/* input data */}
+      {adminMarkData && adminMarkData.datasetId && adminMarkData.collectionId && (
+        <InputDataModal
+          onClose={() => {
+            setAdminMarkData({
+              ...adminMarkData,
+              collectionId: undefined
+            });
+          }}
+          collectionId={adminMarkData.collectionId}
+          dataId={adminMarkData.dataId}
+          defaultValue={{
+            q: adminMarkData.q,
+            a: adminMarkData.a
+          }}
+          onSuccess={(data) => {
+            if (
+              !data.q ||
+              !adminMarkData.datasetId ||
+              !adminMarkData.collectionId ||
+              !data.dataId
+            ) {
+              return onClose();
+            }
+
+            onSuccess({
+              dataId: data.dataId,
+              datasetId: adminMarkData.datasetId,
+              collectionId: adminMarkData.collectionId,
+              q: data.q,
+              a: data.a
+            });
+            onClose();
           }}
         />
       )}
