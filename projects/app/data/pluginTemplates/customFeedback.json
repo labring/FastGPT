@@ -142,7 +142,7 @@
           "description": "core.module.input.description.Http Request Url",
           "placeholder": "https://api.ai.com/getInventory",
           "required": false,
-          "value": "/api/plugins/customFeedback"
+          "value": "/api/plugins/customFeedback/v2"
         },
         {
           "key": "system_httpHeader",

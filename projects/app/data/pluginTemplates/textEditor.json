@@ -167,7 +167,7 @@
           "description": "core.module.input.description.Http Request Url",
           "placeholder": "https://api.ai.com/getInventory",
           "required": false,
-          "value": "/api/plugins/textEditor"
+          "value": "/api/plugins/textEditor/v2"
         },
         {
           "key": "system_httpHeader",
