@@ -30,6 +30,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
+import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -37,6 +38,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const updateList = useMemo(
     () =>
@@ -84,10 +86,10 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
             const variable = updateItem.variable;
             const variableNodeId = variable?.[0];
             const variableNode = nodes.find((node) => node.id === variableNodeId);
-            if (!variableNode) return 'any';
-            const variableInput = variableNode.data.outputs.find(
-              (output) => output.id === variable?.[1]
-            );
+            const systemVariables = getWorkflowGlobalVariables(nodeList, t);
+            const variableInput = !variableNode
+              ? systemVariables.find((item) => item.key === variable?.[1])
+              : variableNode?.data.outputs.find((output) => output.id === variable?.[1]);
             if (!variableInput) return 'any';
             return variableInput.valueType;
           })();
@@ -95,9 +97,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
           const handleUpdate = (newValue: any) => {
             onUpdateList(
-              updateList.map((update, i) =>
-                i === index ? { ...update, value: ['', newValue] } : update
-              )
+              updateList.map((update, i) => (i === index ? { ...update, value: newValue } : update))
             );
           };
           return (
@@ -123,20 +123,22 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                     }}
                   />
                   <Box flex={1} />
-                  <MyIcon
-                    className="delete"
-                    name={'delete'}
-                    w={'14px'}
-                    color={'myGray.600'}
-                    cursor={'pointer'}
-                    ml={2}
-                    _hover={{ color: 'red.500' }}
-                    onClick={() => {
-                      onUpdateList(updateList.filter((_, i) => i !== index));
-                    }}
-                  />
+                  {updateList.length > 1 && (
+                    <MyIcon
+                      className="delete"
+                      name={'delete'}
+                      w={'14px'}
+                      color={'myGray.600'}
+                      cursor={'pointer'}
+                      ml={2}
+                      _hover={{ color: 'red.500' }}
+                      onClick={() => {
+                        onUpdateList(updateList.filter((_, i) => i !== index));
+                      }}
+                    />
+                  )}
                 </Flex>
-                <Flex mt={2} w={'full'} alignItems={'center'}>
+                <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
                   <Flex w={'60px'} flex={0}>
                     <Box>{t('core.workflow.value')}</Box>
                     <MyTooltip

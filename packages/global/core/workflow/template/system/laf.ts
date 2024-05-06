@@ -14,7 +14,7 @@ import { Input_Template_DynamicInput } from '../input';
 import { Output_Template_AddOutput } from '../output';
 import { getHandleConfig } from '../utils';
 
-export const lafModule: FlowNodeTemplateType = {
+export const LafModule: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.lafModule,
   templateType: FlowNodeTemplateTypeEnum.externalCall,
   flowNodeType: FlowNodeTypeEnum.lafModule,
