@@ -69,21 +69,25 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.globalVariable]: () => Promise.resolve()
 };
 
-/* running */
-export async function dispatchWorkFlow({
-  res,
-  runtimeNodes = [],
-  runtimeEdges = [],
-  histories = [],
-  variables = {},
-  user,
-  stream = false,
-  detail = false,
-  ...props
-}: ChatDispatchProps & {
+type Props = ChatDispatchProps & {
   runtimeNodes: RuntimeNodeItemType[];
   runtimeEdges: RuntimeEdgeItemType[];
-}): Promise<DispatchFlowResponse> {
+};
+
+/* running */
+export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowResponse> {
+  let {
+    res,
+    runtimeNodes = [],
+    runtimeEdges = [],
+    histories = [],
+    variables = {},
+    user,
+    stream = false,
+    detail = false,
+    ...props
+  } = data;
+
   // set sse response headers
   if (stream && res) {
     res.setHeader('Content-Type', 'text/event-stream;charset=utf-8');
@@ -93,7 +97,7 @@ export async function dispatchWorkFlow({
   }
 
   variables = {
-    ...getSystemVariable({ timezone: user.timezone }),
+    ...getSystemVariable(data),
     ...variables
   };
 
@@ -384,9 +388,19 @@ export function responseStatus({
 }
 
 /* get system variable */
-export function getSystemVariable({ timezone }: { timezone: string }) {
+export function getSystemVariable({
+  user,
+  appId,
+  chatId,
+  responseChatItemId,
+  histories = []
+}: Props) {
   return {
-    cTime: getSystemTime(timezone)
+    appId,
+    chatId,
+    responseChatItemId,
+    histories,
+    cTime: getSystemTime(user.timezone)
   };
 }
 
