@@ -42,7 +42,8 @@ import { dispatchLafRequest } from './tools/runLaf';
 import { dispatchIfElse } from './tools/runIfElse';
 import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
-import { dispatchSystemConfig } from './init/systemConfiig';
+import { dispatchSystemConfig } from './init/systemConfig';
+import { dispatchUpdateVariable } from './tools/runUpdateVar';
 
 const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -62,6 +63,7 @@ const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
   [FlowNodeTypeEnum.stopTool]: dispatchStopToolCall,
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
+  [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,
@@ -355,7 +357,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   if (pluginOutputModule && props.mode !== 'debug') {
     await nodeRunWithActive(pluginOutputModule);
   }
-
+  const { userChatInput, ...leftVariables } = variables;
   return {
     flowResponses: chatResponses,
     flowUsages: chatNodeUsages,
@@ -366,7 +368,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     },
     [DispatchNodeResponseKeyEnum.assistantResponses]:
       mergeAssistantResponseAnswerText(chatAssistantResponse),
-    [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse
+    [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
+    newVariables: leftVariables
   };
 }
 

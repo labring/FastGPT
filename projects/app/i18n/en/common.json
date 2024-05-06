@@ -1050,8 +1050,75 @@
       "Intro placeholder": "If this plugin is invoked as a tool, this description will be used as the prompt."
     },
     "shareChat": {
-      "Init Error": "Conversation initialization failed",
-      "Init History Error": "Chat history initialization failed"
+      "Init Error": "Init Chat Error",
+      "Init History Error": "Init History Error"
+    },
+    "workflow": {
+      "Add variable": "Add",
+      "Can not delete node": "Can not delete the node",
+      "Change input type tip": "Changing the input type will empty the entered values, please confirm!",
+      "Check Failed": "Workflow verification fails. Check whether the node or connection is normal",
+      "Confirm stop debug": "Do you want to terminate debugging? Debugging information is not retained.",
+      "Copy node": "Copy node",
+      "Current workflow": "Current workflow",
+      "Custom inputs": "Inputs",
+      "Custom outputs": "Outputs",
+      "Custom variable": "Custom variable",
+      "Dataset quote": "Dataset quote",
+      "Debug": "Debug",
+      "Debug Node": "Workflow Debug",
+      "Failed": "Running failed",
+      "Not intro": "This node is not introduced",
+      "Run from here": "Run from here",
+      "Run result": "Run result",
+      "Running": "Running",
+      "Skipped": "Skipped",
+      "Stop debug": "Stop",
+      "Success": "Running success",
+      "Value type": "Type",
+      "Variable outputs": "Variables",
+      "chat": {
+        "Quote prompt": "Quote prompt"
+      },
+      "debug": {
+        "Done": "Done",
+        "Hide result": "Hide result",
+        "Not result": "Not result",
+        "Run result": "",
+        "Show result": "Show result"
+      },
+      "inputType": {
+        "JSON Editor": "JSON Editor",
+        "Manual input": "",
+        "Manual select": "Select",
+        "Reference": "Reference",
+        "Required": "Required",
+        "Select edit field": "Editable field",
+        "Select input default value": "Default value",
+        "Select input type": "Configurable input types",
+        "Select input type placeholder": "Please select a configurable input type",
+        "chat history": "History",
+        "dynamicTargetInput": "dynamic Target Input",
+        "input": "Input",
+        "number input": "number input",
+        "selectApp": "App Selector",
+        "selectDataset": "Dataset Selector",
+        "selectLLMModel": "Select Chat Model",
+        "switch": "Switch",
+        "target": "Target Data",
+        "textarea": "Textarea"
+      },
+      "publish": {
+        "OnRevert version": "Click back to that version",
+        "OnRevert version confirm": "Are you sure to roll back the version?",
+        "histories": "Publiish histories"
+      },
+      "tool": {
+        "Handle": "Tool handle",
+        "Select Tool": "Select Tool"
+      },
+      "value": "Value",
+      "variable": "Variable"
     }
   },
   "dataset": {

@@ -112,7 +112,8 @@ export enum FlowNodeTypeEnum {
   tools = 'tools',
   stopTool = 'stopTool',
   lafModule = 'lafModule',
-  ifElseNode = 'ifElseNode'
+  ifElseNode = 'ifElseNode',
+  variableUpdate = 'variableUpdate'
 }
 
 export const EDGE_TYPE = 'default';

@@ -1160,7 +1160,9 @@
       "tool": {
         "Handle": "工具连接器",
         "Select Tool": "选择工具"
-      }
+      },
+      "value": "值",
+      "variable": "变量"
     }
   },
   "dataset": {
