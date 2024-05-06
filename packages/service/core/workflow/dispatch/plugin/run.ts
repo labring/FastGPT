@@ -1,7 +1,7 @@
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
 import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getPluginRuntimeById } from '../../../plugin/controller';
 import { authPluginCanUse } from '../../../../support/permission/auth/plugin';

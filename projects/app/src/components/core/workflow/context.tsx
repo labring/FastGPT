@@ -36,7 +36,6 @@ import { createContext } from 'use-context-selector';
 import { defaultRunningStatus } from './constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
-import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
