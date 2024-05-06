@@ -101,7 +101,10 @@ export enum NodeInputKeyEnum {
 
   // if else
   condition = 'condition',
-  ifElseList = 'ifElseList'
+  ifElseList = 'ifElseList',
+
+  // variable update
+  updateList = 'updateList'
 }
 
 export enum NodeOutputKeyEnum {

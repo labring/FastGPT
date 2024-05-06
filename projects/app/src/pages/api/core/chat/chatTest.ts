@@ -69,7 +69,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { text, files } = chatValue2RuntimePrompt(prompt);
 
     /* start process */
-    const { flowResponses, flowUsages } = await dispatchWorkFlow({
+    const { flowResponses, flowUsages, newVariables } = await dispatchWorkFlow({
       res,
       mode: 'test',
       teamId,
@@ -98,6 +98,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       res,
       event: SseResponseEventEnum.flowResponses,
       data: JSON.stringify(flowResponses)
+    });
+    responseWrite({
+      res,
+      event: SseResponseEventEnum.variables,
+      data: JSON.stringify(newVariables)
     });
     res.end();
 

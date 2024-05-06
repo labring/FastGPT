@@ -79,7 +79,7 @@ const OutLink = () => {
       const prompts = messages.slice(-2);
       const completionChatId = chatId ? chatId : nanoid();
 
-      const { responseText, responseData } = await streamFetch({
+      const { responseText, responseData, newVariables } = await streamFetch({
         data: {
           messages: prompts,
           variables: {
@@ -135,7 +135,7 @@ const OutLink = () => {
         history: ChatBoxRef.current?.getChatHistories() || state.history
       }));
 
-      return { responseText, responseData, isNewChat: forbidRefresh.current };
+      return { responseText, responseData, isNewChat: forbidRefresh.current, newVariables };
     },
     [appId, teamToken, chatId, histories, pushHistory, router, setChatData, teamId, updateHistory]
   );
