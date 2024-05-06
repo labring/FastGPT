@@ -201,7 +201,7 @@ export const streamFetch = ({
             });
           } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
             responseData = parseJson;
-          } else if (event === SseResponseEventEnum.variables) {
+          } else if (event === SseResponseEventEnum.updateVariables) {
             newVariables = parseJson;
           } else if (event === SseResponseEventEnum.error) {
             if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {

@@ -101,7 +101,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
     responseWrite({
       res,
-      event: SseResponseEventEnum.variables,
+      event: SseResponseEventEnum.updateVariables,
       data: JSON.stringify(newVariables)
     });
     res.end();
