@@ -95,14 +95,24 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           })();
 
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
-          const handleUpdate = (newValue: any) => {
-            onUpdateList(
-              updateList.map((update, i) => (i === index ? { ...update, value: newValue } : update))
-            );
+          const handleUpdate = (newValue: ReferenceValueProps | string) => {
+            if (Array.isArray(newValue)) {
+              onUpdateList(
+                updateList.map((update, i) =>
+                  i === index ? { ...update, value: newValue } : update
+                )
+              );
+            } else {
+              onUpdateList(
+                updateList.map((update, i) =>
+                  i === index ? { ...update, value: ['', newValue] } : update
+                )
+              );
+            }
           };
           return (
             <Flex key={index}>
-              <Container mt={4}>
+              <Container mt={4} w={'full'}>
                 <Flex alignItems={'center'}>
                   <Flex w={'60px'}>{t('core.workflow.variable')}</Flex>
                   <Reference
@@ -139,7 +149,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   )}
                 </Flex>
                 <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
-                  <Flex w={'60px'} flex={0}>
+                  <Flex w={'60px'}>
                     <Box>{t('core.workflow.value')}</Box>
                     <MyTooltip
                       label={
