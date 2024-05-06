@@ -42,7 +42,6 @@ export const pushChatUsage = ({
   addLog.info(`finish completions`, {
     source,
     teamId,
-    tmbId,
     totalPoints
   });
   return { totalPoints };
