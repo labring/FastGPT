@@ -279,7 +279,7 @@ export async function dispatchWorkFlowV1({
     )?.targets?.length;
 
     return moduleOutput(module, {
-      [NodeOutputKeyEnum.finish]: true,
+      finish: true,
       [NodeOutputKeyEnum.userChatInput]: hasUserChatInputTarget
         ? params[NodeOutputKeyEnum.userChatInput]
         : undefined,
@@ -295,7 +295,7 @@ export async function dispatchWorkFlowV1({
   modules.forEach((item) => {
     item.isEntry = false;
   });
-
+  // console.log(JSON.stringify(runningModules, null, 2));
   initModules.map((module) =>
     moduleInput(module, {
       ...startParams,

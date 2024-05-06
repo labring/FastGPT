@@ -63,7 +63,10 @@ export async function getInitConfig() {
       initSystemConfig(),
       // getSimpleModeTemplates(),
       getSystemVersion(),
-      getSystemPlugin()
+      getSystemPlugin(),
+
+      // abandon
+      getSystemPluginV1()
     ]);
 
     console.log({
@@ -163,4 +166,30 @@ function getSystemPlugin() {
   fileTemplates.sort((a, b) => b.weight - a.weight);
 
   global.communityPlugins = fileTemplates;
+}
+function getSystemPluginV1() {
+  if (global.communityPluginsV1 && global.communityPluginsV1.length > 0) return;
+
+  const basePath =
+    process.env.NODE_ENV === 'development'
+      ? 'data/pluginTemplates/v1'
+      : '/app/data/pluginTemplates/v1';
+  // read data/pluginTemplates directory, get all json file
+  const files = readdirSync(basePath);
+  // filter json file
+  const filterFiles = files.filter((item) => item.endsWith('.json'));
+
+  // read json file
+  const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
+    const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
+    return {
+      ...JSON.parse(content),
+      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
+      source: PluginSourceEnum.community
+    };
+  });
+
+  fileTemplates.sort((a, b) => b.weight - a.weight);
+
+  global.communityPluginsV1 = fileTemplates;
 }
