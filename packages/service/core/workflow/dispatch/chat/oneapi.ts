@@ -25,6 +25,7 @@ import {
 } from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
+  chatValue2RuntimePrompt,
   getSystemPrompt,
   GPTMessages2Chats,
   runtimePrompt2ChatsValue
@@ -66,7 +67,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     user,
     histories,
     node: { name },
-    inputFiles = [],
+    query,
     params: {
       model,
       temperature = 0,
@@ -80,6 +81,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quotePrompt
     }
   } = props;
+  const { files: inputFiles } = chatValue2RuntimePrompt(query);
+
   if (!userChatInput && inputFiles.length === 0) {
     return Promise.reject('Question is empty');
   }

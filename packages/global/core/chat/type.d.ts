@@ -155,6 +155,6 @@ export type ToolModuleResponseItemType = {
 
 /* dispatch run time */
 export type RuntimeUserPromptType = {
-  files?: UserChatItemValueItemType['file'][];
+  files: UserChatItemValueItemType['file'][];
   text: string;
 };

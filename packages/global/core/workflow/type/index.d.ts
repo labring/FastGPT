@@ -133,7 +133,7 @@ export type ChatDispatchProps = {
   responseChatItemId?: string;
   histories: ChatItemType[];
   variables: Record<string, any>;
-  inputFiles?: UserChatItemValueItemType['file'][];
+  query: UserChatItemValueItemType[];
   stream: boolean;
   detail: boolean; // response detail
   maxRunTimes: number;

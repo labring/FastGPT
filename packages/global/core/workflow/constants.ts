@@ -37,7 +37,6 @@ export enum NodeInputKeyEnum {
   welcomeText = 'welcomeText',
   switch = 'switch', // a trigger switch
   history = 'history',
-  userChatInput = 'userChatInput',
   answerText = 'text',
 
   // system config
@@ -46,6 +45,10 @@ export enum NodeInputKeyEnum {
   whisper = 'whisper',
   variables = 'variables',
   scheduleTrigger = 'scheduleTrigger',
+
+  // entry
+  userChatInput = 'userChatInput',
+  inputFiles = 'inputFiles',
 
   agents = 'agents', // cq agent key
 
