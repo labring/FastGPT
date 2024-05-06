@@ -114,142 +114,142 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           };
 
           return (
-            <Flex key={index}>
-              <Container mt={4} w={'full'}>
-                <Flex alignItems={'center'}>
-                  <Flex w={'60px'}>{t('core.workflow.variable')}</Flex>
-                  <Reference
-                    nodeId={nodeId}
-                    variable={updateItem.variable}
-                    onSelect={(value) => {
-                      onUpdateList(
-                        updateList.map((update, i) => {
-                          if (i === index) {
-                            return {
-                              ...update,
-                              value: ['', ''],
-                              valueType,
-                              variable: value
-                            };
-                          }
-                          return update;
-                        })
-                      );
+            <Container key={index} mt={4} w={'full'} mx={0}>
+              <Flex alignItems={'center'}>
+                <Flex w={'60px'}>{t('core.workflow.variable')}</Flex>
+                <Reference
+                  nodeId={nodeId}
+                  variable={updateItem.variable}
+                  onSelect={(value) => {
+                    onUpdateList(
+                      updateList.map((update, i) => {
+                        if (i === index) {
+                          return {
+                            ...update,
+                            value: ['', ''],
+                            valueType,
+                            variable: value
+                          };
+                        }
+                        return update;
+                      })
+                    );
+                  }}
+                />
+                <Box flex={1} />
+                {updateList.length > 1 && (
+                  <MyIcon
+                    className="delete"
+                    name={'delete'}
+                    w={'14px'}
+                    color={'myGray.600'}
+                    cursor={'pointer'}
+                    _hover={{ color: 'red.500' }}
+                    position={'absolute'}
+                    top={3}
+                    right={3}
+                    onClick={() => {
+                      onUpdateList(updateList.filter((_, i) => i !== index));
                     }}
                   />
-                  <Box flex={1} />
-                  {updateList.length > 1 && (
-                    <MyIcon
-                      className="delete"
-                      name={'delete'}
-                      w={'14px'}
-                      color={'myGray.600'}
-                      cursor={'pointer'}
-                      ml={2}
-                      _hover={{ color: 'red.500' }}
+                )}
+              </Flex>
+              <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
+                <Flex w={'60px'}>
+                  <Box>{t('core.workflow.value')}</Box>
+                  <MyTooltip
+                    label={
+                      menuList.find((item) => item.renderType === updateItem.renderType)?.label
+                    }
+                  >
+                    <Button
+                      size={'xs'}
+                      bg={'white'}
+                      borderRadius={'xs'}
+                      mx={2}
                       onClick={() => {
-                        onUpdateList(updateList.filter((_, i) => i !== index));
+                        onUpdateList(
+                          updateList.map((update, i) => {
+                            if (i === index) {
+                              return {
+                                ...update,
+                                value: ['', ''],
+                                renderType:
+                                  updateItem.renderType === FlowNodeInputTypeEnum.input
+                                    ? FlowNodeInputTypeEnum.reference
+                                    : FlowNodeInputTypeEnum.input
+                              };
+                            }
+                            return update;
+                          })
+                        );
                       }}
-                    />
-                  )}
-                </Flex>
-                <Flex mt={2} w={'full'} alignItems={'center'} className="nodrag">
-                  <Flex w={'60px'}>
-                    <Box>{t('core.workflow.value')}</Box>
-                    <MyTooltip
-                      label={
-                        menuList.find((item) => item.renderType === updateItem.renderType)?.label
-                      }
                     >
-                      <Button
-                        size={'xs'}
-                        bg={'white'}
-                        borderRadius={'xs'}
-                        mx={2}
-                        onClick={() => {
-                          onUpdateList(
-                            updateList.map((update, i) => {
-                              if (i === index) {
-                                return {
-                                  ...update,
-                                  value: ['', ''],
-                                  renderType:
-                                    updateItem.renderType === FlowNodeInputTypeEnum.input
-                                      ? FlowNodeInputTypeEnum.reference
-                                      : FlowNodeInputTypeEnum.input
-                                };
-                              }
-                              return update;
-                            })
-                          );
-                        }}
-                      >
-                        <MyIcon name={renderTypeData?.icon as any} w={'14px'} />
-                      </Button>
-                    </MyTooltip>
-                  </Flex>
+                      <MyIcon name={renderTypeData?.icon as any} w={'14px'} />
+                    </Button>
+                  </MyTooltip>
+                </Flex>
 
-                  {/* Render input components */}
-                  {(() => {
-                    if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
-                      return (
-                        <Reference
-                          nodeId={nodeId}
-                          variable={updateItem.value}
-                          valueType={valueType}
-                          onSelect={handleUpdate}
-                        />
-                      );
-                    }
-                    if (valueType === WorkflowIOValueTypeEnum.string) {
-                      return (
-                        <Textarea
-                          bg="white"
-                          value={updateItem.value?.[1] || ''}
-                          w="300px"
-                          onChange={(e) => handleUpdate(e.target.value)}
-                        />
-                      );
-                    }
-                    if (valueType === WorkflowIOValueTypeEnum.number) {
-                      return (
-                        <NumberInput value={Number(updateItem.value?.[1]) || 0}>
-                          <NumberInputField
-                            bg="white"
-                            onChange={(e) => handleUpdate(e.target.value)}
-                          />
-                          <NumberInputStepper>
-                            <NumberIncrementStepper />
-                            <NumberDecrementStepper />
-                          </NumberInputStepper>
-                        </NumberInput>
-                      );
-                    }
-                    if (valueType === WorkflowIOValueTypeEnum.boolean) {
-                      return (
-                        <Switch
-                          size="lg"
-                          defaultChecked={updateItem.value?.[1] === 'true'}
-                          onChange={(e) => handleUpdate(String(e.target.checked))}
-                        />
-                      );
-                    }
-
+                {/* Render input components */}
+                {(() => {
+                  if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
                     return (
-                      <JsonEditor
-                        bg="white"
-                        resize
-                        w="300px"
-                        value={String(updateItem.value?.[1] || '')}
-                        onChange={(e) => {
-                          handleUpdate(e);
-                        }}
+                      <Reference
+                        nodeId={nodeId}
+                        variable={updateItem.value}
+                        valueType={valueType}
+                        onSelect={handleUpdate}
                       />
                     );
-                  })()}
-                </Flex>
-              </Container>
-            </Flex>
+                  }
+                  if (valueType === WorkflowIOValueTypeEnum.string) {
+                    return (
+                      <Textarea
+                        bg="white"
+                        value={updateItem.value?.[1] || ''}
+                        w="300px"
+                        onChange={(e) => handleUpdate(e.target.value)}
+                      />
+                    );
+                  }
+                  if (valueType === WorkflowIOValueTypeEnum.number) {
+                    return (
+                      <NumberInput value={Number(updateItem.value?.[1]) || 0}>
+                        <NumberInputField
+                          bg="white"
+                          onChange={(e) => handleUpdate(e.target.value)}
+                        />
+                        <NumberInputStepper>
+                          <NumberIncrementStepper />
+                          <NumberDecrementStepper />
+                        </NumberInputStepper>
+                      </NumberInput>
+                    );
+                  }
+                  if (valueType === WorkflowIOValueTypeEnum.boolean) {
+                    return (
+                      <Switch
+                        size="lg"
+                        defaultChecked={updateItem.value?.[1] === 'true'}
+                        onChange={(e) => handleUpdate(String(e.target.checked))}
+                      />
+                    );
+                  }
+
+                  return (
+                    <JsonEditor
+                      bg="white"
+                      resize
+                      w="300px"
+                      value={String(updateItem.value?.[1] || '')}
+                      onChange={(e) => {
+                        handleUpdate(e);
+                      }}
+                    />
+                  );
+                })()}
+              </Flex>
+            </Container>
           );
         })}
       </>
