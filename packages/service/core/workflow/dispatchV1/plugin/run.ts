@@ -1,19 +1,65 @@
 // @ts-nocheck
+
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
 import { dispatchWorkFlowV1 } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  FlowNodeTemplateTypeEnum,
+  NodeInputKeyEnum
+} from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getPluginRuntimeById } from '../../../plugin/controller';
+import { splitCombinePluginId } from '../../../plugin/controller';
 import { authPluginCanUse } from '../../../../support/permission/auth/plugin';
 import { setEntryEntries, DYNAMIC_INPUT_KEY } from '../utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core/plugin/type';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
+import { MongoPlugin } from '../../../plugin/schema';
 
 type RunPluginProps = ModuleDispatchProps<{
   [NodeInputKeyEnum.pluginId]: string;
   [key: string]: any;
 }>;
 type RunPluginResponse = DispatchNodeResultType<{}>;
+
+const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> => {
+  const { source, pluginId } = await splitCombinePluginId(id);
+  if (source === PluginSourceEnum.community) {
+    const item = global.communityPluginsV1?.find((plugin) => plugin.id === pluginId);
+
+    if (!item) return Promise.reject('plugin not found');
+
+    return item;
+  }
+  if (source === PluginSourceEnum.personal) {
+    const item = await MongoPlugin.findById(id).lean();
+    if (!item) return Promise.reject('plugin not found');
+    return {
+      id: String(item._id),
+      teamId: String(item.teamId),
+      name: item.name,
+      avatar: item.avatar,
+      intro: item.intro,
+      showStatus: true,
+      source: PluginSourceEnum.personal,
+      modules: item.modules,
+      templateType: FlowNodeTemplateTypeEnum.personalPlugin
+    };
+  }
+  return Promise.reject('plugin not found');
+};
+
+const getPluginRuntimeById = async (id: string): Promise<PluginRuntimeType> => {
+  const plugin = await getPluginTemplateById(id);
+
+  return {
+    teamId: plugin.teamId,
+    name: plugin.name,
+    avatar: plugin.avatar,
+    showStatus: plugin.showStatus,
+    modules: plugin.modules
+  };
+};
 
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
@@ -31,7 +77,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   const plugin = await getPluginRuntimeById(pluginId);
 
   // concat dynamic inputs
-  const inputModule = plugin.nodes.find((item) => item.flowType === FlowNodeTypeEnum.pluginInput);
+  const inputModule = plugin.modules.find((item) => item.flowType === FlowNodeTypeEnum.pluginInput);
   if (!inputModule) return Promise.reject('Plugin error, It has no set input.');
   const hasDynamicInput = inputModule.inputs.find((input) => input.key === DYNAMIC_INPUT_KEY);
 
@@ -56,7 +102,7 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlowV1({
     ...props,
-    modules: setEntryEntries(plugin.nodes).map((module) => ({
+    modules: setEntryEntries(plugin.modules).map((module) => ({
       ...module,
       showStatus: false
     })),
