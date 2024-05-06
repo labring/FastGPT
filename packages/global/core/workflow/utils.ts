@@ -132,3 +132,7 @@ export const formatEditorVariablePickerIcon = (
     icon: item.type ? variableMap[item.type]?.icon : variableMap['input'].icon
   }));
 };
+
+export const isReferenceValue = (value: any): boolean => {
+  return Array.isArray(value) && value.length === 2 && typeof value[0] === 'string';
+};

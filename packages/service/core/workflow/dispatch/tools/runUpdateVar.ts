@@ -4,6 +4,7 @@ import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/ty
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
+import { valueTypeFormat } from '../utils';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
@@ -22,26 +23,31 @@ export const dispatchUpdateVariable = async (
     if (!varNodeId || !varKey) {
       return;
     }
-    let value = '';
-    if (!item.value?.[0]) {
-      value = item.value?.[1];
-    } else {
-      value = getReferenceVariableValue({
-        value: item.value,
-        variables,
-        nodes: runtimeNodes
-      });
-    }
+
+    const value = (() => {
+      if (!item.value?.[0]) {
+        return valueTypeFormat(item.value?.[1], item.valueType);
+      } else {
+        return getReferenceVariableValue({
+          value: item.value,
+          variables,
+          nodes: runtimeNodes
+        });
+      }
+    })();
+
     if (varNodeId === VARIABLE_NODE_ID) {
+      // update global variable
       variables[varKey] = value;
     } else {
-      const node = runtimeNodes.find((node) => node.nodeId === varNodeId);
-      if (node) {
-        const output = node.outputs.find((output) => output.id === varKey);
-        if (output) {
-          output.value = value;
-        }
-      }
+      runtimeNodes
+        .find((node) => node.nodeId === varNodeId)
+        ?.outputs?.find((output) => {
+          if (output.id === varKey) {
+            output.value = value;
+            return true;
+          }
+        });
     }
   });
 

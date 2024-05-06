@@ -31,13 +31,13 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
   const { t } = useTranslation();
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const nodes = useContextSelector(WorkflowContext, (v) => v.nodes);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const updateList = useMemo(
@@ -65,51 +65,54 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     [inputs, nodeId, onChangeNode]
   );
 
-  const menuList = [
-    {
-      renderType: FlowNodeInputTypeEnum.input,
-      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.input].icon,
-      label: t('core.workflow.inputType.Manual input')
-    },
-    {
-      renderType: FlowNodeInputTypeEnum.reference,
-      icon: FlowNodeInputMap[FlowNodeInputTypeEnum.reference].icon,
-      label: t('core.workflow.inputType.Reference')
-    }
-  ];
+  const Render = useMemo(() => {
+    const menuList = [
+      {
+        renderType: FlowNodeInputTypeEnum.input,
+        icon: FlowNodeInputMap[FlowNodeInputTypeEnum.input].icon,
+        label: t('core.workflow.inputType.Manual input')
+      },
+      {
+        renderType: FlowNodeInputTypeEnum.reference,
+        icon: FlowNodeInputMap[FlowNodeInputTypeEnum.reference].icon,
+        label: t('core.workflow.inputType.Reference')
+      }
+    ];
 
-  return (
-    <NodeCard selected={selected} maxW={'1000px'} {...data}>
-      <Box px={4} pb={4}>
+    return (
+      <>
         {updateList.map((updateItem, index) => {
-          const type = (() => {
+          const valueType = (() => {
             const variable = updateItem.variable;
             const variableNodeId = variable?.[0];
-            const variableNode = nodes.find((node) => node.id === variableNodeId);
+            const variableNode = nodeList.find((node) => node.nodeId === variableNodeId);
             const systemVariables = getWorkflowGlobalVariables(nodeList, t);
+
             const variableInput = !variableNode
               ? systemVariables.find((item) => item.key === variable?.[1])
-              : variableNode?.data.outputs.find((output) => output.id === variable?.[1]);
-            if (!variableInput) return 'any';
+              : variableNode.outputs.find((output) => output.id === variable?.[1]);
+
+            if (!variableInput) return WorkflowIOValueTypeEnum.any;
             return variableInput.valueType;
           })();
 
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
           const handleUpdate = (newValue: ReferenceValueProps | string) => {
-            if (Array.isArray(newValue)) {
+            if (isReferenceValue(newValue)) {
               onUpdateList(
                 updateList.map((update, i) =>
-                  i === index ? { ...update, value: newValue } : update
+                  i === index ? { ...update, value: newValue as ReferenceValueProps } : update
                 )
               );
             } else {
               onUpdateList(
                 updateList.map((update, i) =>
-                  i === index ? { ...update, value: ['', newValue] } : update
+                  i === index ? { ...update, value: ['', newValue as string] } : update
                 )
               );
             }
           };
+
           return (
             <Flex key={index}>
               <Container mt={4} w={'full'}>
@@ -124,6 +127,8 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                           if (i === index) {
                             return {
                               ...update,
+                              value: ['', ''],
+                              valueType,
                               variable: value
                             };
                           }
@@ -183,23 +188,31 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                       </Button>
                     </MyTooltip>
                   </Flex>
-                  {updateItem.renderType === FlowNodeInputTypeEnum.reference ? (
-                    <Reference
-                      nodeId={nodeId}
-                      variable={updateItem.value}
-                      onSelect={handleUpdate}
-                    />
-                  ) : (
-                    <>
-                      {type === 'string' && (
+
+                  {/* Render input components */}
+                  {(() => {
+                    if (updateItem.renderType === FlowNodeInputTypeEnum.reference) {
+                      return (
+                        <Reference
+                          nodeId={nodeId}
+                          variable={updateItem.value}
+                          valueType={valueType}
+                          onSelect={handleUpdate}
+                        />
+                      );
+                    }
+                    if (valueType === WorkflowIOValueTypeEnum.string) {
+                      return (
                         <Textarea
                           bg="white"
                           value={updateItem.value?.[1] || ''}
                           w="300px"
                           onChange={(e) => handleUpdate(e.target.value)}
                         />
-                      )}
-                      {type === 'number' && (
+                      );
+                    }
+                    if (valueType === WorkflowIOValueTypeEnum.number) {
+                      return (
                         <NumberInput value={Number(updateItem.value?.[1]) || 0}>
                           <NumberInputField
                             bg="white"
@@ -210,30 +223,43 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                             <NumberDecrementStepper />
                           </NumberInputStepper>
                         </NumberInput>
-                      )}
-                      {type === 'boolean' && (
+                      );
+                    }
+                    if (valueType === WorkflowIOValueTypeEnum.boolean) {
+                      return (
                         <Switch
                           size="lg"
                           defaultChecked={updateItem.value?.[1] === 'true'}
                           onChange={(e) => handleUpdate(String(e.target.checked))}
                         />
-                      )}
-                      {type !== 'string' && type !== 'number' && type !== 'boolean' && (
-                        <JsonEditor
-                          bg="white"
-                          resize
-                          w="300px"
-                          value={updateItem.value?.[1] || ''}
-                          onChange={(e) => handleUpdate(e)}
-                        />
-                      )}
-                    </>
-                  )}
+                      );
+                    }
+
+                    return (
+                      <JsonEditor
+                        bg="white"
+                        resize
+                        w="300px"
+                        value={String(updateItem.value?.[1] || '')}
+                        onChange={(e) => {
+                          handleUpdate(e);
+                        }}
+                      />
+                    );
+                  })()}
                 </Flex>
               </Container>
             </Flex>
           );
         })}
+      </>
+    );
+  }, [nodeId, nodeList, onUpdateList, t, updateList]);
+
+  return (
+    <NodeCard selected={selected} maxW={'1000px'} {...data}>
+      <Box px={4} pb={4}>
+        {Render}
         <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
           <Button
             variant={'whiteBase'}
@@ -264,17 +290,19 @@ export default React.memo(NodeVariableUpdate);
 const Reference = ({
   nodeId,
   variable,
+  valueType,
   onSelect
 }: {
   nodeId: string;
   variable?: ReferenceValueProps;
+  valueType?: WorkflowIOValueTypeEnum;
   onSelect: (e: ReferenceValueProps) => void;
 }) => {
   const { t } = useTranslation();
 
   const { referenceList, formatValue } = useReference({
     nodeId,
-    valueType: WorkflowIOValueTypeEnum.any,
+    valueType,
     value: variable
   });
 

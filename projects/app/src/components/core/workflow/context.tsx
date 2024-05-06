@@ -255,7 +255,11 @@ const WorkflowContextProvider = ({
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const [hoverNodeId, setHoverNodeId] = useState<string>();
 
-  const nodeList = useCreation(() => nodes.map((node) => node.data), [nodes]);
+  const nodeListString = JSON.stringify(nodes.map((node) => node.data));
+  const nodeList = useMemo(
+    () => JSON.parse(nodeListString) as FlowNodeItemType[],
+    [nodeListString]
+  );
 
   const hasToolNode = useMemo(() => {
     return !!nodes.find((node) => node.data.flowNodeType === FlowNodeTypeEnum.tools);

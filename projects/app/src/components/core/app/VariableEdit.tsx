@@ -173,7 +173,7 @@ const VariableEdit = ({
         maxW={['90vw', '500px']}
       >
         <ModalBody>
-          {variableType !== VariableInputEnum.external && (
+          {variableType !== VariableInputEnum.custom && (
             <Flex alignItems={'center'}>
               <Box w={'70px'}>{t('common.Require Input')}</Box>
               <Switch {...registerEdit('variable.required')} />
@@ -197,7 +197,7 @@ const VariableEdit = ({
           </Flex>
 
           <Box mt={5} mb={2}>
-            {t('core.module.Field Type')}
+            {t('core.workflow.Variable.Variable type')}
           </Box>
           <MyRadio
             gridGap={4}

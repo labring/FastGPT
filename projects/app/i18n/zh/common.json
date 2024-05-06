@@ -646,8 +646,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -975,6 +974,17 @@
           "Classify background": "例如: \n1. AIGC（人工智能生成内容）是指使用人工智能技术自动或半自动地生成数字内容，如文本、图像、音乐、视频等。\n2. AIGC技术包括但不限于自然语言处理、计算机视觉、机器学习和深度学习。这些技术可以创建新内容或修改现有内容，以满足特定的创意、教育、娱乐或信息需求。"
         }
       },
+      "inputType": {
+        "chat history": "",
+        "dynamicTargetInput": "",
+        "input": "",
+        "selectApp": "",
+        "selectDataset": "",
+        "selectLLMModel": "",
+        "switch": "",
+        "target": "",
+        "textarea": ""
+      },
       "laf": {
         "Select laf function": "选择laf函数"
       },
@@ -1069,7 +1079,7 @@
         "tools": "工具调用"
       },
       "variable": {
-        "External type": "外部传入",
+        "Custom type": "自定义变量",
         "add option": "添加选项",
         "input type": "文本",
         "key": "变量 key",
@@ -1120,6 +1130,9 @@
       "Stop debug": "停止调试",
       "Success": "运行成功",
       "Value type": "数据类型",
+      "Variable": {
+        "Variable type": "变量类型"
+      },
       "Variable outputs": "全局变量",
       "chat": {
         "Quote prompt": "引用提示词"
