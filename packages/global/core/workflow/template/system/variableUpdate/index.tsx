@@ -31,8 +31,8 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
       value: [
         {
           variable: ['', ''],
-          value: ['', ''],
-          renderType: 'input'
+          value: '',
+          renderType: FlowNodeInputTypeEnum.input
         }
       ]
     }
