@@ -16,7 +16,7 @@ import {
   Textarea
 } from '@chakra-ui/react';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
 import {
@@ -24,11 +24,12 @@ import {
   FlowNodeInputTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import Container from '../components/Container';
-import { Reference } from './NodeIfElse';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import JsonEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -247,3 +248,30 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
   );
 };
 export default React.memo(NodeVariableUpdate);
+
+const Reference = ({
+  nodeId,
+  variable,
+  onSelect
+}: {
+  nodeId: string;
+  variable?: ReferenceValueProps;
+  onSelect: (e: ReferenceValueProps) => void;
+}) => {
+  const { t } = useTranslation();
+
+  const { referenceList, formatValue } = useReference({
+    nodeId,
+    valueType: WorkflowIOValueTypeEnum.any,
+    value: variable
+  });
+
+  return (
+    <ReferSelector
+      placeholder={t('选择引用变量')}
+      list={referenceList}
+      value={formatValue}
+      onSelect={onSelect}
+    />
+  );
+};
