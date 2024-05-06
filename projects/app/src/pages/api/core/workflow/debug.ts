@@ -57,7 +57,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         ...variables,
         userChatInput: ''
       },
-      inputFiles: [],
+      query: [],
       histories: [],
       stream: false,
       detail: true,

@@ -5,7 +5,11 @@ import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/cons
 import { responseWrite } from '@fastgpt/service/common/response';
 import { pushChatUsage } from '@/service/support/wallet/usage/push';
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
-import type { ChatItemType, ChatItemValueItemType } from '@fastgpt/global/core/chat/type';
+import type {
+  ChatItemType,
+  ChatItemValueItemType,
+  UserChatItemValueItemType
+} from '@fastgpt/global/core/chat/type';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { dispatchWorkFlow } from '@fastgpt/service/core/workflow/dispatch';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
@@ -13,10 +17,11 @@ import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/a
 import { chatValue2RuntimePrompt } from '@fastgpt/global/core/chat/adapt';
 import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
+import { removeEmptyUserInput } from '@fastgpt/global/core/chat/utils';
 
 export type Props = {
   history: ChatItemType[];
-  prompt: ChatItemValueItemType[];
+  prompt: UserChatItemValueItemType[];
   nodes: RuntimeNodeItemType[];
   edges: RuntimeEdgeItemType[];
   variables: Record<string, any>;
@@ -33,7 +38,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     res.end();
   });
 
-  const {
+  let {
     nodes = [],
     edges = [],
     history = [],
@@ -66,8 +71,6 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     // auth balance
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
-    const { text, files } = chatValue2RuntimePrompt(prompt);
-
     /* start process */
     const { flowResponses, flowUsages, newVariables } = await dispatchWorkFlow({
       res,
@@ -78,11 +81,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       appId,
       runtimeNodes: nodes,
       runtimeEdges: edges,
-      variables: {
-        ...variables,
-        userChatInput: text
-      },
-      inputFiles: files,
+      variables,
+      query: removeEmptyUserInput(prompt),
       histories: history,
       stream: true,
       detail: true,

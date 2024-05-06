@@ -160,7 +160,7 @@ const ChatBox = (
 
   /* variable */
   const filterVariableModules = useMemo(
-    () => variableModules.filter((item) => item.type !== VariableInputEnum.external),
+    () => variableModules.filter((item) => item.type !== VariableInputEnum.custom),
     [variableModules]
   );
 
