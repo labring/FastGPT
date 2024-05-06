@@ -14,7 +14,7 @@ import { EmptyNode } from '@fastgpt/global/core/workflow/template/system/emptyNo
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { getGlobalVariableNode } from './adapt';
-import { VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
+import { VARIABLE_NODE_ID, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import {
@@ -243,7 +243,10 @@ export const getWorkflowGlobalVariables = (
 ): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
     splitGuideModule(getGuideModule(nodes))?.variableModules || []
-  );
+  ).map((item) => ({
+    ...item,
+    valueType: WorkflowIOValueTypeEnum.string // 暂时都是字符串
+  }));
 
   const systemVariables = getSystemVariables(t);
 

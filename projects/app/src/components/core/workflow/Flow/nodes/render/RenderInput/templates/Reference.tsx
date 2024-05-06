@@ -90,7 +90,7 @@ export default React.memo(Reference);
 
 export const useReference = ({
   nodeId,
-  valueType,
+  valueType = WorkflowIOValueTypeEnum.any,
   value
 }: {
   nodeId: string;

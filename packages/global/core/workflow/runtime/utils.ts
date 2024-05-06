@@ -5,6 +5,8 @@ import { StoreNodeItemType } from '../type';
 import { StoreEdgeItemType } from '../type/edge';
 import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
+import { isReferenceValue } from '../utils';
+import { ReferenceValueProps } from '../type/io';
 
 export const initWorkflowEdgeStatus = (edges: StoreEdgeItemType[]): RuntimeEdgeItemType[] => {
   return (
@@ -138,16 +140,11 @@ export const getReferenceVariableValue = ({
   nodes,
   variables
 }: {
-  value: [string, string];
+  value: ReferenceValueProps;
   nodes: RuntimeNodeItemType[];
   variables: Record<string, any>;
 }) => {
-  if (
-    !Array.isArray(value) ||
-    value.length !== 2 ||
-    typeof value[0] !== 'string' ||
-    typeof value[1] !== 'string'
-  ) {
+  if (!isReferenceValue(value)) {
     return value;
   }
   const sourceNodeId = value[0];

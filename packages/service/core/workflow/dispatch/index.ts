@@ -289,7 +289,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       node,
       runtimeNodes,
       runtimeEdges,
-      params
+      params,
+      mode: 'test'
     };
 
     // run module
@@ -357,7 +358,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
   if (pluginOutputModule && props.mode !== 'debug') {
     await nodeRunWithActive(pluginOutputModule);
   }
-  const { userChatInput, ...leftVariables } = variables;
+
   return {
     flowResponses: chatResponses,
     flowUsages: chatNodeUsages,
@@ -369,7 +370,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     [DispatchNodeResponseKeyEnum.assistantResponses]:
       mergeAssistantResponseAnswerText(chatAssistantResponse),
     [DispatchNodeResponseKeyEnum.toolResponses]: toolRunResponse,
-    newVariables: leftVariables
+    newVariables: removeSystemVariable(variables)
   };
 }
 
@@ -406,6 +407,18 @@ export function getSystemVariable({
     cTime: getSystemTime(user.timezone)
   };
 }
+
+/* remove system variable */
+const removeSystemVariable = (variables: Record<string, any>) => {
+  const copyVariables = { ...variables };
+  delete copyVariables.appId;
+  delete copyVariables.chatId;
+  delete copyVariables.responseChatItemId;
+  delete copyVariables.histories;
+  delete copyVariables.cTime;
+
+  return copyVariables;
+};
 
 /* Merge consecutive text messages into one */
 export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {

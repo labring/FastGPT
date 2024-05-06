@@ -12,7 +12,7 @@ export const PluginOutputModule: FlowNodeTemplateType = {
   unique: true,
   forbidDelete: true,
   avatar: '/imgs/workflow/output.png',
-  name: '定义插件输出',
+  name: '自定义插件输出',
   intro: '自定义配置外部输出，使用插件时，仅暴露自定义配置的输出',
   showStatus: false,
   inputs: [],

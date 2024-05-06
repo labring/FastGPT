@@ -1,14 +1,9 @@
-import {
-  FlowNodeInputTypeEnum,
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '../../node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
 import {
   WorkflowIOValueTypeEnum,
   NodeInputKeyEnum,
-  FlowNodeTemplateTypeEnum,
-  NodeOutputKeyEnum
+  FlowNodeTemplateTypeEnum
 } from '../../constants';
 import { getHandleConfig } from '../utils';
 
@@ -26,7 +21,7 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
     {
       key: NodeInputKeyEnum.answerText,
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
-      valueType: WorkflowIOValueTypeEnum.string,
+      valueType: WorkflowIOValueTypeEnum.any,
       label: 'core.module.input.label.Response content',
       description: 'core.module.input.description.Response content',
       placeholder: 'core.module.input.description.Response content'

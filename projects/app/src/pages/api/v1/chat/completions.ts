@@ -24,7 +24,10 @@ import { pushResult2Remote, addOutLinkUsage } from '@fastgpt/service/support/out
 import requestIp from 'request-ip';
 import { getUsageSourceByAuthType } from '@fastgpt/global/support/wallet/usage/tools';
 import { authTeamSpaceToken } from '@/service/support/permission/auth/team';
-import { filterPublicNodeResponseData } from '@fastgpt/global/core/chat/utils';
+import {
+  filterPublicNodeResponseData,
+  removeEmptyUserInput
+} from '@fastgpt/global/core/chat/utils';
 import { updateApiKeyUsage } from '@fastgpt/service/support/openapi/tools';
 import { connectToDatabase } from '@/service/mongo';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
@@ -192,11 +195,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           responseChatItemId,
           runtimeNodes: storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
           runtimeEdges: initWorkflowEdgeStatus(edges),
-          variables: {
-            ...variables,
-            userChatInput: text
-          },
-          inputFiles: files,
+          variables,
+          query: removeEmptyUserInput(question.value),
           histories: concatHistories,
           stream,
           detail,

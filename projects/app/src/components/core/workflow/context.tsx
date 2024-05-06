@@ -36,7 +36,6 @@ import { createContext } from 'use-context-selector';
 import { defaultRunningStatus } from './constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
-import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -256,7 +255,11 @@ const WorkflowContextProvider = ({
   const [nodes = [], setNodes, onNodesChange] = useNodesState<FlowNodeItemType>([]);
   const [hoverNodeId, setHoverNodeId] = useState<string>();
 
-  const nodeList = useCreation(() => nodes.map((node) => node.data), [nodes]);
+  const nodeListString = JSON.stringify(nodes.map((node) => node.data));
+  const nodeList = useMemo(
+    () => JSON.parse(nodeListString) as FlowNodeItemType[],
+    [nodeListString]
+  );
 
   const hasToolNode = useMemo(() => {
     return !!nodes.find((node) => node.data.flowNodeType === FlowNodeTypeEnum.tools);

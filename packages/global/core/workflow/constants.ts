@@ -37,7 +37,6 @@ export enum NodeInputKeyEnum {
   welcomeText = 'welcomeText',
   switch = 'switch', // a trigger switch
   history = 'history',
-  userChatInput = 'userChatInput',
   answerText = 'text',
 
   // system config
@@ -46,6 +45,10 @@ export enum NodeInputKeyEnum {
   whisper = 'whisper',
   variables = 'variables',
   scheduleTrigger = 'scheduleTrigger',
+
+  // entry
+  userChatInput = 'userChatInput',
+  inputFiles = 'inputFiles',
 
   agents = 'agents', // cq agent key
 
@@ -146,7 +149,7 @@ export enum VariableInputEnum {
   input = 'input',
   textarea = 'textarea',
   select = 'select',
-  external = 'external'
+  custom = 'custom'
 }
 export const variableMap = {
   [VariableInputEnum.input]: {
@@ -164,10 +167,10 @@ export const variableMap = {
     title: 'core.module.variable.select type',
     desc: ''
   },
-  [VariableInputEnum.external]: {
+  [VariableInputEnum.custom]: {
     icon: 'core/app/variable/external',
-    title: 'core.module.variable.External type',
-    desc: '可以通过API接口或分享链接的Query传递变量。增加该类型变量的主要目的是用于变量提示。使用例子: 你可以通过分享链接Query中拼接Token，来实现内部系统身份鉴权。'
+    title: 'core.module.variable.Custom type',
+    desc: '可以定义一个无需用户填写的全局变量。\n该变量的值可以来自于 API 接口，分享链接的 Query 或通过【变量更新】模块进行赋值。'
   }
 };
 

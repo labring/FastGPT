@@ -35,7 +35,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     stream,
     detail,
     histories,
-    inputFiles,
+    query,
     params: { userChatInput, history, app }
   } = props;
   let start = Date.now();
@@ -71,7 +71,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     runtimeNodes: storeNodes2RuntimeNodes(appData.modules, getDefaultEntryNodeIds(appData.modules)),
     runtimeEdges: initWorkflowEdgeStatus(appData.edges),
     histories: chatHistories,
-    inputFiles,
+    query,
     variables: {
       ...props.variables,
       userChatInput
@@ -81,10 +81,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
-      value: runtimePrompt2ChatsValue({
-        files: inputFiles,
-        text: userChatInput
-      })
+      value: query
     },
     {
       obj: ChatRoleEnum.AI,

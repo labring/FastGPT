@@ -10,7 +10,7 @@
   "modules": [
     {
       "moduleId": "w90mfp",
-      "name": "定义插件输入",
+      "name": "自定义插件输入",
       "flowType": "pluginInput",
       "showStatus": false,
       "position": {
@@ -94,7 +94,7 @@
     },
     {
       "moduleId": "tze1ju",
-      "name": "定义插件输出",
+      "name": "自定义插件输出",
       "flowType": "pluginOutput",
       "showStatus": false,
       "position": {
