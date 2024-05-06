@@ -22,7 +22,10 @@ export async function getUserDetail({
 }): Promise<UserType> {
   const tmb = await (async () => {
     if (tmbId) {
-      return getTmbInfoByTmbId({ tmbId });
+      try {
+        const result = await getTmbInfoByTmbId({ tmbId });
+        return result;
+      } catch (error) {}
     }
     if (userId) {
       return getUserDefaultTeam({ userId });
