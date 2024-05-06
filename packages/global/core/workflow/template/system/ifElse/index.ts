@@ -12,7 +12,7 @@ import {
 import { FlowNodeTemplateType } from '../../../type';
 import { getHandleConfig } from '../../utils';
 
-export const ifElseNode: FlowNodeTemplateType = {
+export const IfElseNode: FlowNodeTemplateType = {
   id: FlowNodeTypeEnum.ifElseNode,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.ifElseNode,

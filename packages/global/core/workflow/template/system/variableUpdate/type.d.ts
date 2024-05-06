@@ -1,3 +1,5 @@
+import { FlowNodeInputTypeEnum } from 'core/workflow/node/constant';
+
 export type TUpdateListItem = {
   variable?: ReferenceValueProps;
   value?: ReferenceValueProps;

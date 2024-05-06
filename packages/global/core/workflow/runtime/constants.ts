@@ -10,7 +10,7 @@ export enum SseResponseEventEnum {
   toolParams = 'toolParams', // tool params return
   toolResponse = 'toolResponse', // tool response return
   flowResponses = 'flowResponses', // sse response request
-  variables = 'variables'
+  updateVariables = 'updateVariables'
 }
 
 export enum DispatchNodeResponseKeyEnum {
