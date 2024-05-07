@@ -79,7 +79,6 @@ const NodeCard = (props: Props) => {
     return (
       <Box position={'relative'}>
         {/* debug */}
-        <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
         <Box className="custom-drag-handle" px={4} py={3}>
           {/* tool target handle */}
           {showToolHandle && <ToolTargetHandle nodeId={nodeId} />}
@@ -134,7 +133,6 @@ const NodeCard = (props: Props) => {
     );
   }, [
     nodeId,
-    debugResult,
     showToolHandle,
     avatar,
     t,
@@ -179,6 +177,7 @@ const NodeCard = (props: Props) => {
             borderColor: selected ? 'primary.600' : 'borderColor.base'
           })}
     >
+      <NodeDebugResponse nodeId={nodeId} debugResult={debugResult} />
       {Header}
       {children}
       <ConnectionSourceHandle nodeId={nodeId} />
@@ -259,6 +258,22 @@ const MenuRender = React.memo(function MenuRender({
     },
     [setEdges, setNodes]
   );
+  const onclickSyncVersion = useCallback(async () => {
+    if (!pluginId) return;
+    try {
+      setLoading(true);
+      onResetNode({
+        id: nodeId,
+        node: await getPreviewPluginModule(pluginId)
+      });
+    } catch (e) {
+      return toast({
+        status: 'error',
+        title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
+      });
+    }
+    setLoading(false);
+  }, [nodeId, onResetNode, pluginId, setLoading, t, toast]);
 
   const Render = useMemo(() => {
     const menuList = [
@@ -288,25 +303,7 @@ const MenuRender = React.memo(function MenuRender({
               icon: 'common/refreshLight',
               label: t('plugin.Synchronous version'),
               variant: 'whiteBase',
-              onClick: () => {
-                if (!pluginId) return;
-                onOpenConfirmSync(async () => {
-                  try {
-                    setLoading(true);
-                    const pluginModule = await getPreviewPluginModule(pluginId);
-                    onResetNode({
-                      id: nodeId,
-                      module: pluginModule
-                    });
-                  } catch (e) {
-                    return toast({
-                      status: 'error',
-                      title: getErrText(e, t('plugin.Get Plugin Module Detail Failed'))
-                    });
-                  }
-                  setLoading(false);
-                })();
-              }
+              onClick: onOpenConfirmSync(onclickSyncVersion)
             }
           ]
         : []),
@@ -370,12 +367,9 @@ const MenuRender = React.memo(function MenuRender({
     onDelNode,
     onOpenConfirmDeleteNode,
     onOpenConfirmSync,
-    onResetNode,
+    onclickSyncVersion,
     openDebugNode,
-    pluginId,
-    setLoading,
-    t,
-    toast
+    t
   ]);
 
   return Render;
@@ -530,7 +524,8 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             top={0}
             zIndex={10}
             w={'420px'}
-            maxH={'540px'}
+            maxH={'100%'}
+            minH={'300px'}
             overflowY={'auto'}
             border={'base'}
           >

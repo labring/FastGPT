@@ -55,7 +55,7 @@ type WorkflowContextType = {
   hoverNodeId?: string;
   setHoverNodeId: React.Dispatch<React.SetStateAction<string | undefined>>;
   onUpdateNodeError: (node: string, isError: Boolean) => void;
-  onResetNode: (e: { id: string; module: FlowNodeTemplateType }) => void;
+  onResetNode: (e: { id: string; node: FlowNodeTemplateType }) => void;
   onChangeNode: (e: FlowNodeChangeProps) => void;
 
   // edges
@@ -159,7 +159,7 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   onEdgesChange: function (changes: EdgeChange[]): void {
     throw new Error('Function not implemented.');
   },
-  onResetNode: function (e: { id: string; module: FlowNodeTemplateType }): void {
+  onResetNode: function (e: { id: string; node: FlowNodeTemplateType }): void {
     throw new Error('Function not implemented.');
   },
   onDelEdge: function (e: {
@@ -279,31 +279,30 @@ const WorkflowContextProvider = ({
   });
 
   // reset a node data. delete edge and replace it
-  const onResetNode = useMemoizedFn(
-    ({ id, module }: { id: string; module: FlowNodeTemplateType }) => {
-      setNodes((state) =>
-        state.map((node) => {
-          if (node.id === id) {
-            // delete edge
-            node.data.inputs.forEach((item) => {
-              onDelEdge({ nodeId: id, targetHandle: item.key });
-            });
-            node.data.outputs.forEach((item) => {
-              onDelEdge({ nodeId: id, sourceHandle: item.key });
-            });
-            return {
+  const onResetNode = useMemoizedFn(({ id, node }: { id: string; node: FlowNodeTemplateType }) => {
+    setNodes((state) =>
+      state.map((item) => {
+        if (item.id === id) {
+          return {
+            ...item,
+            data: {
+              ...item.data,
               ...node,
-              data: {
-                ...node.data,
-                ...module
-              }
-            };
-          }
-          return node;
-        })
-      );
-    }
-  );
+              inputs: node.inputs.map((input) => {
+                const value =
+                  item.data.inputs.find((i) => i.key === input.key)?.value ?? input.value;
+                return {
+                  ...input,
+                  value
+                };
+              })
+            }
+          };
+        }
+        return item;
+      })
+    );
+  });
 
   const onChangeNode = useMemoizedFn((props: FlowNodeChangeProps) => {
     const { nodeId, type } = props;
@@ -431,7 +430,6 @@ const WorkflowContextProvider = ({
   const initData = useMemoizedFn(
     async (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
       setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })));
-
       setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })));
     }
   );

@@ -14,7 +14,9 @@ export const useBeforeunload = (props?: { callback?: () => any; tip?: string }) 
             e.returnValue = tip;
             callback?.();
           }
-        : () => {};
+        : () => {
+            callback?.();
+          };
     window.addEventListener('beforeunload', listen);
 
     return () => {

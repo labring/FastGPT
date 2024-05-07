@@ -24,6 +24,7 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { getSystemVariables } from '../app/utils';
 import { TFunction } from 'next-i18next';
+import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -139,6 +140,26 @@ export const computedNodeInputReference = ({
   sourceNodes.unshift(getGlobalVariableNode(nodes, t));
 
   return sourceNodes;
+};
+export const getReferenceDataValueType = ({
+  variable,
+  nodeList,
+  t
+}: {
+  variable?: ReferenceValueProps;
+  nodeList: FlowNodeItemType[];
+  t: TFunction;
+}) => {
+  if (!variable) return WorkflowIOValueTypeEnum.any;
+
+  const node = nodeList.find((node) => node.nodeId === variable[0]);
+  const systemVariables = getWorkflowGlobalVariables(nodeList, t);
+
+  if (!node) return systemVariables.find((item) => item.key === variable?.[1])?.valueType;
+
+  const output = node.outputs.find((item) => item.id === variable[1]);
+  if (!output) return WorkflowIOValueTypeEnum.any;
+  return output.valueType;
 };
 
 /* Connection rules */

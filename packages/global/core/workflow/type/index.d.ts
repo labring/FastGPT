@@ -40,7 +40,7 @@ export type FlowNodeCommonType = {
 };
 
 export type FlowNodeTemplateType = FlowNodeCommonType & {
-  id: string; // module id, unique
+  id: string; // node id, unique
   templateType: `${FlowNodeTemplateTypeEnum}`;
 
   // show handle
@@ -132,11 +132,12 @@ export type ChatDispatchProps = {
   chatId?: string;
   responseChatItemId?: string;
   histories: ChatItemType[];
-  variables: Record<string, any>;
-  query: UserChatItemValueItemType[];
+  variables: Record<string, any>; // global variable
+  query: UserChatItemValueItemType[]; // trigger query
   stream: boolean;
   detail: boolean; // response detail
   maxRunTimes: number;
+  isToolCall?: boolean;
 };
 
 export type ModuleDispatchProps<T> = ChatDispatchProps & {
