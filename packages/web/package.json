@@ -31,12 +31,14 @@
     "react": "18.2.0",
     "react-day-picker": "^8.7.1",
     "react-dom": "18.2.0",
-    "react-i18next": "13.5.0"
+    "react-i18next": "13.5.0",
+    "react-beautiful-dnd": "^13.1.1"
   },
   "devDependencies": {
     "@types/lodash": "^4.14.191",
     "@types/papaparse": "^5.3.7",
     "@types/react": "18.2.0",
-    "@types/react-dom": "18.2.0"
+    "@types/react-dom": "18.2.0",
+    "@types/react-beautiful-dnd": "^13.1.8"
   }
 }

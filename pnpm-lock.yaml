@@ -292,6 +292,9 @@ importers:
       react:
         specifier: 18.2.0
         version: 18.2.0
+      react-beautiful-dnd:
+        specifier: ^13.1.1
+        version: 13.1.1(react-dom@18.2.0)(react@18.2.0)
       react-day-picker:
         specifier: ^8.7.1
         version: 8.7.1(date-fns@2.30.0)(react@18.2.0)
@@ -311,6 +314,9 @@ importers:
       '@types/react':
         specifier: 18.2.0
         version: 18.2.0
+      '@types/react-beautiful-dnd':
+        specifier: ^13.1.8
+        version: 13.1.8
       '@types/react-dom':
         specifier: 18.2.0
         version: 18.2.0
@@ -431,9 +437,6 @@ importers:
       react:
         specifier: 18.2.0
         version: 18.2.0
-      react-beautiful-dnd:
-        specifier: ^13.1.1
-        version: 13.1.1(react-dom@18.2.0)(react@18.2.0)
       react-day-picker:
         specifier: ^8.7.1
         version: 8.7.1(date-fns@2.30.0)(react@18.2.0)
@@ -504,9 +507,6 @@ importers:
       '@types/react':
         specifier: 18.2.0
         version: 18.2.0
-      '@types/react-beautiful-dnd':
-        specifier: ^13.1.8
-        version: 13.1.8
       '@types/react-dom':
         specifier: 18.2.0
         version: 18.2.0

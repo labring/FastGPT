@@ -99,8 +99,8 @@ const OutLink = ({
         data: {
           messages: prompts,
           variables: {
-            ...customVariables,
-            ...variables
+            ...variables,
+            ...customVariables
           },
           shareId,
           chatId: completionChatId,

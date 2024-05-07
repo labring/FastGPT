@@ -9,7 +9,7 @@ import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/syste
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import Container from '../../components/Container';
-import { DragDropContext, DragStart, Draggable, DropResult, Droppable } from 'react-beautiful-dnd';
+import DndDrag, { Draggable, DropResult } from '@fastgpt/web/components/common/DndDrag/index';
 import { SourceHandle } from '../render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import ListItem from './ListItem';
@@ -19,8 +19,6 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-
-  const [draggingItemHeight, setDraggingItemHeight] = useState(0);
 
   const ifElseList = useMemo(
     () =>
@@ -47,73 +45,49 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [inputs, nodeId, onChangeNode]
   );
 
-  const reorder = (list: IfElseListItemType[], startIndex: number, endIndex: number) => {
-    const result = Array.from(list);
-    const [removed] = result.splice(startIndex, 1);
-    result.splice(endIndex, 0, removed);
-
-    return result;
-  };
-
-  const onDragStart = (start: DragStart) => {
-    const draggingNode = document.querySelector(`[data-rbd-draggable-id="${start.draggableId}"]`);
-    setDraggingItemHeight(draggingNode?.getBoundingClientRect().height || 0);
-  };
-
-  const onDragEnd = (result: DropResult) => {
-    if (!result.destination) {
-      return;
-    }
-    const newList = reorder(ifElseList, result.source.index, result.destination.index);
-
-    onUpdateIfElseList(newList);
-    setDraggingItemHeight(0);
-  };
-
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
-      <Box px={4}>
-        <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
-          <Droppable
-            droppableId="droppable"
-            renderClone={(provided, snapshot, rubric) => (
-              <ListItem
-                provided={provided}
-                snapshot={snapshot}
-                conditionItem={ifElseList[rubric.source.index]}
-                conditionIndex={rubric.source.index}
-                ifElseList={ifElseList}
-                onUpdateIfElseList={onUpdateIfElseList}
-                nodeId={nodeId}
-              />
-            )}
-          >
-            {(provided, snapshot) => (
-              <Box {...provided.droppableProps} ref={provided.innerRef}>
-                {ifElseList.map((conditionItem, conditionIndex) => (
-                  <Draggable
-                    key={conditionIndex}
-                    draggableId={conditionIndex.toString()}
-                    index={conditionIndex}
-                  >
-                    {(provided, snapshot) => (
-                      <ListItem
-                        provided={provided}
-                        snapshot={snapshot}
-                        conditionItem={conditionItem}
-                        conditionIndex={conditionIndex}
-                        ifElseList={ifElseList}
-                        onUpdateIfElseList={onUpdateIfElseList}
-                        nodeId={nodeId}
-                      />
-                    )}
-                  </Draggable>
-                ))}
-                {snapshot.isDraggingOver && <Box height={draggingItemHeight} />}
-              </Box>
-            )}
-          </Droppable>
-        </DragDropContext>
+      <Box px={4} cursor={'default'}>
+        <DndDrag<IfElseListItemType>
+          onDragEndCb={(list) => onUpdateIfElseList(list)}
+          dataList={ifElseList}
+          renderClone={(provided, snapshot, rubric) => (
+            <ListItem
+              provided={provided}
+              snapshot={snapshot}
+              conditionItem={ifElseList[rubric.source.index]}
+              conditionIndex={rubric.source.index}
+              ifElseList={ifElseList}
+              onUpdateIfElseList={onUpdateIfElseList}
+              nodeId={nodeId}
+            />
+          )}
+        >
+          {(provided) => (
+            <Box {...provided.droppableProps} ref={provided.innerRef}>
+              {ifElseList.map((conditionItem, conditionIndex) => (
+                <Draggable
+                  key={conditionIndex}
+                  draggableId={conditionIndex.toString()}
+                  index={conditionIndex}
+                >
+                  {(provided, snapshot) => (
+                    <ListItem
+                      provided={provided}
+                      snapshot={snapshot}
+                      conditionItem={conditionItem}
+                      conditionIndex={conditionIndex}
+                      ifElseList={ifElseList}
+                      onUpdateIfElseList={onUpdateIfElseList}
+                      nodeId={nodeId}
+                    />
+                  )}
+                </Draggable>
+              ))}
+            </Box>
+          )}
+        </DndDrag>
+
         <Container position={'relative'}>
           <Flex alignItems={'center'}>
             <Box color={'black'} fontSize={'lg'} ml={2}>

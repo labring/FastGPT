@@ -1,5 +1,8 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
-import { DraggableProvided, DraggableStateSnapshot } from 'react-beautiful-dnd';
+import {
+  DraggableProvided,
+  DraggableStateSnapshot
+} from '@fastgpt/web/components/common/DndDrag/index';
 import Container from '../../components/Container';
 import { DragHandleIcon, MinusIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
@@ -25,6 +28,7 @@ import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils
 import { SourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
 import { getReferenceDataValueType } from '@/web/core/workflow/utils';
+import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
 
 const ListItem = ({
   provided,
@@ -63,11 +67,7 @@ const ListItem = ({
       >
         <Container w={snapshot.isDragging ? '' : 'full'} className="nodrag">
           <Flex mb={4} alignItems={'center'}>
-            {ifElseList.length > 1 && (
-              <Box {...provided.dragHandleProps}>
-                <DragHandleIcon color={'blackAlpha.600'} />
-              </Box>
-            )}
+            {ifElseList.length > 1 && <DragIcon provided={provided} />}
             <Box color={'black'} fontSize={'lg'} ml={2}>
               {getElseIFLabel(conditionIndex)}
             </Box>
