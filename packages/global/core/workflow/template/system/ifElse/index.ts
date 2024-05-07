@@ -24,41 +24,31 @@ export const IfElseNode: FlowNodeTemplateType = {
   showStatus: true,
   inputs: [
     {
-      key: NodeInputKeyEnum.condition,
-      valueType: WorkflowIOValueTypeEnum.string,
-      label: '',
-      renderTypeList: [FlowNodeInputTypeEnum.hidden],
-      required: false,
-      value: 'AND' // AND, OR
-    },
-    {
       key: NodeInputKeyEnum.ifElseList,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
       label: '',
       value: [
         {
-          variable: undefined,
-          condition: undefined,
-          value: undefined
+          condition: 'AND', // AND, OR
+          list: [
+            {
+              variable: undefined,
+              condition: undefined,
+              value: undefined
+            }
+          ]
         }
       ]
     }
   ],
   outputs: [
     {
-      id: NodeOutputKeyEnum.if,
-      key: NodeOutputKeyEnum.if,
-      label: 'IF',
-      valueType: WorkflowIOValueTypeEnum.any,
-      type: FlowNodeOutputTypeEnum.source
-    },
-    {
-      id: NodeOutputKeyEnum.else,
-      key: NodeOutputKeyEnum.else,
-      label: 'ELSE',
-      valueType: WorkflowIOValueTypeEnum.any,
-      type: FlowNodeOutputTypeEnum.source
+      id: NodeOutputKeyEnum.ifElseResult,
+      key: NodeOutputKeyEnum.ifElseResult,
+      label: 'IF ELSE',
+      valueType: WorkflowIOValueTypeEnum.string,
+      type: FlowNodeOutputTypeEnum.static
     }
   ]
 };

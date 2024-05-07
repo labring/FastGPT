@@ -141,8 +141,7 @@ export enum NodeOutputKeyEnum {
   // plugin
   pluginStart = 'pluginStart',
 
-  if = 'IF',
-  else = 'ELSE'
+  ifElseResult = 'ifElseResult'
 }
 
 export enum VariableInputEnum {

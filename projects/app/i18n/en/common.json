@@ -935,6 +935,7 @@
       },
       "input": {
         "Add Input": "Add Input",
+        "Add Branch": "Add Branch",
         "Input Number": "Input: {{length}}",
         "add": "",
         "description": {
