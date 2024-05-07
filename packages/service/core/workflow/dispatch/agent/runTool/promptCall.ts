@@ -185,6 +185,7 @@ export const runToolWithPromptCall = async (
 
     const moduleRunResponse = await dispatchWorkFlow({
       ...props,
+      isToolCall: true,
       runtimeNodes: runtimeNodes.map((item) =>
         item.nodeId === toolNode.nodeId
           ? {

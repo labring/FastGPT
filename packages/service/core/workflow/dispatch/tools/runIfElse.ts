@@ -1,4 +1,4 @@
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
@@ -14,6 +14,9 @@ import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
   [NodeInputKeyEnum.ifElseList]: IfElseListItemType[];
+}>;
+type Response = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.ifElseResult]: string;
 }>;
 
 function checkCondition(condition: VariableConditionEnum, variableValue: any, value: string) {
@@ -63,7 +66,7 @@ function getResult(
   return condition === 'AND' ? listResult.every(Boolean) : listResult.some(Boolean);
 }
 
-export const dispatchIfElse = async (props: Props): Promise<DispatchNodeResultType<{}>> => {
+export const dispatchIfElse = async (props: Props): Promise<Response> => {
   const {
     params,
     runtimeNodes,
@@ -88,6 +91,7 @@ export const dispatchIfElse = async (props: Props): Promise<DispatchNodeResultTy
   });
 
   return {
+    [NodeOutputKeyEnum.ifElseResult]: res,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: 0,
       ifElseResult: res

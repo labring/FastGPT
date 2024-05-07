@@ -30,7 +30,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
-import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
+import { getReferenceDataValueType } from '@/web/core/workflow/utils';
 import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
@@ -82,19 +82,11 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     return (
       <>
         {updateList.map((updateItem, index) => {
-          const valueType = (() => {
-            const variable = updateItem.variable;
-            const variableNodeId = variable?.[0];
-            const variableNode = nodeList.find((node) => node.nodeId === variableNodeId);
-            const systemVariables = getWorkflowGlobalVariables(nodeList, t);
-
-            const variableInput = !variableNode
-              ? systemVariables.find((item) => item.key === variable?.[1])
-              : variableNode.outputs.find((output) => output.id === variable?.[1]);
-
-            if (!variableInput) return WorkflowIOValueTypeEnum.any;
-            return variableInput.valueType;
-          })();
+          const valueType = getReferenceDataValueType({
+            variable: updateItem.variable,
+            nodeList,
+            t
+          });
 
           const renderTypeData = menuList.find((item) => item.renderType === updateItem.renderType);
           const handleUpdate = (newValue: ReferenceValueProps | string) => {

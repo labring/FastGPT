@@ -65,7 +65,7 @@ const ChatTest = (
           }
         });
       });
-      const history = chatList.slice(-historyMaxLen - 2, -2);
+      const history = chatList.slice(-(historyMaxLen * 2) - 2, -2);
 
       // 流请求，获取数据
       const { responseText, responseData, newVariables } = await streamFetch({

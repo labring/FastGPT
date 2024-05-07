@@ -17,13 +17,13 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getFileAndOpen } from '@/web/core/dataset/utils';
 import { MARKDOWN_QUOTE_SIGN } from '@fastgpt/global/core/chat/constants';
 
-const CodeLight = dynamic(() => import('./CodeLight'));
-const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
-const MdImage = dynamic(() => import('./img/Image'));
-const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'));
+const CodeLight = dynamic(() => import('./CodeLight'), { ssr: false });
+const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
+const MdImage = dynamic(() => import('./img/Image'), { ssr: false });
+const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'), { ssr: false });
 
-const ChatGuide = dynamic(() => import('./chat/Guide'));
-const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'));
+const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
+const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
 
 export enum CodeClassName {
   guide = 'guide',

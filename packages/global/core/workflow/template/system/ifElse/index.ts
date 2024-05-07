@@ -46,7 +46,7 @@ export const IfElseNode: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.ifElseResult,
       key: NodeOutputKeyEnum.ifElseResult,
-      label: 'IF ELSE',
+      label: '判断结果',
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static
     }
