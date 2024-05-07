@@ -232,39 +232,43 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
           <Box flex={1} />
 
-          <MyMenu
-            Button={
+          {!isShowVersionHistories && (
+            <>
+              <MyMenu
+                Button={
+                  <IconButton
+                    mr={[2, 4]}
+                    icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+                    aria-label={''}
+                    size={'sm'}
+                    variant={'whitePrimary'}
+                  />
+                }
+                menuList={[
+                  {
+                    label: t('app.Import Configs'),
+                    icon: 'common/importLight',
+                    onClick: onOpenImport
+                  },
+                  {
+                    label: t('app.Export Configs'),
+                    icon: 'export',
+                    onClick: onExportWorkflow
+                  }
+                ]}
+              />
+
               <IconButton
                 mr={[2, 4]}
-                icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+                icon={<MyIcon name={'history'} w={'18px'} />}
                 aria-label={''}
                 size={'sm'}
+                w={'30px'}
                 variant={'whitePrimary'}
+                onClick={() => setIsShowVersionHistories(true)}
               />
-            }
-            menuList={[
-              {
-                label: t('app.Import Configs'),
-                icon: 'common/importLight',
-                onClick: onOpenImport
-              },
-              {
-                label: t('app.Export Configs'),
-                icon: 'export',
-                onClick: onExportWorkflow
-              }
-            ]}
-          />
-
-          <IconButton
-            mr={[2, 4]}
-            icon={<MyIcon name={'history'} w={'18px'} />}
-            aria-label={''}
-            size={'sm'}
-            w={'30px'}
-            variant={'whitePrimary'}
-            onClick={() => setIsShowVersionHistories(true)}
-          />
+            </>
+          )}
 
           <Button
             size={'sm'}

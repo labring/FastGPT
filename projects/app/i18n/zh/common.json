@@ -1166,7 +1166,7 @@
       },
       "publish": {
         "OnRevert version": "点击回退到该版本",
-        "OnRevert version confirm": "确认回退该版本？",
+        "OnRevert version confirm": "确认回退至该版本？会为您保存编辑中版本的配置，并为回退版本创建一个新的发布版本。",
         "histories": "发布记录"
       },
       "tool": {
