@@ -63,36 +63,40 @@ const ListItem = ({
       >
         <Container w={snapshot.isDragging ? '' : 'full'} className="nodrag">
           <Flex mb={4} alignItems={'center'}>
-            <Box {...provided.dragHandleProps}>
-              <DragHandleIcon color={'blackAlpha.600'} />
-            </Box>
+            {ifElseList.length > 1 && (
+              <Box {...provided.dragHandleProps}>
+                <DragHandleIcon color={'blackAlpha.600'} />
+              </Box>
+            )}
             <Box color={'black'} fontSize={'lg'} ml={2}>
               {conditionIndex === 0 ? 'IF' : 'ELSE IF'}
             </Box>
-            <Flex
-              px={'2.5'}
-              color={'primary.600'}
-              fontWeight={'medium'}
-              alignItems={'center'}
-              cursor={'pointer'}
-              rounded={'md'}
-              onClick={() => {
-                onUpdateIfElseList(
-                  ifElseList.map((ifElse, index) => {
-                    if (index === conditionIndex) {
-                      return {
-                        ...ifElse,
-                        condition: ifElse.condition === 'AND' ? 'OR' : 'AND'
-                      };
-                    }
-                    return ifElse;
-                  })
-                );
-              }}
-            >
-              {conditionItem.condition}
-              <MyIcon ml={1} boxSize={5} name="change" />
-            </Flex>
+            {conditionItem.list?.length > 1 && (
+              <Flex
+                px={'2.5'}
+                color={'primary.600'}
+                fontWeight={'medium'}
+                alignItems={'center'}
+                cursor={'pointer'}
+                rounded={'md'}
+                onClick={() => {
+                  onUpdateIfElseList(
+                    ifElseList.map((ifElse, index) => {
+                      if (index === conditionIndex) {
+                        return {
+                          ...ifElse,
+                          condition: ifElse.condition === 'AND' ? 'OR' : 'AND'
+                        };
+                      }
+                      return ifElse;
+                    })
+                  );
+                }}
+              >
+                {conditionItem.condition}
+                <MyIcon ml={1} boxSize={5} name="change" />
+              </Flex>
+            )}
             <Box flex={1}></Box>
             {ifElseList.length > 1 && (
               <MyIcon
@@ -257,7 +261,11 @@ const ListItem = ({
         {!snapshot.isDragging && (
           <SourceHandle
             nodeId={nodeId}
-            handleId={getHandleId(nodeId, 'source', 'IF' + conditionIndex.toString())}
+            handleId={getHandleId(
+              nodeId,
+              'source',
+              conditionIndex === 0 ? 'IF' : `ELSEIF${conditionIndex.toString()}`
+            )}
             position={Position.Right}
             translate={[18, 0]}
           />

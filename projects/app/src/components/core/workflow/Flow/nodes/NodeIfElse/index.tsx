@@ -108,7 +108,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     )}
                   </Draggable>
                 ))}
-                <Box height={draggingItemHeight} />
+                {snapshot.isDraggingOver && <Box height={draggingItemHeight} />}
               </Box>
             )}
           </Droppable>
