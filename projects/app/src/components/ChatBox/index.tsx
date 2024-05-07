@@ -360,6 +360,12 @@ const ChatBox = (
     [questionGuide, shareId, outLinkUid, teamId, teamToken]
   );
 
+  /* Abort chat completions, questionGuide */
+  const abortRequest = () => {
+    chatController.current?.abort('leave');
+    questionGuideController.current?.abort('leave');
+  };
+
   /**
    * user confirm send prompt
    */
@@ -382,6 +388,8 @@ const ChatBox = (
           });
           return;
         }
+
+        abortRequest();
 
         text = text.trim();
 
@@ -472,7 +480,8 @@ const ChatBox = (
             generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
             variables
           });
-          setValue('variables', newVariables || []);
+
+          newVariables && setValue('variables', newVariables);
 
           isNewChatReplace.current = isNewChat;
 
@@ -747,7 +756,7 @@ const ChatBox = (
         return () => setFeedbackId(chat.dataId);
       }
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
+    [appId, chatId, feedbackType, outLinkUid, setChatHistories, shareId, teamId, teamToken]
   );
   const onReadUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
@@ -868,6 +877,7 @@ const ChatBox = (
       setValue('variables', e || defaultVal);
     },
     resetHistory(e) {
+      abortRequest();
       setValue('chatStarted', e.length > 0);
       setChatHistories(e);
     },
