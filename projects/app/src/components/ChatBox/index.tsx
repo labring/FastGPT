@@ -158,12 +158,6 @@ const ChatBox = (
     isChatting
   } = useChatProviderStore();
 
-  /* variable */
-  const filterVariableModules = useMemo(
-    () => variableModules.filter((item) => item.type !== VariableInputEnum.custom),
-    [variableModules]
-  );
-
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({
     defaultValues: {
@@ -174,9 +168,15 @@ const ChatBox = (
     }
   });
   const { setValue, watch, handleSubmit } = chatForm;
-  const variables = watch('variables');
   const chatStarted = watch('chatStarted');
-  const variableIsFinish = useMemo(() => {
+
+  /* variable */
+  const variables = watch('variables');
+  const filterVariableModules = useMemo(
+    () => variableModules.filter((item) => item.type !== VariableInputEnum.custom),
+    [variableModules]
+  );
+  const variableIsFinish = (() => {
     if (!filterVariableModules || filterVariableModules.length === 0 || chatHistories.length > 0)
       return true;
 
@@ -188,7 +188,7 @@ const ChatBox = (
     }
 
     return chatStarted;
-  }, [filterVariableModules, chatHistories.length, chatStarted, variables]);
+  })();
 
   // 滚动到底部
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -361,10 +361,10 @@ const ChatBox = (
   );
 
   /* Abort chat completions, questionGuide */
-  const abortRequest = () => {
-    chatController.current?.abort('leave');
-    questionGuideController.current?.abort('leave');
-  };
+  const abortRequest = useCallback(() => {
+    chatController.current?.abort('stop');
+    questionGuideController.current?.abort('stop');
+  }, []);
 
   /**
    * user confirm send prompt
@@ -549,6 +549,7 @@ const ChatBox = (
       })();
     },
     [
+      abortRequest,
       chatHistories,
       createQuestionGuide,
       finishSegmentedAudio,
@@ -719,7 +720,7 @@ const ChatBox = (
         });
       };
     },
-    [appId, chatId, feedbackType, teamId, teamToken]
+    [appId, chatId, feedbackType, setChatHistories, teamId, teamToken]
   );
   const onADdUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
