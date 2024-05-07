@@ -1,13 +1,11 @@
 {
   "App": "App",
-  "Create New": "Create New",
   "Export": "Export",
   "Folder": "Folder",
   "Move": "Move",
   "Name": "Name",
   "Rename": "Rename",
   "Running": "Running",
-  "Select value is empty": "Selected value is empty",
   "UnKnow": "Unknown",
   "Warning": "Warning",
   "app": {
@@ -646,7 +644,8 @@
             "success": "Sync started"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary Data",
@@ -1204,7 +1203,6 @@
     "Select Dataset": "Select this knowledge base",
     "Select Dataset Tips": "Only knowledge bases of the same index model can be selected",
     "Select Folder": "Enter folder",
-    "System Data Queue": "Queue Length",
     "Training Name": "Data Training",
     "Upload Time": "Upload Time",
     "collections": {
