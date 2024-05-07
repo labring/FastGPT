@@ -937,6 +937,7 @@
         "Add Input": "添加入参",
         "Input Number": "入参: {{length}}",
         "add": "添加条件",
+        "Add Branch": "添加分支",
         "description": {
           "Background": "你可以添加一些特定内容的介绍，从而更好的识别用户的问题类型。这个内容通常是给模型介绍一个它不知道的内容。",
           "HTTP Dynamic Input": "接收前方节点的输出值作为变量，这些变量可以被HTTP请求参数使用。",
