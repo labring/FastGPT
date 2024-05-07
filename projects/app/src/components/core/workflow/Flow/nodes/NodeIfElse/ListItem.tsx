@@ -9,6 +9,7 @@ import { useTranslation } from 'react-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
+  IfElseResultEnum,
   VariableConditionEnum,
   allConditionList,
   arrayConditionList,
@@ -69,7 +70,7 @@ const ListItem = ({
               </Box>
             )}
             <Box color={'black'} fontSize={'lg'} ml={2}>
-              {conditionIndex === 0 ? 'IF' : 'ELSE IF'}
+              {conditionIndex === 0 ? IfElseResultEnum.IF : IfElseResultEnum.ELSE_IF}
             </Box>
             {conditionItem.list?.length > 1 && (
               <Flex
@@ -264,7 +265,9 @@ const ListItem = ({
             handleId={getHandleId(
               nodeId,
               'source',
-              conditionIndex === 0 ? 'IF' : `ELSEIF${conditionIndex.toString()}`
+              conditionIndex === 0
+                ? IfElseResultEnum.IF
+                : `${IfElseResultEnum.ELSE_IF} ${conditionIndex.toString()}`
             )}
             position={Position.Right}
             translate={[18, 0]}

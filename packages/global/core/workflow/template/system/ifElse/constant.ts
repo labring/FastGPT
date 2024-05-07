@@ -20,6 +20,11 @@ export enum VariableConditionEnum {
   lengthLessThan = 'lengthLessThan',
   lengthLessThanOrEqualTo = 'lengthLessThanOrEqualTo'
 }
+export enum IfElseResultEnum {
+  IF = 'IF',
+  ELSE = 'ELSE',
+  ELSE_IF = 'ELSE IF'
+}
 
 export const stringConditionList = [
   { label: '为空', value: VariableConditionEnum.isEmpty },
