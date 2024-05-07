@@ -45,25 +45,12 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     [inputs, nodeId, onChangeNode]
   );
 
-  const reorder = (result: DropResult) => {
-    if (!result.destination) {
-      return;
-    }
-    const startIndex = result.source.index;
-    const endIndex = result.destination.index;
-
-    const list = Array.from(ifElseList);
-    const [removed] = list.splice(startIndex, 1);
-    list.splice(endIndex, 0, removed);
-
-    onUpdateIfElseList(list);
-  };
-
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
       <Box px={4} cursor={'default'}>
-        <DndDrag
-          onDragEndCb={reorder}
+        <DndDrag<IfElseListItemType>
+          onDragEndCb={(list) => onUpdateIfElseList(list)}
+          dataList={ifElseList}
           renderClone={(provided, snapshot, rubric) => (
             <ListItem
               provided={provided}

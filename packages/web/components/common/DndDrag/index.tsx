@@ -9,13 +9,14 @@ import {
   DropResult
 } from 'react-beautiful-dnd';
 
-type Props = {
-  onDragEndCb: (result: DropResult) => void;
+type Props<T = any> = {
+  onDragEndCb: (result: T[]) => void;
   renderClone?: DraggableChildrenFn;
   children: DroppableProps['children'];
+  dataList: T[];
 };
 
-const DndDrag = ({ children, renderClone, onDragEndCb }: Props) => {
+function DndDrag<T>({ children, renderClone, onDragEndCb, dataList }: Props<T>) {
   const [draggingItemHeight, setDraggingItemHeight] = useState(0);
 
   const onDragStart = (start: DragStart) => {
@@ -27,8 +28,16 @@ const DndDrag = ({ children, renderClone, onDragEndCb }: Props) => {
     if (!result.destination) {
       return;
     }
-    onDragEndCb(result);
     setDraggingItemHeight(0);
+
+    const startIndex = result.source.index;
+    const endIndex = result.destination.index;
+
+    const list = Array.from(dataList);
+    const [removed] = list.splice(startIndex, 1);
+    list.splice(endIndex, 0, removed);
+
+    onDragEndCb(list);
   };
 
   return (
@@ -45,7 +54,7 @@ const DndDrag = ({ children, renderClone, onDragEndCb }: Props) => {
       </Droppable>
     </DragDropContext>
   );
-};
+}
 
 export default DndDrag;
 
