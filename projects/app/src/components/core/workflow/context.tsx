@@ -413,7 +413,7 @@ const WorkflowContextProvider = ({
   });
 
   /* If the module is connected by a tool, the tool input and the normal input are separated */
-  const splitToolInputs = useMemoizedFn((inputs: FlowNodeInputItemType[], nodeId: string) => {
+  const splitToolInputs = (inputs: FlowNodeInputItemType[], nodeId: string) => {
     const isTool = !!edges.find(
       (edge) => edge.targetHandle === NodeOutputKeyEnum.selectedTools && edge.target === nodeId
     );
@@ -426,7 +426,7 @@ const WorkflowContextProvider = ({
         return !item.toolDescription;
       })
     };
-  });
+  };
 
   const initData = useMemoizedFn(
     async (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {

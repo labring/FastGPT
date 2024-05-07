@@ -1,13 +1,11 @@
 {
   "App": "应用",
-  "Create New": "",
   "Export": "导出",
   "Folder": "文件夹",
   "Move": "移动",
   "Name": "名称",
   "Rename": "重命名",
   "Running": "运行中",
-  "Select value is empty": "选择的内容为空",
   "UnKnow": "未知",
   "Warning": "提示",
   "app": {
@@ -646,7 +644,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1167,7 +1166,7 @@
       },
       "publish": {
         "OnRevert version": "点击回退到该版本",
-        "OnRevert version confirm": "确认回退该版本？",
+        "OnRevert version confirm": "确认回退至该版本？会为您保存编辑中版本的配置，并为回退版本创建一个新的发布版本。",
         "histories": "发布记录"
       },
       "tool": {
@@ -1204,7 +1203,6 @@
     "Select Dataset": "选择该知识库",
     "Select Dataset Tips": "仅能选择同一个索引模型的知识库",
     "Select Folder": "进入文件夹",
-    "System Data Queue": "排队长度",
     "Training Name": "数据训练",
     "Upload Time": "上传时间",
     "collections": {
