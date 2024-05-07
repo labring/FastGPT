@@ -1,0 +1,412 @@
+import { Box, Button, Flex } from '@chakra-ui/react';
+import { DraggableProvided, DraggableStateSnapshot } from 'react-beautiful-dnd';
+import Container from '../../components/Container';
+import { DragHandleIcon, MinusIcon, SmallAddIcon } from '@chakra-ui/icons';
+import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import { useTranslation } from 'react-i18next';
+import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
+import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  VariableConditionEnum,
+  allConditionList,
+  arrayConditionList,
+  booleanConditionList,
+  numberConditionList,
+  stringConditionList
+} from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import { useContextSelector } from 'use-context-selector';
+import React, { useMemo } from 'react';
+import { WorkflowContext } from '../../../context';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import MyInput from '@/components/MyInput';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { SourceHandle } from '../render/Handle';
+import { Position, useReactFlow } from 'reactflow';
+
+const ListItem = ({
+  provided,
+  snapshot,
+  conditionIndex,
+  conditionItem,
+  ifElseList,
+  onUpdateIfElseList,
+  nodeId
+}: {
+  provided: DraggableProvided;
+  snapshot: DraggableStateSnapshot;
+  conditionIndex: number;
+  conditionItem: IfElseListItemType;
+  ifElseList: IfElseListItemType[];
+  onUpdateIfElseList: (value: IfElseListItemType[]) => void;
+  nodeId: string;
+}) => {
+  const { t } = useTranslation();
+  const { getZoom } = useReactFlow();
+
+  return (
+    <Box
+      ref={provided.innerRef}
+      {...provided.draggableProps}
+      style={{
+        ...provided.draggableProps.style,
+        opacity: snapshot.isDragging ? 0.8 : 1
+      }}
+    >
+      <Flex
+        alignItems={'center'}
+        position={'relative'}
+        transform={snapshot.isDragging ? `scale(${getZoom()})` : ''}
+        transformOrigin={'top left'}
+      >
+        <Container w={snapshot.isDragging ? '' : 'full'} className="nodrag">
+          <Flex mb={4} alignItems={'center'}>
+            <Box {...provided.dragHandleProps}>
+              <DragHandleIcon color={'blackAlpha.600'} />
+            </Box>
+            <Box color={'black'} fontSize={'lg'} ml={2}>
+              {conditionIndex === 0 ? 'IF' : 'ELSE IF'}
+            </Box>
+            <Flex
+              px={'2.5'}
+              color={'primary.600'}
+              fontWeight={'medium'}
+              alignItems={'center'}
+              cursor={'pointer'}
+              rounded={'md'}
+              onClick={() => {
+                onUpdateIfElseList(
+                  ifElseList.map((ifElse, index) => {
+                    if (index === conditionIndex) {
+                      return {
+                        ...ifElse,
+                        condition: ifElse.condition === 'AND' ? 'OR' : 'AND'
+                      };
+                    }
+                    return ifElse;
+                  })
+                );
+              }}
+            >
+              {conditionItem.condition}
+              <MyIcon ml={1} boxSize={5} name="change" />
+            </Flex>
+            <Box flex={1}></Box>
+            {ifElseList.length > 1 && (
+              <MyIcon
+                ml={2}
+                boxSize={5}
+                name="delete"
+                cursor={'pointer'}
+                _hover={{ color: 'red.600' }}
+                color={'myGray.400'}
+                onClick={() => {
+                  onUpdateIfElseList(ifElseList.filter((_, index) => index !== conditionIndex));
+                }}
+              />
+            )}
+          </Flex>
+          <Box>
+            {conditionItem.list?.map((item, i) => {
+              return (
+                <Box key={i}>
+                  {/* condition list */}
+                  <Flex gap={2} mb={2} alignItems={'center'}>
+                    {/* variable reference */}
+                    <Box minW={'250px'}>
+                      <Reference
+                        nodeId={nodeId}
+                        variable={item.variable}
+                        onSelect={(e) => {
+                          onUpdateIfElseList(
+                            ifElseList.map((ifElse, index) => {
+                              if (index === conditionIndex) {
+                                return {
+                                  ...ifElse,
+                                  list: ifElse.list.map((item, index) => {
+                                    if (index === i) {
+                                      return {
+                                        ...item,
+                                        variable: e
+                                      };
+                                    }
+                                    return item;
+                                  })
+                                };
+                              }
+                              return ifElse;
+                            })
+                          );
+                        }}
+                      />
+                    </Box>
+                    {/* condition select */}
+                    <Box w={'130px'} flex={1}>
+                      <ConditionSelect
+                        condition={item.condition}
+                        variable={item.variable}
+                        onSelect={(e) => {
+                          onUpdateIfElseList(
+                            ifElseList.map((ifElse, index) => {
+                              if (index === conditionIndex) {
+                                return {
+                                  ...ifElse,
+                                  list: ifElse.list.map((item, index) => {
+                                    if (index === i) {
+                                      return {
+                                        ...item,
+                                        condition: e
+                                      };
+                                    }
+                                    return item;
+                                  })
+                                };
+                              }
+                              return ifElse;
+                            })
+                          );
+                        }}
+                      />
+                    </Box>
+                    {/* value */}
+                    <Box w={'200px'}>
+                      <ConditionValueInput
+                        value={item.value}
+                        condition={item.condition}
+                        variable={item.variable}
+                        onChange={(e) => {
+                          onUpdateIfElseList(
+                            ifElseList.map((ifElse, index) => {
+                              if (index === conditionIndex) {
+                                return {
+                                  ...ifElse,
+                                  list: ifElse.list.map((item, index) => {
+                                    if (index === i) {
+                                      return {
+                                        ...item,
+                                        value: e
+                                      };
+                                    }
+                                    return item;
+                                  })
+                                };
+                              }
+                              return ifElse;
+                            })
+                          );
+                        }}
+                      />
+                    </Box>
+                    {/* delete */}
+                    {conditionItem.list.length > 1 && (
+                      <MinusIcon
+                        ml={2}
+                        boxSize={3}
+                        name="delete"
+                        cursor={'pointer'}
+                        _hover={{ color: 'red.600' }}
+                        color={'myGray.400'}
+                        onClick={() => {
+                          onUpdateIfElseList(
+                            ifElseList.map((ifElse, index) => {
+                              if (index === conditionIndex) {
+                                return {
+                                  ...ifElse,
+                                  list: ifElse.list.filter((_, index) => index !== i)
+                                };
+                              }
+                              return ifElse;
+                            })
+                          );
+                        }}
+                      />
+                    )}
+                  </Flex>
+                </Box>
+              );
+            })}
+          </Box>
+          <Button
+            onClick={() => {
+              onUpdateIfElseList(
+                ifElseList.map((ifElse, index) => {
+                  if (index === conditionIndex) {
+                    return {
+                      ...ifElse,
+                      list: ifElse.list.concat({
+                        variable: undefined,
+                        condition: undefined,
+                        value: undefined
+                      })
+                    };
+                  }
+                  return ifElse;
+                })
+              );
+            }}
+            variant={'link'}
+            leftIcon={<SmallAddIcon />}
+            my={3}
+            color={'primary.600'}
+          >
+            {t('core.module.input.add')}
+          </Button>
+        </Container>
+        {!snapshot.isDragging && (
+          <SourceHandle
+            nodeId={nodeId}
+            handleId={getHandleId(nodeId, 'source', 'IF' + conditionIndex.toString())}
+            position={Position.Right}
+            translate={[18, 0]}
+          />
+        )}
+      </Flex>
+    </Box>
+  );
+};
+
+export default React.memo(ListItem);
+
+const Reference = ({
+  nodeId,
+  variable,
+  onSelect
+}: {
+  nodeId: string;
+  variable?: ReferenceValueProps;
+  onSelect: (e: ReferenceValueProps) => void;
+}) => {
+  const { t } = useTranslation();
+
+  const { referenceList, formatValue } = useReference({
+    nodeId,
+    valueType: WorkflowIOValueTypeEnum.any,
+    value: variable
+  });
+
+  return (
+    <ReferSelector
+      placeholder={t('选择引用变量')}
+      list={referenceList}
+      value={formatValue}
+      onSelect={onSelect}
+    />
+  );
+};
+
+/* Different data types have different options */
+const ConditionSelect = ({
+  condition,
+  variable,
+  onSelect
+}: {
+  condition?: VariableConditionEnum;
+  variable?: ReferenceValueProps;
+  onSelect: (e: VariableConditionEnum) => void;
+}) => {
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+
+  // get condition type
+  const valueType = useMemo(() => {
+    if (!variable) return;
+    const node = nodeList.find((node) => node.nodeId === variable[0]);
+
+    if (!node) return WorkflowIOValueTypeEnum.any;
+    const output = node.outputs.find((item) => item.id === variable[1]);
+
+    if (!output) return WorkflowIOValueTypeEnum.any;
+    return output.valueType;
+  }, [nodeList, variable]);
+
+  const conditionList = useMemo(() => {
+    if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;
+    if (valueType === WorkflowIOValueTypeEnum.number) return numberConditionList;
+    if (valueType === WorkflowIOValueTypeEnum.boolean) return booleanConditionList;
+    if (
+      valueType === WorkflowIOValueTypeEnum.chatHistory ||
+      valueType === WorkflowIOValueTypeEnum.datasetQuote ||
+      valueType === WorkflowIOValueTypeEnum.dynamic ||
+      valueType === WorkflowIOValueTypeEnum.selectApp ||
+      valueType === WorkflowIOValueTypeEnum.arrayBoolean ||
+      valueType === WorkflowIOValueTypeEnum.arrayNumber ||
+      valueType === WorkflowIOValueTypeEnum.arrayObject ||
+      valueType === WorkflowIOValueTypeEnum.arrayString ||
+      valueType === WorkflowIOValueTypeEnum.object
+    )
+      return arrayConditionList;
+
+    if (valueType === WorkflowIOValueTypeEnum.any) return allConditionList;
+
+    return [];
+  }, [valueType]);
+
+  return (
+    <MySelect
+      w={'100%'}
+      list={conditionList}
+      value={condition}
+      onchange={onSelect}
+      placeholder="选择条件"
+    />
+  );
+};
+
+/* 
+  Different condition can be entered differently
+  empty, notEmpty: forbid input
+  boolean type: select true/false
+*/
+const ConditionValueInput = ({
+  value = '',
+  variable,
+  condition,
+  onChange
+}: {
+  value?: string;
+  variable?: ReferenceValueProps;
+  condition?: VariableConditionEnum;
+  onChange: (e: string) => void;
+}) => {
+  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+
+  // get value type
+  const valueType = useMemo(() => {
+    if (!variable) return;
+    const node = nodeList.find((node) => node.nodeId === variable[0]);
+
+    if (!node) return WorkflowIOValueTypeEnum.any;
+    const output = node.outputs.find((item) => item.id === variable[1]);
+
+    if (!output) return WorkflowIOValueTypeEnum.any;
+    return output.valueType;
+  }, [nodeList, variable]);
+
+  if (valueType === WorkflowIOValueTypeEnum.boolean) {
+    return (
+      <MySelect
+        list={[
+          { label: 'True', value: 'true' },
+          { label: 'False', value: 'false' }
+        ]}
+        onchange={onChange}
+        value={value}
+        placeholder={'选择值'}
+      />
+    );
+  } else {
+    return (
+      <MyInput
+        value={value}
+        placeholder={'输入值'}
+        w={'100%'}
+        bg={'white'}
+        isDisabled={
+          condition === VariableConditionEnum.isEmpty ||
+          condition === VariableConditionEnum.isNotEmpty
+        }
+        onChange={(e) => onChange(e.target.value)}
+      />
+    );
+  }
+};
