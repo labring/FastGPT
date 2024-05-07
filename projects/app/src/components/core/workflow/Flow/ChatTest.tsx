@@ -99,7 +99,7 @@ const ChatTest = (
   return (
     <>
       <Flex
-        zIndex={3}
+        zIndex={101}
         flexDirection={'column'}
         position={'absolute'}
         top={5}

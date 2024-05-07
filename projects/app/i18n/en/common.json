@@ -1,13 +1,11 @@
 {
   "App": "App",
-  "Create New": "Create New",
   "Export": "Export",
   "Folder": "Folder",
   "Move": "Move",
   "Name": "Name",
   "Rename": "Rename",
   "Running": "Running",
-  "Select value is empty": "Selected value is empty",
   "UnKnow": "Unknown",
   "Warning": "Warning",
   "app": {
@@ -646,7 +644,8 @@
             "success": "Sync started"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary Data",
@@ -1167,7 +1166,7 @@
       },
       "publish": {
         "OnRevert version": "Click back to that version",
-        "OnRevert version confirm": "Are you sure to roll back the version?",
+        "OnRevert version confirm": "Sure you want to roll back to this version? The configuration for the version in editing is saved for you and a new release is created for the rollback version.",
         "histories": "Publiish histories"
       },
       "tool": {
@@ -1204,7 +1203,6 @@
     "Select Dataset": "Select this knowledge base",
     "Select Dataset Tips": "Only knowledge bases of the same index model can be selected",
     "Select Folder": "Enter folder",
-    "System Data Queue": "Queue Length",
     "Training Name": "Data Training",
     "Upload Time": "Upload Time",
     "collections": {
