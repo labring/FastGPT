@@ -1,14 +1,17 @@
 import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
-import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
+import {
+  IfElseResultEnum,
+  VariableConditionEnum
+} from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import {
   ConditionListItemType,
   IfElseConditionType,
   IfElseListItemType
 } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 
 type Props = ModuleDispatchProps<{
@@ -75,18 +78,18 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
   } = props;
   const { ifElseList } = params;
 
-  let res = 'ELSE';
+  let res = IfElseResultEnum.ELSE as string;
   for (let i = 0; i < ifElseList.length; i++) {
     const item = ifElseList[i];
     const result = getResult(item.condition, item.list, variables, runtimeNodes);
     if (result) {
-      res = `IF${i}`;
+      res = getElseIFLabel(i);
       break;
     }
   }
 
   const resArray = Array.from({ length: ifElseList.length + 1 }, (_, index) => {
-    const label = index < ifElseList.length ? `IF${index}` : 'ELSE';
+    const label = index < ifElseList.length ? getElseIFLabel(index) : IfElseResultEnum.ELSE;
     return getHandleId(nodeId, 'source', label);
   });
 

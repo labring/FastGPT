@@ -13,6 +13,7 @@ import { DragDropContext, DragStart, Draggable, DropResult, Droppable } from 're
 import { SourceHandle } from '../render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import ListItem from './ListItem';
+import { IfElseResultEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
 const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
@@ -108,7 +109,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
                     )}
                   </Draggable>
                 ))}
-                <Box height={draggingItemHeight} />
+                {snapshot.isDraggingOver && <Box height={draggingItemHeight} />}
               </Box>
             )}
           </Droppable>
@@ -116,11 +117,11 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
         <Container position={'relative'}>
           <Flex alignItems={'center'}>
             <Box color={'black'} fontSize={'lg'} ml={2}>
-              ELSE
+              {IfElseResultEnum.ELSE}
             </Box>
             <SourceHandle
               nodeId={nodeId}
-              handleId={getHandleId(nodeId, 'source', 'ELSE')}
+              handleId={getHandleId(nodeId, 'source', IfElseResultEnum.ELSE)}
               position={Position.Right}
               translate={[26, 0]}
             />
