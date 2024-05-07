@@ -25,6 +25,8 @@ import {
 import { getSystemVariables } from '../app/utils';
 import { TFunction } from 'next-i18next';
 import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
+import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -186,6 +188,29 @@ export const checkWorkflowNodeAndConnection = ({
       data.flowNodeType === FlowNodeTypeEnum.workflowStart
     ) {
       continue;
+    }
+
+    if (data.flowNodeType === FlowNodeTypeEnum.ifElseNode) {
+      const ifElseList: IfElseListItemType[] = inputs.find(
+        (input) => input.key === NodeInputKeyEnum.ifElseList
+      )?.value;
+      if (
+        ifElseList.some((item) => {
+          return item.list.some((listItem) => {
+            return (
+              listItem.variable === undefined ||
+              listItem.condition === undefined ||
+              (listItem.value === undefined &&
+                listItem.condition !== VariableConditionEnum.isEmpty &&
+                listItem.condition !== VariableConditionEnum.isNotEmpty)
+            );
+          });
+        })
+      ) {
+        return [data.nodeId];
+      } else {
+        continue;
+      }
     }
 
     // check node input
