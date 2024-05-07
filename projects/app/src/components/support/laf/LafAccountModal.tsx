@@ -145,6 +145,7 @@ const LafAccountModal = ({
                   teamId: userInfo?.team.teamId || '',
                   lafAccount: { token: '', appid: '', pat: '' }
                 });
+                initUserInfo();
               }}
             >
               已验证，点击取消绑定

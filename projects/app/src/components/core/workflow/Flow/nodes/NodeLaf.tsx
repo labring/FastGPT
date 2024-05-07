@@ -33,6 +33,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { putUpdateTeam } from '@/web/support/user/team/api';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -47,7 +48,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
   const requestUrl = inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl);
 
-  const { userInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
 
   const token = userInfo?.team.lafAccount?.token;
   const appid = userInfo?.team.lafAccount?.appid;
@@ -69,7 +70,16 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
     ['getLafFunctionList'],
     async () => {
       // load laf app detail
-      const appDetail = await getLafAppDetail(appid);
+      let appDetail = null;
+      try {
+        appDetail = await getLafAppDetail(appid);
+      } catch (e) {
+        putUpdateTeam({
+          teamId: userInfo?.team.teamId || '',
+          lafAccount: { token: '', appid: '', pat: '' }
+        });
+        initUserInfo();
+      }
 
       // load laf app functions
       const schemaUrl = `https://${appDetail?.domain.domain}/_/api-docs?token=${appDetail?.openapi_token}`;
