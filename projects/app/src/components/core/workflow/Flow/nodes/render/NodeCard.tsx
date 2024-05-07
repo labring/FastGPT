@@ -92,6 +92,8 @@ const NodeCard = (props: Props) => {
             </Box>
             {!menuForbid?.rename && (
               <MyIcon
+                className="controller-rename"
+                display={'none'}
                 name={'edit'}
                 w={'14px'}
                 cursor={'pointer'}
@@ -160,6 +162,9 @@ const NodeCard = (props: Props) => {
           display: 'flex'
         },
         '& .controller-debug': {
+          display: 'block'
+        },
+        '& .controller-rename': {
           display: 'block'
         }
       }}
