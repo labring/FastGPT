@@ -104,7 +104,7 @@ type Props = OutLinkChatAuthProps & {
   onSuccess: (adminFeedback: AdminFbkType) => void;
 };
 
-/* 
+/*
   The input is divided into sections
   1. text
   2. img
@@ -1149,77 +1149,150 @@ const ChatBox = (
         />
       )} */}
       {/* input data */}
-      {adminMarkData && adminMarkData.datasetId && adminMarkData.collectionId && (
-        <InputDataModalMini
-          onClose={() => {
-            setAdminMarkData({
-              ...adminMarkData,
-              collectionId: undefined
-            });
-          }}
-          collectionId={adminMarkData.collectionId}
-          dataId={adminMarkData.dataId}
-          defaultValue={{
-            q: adminMarkData.q,
-            a: adminMarkData.a
-          }}
-          onSuccess={(adminFeedback) => {
-            if (
-              !adminFeedback.q ||
-              !adminMarkData.datasetId ||
-              !adminMarkData.collectionId ||
-              !adminFeedback.dataId
-            ) {
-              return setAdminMarkData(undefined);
-            }
-
-            // onSuccess({
-            //   dataId: adminFeedback.dataId,
-            //   datasetId: adminMarkData.datasetId,
-            //   collectionId: adminMarkData.collectionId,
-            //   q: adminFeedback.q,
-            //   a: adminFeedback.a
-            // });
-            if (!appId || !chatId || !adminMarkData.chatItemId) return;
-            // updateChatAdminFeedback({
-            //   appId,
-            //   chatId,
-            //   chatItemId: adminMarkData.chatItemId,
-            //   ...adminFeedback
-            // });
-
-            // // update dom
-            // setChatHistories((state) =>
-            //   state.map((chatItem) =>
-            //     chatItem.dataId === adminMarkData.chatItemId
-            //       ? {
-            //         ...chatItem,
-            //         adminFeedback
-            //       }
-            //       : chatItem
-            //   )
-            // );
-
-            if (readFeedbackData && chatId && appId) {
-              updateChatUserFeedback({
-                appId,
-                chatId,
-                chatItemId: readFeedbackData.chatItemId,
-                userBadFeedback: undefined
+      {adminMarkData &&
+        adminMarkData.datasetId &&
+        adminMarkData.collectionId &&
+        (isPc ? (
+          <InputDataModal
+            onClose={() => {
+              setAdminMarkData({
+                ...adminMarkData,
+                collectionId: undefined
               });
-              setChatHistories((state) =>
-                state.map((chatItem) =>
-                  chatItem.dataId === readFeedbackData.chatItemId
-                    ? { ...chatItem, userBadFeedback: undefined }
-                    : chatItem
-                )
-              );
-              setReadFeedbackData(undefined);
-            }
-            setAdminMarkData(undefined);
-          }}
-        />
-      )}
+            }}
+            collectionId={adminMarkData.collectionId}
+            dataId={adminMarkData.dataId}
+            defaultValue={{
+              q: adminMarkData.q,
+              a: adminMarkData.a
+            }}
+            onSuccess={(adminFeedback) => {
+              if (
+                !adminFeedback.q ||
+                !adminMarkData.datasetId ||
+                !adminMarkData.collectionId ||
+                !adminFeedback.dataId
+              ) {
+                return setAdminMarkData(undefined);
+              }
+
+              // onSuccess({
+              //   dataId: adminFeedback.dataId,
+              //   datasetId: adminMarkData.datasetId,
+              //   collectionId: adminMarkData.collectionId,
+              //   q: adminFeedback.q,
+              //   a: adminFeedback.a
+              // });
+              if (!appId || !chatId || !adminMarkData.chatItemId) return;
+              // updateChatAdminFeedback({
+              //   appId,
+              //   chatId,
+              //   chatItemId: adminMarkData.chatItemId,
+              //   ...adminFeedback
+              // });
+
+              // // update dom
+              // setChatHistories((state) =>
+              //   state.map((chatItem) =>
+              //     chatItem.dataId === adminMarkData.chatItemId
+              //       ? {
+              //         ...chatItem,
+              //         adminFeedback
+              //       }
+              //       : chatItem
+              //   )
+              // );
+
+              if (readFeedbackData && chatId && appId) {
+                updateChatUserFeedback({
+                  appId,
+                  chatId,
+                  chatItemId: readFeedbackData.chatItemId,
+                  userBadFeedback: undefined
+                });
+                setChatHistories((state) =>
+                  state.map((chatItem) =>
+                    chatItem.dataId === readFeedbackData.chatItemId
+                      ? { ...chatItem, userBadFeedback: undefined }
+                      : chatItem
+                  )
+                );
+                setReadFeedbackData(undefined);
+              }
+              setAdminMarkData(undefined);
+            }}
+          />
+        ) : (
+          <InputDataModalMini
+            onClose={() => {
+              setAdminMarkData({
+                ...adminMarkData,
+                collectionId: undefined
+              });
+            }}
+            collectionId={adminMarkData.collectionId}
+            dataId={adminMarkData.dataId}
+            defaultValue={{
+              q: adminMarkData.q,
+              a: adminMarkData.a
+            }}
+            onSuccess={(adminFeedback) => {
+              if (
+                !adminFeedback.q ||
+                !adminMarkData.datasetId ||
+                !adminMarkData.collectionId ||
+                !adminFeedback.dataId
+              ) {
+                return setAdminMarkData(undefined);
+              }
+
+              // onSuccess({
+              //   dataId: adminFeedback.dataId,
+              //   datasetId: adminMarkData.datasetId,
+              //   collectionId: adminMarkData.collectionId,
+              //   q: adminFeedback.q,
+              //   a: adminFeedback.a
+              // });
+              if (!appId || !chatId || !adminMarkData.chatItemId) return;
+              // updateChatAdminFeedback({
+              //   appId,
+              //   chatId,
+              //   chatItemId: adminMarkData.chatItemId,
+              //   ...adminFeedback
+              // });
+
+              // // update dom
+              // setChatHistories((state) =>
+              //   state.map((chatItem) =>
+              //     chatItem.dataId === adminMarkData.chatItemId
+              //       ? {
+              //         ...chatItem,
+              //         adminFeedback
+              //       }
+              //       : chatItem
+              //   )
+              // );
+
+              if (readFeedbackData && chatId && appId) {
+                updateChatUserFeedback({
+                  appId,
+                  chatId,
+                  chatItemId: readFeedbackData.chatItemId,
+                  userBadFeedback: undefined
+                });
+                setChatHistories((state) =>
+                  state.map((chatItem) =>
+                    chatItem.dataId === readFeedbackData.chatItemId
+                      ? { ...chatItem, userBadFeedback: undefined }
+                      : chatItem
+                  )
+                );
+                setReadFeedbackData(undefined);
+              }
+              setAdminMarkData(undefined);
+            }}
+          />
+        ))}
     </Flex>
   );
 };

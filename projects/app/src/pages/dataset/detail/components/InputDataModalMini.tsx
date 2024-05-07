@@ -381,12 +381,12 @@ const InputDataModalMini = ({
                 <Button
                   width="22.67vw"
                   height="9.33vw"
+                  fontSize="3.2vw"
                   borderRadius={'5vw'}
                   isDisabled={!collection.canWrite}
                   // @ts-ignore
                   onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
                 >
-                  {/* {dataId ? t('common.Confirm Update') : t('common.Confirm Import')} */}
                   确认提交
                 </Button>
               </MyTooltip>
@@ -394,113 +394,6 @@ const InputDataModalMini = ({
           </DrawerFooter>
         </DrawerContent>
       </Drawer>
-
-      {/* <MyModal isOpen={true} isCentered w={'90vw'} maxW={'1440px'} h={'90vh'}>
-        <MyBox isLoading={isLoading} display={'flex'} h={'100%'}>
-          <Flex flexDirection={'column'} pb={8} flex={1} h={'100%'}>
-            <Box flex={1} px={9} overflow={'auto'}>
-              {currentTab === TabEnum.content && (
-                <InputTab maxToken={maxToken} register={register} />
-              )}
-              {currentTab === TabEnum.index && (
-                <Grid mt={3} gridTemplateColumns={['1fr', '1fr 1fr']} gridGap={4}>
-                  {indexes?.map((index, i) => (
-                    <Box
-                      key={index.dataId || i}
-                      p={4}
-                      borderRadius={'md'}
-                      border={
-                        index.defaultIndex
-                          ? '1.5px solid var(--light-fastgpt-primary-opacity-01, rgba(51, 112, 255, 0.10))'
-                          : '1.5px solid var(--Gray-Modern-200, #E8EBF0)'
-                      }
-                      bg={index.defaultIndex ? 'primary.50' : 'myGray.25'}
-                      _hover={{
-                        '& .delete': {
-                          display: index.defaultIndex ? 'none' : 'block'
-                        }
-                      }}
-                    >
-                      <Flex mb={2}>
-                        <Box
-                          flex={1}
-                          fontWeight={'medium'}
-                          color={index.defaultIndex ? 'primary.700' : 'myGray.900'}
-                        >
-                          {index.defaultIndex
-                            ? t('dataset.data.Default Index')
-                            : t('dataset.data.Custom Index Number', { number: i })}
-                        </Box>
-                        <DeleteIcon
-                          onClick={() => {
-                            if (indexes.length <= 1) {
-                              appendIndexes(getDefaultIndex({ dataId: `${Date.now()}` }));
-                            }
-                            removeIndexes(i);
-                          }}
-                        />
-                      </Flex>
-                      {index.defaultIndex ? (
-                        <Box fontSize={'sm'} fontWeight={'medium'} color={'myGray.600'}>
-                          {t('core.dataset.data.Default Index Tip')}
-                        </Box>
-                      ) : (
-                        <Textarea
-                          maxLength={maxToken}
-                          fontSize={'sm'}
-                          rows={10}
-                          borderColor={'transparent'}
-                          px={0}
-                          pt={0}
-                          _focus={{
-                            px: 3,
-                            py: 2,
-                            borderColor: 'primary.500',
-                            boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
-                            bg: 'white'
-                          }}
-                          placeholder={t('dataset.data.Index Placeholder')}
-                          {...register(`indexes.${i}.text`, {
-                            required: true
-                          })}
-                        />
-                      )}
-                    </Box>
-                  ))}
-                  <Flex
-                    alignItems={'center'}
-                    justifyContent={'center'}
-                    borderRadius={'md'}
-                    color={'myGray.600'}
-                    fontWeight={'medium'}
-                    border={'1.5px solid var(--Gray-Modern-200, #E8EBF0)'}
-                    bg={'myGray.25'}
-                    cursor={'pointer'}
-                    _hover={{
-                      bg: 'primary.50',
-                      color: 'primary.600',
-                      border:
-                        '1.5px solid var(--light-fastgpt-primary-opacity-01, rgba(51, 112, 255, 0.10))'
-                    }}
-                    minH={'100px'}
-                    onClick={() =>
-                      appendIndexes({
-                        defaultIndex: false,
-                        text: '',
-                        dataId: `${Date.now()}`
-                      })
-                    }
-                  >
-                    <MyIcon name={'common/addLight'} w={'18px'} mr={1.5} />
-                    <Box>{t('dataset.data.Add Index')}</Box>
-                  </Flex>
-                </Grid>
-              )}
-            </Box>
-          </Flex>
-        </MyBox>
-        <ConfirmModal />
-      </MyModal> */}
     </>
   );
 };
