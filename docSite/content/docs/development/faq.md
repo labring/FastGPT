@@ -17,8 +17,6 @@ images: []
 4. 无法解决时，可以找找[Issue](https://github.com/labring/FastGPT/issues)，或新提 Issue，私有部署错误，务必提供详细的日志，否则很难排查。
 
 
-
-
 ## 二、通用问题
 
 ### 能否纯本地运行
@@ -47,7 +45,7 @@ images: []
 
 ### 模型响应为空(core.chat.Chat API is error or undefined)
 
-1. 检查 key 问题。
+1. 检查 key 问题。curl 请求看是否正常。务必用 stream=true 模式。并且 maxToken 等相关参数尽量一致。
 2. 如果是国内模型，可能是命中风控了。
 3. 查看模型请求日志，检查出入参数是否异常。
 
