@@ -22,11 +22,31 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.ifElseResult]: string;
 }>;
 
+function isEmpty(value: any) {
+  return (
+    // 检查未定义或null值
+    value == null ||
+    // 检查空字符串
+    (typeof value === 'string' && value.trim() === '') ||
+    // 检查空数组
+    (Array.isArray(value) && value.length === 0) ||
+    // 检查空对象
+    (typeof value === 'object' &&
+      value.constructor === Object &&
+      Object.keys(value).length === 0) ||
+    // 检查NaN
+    (typeof value === 'number' && isNaN(value))
+  );
+}
+
 function checkCondition(condition: VariableConditionEnum, variableValue: any, value: string) {
   const operations = {
-    [VariableConditionEnum.isEmpty]: () => !variableValue,
-    [VariableConditionEnum.isNotEmpty]: () => !!variableValue,
-    [VariableConditionEnum.equalTo]: () => variableValue === value,
+    [VariableConditionEnum.isEmpty]: () => isEmpty(variableValue),
+    [VariableConditionEnum.isNotEmpty]: () => !isEmpty(variableValue),
+    [VariableConditionEnum.equalTo]: () =>
+      typeof variableValue === 'boolean'
+        ? String(variableValue) === value
+        : variableValue === value,
     [VariableConditionEnum.notEqual]: () => variableValue !== value,
     [VariableConditionEnum.greaterThan]: () => Number(variableValue) > Number(value),
     [VariableConditionEnum.lessThan]: () => Number(variableValue) < Number(value),

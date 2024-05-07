@@ -395,6 +395,10 @@ const ConditionValueInput = ({
         onchange={onChange}
         value={value}
         placeholder={'选择值'}
+        isDisabled={
+          condition === VariableConditionEnum.isEmpty ||
+          condition === VariableConditionEnum.isNotEmpty
+        }
       />
     );
   } else {
