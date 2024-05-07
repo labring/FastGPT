@@ -65,7 +65,7 @@ const ListItem = ({
           <Flex mb={4} alignItems={'center'}>
             {ifElseList.length > 1 && (
               <Box {...provided.dragHandleProps}>
-                <DragHandleIcon color={'blackAlpha.600'} />
+                <DragHandleIcon color={'myGray.500'} _hover={{ color: 'primary.600' }} />
               </Box>
             )}
             <Box color={'black'} fontSize={'lg'} ml={2}>

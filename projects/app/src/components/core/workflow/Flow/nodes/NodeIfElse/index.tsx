@@ -72,7 +72,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
   return (
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
-      <Box px={4}>
+      <Box px={4} cursor={'default'}>
         <DragDropContext onDragStart={onDragStart} onDragEnd={onDragEnd}>
           <Droppable
             droppableId="droppable"
