@@ -644,8 +644,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -920,7 +919,7 @@
         "AppId": "应用的ID",
         "ChatId": "当前对话ID",
         "Current time": "当前时间",
-        "Histories": "历史记录,最多取10条",
+        "Histories": "最近10条聊天记录",
         "Key already exists": "Key 已经存在",
         "Key cannot be empty": "参数名不能为空",
         "Props name": "参数名",

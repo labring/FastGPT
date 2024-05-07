@@ -28,7 +28,7 @@ const Render = ({ app, onClose }: Props) => {
   useEffect(() => {
     if (!isV2Workflow) return;
     initData(JSON.parse(workflowStringData));
-  }, [isV2Workflow, initData, workflowStringData]);
+  }, [isV2Workflow, initData, app._id]);
 
   useEffect(() => {
     if (!isV2Workflow) {
