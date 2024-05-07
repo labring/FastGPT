@@ -47,7 +47,7 @@ export const filterToolNodeIdByEdges = ({
 
 export const getHistories = (history?: ChatItemType[] | number, histories: ChatItemType[] = []) => {
   if (!history) return [];
-  if (typeof history === 'number') return histories.slice(-history);
+  if (typeof history === 'number') return histories.slice(-(history * 2));
   if (Array.isArray(history)) return history;
 
   return [];
