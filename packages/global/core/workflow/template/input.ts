@@ -9,9 +9,10 @@ export const Input_Template_History: FlowNodeInputItemType = {
   renderTypeList: [FlowNodeInputTypeEnum.numberInput, FlowNodeInputTypeEnum.reference],
   valueType: WorkflowIOValueTypeEnum.chatHistory,
   label: 'core.module.input.label.chat history',
+  description: '最多携带多少轮对话记录',
   required: true,
   min: 0,
-  max: 30,
+  max: 50,
   value: 6
 };
 

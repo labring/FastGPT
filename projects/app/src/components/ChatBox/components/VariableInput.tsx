@@ -1,5 +1,5 @@
 import { VariableItemType } from '@fastgpt/global/core/app/type.d';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Input, Textarea } from '@chakra-ui/react';
@@ -24,9 +24,22 @@ const VariableInput = ({
   chatForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
   const { t } = useTranslation();
-  const [refresh, setRefresh] = useState(false);
-  const { register, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
+  const { register, unregister, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
   const variables = watch('variables');
+
+  useEffect(() => {
+    // 重新注册所有字段
+    variableModules.forEach((item) => {
+      register(`variables.${item.key}`, { required: item.required });
+    });
+
+    return () => {
+      // 组件卸载时注销所有字段
+      variableModules.forEach((item) => {
+        unregister(`variables.${item.key}`);
+      });
+    };
+  }, [register, unregister, variableModules]);
 
   return (
     <Box py={3}>
@@ -92,7 +105,6 @@ const VariableInput = ({
                   value={variables[item.key]}
                   onchange={(e) => {
                     setValue(`variables.${item.key}`, e);
-                    setRefresh((state) => !state);
                   }}
                 />
               )}
@@ -116,4 +128,4 @@ const VariableInput = ({
   );
 };
 
-export default React.memo(VariableInput);
+export default VariableInput;
