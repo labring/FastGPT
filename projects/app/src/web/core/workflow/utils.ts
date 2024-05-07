@@ -291,7 +291,7 @@ export const getWorkflowGlobalVariables = (
     splitGuideModule(getGuideModule(nodes))?.variableModules || []
   ).map((item) => ({
     ...item,
-    valueType: WorkflowIOValueTypeEnum.string // 暂时都是字符串
+    valueType: WorkflowIOValueTypeEnum.any
   }));
 
   const systemVariables = getSystemVariables(t);
