@@ -253,7 +253,7 @@ const InputDataModalMini = ({
     <>
       <Drawer isOpen={true} placement="bottom" onClose={onClose} size={'xl'}>
         <DrawerOverlay />
-        <DrawerContent>
+        <DrawerContent borderRadius="1.6vw 1.6vw 0 0">
           <DrawerHeader borderBottomWidth="1px">
             <Flex
               w={'100%'}

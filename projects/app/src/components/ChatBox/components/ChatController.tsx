@@ -68,7 +68,7 @@ const ChatController = ({
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
   return (
-    <Flex>
+    <Flex h={'26px'}>
       {chat.obj === ChatRoleEnum.AI && (
         <Tag
           colorScheme="twitter"
