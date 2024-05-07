@@ -75,6 +75,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     WorkflowContext,
     (v) => v.setIsShowVersionHistories
   );
+  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
 
   const flowData2StoreDataAndCheck = useCallback(async () => {
     const { nodes } = await getWorkflowStore();
@@ -93,35 +94,40 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     }
   }, [edges, onUpdateNodeError, t, toast]);
 
-  const onclickSave = useCallback(async () => {
-    if (isShowVersionHistories) return;
-    const { nodes } = await getWorkflowStore();
+  const onclickSave = useCallback(
+    async (forbid?: boolean) => {
+      // version preview / debug mode, not save
+      if (isShowVersionHistories || forbid) return;
 
-    if (nodes.length === 0) return null;
-    setIsSaving(true);
+      const { nodes } = await getWorkflowStore();
 
-    const storeWorkflow = flowNode2StoreNodes({ nodes, edges });
+      if (nodes.length === 0) return null;
+      setIsSaving(true);
 
-    try {
-      await updateAppDetail(app._id, {
-        ...storeWorkflow,
-        type: AppTypeEnum.advanced,
-        //@ts-ignore
-        version: 'v2'
-      });
+      const storeWorkflow = flowNode2StoreNodes({ nodes, edges });
 
-      setSaveLabel(
-        t('core.app.Auto Save time', {
-          time: formatTime2HM()
-        })
-      );
-      // ChatTestRef.current?.resetChatTest();
-    } catch (error) {}
+      try {
+        await updateAppDetail(app._id, {
+          ...storeWorkflow,
+          type: AppTypeEnum.advanced,
+          //@ts-ignore
+          version: 'v2'
+        });
 
-    setIsSaving(false);
+        setSaveLabel(
+          t('core.app.Auto Save time', {
+            time: formatTime2HM()
+          })
+        );
+        // ChatTestRef.current?.resetChatTest();
+      } catch (error) {}
 
-    return null;
-  }, [isShowVersionHistories, edges, updateAppDetail, app._id, t]);
+      setIsSaving(false);
+
+      return null;
+    },
+    [isShowVersionHistories, edges, updateAppDetail, app._id, t]
+  );
 
   const onclickPublish = useCallback(async () => {
     setIsSaving(true);
@@ -182,7 +188,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
   useInterval(() => {
     if (!app._id) return;
-    onclickSave();
+    onclickSave(!!workflowDebugData);
   }, 20000);
 
   const Render = useMemo(() => {
@@ -221,7 +227,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
                   display={'inline-block'}
                   borderRadius={'xs'}
                   cursor={'pointer'}
-                  onClick={onclickSave}
+                  onClick={() => onclickSave()}
                   color={'myGray.500'}
                 >
                   {saveLabel}

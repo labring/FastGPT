@@ -182,6 +182,7 @@ export const runToolWithToolChoice = async (
 
         const toolRunResponse = await dispatchWorkFlow({
           ...props,
+          isToolCall: true,
           runtimeNodes: runtimeNodes.map((item) =>
             item.nodeId === toolNode.nodeId
               ? {

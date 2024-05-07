@@ -161,6 +161,7 @@ export const runToolWithFunctionCall = async (
 
         const toolRunResponse = await dispatchWorkFlow({
           ...props,
+          isToolCall: true,
           runtimeNodes: runtimeNodes.map((item) =>
             item.nodeId === toolNode.nodeId
               ? {
