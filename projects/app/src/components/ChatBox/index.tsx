@@ -28,6 +28,8 @@ import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
+
+import { AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import {
   closeCustomFeedback,
   updateChatAdminFeedback,
@@ -58,6 +60,8 @@ import ChatProvider, { useChatProviderStore } from './Provider';
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
+import { useChatStore } from '@/web/core/chat/storeChat';
+import InputDataModalMini from '@/pages/dataset/detail/components/InputDataModalMini';
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
@@ -96,6 +100,8 @@ type Props = OutLinkChatAuthProps & {
     isNewChat?: boolean;
   }>;
   onDelMessage?: (e: { contentId: string }) => void;
+  onClose: () => void;
+  onSuccess: (adminFeedback: AdminFbkType) => void;
 };
 
 /* 
@@ -124,7 +130,9 @@ const ChatBox = (
     teamToken,
     onUpdateVariable,
     onStartChat,
-    onDelMessage
+    onDelMessage,
+    onSuccess,
+    onClose
   }: Props,
   ref: ForwardedRef<ComponentRef>
 ) => {
@@ -145,6 +153,8 @@ const ChatBox = (
   }>();
   const [adminMarkData, setAdminMarkData] = useState<AdminMarkType & { chatItemId: string }>();
   const [questionGuides, setQuestionGuide] = useState<string[]>([]);
+
+  const { histories, chatData, setChatData } = useChatStore();
 
   const {
     welcomeText,
@@ -754,7 +764,7 @@ const ChatBox = (
       return () => {
         if (!chat.dataId) return;
         console.log(chat);
-        console.log(questionGuides);
+        console.log(chat.responseData && chat.responseData[0].quoteList);
         // chat.adminFeedback = {
         //   datasetId: '1',
         //   collectionId: '1',
@@ -771,14 +781,19 @@ const ChatBox = (
         //   q: chat.adminFeedback.q || q || '',
         //   a: chat.adminFeedback.a
         // });
-        setAdminMarkData({
-          chatItemId: chat.dataId,
-          datasetId: '662f1f344709768bfa1313ee',
-          collectionId: '662f3ade4709768bfa1317a2',
-          dataId: '662f3b1e4709768bfa131e79',
-          q: '北 三 和 管 桩 有 限 公 司 企 业 标 准',
-          a: formatChatValue2InputType(chat.value).text
-        });
+
+        if (chat.responseData && chat.responseData[0].quoteList) {
+          const oquoteList = chat.responseData && chat.responseData[0].quoteList;
+          setAdminMarkData({
+            chatItemId: chat.dataId,
+            datasetId: oquoteList[0].datasetId,
+            collectionId: oquoteList[0].collectionId,
+            // dataId: chat.dataId || '',
+            q: (chat.responseData && chat.responseData[0].query?.toString()) || '',
+            a: formatChatValue2InputType(chat.value).text
+          });
+        }
+
         // } else {
         //   setAdminMarkData({
         //     chatItemId: chat.dataId,
@@ -1135,7 +1150,7 @@ const ChatBox = (
       )} */}
       {/* input data */}
       {adminMarkData && adminMarkData.datasetId && adminMarkData.collectionId && (
-        <InputDataModal
+        <InputDataModalMini
           onClose={() => {
             setAdminMarkData({
               ...adminMarkData,
@@ -1148,24 +1163,60 @@ const ChatBox = (
             q: adminMarkData.q,
             a: adminMarkData.a
           }}
-          onSuccess={(data) => {
+          onSuccess={(adminFeedback) => {
             if (
-              !data.q ||
+              !adminFeedback.q ||
               !adminMarkData.datasetId ||
               !adminMarkData.collectionId ||
-              !data.dataId
+              !adminFeedback.dataId
             ) {
-              return onClose();
+              return setAdminMarkData(undefined);
             }
 
-            onSuccess({
-              dataId: data.dataId,
-              datasetId: adminMarkData.datasetId,
-              collectionId: adminMarkData.collectionId,
-              q: data.q,
-              a: data.a
-            });
-            onClose();
+            // onSuccess({
+            //   dataId: adminFeedback.dataId,
+            //   datasetId: adminMarkData.datasetId,
+            //   collectionId: adminMarkData.collectionId,
+            //   q: adminFeedback.q,
+            //   a: adminFeedback.a
+            // });
+            if (!appId || !chatId || !adminMarkData.chatItemId) return;
+            // updateChatAdminFeedback({
+            //   appId,
+            //   chatId,
+            //   chatItemId: adminMarkData.chatItemId,
+            //   ...adminFeedback
+            // });
+
+            // // update dom
+            // setChatHistories((state) =>
+            //   state.map((chatItem) =>
+            //     chatItem.dataId === adminMarkData.chatItemId
+            //       ? {
+            //         ...chatItem,
+            //         adminFeedback
+            //       }
+            //       : chatItem
+            //   )
+            // );
+
+            if (readFeedbackData && chatId && appId) {
+              updateChatUserFeedback({
+                appId,
+                chatId,
+                chatItemId: readFeedbackData.chatItemId,
+                userBadFeedback: undefined
+              });
+              setChatHistories((state) =>
+                state.map((chatItem) =>
+                  chatItem.dataId === readFeedbackData.chatItemId
+                    ? { ...chatItem, userBadFeedback: undefined }
+                    : chatItem
+                )
+              );
+              setReadFeedbackData(undefined);
+            }
+            setAdminMarkData(undefined);
           }}
         />
       )}
