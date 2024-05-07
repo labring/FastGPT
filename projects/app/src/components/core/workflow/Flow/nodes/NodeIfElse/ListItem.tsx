@@ -9,7 +9,6 @@ import { useTranslation } from 'react-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
-  IfElseResultEnum,
   VariableConditionEnum,
   allConditionList,
   arrayConditionList,
@@ -22,7 +21,7 @@ import React, { useMemo } from 'react';
 import { WorkflowContext } from '../../../context';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyInput from '@/components/MyInput';
-import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { SourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
 import { getReferenceDataValueType } from '@/web/core/workflow/utils';
@@ -70,7 +69,7 @@ const ListItem = ({
               </Box>
             )}
             <Box color={'black'} fontSize={'lg'} ml={2}>
-              {conditionIndex === 0 ? IfElseResultEnum.IF : IfElseResultEnum.ELSE_IF}
+              {getElseIFLabel(conditionIndex)}
             </Box>
             {conditionItem.list?.length > 1 && (
               <Flex
@@ -262,13 +261,7 @@ const ListItem = ({
         {!snapshot.isDragging && (
           <SourceHandle
             nodeId={nodeId}
-            handleId={getHandleId(
-              nodeId,
-              'source',
-              conditionIndex === 0
-                ? IfElseResultEnum.IF
-                : `${IfElseResultEnum.ELSE_IF} ${conditionIndex.toString()}`
-            )}
+            handleId={getHandleId(nodeId, 'source', getElseIFLabel(conditionIndex))}
             position={Position.Right}
             translate={[18, 0]}
           />

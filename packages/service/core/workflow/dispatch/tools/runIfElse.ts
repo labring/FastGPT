@@ -82,22 +82,14 @@ export const dispatchIfElse = async (props: Props): Promise<Response> => {
   for (let i = 0; i < ifElseList.length; i++) {
     const item = ifElseList[i];
     const result = getResult(item.condition, item.list, variables, runtimeNodes);
-    if (result && i === 0) {
-      res = IfElseResultEnum.IF;
-      break;
-    } else if (result) {
+    if (result) {
       res = getElseIFLabel(i);
       break;
     }
   }
 
   const resArray = Array.from({ length: ifElseList.length + 1 }, (_, index) => {
-    const label =
-      index === 0
-        ? IfElseResultEnum.IF
-        : index < ifElseList.length
-          ? getElseIFLabel(index)
-          : IfElseResultEnum.ELSE;
+    const label = index < ifElseList.length ? getElseIFLabel(index) : IfElseResultEnum.ELSE;
     return getHandleId(nodeId, 'source', label);
   });
 

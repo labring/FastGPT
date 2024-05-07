@@ -139,5 +139,5 @@ export const isReferenceValue = (value: any): boolean => {
 };
 
 export const getElseIFLabel = (i: number) => {
-  return `${IfElseResultEnum.ELSE_IF} ${i}`;
+  return i === 0 ? IfElseResultEnum.IF : `${IfElseResultEnum.ELSE_IF} ${i}`;
 };
