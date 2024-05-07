@@ -24,6 +24,7 @@ import MyInput from '@/components/MyInput';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { SourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
+import { getReferenceDataValueType } from '@/web/core/workflow/utils';
 
 const ListItem = ({
   provided,
@@ -305,19 +306,17 @@ const ConditionSelect = ({
   variable?: ReferenceValueProps;
   onSelect: (e: VariableConditionEnum) => void;
 }) => {
+  const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   // get condition type
   const valueType = useMemo(() => {
-    if (!variable) return;
-    const node = nodeList.find((node) => node.nodeId === variable[0]);
-
-    if (!node) return WorkflowIOValueTypeEnum.any;
-    const output = node.outputs.find((item) => item.id === variable[1]);
-
-    if (!output) return WorkflowIOValueTypeEnum.any;
-    return output.valueType;
-  }, [nodeList, variable]);
+    return getReferenceDataValueType({
+      variable,
+      nodeList,
+      t
+    });
+  }, [nodeList, t, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;

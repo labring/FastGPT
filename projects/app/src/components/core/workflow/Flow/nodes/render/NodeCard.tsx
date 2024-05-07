@@ -524,8 +524,8 @@ const NodeDebugResponse = React.memo(function NodeDebugResponse({
             top={0}
             zIndex={10}
             w={'420px'}
-            h={'100%'}
-            // maxH={'540px'}
+            maxH={'100%'}
+            minH={'300px'}
             overflowY={'auto'}
             border={'base'}
           >

@@ -8,12 +8,15 @@ export type UserChatInputProps = ModuleDispatchProps<{
 }>;
 
 export const dispatchWorkflowStart = (props: Record<string, any>) => {
-  const { query } = props as UserChatInputProps;
+  const {
+    query,
+    params: { userChatInput }
+  } = props as UserChatInputProps;
 
   const { text, files } = chatValue2RuntimePrompt(query);
 
   return {
-    [NodeInputKeyEnum.userChatInput]: text,
+    [NodeInputKeyEnum.userChatInput]: text || userChatInput,
     [NodeInputKeyEnum.inputFiles]: files
   };
 };
