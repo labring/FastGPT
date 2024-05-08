@@ -12,6 +12,7 @@ import ChatTest from './ChatTest';
 import AppCard from './AppCard';
 import EditForm from './EditForm';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 
 const SimpleEdit = ({ appId }: { appId: string }) => {
   const { isPc } = useSystemStore();
@@ -28,6 +29,14 @@ const SimpleEdit = ({ appId }: { appId: string }) => {
   // show selected dataset
   useMount(() => {
     loadAllDatasets();
+
+    if (appDetail.version !== 'v2') {
+      editForm.reset(
+        appWorkflow2Form({
+          nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes
+        })
+      );
+    }
   });
 
   return (

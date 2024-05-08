@@ -58,6 +58,8 @@ import ChatProvider, { useChatProviderStore } from './Provider';
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
+import { useCreation, useUpdateEffect } from 'ahooks';
+
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
 const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
@@ -147,7 +149,7 @@ const ChatBox = (
 
   const {
     welcomeText,
-    variableModules,
+    variableNodes,
     questionGuide,
     startSegmentedAudio,
     finishSegmentedAudio,
@@ -171,24 +173,10 @@ const ChatBox = (
   const chatStarted = watch('chatStarted');
 
   /* variable */
-  const variables = watch('variables');
-  const filterVariableModules = useMemo(
-    () => variableModules.filter((item) => item.type !== VariableInputEnum.custom),
-    [variableModules]
+  const filterVariableNodes = useCreation(
+    () => variableNodes.filter((item) => item.type !== VariableInputEnum.custom),
+    [variableNodes]
   );
-  const variableIsFinish = (() => {
-    if (!filterVariableModules || filterVariableModules.length === 0 || chatHistories.length > 0)
-      return true;
-
-    for (let i = 0; i < filterVariableModules.length; i++) {
-      const item = filterVariableModules[i];
-      if (item.required && !variables[item.key]) {
-        return false;
-      }
-    }
-
-    return chatStarted;
-  })();
 
   // 滚动到底部
   const scrollToBottom = (behavior: 'smooth' | 'auto' = 'smooth') => {
@@ -379,174 +367,185 @@ const ChatBox = (
       autoTTSResponse?: boolean;
       history?: ChatSiteItemType[];
     }) => {
-      handleSubmit(async ({ variables }) => {
-        if (!onStartChat) return;
-        if (isChatting) {
-          toast({
-            title: '正在聊天中...请等待结束',
-            status: 'warning'
-          });
-          return;
-        }
-
-        abortRequest();
-
-        text = text.trim();
-
-        if (!text && files.length === 0) {
-          toast({
-            title: '内容为空',
-            status: 'warning'
-          });
-          return;
-        }
-
-        const responseChatId = getNanoid(24);
-        questionGuideController.current?.abort('stop');
-
-        // set auto audio playing
-        if (autoTTSResponse) {
-          await startSegmentedAudio();
-          setAudioPlayingChatId(responseChatId);
-        }
-
-        const newChatList: ChatSiteItemType[] = [
-          ...history,
-          {
-            dataId: getNanoid(24),
-            obj: ChatRoleEnum.Human,
-            value: [
-              ...files.map((file) => ({
-                type: ChatItemValueTypeEnum.file,
-                file: {
-                  type: file.type,
-                  name: file.name,
-                  url: file.url || ''
-                }
-              })),
-              ...(text
-                ? [
-                    {
-                      type: ChatItemValueTypeEnum.text,
-                      text: {
-                        content: text
-                      }
-                    }
-                  ]
-                : [])
-            ] as UserChatItemValueItemType[],
-            status: 'finish'
-          },
-          {
-            dataId: responseChatId,
-            obj: ChatRoleEnum.AI,
-            value: [
-              {
-                type: ChatItemValueTypeEnum.text,
-                text: {
-                  content: ''
-                }
-              }
-            ],
-            status: 'loading'
-          }
-        ];
-
-        // 插入内容
-        setChatHistories(newChatList);
-
-        // 清空输入内容
-        resetInputVal({});
-        setQuestionGuide([]);
-        setTimeout(() => {
-          scrollToBottom();
-        }, 100);
-        try {
-          // create abort obj
-          const abortSignal = new AbortController();
-          chatController.current = abortSignal;
-
-          const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
-
-          const {
-            responseData,
-            responseText,
-            newVariables,
-            isNewChat = false
-          } = await onStartChat({
-            chatList: newChatList,
-            messages,
-            controller: abortSignal,
-            generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
-            variables
-          });
-
-          newVariables && setValue('variables', newVariables);
-
-          isNewChatReplace.current = isNewChat;
-
-          // set finish status
-          setChatHistories((state) =>
-            state.map((item, index) => {
-              if (index !== state.length - 1) return item;
-              return {
-                ...item,
-                status: 'finish',
-                responseData
-              };
-            })
-          );
-          setTimeout(() => {
-            createQuestionGuide({
-              history: newChatList.map((item, i) =>
-                i === newChatList.length - 1
-                  ? {
-                      ...item,
-                      value: [
-                        {
-                          type: ChatItemValueTypeEnum.text,
-                          text: {
-                            content: responseText
-                          }
-                        }
-                      ]
-                    }
-                  : item
-              )
+      handleSubmit(
+        async ({ variables }) => {
+          if (!onStartChat) return;
+          if (isChatting) {
+            toast({
+              title: '正在聊天中...请等待结束',
+              status: 'warning'
             });
-            generatingScroll();
-            isPc && TextareaDom.current?.focus();
-          }, 100);
-
-          // tts audio
-          autoTTSResponse && splitText2Audio(responseText, true);
-        } catch (err: any) {
-          toast({
-            title: t(getErrText(err, 'core.chat.error.Chat error')),
-            status: 'error',
-            duration: 5000,
-            isClosable: true
-          });
-
-          if (!err?.responseText) {
-            resetInputVal({ text, files });
-            setChatHistories(newChatList.slice(0, newChatList.length - 2));
+            return;
           }
 
-          // set finish status
-          setChatHistories((state) =>
-            state.map((item, index) => {
-              if (index !== state.length - 1) return item;
-              return {
-                ...item,
-                status: 'finish'
-              };
-            })
-          );
-        }
+          abortRequest();
 
-        autoTTSResponse && finishSegmentedAudio();
-      })();
+          text = text.trim();
+
+          if (!text && files.length === 0) {
+            toast({
+              title: '内容为空',
+              status: 'warning'
+            });
+            return;
+          }
+
+          // delete invalid variables， 只保留在 variableNodes 中的变量
+          const requestVariables: Record<string, any> = {};
+          variableNodes?.forEach((item) => {
+            requestVariables[item.key] = variables[item.key] || '';
+          });
+
+          const responseChatId = getNanoid(24);
+          questionGuideController.current?.abort('stop');
+
+          // set auto audio playing
+          if (autoTTSResponse) {
+            await startSegmentedAudio();
+            setAudioPlayingChatId(responseChatId);
+          }
+
+          const newChatList: ChatSiteItemType[] = [
+            ...history,
+            {
+              dataId: getNanoid(24),
+              obj: ChatRoleEnum.Human,
+              value: [
+                ...files.map((file) => ({
+                  type: ChatItemValueTypeEnum.file,
+                  file: {
+                    type: file.type,
+                    name: file.name,
+                    url: file.url || ''
+                  }
+                })),
+                ...(text
+                  ? [
+                      {
+                        type: ChatItemValueTypeEnum.text,
+                        text: {
+                          content: text
+                        }
+                      }
+                    ]
+                  : [])
+              ] as UserChatItemValueItemType[],
+              status: 'finish'
+            },
+            {
+              dataId: responseChatId,
+              obj: ChatRoleEnum.AI,
+              value: [
+                {
+                  type: ChatItemValueTypeEnum.text,
+                  text: {
+                    content: ''
+                  }
+                }
+              ],
+              status: 'loading'
+            }
+          ];
+
+          // 插入内容
+          setChatHistories(newChatList);
+
+          // 清空输入内容
+          resetInputVal({});
+          setQuestionGuide([]);
+          setTimeout(() => {
+            scrollToBottom();
+          }, 100);
+          try {
+            // create abort obj
+            const abortSignal = new AbortController();
+            chatController.current = abortSignal;
+
+            const messages = chats2GPTMessages({ messages: newChatList, reserveId: true });
+
+            const {
+              responseData,
+              responseText,
+              newVariables,
+              isNewChat = false
+            } = await onStartChat({
+              chatList: newChatList,
+              messages,
+              controller: abortSignal,
+              generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
+              variables: requestVariables
+            });
+
+            newVariables && setValue('variables', newVariables);
+
+            isNewChatReplace.current = isNewChat;
+
+            // set finish status
+            setChatHistories((state) =>
+              state.map((item, index) => {
+                if (index !== state.length - 1) return item;
+                return {
+                  ...item,
+                  status: 'finish',
+                  responseData
+                };
+              })
+            );
+            setTimeout(() => {
+              createQuestionGuide({
+                history: newChatList.map((item, i) =>
+                  i === newChatList.length - 1
+                    ? {
+                        ...item,
+                        value: [
+                          {
+                            type: ChatItemValueTypeEnum.text,
+                            text: {
+                              content: responseText
+                            }
+                          }
+                        ]
+                      }
+                    : item
+                )
+              });
+              generatingScroll();
+              isPc && TextareaDom.current?.focus();
+            }, 100);
+
+            // tts audio
+            autoTTSResponse && splitText2Audio(responseText, true);
+          } catch (err: any) {
+            toast({
+              title: t(getErrText(err, 'core.chat.error.Chat error')),
+              status: 'error',
+              duration: 5000,
+              isClosable: true
+            });
+
+            if (!err?.responseText) {
+              resetInputVal({ text, files });
+              setChatHistories(newChatList.slice(0, newChatList.length - 2));
+            }
+
+            // set finish status
+            setChatHistories((state) =>
+              state.map((item, index) => {
+                if (index !== state.length - 1) return item;
+                return {
+                  ...item,
+                  status: 'finish'
+                };
+              })
+            );
+          }
+
+          autoTTSResponse && finishSegmentedAudio();
+        },
+        (err) => {
+          console.log(err?.variables);
+        }
+      )();
     },
     [
       abortRequest,
@@ -566,7 +565,8 @@ const ChatBox = (
       splitText2Audio,
       startSegmentedAudio,
       t,
-      toast
+      toast,
+      variableNodes
     ]
   );
 
@@ -630,7 +630,7 @@ const ChatBox = (
         });
       };
     },
-    [onDelMessage]
+    [onDelMessage, setChatHistories]
   );
   // admin mark
   const onMark = useCallback(
@@ -796,7 +796,19 @@ const ChatBox = (
         }
       };
     },
-    [appId, chatId]
+    [appId, chatId, setChatHistories]
+  );
+
+  const resetVariables = useCallback(
+    (e: Record<string, any> = {}) => {
+      const value: Record<string, any> = { ...e };
+      filterVariableNodes?.forEach((item) => {
+        value[item.key] = e[item.key] || '';
+      });
+
+      setValue('variables', value);
+    },
+    [filterVariableNodes, setValue]
   );
 
   const showEmpty = useMemo(
@@ -804,13 +816,13 @@ const ChatBox = (
       feConfigs?.show_emptyChat &&
       showEmptyIntro &&
       chatHistories.length === 0 &&
-      !filterVariableModules?.length &&
+      !filterVariableNodes?.length &&
       !welcomeText,
     [
       chatHistories.length,
       feConfigs?.show_emptyChat,
       showEmptyIntro,
-      filterVariableModules?.length,
+      filterVariableNodes?.length,
       welcomeText
     ]
   );
@@ -869,14 +881,7 @@ const ChatBox = (
   // output data
   useImperativeHandle(ref, () => ({
     getChatHistories: () => chatHistories,
-    resetVariables(e) {
-      const defaultVal: Record<string, any> = {};
-      filterVariableModules?.forEach((item) => {
-        defaultVal[item.key] = '';
-      });
-
-      setValue('variables', e || defaultVal);
-    },
+    resetVariables,
     resetHistory(e) {
       abortRequest();
       setValue('chatStarted', e.length > 0);
@@ -891,7 +896,7 @@ const ChatBox = (
   }));
 
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
+    <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
       {/* chat box container */}
       <Box ref={ChatBoxRef} flex={'1 0 0'} h={0} w={'100%'} overflow={'overlay'} px={[4, 0]} pb={3}>
@@ -899,11 +904,10 @@ const ChatBox = (
           {showEmpty && <Empty />}
           {!!welcomeText && <WelcomeBox appAvatar={appAvatar} welcomeText={welcomeText} />}
           {/* variable input */}
-          {!!filterVariableModules?.length && (
+          {!!filterVariableNodes?.length && (
             <VariableInput
               appAvatar={appAvatar}
-              variableModules={filterVariableModules}
-              variableIsFinish={variableIsFinish}
+              variableNodes={filterVariableNodes}
               chatForm={chatForm}
               onSubmitVariables={(data) => {
                 setValue('chatStarted', true);
@@ -995,7 +999,7 @@ const ChatBox = (
         </Box>
       </Box>
       {/* message input */}
-      {onStartChat && variableIsFinish && active && (
+      {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && (
         <MessageInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}

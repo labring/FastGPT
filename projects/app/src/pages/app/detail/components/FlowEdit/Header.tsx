@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Box, Flex, IconButton, useTheme, useDisclosure, Button } from '@chakra-ui/react';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -25,7 +25,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { formatTime2HM } from '@fastgpt/global/common/string/time';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
-import { useInterval } from 'ahooks';
+import { useInterval, useUpdateEffect } from 'ahooks';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 const PublishHistories = dynamic(
@@ -341,6 +341,11 @@ const Header = (props: Props) => {
     nodes: StoreNodeItemType[];
     edges: StoreEdgeItemType[];
   }>();
+  const { isOpen: isOpenTest, onOpen: onOpenTest, onClose: onCloseTest } = useDisclosure();
+
+  useUpdateEffect(() => {
+    onOpenTest();
+  }, [workflowTestData]);
 
   return (
     <>
@@ -351,9 +356,10 @@ const Header = (props: Props) => {
       />
       <ChatTest
         ref={ChatTestRef}
+        isOpen={isOpenTest}
         {...workflowTestData}
         app={app}
-        onClose={() => setWorkflowTestData(undefined)}
+        onClose={onCloseTest}
       />
     </>
   );

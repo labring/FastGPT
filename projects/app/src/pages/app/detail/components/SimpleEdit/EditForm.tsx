@@ -99,6 +99,7 @@ const EditForm = ({
   const selectLLMModel = watch('aiSettings.model');
   const datasetSearchSetting = watch('dataset');
   const variables = watch('userGuide.variables');
+
   const formatVariables = useMemo(
     () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...variables]),
     [t, variables]

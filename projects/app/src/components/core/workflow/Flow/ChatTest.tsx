@@ -34,11 +34,13 @@ export type ChatTestComponentRef = {
 const ChatTest = (
   {
     app,
+    isOpen,
     nodes = [],
     edges = [],
     onClose
   }: {
     app: AppSchema;
+    isOpen: boolean;
     nodes?: StoreNodeItemType[];
     edges?: StoreEdgeItemType[];
     onClose: () => void;
@@ -48,7 +50,6 @@ const ChatTest = (
   const { t } = useTranslation();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const { userInfo } = useUserStore();
-  const isOpen = useMemo(() => nodes && nodes.length > 0, [nodes]);
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {

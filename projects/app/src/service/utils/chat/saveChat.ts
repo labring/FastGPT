@@ -1,8 +1,4 @@
-import type {
-  AIChatItemType,
-  ChatItemType,
-  UserChatItemType
-} from '@fastgpt/global/core/chat/type.d';
+import type { AIChatItemType, UserChatItemType } from '@fastgpt/global/core/chat/type.d';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { ChatSourceEnum } from '@fastgpt/global/core/chat/constants';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
@@ -10,12 +6,15 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 
 type Props = {
   chatId: string;
   appId: string;
   teamId: string;
   tmbId: string;
+  nodes: StoreNodeItemType[];
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
   source: `${ChatSourceEnum}`;
@@ -30,6 +29,7 @@ export async function saveChat({
   appId,
   teamId,
   tmbId,
+  nodes,
   variables,
   isUpdateUseTime,
   source,
@@ -72,6 +72,8 @@ export async function saveChat({
         chat.variables = variables || {};
         await chat.save({ session });
       } else {
+        const { welcomeText, variableNodes } = splitGuideModule(getGuideModule(nodes));
+
         await MongoChat.create(
           [
             {
@@ -79,6 +81,8 @@ export async function saveChat({
               teamId,
               tmbId,
               appId,
+              variableList: variableNodes,
+              welcomeText,
               variables,
               title,
               source,
