@@ -290,7 +290,7 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
       runtimeNodes,
       runtimeEdges,
       params,
-      mode: 'test'
+      mode: props.mode === 'debug' ? 'test' : props.mode
     };
 
     // run module
