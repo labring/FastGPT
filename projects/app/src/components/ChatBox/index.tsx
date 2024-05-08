@@ -390,6 +390,12 @@ const ChatBox = (
             return;
           }
 
+          // delete invalid variables， 只保留在 variableNodes 中的变量
+          const requestVariables: Record<string, any> = {};
+          variableNodes?.forEach((item) => {
+            requestVariables[item.key] = variables[item.key] || '';
+          });
+
           const responseChatId = getNanoid(24);
           questionGuideController.current?.abort('stop');
 
@@ -467,7 +473,7 @@ const ChatBox = (
               messages,
               controller: abortSignal,
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
-              variables
+              variables: requestVariables
             });
 
             newVariables && setValue('variables', newVariables);
@@ -559,7 +565,8 @@ const ChatBox = (
       splitText2Audio,
       startSegmentedAudio,
       t,
-      toast
+      toast,
+      variableNodes
     ]
   );
 
@@ -794,9 +801,9 @@ const ChatBox = (
 
   const resetVariables = useCallback(
     (e: Record<string, any> = {}) => {
-      const value: Record<string, any> = {};
+      const value: Record<string, any> = { ...e };
       filterVariableNodes?.forEach((item) => {
-        value[item.key] = e[item.key];
+        value[item.key] = e[item.key] || '';
       });
 
       setValue('variables', value);

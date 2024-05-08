@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
-import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { getGuideModule, replaceAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
@@ -62,7 +62,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         variables: chat?.variables || {},
         history,
         app: {
-          userGuideModule: getGuideModule(nodes),
+          userGuideModule: replaceAppChatConfig({
+            node: getGuideModule(nodes),
+            variableList: chat?.variableList,
+            welcomeText: chat?.welcomeText
+          }),
           chatModels: getChatModelNameListByModules(nodes),
           name: app.name,
           avatar: app.avatar,

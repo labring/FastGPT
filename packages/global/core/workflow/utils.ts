@@ -37,7 +37,6 @@ export const checkInputIsReference = (input: FlowNodeInputItemType) => {
 /* node  */
 export const getGuideModule = (modules: StoreNodeItemType[]) =>
   modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
-
 export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value || '';
@@ -68,6 +67,36 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     ttsConfig,
     whisperConfig,
     scheduledTriggerConfig
+  };
+};
+export const replaceAppChatConfig = ({
+  node,
+  variableList,
+  welcomeText
+}: {
+  node?: StoreNodeItemType;
+  variableList?: VariableItemType[];
+  welcomeText?: string;
+}): StoreNodeItemType | undefined => {
+  if (!node) return;
+  return {
+    ...node,
+    inputs: node.inputs.map((input) => {
+      if (input.key === NodeInputKeyEnum.variables && variableList) {
+        return {
+          ...input,
+          value: variableList
+        };
+      }
+      if (input.key === NodeInputKeyEnum.welcomeText && welcomeText) {
+        return {
+          ...input,
+          value: welcomeText
+        };
+      }
+
+      return input;
+    })
   };
 };
 
