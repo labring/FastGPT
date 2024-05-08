@@ -10,7 +10,7 @@ import {
 import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { NodeOutputKeyEnum } from '../workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '../workflow/runtime/constants';
-import { AppSchema } from '../app/type';
+import { AppSchema, VariableItemType } from '../app/type';
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { ChatBoxInputType } from '../../../../projects/app/src/components/ChatBox/type';
@@ -27,11 +27,13 @@ export type ChatSchema = {
   title: string;
   customTitle: string;
   top: boolean;
-  variables: Record<string, any>;
   source: `${ChatSourceEnum}`;
   shareId?: string;
   outLinkUid?: string;
-  content: ChatItemType[];
+
+  variableList?: VariableItemType[];
+  welcomeText?: string;
+  variables: Record<string, any>;
   metadata?: Record<string, any>;
 };
 

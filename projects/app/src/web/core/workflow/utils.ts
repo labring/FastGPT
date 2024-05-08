@@ -288,7 +288,7 @@ export const getWorkflowGlobalVariables = (
   t: TFunction
 ): EditorVariablePickerType[] => {
   const globalVariables = formatEditorVariablePickerIcon(
-    splitGuideModule(getGuideModule(nodes))?.variableModules || []
+    splitGuideModule(getGuideModule(nodes))?.variableNodes || []
   ).map((item) => ({
     ...item,
     valueType: WorkflowIOValueTypeEnum.any

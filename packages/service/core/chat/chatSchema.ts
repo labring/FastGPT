@@ -61,7 +61,15 @@ const ChatSchema = new Schema({
   outLinkUid: {
     type: String
   },
+
+  variableList: {
+    type: Array
+  },
+  welcomeText: {
+    type: String
+  },
   variables: {
+    // variable value
     type: Object,
     default: {}
   },

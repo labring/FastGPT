@@ -246,6 +246,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         appId: app._id,
         teamId,
         tmbId: tmbId,
+        nodes,
         variables: newVariables,
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
         shareId,

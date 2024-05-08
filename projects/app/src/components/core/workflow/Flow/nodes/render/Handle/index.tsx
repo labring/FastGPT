@@ -200,14 +200,19 @@ const MyTargetHandle = React.memo(function MyTargetHandle({
     ) {
       return false;
     }
+
     if (connectingEdge?.handleId && !connectingEdge.handleId?.includes('source')) return false;
 
-    // Same source node
-    if (connectedEdges.some((item) => item.target === nodeId && item.targetHandle !== handleId))
+    // From same source node
+    if (
+      connectedEdges.some(
+        (item) => item.source === connectingEdge?.nodeId && item.target === nodeId
+      )
+    )
       return false;
 
     return true;
-  }, [connectedEdges, connectingEdge?.handleId, edges, handleId, node, nodeId]);
+  }, [connectedEdges, connectingEdge?.handleId, connectingEdge?.nodeId, edges, node, nodeId]);
 
   const RenderHandle = useMemo(() => {
     return (
