@@ -1,5 +1,16 @@
 import React, { useState, Dispatch, useCallback } from 'react';
-import { FormControl, Flex, Input, Button, Box, Link } from '@chakra-ui/react';
+import {
+  FormControl,
+  Flex,
+  Input,
+  Button,
+  Box,
+  Link,
+  InputGroup,
+  InputLeftAddon,
+  InputRightAddon,
+  Checkbox
+} from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { LoginPageTypeEnum } from '@/constants/user';
 import { postLogin } from '@/web/support/user/api';
@@ -62,7 +73,7 @@ const PhoneLoginForm = ({ setPageType, loginSuccess }: Props) => {
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
-        mt={'42px'}
+        mt={['4,53vw', '34px']}
         px={['5vw', '88px']}
         onKeyDown={(e) => {
           if (e.keyCode === 13 && !e.shiftKey && !requesting) {
@@ -70,19 +81,58 @@ const PhoneLoginForm = ({ setPageType, loginSuccess }: Props) => {
           }
         }}
       >
-        <FormControl isInvalid={!!errors.phoneNumber}>
+        <FormControl isInvalid={!!errors.phoneNumber} position={'relative'}>
+          <Box
+            w={['16vw', '120px']}
+            position={'absolute'}
+            left={0}
+            top={'50%'}
+            transform={'translateY(-50%)'}
+            zIndex={2}
+            textAlign={'center'}
+            borderRight={'1px solid #E3E3E3'}
+          >
+            手机号
+          </Box>
           <Input
+            pl={['18vw', '140px']}
+            borderRadius={'3xl'}
             bg={'myGray.50'}
-            placeholder={t('support.user.login.Phone number')}
+            placeholder={'请输入' + t('support.user.login.Phone number')}
             {...register('phoneNumber', {
               required: true
             })}
           ></Input>
+          <Button
+            h={'100%'}
+            position={'absolute'}
+            right={0}
+            top={0}
+            bottom={0}
+            borderRadius={'3xl'}
+            zIndex={2}
+          >
+            获取验证码
+          </Button>
         </FormControl>
-        <FormControl mt={6} isInvalid={!!errors.captcha}>
+        <FormControl mt={6} isInvalid={!!errors.captcha} position={'relative'}>
+          <Box
+            w={['16vw', '120px']}
+            position={'absolute'}
+            left={0}
+            top={'50%'}
+            transform={'translateY(-50%)'}
+            zIndex={2}
+            textAlign={'center'}
+            borderRight={'1px solid #E3E3E3'}
+          >
+            验证码
+          </Box>
           <Input
+            pl={['18vw', '140px']}
+            borderRadius={'3xl'}
             bg={'myGray.50'}
-            placeholder={'验证码'}
+            placeholder={'请输入'}
             {...register('captcha', {
               required: true,
               minLength: {
@@ -96,10 +146,24 @@ const PhoneLoginForm = ({ setPageType, loginSuccess }: Props) => {
             })}
           ></Input>
         </FormControl>
-        <FormControl mt={6} isInvalid={!!errors.captcha}>
+        <FormControl mt={6} isInvalid={!!errors.captcha} position={'relative'}>
+          <Box
+            w={['16vw', '120px']}
+            position={'absolute'}
+            left={0}
+            top={'50%'}
+            transform={'translateY(-50%)'}
+            zIndex={2}
+            textAlign={'center'}
+            borderRight={'1px solid #E3E3E3'}
+          >
+            工 号
+          </Box>
           <Input
+            pl={['18vw', '140px']}
+            borderRadius={'3xl'}
             bg={'myGray.50'}
-            placeholder={'工号'}
+            placeholder={'请输入'}
             {...register('jobNum', {
               required: true,
               maxLength: {
@@ -111,6 +175,7 @@ const PhoneLoginForm = ({ setPageType, loginSuccess }: Props) => {
         </FormControl>
 
         <Flex alignItems={'center'} mt={7} fontSize={'sm'}>
+          <Checkbox mr={2}></Checkbox>
           {t('support.user.login.Agree Policy')}
           <Link
             ml={1}
@@ -132,7 +197,7 @@ const PhoneLoginForm = ({ setPageType, loginSuccess }: Props) => {
 
         <Button
           type="submit"
-          my={6}
+          mt={['17.87vw', 6]}
           w={'100%'}
           size={['md', 'lg']}
           colorScheme="blue"
