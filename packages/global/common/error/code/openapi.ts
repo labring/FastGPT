@@ -2,8 +2,8 @@ import { ErrType } from '../errorCode';
 
 /* dataset: 506000 */
 export enum OpenApiErrEnum {
-  unExist = 'unExist',
-  unAuth = 'unAuth'
+  unExist = 'openapiUnExist',
+  unAuth = 'openapiUnAuth'
 }
 const errList = [
   {

@@ -85,7 +85,22 @@
         "x": 1607.7142331269126,
         "y": -151.8669210746189
       },
-      "inputs": [],
+      "inputs": [
+        {
+          "key": "text",
+          "valueType": "string",
+          "label": "text",
+          "renderTypeList": ["reference"],
+          "description": "",
+          "canEdit": true,
+          "editField": {
+            "key": true,
+            "description": true,
+            "valueType": true
+          },
+          "value": ["CRT7oIEU8v2P", "pYKS0LB9gAr3"]
+        }
+      ],
       "outputs": []
     },
     {
@@ -190,6 +205,13 @@
           "description": "HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。",
           "valueType": "any",
           "type": "static"
+        },
+        {
+          "id": "pYKS0LB9gAr3",
+          "type": "dynamic",
+          "key": "text",
+          "valueType": "string",
+          "label": "text"
         }
       ]
     }

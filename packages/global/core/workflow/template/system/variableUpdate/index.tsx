@@ -15,7 +15,7 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
   targetHandle: getHandleConfig(true, true, true, true),
   avatar: '/imgs/workflow/variable.png',
   name: '变量更新',
-  intro: '可以更新指定节点的输出值和全局变量',
+  intro: '可以更新指定节点的输出值或更新全局变量',
   showStatus: true,
   isTool: false,
   inputs: [

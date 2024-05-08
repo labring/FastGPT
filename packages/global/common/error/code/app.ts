@@ -2,7 +2,7 @@ import { ErrType } from '../errorCode';
 
 /* dataset: 502000 */
 export enum AppErrEnum {
-  unExist = 'unExist',
+  unExist = 'appUnExist',
   unAuthApp = 'unAuthApp'
 }
 const appErrList = [

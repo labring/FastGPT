@@ -487,7 +487,6 @@ const WorkflowContextProvider = ({
       // 3. Set entry node status to running
       entryNodes.forEach((node) => {
         if (runtimeNodeStatus[node.nodeId] !== 'wait') {
-          console.log(node.name);
           onChangeNode({
             nodeId: node.nodeId,
             type: 'attr',
