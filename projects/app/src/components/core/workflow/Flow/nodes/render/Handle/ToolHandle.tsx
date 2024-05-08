@@ -28,7 +28,7 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
       edges.some((edge) => edge.targetHandle === getHandleId(nodeId, 'target', 'top')));
 
   const Render = useMemo(() => {
-    return (
+    return hidden ? null : (
       <MyTooltip label={t('core.workflow.tool.Handle')} shouldWrapChildren={false}>
         <Handle
           style={{
@@ -49,7 +49,7 @@ export const ToolTargetHandle = ({ nodeId }: ToolHandleProps) => {
             border={'4px solid #8774EE'}
             transform={'translate(0,-30%) rotate(45deg)'}
             pointerEvents={'none'}
-            visibility={hidden ? 'hidden' : 'visible'}
+            visibility={'visible'}
           />
         </Handle>
       </MyTooltip>
