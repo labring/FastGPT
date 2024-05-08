@@ -7,7 +7,7 @@ toc: true
 weight: 101
 ---
 
-更多使用技巧，[查看视屏教程](https://www.bilibili.com/video/BV1n34y1A7Bo/?spm_id_from=333.337.search-card.all.click&vd_source=903c2b09b7412037c2eddc6a8fb9828b)
+更多使用技巧，[查看视屏教程](https://www.bilibili.com/video/BV1sH4y1T7s9)
 
 ## 知识库
 
