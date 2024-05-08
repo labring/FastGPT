@@ -44,9 +44,13 @@ const parsePowerPoint = async ({
   }
 
   // Returning an array of all the xml contents read using fs.readFileSync
-  const xmlContentArray = files.map((file) =>
-    fs.readFileSync(`${decompressPath}/${file.path}`, encoding)
-  );
+  const xmlContentArray = files.map((file) => {
+    try {
+      return fs.readFileSync(`${decompressPath}/${file.path}`, encoding);
+    } catch (err) {
+      return fs.readFileSync(`${decompressPath}/${file.path}`, 'utf-8');
+    }
+  });
 
   let responseArr: string[] = [];
 
@@ -95,9 +99,15 @@ export const parseOffice = async ({
   //   const decompressPath = `${DEFAULTDECOMPRESSSUBLOCATION}/test`;
 
   // write new file
-  fs.writeFileSync(filepath, buffer, {
-    encoding
-  });
+  try {
+    fs.writeFileSync(filepath, buffer, {
+      encoding
+    });
+  } catch (err) {
+    fs.writeFileSync(filepath, buffer, {
+      encoding: 'utf-8'
+    });
+  }
 
   const text = await (async () => {
     try {

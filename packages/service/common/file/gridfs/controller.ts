@@ -6,7 +6,7 @@ import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { MongoFileSchema } from './schema';
 import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { MongoRwaTextBuffer } from '../../buffer/rawText/schema';
+import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readFileRawContent } from '../read/utils';
 import { PassThrough } from 'stream';
 
@@ -162,7 +162,7 @@ export const readFileContentFromMongo = async ({
   filename: string;
 }> => {
   // read buffer
-  const fileBuffer = await MongoRwaTextBuffer.findOne({ sourceId: fileId }).lean();
+  const fileBuffer = await MongoRawTextBuffer.findOne({ sourceId: fileId }).lean();
   if (fileBuffer) {
     return {
       rawText: fileBuffer.rawText,
@@ -208,7 +208,7 @@ export const readFileContentFromMongo = async ({
   });
 
   if (rawText.trim()) {
-    MongoRwaTextBuffer.create({
+    MongoRawTextBuffer.create({
       sourceId: fileId,
       rawText,
       metadata: {
