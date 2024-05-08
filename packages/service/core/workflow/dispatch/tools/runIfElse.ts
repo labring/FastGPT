@@ -25,7 +25,7 @@ type Response = DispatchNodeResultType<{
 function isEmpty(value: any) {
   return (
     // 检查未定义或null值
-    value == null ||
+    value === null ||
     // 检查空字符串
     (typeof value === 'string' && value.trim() === '') ||
     // 检查空数组
@@ -43,19 +43,22 @@ function checkCondition(condition: VariableConditionEnum, variableValue: any, va
   const operations = {
     [VariableConditionEnum.isEmpty]: () => isEmpty(variableValue),
     [VariableConditionEnum.isNotEmpty]: () => !isEmpty(variableValue),
-    [VariableConditionEnum.equalTo]: () =>
-      typeof variableValue === 'boolean'
-        ? String(variableValue) === value
-        : variableValue === value,
-    [VariableConditionEnum.notEqual]: () => variableValue !== value,
+
+    [VariableConditionEnum.equalTo]: () => String(variableValue) === value,
+    [VariableConditionEnum.notEqual]: () => String(variableValue) !== value,
+
     [VariableConditionEnum.greaterThan]: () => Number(variableValue) > Number(value),
     [VariableConditionEnum.lessThan]: () => Number(variableValue) < Number(value),
     [VariableConditionEnum.greaterThanOrEqualTo]: () => Number(variableValue) >= Number(value),
     [VariableConditionEnum.lessThanOrEqualTo]: () => Number(variableValue) <= Number(value),
-    [VariableConditionEnum.include]: () => variableValue?.includes(value),
-    [VariableConditionEnum.notInclude]: () => !variableValue?.includes(value),
+
+    [VariableConditionEnum.include]: () =>
+      variableValue.map((item: any) => String(item))?.includes(value),
+    [VariableConditionEnum.notInclude]: () =>
+      !variableValue.map((item: any) => String(item))?.includes(value),
     [VariableConditionEnum.startWith]: () => variableValue?.startsWith(value),
     [VariableConditionEnum.endWith]: () => variableValue?.endsWith(value),
+
     [VariableConditionEnum.lengthEqualTo]: () => variableValue?.length === Number(value),
     [VariableConditionEnum.lengthNotEqualTo]: () => variableValue?.length !== Number(value),
     [VariableConditionEnum.lengthGreaterThan]: () => variableValue?.length > Number(value),

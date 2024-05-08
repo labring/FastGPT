@@ -14,6 +14,7 @@ import {
   arrayConditionList,
   booleanConditionList,
   numberConditionList,
+  objectConditionList,
   stringConditionList
 } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { useContextSelector } from 'use-context-selector';
@@ -133,7 +134,8 @@ const ListItem = ({
                                     if (index === i) {
                                       return {
                                         ...item,
-                                        variable: e
+                                        variable: e,
+                                        condition: undefined
                                       };
                                     }
                                     return item;
@@ -334,10 +336,10 @@ const ConditionSelect = ({
       valueType === WorkflowIOValueTypeEnum.arrayBoolean ||
       valueType === WorkflowIOValueTypeEnum.arrayNumber ||
       valueType === WorkflowIOValueTypeEnum.arrayObject ||
-      valueType === WorkflowIOValueTypeEnum.arrayString ||
-      valueType === WorkflowIOValueTypeEnum.object
+      valueType === WorkflowIOValueTypeEnum.arrayString
     )
       return arrayConditionList;
+    if (valueType === WorkflowIOValueTypeEnum.object) return objectConditionList;
 
     if (valueType === WorkflowIOValueTypeEnum.any) return allConditionList;
 
