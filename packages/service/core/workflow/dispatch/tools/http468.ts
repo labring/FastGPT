@@ -124,7 +124,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       body: requestBody,
       params
     });
-    console.log(rawResponse);
+
     // format output value type
     const results: Record<string, any> = {};
     for (const key in formatResponse) {
