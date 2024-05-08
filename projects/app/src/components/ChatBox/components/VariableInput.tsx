@@ -1,5 +1,5 @@
 import { VariableItemType } from '@fastgpt/global/core/app/type.d';
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Card, Input, Textarea } from '@chakra-ui/react';
@@ -12,34 +12,19 @@ import { ChatBoxInputFormType } from '../type.d';
 
 const VariableInput = ({
   appAvatar,
-  variableModules,
-  variableIsFinish,
+  variableNodes,
   chatForm,
   onSubmitVariables
 }: {
   appAvatar?: string;
-  variableModules: VariableItemType[];
-  variableIsFinish: boolean;
+  variableNodes: VariableItemType[];
   onSubmitVariables: (e: Record<string, any>) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
   const { t } = useTranslation();
-  const { register, unregister, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
+  const { register, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
   const variables = watch('variables');
-
-  useEffect(() => {
-    // 重新注册所有字段
-    variableModules.forEach((item) => {
-      register(`variables.${item.key}`, { required: item.required });
-    });
-
-    return () => {
-      // 组件卸载时注销所有字段
-      variableModules.forEach((item) => {
-        unregister(`variables.${item.key}`);
-      });
-    };
-  }, [register, unregister, variableModules]);
+  const chatStarted = watch('chatStarted');
 
   return (
     <Box py={3}>
@@ -55,7 +40,7 @@ const VariableInput = ({
           bg={'white'}
           boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
         >
-          {variableModules.map((item) => (
+          {variableNodes.map((item) => (
             <Box key={item.id} mb={4}>
               <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>
                 {item.label}
@@ -73,7 +58,6 @@ const VariableInput = ({
               </Box>
               {item.type === VariableInputEnum.input && (
                 <Input
-                  isDisabled={variableIsFinish}
                   bg={'myWhite.400'}
                   {...register(`variables.${item.key}`, {
                     required: item.required
@@ -82,7 +66,6 @@ const VariableInput = ({
               )}
               {item.type === VariableInputEnum.textarea && (
                 <Textarea
-                  isDisabled={variableIsFinish}
                   bg={'myWhite.400'}
                   {...register(`variables.${item.key}`, {
                     required: item.required
@@ -94,7 +77,6 @@ const VariableInput = ({
               {item.type === VariableInputEnum.select && (
                 <MySelect
                   width={'100%'}
-                  isDisabled={variableIsFinish}
                   list={(item.enums || []).map((item) => ({
                     label: item.value,
                     value: item.value
@@ -110,7 +92,7 @@ const VariableInput = ({
               )}
             </Box>
           ))}
-          {!variableIsFinish && (
+          {!chatStarted && (
             <Button
               leftIcon={<MyIcon name={'core/chat/chatFill'} w={'16px'} />}
               size={'sm'}

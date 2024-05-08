@@ -41,6 +41,10 @@ export function reRankRecall({
     .then((data) => {
       addLog.info('ReRank finish:', { time: Date.now() - start });
 
+      if (!data?.results || data?.results?.length === 0) {
+        addLog.error('ReRank error, empty result', data);
+      }
+
       return data?.results?.map((item) => ({
         id: documents[item.index].id,
         score: item.relevance_score

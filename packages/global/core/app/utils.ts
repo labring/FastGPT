@@ -105,7 +105,7 @@ export const appWorkflow2Form = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       const {
         welcomeText,
-        variableModules,
+        variableNodes,
         questionGuide,
         ttsConfig,
         whisperConfig,
@@ -114,7 +114,7 @@ export const appWorkflow2Form = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
 
       defaultAppForm.userGuide = {
         welcomeText: welcomeText,
-        variables: variableModules,
+        variables: variableNodes,
         questionGuide: questionGuide,
         tts: ttsConfig,
         whisper: whisperConfig,

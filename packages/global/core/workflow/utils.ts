@@ -42,7 +42,7 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value || '';
 
-  const variableModules: VariableItemType[] =
+  const variableNodes: VariableItemType[] =
     guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value || [];
 
   const questionGuide: boolean =
@@ -63,7 +63,7 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
 
   return {
     welcomeText,
-    variableModules,
+    variableNodes,
     questionGuide,
     ttsConfig,
     whisperConfig,
