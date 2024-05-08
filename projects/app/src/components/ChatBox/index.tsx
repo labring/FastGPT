@@ -18,7 +18,7 @@ import type {
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { Box, Flex, Checkbox } from '@chakra-ui/react';
+import { Box, Flex, Checkbox, useDisclosure } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
@@ -69,6 +69,7 @@ const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
 const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInput = dynamic(() => import('./components/VariableInput'));
+const EditSuccessModal = dynamic(() => import('./components/EditSuccessModal'));
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
@@ -931,6 +932,9 @@ const ChatBox = (
     }
   }));
 
+  // 知识库纠错成功，提示感谢弹框
+  const [isOpenSuccessModal, setIsOpenSuccessModal] = useState<boolean>(false);
+
   return (
     <Flex flexDirection={'column'} h={'100%'}>
       <Script src="/js/html2pdf.bundle.min.js" strategy="lazyOnload"></Script>
@@ -1241,33 +1245,7 @@ const ChatBox = (
               ) {
                 return setAdminMarkData(undefined);
               }
-
-              // onSuccess({
-              //   dataId: adminFeedback.dataId,
-              //   datasetId: adminMarkData.datasetId,
-              //   collectionId: adminMarkData.collectionId,
-              //   q: adminFeedback.q,
-              //   a: adminFeedback.a
-              // });
               if (!appId || !chatId || !adminMarkData.chatItemId) return;
-              // updateChatAdminFeedback({
-              //   appId,
-              //   chatId,
-              //   chatItemId: adminMarkData.chatItemId,
-              //   ...adminFeedback
-              // });
-
-              // // update dom
-              // setChatHistories((state) =>
-              //   state.map((chatItem) =>
-              //     chatItem.dataId === adminMarkData.chatItemId
-              //       ? {
-              //         ...chatItem,
-              //         adminFeedback
-              //       }
-              //       : chatItem
-              //   )
-              // );
 
               if (readFeedbackData && chatId && appId) {
                 updateChatUserFeedback({
@@ -1286,9 +1264,12 @@ const ChatBox = (
                 setReadFeedbackData(undefined);
               }
               setAdminMarkData(undefined);
+              setIsOpenSuccessModal(true);
             }}
           />
         ))}
+
+      {isOpenSuccessModal && <EditSuccessModal onClose={() => setIsOpenSuccessModal(false)} />}
     </Flex>
   );
 };
