@@ -41,8 +41,10 @@ function isEmpty(value: any) {
 function isInclude(value: any, target: any) {
   if (Array.isArray(value)) {
     return value.map((item: any) => String(item)).includes(target);
-  } else {
+  } else if (typeof value === 'string') {
     return value.includes(target);
+  } else {
+    return false;
   }
 }
 
