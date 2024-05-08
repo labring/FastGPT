@@ -22,20 +22,55 @@ type Response = DispatchNodeResultType<{
   [NodeOutputKeyEnum.ifElseResult]: string;
 }>;
 
+function isEmpty(value: any) {
+  return (
+    // 检查未定义或null值
+    value === undefined ||
+    value === null ||
+    // 检查空字符串
+    (typeof value === 'string' && value.trim() === '') ||
+    // 检查NaN
+    (typeof value === 'number' && isNaN(value)) ||
+    // 检查空数组
+    (Array.isArray(value) && value.length === 0) ||
+    // 检查空对象
+    (typeof value === 'object' && Object.keys(value).length === 0)
+  );
+}
+
+function isInclude(value: any, target: any) {
+  if (Array.isArray(value)) {
+    return value.map((item: any) => String(item)).includes(target);
+  } else if (typeof value === 'string') {
+    return value.includes(target);
+  } else {
+    return false;
+  }
+}
+
 function checkCondition(condition: VariableConditionEnum, variableValue: any, value: string) {
   const operations = {
-    [VariableConditionEnum.isEmpty]: () => !variableValue,
-    [VariableConditionEnum.isNotEmpty]: () => !!variableValue,
-    [VariableConditionEnum.equalTo]: () => variableValue === value,
-    [VariableConditionEnum.notEqual]: () => variableValue !== value,
+    [VariableConditionEnum.isEmpty]: () => isEmpty(variableValue),
+    [VariableConditionEnum.isNotEmpty]: () => !isEmpty(variableValue),
+
+    [VariableConditionEnum.equalTo]: () => String(variableValue) === value,
+    [VariableConditionEnum.notEqual]: () => String(variableValue) !== value,
+
+    // number
     [VariableConditionEnum.greaterThan]: () => Number(variableValue) > Number(value),
     [VariableConditionEnum.lessThan]: () => Number(variableValue) < Number(value),
     [VariableConditionEnum.greaterThanOrEqualTo]: () => Number(variableValue) >= Number(value),
     [VariableConditionEnum.lessThanOrEqualTo]: () => Number(variableValue) <= Number(value),
-    [VariableConditionEnum.include]: () => variableValue?.includes(value),
-    [VariableConditionEnum.notInclude]: () => !variableValue?.includes(value),
+
+    // array or string
+    [VariableConditionEnum.include]: () => isInclude(variableValue, value),
+    [VariableConditionEnum.notInclude]: () => !isInclude(variableValue, value),
+
+    // string
     [VariableConditionEnum.startWith]: () => variableValue?.startsWith(value),
     [VariableConditionEnum.endWith]: () => variableValue?.endsWith(value),
+
+    // array
     [VariableConditionEnum.lengthEqualTo]: () => variableValue?.length === Number(value),
     [VariableConditionEnum.lengthNotEqualTo]: () => variableValue?.length !== Number(value),
     [VariableConditionEnum.lengthGreaterThan]: () => variableValue?.length > Number(value),
