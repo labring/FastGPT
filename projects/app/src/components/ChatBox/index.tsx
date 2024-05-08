@@ -142,7 +142,6 @@ const ChatBox = (
   const chatController = useRef(new AbortController());
   const questionGuideController = useRef(new AbortController());
   const isNewChatReplace = useRef(false);
-
   const [feedbackId, setFeedbackId] = useState<string>();
   const [readFeedbackData, setReadFeedbackData] = useState<{
     chatItemId: string;
