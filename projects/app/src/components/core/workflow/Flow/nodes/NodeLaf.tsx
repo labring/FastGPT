@@ -33,6 +33,7 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import IOTitle from '../components/IOTitle';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
+import { putUpdateTeam } from '@/web/support/user/team/api';
 
 const LafAccountModal = dynamic(() => import('@/components/support/laf/LafAccountModal'));
 
@@ -47,19 +48,10 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
   const requestUrl = inputs.find((item) => item.key === NodeInputKeyEnum.httpReqUrl);
 
-  const { userInfo } = useUserStore();
+  const { userInfo, initUserInfo } = useUserStore();
 
   const token = userInfo?.team.lafAccount?.token;
   const appid = userInfo?.team.lafAccount?.appid;
-
-  // not config laf
-  if (!token || !appid) {
-    return (
-      <NodeCard minW={'350px'} selected={selected} {...data}>
-        <ConfigLaf />
-      </NodeCard>
-    );
-  }
 
   const {
     data: lafData,
@@ -69,24 +61,32 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
     ['getLafFunctionList'],
     async () => {
       // load laf app detail
-      const appDetail = await getLafAppDetail(appid);
+      try {
+        const appDetail = await getLafAppDetail(appid || '');
+        // load laf app functions
+        const schemaUrl = `https://${appDetail?.domain.domain}/_/api-docs?token=${appDetail?.openapi_token}`;
 
-      // load laf app functions
-      const schemaUrl = `https://${appDetail?.domain.domain}/_/api-docs?token=${appDetail?.openapi_token}`;
+        const schema = await getApiSchemaByUrl(schemaUrl);
+        const openApiSchema = await str2OpenApiSchema(JSON.stringify(schema));
+        const filterPostSchema = openApiSchema.pathData.filter((item) => item.method === 'post');
 
-      const schema = await getApiSchemaByUrl(schemaUrl);
-      const openApiSchema = await str2OpenApiSchema(JSON.stringify(schema));
-      const filterPostSchema = openApiSchema.pathData.filter((item) => item.method === 'post');
-
-      return {
-        lafApp: appDetail,
-        lafFunctions: filterPostSchema.map((item) => ({
-          ...item,
-          requestUrl: `https://${appDetail?.domain.domain}${item.path}`
-        }))
-      };
+        return {
+          lafApp: appDetail,
+          lafFunctions: filterPostSchema.map((item) => ({
+            ...item,
+            requestUrl: `https://${appDetail?.domain.domain}${item.path}`
+          }))
+        };
+      } catch (err) {
+        await putUpdateTeam({
+          teamId: userInfo?.team.teamId || '',
+          lafAccount: { token: '', appid: '', pat: '' }
+        });
+        initUserInfo();
+      }
     },
     {
+      enabled: !!token && !!appid,
       onError(err) {
         toast({
           status: 'error',
@@ -155,14 +155,14 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           desc: bodyParams[key].description,
           required: requiredParams?.includes(key) || false,
           value: `{{${key}}}`,
-          type: 'string'
+          type: bodyParams[key].type
         }))
       ].filter((item) => !inputs.find((input) => input.key === item.name));
 
       allParams.forEach((param) => {
         const newInput: FlowNodeInputItemType = {
           key: param.name,
-          valueType: WorkflowIOValueTypeEnum.string,
+          valueType: param.type,
           label: param.name,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           required: param.required,
@@ -215,54 +215,63 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
     successToast: t('common.Sync success')
   });
 
-  return (
-    <NodeCard minW={'350px'} selected={selected} {...data}>
-      <Container>
-        {/* select function */}
-        <MySelect
-          isLoading={isLoadingFunctions}
-          list={lafFunctionSelectList}
-          placeholder={t('core.module.laf.Select laf function')}
-          onchange={(e) => {
-            onChangeNode({
-              nodeId,
-              type: 'updateInput',
-              key: NodeInputKeyEnum.httpReqUrl,
-              value: {
-                ...requestUrl,
-                value: e
-              }
-            });
-          }}
-          value={selectedFunction}
-        />
-        {/* auto set params and go to edit */}
-        {!!selectedFunction && (
-          <Flex justifyContent={'flex-end'} mt={2} gap={2}>
-            <Button isLoading={isSyncing} variant={'grayBase'} size={'sm'} onClick={onSyncParams}>
-              {t('core.module.Laf sync params')}
-            </Button>
-            <Button
-              variant={'grayBase'}
-              size={'sm'}
-              onClick={() => {
-                const lafFunction = lafData?.lafFunctions.find(
-                  (item) => item.requestUrl === selectedFunction
-                );
+  // not config laf
+  if (!token || !appid) {
+    return (
+      <NodeCard minW={'350px'} selected={selected} {...data}>
+        <ConfigLaf />
+      </NodeCard>
+    );
+  } else {
+    return (
+      <NodeCard minW={'350px'} selected={selected} {...data}>
+        <Container>
+          {/* select function */}
+          <MySelect
+            isLoading={isLoadingFunctions}
+            list={lafFunctionSelectList}
+            placeholder={t('core.module.laf.Select laf function')}
+            onchange={(e) => {
+              onChangeNode({
+                nodeId,
+                type: 'updateInput',
+                key: NodeInputKeyEnum.httpReqUrl,
+                value: {
+                  ...requestUrl,
+                  value: e
+                }
+              });
+            }}
+            value={selectedFunction}
+          />
+          {/* auto set params and go to edit */}
+          {!!selectedFunction && (
+            <Flex justifyContent={'flex-end'} mt={2} gap={2}>
+              <Button isLoading={isSyncing} variant={'grayBase'} size={'sm'} onClick={onSyncParams}>
+                {t('core.module.Laf sync params')}
+              </Button>
+              <Button
+                variant={'grayBase'}
+                size={'sm'}
+                onClick={() => {
+                  const lafFunction = lafData?.lafFunctions.find(
+                    (item) => item.requestUrl === selectedFunction
+                  );
 
-                if (!lafFunction) return;
-                const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}?templateid=FastGPT_Laf`;
-                window.open(url, '_blank');
-              }}
-            >
-              {t('plugin.go to laf')}
-            </Button>
-          </Flex>
-        )}
-      </Container>
-      {!!selectedFunction && <RenderIO {...props} />}
-    </NodeCard>
-  );
+                  if (!lafFunction) return;
+                  const url = `${feConfigs.lafEnv}/app/${lafData?.lafApp?.appid}/function${lafFunction?.path}?templateid=FastGPT_Laf`;
+                  window.open(url, '_blank');
+                }}
+              >
+                {t('plugin.go to laf')}
+              </Button>
+            </Flex>
+          )}
+        </Container>
+        {!!selectedFunction && <RenderIO {...props} />}
+      </NodeCard>
+    );
+  }
 };
 export default React.memo(NodeLaf);
 
