@@ -63,6 +63,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         item.responseData = filterPublicNodeResponseData({ flowResponses: item.responseData });
       }
     });
+    const appNodes = nodes.length > 0 ? nodes : app.modules;
 
     jsonRes<InitChatResponse>(res, {
       data: {
@@ -74,11 +75,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         history,
         app: {
           userGuideModule: replaceAppChatConfig({
-            node: getGuideModule(nodes),
+            node: getGuideModule(appNodes),
             variableList: chat?.variableList,
             welcomeText: chat?.welcomeText
           }),
-          chatModels: getChatModelNameListByModules(nodes),
+          chatModels: getChatModelNameListByModules(appNodes),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro
