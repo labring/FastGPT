@@ -64,7 +64,7 @@ const Login = () => {
     );
 
     // note: 通过手机号工号登录
-    setPageType(LoginPageTypeEnum.phoneLogin);
+    // setPageType(LoginPageTypeEnum.phoneLogin);
   }, [feConfigs.oauth]);
   useEffect(() => {
     clearToken();
