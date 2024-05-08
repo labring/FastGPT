@@ -2,7 +2,7 @@ import { ErrType } from '../errorCode';
 
 /* dataset: 505000 */
 export enum OutLinkErrEnum {
-  unExist = 'unExist',
+  unExist = 'outlinkUnExist',
   unAuthLink = 'unAuthLink',
   linkUnInvalid = 'linkUnInvalid',
 

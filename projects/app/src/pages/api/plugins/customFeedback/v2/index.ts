@@ -34,11 +34,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
     if (!chatId || !chatItemId) {
       return res.json({
-        [NodeOutputKeyEnum.answerText]: `\\n\\n**自动反馈调试**: "${customFeedback}"\\n\\n`
+        [NodeOutputKeyEnum.answerText]: `\\n\\n**自动反馈调试**: "${customFeedback}"\\n\\n`,
+        text: customFeedback
       });
     }
 
-    return res.json({});
+    res.json({
+      text: customFeedback
+    });
   } catch (err) {
     console.log(err);
     res.status(500).send(getErrText(err));

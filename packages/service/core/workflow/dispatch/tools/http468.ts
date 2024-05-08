@@ -45,6 +45,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     detail,
     appId,
     chatId,
+    stream,
     responseChatItemId,
     variables,
     node: { outputs },
@@ -132,7 +133,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
       results[key] = valueTypeFormat(formatResponse[key], output.valueType);
     }
 
-    if (typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
+    if (stream && typeof formatResponse[NodeOutputKeyEnum.answerText] === 'string') {
       responseWrite({
         res,
         event: detail ? SseResponseEventEnum.fastAnswer : undefined,
