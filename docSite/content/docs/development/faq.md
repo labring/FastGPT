@@ -23,10 +23,6 @@ images: []
 
 可以。需要准备好向量模型和LLM模型。
 
-### 页面中可以正常回复，API 报错
-
-页面中是用 stream=true 模式，所以API也需要设置 stream=true 来进行测试。部分模型接口（国产居多）非 Stream 的兼容有点垃圾。
-
 ### 其他模型没法进行问题分类/内容提取
 
 1. 看日志。如果提示 JSON invalid，not support tool 之类的，说明该模型不支持工具调用或函数调用，需要设置`toolChoice=false`和`functionCall=false`，就会默认走提示词模式。目前内置提示词仅针对了商业模型API进行测试。问题分类基本可用，内容提取不太行。
@@ -43,11 +39,35 @@ images: []
 1. 问题补全需要经过一轮AI生成。
 2. 会进行3~5轮的查询，如果数据库性能不足，会有明显影响。
 
-### 模型响应为空(core.chat.Chat API is error or undefined)
+### 对话接口报错或返回为空(core.chat.Chat API is error or undefined)
 
-1. 检查 key 问题。curl 请求看是否正常。务必用 stream=true 模式。并且 maxToken 等相关参数尽量一致。
+1. 检查 AI 的 key 问题：通过 curl 请求看是否正常。务必用 stream=true 模式。并且 maxToken 等相关参数尽量一致。
 2. 如果是国内模型，可能是命中风控了。
 3. 查看模型请求日志，检查出入参数是否异常。
+
+```sh
+# curl 例子。
+curl --location --request POST 'https://xxx.cn/v1/chat/completions' \
+--header 'Authorization: Bearer sk-xxxx' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+  "model": "gpt-3.5-turbo",
+  "stream": true,
+  "temperature": 1,
+  "max_tokens": 3000,
+  "messages": [
+    {
+      "role": "user",
+      "content": "你是谁"
+    }
+  ]
+}'
+```
+
+### 页面中可以正常回复，API 报错
+
+页面中是用 stream=true 模式，所以API也需要设置 stream=true 来进行测试。部分模型接口（国产居多）非 Stream 的兼容有点垃圾。
+和上一个问题一样，curl 测试。
 
 ### 知识库索引没有进度/索引很慢
 
@@ -76,6 +96,8 @@ images: []
 ### insufficient_user_quota user quota is not enough 
 
 OneAPI 账号的余额不足，默认 root 用户只有 200 刀，可以手动修改。
+
+路径：打开OneAPI -> 用户 -> root用户右边的编辑 -> 剩余余额调大
 
 ### xxx渠道找不到
 
