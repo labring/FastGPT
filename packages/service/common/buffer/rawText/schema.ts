@@ -28,6 +28,6 @@ try {
   console.log(error);
 }
 
-export const MongoRwaTextBuffer: Model<RawTextBufferSchemaType> =
+export const MongoRawTextBuffer: Model<RawTextBufferSchemaType> =
   models[collectionName] || model(collectionName, RawTextBufferSchema);
-MongoRwaTextBuffer.syncIndexes();
+MongoRawTextBuffer.syncIndexes();
