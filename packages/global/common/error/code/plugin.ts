@@ -2,8 +2,8 @@ import { ErrType } from '../errorCode';
 
 /* dataset: 507000 */
 export enum PluginErrEnum {
-  unExist = 'unExist',
-  unAuth = 'unAuth'
+  unExist = 'pluginUnExist',
+  unAuth = 'pluginUnAuth'
 }
 const errList = [
   {
