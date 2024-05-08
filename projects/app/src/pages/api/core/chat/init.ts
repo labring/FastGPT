@@ -53,6 +53,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       getAppLatestVersion(app._id, app)
     ]);
 
+    const appNodes = nodes.length > 0 ? nodes : app.modules;
+
     jsonRes<InitChatResponse>(res, {
       data: {
         chatId,
@@ -63,11 +65,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
         history,
         app: {
           userGuideModule: replaceAppChatConfig({
-            node: getGuideModule(nodes),
+            node: getGuideModule(appNodes),
             variableList: chat?.variableList,
             welcomeText: chat?.welcomeText
           }),
-          chatModels: getChatModelNameListByModules(nodes),
+          chatModels: getChatModelNameListByModules(appNodes),
           name: app.name,
           avatar: app.avatar,
           intro: app.intro
