@@ -100,8 +100,6 @@ type Props = OutLinkChatAuthProps & {
     isNewChat?: boolean;
   }>;
   onDelMessage?: (e: { contentId: string }) => void;
-  onClose: () => void;
-  onSuccess: (adminFeedback: AdminFbkType) => void;
 };
 
 /* 
@@ -130,9 +128,7 @@ const ChatBox = (
     teamToken,
     onUpdateVariable,
     onStartChat,
-    onDelMessage,
-    onSuccess,
-    onClose
+    onDelMessage
   }: Props,
   ref: ForwardedRef<ComponentRef>
 ) => {
