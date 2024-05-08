@@ -16,11 +16,12 @@ interface Props {
 }
 
 interface LoginFormType {
-  username: string;
-  password: string;
+  phoneNumber: string;
+  captcha: string;
+  jobNum: string;
 }
 
-const LoginForm = ({ setPageType, loginSuccess }: Props) => {
+const PhoneLoginForm = ({ setPageType, loginSuccess }: Props) => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
@@ -33,15 +34,16 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   const [requesting, setRequesting] = useState(false);
 
   const onclickLogin = useCallback(
-    async ({ username, password }: LoginFormType) => {
+    async ({ phoneNumber, captcha, jobNum }: LoginFormType) => {
       setRequesting(true);
       try {
-        loginSuccess(
-          await postLogin({
-            username,
-            password
-          })
-        );
+        // note: 新的登录接口
+        // loginSuccess(
+        // await postLogin({
+        //   phoneNumber,
+        //   captcha
+        // })
+        // );
         toast({
           title: '登录成功',
           status: 'success'
@@ -57,18 +59,6 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     [loginSuccess, toast]
   );
 
-  const isCommunityVersion = feConfigs?.show_register === false && !feConfigs?.isPlus;
-
-  const loginOptions = [
-    feConfigs?.show_phoneLogin ? t('support.user.login.Phone number') : '',
-    feConfigs?.show_emailLogin ? t('support.user.login.Email') : '',
-    t('support.user.login.Username')
-  ].filter(Boolean);
-
-  const placeholder = isCommunityVersion
-    ? t('support.user.login.Root login')
-    : loginOptions.join('/');
-
   return (
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
@@ -80,25 +70,37 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           }
         }}
       >
-        <FormControl isInvalid={!!errors.username}>
+        <FormControl isInvalid={!!errors.phoneNumber}>
           <Input
             bg={'myGray.50'}
-            placeholder={placeholder}
-            {...register('username', {
+            placeholder={t('support.user.login.Phone number')}
+            {...register('phoneNumber', {
               required: true
             })}
           ></Input>
         </FormControl>
-        <FormControl mt={6} isInvalid={!!errors.password}>
+        <FormControl mt={6} isInvalid={!!errors.captcha}>
           <Input
             bg={'myGray.50'}
-            type={'password'}
-            placeholder={
-              isCommunityVersion
-                ? t('support.user.login.Root password placeholder')
-                : t('support.user.login.Password')
-            }
-            {...register('password', {
+            placeholder={'验证码'}
+            {...register('captcha', {
+              required: true,
+              minLength: {
+                value: 6,
+                message: '请输入6位验证码'
+              },
+              maxLength: {
+                value: 6,
+                message: '请输入6位验证码'
+              }
+            })}
+          ></Input>
+        </FormControl>
+        <FormControl mt={6} isInvalid={!!errors.captcha}>
+          <Input
+            bg={'myGray.50'}
+            placeholder={'工号'}
+            {...register('jobNum', {
               required: true,
               maxLength: {
                 value: 60,
@@ -107,27 +109,26 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
             })}
           ></Input>
         </FormControl>
-        {feConfigs?.docUrl && (
-          <Flex alignItems={'center'} mt={7} fontSize={'sm'}>
-            {t('support.user.login.Policy tip')}
-            <Link
-              ml={1}
-              href={getDocPath('/docs/agreement/terms/')}
-              target={'_blank'}
-              color={'primary.500'}
-            >
-              {t('support.user.login.Terms')}
-            </Link>
-            <Box mx={1}>{t('support.user.login.And')}</Box>
-            <Link
-              href={getDocPath('/docs/agreement/privacy/')}
-              target={'_blank'}
-              color={'primary.500'}
-            >
-              {t('support.user.login.Privacy')}
-            </Link>
-          </Flex>
-        )}
+
+        <Flex alignItems={'center'} mt={7} fontSize={'sm'}>
+          {t('support.user.login.Agree Policy')}
+          <Link
+            ml={1}
+            href={getDocPath('/docs/agreement/terms/')}
+            target={'_blank'}
+            color={'primary.500'}
+          >
+            {t('support.user.login.Terms')}
+          </Link>
+          <Box mx={1}>{t('support.user.login.And')}</Box>
+          <Link
+            href={getDocPath('/docs/agreement/privacy/')}
+            target={'_blank'}
+            color={'primary.500'}
+          >
+            {t('support.user.login.Privacy')}
+          </Link>
+        </Flex>
 
         <Button
           type="submit"
@@ -169,4 +170,4 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
   );
 };
 
-export default LoginForm;
+export default PhoneLoginForm;
