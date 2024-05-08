@@ -155,14 +155,14 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           desc: bodyParams[key].description,
           required: requiredParams?.includes(key) || false,
           value: `{{${key}}}`,
-          type: 'string'
+          type: bodyParams[key].type
         }))
       ].filter((item) => !inputs.find((input) => input.key === item.name));
 
       allParams.forEach((param) => {
         const newInput: FlowNodeInputItemType = {
           key: param.name,
-          valueType: WorkflowIOValueTypeEnum.string,
+          valueType: param.type,
           label: param.name,
           renderTypeList: [FlowNodeInputTypeEnum.reference],
           required: param.required,
