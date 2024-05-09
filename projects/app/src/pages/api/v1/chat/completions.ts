@@ -288,13 +288,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         event: detail ? SseResponseEventEnum.answer : undefined,
         data: '[DONE]'
       });
-      responseWrite({
-        res,
-        event: SseResponseEventEnum.updateVariables,
-        data: JSON.stringify(newVariables)
-      });
 
       if (responseDetail && detail) {
+        responseWrite({
+          res,
+          event: SseResponseEventEnum.updateVariables,
+          data: JSON.stringify(newVariables)
+        });
         responseWrite({
           res,
           event: SseResponseEventEnum.flowResponses,
