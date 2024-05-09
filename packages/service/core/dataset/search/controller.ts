@@ -59,19 +59,19 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const countRecallLimit = () => {
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return {
-        embeddingLimit: 150,
+        embeddingLimit: 100,
         fullTextLimit: 0
       };
     }
     if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
       return {
         embeddingLimit: 0,
-        fullTextLimit: 150
+        fullTextLimit: 100
       };
     }
     return {
-      embeddingLimit: 100,
-      fullTextLimit: 80
+      embeddingLimit: 80,
+      fullTextLimit: 60
     };
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
@@ -82,9 +82,10 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     });
 
     const { results } = await recallFromVectorStore({
+      teamId,
+      datasetIds,
       vectors,
       limit,
-      datasetIds,
       efSearch: global.systemEnv?.pgHNSWEfSearch
     });
 
