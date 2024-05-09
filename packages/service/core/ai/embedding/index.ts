@@ -32,7 +32,7 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
       })
       .then(async (res) => {
         if (!res.data) {
-          return Promise.reject('Embedding API 404');
+          return Promise.reject('Embedding API is not responding');
         }
         if (!res?.data?.[0]?.embedding) {
           console.log(res);
