@@ -80,7 +80,7 @@ const nextConfig = {
 
     return config;
   },
-  transpilePackages: ['@fastgpt/*', 'ahooks'],
+  transpilePackages: ['@fastgpt/*', 'ahooks', '@chakra-ui/*', 'react'],
   experimental: {
     // 外部包独立打包
     serverComponentsExternalPackages: ['mongoose', 'pg'],

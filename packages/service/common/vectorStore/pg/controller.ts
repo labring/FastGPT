@@ -23,7 +23,7 @@ export async function initPg() {
     `);
 
     await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 100);`
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
     );
     await PgClient.query(
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${PgDatasetTableName} USING btree(team_id, dataset_id, collection_id);`
