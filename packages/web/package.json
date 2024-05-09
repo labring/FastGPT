@@ -24,7 +24,6 @@
     "i18next": "23.10.0",
     "lexical": "0.12.6",
     "lodash": "^4.17.21",
-    "mammoth": "^1.6.0",
     "next-i18next": "15.2.0",
     "papaparse": "^5.4.1",
     "pdfjs-dist": "4.0.269",
