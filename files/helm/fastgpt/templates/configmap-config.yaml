@@ -100,12 +100,40 @@ data:
       ],
       "vectorModels": [
         {
+          "model": "text-embedding-3-large",
+          "name": "Embedding-2",
+          "avatar": "/imgs/model/openai.svg",
+          "charsPointsPrice": 0,
+          "defaultToken": 512,
+          "maxToken": 3000,
+          "weight": 100,
+          "dbConfig": {},
+          "queryConfig": {},
+          "defaultConfig": {
+            "dimensions": 1024
+          }
+        },
+        {
+          "model": "text-embedding-3-small",
+          "name": "Embedding-2",
+          "avatar": "/imgs/model/openai.svg",
+          "charsPointsPrice": 0,
+          "defaultToken": 512,
+          "maxToken": 3000,
+          "weight": 100,
+          "dbConfig": {},
+          "queryConfig": {}
+        },
+        {
           "model": "text-embedding-ada-002",
           "name": "Embedding-2",
+          "avatar": "/imgs/model/openai.svg",
           "charsPointsPrice": 0,
-          "defaultToken": 700,
+          "defaultToken": 512,
           "maxToken": 3000,
-          "weight": 100
+          "weight": 100,
+          "dbConfig": {},
+          "queryConfig": {}
         }
       ],
       "reRankModels": [],
