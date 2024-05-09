@@ -69,9 +69,9 @@ const MessageInput = ({
           const url = await compressImgFileAndUpload({
             type: MongoImageTypeEnum.chatImage,
             file: file.rawFile,
-            maxW: 4329,
-            maxH: 4329,
-            maxSize: 1024 * 1024 * 5,
+            maxW: 4320,
+            maxH: 4320,
+            maxSize: 1024 * 1024 * 16,
             // 7 day expired.
             expiredTime: addDays(new Date(), 7),
             shareId,
