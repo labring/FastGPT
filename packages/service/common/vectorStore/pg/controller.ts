@@ -129,7 +129,7 @@ export const embeddingRecall = async (
 ): Promise<{
   results: EmbeddingRecallItemType[];
 }> => {
-  const { datasetIds, vectors, limit, similarity = 0, retry = 2, efSearch = 100 } = props;
+  const { teamId, datasetIds, vectors, limit, similarity = 0, retry = 2, efSearch = 100 } = props;
 
   try {
     const results: any = await PgClient.query(
@@ -137,7 +137,8 @@ export const embeddingRecall = async (
         SET LOCAL hnsw.ef_search = ${efSearch};
         select id, collection_id, vector <#> '[${vectors[0]}]' AS score 
           from ${PgDatasetTableName} 
-          where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+          where team_id='${teamId}' 
+              AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
               AND vector <#> '[${vectors[0]}]' < -${similarity}
           order by score limit ${limit};
         COMMIT;`
@@ -153,10 +154,14 @@ export const embeddingRecall = async (
       }))
     };
   } catch (error) {
+    console.log(error);
     if (retry <= 0) {
       return Promise.reject(error);
     }
-    return embeddingRecall(props);
+    return embeddingRecall({
+      ...props,
+      retry: retry - 1
+    });
   }
 };
 
