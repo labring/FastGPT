@@ -144,8 +144,8 @@ tar -xvzf fastgptbackup-2024-05-03.tar.gz -C user/fastgpt/mongobackup/data
 docker cp user/fastgpt/mongobackup/data mongo:/tmp/backup
 ‍``` 
 
-### 3.3 清空docker compose 运行后建立的 mongo/data 持久化目录 
-这样会把 docker 容器的 mongo/db 目录也清空了，否则 mongorestore 导入会报错
+### 3.3 建议初始化一次docker compose ，运行后建立新的 mongo/data 持久化目录 
+如果不是初始化的 mongo/db 目录， mongorestore 导入可能会报错。如果报错，建议尝试初始化mongo。
 
 操作指令
 ```
