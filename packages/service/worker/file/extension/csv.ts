@@ -10,9 +10,13 @@ export const readCsvRawText = async (params: ReadRawTextByBuffer): Promise<ReadF
 
   const header = csvArr[0];
 
-  const formatText = header
-    ? csvArr.map((item) => item.map((item, i) => `${header[i]}:${item}`).join('\n')).join('\n')
-    : '';
+  // format to md table
+  const formatText = `| ${header.join(' | ')} |
+| ${header.map(() => '---').join(' | ')} |
+${csvArr
+  .slice(1)
+  .map((row) => `| ${row.map((item) => item.replace(/\n/g, '\\n')).join(' | ')} |`)
+  .join('\n')}`;
 
   return {
     rawText,

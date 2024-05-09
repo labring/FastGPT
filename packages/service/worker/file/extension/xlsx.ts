@@ -1,3 +1,4 @@
+import { CUSTOM_SPLIT_SIGN } from '@fastgpt/global/common/string/textSplitter';
 import { ReadRawTextByBuffer, ReadFileResponse } from '../type';
 import xlsx from 'node-xlsx';
 import Papa from 'papaparse';
@@ -18,25 +19,25 @@ export const readXlsxRawText = async ({
   });
 
   const rawText = format2Csv.map((item) => item.csvText).join('\n');
+
   const formatText = format2Csv
     .map((item) => {
       const csvArr = Papa.parse(item.csvText).data as string[][];
       const header = csvArr[0];
 
-      const formatText = header
-        ? csvArr
-            .map((item) =>
-              item
-                .map((item, i) => (item ? `${header[i]}:${item}` : ''))
-                .filter(Boolean)
-                .join('\n')
-            )
-            .join('\n')
-        : '';
+      if (!header) return;
 
-      return `${item.title}\n${formatText}`;
+      const formatText = `| ${header.join(' | ')} |
+      | ${header.map(() => '---').join(' | ')} |
+      ${csvArr
+        .slice(1)
+        .map((row) => `| ${row.map((item) => item.replace(/\n/g, '\\n')).join(' | ')} |`)
+        .join('\n')}`;
+
+      return formatText;
     })
-    .join('\n');
+    .filter(Boolean)
+    .join(CUSTOM_SPLIT_SIGN);
 
   return {
     rawText: rawText,

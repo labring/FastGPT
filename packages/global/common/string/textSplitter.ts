@@ -1,24 +1,61 @@
 import { getErrText } from '../error/utils';
 import { replaceRegChars } from './tools';
 
-/**
- * text split into chunks
- * chunkLen - one chunk len. max: 3500
- * overlapLen - The size of the before and after Text
- * chunkLen > overlapLen
- * markdown
- */
-export const splitText2Chunks = (props: {
+export const CUSTOM_SPLIT_SIGN = '-----CUSTOM_SPLIT_SIGN-----';
+
+type SplitProps = {
   text: string;
   chunkLen: number;
   overlapRatio?: number;
   customReg?: string[];
-}): {
+};
+
+type SplitResponse = {
   chunks: string[];
   chars: number;
-  overlapRatio?: number;
-} => {
+};
+
+// 判断字符串是否为markdown的表格形式
+const strIsMdTable = (str: string) => {
+  const regex = /^(\|.*\|[\r]*)$/m;
+
+  return regex.test(str);
+};
+const markdownTableSplit = (props: SplitProps): SplitResponse => {
+  let { text = '', chunkLen } = props;
+  const splitText2Lines = text.split('\n');
+  const header = splitText2Lines[0];
+
+  const headerSize = header.split('|').length - 2;
+  const mdSplitString = `| ${new Array(headerSize)
+    .fill(0)
+    .map(() => '---')
+    .join(' | ')} |`;
+
+  const chunks: string[] = [];
+  let chunk = `${header}
+${mdSplitString}
+`;
+
+  for (let i = 2; i < splitText2Lines.length; i++) {
+    if (chunk.length + splitText2Lines[i].length > chunkLen * 1.2) {
+      chunks.push(chunk);
+      chunk = `${header}
+${mdSplitString}
+`;
+    }
+    chunk += `${splitText2Lines[i]}\n`;
+  }
+
+  return {
+    chunks,
+    chars: chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+  };
+};
+
+const commonSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkLen, overlapRatio = 0.2, customReg = [] } = props;
+
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkLen * overlapRatio);
@@ -252,4 +289,30 @@ export const splitText2Chunks = (props: {
   } catch (err) {
     throw new Error(getErrText(err));
   }
+};
+
+/**
+ * text split into chunks
+ * chunkLen - one chunk len. max: 3500
+ * overlapLen - The size of the before and after Text
+ * chunkLen > overlapLen
+ * markdown
+ */
+export const splitText2Chunks = (props: SplitProps): SplitResponse => {
+  let { text = '' } = props;
+
+  const splitWithCustomSign = text.split(CUSTOM_SPLIT_SIGN);
+
+  const splitResult = splitWithCustomSign.map((item) => {
+    if (strIsMdTable(text)) {
+      return markdownTableSplit(props);
+    }
+
+    return commonSplit(props);
+  });
+
+  return {
+    chunks: splitResult.map((item) => item.chunks).flat(),
+    chars: splitResult.reduce((sum, item) => sum + item.chars, 0)
+  };
 };
