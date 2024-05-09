@@ -67,5 +67,5 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
     });
   }
 
-  global?.close?.();
+  process.exit();
 });

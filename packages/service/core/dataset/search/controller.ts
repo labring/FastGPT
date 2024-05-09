@@ -85,8 +85,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       teamId,
       datasetIds,
       vectors,
-      limit,
-      efSearch: global.systemEnv?.pgHNSWEfSearch
+      limit
     });
 
     // get q and a

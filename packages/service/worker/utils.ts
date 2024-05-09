@@ -25,9 +25,12 @@ export const runWorker = <T = any>(name: WorkerNameEnum, params?: Record<string,
     });
 
     worker.on('error', (err) => {
-      worker.terminate();
-
       reject(err);
+      worker.terminate();
+    });
+    worker.on('messageerror', (err) => {
+      reject(err);
+      worker.terminate();
     });
   });
 };
