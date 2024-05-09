@@ -55,6 +55,8 @@ const MessageInput = ({
   const { t } = useTranslation();
 
   const havInput = !!inputValue || fileList.length > 0;
+  const hasFileUploading = fileList.some((item) => !item.url);
+  const canSendMessage = havInput && !hasFileUploading;
 
   /* file selector and upload */
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
@@ -142,7 +144,8 @@ const MessageInput = ({
   );
 
   /* on send */
-  const handleSend = useCallback(async () => {
+  const handleSend = async () => {
+    if (!canSendMessage) return;
     const textareaValue = TextareaDom.current?.value || '';
 
     onSendMessage({
@@ -150,7 +153,7 @@ const MessageInput = ({
       files: fileList
     });
     replaceFile([]);
-  }, [TextareaDom, fileList, onSendMessage, replaceFile]);
+  };
 
   /* whisper init */
   const {
@@ -466,16 +469,20 @@ const MessageInput = ({
                 h={['28px', '32px']}
                 w={['28px', '32px']}
                 borderRadius={'md'}
-                bg={isSpeaking || isChatting ? '' : !havInput ? '#E5E5E5' : 'primary.500'}
+                bg={
+                  isSpeaking || isChatting
+                    ? ''
+                    : !havInput || hasFileUploading
+                      ? '#E5E5E5'
+                      : 'primary.500'
+                }
                 cursor={havInput ? 'pointer' : 'not-allowed'}
                 lineHeight={1}
                 onClick={() => {
                   if (isChatting) {
                     return onStop();
                   }
-                  if (havInput) {
-                    return handleSend();
-                  }
+                  return handleSend();
                 }}
               >
                 {isChatting ? (

@@ -57,7 +57,7 @@ export const countGptMessagesTokens = (
 
       // 检测是否有内存泄漏
       // addLog.info(`Count token time: ${Date.now() - start}, token: ${data}`);
-      // console.log(Object.keys(global.tiktokenWorker.callbackMap));
+      // console.log(process.memoryUsage());
     };
 
     worker.postMessage({

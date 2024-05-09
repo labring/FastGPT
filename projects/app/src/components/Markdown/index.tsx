@@ -53,7 +53,7 @@ const Markdown = ({
   );
 
   const formatSource = source
-    .replace(/\\n/g, '\n&nbsp;')
+    // .replace(/\\n/g, '\n')
     .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
     .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
 

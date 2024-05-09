@@ -32,7 +32,7 @@ export const useSearchTestStore = create<State>()(
         datasetTestList: [],
         pushDatasetTestItem(data) {
           set((state) => {
-            state.datasetTestList = [data, ...state.datasetTestList].slice(0, 100);
+            state.datasetTestList = [data, ...state.datasetTestList].slice(0, 50);
           });
         },
         delDatasetTestItemById(id) {

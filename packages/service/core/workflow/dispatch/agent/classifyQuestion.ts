@@ -127,8 +127,8 @@ const completions = async ({
   });
   const answer = data.choices?.[0].message?.content || '';
 
-  console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
-  console.log(answer, '----');
+  // console.log(JSON.stringify(chats2GPTMessages({ messages, reserveId: false }), null, 2));
+  // console.log(answer, '----');
 
   const id =
     agents.find((item) => answer.includes(item.key))?.key ||
