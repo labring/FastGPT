@@ -36,7 +36,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       avatar,
       intro,
       permission,
-      version: 'v2',
       ...(teamTags && teamTags),
       ...(formatNodes && {
         modules: formatNodes
