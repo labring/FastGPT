@@ -362,12 +362,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 }
 export default NextAPI(handler);
 
-export const config = {
-  api: {
-    responseLimit: '20mb'
-  }
-};
-
 const authShareChat = async ({
   chatId,
   ...data
@@ -525,4 +519,10 @@ const authHeaderRequest = async ({
     authType,
     canWrite
   };
+};
+
+export const config = {
+  api: {
+    responseLimit: '20mb'
+  }
 };
