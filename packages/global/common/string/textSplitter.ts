@@ -17,17 +17,47 @@ type SplitResponse = {
 
 // 判断字符串是否为markdown的表格形式
 const strIsMdTable = (str: string) => {
-  const regex = /^(\|.*\|[\r]*)$/m;
+  // 检查是否包含表格分隔符 |
+  if (!str.includes('|')) {
+    return false;
+  }
 
-  return regex.test(str);
+  const lines = str.split('\n');
+
+  // 检查表格是否至少有两行
+  if (lines.length < 2) {
+    return false;
+  }
+
+  // 检查表头行是否包含 |
+  const headerLine = lines[0].trim();
+  if (!headerLine.startsWith('|') || !headerLine.endsWith('|')) {
+    return false;
+  }
+
+  // 检查分隔行是否由 | 和 - 组成
+  const separatorLine = lines[1].trim();
+  const separatorRegex = /^(\|[\s:]*-+[\s:]*)+\|$/;
+  if (!separatorRegex.test(separatorLine)) {
+    return false;
+  }
+
+  // 检查数据行是否包含 |
+  for (let i = 2; i < lines.length; i++) {
+    const dataLine = lines[i].trim();
+    if (dataLine && (!dataLine.startsWith('|') || !dataLine.endsWith('|'))) {
+      return false;
+    }
+  }
+  return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkLen } = props;
   const splitText2Lines = text.split('\n');
   const header = splitText2Lines[0];
-
   const headerSize = header.split('|').length - 2;
-  const mdSplitString = `| ${new Array(headerSize)
+
+  const mdSplitString = `| ${new Array(headerSize > 0 ? headerSize : 1)
     .fill(0)
     .map(() => '---')
     .join(' | ')} |`;
@@ -304,7 +334,7 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
   const splitWithCustomSign = text.split(CUSTOM_SPLIT_SIGN);
 
   const splitResult = splitWithCustomSign.map((item) => {
-    if (strIsMdTable(text)) {
+    if (strIsMdTable(item)) {
       return markdownTableSplit(props);
     }
 
