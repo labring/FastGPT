@@ -15,6 +15,5 @@ parentPort?.on('message', (params: { html: string }) => {
       data: error
     });
   }
-
-  global?.close?.();
+  process.exit();
 });
