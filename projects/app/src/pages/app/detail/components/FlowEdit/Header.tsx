@@ -51,6 +51,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     >
   >;
 }) {
+  const isV2Workflow = app?.version === 'v2';
+
   const theme = useTheme();
   const { toast } = useToast();
   const { t } = useTranslation();
@@ -97,7 +99,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const onclickSave = useCallback(
     async (forbid?: boolean) => {
       // version preview / debug mode, not save
-      if (isShowVersionHistories || forbid) return;
+      if (!isV2Workflow || isShowVersionHistories || forbid) return;
 
       const { nodes } = await getWorkflowStore();
 
@@ -219,7 +221,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             <Box fontSize={['md', 'lg']} fontWeight={'bold'}>
               {app.name}
             </Box>
-            {!isShowVersionHistories && (
+            {!isShowVersionHistories && isV2Workflow && (
               <MyTooltip label={t('core.app.Onclick to save')}>
                 <Box
                   fontSize={'sm'}
@@ -306,22 +308,23 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       </>
     );
   }, [
-    ConfirmModal,
-    app.name,
-    flowData2StoreDataAndCheck,
+    theme.borders.base,
     isSaving,
-    onExportWorkflow,
-    onOpenImport,
-    onclickPublish,
-    onclickSave,
-    openConfigPublish,
-    isShowVersionHistories,
     saveAndBack,
-    saveLabel,
-    setIsShowVersionHistories,
-    setWorkflowTestData,
+    app.name,
+    isShowVersionHistories,
+    isV2Workflow,
     t,
-    theme.borders.base
+    saveLabel,
+    onOpenImport,
+    onExportWorkflow,
+    openConfigPublish,
+    onclickPublish,
+    ConfirmModal,
+    onclickSave,
+    setIsShowVersionHistories,
+    flowData2StoreDataAndCheck,
+    setWorkflowTestData
   ]);
 
   return (

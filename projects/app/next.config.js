@@ -86,12 +86,7 @@ const nextConfig = {
     serverComponentsExternalPackages: ['mongoose', 'pg'],
     // 指定导出包优化，按需引入包模块
     optimizePackageImports: ['mongoose', 'pg'],
-    outputFileTracingRoot: path.join(__dirname, '../../'),
-    outputFileTracingIncludes: {
-      '/api/common/file/previewContent.ts': [
-        path.resolve(process.cwd(), '../../packages/service/worker/**/*')
-      ]
-    }
+    outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };
 

@@ -231,17 +231,20 @@ const MenuRender = React.memo(function MenuRender({
           flowNodeType: node.data.flowNodeType,
           inputs: node.data.inputs,
           outputs: node.data.outputs,
-          showStatus: node.data.showStatus
+          showStatus: node.data.showStatus,
+          pluginId: node.data.pluginId
         };
         return state.concat(
           storeNode2FlowNode({
             item: {
+              flowNodeType: template.flowNodeType,
+              avatar: template.avatar,
               name: template.name,
               intro: template.intro,
               nodeId: getNanoid(),
               position: { x: node.position.x + 200, y: node.position.y + 50 },
-              flowNodeType: template.flowNodeType,
               showStatus: template.showStatus,
+              pluginId: template.pluginId,
               inputs: template.inputs,
               outputs: template.outputs
             }
