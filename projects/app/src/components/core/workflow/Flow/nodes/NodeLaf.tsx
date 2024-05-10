@@ -9,7 +9,7 @@ import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { getApiSchemaByUrl } from '@/web/core/plugin/api';
-import { str2OpenApiSchema } from '@fastgpt/global/core/plugin/httpPlugin/utils';
+import { getType, str2OpenApiSchema } from '@fastgpt/global/core/plugin/httpPlugin/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { ChevronRightIcon } from '@chakra-ui/icons';
@@ -155,7 +155,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
           desc: bodyParams[key].description,
           required: requiredParams?.includes(key) || false,
           value: `{{${key}}}`,
-          type: bodyParams[key].type
+          type: getType(bodyParams[key])
         }))
       ].filter((item) => !inputs.find((input) => input.key === item.name));
 
@@ -189,7 +189,7 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
 
       const allResponseParams = [
         ...Object.keys(responseParams).map((key) => ({
-          valueType: responseParams[key].type,
+          valueType: getType(responseParams[key]),
           name: key,
           desc: responseParams[key].description,
           required: requiredResponseParams?.includes(key) || false
