@@ -1,10 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
-import {
-  delFileByFileIdList,
-  readFileContentFromMongo
-} from '@fastgpt/service/common/file/gridfs/controller';
+import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
@@ -24,6 +21,7 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
+import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const {
@@ -138,6 +136,9 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
       return collectionId;
     });
+
+    // remove buffer
+    await MongoRawTextBuffer.deleteOne({ sourceId: fileId });
 
     startTrainingQueue(true);
 
