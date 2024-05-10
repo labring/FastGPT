@@ -1211,25 +1211,6 @@
     "Store": "应用市场",
     "Tools": "工具"
   },
-  "outlink": {
-    "Copy IFrame": "嵌入网页",
-    "Copy Link": "复制",
-    "Create API Key": "创建新 Key",
-    "Create Link": "创建链接",
-    "Delete Link": "删除链接",
-    "Edit API Key": "编辑 Key 信息",
-    "Edit IFrame Link": "更新嵌入链接",
-    "Edit Link": "编辑",
-    "Edit Share Window": "更新分享窗口",
-    "Link Name": "分享链接的名字",
-    "Link is empty": "",
-    "QPM": "",
-    "QPM Tips": "每个 IP 每分钟最多提问多少次",
-    "QPM is empty": "QPM 不能为空",
-    "token auth": "身份验证",
-    "token auth Tips": "身份校验服务器地址，如填写该值，每次对话前都会向指定服务器发送一个请求，进行身份校验",
-    "token auth use cases": "查看身份验证使用说明"
-  },
   "permission": {
     "Private": "私有",
     "Private Tip": "仅自己可用",

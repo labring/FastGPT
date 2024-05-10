@@ -10,6 +10,7 @@ import { useForm } from 'react-hook-form';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import dayjs from 'dayjs';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
+import { useI18n } from '@/web/context/I18n';
 
 const FeiShuEditModal = ({
   appId,
@@ -25,6 +26,7 @@ const FeiShuEditModal = ({
   onEdit: () => void;
 }) => {
   const { t } = useTranslation();
+  const { publishT } = useI18n();
   const {
     register,
     setValue,
@@ -58,13 +60,13 @@ const FeiShuEditModal = ({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/shareFill.svg"
-      title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}
+      title={isEdit ? publishT('Edit Link') : publishT('Create Link')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('Name')}</Box>
           <Input
-            placeholder={t('outlink.Feishu name') || 'Link Name'} // TODO: i18n
+            placeholder={publishT('Feishu name') || 'Link Name'} // TODO: i18n
             maxLength={20}
             {...register('name', {
               required: t('common.Name is empty') || 'Name is empty'
@@ -74,7 +76,7 @@ const FeiShuEditModal = ({
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
             QPM
-            <MyTooltip label={t('outlink.QPM Tips' || '')}>
+            <MyTooltip label={publishT('QPM Tips' || '')}>
               <QuestionOutlineIcon ml={1} />
             </MyTooltip>
           </Flex>
@@ -84,7 +86,7 @@ const FeiShuEditModal = ({
               min: 0,
               max: 1000,
               valueAsNumber: true,
-              required: t('outlink.QPM is empty') || ''
+              required: publishT('QPM is empty') || ''
             })}
           />
         </Flex>
@@ -126,10 +128,10 @@ const FeiShuEditModal = ({
             {/* TODO: i18n */}
           </Flex>
           <Input
-            placeholder={t('outlink.Default Response') || 'Link Name'}
+            placeholder={publishT('Default Response') || 'Link Name'}
             maxLength={20}
             {...register('defaultResponse', {
-              required: t('common.default Response is empty') || 'Name is empty'
+              required: true
             })}
           />
         </Flex>
@@ -139,10 +141,10 @@ const FeiShuEditModal = ({
             {/* TODO: i18n */}
           </Flex>
           <Input
-            placeholder={t('outlink.Default Response') || 'Link Name'}
+            placeholder={publishT('Default Response') || 'Link Name'}
             maxLength={20}
             {...register('immediateResponse', {
-              required: t('common.default Response is empty') || 'Name is empty'
+              required: true
             })}
           />
         </Flex>
@@ -152,14 +154,14 @@ const FeiShuEditModal = ({
             placeholder={t('core.module.http.appId') || 'Link Name'}
             // maxLength={20}
             {...register('app.appId', {
-              required: t('common.Name is empty') || 'Name is empty'
+              required: true
             })}
           />
         </Flex>
         <Flex alignItems={'center'} mt={4}>
           <Box flex={'0 0 90px'}>{t('core.module.http.AppSecret')}</Box>
           <Input
-            placeholder={t('outlink.AppSecret') || 'Link Name'}
+            placeholder={'App Secret'}
             // maxLength={20}
             {...register('app.appSecret', {
               required: t('common.Name is empty') || 'Name is empty'

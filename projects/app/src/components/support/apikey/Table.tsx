@@ -326,7 +326,7 @@ function EditKeyModal({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/key.svg"
-      title={isEdit ? t('outlink.Edit API Key') : t('outlink.Create API Key')}
+      title={isEdit ? publishT('Edit API Key') : publishT('Create API Key')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>

@@ -1206,25 +1206,6 @@
     "Store": "App Store",
     "Tools": "Tools"
   },
-  "outlink": {
-    "Copy IFrame": "Embed webpage",
-    "Copy Link": "Copy",
-    "Create API Key": "Create new Key",
-    "Create Link": "Create link",
-    "Delete Link": "Delete link",
-    "Edit API Key": "Edit Key information",
-    "Edit IFrame Link": "Update embed link",
-    "Edit Link": "Edit",
-    "Edit Share Window": "Update share window",
-    "Link Name": "Name of the share link",
-    "Link is empty": "Link is empty",
-    "QPM": "QPM",
-    "QPM Tips": "How many times per minute can each IP ask at most",
-    "QPM is empty": "QPM cannot be empty",
-    "token auth": "Token authentication",
-    "token auth Tips": "Identity verification server address, if this value is filled, a request will be sent to the specified server before each conversation to perform identity verification",
-    "token auth use cases": "View usage instructions for identity verification"
-  },
   "permission": {
     "Private": "Private",
     "Private Tip": "Only available to oneself",
