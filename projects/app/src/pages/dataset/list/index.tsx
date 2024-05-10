@@ -305,6 +305,42 @@ const Kb = () => {
                     </Box>
                   }
                   menuList={[
+                    {
+                      label: (
+                        <Flex alignItems={'center'}>
+                          <MyIcon name={'edit'} w={'14px'} mr={2} />
+                          {t('Rename')}
+                        </Flex>
+                      ),
+                      onClick: () =>
+                        onOpenTitleModal({
+                          defaultVal: dataset.name,
+                          onSuccess: (val) => {
+                            if (val === dataset.name || !val) return;
+                            updateDataset({ id: dataset._id, name: val });
+                          }
+                        })
+                    },
+                    {
+                      label: (
+                        <Flex alignItems={'center'}>
+                          <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
+                          {t('Move')}
+                        </Flex>
+                      ),
+                      onClick: () => setMoveDataId(dataset._id)
+                    },
+                    {
+                      label: (
+                        <Flex alignItems={'center'}>
+                          <MyIcon name={'export'} w={'14px'} mr={2} />
+                          {t('Export')}
+                        </Flex>
+                      ),
+                      onClick: () => {
+                        exportDataset(dataset);
+                      }
+                    },
                     ...(dataset.permission === PermissionTypeEnum.private
                       ? [
                           {
@@ -342,42 +378,6 @@ const Kb = () => {
                             }
                           }
                         ]),
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'edit'} w={'14px'} mr={2} />
-                          {t('Rename')}
-                        </Flex>
-                      ),
-                      onClick: () =>
-                        onOpenTitleModal({
-                          defaultVal: dataset.name,
-                          onSuccess: (val) => {
-                            if (val === dataset.name || !val) return;
-                            updateDataset({ id: dataset._id, name: val });
-                          }
-                        })
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
-                          {t('Move')}
-                        </Flex>
-                      ),
-                      onClick: () => setMoveDataId(dataset._id)
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'export'} w={'14px'} mr={2} />
-                          {t('Export')}
-                        </Flex>
-                      ),
-                      onClick: () => {
-                        exportDataset(dataset);
-                      }
-                    },
                     {
                       label: (
                         <Flex alignItems={'center'}>
