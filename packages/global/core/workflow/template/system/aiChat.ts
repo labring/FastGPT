@@ -1,7 +1,8 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  NodeVersions
 } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type';
 import {
@@ -31,6 +32,7 @@ export const AiChatModule: FlowNodeTemplateType = {
   intro: 'AI 大模型对话',
   showStatus: true,
   isTool: true,
+  version: NodeVersions[FlowNodeTypeEnum.chatNode],
   inputs: [
     Input_Template_SettingAiModel,
     // --- settings modal

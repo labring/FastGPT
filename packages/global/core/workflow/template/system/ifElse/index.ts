@@ -7,7 +7,8 @@ import {
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  NodeVersions
 } from '../../../node/constant';
 import { FlowNodeTemplateType } from '../../../type';
 import { getHandleConfig } from '../../utils';
@@ -22,6 +23,7 @@ export const IfElseNode: FlowNodeTemplateType = {
   name: '判断器',
   intro: '根据一定的条件，执行不同的分支。',
   showStatus: true,
+  version: NodeVersions[FlowNodeTypeEnum.ifElseNode],
   inputs: [
     {
       key: NodeInputKeyEnum.ifElseList,

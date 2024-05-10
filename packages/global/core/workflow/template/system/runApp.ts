@@ -1,7 +1,8 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  NodeVersions
 } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
 import {
@@ -23,6 +24,7 @@ export const RunAppModule: FlowNodeTemplateType = {
   name: '应用调用',
   intro: '可以选择一个其他应用进行调用',
   showStatus: true,
+  version: NodeVersions[FlowNodeTypeEnum.runApp],
   inputs: [
     {
       key: NodeInputKeyEnum.runAppSelectApp,

@@ -7,7 +7,8 @@ import {
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
+  FlowNodeTypeEnum,
+  NodeVersions
 } from '@fastgpt/global/core/workflow/node/constant';
 import { getHandleConfig } from '@fastgpt/global/core/workflow/template/utils';
 import {
@@ -39,6 +40,7 @@ export const getGlobalVariableNode = (nodes: FlowNodeItemType[], t: TFunction) =
     intro: '',
     unique: true,
     forbidDelete: true,
+    version: NodeVersions[FlowNodeTypeEnum.globalVariable],
     inputs: [],
     outputs: []
   };
@@ -418,6 +420,7 @@ export const v1Workflow2V2 = (
       pluginId,
       pluginType: node.pluginType,
       parentId: node.parentId,
+      version: 'v2.0',
 
       inputs,
       outputs

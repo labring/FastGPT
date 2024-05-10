@@ -1,4 +1,4 @@
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../../node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum, NodeVersions } from '../../../node/constant';
 import { FlowNodeTemplateType } from '../../../type/index.d';
 import {
   FlowNodeTemplateTypeEnum,
@@ -18,6 +18,7 @@ export const VariableUpdateNode: FlowNodeTemplateType = {
   intro: '可以更新指定节点的输出值或更新全局变量',
   showStatus: true,
   isTool: false,
+  version: NodeVersions[FlowNodeTypeEnum.variableUpdate],
   inputs: [
     {
       key: NodeInputKeyEnum.updateList,

@@ -1,5 +1,5 @@
 import type { AppSimpleEditFormType } from '../app/type';
-import { FlowNodeTypeEnum } from '../workflow/node/constant';
+import { FlowNodeTypeEnum, NodeVersions } from '../workflow/node/constant';
 import { NodeInputKeyEnum, FlowNodeTemplateTypeEnum } from '../workflow/constants';
 import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getGuideModule, splitGuideModule } from '../workflow/utils';
@@ -131,6 +131,7 @@ export const appWorkflow2Form = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
         intro: node.intro || '',
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
+        version: NodeVersions[FlowNodeTypeEnum.pluginModule],
         inputs: node.inputs,
         outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other

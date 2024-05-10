@@ -24,7 +24,11 @@ import {
 } from '@fastgpt/global/core/workflow/utils';
 import { getSystemVariables } from '../app/utils';
 import { TFunction } from 'next-i18next';
-import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
+import {
+  FlowNodeInputItemType,
+  FlowNodeOutputItemType,
+  ReferenceValueProps
+} from '@fastgpt/global/core/workflow/type/io';
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 
@@ -87,7 +91,8 @@ export const storeNode2FlowNode = ({
         ...templateOutput,
         value: storeOutput.value
       };
-    })
+    }),
+    version: storeNode.version || 'v2.0'
   };
 
   return {
@@ -297,4 +302,33 @@ export const getWorkflowGlobalVariables = (
   const systemVariables = getSystemVariables(t);
 
   return [...globalVariables, ...systemVariables];
+};
+
+export const updateFlowNodeVersion = (node: FlowNodeItemType, template: FlowNodeTemplateType) => {
+  function updateArrayBasedOnTemplate(
+    nodeArray: FlowNodeInputItemType[] | FlowNodeOutputItemType[],
+    templateArray: FlowNodeInputItemType[] | FlowNodeOutputItemType[]
+  ) {
+    const updatedArray: any = [];
+    templateArray.forEach((templateItem) => {
+      const nodeItem = nodeArray.find((item) => item.key === templateItem.key);
+      if (nodeItem) {
+        updatedArray.push({ ...templateItem, ...nodeItem });
+      } else {
+        updatedArray.push({ ...templateItem });
+      }
+    });
+    return updatedArray;
+  }
+
+  const updatedNode = { ...node, ...template, name: node.name };
+
+  if (node.inputs && template.inputs) {
+    updatedNode.inputs = updateArrayBasedOnTemplate(node.inputs, template.inputs);
+  }
+  if (node.outputs && template.outputs) {
+    updatedNode.outputs = updateArrayBasedOnTemplate(node.outputs, template.outputs);
+  }
+
+  return updatedNode;
 };
