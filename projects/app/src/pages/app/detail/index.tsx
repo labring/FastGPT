@@ -17,6 +17,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
+import { useI18n } from '@/web/context/I18n';
 
 const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
@@ -34,6 +35,8 @@ enum TabEnum {
 
 const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const router = useRouter();
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
@@ -74,10 +77,10 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
         id: TabEnum.publish,
         icon: 'support/outlink/shareLight'
       },
-      { label: t('app.Chat logs'), id: TabEnum.logs, icon: 'core/app/logsLight' },
+      { label: appT('Chat logs'), id: TabEnum.logs, icon: 'core/app/logsLight' },
       { label: t('core.Start chat'), id: TabEnum.startChat, icon: 'core/chat/chatLight' }
     ],
-    [feConfigs?.hide_app_flow, t]
+    [appT, feConfigs?.hide_app_flow, t]
   );
 
   const onCloseFlowEdit = useCallback(() => setCurrentTab(TabEnum.simpleEdit), [setCurrentTab]);
@@ -150,7 +153,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
                   borderRadius={'50%'}
                   aria-label={''}
                 />
-                {t('app.My Apps')}
+                {appT('My Apps')}
               </Flex>
             </Box>
             {/* phone tab */}
@@ -193,7 +196,7 @@ export async function getServerSideProps(context: any) {
   const currentTab = context?.query?.currentTab || TabEnum.simpleEdit;
 
   return {
-    props: { currentTab, ...(await serviceSideProps(context)) }
+    props: { currentTab, ...(await serviceSideProps(context, ['app'])) }
   };
 }
 

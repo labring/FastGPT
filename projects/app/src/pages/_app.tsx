@@ -6,6 +6,7 @@ import { appWithTranslation } from 'next-i18next';
 
 import QueryClientContext from '@/web/context/QueryClient';
 import ChakraUIContext from '@/web/context/ChakraUI';
+import I18nContextProvider from '@/web/context/I18n';
 import { useInitApp } from '@/web/context/useInitApp';
 
 import '@/web/styles/reset.scss';
@@ -34,11 +35,13 @@ function App({ Component, pageProps }: AppProps) {
       {scripts?.map((item, i) => <Script key={i} strategy="lazyOnload" {...item}></Script>)}
 
       <QueryClientContext>
-        <ChakraUIContext>
-          <Layout>
-            <Component {...pageProps} />
-          </Layout>
-        </ChakraUIContext>
+        <I18nContextProvider>
+          <ChakraUIContext>
+            <Layout>
+              <Component {...pageProps} />
+            </Layout>
+          </ChakraUIContext>
+        </I18nContextProvider>
       </QueryClientContext>
     </>
   );

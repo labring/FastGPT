@@ -135,7 +135,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
               })
             }
           >
-            {t('common.New Create')}
+            {t('New Create')}
           </Button>
         </Box>
       </Box>

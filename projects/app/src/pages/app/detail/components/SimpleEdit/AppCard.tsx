@@ -15,11 +15,14 @@ import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import TagsEditModal from './TagsEditModal';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useI18n } from '@/web/context/I18n';
 const InfoModal = dynamic(() => import('../InfoModal'));
 
 const AppCard = ({ appId }: { appId: string }) => {
   const router = useRouter();
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { toast } = useToast();
   const { appDetail } = useAppStore();
   const { feConfigs } = useSystemStore();
@@ -27,7 +30,7 @@ const AppCard = ({ appId }: { appId: string }) => {
   const [TeamTagsSet, setTeamTagsSet] = useState<AppSchema>();
 
   const { openConfirm: openConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
-    content: t('app.Confirm Del App Tip'),
+    content: appT('Confirm Del App Tip'),
     type: 'delete'
   });
 

@@ -23,6 +23,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useQuery } from '@tanstack/react-query';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { useI18n } from '@/web/context/I18n';
 
 type HistoryItemType = {
   id: string;
@@ -68,6 +69,8 @@ const ChatHistorySlider = ({
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
 
@@ -86,7 +89,8 @@ const ChatHistorySlider = ({
   const concatHistory = useMemo<HistoryItemType[]>(
     () =>
       !activeChatId
-        ? [{ id: activeChatId, title: t('core.chat.New Chat') }].concat(history)
+        ? //@ts-ignore
+          [{ id: activeChatId, title: t('core.chat.New Chat') }].concat(history)
         : history,
     [activeChatId, history, t]
   );
@@ -115,7 +119,7 @@ const ChatHistorySlider = ({
       whiteSpace={'nowrap'}
     >
       {isPc && (
-        <MyTooltip label={canRouteToDetail ? t('app.App Detail') : ''} offset={[0, 0]}>
+        <MyTooltip label={canRouteToDetail ? appT('App Detail') : ''} offset={[0, 0]}>
           <Flex
             pt={5}
             pb={2}
