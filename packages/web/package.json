@@ -28,6 +28,7 @@
     "papaparse": "^5.4.1",
     "pdfjs-dist": "4.0.269",
     "react": "18.2.0",
+    "use-context-selector": "^1.4.4",
     "react-day-picker": "^8.7.1",
     "react-dom": "18.2.0",
     "react-i18next": "13.5.0",

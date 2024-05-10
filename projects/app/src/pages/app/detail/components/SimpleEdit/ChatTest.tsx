@@ -21,6 +21,7 @@ import { UseFormReturn } from 'react-hook-form';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { form2AppWorkflow } from '@/web/core/app/utils';
+import { useI18n } from '@/web/context/I18n';
 
 const ChatTest = ({
   editForm,
@@ -30,6 +31,8 @@ const ChatTest = ({
   appId: string;
 }) => {
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { userInfo } = useUserStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const { appDetail } = useAppStore();
@@ -114,7 +117,7 @@ const ChatTest = ({
     >
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'xl']} fontWeight={'bold'} flex={1}>
-          {t('app.Chat Debug')}
+          {appT('Chat Debug')}
         </Box>
         <MyTooltip label={t('core.chat.Restart')}>
           <IconButton
@@ -160,7 +163,7 @@ const ChatTest = ({
           whiteSpace={'pre-wrap'}
           textAlign={'center'}
         >
-          <Box>{t('app.Advance App TestTip')}</Box>
+          <Box>{appT('Advance App TestTip')}</Box>
         </Flex>
       )}
     </Flex>

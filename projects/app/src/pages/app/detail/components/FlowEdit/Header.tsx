@@ -26,6 +26,7 @@ import { formatTime2HM } from '@fastgpt/global/common/string/time';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
 import { useInterval, useUpdateEffect } from 'ahooks';
+import { useI18n } from '@/web/context/I18n';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 const PublishHistories = dynamic(
@@ -56,6 +57,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const theme = useTheme();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { copyData } = useCopyData();
   const { openConfirm: openConfigPublish, ConfirmModal } = useConfirm({
     content: t('core.app.Publish Confirm')
@@ -177,10 +180,10 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
           null,
           2
         ),
-        t('app.Export Config Successful')
+        appT('Export Config Successful')
       );
     }
-  }, [copyData, flowData2StoreDataAndCheck, t]);
+  }, [appT, copyData, flowData2StoreDataAndCheck]);
 
   // effect
   useBeforeunload({
@@ -254,12 +257,12 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
                 }
                 menuList={[
                   {
-                    label: t('app.Import Configs'),
+                    label: appT('Import Configs'),
                     icon: 'common/importLight',
                     onClick: onOpenImport
                   },
                   {
-                    label: t('app.Export Configs'),
+                    label: appT('Export Configs'),
                     icon: 'export',
                     onClick: onExportWorkflow
                   }
@@ -316,6 +319,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     isV2Workflow,
     t,
     saveLabel,
+    appT,
     onOpenImport,
     onExportWorkflow,
     openConfigPublish,

@@ -22,6 +22,7 @@ import { storeNode2FlowNode } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
+import { useI18n } from '@/web/context/I18n';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -38,6 +39,8 @@ type Props = FlowNodeItemType & {
 
 const NodeCard = (props: Props) => {
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { toast } = useToast();
 
   const {
@@ -66,7 +69,7 @@ const NodeCard = (props: Props) => {
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common.Custom Title'),
-    placeholder: t('app.module.Custom Title Tip') || ''
+    placeholder: appT('module.Custom Title Tip') || ''
   });
 
   const showToolHandle = useMemo(
@@ -105,7 +108,7 @@ const NodeCard = (props: Props) => {
                     onSuccess: (e) => {
                       if (!e) {
                         return toast({
-                          title: t('app.modules.Title is required'),
+                          title: appT('modules.Title is required'),
                           status: 'warning'
                         });
                       }
@@ -132,8 +135,8 @@ const NodeCard = (props: Props) => {
       </Box>
     );
   }, [
-    nodeId,
     showToolHandle,
+    nodeId,
     avatar,
     t,
     name,
@@ -143,7 +146,8 @@ const NodeCard = (props: Props) => {
     intro,
     onOpenCustomTitleModal,
     onChangeNode,
-    toast
+    toast,
+    appT
   ]);
 
   return (

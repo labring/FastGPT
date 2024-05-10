@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Box, Grid, Flex, IconButton, Button, useDisclosure } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
@@ -7,7 +7,6 @@ import { delModelById } from '@/web/core/app/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
@@ -16,10 +15,12 @@ import CreateModal from './component/CreateModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useI18n } from '@/web/context/I18n';
 
 const MyApps = () => {
   const { toast } = useToast();
-  const { t } = useTranslation();
+  const { appT, commonT } = useI18n();
+
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { myApps, loadMyApps } = useAppStore();
@@ -62,10 +63,10 @@ const MyApps = () => {
     <PageContainer isLoading={isFetching} insertProps={{ px: [5, '48px'] }}>
       <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
-          {t('app.My Apps')}
+          {appT('My Apps')}
         </Box>
         <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
-          {t('common.New Create')}
+          {commonT('New Create')}
         </Button>
       </Flex>
       <Grid
@@ -76,7 +77,7 @@ const MyApps = () => {
         {myApps.map((app) => (
           <MyTooltip
             key={app._id}
-            label={userInfo?.team.canWrite ? t('app.To Settings') : t('app.To Chat')}
+            label={userInfo?.team.canWrite ? appT('To Settings') : appT('To Chat')}
           >
             <Box
               lineHeight={1.5}
@@ -168,9 +169,6 @@ const MyApps = () => {
           </MyTooltip>
         ))}
       </Grid>
-      {/* (
-        <ShareBox></ShareBox>
-      ) */}
 
       {myApps.length === 0 && (
         <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
@@ -191,7 +189,7 @@ const MyApps = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content))
+      ...(await serviceSideProps(content, ['app']))
     }
   };
 }

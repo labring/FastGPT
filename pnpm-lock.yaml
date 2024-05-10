@@ -301,6 +301,9 @@ importers:
       react-i18next:
         specifier: 13.5.0
         version: 13.5.0(i18next@23.10.0)(react-dom@18.2.0)(react@18.2.0)
+      use-context-selector:
+        specifier: ^1.4.4
+        version: 1.4.4(react-dom@18.2.0)(react@18.2.0)(scheduler@0.23.0)
     devDependencies:
       '@types/lodash':
         specifier: ^4.14.191
