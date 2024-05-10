@@ -13,7 +13,8 @@ export const NextAPI = (...args: NextApiHandler[]): NextApiHandler => {
         response = await handler(req, res);
       }
 
-      if (!res.writableFinished) {
+      const contentType = res.getHeader('Content-Type');
+      if ((!contentType || contentType === 'application/json') && !res.writableFinished) {
         return jsonRes(res, {
           code: 200,
           data: response
