@@ -1,0 +1,5 @@
+{
+  "app key tips": "These keys have the current application identification, refer to the document for specific use ",
+  "key alias": "key alias, for display only ",
+  "key tips": "You can use the API Key to access certain interfaces (you can't access the app, you need to use the API key within the app to access the app)"
+}
