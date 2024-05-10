@@ -6,6 +6,7 @@ type I18nContextType = {
   commonT: TFunction<['common'], undefined>;
   appT: TFunction<['app'], undefined>;
   datasetT: TFunction<['dataset'], undefined>;
+  fileT: TFunction<['file'], undefined>;
 };
 
 export const I18nContext = createContext<I18nContextType>({
@@ -17,13 +18,15 @@ const I18nContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { t: commonT } = useTranslation('common');
   const { t: appT } = useTranslation('app');
   const { t: datasetT } = useTranslation('dataset');
+  const { t: fileT } = useTranslation('file');
 
   return (
     <I18nContext.Provider
       value={{
         commonT,
         appT,
-        datasetT
+        datasetT,
+        fileT
       }}
     >
       {children}
