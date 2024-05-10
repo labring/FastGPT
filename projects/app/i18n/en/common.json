@@ -488,7 +488,7 @@
       "Speaking": "I'm listening, please speak...",
       "Start Chat": "Start Chat",
       "Stop Speak": "Stop Recording",
-      "Type a message": "Enter a question",
+      "Type a message": "Enter your question here, Send [Enter]/Wrap [Ctrl(Alt/Shift) + Enter]",
       "Unpin": "Unpin",
       "You need to a chat app": "You don't have an available app",
       "error": {
