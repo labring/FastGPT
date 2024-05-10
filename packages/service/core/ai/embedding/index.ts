@@ -2,6 +2,7 @@ import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { getAIApi } from '../config';
 import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { EmbeddingTypeEnm } from '@fastgpt/global/core/ai/constants';
+import { addLog } from '../../../common/system/log';
 
 type GetVectorProps = {
   model: VectorModelItemType;
@@ -32,6 +33,7 @@ export async function getVectorsByText({ model, input, type }: GetVectorProps) {
       })
       .then(async (res) => {
         if (!res.data) {
+          addLog.error('Embedding API is not responding', res);
           return Promise.reject('Embedding API is not responding');
         }
         if (!res?.data?.[0]?.embedding) {

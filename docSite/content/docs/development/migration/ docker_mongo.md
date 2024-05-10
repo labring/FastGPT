@@ -1,11 +1,17 @@
 ---
-weight: 749
-title: "FastGPT mongodump跨环境迁移fastgpt数据库"
-description: "FastGPT 私有部署数据迁移问题"
-icon: upgrade
+weight: 762
+title: "Docker Mongo迁移(dump模式)"
+description: "FastGPT Docker Mongo迁移"
+icon: database
 draft: false
 images: []
 ---
+
+## 作者
+
+[https://github.com/samqin123](https://github.com/samqin123)
+
+[相关PR。有问题可打开这里与作者交流](https://github.com/labring/FastGPT/pull/1426)
 
 ## 介绍
 
