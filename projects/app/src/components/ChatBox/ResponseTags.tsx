@@ -1,7 +1,7 @@
 import React, { useMemo, useState } from 'react';
 import { type ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { DispatchNodeResponseType } from '@fastgpt/global/core/workflow/runtime/type.d';
-import { Flex, BoxProps, useDisclosure, useTheme, Box } from '@chakra-ui/react';
+import { Flex, useDisclosure, useTheme, Box } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';

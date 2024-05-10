@@ -43,6 +43,7 @@ import MyTooltip from '@/components/MyTooltip';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useI18n } from '@/web/context/I18n';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -295,6 +296,7 @@ function EditKeyModal({
   onEdit: () => void;
 }) {
   const { t } = useTranslation();
+  const { publishT } = useI18n();
   const isEdit = useMemo(() => !!defaultData._id, [defaultData]);
   const { feConfigs } = useSystemStore();
 
@@ -324,13 +326,13 @@ function EditKeyModal({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/key.svg"
-      title={isEdit ? t('outlink.Edit API Key') : t('outlink.Create API Key')}
+      title={isEdit ? publishT('Edit API Key') : publishT('Create API Key')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('Name')}:</Box>
           <Input
-            placeholder={t('openapi.key alias') || 'key alias'}
+            placeholder={publishT('key alias') || 'key alias'}
             maxLength={20}
             {...register('name', {
               required: t('common.Name is empty') || 'Name is empty'
