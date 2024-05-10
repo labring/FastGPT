@@ -323,7 +323,7 @@ export const v1Workflow2V2 = (
             : undefined,
           llmModelType: input.llmModelType
         };
-
+        console.log(newInput, '======');
         if (input.key === 'userChatInput') {
           newInput.label = '问题输入';
         } else if (input.key === 'quoteQA') {
