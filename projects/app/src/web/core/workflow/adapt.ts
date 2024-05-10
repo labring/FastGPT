@@ -290,7 +290,11 @@ export const v1Workflow2V2 = (
         const newInput: FlowNodeInputItemType = {
           ...input,
           selectedTypeIndex: 0,
-          renderTypeList: inputTypeMap[input.type] ? [inputTypeMap[input.type]] : [],
+          renderTypeList: !input.type
+            ? [FlowNodeInputTypeEnum.custom]
+            : inputTypeMap[input.type]
+              ? [inputTypeMap[input.type]]
+              : [],
 
           key: input.key,
           value: input.value,
