@@ -488,7 +488,7 @@
       "Speaking": "我在听，请说...",
       "Start Chat": "开始对话",
       "Stop Speak": "停止录音",
-      "Type a message": "输入问题",
+      "Type a message": "输入问题，发送 [Enter]/换行 [Ctrl(Alt/Shift) + Enter]",
       "Unpin": "取消置顶",
       "You need to a chat app": "你没有可用的应用",
       "error": {
