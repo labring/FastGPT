@@ -13,6 +13,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { uploadFile2DB } from '@/web/common/file/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
+import { useI18n } from '@/web/context/I18n';
 
 export type SelectFileItemType = {
   fileId: string;
@@ -35,6 +36,8 @@ const FileSelector = ({
   onFinishSelect: () => void;
 } & FlexProps) => {
   const { t } = useTranslation();
+  const { fileT } = useI18n();
+
   const { toast } = useToast();
   const { feConfigs } = useSystemStore();
 
@@ -129,7 +132,7 @@ const FileSelector = ({
         files = files.slice(0, maxCount - selectFiles.length);
         toast({
           status: 'warning',
-          title: t('common.file.Some file count exceeds limit', { maxCount })
+          title: fileT('Some file count exceeds limit', { maxCount })
         });
       }
       // size check
@@ -141,7 +144,7 @@ const FileSelector = ({
       if (filterFiles.length < files.length) {
         toast({
           status: 'warning',
-          title: t('common.file.Some file size exceeds limit', { maxSize: formatFileSize(maxSize) })
+          title: fileT('Some file size exceeds limit', { maxSize: formatFileSize(maxSize) })
         });
       }
 
@@ -203,7 +206,7 @@ const FileSelector = ({
       let isErr = files.some((item) => item.type === '');
       if (isErr) {
         return toast({
-          title: t('file.upload error description'),
+          title: fileT('upload error description'),
           status: 'error'
         });
       }
@@ -262,18 +265,18 @@ const FileSelector = ({
         <>
           <Box fontWeight={'bold'}>
             {isDragging
-              ? t('file.Release the mouse to upload the file')
-              : t('common.file.Select and drag file tip')}
+              ? fileT('Release the mouse to upload the file')
+              : fileT('Select and drag file tip')}
           </Box>
           {/* file type */}
           <Box color={'myGray.500'} fontSize={'xs'}>
-            {t('common.file.Support file type', { fileType })}
+            {fileT('Support file type', { fileType })}
           </Box>
           <Box color={'myGray.500'} fontSize={'xs'}>
             {/* max count */}
-            {maxCount && t('common.file.Support max count', { maxCount })}
+            {maxCount && fileT('Support max count', { maxCount })}
             {/* max size */}
-            {maxSize && t('common.file.Support max size', { maxSize: formatFileSize(maxSize) })}
+            {maxSize && fileT('Support max size', { maxSize: formatFileSize(maxSize) })}
           </Box>
 
           <File

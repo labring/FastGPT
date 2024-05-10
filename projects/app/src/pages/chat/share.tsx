@@ -431,7 +431,7 @@ export async function getServerSideProps(context: any) {
       appName: app?.appId?.name || '',
       appAvatar: app?.appId?.avatar || '',
       appIntro: app?.appId?.intro || '',
-      ...(await serviceSideProps(context))
+      ...(await serviceSideProps(context, ['file']))
     }
   };
 }

@@ -1,0 +1,22 @@
+{
+  "Copy IFrame": "Embed webpage",
+  "Copy Link": "Copy",
+  "Create API Key": "Create new Key",
+  "Create Link": "Create link",
+  "Default Response": "Default Response",
+  "Delete Link": "Delete link",
+  "Edit API Key": "Edit Key information",
+  "Edit IFrame Link": "Update embed link",
+  "Edit Link": "Edit",
+  "Edit Share Window": "Update share window",
+  "Feishu name": "Lark",
+  "Link Name": "Name of the share link",
+  "QPM Tips": "How many times per minute can each IP ask at most",
+  "QPM is empty": "QPM cannot be empty",
+  "app key tips": "These keys have the current application identification, refer to the document for specific use ",
+  "key alias": "key alias, for display only ",
+  "key tips": "You can use the API Key to access certain interfaces (you can't access the app, you need to use the API key within the app to access the app)",
+  "token auth": "Token authentication",
+  "token auth Tips": "Identity verification server address, if this value is filled, a request will be sent to the specified server before each conversation to perform identity verification",
+  "token auth use cases": "View usage instructions for identity verification"
+}

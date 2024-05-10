@@ -382,7 +382,7 @@ const OutLink = () => {
 export async function getServerSideProps(context: any) {
   return {
     props: {
-      ...(await serviceSideProps(context))
+      ...(await serviceSideProps(context, ['file']))
     }
   };
 }
