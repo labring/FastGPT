@@ -19,7 +19,7 @@ export type MetaDataType = {
 export type ResourcePermissionType = {
   metaData: MetaDataType;
   userPermissionTable: Array<{
-    user: string;
+    user: UserModelSchema;
     permission: number;
   }>;
 };
