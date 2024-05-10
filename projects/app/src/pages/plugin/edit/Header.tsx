@@ -17,6 +17,7 @@ import {
 } from '@/web/core/workflow/utils';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
+import { useI18n } from '@/web/context/I18n';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 
@@ -25,6 +26,8 @@ type Props = { plugin: PluginItemSchema; onClose: () => void };
 const Header = ({ plugin, onClose }: Props) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { toast } = useToast();
   const { copyData } = useCopyData();
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
@@ -77,10 +80,10 @@ const Header = ({ plugin, onClose }: Props) => {
           null,
           2
         ),
-        t('app.Export Config Successful')
+        appT('Export Config Successful')
       );
     }
-  }, [copyData, flowData2StoreDataAndCheck, t]);
+  }, [appT, copyData, flowData2StoreDataAndCheck]);
 
   const Render = useMemo(() => {
     return (
@@ -118,9 +121,9 @@ const Header = ({ plugin, onClose }: Props) => {
               />
             }
             menuList={[
-              { label: t('app.Import Configs'), icon: 'common/importLight', onClick: onOpenImport },
+              { label: appT('Import Configs'), icon: 'common/importLight', onClick: onOpenImport },
               {
-                label: t('app.Export Configs'),
+                label: appT('Export Configs'),
                 icon: 'export',
                 onClick: onCopy
               }
@@ -139,6 +142,7 @@ const Header = ({ plugin, onClose }: Props) => {
       </>
     );
   }, [
+    appT,
     isLoading,
     isOpenImport,
     onClose,

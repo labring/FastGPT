@@ -28,6 +28,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 import { useCreation } from 'ahooks';
+import { useI18n } from '@/web/context/I18n';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -251,6 +252,8 @@ const RenderList = React.memo(function RenderList({
   setCurrentParent
 }: RenderListProps) {
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { isPc } = useSystemStore();
   const { x, y, zoom } = useViewport();
   const { setLoading } = useSystemStore();
@@ -323,7 +326,7 @@ const RenderList = React.memo(function RenderList({
 
   const Render = useMemo(() => {
     return templates.length === 0 ? (
-      <EmptyTip text={t('app.module.No Modules')} />
+      <EmptyTip text={appT('module.No Modules')} />
     ) : (
       <Box flex={'1 0 0'} overflow={'overlay'} px={'20px'}>
         <Box mx={'auto'}>

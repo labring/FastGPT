@@ -1,19 +1,18 @@
 import React, { useState } from 'react';
 import { Textarea, Button, ModalBody, ModalFooter } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
+import { useI18n } from '@/web/context/I18n';
 
 type Props = {
   onClose: () => void;
 };
 
 const ImportSettings = ({ onClose }: Props) => {
-  const { t } = useTranslation();
+  const { appT } = useI18n();
   const { toast } = useToast();
-
   const initData = useContextSelector(WorkflowContext, (v) => v.initData);
   const [value, setValue] = useState('');
 
@@ -23,11 +22,11 @@ const ImportSettings = ({ onClose }: Props) => {
       w={'600px'}
       onClose={onClose}
       iconSrc="/imgs/modal/params.svg"
-      title={t('app.Import Configs')}
+      title={appT('Import Configs')}
     >
       <ModalBody>
         <Textarea
-          placeholder={t('app.Paste Config') || 'app.Paste Config'}
+          placeholder={appT('Paste Config')}
           defaultValue={value}
           rows={16}
           onChange={(e) => setValue(e.target.value)}
@@ -46,7 +45,7 @@ const ImportSettings = ({ onClose }: Props) => {
               onClose();
             } catch (error) {
               toast({
-                title: t('app.Import Configs Failed')
+                title: appT('Import Configs Failed')
               });
             }
           }}
