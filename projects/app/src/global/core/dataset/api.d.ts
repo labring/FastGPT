@@ -22,6 +22,11 @@ export type CreateDatasetParams = {
   agentModel?: string;
 };
 
+export type RebuildEmbeddingProps = {
+  datasetId: string;
+  vectorModel: string;
+};
+
 /* ================= collection ===================== */
 
 /* ================= data ===================== */

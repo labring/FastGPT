@@ -35,8 +35,7 @@ const TrainingDataSchema = new Schema({
   },
   billId: {
     // concat bill
-    type: String,
-    default: ''
+    type: Schema.Types.ObjectId
   },
   mode: {
     type: String,
@@ -77,6 +76,9 @@ const TrainingDataSchema = new Schema({
   weight: {
     type: Number,
     default: 0
+  },
+  dataId: {
+    type: Schema.Types.ObjectId
   },
   indexes: {
     type: [

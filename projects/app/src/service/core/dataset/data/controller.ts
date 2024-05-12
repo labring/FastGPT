@@ -11,6 +11,7 @@ import { deleteDatasetDataVector } from '@fastgpt/service/common/vectorStore/con
 import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { ClientSession } from '@fastgpt/service/common/mongo';
 
 /* insert data.
  * 1. create data id
@@ -26,9 +27,11 @@ export async function insertData2Dataset({
   a = '',
   chunkIndex = 0,
   indexes,
-  model
+  model,
+  session
 }: CreateDatasetDataProps & {
   model: string;
+  session?: ClientSession;
 }) {
   if (!q || !datasetId || !collectionId || !model) {
     console.log(q, a, datasetId, collectionId, model);
@@ -70,20 +73,25 @@ export async function insertData2Dataset({
   );
 
   // create mongo data
-  const { _id } = await MongoDatasetData.create({
-    teamId,
-    tmbId,
-    datasetId,
-    collectionId,
-    q,
-    a,
-    fullTextToken: jiebaSplit({ text: qaStr }),
-    chunkIndex,
-    indexes: indexes?.map((item, i) => ({
-      ...item,
-      dataId: result[i].insertId
-    }))
-  });
+  const [{ _id }] = await MongoDatasetData.create(
+    [
+      {
+        teamId,
+        tmbId,
+        datasetId,
+        collectionId,
+        q,
+        a,
+        fullTextToken: jiebaSplit({ text: qaStr }),
+        chunkIndex,
+        indexes: indexes?.map((item, i) => ({
+          ...item,
+          dataId: result[i].insertId
+        }))
+      }
+    ],
+    { session }
+  );
 
   return {
     insertId: _id,
