@@ -16,23 +16,36 @@ import PermissionRadio from '@/components/support/permission/Radio';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { postRebuildEmbedding } from '@/web/core/dataset/api';
+import { useI18n } from '@/web/context/I18n';
+import type { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const { datasetDetail, loadDatasets, updateDataset } = useDatasetStore();
-  const { getValues, setValue, register, handleSubmit } = useForm<DatasetItemType>({
+  const { datasetT } = useI18n();
+  const { datasetDetail, loadDatasetDetail, loadDatasets, updateDataset } = useDatasetStore();
+
+  const { setValue, register, handleSubmit, watch } = useForm<DatasetItemType>({
     defaultValues: datasetDetail
   });
+
+  const avatar = watch('avatar');
+  const vectorModel = watch('vectorModel');
+  const agentModel = watch('agentModel');
+  const permission = watch('permission');
+
   const { datasetModelList, vectorModelList } = useSystemStore();
 
   const router = useRouter();
 
-  const [refresh, setRefresh] = useState(false);
-
-  const { openConfirm, ConfirmModal } = useConfirm({
+  const { openConfirm: onOpenConfirmDel, ConfirmModal: ConfirmDelModal } = useConfirm({
     content: t('core.dataset.Delete Confirm'),
+    type: 'delete'
+  });
+  const { openConfirm: onOpenConfirmRebuild, ConfirmModal: ConfirmRebuildModal } = useConfirm({
+    title: t('common.confirm.Common Tip'),
+    content: datasetT('Confirm to rebuild embedding tip'),
     type: 'delete'
   });
 
@@ -81,13 +94,27 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     onSuccess(src: string | null) {
       if (src) {
         setValue('avatar', src);
-        setRefresh((state) => !state);
       }
     },
     errorToast: t('common.avatar.Select Failed')
   });
 
-  const btnLoading = useMemo(() => isDeleting || isSaving, [isDeleting, isSaving]);
+  const { mutate: onRebuilding, isLoading: isRebuilding } = useRequest({
+    mutationFn: (vectorModel: VectorModelItemType) => {
+      return postRebuildEmbedding({
+        datasetId,
+        vectorModel: vectorModel.model
+      });
+    },
+    onSuccess() {
+      loadDatasetDetail(datasetId, true);
+      loadDatasets();
+    },
+    successToast: datasetT('Rebuild embedding start tip'),
+    errorToast: t('common.Update Failed')
+  });
+
+  const btnLoading = isSelecting || isDeleting || isSaving || isRebuilding;
 
   return (
     <Box py={5} px={[5, 10]}>
@@ -106,7 +133,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           <MyTooltip label={t('common.avatar.Select Avatar')}>
             <Avatar
               m={'auto'}
-              src={getValues('avatar')}
+              src={avatar}
               w={['32px', '40px']}
               h={['32px', '40px']}
               cursor={'pointer'}
@@ -125,13 +152,30 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.ai.model.Vector Model')}
         </Box>
-        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').name}</Box>
+        <Box flex={[1, '0 0 300px']}>
+          <AIModelSelector
+            w={'100%'}
+            value={vectorModel.model}
+            list={vectorModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onchange={(e) => {
+              const vectorModel = vectorModelList.find((item) => item.model === e);
+              if (!vectorModel) return;
+              onOpenConfirmRebuild(() => {
+                setValue('vectorModel', vectorModel);
+                onRebuilding(vectorModel);
+              })();
+            }}
+          />
+        </Box>
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.Max Token')}
         </Box>
-        <Box flex={[1, '0 0 300px']}>{getValues('vectorModel').maxToken}</Box>
+        <Box flex={[1, '0 0 300px']}>{vectorModel.maxToken}</Box>
       </Flex>
       <Flex mt={6} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
@@ -140,7 +184,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <Box flex={[1, '0 0 300px']}>
           <AIModelSelector
             w={'100%'}
-            value={getValues('agentModel').model}
+            value={agentModel.model}
             list={datasetModelList.map((item) => ({
               label: item.name,
               value: item.model
@@ -149,7 +193,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
               const agentModel = datasetModelList.find((item) => item.model === e);
               if (!agentModel) return;
               setValue('agentModel', agentModel);
-              setRefresh((state) => !state);
             }}
           />
         </Box>
@@ -166,10 +209,9 @@ const Info = ({ datasetId }: { datasetId: string }) => {
           </Box>
           <Box>
             <PermissionRadio
-              value={getValues('permission')}
+              value={permission}
               onChange={(e) => {
                 setValue('permission', e);
-                setRefresh(!refresh);
               }}
             />
           </Box>
@@ -193,12 +235,14 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             aria-label={''}
             variant={'whiteDanger'}
             size={'smSquare'}
-            onClick={openConfirm(onclickDelete)}
+            onClick={onOpenConfirmDel(onclickDelete)}
           />
         )}
       </Flex>
+
       <File onSelect={onSelectFile} />
-      <ConfirmModal />
+      <ConfirmDelModal />
+      <ConfirmRebuildModal countDown={10} />
     </Box>
   );
 };

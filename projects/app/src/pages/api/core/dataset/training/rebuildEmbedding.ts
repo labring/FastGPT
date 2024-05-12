@@ -1,6 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middle/entry';
-import { RebuildEmbeddingProps } from '@/global/core/dataset/api';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
@@ -12,15 +10,18 @@ import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 
-type Props = {};
+export type rebuildEmbeddingBody = {
+  datasetId: string;
+  vectorModel: string;
+};
 
-type Response = {};
+export type Response = {};
 
 async function handler(
-  req: ApiRequestProps<RebuildEmbeddingProps>,
+  req: ApiRequestProps<rebuildEmbeddingBody>,
   res: ApiResponseType<any>
 ): Promise<Response> {
-  const { datasetId, vectorModel } = req.body as RebuildEmbeddingProps;
+  const { datasetId, vectorModel } = req.body;
 
   const { teamId, tmbId, dataset } = await authDataset({
     req,
