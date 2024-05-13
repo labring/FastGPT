@@ -80,6 +80,7 @@ export type DatasetDataSchemaType = {
   a: string; // answer or custom content
   fullTextToken: string;
   indexes: DatasetDataIndexItemType[];
+  rebuilding?: boolean;
 };
 
 export type DatasetTrainingSchemaType = {
@@ -95,6 +96,7 @@ export type DatasetTrainingSchemaType = {
   mode: `${TrainingModeEnum}`;
   model: string;
   prompt: string;
+  dataId?: string;
   q: string;
   a: string;
   chunkIndex: number;

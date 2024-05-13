@@ -12,8 +12,6 @@ export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) 
 
     return result as T;
   } catch (error) {
-    console.log(error);
-
     await session.abortTransaction();
     await session.endSession();
     return Promise.reject(error);

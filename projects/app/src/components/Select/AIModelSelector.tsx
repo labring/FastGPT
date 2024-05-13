@@ -8,8 +8,13 @@ import MySelect, { SelectProps } from '@fastgpt/web/components/common/MySelect';
 import { HUGGING_FACE_ICON, LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { Box, Flex } from '@chakra-ui/react';
 import Avatar from '../Avatar';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
-const AIModelSelector = ({ list, onchange, ...props }: SelectProps) => {
+type Props = SelectProps & {
+  disableTip?: string;
+};
+
+const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
   const { t } = useTranslation();
   const { feConfigs, llmModelList, vectorModelList } = useSystemStore();
   const router = useRouter();
@@ -62,9 +67,9 @@ const AIModelSelector = ({ list, onchange, ...props }: SelectProps) => {
   );
 
   return (
-    <>
-      <MySelect list={expandList} {...props} onchange={onSelect} />
-    </>
+    <MyTooltip label={disableTip}>
+      <MySelect isDisabled={!!disableTip} list={expandList} {...props} onchange={onSelect} />
+    </MyTooltip>
   );
 };
 

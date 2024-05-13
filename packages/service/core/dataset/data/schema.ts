@@ -8,7 +8,7 @@ import {
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
 
-export const DatasetDataCollectionName = 'dataset.datas';
+export const DatasetDataCollectionName = 'dataset_datas';
 
 const DatasetDataSchema = new Schema({
   teamId: {
@@ -73,7 +73,8 @@ const DatasetDataSchema = new Schema({
   },
   inited: {
     type: Boolean
-  }
+  },
+  rebuilding: Boolean
 });
 
 try {
@@ -90,10 +91,13 @@ try {
     { background: true }
   );
   DatasetDataSchema.index({ updateTime: 1 }, { background: true });
+  // rebuild data
+  DatasetDataSchema.index({ rebuilding: 1, teamId: 1, datasetId: 1 }, { background: true });
 } catch (error) {
   console.log(error);
 }
 
 export const MongoDatasetData: Model<DatasetDataSchemaType> =
   models[DatasetDataCollectionName] || model(DatasetDataCollectionName, DatasetDataSchema);
+
 MongoDatasetData.syncIndexes();
