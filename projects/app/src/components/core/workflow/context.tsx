@@ -322,7 +322,7 @@ const WorkflowContextProvider = ({
             item.key === props.key ? props.value : item
           );
         } else if (type === 'replaceInput') {
-          onDelEdge({ nodeId, targetHandle: getHandleId(nodeId,'target', props.key) });
+          onDelEdge({ nodeId, targetHandle: getHandleId(nodeId, 'target', props.key) });
           const oldInputIndex = node.data.inputs.findIndex((item) => item.key === props.key);
           updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
           setTimeout(() => {
@@ -351,14 +351,14 @@ const WorkflowContextProvider = ({
             }
           }
         } else if (type === 'delInput') {
-          onDelEdge({ nodeId, targetHandle: getHandleId(nodeId,'target', props.key) });
+          onDelEdge({ nodeId, targetHandle: getHandleId(nodeId, 'target', props.key) });
           updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
         } else if (type === 'updateOutput') {
           updateObj.outputs = node.data.outputs.map((item) =>
             item.key === props.key ? props.value : item
           );
         } else if (type === 'replaceOutput') {
-          onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId,'source', props.key) });
+          onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
           const oldOutputIndex = node.data.outputs.findIndex((item) => item.key === props.key);
           updateObj.outputs = node.data.outputs.filter((item) => item.key !== props.key);
           console.log(props.value);
@@ -388,7 +388,7 @@ const WorkflowContextProvider = ({
             }
           }
         } else if (type === 'delOutput') {
-          onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId,'source', props.key) });
+          onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
           updateObj.outputs = node.data.outputs.filter((item) => item.key !== props.key);
         }
 
