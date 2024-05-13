@@ -19,8 +19,6 @@ import type {
   GetTrainingQueueProps,
   GetTrainingQueueResponse,
   PostPreviewFilesChunksProps,
-  PostPreviewFilesChunksResponse,
-  PostPreviewTableChunksResponse,
   SearchTestProps,
   SearchTestResponse
 } from '@/global/core/dataset/api.d';
@@ -29,7 +27,6 @@ import type {
   CreateDatasetParams,
   InsertOneDatasetDataProps
 } from '@/global/core/dataset/api.d';
-import type { PushDatasetDataResponse } from '@fastgpt/global/core/dataset/api.d';
 import type { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
 import {
   DatasetCollectionSyncResultEnum,
@@ -38,6 +35,8 @@ import {
 import type { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.d';
 import { PagingData } from '@/types';
+import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
+import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: { parentId?: string; type?: `${DatasetTypeEnum}` }) =>
@@ -124,9 +123,17 @@ export const delOneDatasetDataById = (id: string) =>
   DELETE<string>(`/core/dataset/data/delete`, { id });
 
 /* ================ training ==================== */
+export const postRebuildEmbedding = (data: rebuildEmbeddingBody) =>
+  POST(`/core/dataset/training/rebuildEmbedding`, data);
+
 /* get length of system training queue */
 export const getTrainingQueueLen = (data: GetTrainingQueueProps) =>
   GET<GetTrainingQueueResponse>(`/core/dataset/training/getQueueLen`, data);
+export const getDatasetTrainingQueue = (datasetId: string) =>
+  GET<getDatasetTrainingQueueResponse>(`/core/dataset/training/getDatasetTrainingQueue`, {
+    datasetId
+  });
+
 export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
   POST<{ q: string; a: string }[]>('/core/dataset/file/getPreviewChunks', data);
 

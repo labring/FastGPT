@@ -8,7 +8,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const DatasetColCollectionName = 'dataset.collections';
+export const DatasetColCollectionName = 'dataset_collections';
 
 const DatasetCollectionSchema = new Schema({
   parentId: {

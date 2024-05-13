@@ -1,0 +1,6 @@
+{
+  "Confirm to rebuild embedding tip": "确认为知识库切换索引？\n切换索引是一个非常重量的操作，需要对您知识库内所有数据进行重新索引，时间可能较长，请确保账号内剩余积分充足。",
+  "Rebuild embedding start tip": "切换索引模型任务已开始",
+  "Rebuilding index count": "重建中索引数量: {{count}}",
+  "The knowledge base has indexes that are being trained or being rebuilt": "知识库有训练中或正在重建的索引"
+}

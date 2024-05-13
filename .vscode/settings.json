@@ -11,5 +11,6 @@
     "i18n-ally.sortKeys": true,
     "i18n-ally.keepFulfilled": false,
     "i18n-ally.sourceLanguage": "zh", // 根据此语言文件翻译其他语言文件的变量和内容
-    "i18n-ally.displayLanguage": "zh" // 显示语言
+    "i18n-ally.displayLanguage": "zh", // 显示语言
+    "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key"
 }
