@@ -2,14 +2,14 @@
   "App": "App",
   "Export": "Export",
   "Folder": "Folder",
+  "Login": "Login",
   "Move": "Move",
   "Name": "Name",
+  "New Create": "Create New",
   "Rename": "Rename",
   "Running": "Running",
   "UnKnow": "Unknown",
   "Warning": "Warning",
-  "New Create": "Create New",
-
   "common": {
     "Action": "Action",
     "Add": "Add",
@@ -580,7 +580,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -863,10 +864,10 @@
         "params": "Params"
       },
       "input": {
+        "Add Branch": "Add branch",
         "Add Input": "Add input",
         "Input Number": "Input: {{length}}",
         "add": "Add condition",
-        "Add Branch": "Add branch",
         "description": {
           "Background": "You can add some specific content introductions to better identify the user's question type. This content is usually to introduce something unknown to the model.",
           "HTTP Dynamic Input": "Receives the output value of the previous node as a variable, which can be used by HTTP request parameters.",
