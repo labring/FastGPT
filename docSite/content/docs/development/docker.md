@@ -257,6 +257,13 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 2. 非 docker 部署的，需要手动安装 pg vector 插件
 3. 查看 fastgpt 日志，有没有相关报错
 
+### Illegal instruction
+
+可能原因：
+
+1. arm架构。需要使用 Mongo 官方镜像： mongo:5.0.18
+2. cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x。把 mongo 的 image 换成: mongo:4.4.29
+
 ### Operation `auth_codes.findOne()` buffering timed out after 10000ms
 
 mongo连接失败，查看mongo的运行状态对应日志。
