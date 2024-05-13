@@ -137,7 +137,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
           isLoading={requesting}
           onClick={handleSubmit(onclickLogin)}
         >
-          {t('home.Login')}
+          {t('Login')}
         </Button>
 
         {feConfigs?.show_register && (

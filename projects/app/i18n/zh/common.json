@@ -2,14 +2,14 @@
   "App": "应用",
   "Export": "导出",
   "Folder": "文件夹",
+  "Login": "登录",
   "Move": "移动",
   "Name": "名称",
+  "New Create": "新建",
   "Rename": "重命名",
   "Running": "运行中",
   "UnKnow": "未知",
   "Warning": "提示",
-  "New Create": "新建",
-
   "common": {
     "Action": "操作",
     "Add": "添加",
@@ -580,7 +580,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
