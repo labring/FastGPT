@@ -6,6 +6,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { FastGPTFeConfigsType } from '@fastgpt/global/common/system/types/index.d';
 import { change2DefaultLng, setLngStore } from '@/web/common/utils/i18n';
 import { useMemoizedFn, useMount } from 'ahooks';
+import { TrackEventName } from '../common/system/constants';
 
 export const useInitApp = () => {
   const router = useRouter();
@@ -52,7 +53,7 @@ export const useInitApp = () => {
     initUserLanguage();
 
     const errorTrack = (event: ErrorEvent) => {
-      window.umami?.track('windowError', {
+      window.umami?.track(TrackEventName.windowError, {
         device: {
           userAgent: navigator.userAgent,
           platform: navigator.platform,
