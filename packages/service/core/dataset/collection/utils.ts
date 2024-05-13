@@ -10,7 +10,7 @@ import {
 } from '@fastgpt/global/core/dataset/constants';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { ClientSession } from '../../../common/mongo';
-
+import { parseCsvTable2Chunks } from '@fastgpt/service/core/dataset/training/utils';
 /**
  * get all collection by top collectionId
  */
@@ -173,36 +173,61 @@ export const reloadCollectionChunks = async ({
   });
 
   if (isSameRawText) return;
-
-  // split data
-  const { chunks } = splitText2Chunks({
-    text: newRawText,
-    chunkLen: col.chunkSize || 512
-  });
-
   // insert to training queue
   const model = await (() => {
     if (col.trainingType === TrainingModeEnum.chunk) return col.datasetId.vectorModel;
     if (col.trainingType === TrainingModeEnum.qa) return col.datasetId.agentModel;
     return Promise.reject('Training model error');
   })();
+  const rbx = newRawText.startsWith('index,content');
+  if (!rbx) {
+    // split data
+    const { chunks } = splitText2Chunks({
+      text: newRawText,
+      chunkLen: col.chunkSize || 512
+    });
+    // chunksx = chunks;
+    await MongoDatasetTraining.insertMany(
+      chunks.map((item, i) => ({
+        teamId: col.teamId,
+        tmbId,
+        datasetId: col.datasetId._id,
+        collectionId: col._id,
+        billId,
+        mode: col.trainingType,
+        prompt: '',
+        model,
+        q: item,
+        a: '',
+        chunkIndex: i
+      })),
+      { session }
+    );
+  } else {
+    //类似 导入csv模式
+    const rawText1 = newRawText.replace(/\\r\\n/g, '\r\n');
+    const rawText2 = rawText1.replace('index,content', '').trim().trimStart();
+    // console.log('rawText2', rawText2);
+    // 2. split chunks
+    const { chunks = [] } = parseCsvTable2Chunks(rawText2);
 
-  await MongoDatasetTraining.insertMany(
-    chunks.map((item, i) => ({
-      teamId: col.teamId,
-      tmbId,
-      datasetId: col.datasetId._id,
-      collectionId: col._id,
-      billId,
-      mode: col.trainingType,
-      prompt: '',
-      model,
-      q: item,
-      a: '',
-      chunkIndex: i
-    })),
-    { session }
-  );
+    await MongoDatasetTraining.insertMany(
+      chunks.map((item, i) => ({
+        teamId: col.teamId,
+        tmbId,
+        datasetId: col.datasetId._id,
+        collectionId: col._id,
+        billId,
+        mode: col.trainingType,
+        prompt: '',
+        model,
+        q: item.q,
+        a: item.a,
+        chunkIndex: i
+      })),
+      { session }
+    );
+  }
 
   // update raw text
   await MongoDatasetCollection.findByIdAndUpdate(
