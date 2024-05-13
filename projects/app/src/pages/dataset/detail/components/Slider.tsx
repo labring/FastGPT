@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef } from 'react';
+import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -17,9 +17,10 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import SideTabs from '@/components/SideTabs';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
-import { getTrainingQueueLen } from '@/web/core/dataset/api';
-import { useQuery } from '@tanstack/react-query';
 import Tabs from '@/components/Tabs';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useI18n } from '@/web/context/I18n';
 
 export enum TabEnum {
   dataCard = 'dataCard',
@@ -32,11 +33,15 @@ export enum TabEnum {
 const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { datasetT } = useI18n();
   const router = useRouter();
   const query = router.query;
   const { datasetDetail, startWebsiteSync } = useDatasetStore();
   const { userInfo } = useUserStore();
   const { isPc, setLoading } = useSystemStore();
+  const vectorTrainingMap = useContextSelector(DatasetPageContext, (v) => v.vectorTrainingMap);
+  const agentTrainingMap = useContextSelector(DatasetPageContext, (v) => v.agentTrainingMap);
+  const rebuildingCount = useContextSelector(DatasetPageContext, (v) => v.rebuildingCount);
 
   const tabList = [
     {
@@ -75,56 +80,6 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
     },
     errorToast: t('common.Update Failed')
   });
-
-  const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
-    ['getTrainingQueueLen'],
-    () =>
-      getTrainingQueueLen({
-        vectorModel: datasetDetail.vectorModel.model,
-        agentModel: datasetDetail.agentModel.model
-      }),
-    {
-      refetchInterval: 10000
-    }
-  );
-  const { vectorTrainingMap, agentTrainingMap } = useMemo(() => {
-    const vectorTrainingMap = (() => {
-      if (vectorTrainingCount < 1000)
-        return {
-          colorSchema: 'green',
-          tip: t('core.dataset.training.Leisure')
-        };
-      if (vectorTrainingCount < 10000)
-        return {
-          colorSchema: 'yellow',
-          tip: t('core.dataset.training.Waiting')
-        };
-      return {
-        colorSchema: 'red',
-        tip: t('core.dataset.training.Full')
-      };
-    })();
-    const agentTrainingMap = (() => {
-      if (agentTrainingCount < 100)
-        return {
-          colorSchema: 'green',
-          tip: t('core.dataset.training.Leisure')
-        };
-      if (agentTrainingCount < 1000)
-        return {
-          colorSchema: 'yellow',
-          tip: t('core.dataset.training.Waiting')
-        };
-      return {
-        colorSchema: 'red',
-        tip: t('core.dataset.training.Full')
-      };
-    })();
-    return {
-      vectorTrainingMap,
-      agentTrainingMap
-    };
-  }, [agentTrainingCount, t, vectorTrainingCount]);
 
   return (
     <>
@@ -180,6 +135,13 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
             }}
           />
           <Box px={4}>
+            {rebuildingCount > 0 && (
+              <Box mb={3}>
+                <Box fontSize={'sm'}>
+                  {datasetT('Rebuilding index count', { count: rebuildingCount })}
+                </Box>
+              </Box>
+            )}
             <Box mb={3}>
               <Box fontSize={'sm'}>
                 {t('core.dataset.training.Agent queue')}({agentTrainingMap.tip})

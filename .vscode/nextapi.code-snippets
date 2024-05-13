@@ -30,5 +30,30 @@
 			"export default NextAPI(handler);"
 		],
 		"description": "FastGPT Next API template"
+	},
+	"use context template": {
+		"scope": "typescriptreact",
+		"prefix": "context",
+		"body": [
+			"import { ReactNode } from 'react';",
+			"import { createContext } from 'use-context-selector';",
+			"",
+			"type ContextType = {$1};",
+			"",
+			"type ContextValueType = {};",
+			"",
+			"export const Context = createContext<ContextType>({});",
+			"",
+			"export const ContextProvider = ({",
+			"  children,",
+			"  value",
+			"}: {",
+			"  children: ReactNode;",
+			"  value: ContextValueType;",
+			"}) => {",
+			"  return <Context.Provider value={value}>{children}</Context.Provider>;",
+			"};",
+		],
+		"description": "FastGPT usecontext template"
 	}
 }

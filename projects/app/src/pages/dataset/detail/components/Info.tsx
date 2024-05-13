@@ -20,11 +20,20 @@ import AIModelSelector from '@/components/Select/AIModelSelector';
 import { postRebuildEmbedding } from '@/web/core/dataset/api';
 import { useI18n } from '@/web/context/I18n';
 import type { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { datasetT } = useI18n();
   const { datasetDetail, loadDatasetDetail, loadDatasets, updateDataset } = useDatasetStore();
+  const rebuildingCount = useContextSelector(DatasetPageContext, (v) => v.rebuildingCount);
+  const trainingCount = useContextSelector(DatasetPageContext, (v) => v.trainingCount);
+  const refetchDatasetTraining = useContextSelector(
+    DatasetPageContext,
+    (v) => v.refetchDatasetTraining
+  );
 
   const { setValue, register, handleSubmit, watch } = useForm<DatasetItemType>({
     defaultValues: datasetDetail
@@ -107,8 +116,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       });
     },
     onSuccess() {
+      refetchDatasetTraining();
       loadDatasetDetail(datasetId, true);
-      loadDatasets();
     },
     successToast: datasetT('Rebuild embedding start tip'),
     errorToast: t('common.Update Failed')
@@ -124,6 +133,62 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
         <Box flex={1}>{datasetDetail._id}</Box>
       </Flex>
+      <Flex mt={8} w={'100%'} alignItems={'center'} flexWrap={'wrap'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.ai.model.Vector Model')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>
+          <AIModelSelector
+            w={'100%'}
+            value={vectorModel.model}
+            disableTip={
+              rebuildingCount > 0 || trainingCount > 0
+                ? datasetT('The knowledge base has indexes that are being trained or being rebuilt')
+                : undefined
+            }
+            list={vectorModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onchange={(e) => {
+              const vectorModel = vectorModelList.find((item) => item.model === e);
+              if (!vectorModel) return;
+              onOpenConfirmRebuild(() => {
+                setValue('vectorModel', vectorModel);
+                onRebuilding(vectorModel);
+              })();
+            }}
+          />
+        </Box>
+      </Flex>
+      <Flex mt={8} w={'100%'} alignItems={'center'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.Max Token')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>{vectorModel.maxToken}</Box>
+      </Flex>
+      <Flex mt={6} alignItems={'center'} flexWrap={'wrap'}>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          {t('core.ai.model.Dataset Agent Model')}
+        </Box>
+        <Box flex={[1, '0 0 300px']}>
+          <AIModelSelector
+            w={'100%'}
+            value={agentModel.model}
+            list={datasetModelList.map((item) => ({
+              label: item.name,
+              value: item.model
+            }))}
+            onchange={(e) => {
+              const agentModel = datasetModelList.find((item) => item.model === e);
+              if (!agentModel) return;
+              setValue('agentModel', agentModel);
+            }}
+          />
+        </Box>
+      </Flex>
+
+      <MyDivider my={4} h={'2px'} maxW={'500px'} />
 
       <Flex mt={5} w={'100%'} alignItems={'center'}>
         <Box flex={['0 0 90px', '0 0 160px']} w={0}>
@@ -148,56 +213,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
         <Input flex={[1, '0 0 300px']} maxLength={30} {...register('name')} />
       </Flex>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.ai.model.Vector Model')}
-        </Box>
-        <Box flex={[1, '0 0 300px']}>
-          <AIModelSelector
-            w={'100%'}
-            value={vectorModel.model}
-            list={vectorModelList.map((item) => ({
-              label: item.name,
-              value: item.model
-            }))}
-            onchange={(e) => {
-              const vectorModel = vectorModelList.find((item) => item.model === e);
-              if (!vectorModel) return;
-              onOpenConfirmRebuild(() => {
-                setValue('vectorModel', vectorModel);
-                onRebuilding(vectorModel);
-              })();
-            }}
-          />
-        </Box>
-      </Flex>
-      <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.Max Token')}
-        </Box>
-        <Box flex={[1, '0 0 300px']}>{vectorModel.maxToken}</Box>
-      </Flex>
-      <Flex mt={6} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
-          {t('core.ai.model.Dataset Agent Model')}
-        </Box>
-        <Box flex={[1, '0 0 300px']}>
-          <AIModelSelector
-            w={'100%'}
-            value={agentModel.model}
-            list={datasetModelList.map((item) => ({
-              label: item.name,
-              value: item.model
-            }))}
-            onchange={(e) => {
-              const agentModel = datasetModelList.find((item) => item.model === e);
-              if (!agentModel) return;
-              setValue('agentModel', agentModel);
-            }}
-          />
-        </Box>
-      </Flex>
-
       <Flex mt={8} alignItems={'center'} w={'100%'}>
         <Box flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</Box>
         <Textarea flex={[1, '0 0 300px']} {...register('intro')} placeholder={t('common.Intro')} />
@@ -242,7 +257,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <File onSelect={onSelectFile} />
       <ConfirmDelModal />
-      <ConfirmRebuildModal countDown={10} />
+      <ConfirmRebuildModal />
     </Box>
   );
 };
