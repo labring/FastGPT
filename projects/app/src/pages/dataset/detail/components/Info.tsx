@@ -257,7 +257,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       <File onSelect={onSelectFile} />
       <ConfirmDelModal />
-      <ConfirmRebuildModal />
+      <ConfirmRebuildModal countDown={10} />
     </Box>
   );
 };

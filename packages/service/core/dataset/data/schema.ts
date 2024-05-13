@@ -8,7 +8,7 @@ import {
 import { DatasetCollectionName } from '../schema';
 import { DatasetColCollectionName } from '../collection/schema';
 
-export const DatasetDataCollectionName = 'dataset.datas';
+export const DatasetDataCollectionName = 'dataset_datas';
 
 const DatasetDataSchema = new Schema({
   teamId: {
