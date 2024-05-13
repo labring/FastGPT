@@ -1,12 +1,13 @@
 # 数据库的默认账号和密码仅首次运行时设置有效
 # 如果修改了账号密码，记得改数据库和项目连接参数，别只改一处~
 # 该配置文件只是给快速启动，测试使用。正式使用，记得务必修改账号密码，以及调整合适的知识库参数，共享内存等。
+# 如何无法访问 dockerhub 和 git，可以用阿里云（阿里云没有arm包）
 
 version: '3.3'
 services:
   pg:
-    # image: pgvector/pgvector:0.7.0-pg15 # docker hub
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.7.0 # 阿里云
+    image: pgvector/pgvector:0.7.0-pg15 # docker hub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/pgvector:v0.7.0 # 阿里云
     container_name: pg
     restart: always
     ports: # 生产环境建议不要暴露
@@ -21,7 +22,9 @@ services:
     volumes:
       - ./pg/data:/var/lib/postgresql/data
   mongo:
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18
+    image: mongo:5.0.18 # dockerhub
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mongo:5.0.18 # 阿里云
+    # image: mongo:4.4.29 # cpu不支持AVX时候使用
     container_name: mongo
     restart: always
     ports:
@@ -66,8 +69,8 @@ services:
         wait $$!
   fastgpt:
     container_name: fastgpt
-    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.7 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.7 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.8 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8 # 阿里云
     ports:
       - 3000:3000
     networks:
