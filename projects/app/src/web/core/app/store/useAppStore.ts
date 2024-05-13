@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
 import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
-import { defaultApp } from '@/constants/app';
+import { defaultApp } from '../constants';
 import type { AppUpdateParams } from '@/global/core/app/api.d';
 import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
 import { PostPublishAppProps } from '@/global/core/app/api';

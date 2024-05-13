@@ -9,7 +9,7 @@ import {
   putDatasetById,
   postWebsiteSync
 } from '@/web/core/dataset/api';
-import { defaultDatasetDetail } from '@/constants/dataset';
+import { defaultDatasetDetail } from '../constants';
 import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 import { DatasetStatusEnum } from '@fastgpt/global/core/dataset/constants';
 import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';

@@ -1,9 +1,3 @@
-export enum TrackEventName {
-  windowError = 'windowError',
-  pageError = 'pageError',
-  wordReadError = 'wordReadError'
-}
-
 export const htmlTemplate = `<!DOCTYPE html>
 <html lang="en">
   <head>

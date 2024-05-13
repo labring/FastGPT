@@ -1,5 +1,5 @@
 import React, { Dispatch } from 'react';
-import { LoginPageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { Box, Center, Image } from '@chakra-ui/react';
 import { useQuery } from '@tanstack/react-query';

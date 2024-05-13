@@ -27,10 +27,10 @@ import {
   createShareChat,
   putShareChat
 } from '@/web/support/outLink/api';
-import { formatTimeToChatTime } from '@/utils/tools';
+import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
-import { defaultOutLinkForm } from '@/constants/app';
+import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
