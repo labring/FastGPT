@@ -1,7 +1,7 @@
 import React, { useState, Dispatch, useCallback } from 'react';
 import { FormControl, Box, Input, Button } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { LoginPageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postFindPassword } from '@/web/support/user/api';
 import { useSendCode } from '@/web/support/user/hooks/useSendCode';
 import type { ResLogin } from '@/global/support/api/userRes.d';

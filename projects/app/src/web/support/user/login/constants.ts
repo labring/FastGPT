@@ -4,8 +4,3 @@ export enum LoginPageTypeEnum {
   forgetPassword = 'forgetPassword',
   wechat = 'wechat'
 }
-
-export enum PromotionEnum {
-  register = 'register',
-  pay = 'pay'
-}

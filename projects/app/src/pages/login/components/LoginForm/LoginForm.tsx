@@ -1,7 +1,7 @@
 import React, { useState, Dispatch, useCallback } from 'react';
 import { FormControl, Flex, Input, Button, Box, Link } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { LoginPageTypeEnum } from '@/constants/user';
+import { LoginPageTypeEnum } from '@/web/support/user/login/constants';
 import { postLogin } from '@/web/support/user/api';
 import type { ResLogin } from '@/global/support/api/userRes';
 import { useToast } from '@fastgpt/web/hooks/useToast';
