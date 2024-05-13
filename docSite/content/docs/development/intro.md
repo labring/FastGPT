@@ -141,7 +141,7 @@ FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI
 FastGPT 使用了 nextjs 的 page route 作为框架。为了区分好前后端代码，在目录分配上会分成 global, service, web 3个自目录，分别对应着 `前后端共用`、`后端专用`、`前端专用`的代码。
 
 ### monorepo
-FastGPT 才用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
+FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
 
 - projects/app - FastGPT 主项目  
 - packages/ - 子模块  
