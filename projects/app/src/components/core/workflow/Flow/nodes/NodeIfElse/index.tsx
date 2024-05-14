@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import NodeCard from '../render/NodeCard';
 import { useTranslation } from 'next-i18next';
 import { Box, Button, Flex } from '@chakra-ui/react';
@@ -9,7 +9,7 @@ import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/syste
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import Container from '../../components/Container';
-import DndDrag, { Draggable, DropResult } from '@fastgpt/web/components/common/DndDrag/index';
+import DndDrag, { Draggable } from '@fastgpt/web/components/common/DndDrag/index';
 import { SourceHandle } from '../render/Handle';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import ListItem from './ListItem';
