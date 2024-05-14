@@ -43,7 +43,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
-import { CollectionPageContext } from '@/web/core/dataset/context/collectionPageContext';
+import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const Header = dynamic(() => import('./Header'));

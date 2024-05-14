@@ -10,7 +10,7 @@ import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 const FileModeSelector = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const [value, setValue] = useState<`${ImportDataSourceEnum}`>(ImportDataSourceEnum.fileLocal);
+  const [value, setValue] = useState<ImportDataSourceEnum>(ImportDataSourceEnum.fileLocal);
 
   return (
     <MyModal

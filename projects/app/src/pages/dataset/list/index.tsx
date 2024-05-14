@@ -110,7 +110,7 @@ const Dataset = () => {
     errorToast: t('dataset.Export Dataset Limit Error')
   });
 
-  const { data, refetch } = useQuery(
+  const { data, refetch, isFetching } = useQuery(
     ['loadDataset', parentId],
     () => {
       return Promise.all([loadMyDatasets(parentId), getDatasetPaths(parentId)]);
@@ -140,7 +140,10 @@ const Dataset = () => {
   );
 
   return (
-    <PageContainer insertProps={{ px: [5, '48px'] }}>
+    <PageContainer
+      isLoading={myDatasets.length === 0 && isFetching}
+      insertProps={{ px: [5, '48px'] }}
+    >
       <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         {/* url path */}
         <ParentPaths

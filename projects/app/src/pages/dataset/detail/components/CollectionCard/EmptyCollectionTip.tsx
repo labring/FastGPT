@@ -4,7 +4,7 @@ import { useTranslation } from 'next-i18next';
 import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { Box, Flex } from '@chakra-ui/react';
 import { useContextSelector } from 'use-context-selector';
-import { CollectionPageContext } from '@/web/core/dataset/context/collectionPageContext';
+import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const EmptyCollectionTip = () => {

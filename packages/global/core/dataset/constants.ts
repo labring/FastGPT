@@ -83,7 +83,8 @@ export enum ImportDataSourceEnum {
   fileLocal = 'fileLocal',
   fileLink = 'fileLink',
   fileCustom = 'fileCustom',
-  csvTable = 'csvTable'
+  csvTable = 'csvTable',
+  externalFile = 'externalFile'
 }
 
 export enum TrainingModeEnum {

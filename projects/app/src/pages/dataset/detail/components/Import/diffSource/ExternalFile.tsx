@@ -17,21 +17,21 @@ const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
-const LinkCollection = () => {
+const ExternalFileCollection = () => {
   const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
 
   return (
     <>
-      {activeStep === 0 && <CustomLinkImport />}
+      {activeStep === 0 && <CustomLinkInput />}
       {activeStep === 1 && <DataProcess showPreviewChunks={false} />}
       {activeStep === 2 && <Upload />}
     </>
   );
 };
 
-export default React.memo(LinkCollection);
+export default React.memo(ExternalFileCollection);
 
-const CustomLinkImport = () => {
+const CustomLinkInput = () => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
   const { goToNext, sources, setSources, processParamsForm } = useContextSelector(

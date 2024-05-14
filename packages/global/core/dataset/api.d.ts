@@ -20,7 +20,7 @@ export type DatasetUpdateBody = {
 /* ================= collection ===================== */
 export type DatasetCollectionChunkMetadataType = {
   parentId?: string;
-  trainingType?: `${TrainingModeEnum}`;
+  trainingType?: TrainingModeEnum;
   chunkSize?: number;
   chunkSplitter?: string;
   qaPrompt?: string;
@@ -80,7 +80,7 @@ export type PostWebsiteSyncParams = {
 export type PushDatasetDataProps = {
   collectionId: string;
   data: PushDatasetDataChunkProps[];
-  trainingMode: `${TrainingModeEnum}`;
+  trainingMode: TrainingModeEnum;
   prompt?: string;
   billId?: string;
 };

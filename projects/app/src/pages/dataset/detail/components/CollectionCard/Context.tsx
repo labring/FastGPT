@@ -2,23 +2,20 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { Dispatch, ReactNode, SetStateAction, useEffect, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext, useContextSelector } from 'use-context-selector';
-import { useDatasetStore } from '../store/dataset';
 import { DatasetStatusEnum, DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { DatasetSchemaType } from '@fastgpt/global/core/dataset/type';
 import { useDisclosure } from '@chakra-ui/react';
 import { checkTeamWebSyncLimit } from '@/web/support/user/team/api';
 import { postCreateTrainingUsage } from '@/web/support/wallet/usage/api';
-import { getDatasetCollections, postWebsiteSync } from '../api';
+import { getDatasetCollections, postWebsiteSync } from '@/web/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { DatasetCollectionsListItemType } from '@/global/core/dataset/type';
 import { useRouter } from 'next/router';
-import { DatasetPageContext } from './datasetPageContext';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
-const WebSiteConfigModal = dynamic(
-  () => import('@/pages/dataset/detail/components/CollectionCard/WebsiteConfig')
-);
+const WebSiteConfigModal = dynamic(() => import('./WebsiteConfig'));
 
 type CollectionPageContextType = {
   openWebSyncConfirm: () => void;

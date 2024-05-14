@@ -31,7 +31,7 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useContextSelector } from 'use-context-selector';
-import { CollectionPageContext } from '@/web/core/dataset/context/collectionPageContext';
+import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
@@ -86,7 +86,7 @@ const Header = ({}: {}) => {
       name: string;
       type: `${DatasetCollectionTypeEnum}`;
       callback?: (id: string) => void;
-      trainingType?: `${TrainingModeEnum}`;
+      trainingType?: TrainingModeEnum;
       rawLink?: string;
       chunkSize?: number;
     }) => {
@@ -349,7 +349,14 @@ const Header = ({}: {}) => {
                       {t('core.dataset.Text collection')}
                     </Flex>
                   ),
-                  onClick: onOpenFileSourceSelector
+                  onClick: () =>
+                    router.replace({
+                      query: {
+                        ...router.query,
+                        currentTab: TabEnum.import,
+                        source: ImportDataSourceEnum.externalFile
+                      }
+                    })
                 }
               ]}
             />

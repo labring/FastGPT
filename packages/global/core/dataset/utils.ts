@@ -46,7 +46,7 @@ export function getDefaultIndex(props?: { q?: string; a?: string; dataId?: strin
   };
 }
 
-export const predictDataLimitLength = (mode: `${TrainingModeEnum}`, data: any[]) => {
+export const predictDataLimitLength = (mode: TrainingModeEnum, data: any[]) => {
   if (mode === TrainingModeEnum.qa) return data.length * 20;
   if (mode === TrainingModeEnum.auto) return data.length * 5;
   return data.length;

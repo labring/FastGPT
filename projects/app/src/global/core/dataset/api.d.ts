@@ -76,7 +76,7 @@ export type SearchTestResponse = {
 
 /* =========== training =========== */
 export type PostPreviewFilesChunksProps = {
-  type: `${ImportDataSourceEnum}`;
+  type: ImportDataSourceEnum;
   sourceId: string;
   chunkSize: number;
   overlapRatio: number;

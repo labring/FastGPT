@@ -45,7 +45,7 @@ export type DatasetCollectionSchemaType = {
   createTime: Date;
   updateTime: Date;
 
-  trainingType: `${TrainingModeEnum}`;
+  trainingType: TrainingModeEnum;
   chunkSize: number;
   chunkSplitter?: string;
   qaPrompt?: string;
@@ -98,7 +98,7 @@ export type DatasetTrainingSchemaType = {
   billId: string;
   expireAt: Date;
   lockTime: Date;
-  mode: `${TrainingModeEnum}`;
+  mode: TrainingModeEnum;
   model: string;
   prompt: string;
   dataId?: string;
