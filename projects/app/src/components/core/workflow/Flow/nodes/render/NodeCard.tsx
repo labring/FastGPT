@@ -138,7 +138,7 @@ const NodeCard = (props: Props) => {
             )}
             <Box flex={1} />
             {hasNewVersion && (
-              <MyTooltip label={t('app.modules.click to update')}>
+              <MyTooltip label={appT('app.modules.click to update')}>
                 <Button
                   bg={'yellow.50'}
                   color={'yellow.600'}
@@ -158,7 +158,7 @@ const NodeCard = (props: Props) => {
                     });
                   }}
                 >
-                  <Box>{t('app.modules.has new version')}</Box>
+                  <Box>{appT('app.modules.has new version')}</Box>
                   <QuestionOutlineIcon ml={1} />
                 </Button>
               </MyTooltip>
