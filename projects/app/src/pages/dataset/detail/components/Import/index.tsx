@@ -29,7 +29,7 @@ const ImportDataset = () => {
   ) : null;
 };
 
-export default React.memo(() => {
+const Render = () => {
   return (
     <Flex flexDirection={'column'} bg={'white'} h={'100%'} px={[2, 9]} py={[2, 5]}>
       <DatasetImportContextProvider>
@@ -37,4 +37,6 @@ export default React.memo(() => {
       </DatasetImportContextProvider>
     </Flex>
   );
-});
+};
+
+export default React.memo(Render);

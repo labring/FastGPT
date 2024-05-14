@@ -77,11 +77,12 @@ const Detail = ({ datasetId, currentTab }: Props) => {
   );
 };
 
-export default (data: Props) => (
+const Render = (data: Props) => (
   <DatasetPageContextProvider datasetId={data.datasetId}>
     <Detail {...data} />
   </DatasetPageContextProvider>
 );
+export default Render;
 
 export async function getServerSideProps(context: any) {
   const currentTab = context?.query?.currentTab || TabEnum.collectionCard;
