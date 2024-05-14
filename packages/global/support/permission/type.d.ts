@@ -1,5 +1,13 @@
 import { AuthUserTypeEnum } from './constant';
 
+export type PermissionValueType = number;
+
+export enum ResourceTypeEnum {
+  team = 'team',
+  app = 'app',
+  dataset = 'dataset'
+}
+
 export type AuthResponseType = {
   teamId: string;
   tmbId: string;
@@ -10,16 +18,9 @@ export type AuthResponseType = {
   apikey?: string;
 };
 
-export type MetaDataType = {
-  owner: string; // user id, objectId
-  defaultPermission: number;
-  ownerPermission: number; // the permission of owner, which should be always the hihhest permission
-};
-
 export type ResourcePermissionType = {
-  metaData: MetaDataType;
-  userPermissionTable: Array<{
-    user: UserModelSchema;
-    permission: number;
-  }>;
+  teamId: string;
+  teamMemberId: string;
+  resourceType: ResourceType;
+  permission: PermissionValueType;
 };

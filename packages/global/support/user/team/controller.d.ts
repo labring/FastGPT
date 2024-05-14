@@ -1,3 +1,4 @@
+import { PermissionValueType } from 'support/permission/type';
 import { TeamMemberRoleEnum } from './constant';
 import { LafAccountType, TeamMemberSchema } from './type';
 
@@ -48,5 +49,5 @@ export type InviteMemberResponse = Record<
 export type UpdateTeamMemberPermissionProps = {
   teamId: string;
   memberId: string[];
-  permission: number;
+  permission: PermissionValueType;
 };
