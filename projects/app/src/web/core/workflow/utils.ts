@@ -304,24 +304,26 @@ export const getWorkflowGlobalVariables = (
   return [...globalVariables, ...systemVariables];
 };
 
-export const updateFlowNodeVersion = (node: FlowNodeItemType, template: FlowNodeTemplateType) => {
-  function updateArrayBasedOnTemplate(
-    nodeArray: FlowNodeInputItemType[] | FlowNodeOutputItemType[],
-    templateArray: FlowNodeInputItemType[] | FlowNodeOutputItemType[]
-  ) {
-    const updatedArray: any = [];
-    templateArray.forEach((templateItem) => {
+export type CombinedItemType = Partial<FlowNodeInputItemType> & Partial<FlowNodeOutputItemType>;
+
+export const updateFlowNodeVersion = (
+  node: FlowNodeItemType,
+  template: FlowNodeTemplateType
+): FlowNodeItemType => {
+  function updateArrayBasedOnTemplate<T extends FlowNodeInputItemType | FlowNodeOutputItemType>(
+    nodeArray: T[],
+    templateArray: T[]
+  ): T[] {
+    return templateArray.map((templateItem) => {
       const nodeItem = nodeArray.find((item) => item.key === templateItem.key);
       if (nodeItem) {
-        updatedArray.push({ ...templateItem, ...nodeItem });
-      } else {
-        updatedArray.push({ ...templateItem });
+        return { ...templateItem, ...nodeItem } as T;
       }
+      return { ...templateItem };
     });
-    return updatedArray;
   }
 
-  const updatedNode = { ...node, ...template, name: node.name };
+  const updatedNode: FlowNodeItemType = { ...node, ...template, name: node.name };
 
   if (node.inputs && template.inputs) {
     updatedNode.inputs = updateArrayBasedOnTemplate(node.inputs, template.inputs);
