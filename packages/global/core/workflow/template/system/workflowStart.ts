@@ -1,4 +1,4 @@
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum, NodeVersions } from '../../node/constant';
+import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
 import {
   WorkflowIOValueTypeEnum,
@@ -19,7 +19,7 @@ export const WorkflowStart: FlowNodeTemplateType = {
   intro: '',
   forbidDelete: true,
   unique: true,
-  version: NodeVersions[FlowNodeTypeEnum.workflowStart],
+  version: '481',
   inputs: [{ ...Input_Template_UserChatInput, toolDescription: '用户问题' }],
   outputs: [
     {

@@ -1,8 +1,7 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  NodeVersions
+  FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
 import {
@@ -26,7 +25,7 @@ export const LafModule: FlowNodeTemplateType = {
   intro: '可以调用Laf账号下的云函数。',
   showStatus: true,
   isTool: true,
-  version: NodeVersions[FlowNodeTypeEnum.lafModule],
+  version: '481',
   inputs: [
     {
       ...Input_Template_DynamicInput,

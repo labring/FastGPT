@@ -1,5 +1,5 @@
 import { FlowNodeTemplateTypeEnum } from '../../constants';
-import { FlowNodeTypeEnum, NodeVersions } from '../../node/constant';
+import { FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type';
 import { getHandleConfig } from '../utils';
 
@@ -13,7 +13,7 @@ export const RunPluginModule: FlowNodeTemplateType = {
   name: '',
   showStatus: false,
   isTool: true,
-  version: NodeVersions[FlowNodeTypeEnum.pluginModule],
+  version: '481',
   inputs: [], // [{key:'pluginId'},...]
   outputs: []
 };

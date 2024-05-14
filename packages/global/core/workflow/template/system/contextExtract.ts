@@ -1,8 +1,7 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  NodeVersions
+  FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type';
 import {
@@ -26,7 +25,7 @@ export const ContextExtractModule: FlowNodeTemplateType = {
   intro: '可从文本中提取指定的数据，例如：sql语句、搜索关键词、代码等',
   showStatus: true,
   isTool: true,
-  version: NodeVersions[FlowNodeTypeEnum.contentExtract],
+  version: '481',
   inputs: [
     {
       ...Input_Template_SelectAIModel,

@@ -1,8 +1,7 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  NodeVersions
+  FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type';
 import {
@@ -29,7 +28,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   intro: Dataset_SEARCH_DESC,
   showStatus: true,
   isTool: true,
-  version: NodeVersions[FlowNodeTypeEnum.datasetSearchNode],
+  version: '481',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetSelectList,

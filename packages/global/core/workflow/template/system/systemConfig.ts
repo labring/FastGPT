@@ -1,4 +1,4 @@
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum, NodeVersions } from '../../node/constant';
+import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
 import {
   WorkflowIOValueTypeEnum,
@@ -18,7 +18,7 @@ export const SystemConfigNode: FlowNodeTemplateType = {
   intro: '可以配置应用的系统参数。',
   unique: true,
   forbidDelete: true,
-  version: NodeVersions[FlowNodeTypeEnum.systemConfig],
+  version: '481',
   inputs: [
     {
       key: NodeInputKeyEnum.welcomeText,

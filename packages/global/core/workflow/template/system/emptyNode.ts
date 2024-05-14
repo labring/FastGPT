@@ -1,4 +1,4 @@
-import { FlowNodeTypeEnum, NodeVersions } from '../../node/constant';
+import { FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type';
 import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { getHandleConfig } from '../utils';
@@ -12,7 +12,7 @@ export const EmptyNode: FlowNodeTemplateType = {
   avatar: '',
   name: '',
   intro: '',
-  version: NodeVersions[FlowNodeTypeEnum.emptyNode],
+  version: '481',
   inputs: [],
   outputs: []
 };

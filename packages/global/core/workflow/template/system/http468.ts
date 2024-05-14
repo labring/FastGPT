@@ -1,8 +1,7 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  NodeVersions
+  FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
 import {
@@ -26,7 +25,7 @@ export const HttpModule468: FlowNodeTemplateType = {
   intro: '可以发出一个 HTTP 请求，实现更为复杂的操作（联网搜索、数据库查询等）',
   showStatus: true,
   isTool: true,
-  version: NodeVersions[FlowNodeTypeEnum.httpRequest468],
+  version: '481',
   inputs: [
     {
       ...Input_Template_DynamicInput,

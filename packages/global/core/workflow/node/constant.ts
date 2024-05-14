@@ -117,27 +117,3 @@ export enum FlowNodeTypeEnum {
 }
 
 export const EDGE_TYPE = 'default';
-
-export const NodeVersions: Record<FlowNodeTypeEnum, string> = {
-  [FlowNodeTypeEnum.emptyNode]: 'v2.0',
-  [FlowNodeTypeEnum.systemConfig]: 'v2.0',
-  [FlowNodeTypeEnum.globalVariable]: 'v2.0',
-  [FlowNodeTypeEnum.workflowStart]: 'v2.0',
-  [FlowNodeTypeEnum.chatNode]: 'v2.0',
-  [FlowNodeTypeEnum.datasetSearchNode]: 'v2.0',
-  [FlowNodeTypeEnum.datasetConcatNode]: 'v2.0',
-  [FlowNodeTypeEnum.answerNode]: 'v2.0',
-  [FlowNodeTypeEnum.classifyQuestion]: 'v2.0',
-  [FlowNodeTypeEnum.contentExtract]: 'v2.0',
-  [FlowNodeTypeEnum.httpRequest468]: 'v2.0',
-  [FlowNodeTypeEnum.runApp]: 'v2.0',
-  [FlowNodeTypeEnum.pluginModule]: 'v2.0',
-  [FlowNodeTypeEnum.pluginInput]: 'v2.0',
-  [FlowNodeTypeEnum.pluginOutput]: 'v2.0',
-  [FlowNodeTypeEnum.queryExtension]: 'v2.0',
-  [FlowNodeTypeEnum.tools]: 'v2.0',
-  [FlowNodeTypeEnum.stopTool]: 'v2.0',
-  [FlowNodeTypeEnum.lafModule]: 'v2.0',
-  [FlowNodeTypeEnum.ifElseNode]: 'v2.0',
-  [FlowNodeTypeEnum.variableUpdate]: 'v2.0'
-};

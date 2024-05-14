@@ -1,8 +1,7 @@
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum,
-  NodeVersions
+  FlowNodeTypeEnum
 } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
 import {
@@ -31,7 +30,7 @@ export const ToolModule: FlowNodeTemplateType = {
   name: '工具调用(实验)',
   intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
   showStatus: true,
-  version: NodeVersions[FlowNodeTypeEnum.tools],
+  version: '481',
   inputs: [
     {
       ...Input_Template_SettingAiModel,

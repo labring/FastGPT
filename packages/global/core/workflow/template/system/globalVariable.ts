@@ -1,6 +1,6 @@
 import { FlowNodeTemplateTypeEnum, WorkflowIOValueTypeEnum } from '../../constants';
 import { getHandleConfig } from '../utils';
-import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum, NodeVersions } from '../../node/constant';
+import { FlowNodeOutputTypeEnum, FlowNodeTypeEnum } from '../../node/constant';
 import { VariableItemType } from '../../../app/type';
 import { FlowNodeTemplateType } from '../../type';
 
@@ -20,7 +20,7 @@ export const getGlobalVariableNode = ({
     avatar: '/imgs/workflow/variable.png',
     name: '全局变量',
     intro: '',
-    version: NodeVersions[FlowNodeTypeEnum.systemConfig],
+    version: '481',
     inputs: [],
     outputs: variables.map((item) => ({
       id: item.key,

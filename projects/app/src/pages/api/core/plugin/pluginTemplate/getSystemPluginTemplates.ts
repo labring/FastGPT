@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { FlowNodeTypeEnum, NodeVersions } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
@@ -22,7 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         intro: plugin.intro,
         showStatus: true,
         isTool: plugin.isTool,
-        version: NodeVersions.pluginModule,
+        version: '481',
         inputs: [],
         outputs: []
       })) || [];

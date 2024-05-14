@@ -2,8 +2,7 @@ import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import {
   FlowNodeInputTypeEnum,
-  FlowNodeTypeEnum,
-  NodeVersions
+  FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
@@ -28,7 +27,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
         x: 531.2422736065552,
         y: -486.7611729549753
       },
-      version: NodeVersions[FlowNodeTypeEnum.systemConfig],
+      version: '481',
       inputs: [
         {
           key: NodeInputKeyEnum.welcomeText,
@@ -81,7 +80,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
         x: 558.4082376415505,
         y: 123.72387429194112
       },
-      version: NodeVersions[FlowNodeTypeEnum.workflowStart],
+      version: '481',
       inputs: [
         {
           key: 'userChatInput',
@@ -118,7 +117,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
             x: 1106.3238387960757,
             y: -350.6030674683474
           },
-          version: NodeVersions[FlowNodeTypeEnum.chatNode],
+          version: '481',
           inputs: [
             {
               key: 'model',
@@ -251,7 +250,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
             x: 1638.509551404687,
             y: -341.0428450861567
           },
-          version: NodeVersions[FlowNodeTypeEnum.chatNode],
+          version: '481', // [FlowNodeTypeEnum.chatNode]
           inputs: [
             {
               key: 'model',
@@ -371,7 +370,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
             x: 918.5901682164496,
             y: -227.11542247619582
           },
-          version: NodeVersions[FlowNodeTypeEnum.datasetSearchNode],
+          version: '481',
           inputs: [
             {
               key: 'datasets',
@@ -490,7 +489,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
                   x: 500,
                   y: 545
                 },
-                version: NodeVersions[FlowNodeTypeEnum.datasetSearchNode],
+                version: '481',
                 inputs: [
                   {
                     key: 'datasets',
@@ -633,7 +632,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
             x: 1062.1738942532802,
             y: -223.65033022650476
           },
-          version: NodeVersions[FlowNodeTypeEnum.tools],
+          version: '481',
           inputs: [
             {
               key: 'model',

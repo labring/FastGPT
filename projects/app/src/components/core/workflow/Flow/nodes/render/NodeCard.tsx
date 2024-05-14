@@ -138,7 +138,7 @@ const NodeCard = (props: Props) => {
             )}
             <Box flex={1} />
             {hasNewVersion && (
-              <MyTooltip label={'点击更新'}>
+              <MyTooltip label={t('app.modules.click to update')}>
                 <Button
                   bg={'yellow.50'}
                   color={'yellow.600'}
