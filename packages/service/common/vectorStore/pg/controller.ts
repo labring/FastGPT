@@ -98,11 +98,14 @@ export const deleteDatasetDataVector = async (
       return `${teamIdWhere} ${datasetIdWhere}`;
     }
 
-    if ('idList' in props && props.idList) {
+    if ('idList' in props && Array.isArray(props.idList)) {
+      if (props.idList.length === 0) return;
       return `${teamIdWhere} id IN (${props.idList.map((id) => `'${String(id)}'`).join(',')})`;
     }
     return Promise.reject('deleteDatasetData: no where');
   })();
+
+  if (!where) return;
 
   try {
     await PgClient.delete(PgDatasetTableName, {

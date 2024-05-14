@@ -27,9 +27,11 @@ import {
   postCreateDatasetTextCollection
 } from '@/web/core/dataset/api';
 import Tag from '@fastgpt/web/components/common/Tag/index';
+import { useI18n } from '@/web/context/I18n';
 
 const Upload = () => {
   const { t } = useTranslation();
+  const { fileT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
   const { datasetDetail } = useDatasetStore();
@@ -131,7 +133,7 @@ const Upload = () => {
         )
       );
     },
-    errorToast: t('common.file.Upload failed')
+    errorToast: fileT('Upload failed')
   });
 
   return (

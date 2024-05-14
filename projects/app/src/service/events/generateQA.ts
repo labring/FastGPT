@@ -46,7 +46,6 @@ export async function generateQA(): Promise<any> {
       )
         .select({
           _id: 1,
-          userId: 1,
           teamId: 1,
           tmbId: 1,
           datasetId: 1,

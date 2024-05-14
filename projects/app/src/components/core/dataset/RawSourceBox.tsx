@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box, BoxProps, Image } from '@chakra-ui/react';
+import { Box, BoxProps } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyTooltip from '@/components/MyTooltip';
@@ -8,6 +8,7 @@ import { getFileAndOpen } from '@/web/core/dataset/utils';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useI18n } from '@/web/context/I18n';
 
 type Props = BoxProps & {
   sourceName?: string;
@@ -17,6 +18,7 @@ type Props = BoxProps & {
 
 const RawSourceBox = ({ sourceId, sourceName = '', canView = true, ...props }: Props) => {
   const { t } = useTranslation();
+  const { fileT } = useI18n();
   const { toast } = useToast();
   const { setLoading } = useSystemStore();
 
@@ -25,10 +27,7 @@ const RawSourceBox = ({ sourceId, sourceName = '', canView = true, ...props }: P
   const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
 
   return (
-    <MyTooltip
-      label={canPreview ? t('file.Click to view file') || '' : ''}
-      shouldWrapChildren={false}
-    >
+    <MyTooltip label={canPreview ? fileT('Click to view file') : ''} shouldWrapChildren={false}>
       <Box
         color={'myGray.900'}
         fontWeight={'medium'}
@@ -44,7 +43,7 @@ const RawSourceBox = ({ sourceId, sourceName = '', canView = true, ...props }: P
                   await getFileAndOpen(sourceId as string);
                 } catch (error) {
                   toast({
-                    title: t(getErrText(error, 'error.fileNotFound')),
+                    title: getErrText(error, t('error.fileNotFound')),
                     status: 'error'
                   });
                 }

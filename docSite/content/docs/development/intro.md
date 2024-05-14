@@ -133,3 +133,57 @@ FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI
 遇到困难了吗？有任何问题吗? 加入微信群与开发者和用户保持沟通。
 
 <img width="400px" src="https://oss.laf.run/htr4n1-images/fastgpt-qr-code.jpg" class="medium-zoom-image" />
+
+## 代码结构说明
+
+### nextjs
+
+FastGPT 使用了 nextjs 的 page route 作为框架。为了区分好前后端代码，在目录分配上会分成 global, service, web 3个自目录，分别对应着 `前后端共用`、`后端专用`、`前端专用`的代码。
+
+### monorepo
+FastGPT 采用 pnpm workspace 方式构建 monorepo 项目，主要分为两个部分：
+
+- projects/app - FastGPT 主项目  
+- packages/ - 子模块  
+  - global - 共用代码，通常是放一些前后端都能执行的函数、类型声明、常量。  
+  - service - 服务端代码  
+  - web - 前端代码  
+  - plugin - 工作流自定义插件的代码  
+
+### 领域驱动模式（DDD）
+
+FastGPT 在代码模块划分时，按DDD的思想进行划分，主要分为以下几个领域：
+
+core - 核心功能（知识库，工作流，应用，对话）
+support - 支撑功能（用户体系，计费，鉴权等）
+common - 基础功能（日志管理，文件读写等）
+
+{{% details title="代码结构说明" closed="true" %}}
+```
+.
+├── .github                      // github 相关配置
+├── .husky                       // 格式化配置
+├── docSite                      // 文档
+├── files                        // 一些外部文件，例如 docker-compose, helm
+├── packages                     // 子包
+│   ├── global                   // 前后端通用子包
+│   ├── plugins                  // 工作流插件（需要自定义包时候使用到）
+│   ├── service                  // 后端子包
+│   └── web                      // 前端子包
+├── projects
+│   └── app                      // FastGPT 主项目
+├── python                       // 存放一些模型代码，和 FastGPT 本身无关
+└── scripts                      // 一些自动化脚本
+    ├── icon                     // icon预览脚本，可以在顶层 pnpm initIcon(把svg写入到代码中), pnpm previewIcon（预览icon）
+    └── postinstall.sh           // chakraUI自定义theme初始化 ts 类型
+├── package.json                 // 顶层monorepo
+├── pnpm-lock.yaml
+├── pnpm-workspace.yaml          // monorepo 声明
+├── Dockerfile
+├── LICENSE
+├── README.md
+├── README_en.md
+├── README_ja.md
+├── dev.md
+```
+{{% /details %}}

@@ -36,6 +36,7 @@ import { createContext } from 'use-context-selector';
 import { defaultRunningStatus } from './constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
+import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -321,7 +322,7 @@ const WorkflowContextProvider = ({
             item.key === props.key ? props.value : item
           );
         } else if (type === 'replaceInput') {
-          onDelEdge({ nodeId, targetHandle: props.key });
+          onDelEdge({ nodeId, targetHandle: getHandleId(nodeId, 'target', props.key) });
           const oldInputIndex = node.data.inputs.findIndex((item) => item.key === props.key);
           updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
           setTimeout(() => {
@@ -350,14 +351,14 @@ const WorkflowContextProvider = ({
             }
           }
         } else if (type === 'delInput') {
-          onDelEdge({ nodeId, targetHandle: props.key });
+          onDelEdge({ nodeId, targetHandle: getHandleId(nodeId, 'target', props.key) });
           updateObj.inputs = node.data.inputs.filter((item) => item.key !== props.key);
         } else if (type === 'updateOutput') {
           updateObj.outputs = node.data.outputs.map((item) =>
             item.key === props.key ? props.value : item
           );
         } else if (type === 'replaceOutput') {
-          onDelEdge({ nodeId, sourceHandle: props.key });
+          onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
           const oldOutputIndex = node.data.outputs.findIndex((item) => item.key === props.key);
           updateObj.outputs = node.data.outputs.filter((item) => item.key !== props.key);
           console.log(props.value);
@@ -387,7 +388,7 @@ const WorkflowContextProvider = ({
             }
           }
         } else if (type === 'delOutput') {
-          onDelEdge({ nodeId, sourceHandle: props.key });
+          onDelEdge({ nodeId, sourceHandle: getHandleId(nodeId, 'source', props.key) });
           updateObj.outputs = node.data.outputs.filter((item) => item.key !== props.key);
         }
 

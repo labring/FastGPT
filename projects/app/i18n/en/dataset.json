@@ -1,0 +1,6 @@
+{
+  "Confirm to rebuild embedding tip": "Are you sure to switch the knowledge base index? Switching index is a very heavy operation that requires re-indexing all the data in your knowledge base, which may take a long time. Please ensure that the remaining points in your account are sufficient.",
+  "Rebuild embedding start tip": "The task of switching index models has begun",
+  "Rebuilding index count": "Rebuilding count: {{count}}",
+  "The knowledge base has indexes that are being trained or being rebuilt": "The knowledge base has indexes that are being trained or being rebuilt"
+}

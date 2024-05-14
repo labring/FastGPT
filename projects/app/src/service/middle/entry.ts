@@ -1,10 +1,16 @@
 import { jsonRes } from '@fastgpt/service/common/response';
-import type { NextApiResponse, NextApiHandler, NextApiRequest } from 'next';
+import type { NextApiResponse } from 'next';
 import { connectToDatabase } from '../mongo';
 import { withNextCors } from '@fastgpt/service/common/middle/cors';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+
+export type NextApiHandler<T = any> = (
+  req: ApiRequestProps,
+  res: NextApiResponse<T>
+) => unknown | Promise<unknown>;
 
 export const NextAPI = (...args: NextApiHandler[]): NextApiHandler => {
-  return async function api(req: NextApiRequest, res: NextApiResponse) {
+  return async function api(req: ApiRequestProps, res: NextApiResponse) {
     try {
       await Promise.all([withNextCors(req, res), connectToDatabase()]);
 

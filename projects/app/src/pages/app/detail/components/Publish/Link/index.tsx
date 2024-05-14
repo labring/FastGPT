@@ -27,10 +27,10 @@ import {
   createShareChat,
   putShareChat
 } from '@/web/support/outLink/api';
-import { formatTimeToChatTime } from '@/utils/tools';
+import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useForm } from 'react-hook-form';
-import { defaultOutLinkForm } from '@/constants/app';
+import { defaultOutLinkForm } from '@/web/core/app/constants';
 import type { OutLinkEditType, OutLinkSchema } from '@fastgpt/global/support/outLink/type.d';
 import { useRequest } from '@/web/common/hooks/useRequest';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
@@ -44,6 +44,7 @@ import { getDocPath } from '@/web/common/system/doc';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useI18n } from '@/web/context/I18n';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -261,6 +262,7 @@ function EditLinkModal({
 }) {
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
+  const { publishT } = useI18n();
   const {
     register,
     setValue,
@@ -293,13 +295,13 @@ function EditLinkModal({
     <MyModal
       isOpen={true}
       iconSrc="/imgs/modal/shareFill.svg"
-      title={isEdit ? t('outlink.Edit Link') : t('outlink.Create Link')}
+      title={isEdit ? publishT('Edit Link') : publishT('Create Link')}
     >
       <ModalBody>
         <Flex alignItems={'center'}>
           <Box flex={'0 0 90px'}>{t('Name')}</Box>
           <Input
-            placeholder={t('outlink.Link Name') || 'Link Name'}
+            placeholder={publishT('Link Name')}
             maxLength={20}
             {...register('name', {
               required: t('common.Name is empty') || 'Name is empty'
@@ -327,7 +329,7 @@ function EditLinkModal({
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
                 QPM
-                <MyTooltip label={t('outlink.QPM Tips' || '')}>
+                <MyTooltip label={publishT('QPM Tips' || '')}>
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Flex>
@@ -337,7 +339,7 @@ function EditLinkModal({
                   min: 0,
                   max: 1000,
                   valueAsNumber: true,
-                  required: t('outlink.QPM is empty') || ''
+                  required: publishT('QPM is empty') || ''
                 })}
               />
             </Flex>
@@ -360,13 +362,13 @@ function EditLinkModal({
 
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('outlink.token auth')}
-                <MyTooltip label={t('outlink.token auth Tips') || ''}>
+                {publishT('token auth')}
+                <MyTooltip label={publishT('token auth Tips') || ''}>
                   <QuestionOutlineIcon ml={1} />
                 </MyTooltip>
               </Flex>
               <Input
-                placeholder={t('outlink.token auth Tips') || ''}
+                placeholder={publishT('token auth Tips') || ''}
                 fontSize={'sm'}
                 {...register('limit.hookUrl')}
               />
@@ -377,7 +379,7 @@ function EditLinkModal({
               fontSize={'sm'}
               color={'myGray.500'}
             >
-              {t('outlink.token auth use cases')}
+              {publishT('token auth use cases')}
             </Link>
           </>
         )}

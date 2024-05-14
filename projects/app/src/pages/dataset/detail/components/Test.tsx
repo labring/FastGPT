@@ -5,7 +5,7 @@ import { useSearchTestStore, SearchTestStoreItemType } from '@/web/core/dataset/
 import { postSearchText } from '@/web/core/dataset/api';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { formatTimeToChatTime } from '@/utils/tools';
+import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';

@@ -11,7 +11,7 @@ import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
 import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
-import { TTSTypeEnum } from '@/constants/app';
+import { TTSTypeEnum } from '@/web/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
 import NodeCard from './render/NodeCard';
