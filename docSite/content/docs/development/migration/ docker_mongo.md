@@ -1,10 +1,9 @@
 ---
-weight: 762
 title: "Docker Mongo迁移(dump模式)"
 description: "FastGPT Docker Mongo迁移"
 icon: database
 draft: false
-images: []
+weight: 762
 ---
 
 ## 作者
