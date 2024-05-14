@@ -92,7 +92,7 @@ export const storeNode2FlowNode = ({
         value: storeOutput.value
       };
     }),
-    version: storeNode.version || 'v2.0'
+    version: storeNode.version || '481'
   };
 
   return {
