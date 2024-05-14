@@ -42,10 +42,11 @@ const NodeCard = (props: Props) => {
   const { appT } = useI18n();
 
   const { toast } = useToast();
+  const { feConfigs } = useSystemStore();
 
   const {
     children,
-    avatar = LOGO_ICON,
+    avatar = feConfigs.favicon || LOGO_ICON,
     name = t('core.module.template.UnKnow Module'),
     intro,
     minW = '300px',

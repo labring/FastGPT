@@ -46,7 +46,7 @@ const AIModelSelector = ({ list, onchange, disableTip, ...props }: Props) => {
       ? avatarList.concat({
           label: (
             <Flex alignItems={'center'}>
-              <Avatar borderRadius={'0'} mr={2} src={LOGO_ICON} w={'18px'} />
+              <Avatar borderRadius={'0'} mr={2} src={feConfigs.favicon || LOGO_ICON} w={'18px'} />
               <Box>{t('support.user.Price')}</Box>
             </Flex>
           ),

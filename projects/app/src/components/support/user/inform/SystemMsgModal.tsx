@@ -7,6 +7,7 @@ import { useTranslation } from 'next-i18next';
 import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
 import { getSystemMsgModalData } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const Markdown = dynamic(() => import('@/components/Markdown'), { ssr: false });
 
 const SystemMsgModal = ({}: {}) => {
@@ -14,6 +15,7 @@ const SystemMsgModal = ({}: {}) => {
   const { systemMsgReadId, setSysMsgReadId } = useUserStore();
 
   const { isOpen, onOpen, onClose } = useDisclosure();
+  const { feConfigs } = useSystemStore();
 
   const { data } = useQuery(['initSystemMsgModal', systemMsgReadId], getSystemMsgModalData, {
     onSuccess(res) {
@@ -30,7 +32,11 @@ const SystemMsgModal = ({}: {}) => {
   }, [data, onClose, setSysMsgReadId]);
 
   return (
-    <MyModal isOpen={isOpen} iconSrc={LOGO_ICON} title={t('support.user.inform.System message')}>
+    <MyModal
+      isOpen={isOpen}
+      iconSrc={feConfigs.favicon || LOGO_ICON}
+      title={t('support.user.inform.System message')}
+    >
       <ModalBody overflow={'auto'}>
         <Markdown source={data?.content} />
       </ModalBody>

@@ -228,7 +228,7 @@ const DetailLogsModal = ({
   onClose: () => void;
 }) => {
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const { isPc } = useSystemStore();
+  const { isPc, feConfigs } = useSystemStore();
   const theme = useTheme();
 
   const { data: chat, isFetching } = useQuery(
@@ -331,7 +331,7 @@ const DetailLogsModal = ({
           <ChatBox
             ref={ChatBoxRef}
             appAvatar={chat?.app.avatar}
-            userAvatar={HUMAN_ICON}
+            userAvatar={feConfigs.favicon || HUMAN_ICON}
             feedbackType={'admin'}
             showMarkIcon
             showVoiceIcon={false}
