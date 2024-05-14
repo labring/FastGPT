@@ -17,6 +17,7 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
   name: '指定回复',
   intro:
     '该模块可以直接回复一段指定的内容。常用于引导、提示。非字符串内容传入时，会转成字符串进行输出。',
+  version: '481',
   inputs: [
     {
       key: NodeInputKeyEnum.answerText,

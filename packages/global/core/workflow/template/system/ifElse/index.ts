@@ -22,6 +22,7 @@ export const IfElseNode: FlowNodeTemplateType = {
   name: '判断器',
   intro: '根据一定的条件，执行不同的分支。',
   showStatus: true,
+  version: '481',
   inputs: [
     {
       key: NodeInputKeyEnum.ifElseList,

@@ -15,6 +15,7 @@ export const PluginOutputModule: FlowNodeTemplateType = {
   name: '自定义插件输出',
   intro: '自定义配置外部输出，使用插件时，仅暴露自定义配置的输出',
   showStatus: false,
+  version: '481',
   inputs: [],
   outputs: []
 };

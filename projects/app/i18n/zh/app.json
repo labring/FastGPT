@@ -30,6 +30,12 @@
   "To Chat": "前去对话",
   "To Settings": "查看详情",
   "Variable Key Repeat Tip": "变量 key 重复",
+  "app": {
+    "modules": {
+      "click to update": "点击更新",
+      "has new version": "有新版本"
+    }
+  },
   "module": {
     "Combine Modules": "组合模块",
     "Custom Title Tip": "该标题名字会展示在对话过程中",

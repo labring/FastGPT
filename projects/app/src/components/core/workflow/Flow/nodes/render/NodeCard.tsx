@@ -18,11 +18,14 @@ import { ResponseBox } from '@/components/ChatBox/WholeResponseModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { storeNode2FlowNode } from '@/web/core/workflow/utils';
+import { storeNode2FlowNode, updateFlowNodeVersion } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { useI18n } from '@/web/context/I18n';
+import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@/components/MyTooltip';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -65,6 +68,7 @@ const NodeCard = (props: Props) => {
   const setHoverNodeId = useContextSelector(WorkflowContext, (v) => v.setHoverNodeId);
   const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
 
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
@@ -77,12 +81,21 @@ const NodeCard = (props: Props) => {
     [isTool, nodeList]
   );
 
+  const node = nodeList.find((node) => node.nodeId === nodeId);
+  const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
+  const hasNewVersion = useMemo(() => {
+    return (
+      template?.flowNodeType !== FlowNodeTypeEnum.pluginModule &&
+      node?.version !== template?.version
+    );
+  }, [node?.version, template?.flowNodeType, template?.version]);
+
   /* Node header */
   const Header = useMemo(() => {
     return (
       <Box position={'relative'}>
         {/* debug */}
-        <Box className="custom-drag-handle" px={4} py={3}>
+        <Box px={4} py={3}>
           {/* tool target handle */}
           {showToolHandle && <ToolTargetHandle nodeId={nodeId} />}
 
@@ -123,6 +136,33 @@ const NodeCard = (props: Props) => {
                 }}
               />
             )}
+            <Box flex={1} />
+            {hasNewVersion && (
+              <MyTooltip label={appT('app.modules.click to update')}>
+                <Button
+                  bg={'yellow.50'}
+                  color={'yellow.600'}
+                  variant={'ghost'}
+                  h={8}
+                  px={2}
+                  rounded={'6px'}
+                  fontSize={'xs'}
+                  fontWeight={'medium'}
+                  cursor={'pointer'}
+                  _hover={{ bg: 'yellow.100' }}
+                  onClick={() => {
+                    if (!node || !template) return;
+                    onResetNode({
+                      id: nodeId,
+                      node: updateFlowNodeVersion(node, template)
+                    });
+                  }}
+                >
+                  <Box>{appT('app.modules.has new version')}</Box>
+                  <QuestionOutlineIcon ml={1} />
+                </Button>
+              </MyTooltip>
+            )}
           </Flex>
           <MenuRender
             nodeId={nodeId}
@@ -141,13 +181,17 @@ const NodeCard = (props: Props) => {
     t,
     name,
     menuForbid,
+    hasNewVersion,
     pluginId,
     flowNodeType,
     intro,
     onOpenCustomTitleModal,
     onChangeNode,
     toast,
-    appT
+    appT,
+    node,
+    template,
+    onResetNode
   ]);
 
   return (
@@ -236,7 +280,8 @@ const MenuRender = React.memo(function MenuRender({
           inputs: node.data.inputs,
           outputs: node.data.outputs,
           showStatus: node.data.showStatus,
-          pluginId: node.data.pluginId
+          pluginId: node.data.pluginId,
+          version: node.data.version
         };
         return state.concat(
           storeNode2FlowNode({
@@ -250,7 +295,8 @@ const MenuRender = React.memo(function MenuRender({
               showStatus: template.showStatus,
               pluginId: template.pluginId,
               inputs: template.inputs,
-              outputs: template.outputs
+              outputs: template.outputs,
+              version: template.version
             }
           })
         );
@@ -265,7 +311,7 @@ const MenuRender = React.memo(function MenuRender({
     },
     [setEdges, setNodes]
   );
-  const onclickSyncVersion = useCallback(async () => {
+  const onClickSyncVersion = useCallback(async () => {
     if (!pluginId) return;
     try {
       setLoading(true);
@@ -310,7 +356,7 @@ const MenuRender = React.memo(function MenuRender({
               icon: 'common/refreshLight',
               label: t('plugin.Synchronous version'),
               variant: 'whiteBase',
-              onClick: onOpenConfirmSync(onclickSyncVersion)
+              onClick: onOpenConfirmSync(onClickSyncVersion)
             }
           ]
         : []),
@@ -362,21 +408,21 @@ const MenuRender = React.memo(function MenuRender({
       </>
     );
   }, [
-    ConfirmDeleteModal,
-    ConfirmSyncModal,
-    DebugInputModal,
-    flowNodeType,
-    menuForbid?.copy,
     menuForbid?.debug,
+    menuForbid?.copy,
     menuForbid?.delete,
+    t,
+    flowNodeType,
+    onOpenConfirmSync,
+    onClickSyncVersion,
+    onOpenConfirmDeleteNode,
+    ConfirmSyncModal,
+    ConfirmDeleteModal,
+    DebugInputModal,
+    openDebugNode,
     nodeId,
     onCopyNode,
-    onDelNode,
-    onOpenConfirmDeleteNode,
-    onOpenConfirmSync,
-    onclickSyncVersion,
-    openDebugNode,
-    t
+    onDelNode
   ]);
 
   return Render;

@@ -20,6 +20,7 @@ export const getGlobalVariableNode = ({
     avatar: '/imgs/workflow/variable.png',
     name: '全局变量',
     intro: '',
+    version: '481',
     inputs: [],
     outputs: variables.map((item) => ({
       id: item.key,

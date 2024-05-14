@@ -39,6 +39,7 @@ export const getGlobalVariableNode = (nodes: FlowNodeItemType[], t: TFunction) =
     intro: '',
     unique: true,
     forbidDelete: true,
+    version: '481',
     inputs: [],
     outputs: []
   };
@@ -418,6 +419,7 @@ export const v1Workflow2V2 = (
       pluginId,
       pluginType: node.pluginType,
       parentId: node.parentId,
+      version: 'v2.0',
 
       inputs,
       outputs

@@ -72,6 +72,7 @@ export async function getPluginPreviewNode({ id }: { id: string }): Promise<Flow
     intro: plugin.intro,
     showStatus: plugin.showStatus,
     isTool: plugin.isTool,
+    version: '481',
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),
     ...pluginData2FlowNodeIO(plugin.nodes)

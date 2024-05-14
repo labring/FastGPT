@@ -131,6 +131,7 @@ export const appWorkflow2Form = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
         intro: node.intro || '',
         flowNodeType: node.flowNodeType,
         showStatus: node.showStatus,
+        version: '481',
         inputs: node.inputs,
         outputs: node.outputs,
         templateType: FlowNodeTemplateTypeEnum.other

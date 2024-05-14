@@ -22,6 +22,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         intro: plugin.intro,
         showStatus: true,
         isTool: plugin.isTool,
+        version: '481',
         inputs: [],
         outputs: []
       })) || [];

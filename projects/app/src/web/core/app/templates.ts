@@ -26,6 +26,7 @@ export const appTemplates: (AppItemType & {
           x: 531.2422736065552,
           y: -486.7611729549753
         },
+        version: '481',
         inputs: [
           {
             key: 'welcomeText',
@@ -88,6 +89,7 @@ export const appTemplates: (AppItemType & {
           x: 558.4082376415505,
           y: 123.72387429194112
         },
+        version: '481',
         inputs: [
           {
             key: 'userChatInput',
@@ -119,6 +121,7 @@ export const appTemplates: (AppItemType & {
           x: 1097.7317280958762,
           y: -244.16014496351386
         },
+        version: '481',
         inputs: [
           {
             key: 'model',
@@ -253,6 +256,7 @@ export const appTemplates: (AppItemType & {
           x: 496.57560693988853,
           y: -490.7611729549753
         },
+        version: '481',
         inputs: [
           {
             key: 'welcomeText',
@@ -332,6 +336,7 @@ export const appTemplates: (AppItemType & {
           x: 558.4082376415505,
           y: 123.72387429194112
         },
+        version: '481',
         inputs: [
           {
             key: 'userChatInput',
@@ -363,6 +368,7 @@ export const appTemplates: (AppItemType & {
           x: 1097.7317280958762,
           y: -244.16014496351386
         },
+        version: '481',
         inputs: [
           {
             key: 'model',
@@ -497,6 +503,7 @@ export const appTemplates: (AppItemType & {
           x: 531.2422736065552,
           y: -486.7611729549753
         },
+        version: '481',
         inputs: [
           {
             key: 'welcomeText',
@@ -559,6 +566,7 @@ export const appTemplates: (AppItemType & {
           x: 558.4082376415505,
           y: 123.72387429194112
         },
+        version: '481',
         inputs: [
           {
             key: 'userChatInput',
@@ -590,6 +598,7 @@ export const appTemplates: (AppItemType & {
           x: 1638.509551404687,
           y: -341.0428450861567
         },
+        version: '481',
         inputs: [
           {
             key: 'model',
@@ -709,6 +718,7 @@ export const appTemplates: (AppItemType & {
           x: 918.5901682164496,
           y: -227.11542247619582
         },
+        version: '481',
         inputs: [
           {
             key: 'datasets',
@@ -821,6 +831,7 @@ export const appTemplates: (AppItemType & {
           x: 531.2422736065552,
           y: -486.7611729549753
         },
+        version: '481',
         inputs: [
           {
             key: 'welcomeText',
@@ -883,6 +894,7 @@ export const appTemplates: (AppItemType & {
           x: 558.4082376415505,
           y: 123.72387429194112
         },
+        version: '481',
         inputs: [
           {
             key: 'userChatInput',
@@ -914,6 +926,7 @@ export const appTemplates: (AppItemType & {
           x: 2701.1267277679685,
           y: -767.8956312653042
         },
+        version: '481',
         inputs: [
           {
             key: 'model',
@@ -1034,6 +1047,7 @@ export const appTemplates: (AppItemType & {
           x: 1020.9667229609946,
           y: -385.0060974413916
         },
+        version: '481',
         inputs: [
           {
             key: 'model',
@@ -1114,6 +1128,7 @@ export const appTemplates: (AppItemType & {
           x: 1874.9167551056487,
           y: 434.98431875888207
         },
+        version: '481',
         inputs: [
           {
             key: 'text',
@@ -1139,6 +1154,7 @@ export const appTemplates: (AppItemType & {
           x: 1851.010152279949,
           y: -613.3555232387284
         },
+        version: '481',
         inputs: [
           {
             key: 'datasets',

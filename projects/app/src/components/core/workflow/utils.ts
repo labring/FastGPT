@@ -19,6 +19,7 @@ export const flowNode2StoreNodes = ({
     flowNodeType: item.data.flowNodeType,
     showStatus: item.data.showStatus,
     position: item.position,
+    version: item.data.version,
     inputs: item.data.inputs,
     outputs: item.data.outputs,
     pluginId: item.data.pluginId

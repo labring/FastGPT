@@ -31,6 +31,12 @@
   "To Chat": "Go to Chat",
   "To Settings": "View Details",
   "Variable Key Repeat Tip": "Variable key is duplicate",
+  "app": {
+    "modules": {
+      "click to update": "click to update",
+      "has new version": "has new version"
+    }
+  },
   "module": {
     "Combine Modules": "Combine Modules",
     "Custom Title Tip": "This title will be displayed during the conversation",
