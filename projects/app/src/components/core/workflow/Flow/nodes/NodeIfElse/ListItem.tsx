@@ -50,6 +50,8 @@ const ListItem = ({
 }) => {
   const { t } = useTranslation();
   const { getZoom } = useReactFlow();
+  const onDelEdge = useContextSelector(WorkflowContext, (v) => v.onDelEdge);
+  const handleId = getHandleId(nodeId, 'source', getElseIFLabel(conditionIndex));
 
   return (
     <Box
@@ -109,6 +111,10 @@ const ListItem = ({
                 color={'myGray.400'}
                 onClick={() => {
                   onUpdateIfElseList(ifElseList.filter((_, index) => index !== conditionIndex));
+                  onDelEdge({
+                    nodeId,
+                    sourceHandle: handleId
+                  });
                 }}
               />
             )}
@@ -263,7 +269,7 @@ const ListItem = ({
         {!snapshot.isDragging && (
           <SourceHandle
             nodeId={nodeId}
-            handleId={getHandleId(nodeId, 'source', getElseIFLabel(conditionIndex))}
+            handleId={handleId}
             position={Position.Right}
             translate={[18, 0]}
           />

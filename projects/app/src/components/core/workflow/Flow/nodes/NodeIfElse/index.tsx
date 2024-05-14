@@ -19,6 +19,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, inputs = [] } = data;
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const elseHandleId = getHandleId(nodeId, 'source', IfElseResultEnum.ELSE);
 
   const ifElseList = useMemo(
     () =>
@@ -95,7 +96,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
             </Box>
             <SourceHandle
               nodeId={nodeId}
-              handleId={getHandleId(nodeId, 'source', IfElseResultEnum.ELSE)}
+              handleId={elseHandleId}
               position={Position.Right}
               translate={[26, 0]}
             />
