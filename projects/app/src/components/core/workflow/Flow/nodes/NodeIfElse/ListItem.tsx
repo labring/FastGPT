@@ -51,6 +51,8 @@ const ListItem = ({
   const { t } = useTranslation();
   const { getZoom } = useReactFlow();
 
+  const onDelEdge = useContextSelector(WorkflowContext, (v) => v.onDelEdge);
+
   return (
     <Box
       ref={provided.innerRef}
@@ -109,6 +111,13 @@ const ListItem = ({
                 color={'myGray.400'}
                 onClick={() => {
                   onUpdateIfElseList(ifElseList.filter((_, index) => index !== conditionIndex));
+
+                  for (let i = conditionIndex; i <= ifElseList.length; i++) {
+                    onDelEdge({
+                      nodeId,
+                      sourceHandle: getHandleId(nodeId, 'source', getElseIFLabel(i))
+                    });
+                  }
                 }}
               />
             )}
