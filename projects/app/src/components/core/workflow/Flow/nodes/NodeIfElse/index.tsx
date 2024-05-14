@@ -50,7 +50,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     <NodeCard selected={selected} maxW={'1000px'} {...data}>
       <Box px={4} cursor={'default'}>
         <DndDrag<IfElseListItemType>
-          onDragEndCb={(list) => onUpdateIfElseList(list)}
+          onDragEndCb={(list: IfElseListItemType[]) => onUpdateIfElseList(list)}
           dataList={ifElseList}
           renderClone={(provided, snapshot, rubric) => (
             <ListItem

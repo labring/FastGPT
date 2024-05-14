@@ -1,11 +1,11 @@
 import { DragHandleIcon } from '@chakra-ui/icons';
-import { Box } from '@chakra-ui/react';
+import { Box, BoxProps } from '@chakra-ui/react';
 import React from 'react';
 import { DraggableProvided } from 'react-beautiful-dnd';
 
-const DragIcon = ({ provided }: { provided: DraggableProvided }) => {
+const DragIcon = ({ provided, ...props }: { provided: DraggableProvided } & BoxProps) => {
   return (
-    <Box {...provided.dragHandleProps}>
+    <Box {...provided.dragHandleProps} {...props}>
       <DragHandleIcon color={'myGray.500'} _hover={{ color: 'primary.600' }} />
     </Box>
   );
