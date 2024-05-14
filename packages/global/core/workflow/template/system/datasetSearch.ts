@@ -28,6 +28,7 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
   intro: Dataset_SEARCH_DESC,
   showStatus: true,
   isTool: true,
+  version: '481',
   inputs: [
     {
       key: NodeInputKeyEnum.datasetSelectList,

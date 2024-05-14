@@ -521,6 +521,19 @@ export const theme = extendTheme({
       800: '#05603A',
       900: '#054F31'
     },
+    yellow: {
+      25: '#FFFDFA',
+      50: '#FFFAEB',
+      100: '#FEF0C7',
+      200: '#FEDF89',
+      300: '#F5C149',
+      400: '#FDB022',
+      500: '#F79009',
+      600: '#DC6803',
+      700: '#B54708',
+      800: '#93370D',
+      900: '#7A2E0E'
+    },
     borderColor: {
       low: '#E8EBF0',
       base: '#DFE2EA',

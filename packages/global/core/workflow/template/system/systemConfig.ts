@@ -18,6 +18,7 @@ export const SystemConfigNode: FlowNodeTemplateType = {
   intro: '可以配置应用的系统参数。',
   unique: true,
   forbidDelete: true,
+  version: '481',
   inputs: [
     {
       key: NodeInputKeyEnum.welcomeText,

@@ -39,6 +39,7 @@ export const defaultForm: EditFormType = {
         x: 616.4226348688949,
         y: -165.05298493910115
       },
+      version: '481',
       inputs: [],
       outputs: []
     },
@@ -52,6 +53,7 @@ export const defaultForm: EditFormType = {
         x: 1607.7142331269126,
         y: -151.8669210746189
       },
+      version: '481',
       inputs: [],
       outputs: []
     }

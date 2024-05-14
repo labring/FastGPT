@@ -29,6 +29,7 @@ export const AiQueryExtension: FlowNodeTemplateType = {
   intro:
     '使用问题优化功能，可以提高知识库连续对话时搜索的精度。使用该功能后，会先利用 AI 根据上下文构建一个或多个新的检索词，这些检索词更利于进行知识库搜索。该模块已内置在知识库搜索模块中，如果您仅进行一次知识库搜索，可直接使用知识库内置的补全功能。',
   showStatus: true,
+  version: '481',
   inputs: [
     {
       ...Input_Template_SelectAIModel,
