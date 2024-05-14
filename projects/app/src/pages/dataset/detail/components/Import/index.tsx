@@ -3,7 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetImportContext, DatasetImportContextProvider } from './Context';
+import DatasetImportContextProvider, { DatasetImportContext } from './Context';
 
 const FileLocal = dynamic(() => import('./diffSource/FileLocal'));
 const FileLink = dynamic(() => import('./diffSource/FileLink'));

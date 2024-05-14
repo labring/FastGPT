@@ -55,7 +55,7 @@ export const CollectionPageContext = createContext<CollectionPageContextType>({
   }
 });
 
-export const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
+const CollectionPageContextProvider = ({ children }: { children: ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { parentId = '' } = router.query as { parentId: string };
@@ -155,3 +155,4 @@ export const CollectionPageContextProvider = ({ children }: { children: ReactNod
     </CollectionPageContext.Provider>
   );
 };
+export default CollectionPageContextProvider;

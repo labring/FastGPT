@@ -143,9 +143,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       .toArray();
     if (collections.length > 0) {
       const sourceCol = connectionMongo.connection.db.collection('team.members');
+      const targetCol = connectionMongo.connection.db.collection('team_members');
 
-      await sourceCol.rename('team_members', { dropTarget: true });
-      console.log('success rename team.members -> team_members');
+      if ((await targetCol.countDocuments()) > 1) {
+        // 除了root
+        await sourceCol.rename('team_members', { dropTarget: true });
+        console.log('success rename team.members -> team_members');
+      } else {
+        console.log('success rename team.members -> team_members');
+      }
     }
   } catch (error) {
     console.log('error： rename team.members -> team_members', error);
@@ -168,6 +174,27 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
     }
   } catch (error) {
     console.log('error： rename team.tags -> team_tags', error);
+  }
+
+  try {
+    const collections = await connectionMongo.connection.db
+      .listCollections({ name: 'team.subscriptions' })
+      .toArray();
+    if (collections.length > 0) {
+      const sourceCol = connectionMongo.connection.db.collection('team.subscriptions');
+      const targetCol = connectionMongo.connection.db.collection('team_subscriptions');
+
+      if ((await targetCol.countDocuments()) > 0) {
+        console.log(
+          'team_subscriptions 中有数据，无法自动将 team.subscriptions 迁移到 team_subscriptions，请手动操作'
+        );
+      } else {
+        await sourceCol.rename('team_subscriptions', { dropTarget: true });
+        console.log('success rename team.subscriptions -> team_subscriptions');
+      }
+    }
+  } catch (error) {
+    console.log('error： rename team.subscriptions -> team_subscriptions', error);
   }
 
   jsonRes(res, {

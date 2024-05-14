@@ -15,7 +15,7 @@ import {
   DatasetPageContext,
   DatasetPageContextProvider
 } from '@/web/core/dataset/context/datasetPageContext';
-import { CollectionPageContextProvider } from './components/CollectionCard/Context';
+import CollectionPageContextProvider from './components/CollectionCard/Context';
 import { useContextSelector } from 'use-context-selector';
 import NextHead from '@/components/common/NextHead';
 

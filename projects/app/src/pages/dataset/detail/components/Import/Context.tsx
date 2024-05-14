@@ -73,7 +73,7 @@ export const DatasetImportContext = createContext<DatasetImportContextType>({
   priceTip: ''
 });
 
-export const DatasetImportContextProvider = ({ children }: { children: React.ReactNode }) => {
+const DatasetImportContextProvider = ({ children }: { children: React.ReactNode }) => {
   const { t } = useTranslation();
   const router = useRouter();
   const { source = ImportDataSourceEnum.fileLocal, parentId } = (router.query || {}) as {
@@ -298,3 +298,5 @@ export const DatasetImportContextProvider = ({ children }: { children: React.Rea
     </DatasetImportContext.Provider>
   );
 };
+
+export default DatasetImportContextProvider;
