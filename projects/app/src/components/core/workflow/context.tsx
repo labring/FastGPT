@@ -430,8 +430,8 @@ const WorkflowContextProvider = ({
 
   const initData = useMemoizedFn(
     async (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
-      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })));
-      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })));
+      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })) || []);
+      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
     }
   );
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { getPublishList, postRevertVersion } from '@/web/core/app/versionApi';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
@@ -14,6 +14,8 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 const PublishHistoriesSlider = () => {
   const { t } = useTranslation();
@@ -45,29 +47,29 @@ const PublishHistoriesSlider = () => {
     setIsShowVersionHistories(false);
   });
 
-  const onPreview = useMemoizedFn((data: AppVersionSchemaType) => {
+  const onPreview = useCallback((data: AppVersionSchemaType) => {
     setSelectedHistoryId(data._id);
 
     initData({
       nodes: data.nodes,
       edges: data.edges
     });
-  });
-  const onCloseSlider = useMemoizedFn(() => {
-    setSelectedHistoryId(undefined);
-    initData({
-      nodes: appDetail.modules,
-      edges: appDetail.edges
-    });
-    onClose();
-  });
+  }, []);
+  const onCloseSlider = useCallback(
+    (data: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
+      setSelectedHistoryId(undefined);
+      initData(data);
+      onClose();
+    },
+    [appDetail]
+  );
 
   const { mutate: onRevert, isLoading: isReverting } = useRequest({
     mutationFn: async (data: AppVersionSchemaType) => {
       if (!appId) return;
       await postRevertVersion(appId, {
         versionId: data._id,
-        editNodes: appDetail.modules,
+        editNodes: appDetail.modules, // old workflow
         editEdges: appDetail.edges
       });
 
@@ -77,7 +79,7 @@ const PublishHistoriesSlider = () => {
         edges: data.edges
       });
 
-      onCloseSlider();
+      onCloseSlider(data);
     }
   });
 
@@ -86,7 +88,12 @@ const PublishHistoriesSlider = () => {
   return (
     <>
       <CustomRightDrawer
-        onClose={onCloseSlider}
+        onClose={() =>
+          onCloseSlider({
+            nodes: appDetail.modules,
+            edges: appDetail.edges
+          })
+        }
         iconSrc="core/workflow/versionHistories"
         title={t('core.workflow.publish.histories')}
         maxW={'300px'}
