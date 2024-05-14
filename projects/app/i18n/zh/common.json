@@ -1,4 +1,5 @@
 {
+  "Add new": "新增",
   "App": "应用",
   "Export": "导出",
   "Folder": "文件夹",
@@ -575,7 +576,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",

@@ -1,4 +1,5 @@
 {
+  "Add new": "Add new",
   "App": "App",
   "Export": "Export",
   "Folder": "Folder",
@@ -574,7 +575,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",

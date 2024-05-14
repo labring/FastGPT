@@ -8,7 +8,6 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
-import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />

@@ -1,16 +1,28 @@
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import { useTranslation } from 'next-i18next';
-import { useForm } from 'react-hook-form';
-import { Box, Button, Flex, Input, Link, Textarea } from '@chakra-ui/react';
+import { useFieldArray, useForm } from 'react-hook-form';
+import {
+  Box,
+  Button,
+  Flex,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
+  TableContainer,
+  Input
+} from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { LinkCollectionIcon } from '@fastgpt/global/core/dataset/constants';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
-import { getDocPath } from '@/web/common/system/doc';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
+import { getFileIcon } from '@fastgpt/global/common/file/icon';
+import { useI18n } from '@/web/context/I18n';
+import { SmallAddIcon } from '@chakra-ui/icons';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -23,7 +35,7 @@ const ExternalFileCollection = () => {
   return (
     <>
       {activeStep === 0 && <CustomLinkInput />}
-      {activeStep === 1 && <DataProcess showPreviewChunks={false} />}
+      {activeStep === 1 && <DataProcess showPreviewChunks={true} />}
       {activeStep === 2 && <Upload />}
     </>
   );
@@ -33,110 +45,136 @@ export default React.memo(ExternalFileCollection);
 
 const CustomLinkInput = () => {
   const { t } = useTranslation();
-  const { feConfigs } = useSystemStore();
-  const { goToNext, sources, setSources, processParamsForm } = useContextSelector(
-    DatasetImportContext,
-    (v) => v
-  );
-  const { register, reset, handleSubmit, watch } = useForm({
+  const { datasetT, commonT } = useI18n();
+  const { goToNext, sources, setSources } = useContextSelector(DatasetImportContext, (v) => v);
+  const { register, reset, handleSubmit, control } = useForm<{
+    list: {
+      sourceName: string;
+      sourceUrl: string;
+      externalId: string;
+    }[];
+  }>({
     defaultValues: {
-      link: ''
+      list: [
+        {
+          sourceName: '',
+          sourceUrl: '',
+          externalId: ''
+        }
+      ]
     }
   });
 
-  const link = watch('link');
-  const linkList = link.split('\n').filter((item) => item);
+  const {
+    fields: list,
+    append,
+    remove,
+    update
+  } = useFieldArray({
+    control,
+    name: 'list'
+  });
 
   useEffect(() => {
-    reset({
-      link: sources
-        .map((item) => item.link)
-        .filter((item) => item)
-        .join('\n')
-    });
+    if (sources.length > 0) {
+      reset({
+        list: sources.map((item) => ({
+          sourceName: item.sourceName,
+          sourceUrl: item.sourceUrl || '',
+          externalId: item.externalId || ''
+        }))
+      });
+    }
   }, []);
 
   return (
-    <Box maxW={['100%', '800px']}>
-      <Box display={['block', 'flex']} alignItems={'flex-start'} mt={1}>
-        <Box flex={'0 0 100px'} fontSize={'sm'}>
-          {t('core.dataset.import.Link name')}
-        </Box>
-        <Textarea
-          flex={'1 0 0'}
-          w={'100%'}
-          rows={10}
-          placeholder={t('core.dataset.import.Link name placeholder')}
-          bg={'myGray.50'}
-          overflowX={'auto'}
-          whiteSpace={'nowrap'}
-          {...register('link', {
-            required: true
-          })}
-        />
-      </Box>
-      <Box display={['block', 'flex']} alignItems={'center'} mt={4}>
-        <Box flex={'0 0 100px'} fontSize={'sm'}>
-          {t('core.dataset.website.Selector')}
-          <Box color={'myGray.500'} fontSize={'sm'}>
-            {feConfigs?.docUrl && (
-              <Link href={getDocPath('/docs/course/websync/#选择器如何使用')} target="_blank">
-                {t('core.dataset.website.Selector Course')}
-              </Link>
-            )}
-          </Box>
-        </Box>
-        <Input
-          flex={'1 0 0'}
-          maxW={['100%', '350px']}
-          {...processParamsForm.register('webSelector')}
-          placeholder={'body .content #document'}
-          bg={'myGray.50'}
-        />
-      </Box>
-
-      <Flex my={4} flexWrap={'wrap'} gap={4} alignItems={'center'} pl={[0, '100px']}>
-        {linkList.map((item, i) => (
-          <Flex
-            key={`${item}-${i}`}
-            alignItems={'center'}
-            px={4}
-            py={2}
-            borderRadius={'md'}
-            bg={'myGray.100'}
-          >
-            <MyIcon name={LinkCollectionIcon} w={'16px'} />
-            <Box ml={1} mr={3} wordBreak={'break-all'}>
-              {item}
-            </Box>
-            <MyIcon
-              name={'common/closeLight'}
-              w={'14px'}
-              color={'myGray.500'}
-              cursor={'pointer'}
-              onClick={() => {
-                const newLinkList = linkList.filter((link, index) => index !== i);
-                reset({
-                  link: newLinkList.join('\n')
-                });
-              }}
-            />
-          </Flex>
-        ))}
-      </Flex>
-      <Flex mt={5} justifyContent={'flex-end'}>
+    <Box>
+      <TableContainer>
+        <Table bg={'white'}>
+          <Thead>
+            <Tr bg={'myGray.50'}>
+              <Th>{datasetT('External url')}</Th>
+              <Th>{datasetT('External id')}</Th>
+              <Th>{datasetT('filename')}</Th>
+              <Th></Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {list.map((item, index) => (
+              <Tr key={item.id}>
+                <Td>
+                  <Input
+                    {...register(`list.${index}.sourceUrl`, {
+                      required: index !== list.length - 1,
+                      onBlur(e) {
+                        const val = (e.target.value || '') as string;
+                        if (val.includes('.') && !list[index]?.sourceName) {
+                          const sourceName = val.split('/').pop() || '';
+                          update(index, {
+                            ...list[index],
+                            sourceUrl: val,
+                            sourceName: decodeURIComponent(sourceName)
+                          });
+                        }
+                        if (val && index === list.length - 1) {
+                          append({
+                            sourceName: '',
+                            sourceUrl: '',
+                            externalId: ''
+                          });
+                        }
+                      }
+                    })}
+                  />
+                </Td>
+                <Td>
+                  <Input {...register(`list.${index}.externalId`)} />
+                </Td>
+                <Td>
+                  <Input {...register(`list.${index}.sourceName`)} />
+                </Td>
+                <Td>
+                  <MyIcon
+                    name={'delete'}
+                    w={'16px'}
+                    cursor={'pointer'}
+                    _hover={{ color: 'red.600' }}
+                    onClick={() => remove(index)}
+                  />
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </TableContainer>
+      <Flex mt={5} justifyContent={'space-between'}>
         <Button
+          variant={'whitePrimary'}
+          leftIcon={<SmallAddIcon />}
+          onClick={() => {
+            append({
+              sourceName: '',
+              sourceUrl: '',
+              externalId: ''
+            });
+          }}
+        >
+          {commonT('Add new')}
+        </Button>
+        <Button
+          isDisabled={list.length === 0}
           onClick={handleSubmit((data) => {
-            const newLinkList = data.link.split('\n').filter((item) => item);
-
             setSources(
-              newLinkList.map((link) => ({
-                id: getNanoid(32),
-                createStatus: 'waiting',
-                link,
-                sourceName: link,
-                icon: LinkCollectionIcon
-              }))
+              data.list
+                .filter((item) => !!item.sourceUrl)
+                .map((item) => ({
+                  id: getNanoid(32),
+                  createStatus: 'waiting',
+                  sourceName: item.sourceName || item.sourceUrl,
+                  icon: getFileIcon(item.sourceUrl),
+                  externalId: item.externalId,
+                  sourceUrl: item.sourceUrl
+                }))
             );
 
             goToNext();
