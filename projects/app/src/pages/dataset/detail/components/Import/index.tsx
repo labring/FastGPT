@@ -9,6 +9,8 @@ import dynamic from 'next/dynamic';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import Provider from './Provider';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const FileLocal = dynamic(() => import('./diffSource/FileLocal'));
 const FileLink = dynamic(() => import('./diffSource/FileLink'));
@@ -18,7 +20,7 @@ const TableLocal = dynamic(() => import('./diffSource/TableLocal'));
 const ImportDataset = () => {
   const { t } = useTranslation();
   const router = useRouter();
-  const { datasetDetail } = useDatasetStore();
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { source = ImportDataSourceEnum.fileLocal, parentId } = (router.query || {}) as {
     source: `${ImportDataSourceEnum}`;
     parentId?: string;

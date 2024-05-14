@@ -23,13 +23,14 @@ import type { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
+import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
   const { datasetT } = useI18n();
-  const { datasetDetail, loadDatasetDetail, loadDatasets, updateDataset } = useDatasetStore();
-  const rebuildingCount = useContextSelector(DatasetPageContext, (v) => v.rebuildingCount);
-  const trainingCount = useContextSelector(DatasetPageContext, (v) => v.trainingCount);
+  const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
+    useContextSelector(DatasetPageContext, (v) => v);
+
   const refetchDatasetTraining = useContextSelector(
     DatasetPageContext,
     (v) => v.refetchDatasetTraining
@@ -82,9 +83,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         ...data
       });
     },
-    onSuccess() {
-      loadDatasets();
-    },
     successToast: t('common.Update Success'),
     errorToast: t('common.Update Failed')
   });
@@ -117,7 +115,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
     },
     onSuccess() {
       refetchDatasetTraining();
-      loadDatasetDetail(datasetId, true);
+      loadDatasetDetail(datasetId);
     },
     successToast: datasetT('Rebuild embedding start tip'),
     errorToast: t('common.Update Failed')
@@ -128,16 +126,16 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   return (
     <Box py={5} px={[5, 10]}>
       <Flex mt={5} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.dataset.Dataset ID')}
         </Box>
         <Box flex={1}>{datasetDetail._id}</Box>
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'} flexWrap={'wrap'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.ai.model.Vector Model')}
         </Box>
-        <Box flex={[1, '0 0 300px']}>
+        <Box flex={[1, '0 0 320px']}>
           <AIModelSelector
             w={'100%'}
             value={vectorModel.model}
@@ -162,16 +160,16 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.Max Token')}
         </Box>
-        <Box flex={[1, '0 0 300px']}>{vectorModel.maxToken}</Box>
+        <Box flex={[1, '0 0 320px']}>{vectorModel.maxToken}</Box>
       </Flex>
       <Flex mt={6} alignItems={'center'} flexWrap={'wrap'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.ai.model.Dataset Agent Model')}
         </Box>
-        <Box flex={[1, '0 0 300px']}>
+        <Box flex={[1, '0 0 320px']}>
           <AIModelSelector
             w={'100%'}
             value={agentModel.model}
@@ -188,13 +186,29 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
       </Flex>
 
-      <MyDivider my={4} h={'2px'} maxW={'500px'} />
+      <MyDivider my={6} h={'2px'} maxW={'500px'} />
+
+      {datasetDetail.type === DatasetTypeEnum.externalFile && (
+        <>
+          <Flex w={'100%'} alignItems={'center'}>
+            <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
+              {datasetT('External read url')}
+            </Box>
+            <Input
+              flex={[1, '0 0 320px']}
+              placeholder="https://test.com/read?fileId={{fileId}}"
+              {...register('externalReadUrl')}
+            />
+          </Flex>
+          <MyDivider my={6} h={'2px'} maxW={'500px'} />
+        </>
+      )}
 
       <Flex mt={5} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.dataset.Avatar')}
         </Box>
-        <Box flex={[1, '0 0 300px']}>
+        <Box flex={[1, '0 0 320px']}>
           <MyTooltip label={t('common.avatar.Select Avatar')}>
             <Avatar
               m={'auto'}
@@ -208,18 +222,20 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         </Box>
       </Flex>
       <Flex mt={8} w={'100%'} alignItems={'center'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
           {t('core.dataset.Name')}
         </Box>
-        <Input flex={[1, '0 0 300px']} maxLength={30} {...register('name')} />
+        <Input flex={[1, '0 0 320px']} maxLength={30} {...register('name')} />
       </Flex>
       <Flex mt={8} alignItems={'center'} w={'100%'}>
-        <Box flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</Box>
-        <Textarea flex={[1, '0 0 300px']} {...register('intro')} placeholder={t('common.Intro')} />
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']}>
+          {t('common.Intro')}
+        </Box>
+        <Textarea flex={[1, '0 0 320px']} {...register('intro')} placeholder={t('common.Intro')} />
       </Flex>
       {datasetDetail.isOwner && (
         <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
-          <Box flex={['0 0 90px', '0 0 160px']} w={0}>
+          <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
             {t('user.Permission')}
           </Box>
           <Box>
@@ -234,7 +250,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       )}
 
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
-        <Box flex={['0 0 90px', '0 0 160px']} w={0}></Box>
+        <Box fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}></Box>
         <Button
           isLoading={btnLoading}
           mr={4}

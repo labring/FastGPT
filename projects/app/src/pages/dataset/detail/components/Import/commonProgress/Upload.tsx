@@ -28,13 +28,15 @@ import {
 } from '@/web/core/dataset/api';
 import Tag from '@fastgpt/web/components/common/Tag/index';
 import { useI18n } from '@/web/context/I18n';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
 
 const Upload = () => {
   const { t } = useTranslation();
   const { fileT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
-  const { datasetDetail } = useDatasetStore();
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
   const { importSource, parentId, sources, setSources, processParamsForm, chunkSize } =
     useImportStore();
 

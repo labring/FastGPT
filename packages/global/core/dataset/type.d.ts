@@ -22,13 +22,16 @@ export type DatasetSchemaType = {
   vectorModel: string;
   agentModel: string;
   intro: string;
-  type: `${DatasetTypeEnum}`;
+  type: DatasetTypeEnum;
   status: `${DatasetStatusEnum}`;
   permission: `${PermissionTypeEnum}`;
+
+  // metadata
   websiteConfig?: {
     url: string;
     selector: string;
   };
+  externalReadUrl?: string;
 };
 
 export type DatasetCollectionSchemaType = {
@@ -47,11 +50,13 @@ export type DatasetCollectionSchemaType = {
   chunkSplitter?: string;
   qaPrompt?: string;
 
-  fileId?: string;
-  rawLink?: string;
+  sourceId?: string; // relate CollectionSourcePrefixEnum
+  fileId?: string; // local file id
+  rawLink?: string; // link url
 
   rawTextLength?: number;
   hashRawText?: string;
+  externalSourceUrl?: string; // external import url
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections
@@ -112,13 +117,19 @@ export type DatasetDataWithCollectionType = Omit<DatasetDataSchemaType, 'collect
 };
 
 /* ================= dataset ===================== */
+export type DatasetSimpleItemType = {
+  _id: string;
+  avatar: string;
+  name: string;
+  vectorModel: VectorModelItemType;
+};
 export type DatasetListItemType = {
   _id: string;
   parentId: string;
   avatar: string;
   name: string;
   intro: string;
-  type: `${DatasetTypeEnum}`;
+  type: DatasetTypeEnum;
   isOwner: boolean;
   canWrite: boolean;
   permission: `${PermissionTypeEnum}`;

@@ -11,8 +11,10 @@ export type DatasetUpdateBody = {
   intro?: string;
   permission?: DatasetSchemaType['permission'];
   agentModel?: LLMModelItemType;
-  websiteConfig?: DatasetSchemaType['websiteConfig'];
   status?: DatasetSchemaType['status'];
+
+  websiteConfig?: DatasetSchemaType['websiteConfig'];
+  externalReadUrl?: DatasetSchemaType['externalReadUrl'];
 };
 
 /* ================= collection ===================== */

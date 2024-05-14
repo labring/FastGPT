@@ -1,11 +1,23 @@
 import { useQuery } from '@tanstack/react-query';
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { createContext } from 'use-context-selector';
-import { getDatasetTrainingQueue, getTrainingQueueLen } from '../api';
-import { useDatasetStore } from '../store/dataset';
+import {
+  getDatasetById,
+  getDatasetTrainingQueue,
+  getTrainingQueueLen,
+  putDatasetById
+} from '../api';
+import { defaultDatasetDetail } from '../constants';
+import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
+import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 
 type DatasetPageContextType = {
+  datasetId: string;
+  datasetDetail: DatasetItemType;
+  loadDatasetDetail: (id: string) => Promise<DatasetItemType>;
+  updateDataset: (data: DatasetUpdateBody) => Promise<void>;
+
   vectorTrainingMap: {
     colorSchema: string;
     tip: string;
@@ -17,10 +29,6 @@ type DatasetPageContextType = {
   rebuildingCount: number;
   trainingCount: number;
   refetchDatasetTraining: () => void;
-};
-
-type DatasetPageContextValueType = {
-  datasetId: string;
 };
 
 export const DatasetPageContext = createContext<DatasetPageContextType>({
@@ -36,19 +44,46 @@ export const DatasetPageContext = createContext<DatasetPageContextType>({
   trainingCount: 0,
   refetchDatasetTraining: function (): void {
     throw new Error('Function not implemented.');
+  },
+  datasetId: '',
+  datasetDetail: defaultDatasetDetail,
+  loadDatasetDetail: function (id: string): Promise<DatasetItemType> {
+    throw new Error('Function not implemented.');
+  },
+  updateDataset: function (data: DatasetUpdateBody): Promise<void> {
+    throw new Error('Function not implemented.');
   }
 });
 
 export const DatasetPageContextProvider = ({
   children,
-  value
+  datasetId
 }: {
   children: ReactNode;
-  value: DatasetPageContextValueType;
+  datasetId: string;
 }) => {
   const { t } = useTranslation();
-  const { datasetId } = value;
-  const { datasetDetail } = useDatasetStore();
+
+  // dataset detail
+  const [datasetDetail, setDatasetDetail] = useState(defaultDatasetDetail);
+
+  const loadDatasetDetail = async (id: string) => {
+    const data = await getDatasetById(id);
+
+    setDatasetDetail(data);
+
+    return data;
+  };
+  const updateDataset = async (data: DatasetUpdateBody) => {
+    await putDatasetById(data);
+
+    if (datasetId === data.id) {
+      setDatasetDetail((state) => ({
+        ...state,
+        ...data
+      }));
+    }
+  };
 
   // global queue
   const { data: { vectorTrainingCount = 0, agentTrainingCount = 0 } = {} } = useQuery(
@@ -108,6 +143,11 @@ export const DatasetPageContextProvider = ({
     });
 
   const contextValue: DatasetPageContextType = {
+    datasetId,
+    datasetDetail,
+    loadDatasetDetail,
+    updateDataset,
+
     vectorTrainingMap,
     agentTrainingMap,
     rebuildingCount,

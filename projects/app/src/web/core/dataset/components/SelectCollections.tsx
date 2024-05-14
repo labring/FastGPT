@@ -11,6 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '../context/datasetPageContext';
 
 const SelectCollections = ({
   datasetId,
@@ -37,7 +39,8 @@ const SelectCollections = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { datasetDetail, loadDatasetDetail } = useDatasetStore();
+  const { loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
+
   const { Loading } = useLoading();
   const [selectedDatasetCollectionIds, setSelectedDatasetCollectionIds] =
     useState<string[]>(defaultSelectedId);
