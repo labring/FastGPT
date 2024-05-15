@@ -38,6 +38,7 @@
   },
   "module": {
     "Combine Modules": "组合模块",
+    "Confirm Sync": "将会使用最新模板进行覆盖，可能会丢失一些旧的配置信息，请确认",
     "Custom Title Tip": "该标题名字会展示在对话过程中",
     "My Modules": "",
     "No Modules": "还没有模块~",
