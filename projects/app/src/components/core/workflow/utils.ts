@@ -22,7 +22,8 @@ export const flowNode2StoreNodes = ({
     version: item.data.version,
     inputs: item.data.inputs,
     outputs: item.data.outputs,
-    pluginId: item.data.pluginId
+    pluginId: item.data.pluginId,
+    nodeVersion: item.data.nodeVersion
   }));
 
   // get all handle

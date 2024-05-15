@@ -62,7 +62,7 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
     return JSON.stringify(value);
   }
   if (type === 'number') return Number(value);
-  if (type === 'boolean') return Boolean(value);
+  if (type === 'boolean') return value === 'true' ? true : false;
   try {
     if (type === WorkflowIOValueTypeEnum.datasetQuote && !Array.isArray(value)) {
       return JSON.parse(value);

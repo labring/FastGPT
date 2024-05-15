@@ -64,6 +64,10 @@ const PluginSchema = new Schema({
   version: {
     type: String,
     enum: ['v1', 'v2']
+  },
+  nodeVersion: {
+    type: String,
+    default: ''
   }
 });
 
