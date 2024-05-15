@@ -247,7 +247,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 
 ```ts
 type ResponseType = {
-    moduleType: `${FlowNodeTypeEnum}`; // 模块类型
+    moduleType: FlowNodeTypeEnum; // 模块类型
     moduleName: string; // 模块名
     moduleLogo?: string; // logo
     runningTime?: number; // 运行时间

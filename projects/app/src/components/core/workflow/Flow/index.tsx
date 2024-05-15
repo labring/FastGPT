@@ -35,7 +35,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
 
 const NodeSimple = dynamic(() => import('./nodes/NodeSimple'));
-const nodeTypes: Record<`${FlowNodeTypeEnum}`, any> = {
+const nodeTypes: Record<FlowNodeTypeEnum, any> = {
   [FlowNodeTypeEnum.emptyNode]: NodeSimple,
   [FlowNodeTypeEnum.globalVariable]: NodeSimple,
   [FlowNodeTypeEnum.systemConfig]: dynamic(() => import('./nodes/NodeSystemConfig')),
