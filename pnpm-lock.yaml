@@ -126,6 +126,9 @@ importers:
       encoding:
         specifier: ^0.1.13
         version: 0.1.13
+      fastgpt-js-tiktoken:
+        specifier: ^1.0.12
+        version: registry.npmjs.org/fastgpt-js-tiktoken@1.0.12
       file-type:
         specifier: ^19.0.0
         version: 19.0.0
@@ -135,9 +138,6 @@ importers:
       joplin-turndown-plugin-gfm:
         specifier: ^1.0.12
         version: 1.0.12
-      js-tiktoken:
-        specifier: ^1.0.7
-        version: 1.0.7
       json5:
         specifier: ^2.2.3
         version: 2.2.3
@@ -155,7 +155,7 @@ importers:
         version: 1.4.5-lts.1
       next:
         specifier: 13.5.2
-        version: 13.5.2(@babel/core@7.24.4)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
+        version: 13.5.2(react-dom@18.2.0)(react@18.2.0)
       nextjs-cors:
         specifier: ^2.1.2
         version: 2.1.2(next@13.5.2)
@@ -8722,12 +8722,6 @@ packages:
     resolution: {integrity: sha512-dwXFwByc/ajSV6m5bcKAPwe4yDDF6D614pxmIi5odytzxRlwqF6nwoiCek80Ixc7Cvma5awClxrzFtxCQvcM8w==}
     dev: true
 
-  /js-tiktoken@1.0.7:
-    resolution: {integrity: sha512-biba8u/clw7iesNEWLOLwrNGoBP2lA+hTaBLs/D45pJdUPFXyxD6nhcDVtADChghv4GgyAiMKYMiRx7x6h7Biw==}
-    dependencies:
-      base64-js: 1.5.1
-    dev: false
-
   /js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
@@ -9933,13 +9927,53 @@ packages:
       - '@babel/core'
       - babel-plugin-macros
 
+  /next@13.5.2(react-dom@18.2.0)(react@18.2.0):
+    resolution: {integrity: sha512-vog4UhUaMYAzeqfiAAmgB/QWLW7p01/sg+2vn6bqc/CxHFYizMzLv6gjxKzl31EVFkfl/F+GbxlKizlkTE9RdA==}
+    engines: {node: '>=16.14.0'}
+    hasBin: true
+    peerDependencies:
+      '@opentelemetry/api': ^1.1.0
+      react: ^18.2.0
+      react-dom: ^18.2.0
+      sass: ^1.3.0
+    peerDependenciesMeta:
+      '@opentelemetry/api':
+        optional: true
+      sass:
+        optional: true
+    dependencies:
+      '@next/env': 13.5.2
+      '@swc/helpers': 0.5.2
+      busboy: 1.6.0
+      caniuse-lite: 1.0.30001603
+      postcss: 8.4.14
+      react: 18.2.0
+      react-dom: 18.2.0(react@18.2.0)
+      styled-jsx: 5.1.1(react@18.2.0)
+      watchpack: 2.4.0
+      zod: 3.21.4
+    optionalDependencies:
+      '@next/swc-darwin-arm64': 13.5.2
+      '@next/swc-darwin-x64': 13.5.2
+      '@next/swc-linux-arm64-gnu': 13.5.2
+      '@next/swc-linux-arm64-musl': 13.5.2
+      '@next/swc-linux-x64-gnu': 13.5.2
+      '@next/swc-linux-x64-musl': 13.5.2
+      '@next/swc-win32-arm64-msvc': 13.5.2
+      '@next/swc-win32-ia32-msvc': 13.5.2
+      '@next/swc-win32-x64-msvc': 13.5.2
+    transitivePeerDependencies:
+      - '@babel/core'
+      - babel-plugin-macros
+    dev: false
+
   /nextjs-cors@2.1.2(next@13.5.2):
     resolution: {integrity: sha512-2yOVivaaf2ILe4f/qY32hnj3oC77VCOsUQJQfhVMGsXE/YMEWUY2zy78sH9FKUCM7eG42/l3pDofIzMD781XGA==}
     peerDependencies:
       next: ^8.1.1-canary.54 || ^9.0.0 || ^10.0.0-0 || ^11.0.0 || ^12.0.0 || ^13.0.0
     dependencies:
       cors: 2.8.5
-      next: 13.5.2(@babel/core@7.24.4)(react-dom@18.2.0)(react@18.2.0)(sass@1.58.3)
+      next: 13.5.2(react-dom@18.2.0)(react@18.2.0)
     dev: false
 
   /nextjs-node-loader@1.1.5(webpack@5.91.0):
@@ -11725,6 +11759,23 @@ packages:
       client-only: 0.0.1
       react: 18.2.0
 
+  /styled-jsx@5.1.1(react@18.2.0):
+    resolution: {integrity: sha512-pW7uC1l4mBZ8ugbiZrcIsiIvVx1UmTfw7UkC3Um2tmfUq9Bhk8IiyEIPl6F8agHgjzku6j0xQEZbfA5uSgSaCw==}
+    engines: {node: '>= 12.0.0'}
+    peerDependencies:
+      '@babel/core': '*'
+      babel-plugin-macros: '*'
+      react: '>= 16.8.0 || 17.x.x || ^18.0.0-0'
+    peerDependenciesMeta:
+      '@babel/core':
+        optional: true
+      babel-plugin-macros:
+        optional: true
+    dependencies:
+      client-only: 0.0.1
+      react: 18.2.0
+    dev: false
+
   /stylis@4.2.0:
     resolution: {integrity: sha512-Orov6g6BB1sDfYgzWfTHDOxamtX1bE/zo104Dh9e6fqJ3PooipYyfJ0pUmrZO2wAvO8YbEyeFrkV91XTsGMSrw==}
     dev: false
@@ -12798,4 +12849,12 @@ packages:
     version: 0.19.3
     engines: {node: '>=0.8'}
     hasBin: true
+    dev: false
+
+  registry.npmjs.org/fastgpt-js-tiktoken@1.0.12:
+    resolution: {integrity: sha512-93UQM9h267PFQqnaJjcc+tqbKRZuipRbi+ASxVcE1FBzXOVb4GKfOMlsxXKCsSDdP+Luv8Fgul7F3HXKITXjYQ==, registry: https://registry.npmmirror.com/, tarball: https://registry.npmjs.org/fastgpt-js-tiktoken/-/fastgpt-js-tiktoken-1.0.12.tgz}
+    name: fastgpt-js-tiktoken
+    version: 1.0.12
+    dependencies:
+      base64-js: 1.5.1
     dev: false
