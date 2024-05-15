@@ -2,12 +2,6 @@ import { AuthUserTypeEnum } from './constant';
 
 export type PermissionValueType = number;
 
-export enum ResourceTypeEnum {
-  team = 'team',
-  app = 'app',
-  dataset = 'dataset'
-}
-
 export type AuthResponseType = {
   teamId: string;
   tmbId: string;

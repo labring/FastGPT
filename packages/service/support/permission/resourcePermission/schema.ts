@@ -1,7 +1,8 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { Model, Schema, model, models } from 'mongoose';
 import { ResourcePermissionCollectionName } from './constant';
-import { ResourcePermissionType, ResourceTypeEnum } from '@fastgpt/global/support/permission/type';
+import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
+import { ResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 
 export const ResourcePermissionSchema = new Schema({
   teamId: {
