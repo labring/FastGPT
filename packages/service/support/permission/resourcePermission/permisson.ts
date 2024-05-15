@@ -42,7 +42,7 @@ export class Permission {
   }
 }
 
-export function ContructPermission(permList: PermissionValueType[]) {
+export function constructPermission(permList: PermissionValueType[]) {
   return new Permission(0).add(...permList);
 }
 
@@ -118,7 +118,7 @@ export function removePermission(
 // }
 
 export function hasManage(val: PermissionValueType) {
-  return checkPermission(val, PermissionList['Read']);
+  return checkPermission(val, PermissionList['Manage']);
 }
 
 export function hasWrite(val: PermissionValueType) {

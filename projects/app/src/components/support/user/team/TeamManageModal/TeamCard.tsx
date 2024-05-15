@@ -6,26 +6,30 @@ import { useContextSelector } from 'use-context-selector';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { DragHandleIcon } from '@chakra-ui/icons';
 import MemberTable from './MemberTable';
 import PermissionManage from './PermissionManage';
-
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 type TabListType = Pick<React.ComponentProps<typeof RowTabs>, 'list'>['list'];
 
 function TeamCard() {
   const { toast } = useToast();
-  const setEditTeamData = useContextSelector(TeamContext, (v) => v.setEditTeamData);
+  const { t } = useTranslation();
   const members = useContextSelector(TeamContext, (v) => v.members);
-  const openLeaveConfirm = useContextSelector(TeamContext, (v) => v.openLeaveConfirm);
   const onOpenInvite = useContextSelector(TeamContext, (v) => v.onOpenInvite);
   const onOpenTeamTagsAsync = useContextSelector(TeamContext, (v) => v.onOpenTeamTagsAsync);
+  const setEditTeamData = useContextSelector(TeamContext, (v) => v.setEditTeamData);
   const onLeaveTeam = useContextSelector(TeamContext, (v) => v.onLeaveTeam);
 
-  const { t } = useTranslation();
   const { userInfo, teamPlanStatus } = useUserStore();
+
+  const { ConfirmModal: ConfirmLeaveTeamModal, openConfirm: openLeaveConfirm } = useConfirm({
+    content: t('user.team.member.Confirm Leave')
+  });
+
   const { feConfigs } = useSystemStore();
 
   const Tablist: TabListType = [
@@ -157,6 +161,7 @@ function TeamCard() {
       <Box mt={3} flex={'1 0 0'} overflow={'auto'}>
         {tab === 'member' ? <MemberTable /> : <PermissionManage />}
       </Box>
+      <ConfirmLeaveTeamModal />
     </Flex>
   );
 }

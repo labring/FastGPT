@@ -16,28 +16,35 @@ import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '.';
 import {
   hasManage,
-  ManagePerm
+  constructPermission,
+  PermissionList
 } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateMemberPermission } from '@/web/support/user/team/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
-  const userInfo = useContextSelector(TeamContext, (v) => v.userInfo);
+  const { userInfo } = useUserStore();
   const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
   const members = useContextSelector(TeamContext, (v) =>
     v.members.filter((member) => {
-      return member.tmbId != userInfo.team.tmbId && !hasManage(member.permission);
+      return member.tmbId != userInfo!.team.tmbId && !hasManage(member.permission);
     })
   );
   const [selected, setSelected] = useState<typeof members>([]);
 
   const { mutate: submit } = useRequest({
     mutationFn: async () => {
+      console.log(selected);
       return updateMemberPermission({
-        teamId: userInfo.team.teamId,
-        permission: 7,
-        memberId: selected.map((item) => {
+        teamId: userInfo!.team.teamId,
+        permission: constructPermission([
+          PermissionList['Read'],
+          PermissionList['Write'],
+          PermissionList['Manage']
+        ]).value,
+        memberIds: selected.map((item) => {
           return item.tmbId;
         })
       });

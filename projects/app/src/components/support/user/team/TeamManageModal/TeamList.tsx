@@ -1,19 +1,23 @@
 import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from './index';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import { defaultForm } from './EditModal';
+import EditModal, { defaultForm } from './EditModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useContextSelector } from 'use-context-selector';
+import { TeamContext } from '.';
 
 function TeamList() {
   const { t } = useTranslation();
-  const myTeams = useContextSelector(TeamContext, (v) => v.myTeams);
+  const { userInfo, initUserInfo } = useUserStore();
+  const editTeamData = useContextSelector(TeamContext, (v) => v.editTeamData);
   const setEditTeamData = useContextSelector(TeamContext, (v) => v.setEditTeamData);
+  const myTeams = useContextSelector(TeamContext, (v) => v.myTeams);
+  const refetchTeam = useContextSelector(TeamContext, (v) => v.refetchTeam);
   const onSwitchTeam = useContextSelector(TeamContext, (v) => v.onSwitchTeam);
-  const { userInfo } = useUserStore();
+  // get the list of teams
+
   return (
     <Flex
       flexDirection={'column'}
@@ -32,6 +36,7 @@ function TeamList() {
         <Box flex={['0 0 auto', 1]} fontWeight={'bold'} fontSize={['md', 'lg']}>
           {t('common.Team')}
         </Box>
+        {/* if there is no team */}
         {myTeams.length < 1 && (
           <IconButton
             variant={'ghost'}
@@ -95,6 +100,16 @@ function TeamList() {
           </Flex>
         ))}
       </Box>
+      {!!editTeamData && (
+        <EditModal
+          defaultData={editTeamData}
+          onClose={() => setEditTeamData(undefined)}
+          onSuccess={() => {
+            refetchTeam();
+            initUserInfo();
+          }}
+        />
+      )}
     </Flex>
   );
 }

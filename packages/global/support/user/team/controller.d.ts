@@ -48,6 +48,6 @@ export type InviteMemberResponse = Record<
 
 export type UpdateTeamMemberPermissionProps = {
   teamId: string;
-  memberId: string[];
+  memberIds: string[];
   permission: PermissionValueType;
 };

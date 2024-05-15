@@ -1,25 +1,25 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { Box, Button, Flex, Tag, TagCloseButton, TagLabel, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { TeamContext } from '.';
 import { useContextSelector } from 'use-context-selector';
-import {
-  addPermission,
-  hasManage,
-  type PermissionValueType,
-  ManagePerm
-} from '@fastgpt/service/support/permission/resourcePermission/permisson';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import AddManagerModal from './AddManager';
 import { updateMemberPermission } from '@/web/support/user/team/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import {
+  constructPermission,
+  hasManage,
+  PermissionList
+} from '@fastgpt/service/support/permission/resourcePermission/permisson';
 
 function PermissionManage() {
   const { t } = useTranslation();
   const members = useContextSelector(TeamContext, (v) => v.members);
-  const userInfo = useContextSelector(TeamContext, (v) => v.userInfo);
   const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
+  const { userInfo } = useUserStore();
 
   const {
     isOpen: isOpenAddManager,
@@ -30,9 +30,9 @@ function PermissionManage() {
   const { mutate: removeManager } = useRequest({
     mutationFn: async (memberId: string) => {
       return updateMemberPermission({
-        teamId: userInfo.team.teamId,
-        permission: 6,
-        memberId: [memberId]
+        teamId: userInfo!.team.teamId,
+        permission: constructPermission([PermissionList['Read'], PermissionList['Write']]).value,
+        memberIds: [memberId]
       });
     },
     successToast: 'Success',
@@ -88,7 +88,7 @@ function PermissionManage() {
       </Flex>
       <Flex>
         {members.map((member) => {
-          if (hasManage(member.permission) && member.tmbId != userInfo.team.tmbId) {
+          if (hasManage(member.permission) && member.tmbId != userInfo!.team.tmbId) {
             return (
               <Tag key={member.memberName} mx={'5'}>
                 <Avatar src={member.avatar} w={['18px', '22px']} />

@@ -1,1 +1,1 @@
-export const ResourcePermissionCollectionName = 'resourcePermission';
+export const ResourcePermissionCollectionName = 'resource_permission';

@@ -14,7 +14,7 @@ export type AuthResponseType = {
 
 export type ResourcePermissionType = {
   teamId: string;
-  teamMemberId: string;
+  tmbId: string;
   resourceType: ResourceType;
   permission: PermissionValueType;
 };
