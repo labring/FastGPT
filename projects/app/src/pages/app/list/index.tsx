@@ -16,8 +16,10 @@ import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useI18n } from '@/web/context/I18n';
+import { useTranslation } from 'next-i18next';
 
 const MyApps = () => {
+  const { t } = useTranslation();
   const { toast } = useToast();
   const { appT, commonT } = useI18n();
 
@@ -51,7 +53,7 @@ const MyApps = () => {
         });
       }
     },
-    [toast, loadMyApps]
+    [toast, loadMyApps, t]
   );
 
   /* 加载模型 */

@@ -1,7 +1,6 @@
 import { ReadFileByBufferParams } from '../../common/file/read/type';
 
 export type ReadRawTextProps<T> = {
-  csvSaveRawText?: boolean;
   extension: string;
   buffer: T;
   encoding: string;

@@ -37,13 +37,13 @@ export const readDatasetSourceRawText = async ({
   teamId,
   type,
   sourceId,
-  csvSaveRawText,
+  isQAImport,
   selector
 }: {
   teamId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
-  csvSaveRawText?: boolean;
+  isQAImport?: boolean;
   selector?: string;
 }): Promise<string> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
@@ -51,7 +51,7 @@ export const readDatasetSourceRawText = async ({
       teamId,
       bucketName: BucketNameEnum.dataset,
       fileId: sourceId,
-      csvSaveRawText
+      isQAImport
     });
     return rawText;
   } else if (type === DatasetSourceReadTypeEnum.link) {
@@ -74,21 +74,21 @@ export const readDatasetSourceRawText = async ({
 
 export const rawText2Chunks = ({
   rawText,
-  isBackup,
+  isQAImport,
+  chunkLen = 512,
   ...splitProps
 }: {
   rawText: string;
-  isBackup?: boolean;
+  isQAImport?: boolean;
 } & TextSplitProps) => {
-  const backupImport = rawText.trim().startsWith(rawTextBackupPrefix) || isBackup;
-
-  if (backupImport) {
+  if (isQAImport) {
     const { chunks } = parseCsvTable2Chunks(rawText);
     return chunks;
   }
 
   const { chunks } = splitText2Chunks({
     text: rawText,
+    chunkLen,
     ...splitProps
   });
 

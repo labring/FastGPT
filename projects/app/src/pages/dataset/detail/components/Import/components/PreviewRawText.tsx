@@ -33,14 +33,14 @@ const PreviewRawText = ({
         return getPreviewFileContent({
           type: importType2ReadType(importSource),
           sourceId: previewSource.dbFileId,
-          csvSaveRawText: true
+          isQAImport: true
         });
       }
 
       return getPreviewFileContent({
         type: importType2ReadType(importSource),
         sourceId: previewSource.dbFileId || previewSource.link || previewSource.sourceUrl || '',
-        csvSaveRawText: false,
+        isQAImport: false,
         selector: processParamsForm.getValues('webSelector')
       });
     },

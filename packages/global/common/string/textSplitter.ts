@@ -9,7 +9,9 @@ type SplitProps = {
   overlapRatio?: number;
   customReg?: string[];
 };
-export type TextSplitProps = Omit<SplitProps, 'text'>;
+export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkLen'> & {
+  chunkLen?: number;
+};
 
 type SplitResponse = {
   chunks: string[];

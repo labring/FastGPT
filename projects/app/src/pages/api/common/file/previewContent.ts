@@ -13,12 +13,12 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 export type PreviewContextProps = {
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
-  csvSaveRawText?: boolean;
+  isQAImport?: boolean;
   selector?: string;
 };
 
 async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiResponse<any>) {
-  const { type, sourceId, csvSaveRawText, selector } = req.body;
+  const { type, sourceId, isQAImport, selector } = req.body;
 
   if (!sourceId) {
     throw new Error('fileId is empty');
@@ -35,7 +35,7 @@ async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiRe
     teamId,
     type,
     sourceId: sourceId,
-    csvSaveRawText,
+    isQAImport,
     selector
   });
 

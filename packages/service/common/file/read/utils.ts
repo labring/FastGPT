@@ -30,13 +30,13 @@ export const initMarkdownText = ({
 
 export const readFileRawContent = async ({
   extension,
-  csvSaveRawText,
+  isQAImport,
   teamId,
   buffer,
   encoding,
   metadata
 }: {
-  csvSaveRawText?: boolean;
+  isQAImport?: boolean;
   extension: string;
   teamId: string;
   buffer: Buffer;
@@ -45,7 +45,6 @@ export const readFileRawContent = async ({
 }) => {
   let { rawText, formatText } = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
     extension,
-    csvSaveRawText,
     encoding,
     buffer
   });
@@ -61,7 +60,7 @@ export const readFileRawContent = async ({
 
   if (['csv', 'xlsx'].includes(extension)) {
     // qa data
-    if (rawText.trim().startsWith(rawTextBackupPrefix) || csvSaveRawText) {
+    if (isQAImport) {
       rawText = rawText || '';
     } else {
       rawText = formatText || '';
