@@ -22,7 +22,6 @@ import type {
 import type {
   GetTrainingQueueProps,
   GetTrainingQueueResponse,
-  PostPreviewFilesChunksProps,
   SearchTestProps,
   SearchTestResponse
 } from '@/global/core/dataset/api.d';
@@ -41,6 +40,10 @@ import type { DatasetCollectionsListItemType } from '@/global/core/dataset/type.
 import { PagingData } from '@/types';
 import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/training/getDatasetTrainingQueue';
 import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
+import type {
+  PostPreviewFilesChunksProps,
+  PreviewChunksResponse
+} from '@/pages/api/core/dataset/file/getPreviewChunks';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: { parentId?: string; type?: DatasetTypeEnum }) =>
@@ -139,7 +142,7 @@ export const getDatasetTrainingQueue = (datasetId: string) =>
   });
 
 export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
-  POST<{ q: string; a: string }[]>('/core/dataset/file/getPreviewChunks', data);
+  POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data);
 
 /* ================== file ======================== */
 export const getFileViewUrl = (fileId: string) =>

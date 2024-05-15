@@ -162,7 +162,7 @@ const CustomLinkInput = () => {
           {commonT('Add new')}
         </Button>
         <Button
-          isDisabled={list.length === 0}
+          isDisabled={list.filter((item) => !!item.sourceUrl).length === 0}
           onClick={handleSubmit((data) => {
             setSources(
               data.list

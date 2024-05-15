@@ -170,3 +170,10 @@ export const SearchScoreTypeMap = {
 
 export const CustomCollectionIcon = 'common/linkBlue';
 export const LinkCollectionIcon = 'common/linkBlue';
+
+/* source prefix */
+export enum DatasetSourceReadTypeEnum {
+  fileLocal = 'fileLocal',
+  link = 'link',
+  externalFile = 'externalFile'
+}

@@ -46,7 +46,7 @@ const MyApps = () => {
         loadMyApps(true);
       } catch (err: any) {
         toast({
-          title: err?.message || '删除失败',
+          title: err?.message || t('common.Delete Failed'),
           status: 'error'
         });
       }

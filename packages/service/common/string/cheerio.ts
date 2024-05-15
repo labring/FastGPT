@@ -77,9 +77,8 @@ export const urlsFetch = async ({
           $,
           selector
         });
-        console.log('html====', html);
+
         const md = await htmlToMarkdown(html);
-        console.log('html====', md);
 
         return {
           url,
