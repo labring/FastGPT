@@ -92,22 +92,12 @@ const NodeCard = (props: Props) => {
     content: appT('module.Confirm Sync')
   });
 
-  const checkPlugin = useCallback(
-    (node: FlowNodeItemType | undefined, template: FlowNodeTemplateType) => {
-      if (node?.flowNodeType === 'pluginModule') {
-        return !isEqual(node.inputs, template.inputs) || !isEqual(node.outputs, template.outputs);
-      }
-      return false;
-    },
-    []
-  );
-
   useEffect(() => {
     const fetchPluginModule = async () => {
       if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
         if (!node?.pluginId) return;
         const template = await getPreviewPluginModule(node.pluginId);
-        setHasNewVersion(checkPlugin(node, template));
+        setHasNewVersion(!!template.nodeVersion && node.nodeVersion !== template.nodeVersion);
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType
@@ -117,7 +107,7 @@ const NodeCard = (props: Props) => {
     };
 
     fetchPluginModule();
-  }, [checkPlugin, node]);
+  }, [node]);
 
   const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
 
