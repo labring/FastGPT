@@ -1,12 +1,6 @@
-
 {
-  "parser": "@typescript-eslint/parser", // 确保使用了 TypeScript 解析器
-  "plugins": ["@typescript-eslint"], // 引入 TypeScript 插件
-
   "extends": "next/core-web-vitals",
   "rules": {
-    "react-hooks/rules-of-hooks": 0,
-    "@typescript-eslint/consistent-type-imports": "warn" // 或者 "error" 来强制执行
-
+    "react-hooks/rules-of-hooks": 0
   }
 }

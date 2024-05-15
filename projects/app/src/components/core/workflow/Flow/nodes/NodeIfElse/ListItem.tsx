@@ -50,16 +50,11 @@ const ListItem = ({
 }) => {
   const { t } = useTranslation();
   const { getZoom } = useReactFlow();
+  const onDelEdge = useContextSelector(WorkflowContext, (v) => v.onDelEdge);
+  const handleId = getHandleId(nodeId, 'source', getElseIFLabel(conditionIndex));
 
-  return (
-    <Box
-      ref={provided.innerRef}
-      {...provided.draggableProps}
-      style={{
-        ...provided.draggableProps.style,
-        opacity: snapshot.isDragging ? 0.8 : 1
-      }}
-    >
+  const Render = useMemo(() => {
+    return (
       <Flex
         alignItems={'center'}
         position={'relative'}
@@ -68,7 +63,10 @@ const ListItem = ({
       >
         <Container w={snapshot.isDragging ? '' : 'full'} className="nodrag">
           <Flex mb={4} alignItems={'center'}>
-            {ifElseList.length > 1 && <DragIcon provided={provided} />}
+            <DragIcon
+              visibility={ifElseList.length > 1 ? 'visible' : 'hidden'}
+              provided={provided}
+            />
             <Box color={'black'} fontSize={'lg'} ml={2}>
               {getElseIFLabel(conditionIndex)}
             </Box>
@@ -109,6 +107,10 @@ const ListItem = ({
                 color={'myGray.400'}
                 onClick={() => {
                   onUpdateIfElseList(ifElseList.filter((_, index) => index !== conditionIndex));
+                  onDelEdge({
+                    nodeId,
+                    sourceHandle: handleId
+                  });
                 }}
               />
             )}
@@ -185,21 +187,21 @@ const ListItem = ({
                         onChange={(e) => {
                           onUpdateIfElseList(
                             ifElseList.map((ifElse, index) => {
-                              if (index === conditionIndex) {
-                                return {
-                                  ...ifElse,
-                                  list: ifElse.list.map((item, index) => {
-                                    if (index === i) {
-                                      return {
-                                        ...item,
-                                        value: e
-                                      };
-                                    }
-                                    return item;
-                                  })
-                                };
-                              }
-                              return ifElse;
+                              return {
+                                ...ifElse,
+                                list:
+                                  index === conditionIndex
+                                    ? ifElse.list.map((item, index) => {
+                                        if (index === i) {
+                                          return {
+                                            ...item,
+                                            value: e
+                                          };
+                                        }
+                                        return item;
+                                      })
+                                    : ifElse.list
+                              };
                             })
                           );
                         }}
@@ -263,12 +265,38 @@ const ListItem = ({
         {!snapshot.isDragging && (
           <SourceHandle
             nodeId={nodeId}
-            handleId={getHandleId(nodeId, 'source', getElseIFLabel(conditionIndex))}
+            handleId={handleId}
             position={Position.Right}
             translate={[18, 0]}
           />
         )}
       </Flex>
+    );
+  }, [
+    conditionIndex,
+    conditionItem.condition,
+    conditionItem.list,
+    getZoom,
+    handleId,
+    ifElseList,
+    nodeId,
+    onDelEdge,
+    onUpdateIfElseList,
+    provided,
+    snapshot.isDragging,
+    t
+  ]);
+
+  return (
+    <Box
+      ref={provided.innerRef}
+      {...provided.draggableProps}
+      style={{
+        ...provided.draggableProps.style,
+        opacity: snapshot.isDragging ? 0.8 : 1
+      }}
+    >
+      {Render}
     </Box>
   );
 };
@@ -387,35 +415,39 @@ const ConditionValueInput = ({
     return output.valueType;
   }, [nodeList, variable]);
 
-  if (valueType === WorkflowIOValueTypeEnum.boolean) {
-    return (
-      <MySelect
-        list={[
-          { label: 'True', value: 'true' },
-          { label: 'False', value: 'false' }
-        ]}
-        onchange={onChange}
-        value={value}
-        placeholder={'选择值'}
-        isDisabled={
-          condition === VariableConditionEnum.isEmpty ||
-          condition === VariableConditionEnum.isNotEmpty
-        }
-      />
-    );
-  } else {
-    return (
-      <MyInput
-        value={value}
-        placeholder={'输入值'}
-        w={'100%'}
-        bg={'white'}
-        isDisabled={
-          condition === VariableConditionEnum.isEmpty ||
-          condition === VariableConditionEnum.isNotEmpty
-        }
-        onChange={(e) => onChange(e.target.value)}
-      />
-    );
-  }
+  const Render = useMemo(() => {
+    if (valueType === WorkflowIOValueTypeEnum.boolean) {
+      return (
+        <MySelect
+          list={[
+            { label: 'True', value: 'true' },
+            { label: 'False', value: 'false' }
+          ]}
+          onchange={onChange}
+          value={value}
+          placeholder={'选择值'}
+          isDisabled={
+            condition === VariableConditionEnum.isEmpty ||
+            condition === VariableConditionEnum.isNotEmpty
+          }
+        />
+      );
+    } else {
+      return (
+        <MyInput
+          value={value}
+          placeholder={'输入值'}
+          w={'100%'}
+          bg={'white'}
+          isDisabled={
+            condition === VariableConditionEnum.isEmpty ||
+            condition === VariableConditionEnum.isNotEmpty
+          }
+          onChange={(e) => onChange(e.target.value)}
+        />
+      );
+    }
+  }, [condition, onChange, value, valueType]);
+
+  return Render;
 };

@@ -1,6 +1,17 @@
 {
+  "Common Dataset": "通用知识库",
+  "Common Dataset Desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
   "Confirm to rebuild embedding tip": "确认为知识库切换索引？\n切换索引是一个非常重量的操作，需要对您知识库内所有数据进行重新索引，时间可能较长，请确保账号内剩余积分充足。",
+  "External File": "外部文件库",
+  "External file Dataset Desc": "可以从外部文件库导入文件构建知识库，文件不会进行二次存储",
+  "External id": "文件阅读ID",
+  "External read url": "外部预览地址",
+  "External url": "文件访问URL",
+  "Folder Dataset": "文件夹",
   "Rebuild embedding start tip": "切换索引模型任务已开始",
   "Rebuilding index count": "重建中索引数量: {{count}}",
-  "The knowledge base has indexes that are being trained or being rebuilt": "知识库有训练中或正在重建的索引"
+  "The knowledge base has indexes that are being trained or being rebuilt": "知识库有训练中或正在重建的索引",
+  "Website Dataset": "Web 站点同步",
+  "Website Dataset Desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
+  "filename": "文件名"
 }

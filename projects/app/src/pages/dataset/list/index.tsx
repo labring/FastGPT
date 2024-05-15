@@ -1,7 +1,6 @@
-import React, { useMemo, useRef } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Box, Flex, Grid, useDisclosure, Image, Button } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import PageContainer from '@/components/PageContainer';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { AddIcon } from '@chakra-ui/icons';
@@ -35,28 +34,30 @@ import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { xmlDownloadFetch } from '@/web/common/api/xmlFetch';
+import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
 
-const Kb = () => {
+const Dataset = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
   const router = useRouter();
   const { parentId } = router.query as { parentId: string };
   const { setLoading } = useSystemStore();
   const { userInfo } = useUserStore();
+  const { myDatasets, loadMyDatasets, setMyDatasets } = useDatasetStore();
 
   const DeleteTipsMap = useRef({
     [DatasetTypeEnum.folder]: t('dataset.deleteFolderTips'),
     [DatasetTypeEnum.dataset]: t('core.dataset.Delete Confirm'),
-    [DatasetTypeEnum.websiteDataset]: t('core.dataset.Delete Confirm')
+    [DatasetTypeEnum.websiteDataset]: t('core.dataset.Delete Confirm'),
+    [DatasetTypeEnum.externalFile]: t('core.dataset.Delete Confirm')
   });
 
   const { openConfirm, ConfirmModal } = useConfirm({
     type: 'delete'
   });
-  const { myDatasets, loadDatasets, setDatasets, updateDataset } = useDatasetStore();
   const { onOpenModal: onOpenTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('Rename')
   });
@@ -78,7 +79,7 @@ const Kb = () => {
       return id;
     },
     onSuccess(id: string) {
-      setDatasets(myDatasets.filter((item) => item._id !== id));
+      setMyDatasets(myDatasets.filter((item) => item._id !== id));
     },
     onSettled() {
       setLoading(false);
@@ -112,7 +113,7 @@ const Kb = () => {
   const { data, refetch, isFetching } = useQuery(
     ['loadDataset', parentId],
     () => {
-      return Promise.all([loadDatasets(parentId), getDatasetPaths(parentId)]);
+      return Promise.all([loadMyDatasets(parentId), getDatasetPaths(parentId)]);
     },
     {
       onError(err) {
@@ -139,7 +140,10 @@ const Kb = () => {
   );
 
   return (
-    <PageContainer isLoading={isFetching} insertProps={{ px: [5, '48px'] }}>
+    <PageContainer
+      isLoading={myDatasets.length === 0 && isFetching}
+      insertProps={{ px: [5, '48px'] }}
+    >
       <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         {/* url path */}
         <ParentPaths
@@ -317,7 +321,10 @@ const Kb = () => {
                           defaultVal: dataset.name,
                           onSuccess: (val) => {
                             if (val === dataset.name || !val) return;
-                            updateDataset({ id: dataset._id, name: val });
+                            putDatasetById({
+                              id: dataset._id,
+                              name: val
+                            });
                           }
                         })
                     },
@@ -351,7 +358,7 @@ const Kb = () => {
                               </Flex>
                             ),
                             onClick: () => {
-                              updateDataset({
+                              putDatasetById({
                                 id: dataset._id,
                                 permission: PermissionTypeEnum.public
                               });
@@ -371,7 +378,7 @@ const Kb = () => {
                               </Flex>
                             ),
                             onClick: () => {
-                              updateDataset({
+                              putDatasetById({
                                 id: dataset._id,
                                 permission: PermissionTypeEnum.private
                               });
@@ -476,9 +483,9 @@ const Kb = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content))
+      ...(await serviceSideProps(content, ['dataset']))
     }
   };
 }
 
-export default Kb;
+export default Dataset;

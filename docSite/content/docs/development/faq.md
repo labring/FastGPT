@@ -118,4 +118,5 @@ OneAPI 的 API Key 配置错误，需要修改`OPENAI_API_KEY`环境变量，并
 ### bad_response_status_code bad response status code 503
 
 1. 模型服务不可用
-2. ....
+2. 模型接口参数异常（温度、max token等可能不适配）
+3. ....

@@ -89,7 +89,8 @@ const DatasetSchema = new Schema({
         default: 'body'
       }
     }
-  }
+  },
+  externalReadUrl: String
 });
 
 try {

@@ -20,9 +20,11 @@ import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants'
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import AIModelSelector from '@/components/Select/AIModelSelector';
+import { useI18n } from '@/web/context/I18n';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
+  const { datasetT } = useI18n();
   const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
@@ -102,25 +104,31 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             gridTemplateColumns={'repeat(1,1fr)'}
             list={[
               {
-                title: t('core.dataset.Common Dataset'),
+                title: datasetT('Common Dataset'),
                 value: DatasetTypeEnum.dataset,
                 icon: 'core/dataset/commonDataset',
-                desc: t('core.dataset.Common Dataset Desc')
+                desc: datasetT('Common Dataset Desc')
               },
               ...(feConfigs.isPlus
                 ? [
                     {
-                      title: t('core.dataset.Website Dataset'),
+                      title: datasetT('Website Dataset'),
                       value: DatasetTypeEnum.websiteDataset,
                       icon: 'core/dataset/websiteDataset',
-                      desc: t('core.dataset.Website Dataset Desc')
+                      desc: datasetT('Website Dataset Desc')
                     }
+                    // {
+                    //   title: datasetT('External File'),
+                    //   value: DatasetTypeEnum.externalFile,
+                    //   icon: 'core/dataset/websiteDataset',
+                    //   desc: datasetT('External file Dataset Desc')
+                    // }
                   ]
                 : [])
             ]}
             value={getValues('type')}
             onChange={(e) => {
-              setValue('type', e as `${DatasetTypeEnum}`);
+              setValue('type', e as DatasetTypeEnum);
               setRefresh(!refresh);
             }}
           />
