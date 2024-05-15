@@ -151,12 +151,12 @@ export const readFileContentFromMongo = async ({
   teamId,
   bucketName,
   fileId,
-  csvFormat = false
+  csvSaveRawText = false
 }: {
   teamId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
-  csvFormat?: boolean;
+  csvSaveRawText?: boolean;
 }): Promise<{
   rawText: string;
   filename: string;
@@ -198,7 +198,7 @@ export const readFileContentFromMongo = async ({
 
   const { rawText } = await readFileRawContent({
     extension,
-    csvFormat,
+    csvSaveRawText,
     teamId,
     buffer: fileBuffers,
     encoding,

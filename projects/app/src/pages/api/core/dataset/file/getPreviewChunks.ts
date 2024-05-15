@@ -13,7 +13,7 @@ export type PostPreviewFilesChunksProps = {
   overlapRatio: number;
   customSplitChar?: string;
   selector?: string;
-  csvFormat?: boolean;
+  csvSaveRawText?: boolean;
 };
 export type PreviewChunksResponse = {
   q: string;
@@ -24,7 +24,7 @@ async function handler(
   req: ApiRequestProps<PostPreviewFilesChunksProps>,
   res: NextApiResponse<any>
 ): Promise<PreviewChunksResponse> {
-  const { type, sourceId, chunkSize, customSplitChar, overlapRatio, selector, csvFormat } =
+  const { type, sourceId, chunkSize, customSplitChar, overlapRatio, selector, csvSaveRawText } =
     req.body;
 
   if (!sourceId) {
@@ -46,7 +46,7 @@ async function handler(
     type,
     sourceId: sourceId,
     selector,
-    csvFormat
+    csvSaveRawText
   });
 
   return rawText2Chunks({

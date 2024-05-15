@@ -49,7 +49,7 @@ const PreviewChunks = ({
           overlapRatio: chunkOverlapRatio,
           customSplitChar: processParamsForm.getValues('customSplitChar'),
           selector: processParamsForm.getValues('webSelector'),
-          csvFormat: false
+          csvSaveRawText: true
         });
       }
 
@@ -60,7 +60,7 @@ const PreviewChunks = ({
         overlapRatio: chunkOverlapRatio,
         customSplitChar: processParamsForm.getValues('customSplitChar'),
         selector: processParamsForm.getValues('webSelector'),
-        csvFormat: true
+        csvSaveRawText: false
       });
     },
     {

@@ -5,6 +5,7 @@ import { addHours } from 'date-fns';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
 import { ReadFileResponse } from '../../../worker/file/type';
+import { rawTextBackupPrefix } from '@fastgpt/global/core/dataset/read';
 
 export const initMarkdownText = ({
   teamId,
@@ -29,36 +30,45 @@ export const initMarkdownText = ({
 
 export const readFileRawContent = async ({
   extension,
-  csvFormat,
+  csvSaveRawText,
   teamId,
   buffer,
   encoding,
   metadata
 }: {
-  csvFormat?: boolean;
+  csvSaveRawText?: boolean;
   extension: string;
   teamId: string;
   buffer: Buffer;
   encoding: string;
   metadata?: Record<string, any>;
 }) => {
-  const result = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
+  let { rawText, formatText } = await runWorker<ReadFileResponse>(WorkerNameEnum.readFile, {
     extension,
-    csvFormat,
+    csvSaveRawText,
     encoding,
     buffer
   });
 
   // markdown data format
   if (['md', 'html', 'docx'].includes(extension)) {
-    result.rawText = await initMarkdownText({
+    rawText = await initMarkdownText({
       teamId: teamId,
-      md: result.rawText,
+      md: rawText,
       metadata: metadata
     });
   }
 
-  return result;
+  if (['csv', 'xlsx'].includes(extension)) {
+    // qa data
+    if (rawText.trim().startsWith(rawTextBackupPrefix) || csvSaveRawText) {
+      rawText = rawText || '';
+    } else {
+      rawText = formatText || '';
+    }
+  }
+
+  return { rawText };
 };
 
 export const htmlToMarkdown = async (html?: string | null) => {

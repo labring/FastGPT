@@ -5,6 +5,28 @@ import { urlsFetch } from '../../common/string/cheerio';
 import { rawTextBackupPrefix } from '@fastgpt/global/core/dataset/read';
 import { parseCsvTable2Chunks } from './training/utils';
 import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
+import axios from 'axios';
+import { readFileRawContent } from '../../common/file/read/utils';
+
+export const readFileRawTextByUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
+  const response = await axios({
+    method: 'get',
+    url: url,
+    responseType: 'arraybuffer'
+  });
+  const extension = url.split('.')?.pop()?.toLowerCase() || '';
+
+  const buffer = Buffer.from(response.data, 'binary');
+
+  const { rawText } = await readFileRawContent({
+    extension,
+    teamId,
+    buffer,
+    encoding: 'utf-8'
+  });
+
+  return rawText;
+};
 
 /* 
     fileId - local file, read from mongo
@@ -15,21 +37,21 @@ export const readDatasetSourceRawText = async ({
   teamId,
   type,
   sourceId,
-  csvFormat,
+  csvSaveRawText,
   selector
 }: {
   teamId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
-  csvFormat?: boolean;
+  csvSaveRawText?: boolean;
   selector?: string;
-}) => {
+}): Promise<string> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     const { rawText } = await readFileContentFromMongo({
       teamId,
       bucketName: BucketNameEnum.dataset,
       fileId: sourceId,
-      csvFormat
+      csvSaveRawText
     });
     return rawText;
   } else if (type === DatasetSourceReadTypeEnum.link) {
@@ -40,7 +62,11 @@ export const readDatasetSourceRawText = async ({
 
     return result[0]?.content || '';
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
-    return '22';
+    const rawText = await readFileRawTextByUrl({
+      teamId,
+      url: sourceId
+    });
+    return rawText;
   }
 
   return '';
