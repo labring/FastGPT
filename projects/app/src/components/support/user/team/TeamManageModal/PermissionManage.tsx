@@ -1,5 +1,15 @@
 import React from 'react';
-import { Box, Button, Flex, Tag, TagCloseButton, TagLabel, useDisclosure } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  Tag,
+  TagCloseButton,
+  TagLabel,
+  TagLeftIcon,
+  TagRightIcon,
+  useDisclosure
+} from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { TeamContext } from '.';
 import { useContextSelector } from 'use-context-selector';
@@ -14,6 +24,8 @@ import {
   hasManage,
   PermissionList
 } from '@fastgpt/service/support/permission/resourcePermission/permisson';
+// import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
+import { DeleteIcon } from '@chakra-ui/icons';
 
 function PermissionManage() {
   const { t } = useTranslation();
@@ -63,11 +75,12 @@ function PermissionManage() {
             {t('user.team.role.Admin')}
           </Box>
           <Box
-            fontSize={['sm', 'md']}
+            fontSize={['xs']}
             bgColor={'myGray.200'}
             alignItems={'center'}
-            mx={'5'}
-            px={'2'}
+            alignContent={'center'}
+            mx={'6'}
+            px={'3'}
             borderRadius={'sm'}
           >
             可邀请, 删除成员
@@ -86,16 +99,18 @@ function PermissionManage() {
           添加管理员
         </Button>
       </Flex>
-      <Flex>
+      <Flex mt="4" mx="4">
         {members.map((member) => {
           if (hasManage(member.permission) && member.tmbId != userInfo!.team.tmbId) {
             return (
-              <Tag key={member.memberName} mx={'5'}>
-                <Avatar src={member.avatar} w={['18px', '22px']} />
-                <TagLabel fontSize={'md'} alignItems={'center'}>
+              <Tag key={member.memberName} mx={'2'} px="2" py="1">
+                <Avatar src={member.avatar} w={['28px']} />
+                <TagLabel fontSize={'md'} alignItems="center" px="4">
                   {member.memberName}
                 </TagLabel>
-                <TagCloseButton
+                <TagRightIcon
+                  as={DeleteIcon}
+                  cursor="pointer"
                   onClick={() => {
                     removeManager(member.tmbId);
                   }}

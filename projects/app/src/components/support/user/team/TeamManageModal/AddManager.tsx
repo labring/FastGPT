@@ -6,7 +6,8 @@ import {
   ModalFooter,
   Grid,
   Input,
-  Flex
+  Flex,
+  Checkbox
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -60,7 +61,8 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     <MyModal
       isOpen
       iconSrc="/imgs/modal/team.svg"
-      maxW={['90vw', '900px']}
+      maxW={['90vw']}
+      minW={['900px']}
       overflow={'unset'}
       title={
         <Box>
@@ -70,59 +72,55 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody>
-        <Box mx="4">
-          <Grid
-            templateColumns="1fr 1fr"
-            gap="2"
-            // mx="auto"
-          >
-            <Flex flexDirection="column" border="sm" p="2">
-              {/* WARN: Searching is not implemented */}
-              <Input placeholder="查找用户" />
-              <Flex flexDirection="column">
-                {members.map((member) => {
-                  return (
-                    <Flex
-                      p="1"
-                      m="2"
-                      flexDirection="row"
-                      bg="myGray.50"
-                      onClick={() => {
+        <Grid templateColumns="1fr 1fr" gap="2" minH="400px">
+          <Flex flexDirection="column" border="sm" p="2">
+            {/* TODO: Searching is not implemented */}
+            <Input placeholder="查找用户" bg={'myGray.100'} />
+            <Flex flexDirection="column">
+              {members.map((member) => {
+                return (
+                  <Flex p="1" m="2" flexDirection="row" bg="myGray.50">
+                    <Checkbox
+                      checked={!selected.includes(member)}
+                      onClick={(e) => {
+                        e.stopPropagation();
                         if (selected.indexOf(member) == -1) {
                           setSelected([...selected, member]);
+                        } else {
+                          setSelected([...selected.filter((item) => item.tmbId != member.tmbId)]);
                         }
                       }}
-                    >
-                      <Avatar src={member.avatar} w={['18px', '22px']} />
-                      {member.memberName}
-                    </Flex>
-                  );
-                })}
-              </Flex>
-            </Flex>
-            <Flex flexDirection="column" border="sm" p="2">
-              {selected.map((member) => {
-                return (
-                  <Flex
-                    p="1"
-                    m="2"
-                    flexDirection="row"
-                    bg="myGray.50"
-                    onClick={() => {
-                      setSelected([...selected.filter((item) => item.tmbId != member.tmbId)]);
-                    }}
-                  >
+                    />
+
                     <Avatar src={member.avatar} w={['18px', '22px']} />
                     {member.memberName}
                   </Flex>
                 );
               })}
             </Flex>
-          </Grid>
-        </Box>
+          </Flex>
+          <Flex flexDirection="column" border="sm" p="2">
+            {selected.map((member) => {
+              return (
+                <Flex
+                  p="1"
+                  m="2"
+                  flexDirection="row"
+                  bg="myGray.50"
+                  onClick={() => {
+                    setSelected([...selected.filter((item) => item.tmbId != member.tmbId)]);
+                  }}
+                >
+                  <Avatar src={member.avatar} w={['18px', '22px']} />
+                  {member.memberName}
+                </Flex>
+              );
+            })}
+          </Flex>
+        </Grid>
       </ModalBody>
-      <ModalFooter>
-        <Button w={'100%'} h={'34px'} onClick={submit}>
+      <ModalFooter alignItems="flex-end">
+        <Button h={'30px'} onClick={submit}>
           确定
         </Button>
       </ModalFooter>
