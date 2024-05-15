@@ -75,7 +75,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
       name: '流程开始',
       intro: '',
       avatar: '/imgs/workflow/userChatInput.svg',
-      flowNodeType: 'workflowStart',
+      flowNodeType: FlowNodeTypeEnum.workflowStart,
       position: {
         x: 558.4082376415505,
         y: 123.72387429194112
@@ -111,7 +111,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
           name: 'AI 对话',
           intro: 'AI 大模型对话',
           avatar: '/imgs/workflow/AI.png',
-          flowNodeType: 'chatNode',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
           showStatus: true,
           position: {
             x: 1106.3238387960757,
@@ -244,7 +244,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
           name: 'AI 对话',
           intro: 'AI 大模型对话',
           avatar: '/imgs/workflow/AI.png',
-          flowNodeType: 'chatNode',
+          flowNodeType: FlowNodeTypeEnum.chatNode,
           showStatus: true,
           position: {
             x: 1638.509551404687,
@@ -364,7 +364,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
           name: '知识库搜索',
           intro: '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容',
           avatar: '/imgs/workflow/db.png',
-          flowNodeType: 'datasetSearchNode',
+          flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
           showStatus: true,
           position: {
             x: 918.5901682164496,
@@ -483,7 +483,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
                 name: '知识库搜索',
                 intro: '调用“语义检索”和“全文检索”能力，从“知识库”中查找可能与问题相关的参考内容',
                 avatar: '/imgs/workflow/db.png',
-                flowNodeType: 'datasetSearchNode',
+                flowNodeType: FlowNodeTypeEnum.datasetSearchNode,
                 showStatus: true,
                 position: {
                   x: 500,
@@ -626,7 +626,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
           name: '工具调用（实验）',
           intro: '通过AI模型自动选择一个或多个功能块进行调用，也可以对插件进行调用。',
           avatar: '/imgs/workflow/tool.svg',
-          flowNodeType: 'tools',
+          flowNodeType: FlowNodeTypeEnum.tools,
           showStatus: true,
           position: {
             x: 1062.1738942532802,

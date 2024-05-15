@@ -45,7 +45,7 @@ import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime
 import { dispatchSystemConfig } from './init/systemConfig';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 
-const callbackMap: Record<`${FlowNodeTypeEnum}`, Function> = {
+const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
   [FlowNodeTypeEnum.answerNode]: dispatchAnswer,
   [FlowNodeTypeEnum.chatNode]: dispatchChatCompletion,

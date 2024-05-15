@@ -91,7 +91,7 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       pluginId: context?.query?.pluginId || '',
-      ...(await serviceSideProps(context))
+      ...(await serviceSideProps(context, ['app', 'workflow']))
     }
   };
 }

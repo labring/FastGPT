@@ -36,7 +36,6 @@ export const DatasetSearchModule: FlowNodeTemplateType = {
       label: 'core.module.input.label.Select dataset',
       value: [],
       valueType: WorkflowIOValueTypeEnum.selectDataset,
-      list: [],
       required: true
     },
     {

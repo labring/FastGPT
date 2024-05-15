@@ -4,6 +4,7 @@ import dataset from '../../i18n/zh/dataset.json';
 import app from '../../i18n/zh/app.json';
 import file from '../../i18n/zh/file.json';
 import publish from '../../i18n/zh/publish.json';
+import workflow from '../../i18n/zh/workflow.json';
 
 export interface I18nNamespaces {
   common: typeof common;
@@ -11,6 +12,7 @@ export interface I18nNamespaces {
   app: typeof app;
   file: typeof file;
   publish: typeof publish;
+  workflow: typeof workflow;
 }
 
 export type I18nNsType = (keyof I18nNamespaces)[];

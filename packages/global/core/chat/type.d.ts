@@ -139,7 +139,7 @@ export type ChatHistoryItemType = HistoryItemType & {
 /* ------- response data ------------ */
 export type ChatHistoryItemResType = DispatchNodeResponseType & {
   nodeId: string;
-  moduleType: `${FlowNodeTypeEnum}`;
+  moduleType: FlowNodeTypeEnum;
   moduleName: string;
 };
 
