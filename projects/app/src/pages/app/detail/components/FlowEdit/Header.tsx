@@ -131,7 +131,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
       return null;
     },
-    [isShowVersionHistories, edges, updateAppDetail, app._id, t]
+    [isV2Workflow, isShowVersionHistories, edges, updateAppDetail, app._id, t]
   );
 
   const onclickPublish = useCallback(async () => {

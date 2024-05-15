@@ -146,17 +146,9 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               if (!input) return;
 
               setEditField({
+                ...input,
                 inputType: input.renderTypeList[0],
-                valueType: input.valueType,
-                key: input.key,
-                label: input.label,
-                description: input.description,
-                isToolInput: !!input.toolDescription,
-                defaultValue: input.defaultValue,
-                maxLength: input.maxLength,
-                max: input.max,
-                min: input.min,
-                dynamicParamDefaultValue: input.dynamicParamDefaultValue
+                isToolInput: !!input.toolDescription
               });
             }}
             onEdit={({ data, changeKey }) => {
@@ -165,20 +157,14 @@ const NodePluginInput = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
               const output = outputs.find((output) => output.key === editField.key);
 
               const newInput: FlowNodeInputItemType = {
+                ...data,
                 key: data.key,
-                valueType: data.valueType,
                 label: data.label || '',
                 renderTypeList: [data.inputType],
-                required: data.required,
-                description: data.description,
                 toolDescription: data.isToolInput ? data.description : undefined,
                 canEdit: true,
                 value: data.defaultValue,
-                editField: dynamicInputEditField,
-                maxLength: data.maxLength,
-                max: data.max,
-                min: data.min,
-                dynamicParamDefaultValue: data.dynamicParamDefaultValue
+                editField: dynamicInputEditField
               };
               const newOutput: FlowNodeOutputItemType = {
                 ...(output as FlowNodeOutputItemType),

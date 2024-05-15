@@ -24,6 +24,8 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 import dynamic from 'next/dynamic';
+import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput/index';
+import { useI18n } from '@/web/context/I18n';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 const EmptyTip = dynamic(() => import('@fastgpt/web/components/common/EmptyTip'));
@@ -63,6 +65,7 @@ const FieldEditModal = ({
   onSubmit: (e: { data: EditNodeFieldType; changeKey: boolean }) => void;
 }) => {
   const { t } = useTranslation();
+  const { workflowT } = useI18n();
   const { toast } = useToast();
   const showDynamicInputSelect =
     !keys.includes(NodeInputKeyEnum.addInputParam) ||
@@ -274,7 +277,6 @@ const FieldEditModal = ({
   );
   const onSubmitError = useCallback(
     (e: Object) => {
-      console.log(e);
       for (const item of Object.values(e)) {
         if (item.message) {
           toast({
@@ -293,7 +295,6 @@ const FieldEditModal = ({
       isOpen={true}
       iconSrc="/imgs/workflow/extract.png"
       title={t('core.module.edit.Field Edit')}
-      onClose={onClose}
       maxW={['90vw', showInputTypeSelect ? '800px' : '400px']}
       w={'100%'}
       overflow={'unset'}
@@ -364,6 +365,10 @@ const FieldEditModal = ({
           {/* input type config */}
           {showInputTypeSelect && (
             <Stack flex={1} gap={5}>
+              <Flex alignItems={'center'}>
+                <Box flex={'0 0 70px'}>{workflowT('Field required')}</Box>
+                <Switch {...register('required')} />
+              </Flex>
               {showToolInput && (
                 <Flex alignItems={'center'}>
                   <Box flex={'0 0 70px'}>工具参数</Box>
@@ -426,10 +431,16 @@ const FieldEditModal = ({
               {showMaxLenInput && (
                 <Flex alignItems={'center'}>
                   <Box flex={'0 0 70px'}>{t('core.module.Max Length')}</Box>
-                  <Input
+                  <MyNumberInput
+                    flex={'1 0 0'}
                     bg={'myGray.50'}
                     placeholder={t('core.module.Max Length placeholder')}
-                    {...register('maxLength')}
+                    value={maxLength}
+                    onChange={(e) => {
+                      // @ts-ignore
+                      setValue('maxLength', e);
+                    }}
+                    // {...register('maxLength')}
                   />
                 </Flex>
               )}
@@ -437,11 +448,27 @@ const FieldEditModal = ({
                 <>
                   <Flex alignItems={'center'}>
                     <Box flex={'0 0 70px'}>{t('core.module.Max Value')}</Box>
-                    <Input bg={'myGray.50'} type={'number'} {...register('max')} />
+                    <MyNumberInput
+                      flex={'1 0 0'}
+                      bg={'myGray.50'}
+                      value={watch('max')}
+                      onChange={(e) => {
+                        // @ts-ignore
+                        setValue('max', e);
+                      }}
+                    />
                   </Flex>
                   <Flex alignItems={'center'}>
                     <Box flex={'0 0 70px'}>{t('core.module.Min Value')}</Box>
-                    <Input bg={'myGray.50'} type={'number'} {...register('min')} />
+                    <MyNumberInput
+                      flex={'1 0 0'}
+                      bg={'myGray.50'}
+                      value={watch('min')}
+                      onChange={(e) => {
+                        // @ts-ignore
+                        setValue('min', e);
+                      }}
+                    />
                   </Flex>
                 </>
               )}

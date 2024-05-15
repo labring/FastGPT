@@ -22,7 +22,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
 
 export type FlowNodeCommonType = {
-  flowNodeType: `${FlowNodeTypeEnum}`; // render node card
+  flowNodeType: FlowNodeTypeEnum; // render node card
 
   avatar?: string;
   name: string;

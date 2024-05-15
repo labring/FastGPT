@@ -90,17 +90,13 @@ const InputLabel = ({ nodeId, input }: Props) => {
                 _hover={{ color: 'primary.500' }}
                 onClick={() =>
                   setEditField({
+                    ...input,
                     inputType: renderTypeList[0],
                     valueType: valueType,
                     key,
                     label,
                     description,
-                    isToolInput: !!toolDescription,
-                    defaultValue: input.defaultValue,
-                    maxLength: input.maxLength,
-                    max: input.max,
-                    min: input.min,
-                    dynamicParamDefaultValue: input.dynamicParamDefaultValue
+                    isToolInput: !!toolDescription
                   })
                 }
               />

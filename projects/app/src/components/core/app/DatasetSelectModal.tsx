@@ -96,7 +96,7 @@ export const DatasetSelectModal = ({
                         _hover={{ color: 'red.500' }}
                         onClick={() => {
                           setSelectedDatasets((state) =>
-                            state.filter((kb) => kb.datasetId !== item._id)
+                            state.filter((dataset) => dataset.datasetId !== item._id)
                           );
                         }}
                       />
@@ -141,7 +141,9 @@ export const DatasetSelectModal = ({
                         if (item.type === DatasetTypeEnum.folder) {
                           setParentId(item._id);
                         } else {
-                          const vectorModel = selectedDatasets[0]?.vectorModel?.model;
+                          const vectorModel = datasets.find(
+                            (dataset) => dataset._id === selectedDatasets[0]?.datasetId
+                          )?.vectorModel?.model;
 
                           if (vectorModel && vectorModel !== item.vectorModel.model) {
                             return toast({
@@ -149,10 +151,7 @@ export const DatasetSelectModal = ({
                               title: t('dataset.Select Dataset Tips')
                             });
                           }
-                          setSelectedDatasets((state) => [
-                            ...state,
-                            { datasetId: item._id, vectorModel: item.vectorModel }
-                          ]);
+                          setSelectedDatasets((state) => [...state, { datasetId: item._id }]);
                         }
                       }}
                     >

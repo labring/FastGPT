@@ -196,7 +196,10 @@ export async function getServerSideProps(context: any) {
   const currentTab = context?.query?.currentTab || TabEnum.simpleEdit;
 
   return {
-    props: { currentTab, ...(await serviceSideProps(context, ['app', 'file', 'publish'])) }
+    props: {
+      currentTab,
+      ...(await serviceSideProps(context, ['app', 'file', 'publish', 'workflow']))
+    }
   };
 }
 

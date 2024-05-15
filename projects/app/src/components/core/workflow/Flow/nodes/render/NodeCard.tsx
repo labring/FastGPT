@@ -55,7 +55,6 @@ const NodeCard = (props: Props) => {
     maxW = '600px',
     nodeId,
     flowNodeType,
-    inputs,
     selected,
     menuForbid,
     isTool = false,
