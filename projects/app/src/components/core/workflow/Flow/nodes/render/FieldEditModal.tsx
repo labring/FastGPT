@@ -25,6 +25,7 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 
 import dynamic from 'next/dynamic';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput/index';
+import { useI18n } from '@/web/context/I18n';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 const EmptyTip = dynamic(() => import('@fastgpt/web/components/common/EmptyTip'));
@@ -64,6 +65,7 @@ const FieldEditModal = ({
   onSubmit: (e: { data: EditNodeFieldType; changeKey: boolean }) => void;
 }) => {
   const { t } = useTranslation();
+  const { workflowT } = useI18n();
   const { toast } = useToast();
   const showDynamicInputSelect =
     !keys.includes(NodeInputKeyEnum.addInputParam) ||
@@ -363,6 +365,10 @@ const FieldEditModal = ({
           {/* input type config */}
           {showInputTypeSelect && (
             <Stack flex={1} gap={5}>
+              <Flex alignItems={'center'}>
+                <Box flex={'0 0 70px'}>{workflowT('Field required')}</Box>
+                <Switch {...register('required')} />
+              </Flex>
               {showToolInput && (
                 <Flex alignItems={'center'}>
                   <Box flex={'0 0 70px'}>工具参数</Box>
