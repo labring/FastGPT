@@ -11,14 +11,16 @@ export type DatasetUpdateBody = {
   intro?: string;
   permission?: DatasetSchemaType['permission'];
   agentModel?: LLMModelItemType;
-  websiteConfig?: DatasetSchemaType['websiteConfig'];
   status?: DatasetSchemaType['status'];
+
+  websiteConfig?: DatasetSchemaType['websiteConfig'];
+  externalReadUrl?: DatasetSchemaType['externalReadUrl'];
 };
 
 /* ================= collection ===================== */
 export type DatasetCollectionChunkMetadataType = {
   parentId?: string;
-  trainingType?: `${TrainingModeEnum}`;
+  trainingType?: TrainingModeEnum;
   chunkSize?: number;
   chunkSplitter?: string;
   qaPrompt?: string;
@@ -78,7 +80,7 @@ export type PostWebsiteSyncParams = {
 export type PushDatasetDataProps = {
   collectionId: string;
   data: PushDatasetDataChunkProps[];
-  trainingMode: `${TrainingModeEnum}`;
+  trainingMode: TrainingModeEnum;
   prompt?: string;
   billId?: string;
 };

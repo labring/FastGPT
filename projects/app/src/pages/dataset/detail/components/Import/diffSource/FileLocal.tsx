@@ -1,13 +1,14 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { ImportDataComponentProps, ImportSourceItemType } from '@/web/core/dataset/type.d';
+import { ImportSourceItemType } from '@/web/core/dataset/type.d';
 import { Box, Button } from '@chakra-ui/react';
 import FileSelector from '../components/FileSelector';
 import { useTranslation } from 'next-i18next';
-import { useImportStore } from '../Provider';
 
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { RenderUploadFiles } from '../components/RenderFiles';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetImportContext } from '../Context';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
@@ -16,11 +17,13 @@ const Upload = dynamic(() => import('../commonProgress/Upload'));
 
 const fileType = '.txt, .docx, .csv, .xlsx, .pdf, .md, .html, .pptx';
 
-const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {
+const FileLocal = () => {
+  const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
+
   return (
     <>
-      {activeStep === 0 && <SelectFile goToNext={goToNext} />}
-      {activeStep === 1 && <DataProcess showPreviewChunks goToNext={goToNext} />}
+      {activeStep === 0 && <SelectFile />}
+      {activeStep === 1 && <DataProcess showPreviewChunks />}
       {activeStep === 2 && <Upload />}
     </>
   );
@@ -28,9 +31,9 @@ const FileLocal = ({ activeStep, goToNext }: ImportDataComponentProps) => {
 
 export default React.memo(FileLocal);
 
-const SelectFile = React.memo(function SelectFile({ goToNext }: { goToNext: () => void }) {
+const SelectFile = React.memo(function SelectFile() {
   const { t } = useTranslation();
-  const { sources, setSources } = useImportStore();
+  const { goToNext, sources, setSources } = useContextSelector(DatasetImportContext, (v) => v);
   const [selectFiles, setSelectFiles] = useState<ImportSourceItemType[]>(
     sources.map((source) => ({
       isUploading: false,

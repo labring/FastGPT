@@ -1,24 +1,25 @@
 import React, { useCallback, useEffect } from 'react';
-import { ImportDataComponentProps } from '@/web/core/dataset/type.d';
 
 import dynamic from 'next/dynamic';
-import { useImportStore } from '../Provider';
 import { useTranslation } from 'next-i18next';
 import { useForm } from 'react-hook-form';
 import { Box, Button, Flex, Input, Textarea } from '@chakra-ui/react';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import Loading from '@fastgpt/web/components/common/MyLoading';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetImportContext } from '../Context';
 
 const DataProcess = dynamic(() => import('../commonProgress/DataProcess'), {
   loading: () => <Loading fixed={false} />
 });
 const Upload = dynamic(() => import('../commonProgress/Upload'));
 
-const CustomTet = ({ activeStep, goToNext }: ImportDataComponentProps) => {
+const CustomTet = () => {
+  const activeStep = useContextSelector(DatasetImportContext, (v) => v.activeStep);
   return (
     <>
-      {activeStep === 0 && <CustomTextInput goToNext={goToNext} />}
-      {activeStep === 1 && <DataProcess showPreviewChunks goToNext={goToNext} />}
+      {activeStep === 0 && <CustomTextInput />}
+      {activeStep === 1 && <DataProcess showPreviewChunks />}
       {activeStep === 2 && <Upload />}
     </>
   );
@@ -26,9 +27,9 @@ const CustomTet = ({ activeStep, goToNext }: ImportDataComponentProps) => {
 
 export default React.memo(CustomTet);
 
-const CustomTextInput = ({ goToNext }: { goToNext: () => void }) => {
+const CustomTextInput = () => {
   const { t } = useTranslation();
-  const { sources, setSources } = useImportStore();
+  const { sources, goToNext, setSources } = useContextSelector(DatasetImportContext, (v) => v);
   const { register, reset, handleSubmit } = useForm({
     defaultValues: {
       name: '',

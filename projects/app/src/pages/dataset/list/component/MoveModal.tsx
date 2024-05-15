@@ -35,7 +35,10 @@ const MoveModal = ({
   const [parentId, setParentId] = useState<string>('');
 
   const { data } = useQuery(['getDatasets', parentId], () => {
-    return Promise.all([getDatasets({ parentId, type: 'folder' }), getDatasetPaths(parentId)]);
+    return Promise.all([
+      getDatasets({ parentId, type: DatasetTypeEnum.folder }),
+      getDatasetPaths(parentId)
+    ]);
   });
   const paths = useMemo(
     () => [

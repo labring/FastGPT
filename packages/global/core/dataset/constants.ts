@@ -2,23 +2,29 @@
 export enum DatasetTypeEnum {
   folder = 'folder',
   dataset = 'dataset',
-  websiteDataset = 'websiteDataset' // depp link
+  websiteDataset = 'websiteDataset', // depp link
+  externalFile = 'externalFile'
 }
 export const DatasetTypeMap = {
   [DatasetTypeEnum.folder]: {
     icon: 'common/folderFill',
-    label: 'core.dataset.Folder Dataset',
+    label: 'Folder Dataset',
     collectionLabel: 'common.Folder'
   },
   [DatasetTypeEnum.dataset]: {
     icon: 'core/dataset/commonDataset',
-    label: 'core.dataset.Common Dataset',
+    label: 'Common Dataset',
     collectionLabel: 'common.File'
   },
   [DatasetTypeEnum.websiteDataset]: {
     icon: 'core/dataset/websiteDataset',
-    label: 'core.dataset.Website Dataset',
+    label: 'Website Dataset',
     collectionLabel: 'common.Website'
+  },
+  [DatasetTypeEnum.externalFile]: {
+    icon: 'core/dataset/commonDataset',
+    label: 'External File',
+    collectionLabel: 'common.File'
   }
 };
 
@@ -77,7 +83,8 @@ export enum ImportDataSourceEnum {
   fileLocal = 'fileLocal',
   fileLink = 'fileLink',
   fileCustom = 'fileCustom',
-  csvTable = 'csvTable'
+  csvTable = 'csvTable',
+  externalFile = 'externalFile'
 }
 
 export enum TrainingModeEnum {

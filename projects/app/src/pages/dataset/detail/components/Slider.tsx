@@ -5,17 +5,10 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
-import {
-  DatasetStatusEnum,
-  DatasetTypeEnum,
-  DatasetTypeMap
-} from '@fastgpt/global/core/dataset/constants';
+import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import SideTabs from '@/components/SideTabs';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useRouter } from 'next/router';
 import Tabs from '@/components/Tabs';
 import { useContextSelector } from 'use-context-selector';
@@ -36,12 +29,10 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
   const { datasetT } = useI18n();
   const router = useRouter();
   const query = router.query;
-  const { datasetDetail, startWebsiteSync } = useDatasetStore();
   const { userInfo } = useUserStore();
-  const { isPc, setLoading } = useSystemStore();
-  const vectorTrainingMap = useContextSelector(DatasetPageContext, (v) => v.vectorTrainingMap);
-  const agentTrainingMap = useContextSelector(DatasetPageContext, (v) => v.agentTrainingMap);
-  const rebuildingCount = useContextSelector(DatasetPageContext, (v) => v.rebuildingCount);
+  const { isPc } = useSystemStore();
+  const { datasetDetail, vectorTrainingMap, agentTrainingMap, rebuildingCount } =
+    useContextSelector(DatasetPageContext, (v) => v);
 
   const tabList = [
     {
@@ -67,20 +58,6 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
     [query, router]
   );
 
-  const { ConfirmModal: ConfirmSyncModal, openConfirm: openConfirmSync } = useConfirm({
-    type: 'common'
-  });
-  const { mutate: onUpdateDatasetWebsiteConfig } = useRequest({
-    mutationFn: () => {
-      setLoading(true);
-      return startWebsiteSync();
-    },
-    onSettled() {
-      setLoading(false);
-    },
-    errorToast: t('common.Update Failed')
-  });
-
   return (
     <>
       {isPc ? (
@@ -101,25 +78,6 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
             {DatasetTypeMap[datasetDetail.type] && (
               <Flex alignItems={'center'} pl={2} justifyContent={'space-between'}>
                 <DatasetTypeTag type={datasetDetail.type} />
-                {datasetDetail.type === DatasetTypeEnum.websiteDataset &&
-                  datasetDetail.status === DatasetStatusEnum.active && (
-                    <MyTooltip label={t('core.dataset.website.Start Sync')}>
-                      <MyIcon
-                        mt={1}
-                        name={'common/refreshLight'}
-                        w={'12px'}
-                        color={'myGray.500'}
-                        cursor={'pointer'}
-                        onClick={() =>
-                          openConfirmSync(
-                            onUpdateDatasetWebsiteConfig,
-                            undefined,
-                            t('core.dataset.website.Confirm Create Tips')
-                          )()
-                        }
-                      />
-                    </MyTooltip>
-                  )}
               </Flex>
             )}
           </Box>
@@ -206,8 +164,6 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
           />
         </Box>
       )}
-
-      <ConfirmSyncModal />
     </>
   );
 };

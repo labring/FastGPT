@@ -1,12 +1,12 @@
 import { Box, Flex, FlexProps } from '@chakra-ui/react';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useTranslation } from 'next-i18next';
 import React from 'react';
 import { DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
+import { useI18n } from '@/web/context/I18n';
 
-const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & FlexProps) => {
-  const { t } = useTranslation();
+const DatasetTypeTag = ({ type, ...props }: { type: DatasetTypeEnum } & FlexProps) => {
+  const { datasetT } = useI18n();
 
   const item = DatasetTypeMap[type] || DatasetTypeMap['dataset'];
 
@@ -22,7 +22,8 @@ const DatasetTypeTag = ({ type, ...props }: { type: `${DatasetTypeEnum}` } & Fle
       {...props}
     >
       <MyIcon name={item.icon as any} w={'16px'} mr={2} color={'myGray.400'} />
-      <Box>{t(item.label)}</Box>
+      {/* @ts-ignore */}
+      <Box>{datasetT(item.label)}</Box>
     </Flex>
   );
 };

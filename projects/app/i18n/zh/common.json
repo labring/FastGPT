@@ -1,4 +1,5 @@
 {
+  "Add new": "新增",
   "App": "应用",
   "Export": "导出",
   "Folder": "文件夹",
@@ -509,8 +510,6 @@
       "Choose Dataset": "关联知识库",
       "Chunk amount": "分段数",
       "Collection": "数据集",
-      "Common Dataset": "通用知识库",
-      "Common Dataset Desc": "可通过导入文件、网页链接或手动录入形式构建知识库",
       "Create dataset": "创建一个知识库",
       "Dataset": "知识库",
       "Dataset ID": "知识库 ID",
@@ -520,7 +519,6 @@
       "Empty Dataset": "",
       "Empty Dataset Tips": "还没有知识库，快去创建一个吧！",
       "File collection": "文件数据集",
-      "Folder Dataset": "文件夹",
       "Folder placeholder": "这是一个目录",
       "Go Dataset": "前往知识库",
       "Intro Placeholder": "这个知识库还没有介绍~",
@@ -540,8 +538,6 @@
       "Table collection": "表格数据集",
       "Text collection": "文本数据集",
       "Total chunks": "总分段: {{total}}",
-      "Website Dataset": "Web 站点同步",
-      "Website Dataset Desc": "Web 站点同步允许你直接使用一个网页链接构建知识库",
       "collection": {
         "Click top config website": "点击配置网站",
         "Collection name": "数据集名称",

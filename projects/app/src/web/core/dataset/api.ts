@@ -1,6 +1,10 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
-import type { DatasetItemType, DatasetListItemType } from '@fastgpt/global/core/dataset/type.d';
+import type {
+  DatasetItemType,
+  DatasetListItemType,
+  DatasetSimpleItemType
+} from '@fastgpt/global/core/dataset/type.d';
 import type {
   GetDatasetCollectionsProps,
   GetDatasetDataListProps,
@@ -39,13 +43,13 @@ import type { getDatasetTrainingQueueResponse } from '@/pages/api/core/dataset/t
 import type { rebuildEmbeddingBody } from '@/pages/api/core/dataset/training/rebuildEmbedding';
 
 /* ======================== dataset ======================= */
-export const getDatasets = (data: { parentId?: string; type?: `${DatasetTypeEnum}` }) =>
+export const getDatasets = (data: { parentId?: string; type?: DatasetTypeEnum }) =>
   GET<DatasetListItemType[]>(`/core/dataset/list`, data);
 
 /**
  * get type=dataset list
  */
-export const getAllDataset = () => GET<DatasetListItemType[]>(`/core/dataset/allDataset`);
+export const getAllDataset = () => GET<DatasetSimpleItemType[]>(`/core/dataset/allDataset`);
 
 export const getDatasetPaths = (parentId?: string) =>
   GET<ParentTreePathItemType[]>('/core/dataset/paths', { parentId });

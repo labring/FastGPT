@@ -36,6 +36,8 @@ COPY --from=mainDeps /app/projects/$name/node_modules ./projects/$name/node_modu
 RUN [ -z "$proxy" ] || sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories
 
 RUN apk add --no-cache libc6-compat && npm install -g pnpm@8.6.0
+
+ENV NODE_OPTIONS="--max-old-space-size=4096"
 RUN pnpm --filter=$name build
 
 # --------- runner -----------

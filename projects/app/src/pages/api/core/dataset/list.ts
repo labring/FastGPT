@@ -9,7 +9,7 @@ import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { NextAPI } from '@/service/middle/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const { parentId, type } = req.query as { parentId?: string; type?: `${DatasetTypeEnum}` };
+  const { parentId, type } = req.query as { parentId?: string; type?: DatasetTypeEnum };
   // 凭证校验
   const { teamId, tmbId, teamOwner, role, canWrite } = await authUserRole({
     req,

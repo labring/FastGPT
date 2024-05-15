@@ -14,7 +14,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 /* ================= dataset ===================== */
 export type CreateDatasetParams = {
   parentId?: string;
-  type: `${DatasetTypeEnum}`;
+  type: DatasetTypeEnum;
   name: string;
   intro: string;
   avatar: string;
@@ -76,7 +76,7 @@ export type SearchTestResponse = {
 
 /* =========== training =========== */
 export type PostPreviewFilesChunksProps = {
-  type: `${ImportDataSourceEnum}`;
+  type: ImportDataSourceEnum;
   sourceId: string;
   chunkSize: number;
   overlapRatio: number;
