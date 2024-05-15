@@ -52,7 +52,8 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
       nodes: item.modules,
       edges: item.edges,
       templateType: FlowNodeTemplateTypeEnum.personalPlugin,
-      isTool: true
+      isTool: true,
+      nodeVersion: item?.nodeVersion || ''
     };
   }
   return Promise.reject('plugin not found');
@@ -72,6 +73,7 @@ export async function getPluginPreviewNode({ id }: { id: string }): Promise<Flow
     intro: plugin.intro,
     showStatus: plugin.showStatus,
     isTool: plugin.isTool,
+    nodeVersion: plugin.nodeVersion,
     version: '481',
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),

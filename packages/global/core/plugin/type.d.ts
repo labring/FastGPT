@@ -23,6 +23,7 @@ export type PluginItemSchema = {
     customHeaders?: string;
   };
   version?: 'v1' | 'v2';
+  nodeVersion?: string;
 };
 
 /* plugin template */
@@ -32,6 +33,7 @@ export type PluginTemplateType = PluginRuntimeType & {
   source: `${PluginSourceEnum}`;
   templateType: FlowNodeTemplateType['templateType'];
   intro: string;
+  nodeVersion: string;
 };
 
 export type PluginRuntimeType = {
