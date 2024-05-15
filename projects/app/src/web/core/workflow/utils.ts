@@ -323,7 +323,12 @@ export const updateFlowNodeVersion = (
     });
   }
 
-  const updatedNode: FlowNodeItemType = { ...node, ...template, name: node.name };
+  const updatedNode: FlowNodeItemType = {
+    ...node,
+    ...template,
+    name: node.name,
+    intro: node.intro
+  };
 
   if (node.inputs && template.inputs) {
     updatedNode.inputs = updateArrayBasedOnTemplate(node.inputs, template.inputs);
