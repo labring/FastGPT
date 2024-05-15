@@ -1,20 +1,23 @@
-import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
-import { Model, Schema, model, models } from 'mongoose';
+import {
+  TeamCollectionName,
+  TeamMemberCollectionName
+} from '@fastgpt/global/support/user/team/constant';
+import { Model, connectionMongo } from '../../../common/mongo';
 import { ResourcePermissionCollectionName } from './constant';
 import type { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
-import { ResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+const { Schema, model, models } = connectionMongo;
 
 export const ResourcePermissionSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
     ref: TeamCollectionName
   },
-  teamMemberId: {
+  tmbId: {
     type: Schema.Types.ObjectId,
-    ref: TeamCollectionName
+    ref: TeamMemberCollectionName
   },
   resourceType: {
-    type: ResourceTypeEnum,
+    type: String,
     required: true
   },
   permission: {
@@ -23,6 +26,21 @@ export const ResourcePermissionSchema = new Schema({
   }
 });
 
+try {
+  ResourcePermissionSchema.index({
+    teamId: 1,
+    resourceType: 1
+  });
+  ResourcePermissionSchema.index({
+    tmbId: 1,
+    resourceType: 1
+  });
+} catch (error) {
+  console.log(error);
+}
+
 export const MongoResourcePermission: Model<ResourcePermissionType> =
   models[ResourcePermissionCollectionName] ||
   model(ResourcePermissionCollectionName, ResourcePermissionSchema);
+
+MongoResourcePermission.syncIndexes();

@@ -1,8 +1,16 @@
 import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
-import { ResourcePermissionModel } from './schema';
+import { MongoResourcePermission } from './schema';
+import { ResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 
-export async function getResourcePermission({ tmbId }: { tmbId: string }) {
-  return (await ResourcePermissionModel.findOne({
-    teamMemberId: tmbId
+export async function getResourcePermission({
+  tmbId,
+  resourceType
+}: {
+  tmbId: string;
+  resourceType: ResourceTypeEnum;
+}) {
+  return (await MongoResourcePermission.findOne({
+    tmbId,
+    resourceType
   }).exec()) as ResourcePermissionType;
 }

@@ -55,7 +55,7 @@ export function ContructPermission(permList: PermissionValueType[]) {
 export const PermissionList: PermissionListType = {
   Read: 0b100,
   Write: 0b010,
-  Mange: 0b001
+  Manage: 0b001
 };
 
 // export const ReadPerm: PermissionType = ['Read', 0b100];

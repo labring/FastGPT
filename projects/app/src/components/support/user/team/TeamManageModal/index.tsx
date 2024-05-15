@@ -68,6 +68,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     isFetching: isLoadingTeams,
     refetch: refetchTeam
   } = useQuery(['getTeams', userInfo?._id], () => getTeamList(TeamMemberStatusEnum.active));
+
   const defaultTeam = useMemo(
     () => myTeams.find((item) => item.defaultTeam) || myTeams[0],
     [myTeams]
