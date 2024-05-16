@@ -22,7 +22,7 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoImage } from '@fastgpt/service/common/file/image/schema';
 import { readRawTextByLocalFile } from '@fastgpt/service/common/file/read/utils';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   /**

@@ -11,7 +11,7 @@
 		"prefix": "nextapi",
 		"body": [
 			"import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';",
-			"import { NextAPI } from '@/service/middle/entry';",
+			"import { NextAPI } from '@/service/middleware/entry';",
 			"",
 			"export type ${TM_FILENAME_BASE}Query = {};",
 			"",

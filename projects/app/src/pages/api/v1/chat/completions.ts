@@ -44,7 +44,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 
 import { dispatchWorkFlowV1 } from '@fastgpt/service/core/workflow/dispatchV1';
 import { setEntryEntries } from '@fastgpt/service/core/workflow/dispatchV1/utils';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 
 type FastGptWebChatProps = {

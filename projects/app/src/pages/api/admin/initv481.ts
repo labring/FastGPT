@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { PgClient } from '@fastgpt/service/common/vectorStore/pg';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 import { PgDatasetTableName } from '@fastgpt/global/common/vectorStore/constants';
 import { connectionMongo } from '@fastgpt/service/common/mongo';
 import { addLog } from '@fastgpt/service/common/system/log';

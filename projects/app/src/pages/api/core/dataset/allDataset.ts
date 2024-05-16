@@ -5,7 +5,7 @@ import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d'
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 /* get all dataset by teamId or tmbId */
 async function handler(

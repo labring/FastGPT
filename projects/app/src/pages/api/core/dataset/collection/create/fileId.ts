@@ -22,7 +22,7 @@ import { hashStr } from '@fastgpt/global/common/string/tools';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 async function handler(
