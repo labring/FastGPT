@@ -19,7 +19,6 @@ import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/contr
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hashStr } from '@fastgpt/global/common/string/tools';
-import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
@@ -143,8 +142,6 @@ async function handler(
 
   // remove buffer
   await MongoRawTextBuffer.deleteOne({ sourceId: fileId });
-
-  startTrainingQueue(true);
 
   jsonRes(res);
 }
