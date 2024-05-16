@@ -74,42 +74,6 @@ function MemberTable() {
                         </MenuButton>
                       }
                       menuList={[
-                        // {
-                        //   isActive: item.role === TeamMemberRoleEnum.visitor,
-                        //   label: t('user.team.Invite Role Visitor Tip'),
-                        //   onClick: () => {
-                        //     onUpdateMember({
-                        //       teamId: item.teamId,
-                        //       memberId: item.tmbId,
-                        //       role: TeamMemberRoleEnum.visitor
-                        //     });
-                        //   }
-                        // },
-                        // {
-                        //   isActive: item.role === TeamMemberRoleEnum.admin,
-                        //   label: t('user.team.Invite Role Admin Tip'),
-                        //   onClick: () => {
-                        //     onUpdateMember({
-                        //       teamId: item.teamId,
-                        //       memberId: item.tmbId,
-                        //       role: TeamMemberRoleEnum.admin
-                        //     });
-                        //   }
-                        // },
-                        // ...(item.status === TeamMemberStatusEnum.reject
-                        //   ? [
-                        //     {
-                        //       label: t('user.team.Reinvite'),
-                        //       onClick: () => {
-                        //         onUpdateMember({
-                        //           teamId: item.teamId,
-                        //           memberId: item.tmbId,
-                        //           status: TeamMemberStatusEnum.waiting
-                        //         });
-                        //       }
-                        //     }
-                        //   ]
-                        //   : []),
                         {
                           label: t('user.team.Remove Member Tip'),
                           onClick: () =>
