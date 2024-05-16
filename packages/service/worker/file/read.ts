@@ -23,25 +23,9 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
       case 'pptx':
         return readPptxRawText(params);
       case 'xlsx':
-        const xlsxResult = await readXlsxRawText(params);
-        if (params.csvFormat) {
-          return {
-            rawText: xlsxResult.formatText || ''
-          };
-        }
-        return {
-          rawText: xlsxResult.rawText
-        };
+        return readXlsxRawText(params);
       case 'csv':
-        const csvResult = await readCsvRawText(params);
-        if (params.csvFormat) {
-          return {
-            rawText: csvResult.formatText || ''
-          };
-        }
-        return {
-          rawText: csvResult.rawText
-        };
+        return readCsvRawText(params);
       default:
         return Promise.reject('Only support .txt, .md, .html, .pdf, .docx, pptx, .csv, .xlsx');
     }

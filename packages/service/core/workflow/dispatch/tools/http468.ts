@@ -71,7 +71,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     chatId,
     responseChatItemId,
     ...variables,
-    histories: histories.slice(-10),
+    histories: histories?.slice(-10) || [],
     ...body,
     ...dynamicInput
   };

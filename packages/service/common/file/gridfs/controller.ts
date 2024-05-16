@@ -151,12 +151,12 @@ export const readFileContentFromMongo = async ({
   teamId,
   bucketName,
   fileId,
-  csvFormat = false
+  isQAImport = false
 }: {
   teamId: string;
   bucketName: `${BucketNameEnum}`;
   fileId: string;
-  csvFormat?: boolean;
+  isQAImport?: boolean;
 }): Promise<{
   rawText: string;
   filename: string;
@@ -198,7 +198,7 @@ export const readFileContentFromMongo = async ({
 
   const { rawText } = await readFileRawContent({
     extension,
-    csvFormat,
+    isQAImport,
     teamId,
     buffer: fileBuffers,
     encoding,

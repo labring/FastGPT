@@ -1,6 +1,7 @@
 import { PushDatasetDataChunkProps } from '@fastgpt/global/core/dataset/api';
 import {
   DatasetSearchModeEnum,
+  DatasetSourceReadTypeEnum,
   DatasetTypeEnum,
   ImportDataSourceEnum,
   TrainingModeEnum
@@ -75,22 +76,3 @@ export type SearchTestResponse = {
 };
 
 /* =========== training =========== */
-export type PostPreviewFilesChunksProps = {
-  type: ImportDataSourceEnum;
-  sourceId: string;
-  chunkSize: number;
-  overlapRatio: number;
-  customSplitChar?: string;
-};
-
-export type PostPreviewFilesChunksResponse = {
-  fileId: string;
-  rawTextLength: number;
-  chunks: string[];
-}[];
-export type PostPreviewTableChunksResponse = {
-  fileId: string;
-  totalChunks: number;
-  chunks: { q: string; a: string; chunkIndex: number }[];
-  errorText?: string;
-}[];

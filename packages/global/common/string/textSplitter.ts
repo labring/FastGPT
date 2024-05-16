@@ -9,6 +9,9 @@ type SplitProps = {
   overlapRatio?: number;
   customReg?: string[];
 };
+export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkLen'> & {
+  chunkLen?: number;
+};
 
 type SplitResponse = {
   chunks: string[];
@@ -49,6 +52,7 @@ const strIsMdTable = (str: string) => {
       return false;
     }
   }
+
   return true;
 };
 const markdownTableSplit = (props: SplitProps): SplitResponse => {
@@ -75,6 +79,10 @@ ${mdSplitString}
 `;
     }
     chunk += `${splitText2Lines[i]}\n`;
+  }
+
+  if (chunk) {
+    chunks.push(chunk);
   }
 
   return {
