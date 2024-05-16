@@ -1,5 +1,5 @@
 /* Only the token of gpt-3.5-turbo is used */
-import { Tiktoken } from 'fastgpt-js-tiktoken/lite';
+import { Tiktoken } from 'tiktoken/lite';
 import cl100k_base from './cl100k_base.json';
 import {
   ChatCompletionMessageParam,
@@ -10,7 +10,7 @@ import {
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
 import { parentPort } from 'worker_threads';
 
-const enc = new Tiktoken(cl100k_base);
+const enc = new Tiktoken(cl100k_base.bpe_ranks, cl100k_base.special_tokens, cl100k_base.pat_str);
 
 /* count messages tokens */
 parentPort?.on(
