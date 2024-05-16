@@ -77,6 +77,7 @@ export const countGptMessagesTokens = (
         clearTimeout(timer);
       };
 
+      // 可以进一步优化(传递100w token数据,实际需要300ms,较慢)
       worker.postMessage({
         id,
         messages,

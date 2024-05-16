@@ -16,8 +16,8 @@ async function handler(
   req: ApiRequestProps<tokenBody, tokenQuery>,
   res: ApiResponseType<any>
 ): Promise<tokenResponse> {
-  await authCert({ req, authRoot: true });
   const start = Date.now();
+  await authCert({ req, authRoot: true });
 
   const tokens = await countGptMessagesTokens(req.body.messages);
 
