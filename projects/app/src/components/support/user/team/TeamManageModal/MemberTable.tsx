@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '.';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { hasManage } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 
 function MemberTable() {
   const members = useContextSelector(TeamContext, (v) => v.members);
@@ -45,8 +46,12 @@ function MemberTable() {
                 {t(TeamMemberStatusMap[item.status]?.label || '')}
               </Td>
               <Td>
-                {userInfo?.team?.role === TeamMemberRoleEnum.owner &&
-                  item.role !== TeamMemberRoleEnum.owner && (
+                {hasManage(
+                  members.find((item) => item.tmbId.toString() === userInfo?.team.tmbId.toString())
+                    ?.permission!
+                ) &&
+                  item.role !== TeamMemberRoleEnum.owner &&
+                  item.tmbId !== userInfo?.team.tmbId && (
                     <MyMenu
                       width={20}
                       trigger="click"

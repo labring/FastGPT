@@ -1,15 +1,5 @@
 import React from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  Tag,
-  TagCloseButton,
-  TagLabel,
-  TagLeftIcon,
-  TagRightIcon,
-  useDisclosure
-} from '@chakra-ui/react';
+import { Box, Button, Flex, Tag, TagLabel, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import { TeamContext } from '.';
 import { useContextSelector } from 'use-context-selector';
@@ -24,8 +14,6 @@ import {
   hasManage,
   PermissionList
 } from '@fastgpt/service/support/permission/resourcePermission/permisson';
-// import DeleteIcon from '@fastgpt/web/components/common/Icon/delete';
-import { DeleteIcon } from '@chakra-ui/icons';
 
 function PermissionManage() {
   const { t } = useTranslation();
@@ -86,35 +74,41 @@ function PermissionManage() {
             可邀请, 删除成员
           </Box>
         </Flex>
-        <Button
-          variant={'whitePrimary'}
-          size="sm"
-          borderRadius={'md'}
-          ml={3}
-          leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
-          onClick={() => {
-            onOpenAddManager();
-          }}
-        >
-          添加管理员
-        </Button>
+        {userInfo?.team.role === 'owner' && (
+          <Button
+            variant={'whitePrimary'}
+            size="sm"
+            borderRadius={'md'}
+            ml={3}
+            leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
+            onClick={() => {
+              onOpenAddManager();
+            }}
+          >
+            添加管理员
+          </Button>
+        )}
       </Flex>
       <Flex mt="4" mx="4">
         {members.map((member) => {
-          if (hasManage(member.permission) && member.tmbId != userInfo!.team.tmbId) {
+          if (hasManage(member.permission) /* && member.tmbId != userInfo!.team.tmbId */) {
             return (
               <Tag key={member.memberName} mx={'2'} px="2" py="1">
                 <Avatar src={member.avatar} w={['28px']} />
                 <TagLabel fontSize={'md'} alignItems="center" px="4">
                   {member.memberName}
                 </TagLabel>
-                <TagRightIcon
-                  as={DeleteIcon}
-                  cursor="pointer"
-                  onClick={() => {
-                    removeManager(member.tmbId);
-                  }}
-                />
+                {userInfo?.team.role === 'owner' && (
+                  <MyIcon
+                    name="common/trash"
+                    w="16px"
+                    color="myGray.500"
+                    cursor="pointer"
+                    onClick={() => {
+                      removeManager(member.tmbId);
+                    }}
+                  />
+                )}
               </Tag>
             );
           }

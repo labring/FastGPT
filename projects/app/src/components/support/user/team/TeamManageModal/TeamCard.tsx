@@ -13,7 +13,12 @@ import { DragHandleIcon } from '@chakra-ui/icons';
 import MemberTable from './MemberTable';
 import PermissionManage from './PermissionManage';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { hasManage } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 type TabListType = Pick<React.ComponentProps<typeof RowTabs>, 'list'>['list'];
+enum TabListEnum {
+  member = 'member',
+  permission = 'permission'
+}
 
 function TeamCard() {
   const { toast } = useToast();
@@ -43,12 +48,12 @@ function TeamCard() {
           </Box>
         </Flex>
       ),
-      value: 'member'
+      value: TabListEnum.member
     },
     {
       icon: 'support/team/key',
       label: '权限',
-      value: 'permission'
+      value: TabListEnum.permission
     }
   ];
 
@@ -104,32 +109,36 @@ function TeamCard() {
           }}
         ></RowTabs>
         <Flex alignItems={'center'}>
-          {userInfo?.team.role === TeamMemberRoleEnum.owner && tab === 'member' && (
-            <Button
-              variant={'whitePrimary'}
-              size="sm"
-              borderRadius={'md'}
-              ml={3}
-              leftIcon={<MyIcon name={'common/inviteLight'} w={'14px'} color={'primary.500'} />}
-              onClick={() => {
-                if (
-                  teamPlanStatus?.standardConstants?.maxTeamMember &&
-                  teamPlanStatus.standardConstants.maxTeamMember <= members.length
-                ) {
-                  toast({
-                    status: 'warning',
-                    title: t('user.team.Over Max Member Tip', {
-                      max: teamPlanStatus.standardConstants.maxTeamMember
-                    })
-                  });
-                } else {
-                  onOpenInvite();
-                }
-              }}
-            >
-              {t('user.team.Invite Member')}
-            </Button>
-          )}
+          {hasManage(
+            members.find((item) => item.tmbId.toString() === userInfo?.team.tmbId.toString())
+              ?.permission!
+          ) &&
+            tab === 'member' && (
+              <Button
+                variant={'whitePrimary'}
+                size="sm"
+                borderRadius={'md'}
+                ml={3}
+                leftIcon={<MyIcon name="common/inviteLight" w={'14px'} color={'primary.500'} />}
+                onClick={() => {
+                  if (
+                    teamPlanStatus?.standardConstants?.maxTeamMember &&
+                    teamPlanStatus.standardConstants.maxTeamMember <= members.length
+                  ) {
+                    toast({
+                      status: 'warning',
+                      title: t('user.team.Over Max Member Tip', {
+                        max: teamPlanStatus.standardConstants.maxTeamMember
+                      })
+                    });
+                  } else {
+                    onOpenInvite();
+                  }
+                }}
+              >
+                {t('user.team.Invite Member')}
+              </Button>
+            )}
           {userInfo?.team.role === TeamMemberRoleEnum.owner && feConfigs?.show_team_chat && (
             <Button
               variant={'whitePrimary'}

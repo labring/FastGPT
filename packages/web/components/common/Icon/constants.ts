@@ -53,6 +53,7 @@ export const iconPaths = {
   'common/settingLight': () => import('./icons/common/settingLight.svg'),
   'common/text/t': () => import('./icons/common/text/t.svg'),
   'common/tickFill': () => import('./icons/common/tickFill.svg'),
+  'common/trash': () => import('./icons/common/trash.svg'),
   'common/uploadFileFill': () => import('./icons/common/uploadFileFill.svg'),
   'common/viewLight': () => import('./icons/common/viewLight.svg'),
   'common/voiceLight': () => import('./icons/common/voiceLight.svg'),

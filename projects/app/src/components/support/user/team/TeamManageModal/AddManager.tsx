@@ -7,7 +7,8 @@ import {
   Grid,
   Input,
   Flex,
-  Checkbox
+  Checkbox,
+  CloseButton
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -34,6 +35,8 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     })
   );
   const [selected, setSelected] = useState<typeof members>([]);
+  const [search, setSearch] = useState<string>('');
+  const [searched, setSearched] = useState<typeof members>(members);
 
   const { mutate: submit } = useRequest({
     mutationFn: async () => {
@@ -75,14 +78,22 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
         <Grid templateColumns="1fr 1fr" gap="2" minH="400px">
           <Flex flexDirection="column" border="sm" p="2">
             {/* TODO: Searching is not implemented */}
-            <Input placeholder="查找用户" bg={'myGray.100'} />
+            <Input
+              placeholder="查找用户"
+              bg={'myGray.100'}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setSearched(members.filter((member) => member.memberName.includes(e.target.value)));
+              }}
+            />
             <Flex flexDirection="column">
-              {members.map((member) => {
+              {searched.map((member) => {
                 return (
-                  <Flex p="1" m="2" flexDirection="row" bg="myGray.50">
+                  <Flex p="1" m="2" flexDirection="row" bg="myGray.50" fontSize="xl">
                     <Checkbox
-                      checked={!selected.includes(member)}
-                      onClick={(e) => {
+                      isChecked={selected.includes(member)}
+                      size="lg"
+                      onChange={(e) => {
                         e.stopPropagation();
                         if (selected.indexOf(member) == -1) {
                           setSelected([...selected, member]);
@@ -91,28 +102,25 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                         }
                       }}
                     />
-
-                    <Avatar src={member.avatar} w={['18px', '22px']} />
+                    <Avatar src={member.avatar} w={['28px']} />
                     {member.memberName}
                   </Flex>
                 );
               })}
             </Flex>
           </Flex>
-          <Flex flexDirection="column" border="sm" p="2">
+          <Flex flexDirection="column" border="sm" p="2" fontSize="xl">
+            已选: {selected.length} 个
             {selected.map((member) => {
               return (
-                <Flex
-                  p="1"
-                  m="2"
-                  flexDirection="row"
-                  bg="myGray.50"
-                  onClick={() => {
-                    setSelected([...selected.filter((item) => item.tmbId != member.tmbId)]);
-                  }}
-                >
-                  <Avatar src={member.avatar} w={['18px', '22px']} />
-                  {member.memberName}
+                <Flex p="2" m="2" flexDirection="row" justifyContent="space-between">
+                  <Avatar src={member.avatar} w={['28px']} />
+                  <Box w="full">{member.memberName}</Box>
+                  <CloseButton
+                    onClick={() =>
+                      setSelected([...selected.filter((item) => item.tmbId != member.tmbId)])
+                    }
+                  />
                 </Flex>
               );
             })}
