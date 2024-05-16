@@ -4,11 +4,11 @@ import {
   DraggableStateSnapshot
 } from '@fastgpt/web/components/common/DndDrag/index';
 import Container from '../../components/Container';
-import { DragHandleIcon, MinusIcon, SmallAddIcon } from '@chakra-ui/icons';
+import { MinusIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { ReferSelector, useReference } from '../render/RenderInput/templates/Reference';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {

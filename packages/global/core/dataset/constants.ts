@@ -46,6 +46,7 @@ export enum DatasetCollectionTypeEnum {
   folder = 'folder',
   file = 'file',
   link = 'link', // one link
+  externalFile = 'externalFile',
   virtual = 'virtual'
 }
 export const DatasetCollectionTypeMap = {
@@ -54,6 +55,9 @@ export const DatasetCollectionTypeMap = {
   },
   [DatasetCollectionTypeEnum.file]: {
     name: 'core.dataset.file'
+  },
+  [DatasetCollectionTypeEnum.externalFile]: {
+    name: 'core.dataset.externalFile'
   },
   [DatasetCollectionTypeEnum.link]: {
     name: 'core.dataset.link'

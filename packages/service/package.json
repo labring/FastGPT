@@ -21,7 +21,7 @@
     "mammoth": "^1.6.0",
     "mongoose": "^7.0.2",
     "multer": "1.4.5-lts.1",
-    "next": "13.5.2",
+    "next": "14.2.3",
     "nextjs-cors": "^2.1.2",
     "node-cron": "^3.0.3",
     "node-xlsx": "^0.23.0",

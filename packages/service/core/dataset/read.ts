@@ -7,7 +7,15 @@ import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/
 import axios from 'axios';
 import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 
-export const readFileRawTextByUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
+export const readFileRawTextByUrl = async ({
+  teamId,
+  url,
+  relatedId
+}: {
+  teamId: string;
+  url: string;
+  relatedId?: string;
+}) => {
   const response = await axios({
     method: 'get',
     url: url,
@@ -21,7 +29,10 @@ export const readFileRawTextByUrl = async ({ teamId, url }: { teamId: string; ur
     extension,
     teamId,
     buffer,
-    encoding: 'utf-8'
+    encoding: 'utf-8',
+    metadata: {
+      relatedId
+    }
   });
 
   return rawText;
@@ -37,13 +48,15 @@ export const readDatasetSourceRawText = async ({
   type,
   sourceId,
   isQAImport,
-  selector
+  selector,
+  relatedId
 }: {
   teamId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
   isQAImport?: boolean;
   selector?: string;
+  relatedId?: string;
 }): Promise<string> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     const { rawText } = await readFileContentFromMongo({
@@ -63,7 +76,8 @@ export const readDatasetSourceRawText = async ({
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
     const rawText = await readFileRawTextByUrl({
       teamId,
-      url: sourceId
+      url: sourceId,
+      relatedId
     });
     return rawText;
   }

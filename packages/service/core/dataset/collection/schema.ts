@@ -66,7 +66,6 @@ const DatasetCollectionSchema = new Schema({
     type: String
   },
 
-  sourceId: String,
   // local file collection
   fileId: {
     type: Schema.Types.ObjectId,
@@ -74,8 +73,8 @@ const DatasetCollectionSchema = new Schema({
   },
   // web link collection
   rawLink: String,
-
   // external collection
+  externalId: String,
 
   // metadata
   rawTextLength: Number,

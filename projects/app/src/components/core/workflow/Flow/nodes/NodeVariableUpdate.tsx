@@ -2,7 +2,7 @@ import React, { useCallback, useMemo } from 'react';
 import NodeCard from './render/NodeCard';
 import { NodeProps } from 'reactflow';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import {
   Box,
   Button,
