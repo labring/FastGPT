@@ -14,6 +14,7 @@ import {
   hasManage,
   PermissionList
 } from '@fastgpt/service/support/permission/resourcePermission/permisson';
+import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 
 function PermissionManage() {
   const { t } = useTranslation();
@@ -91,7 +92,7 @@ function PermissionManage() {
       </Flex>
       <Flex mt="4" mx="4">
         {members.map((member) => {
-          if (hasManage(member.permission) /* && member.tmbId != userInfo!.team.tmbId */) {
+          if (hasManage(member.permission) && member.role !== TeamMemberRoleEnum.owner) {
             return (
               <Tag key={member.memberName} mx={'2'} px="2" py="1">
                 <Avatar src={member.avatar} w={['28px']} />
