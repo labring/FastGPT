@@ -8,7 +8,9 @@ import {
   Input,
   Flex,
   Checkbox,
-  CloseButton
+  CloseButton,
+  InputGroup,
+  InputLeftElement
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
@@ -24,6 +26,7 @@ import {
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateMemberPermission } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
   const { t } = useTranslation();
@@ -75,21 +78,34 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     >
       <ModalCloseButton onClick={onClose} />
       <ModalBody>
-        <Grid templateColumns="1fr 1fr" gap="2" minH="400px">
-          <Flex flexDirection="column" border="sm" p="2">
-            {/* TODO: Searching is not implemented */}
-            <Input
-              placeholder="查找用户"
-              bg={'myGray.100'}
-              onChange={(e) => {
-                setSearch(e.target.value);
-                setSearched(members.filter((member) => member.memberName.includes(e.target.value)));
-              }}
-            />
+        <Grid
+          templateColumns="1fr 1fr"
+          minH="400px"
+          borderRadius="8px"
+          border="1px solid"
+          borderColor="myGray.200"
+        >
+          <Flex flexDirection="column" p="4">
+            <InputGroup alignItems="center" h="32px" my="2" py="1">
+              <InputLeftElement>
+                <MyIcon name="common/searchLight" w="16px" />
+              </InputLeftElement>
+              <Input
+                placeholder="搜索用户名"
+                fontSize="lg"
+                bg={'myGray.50'}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setSearched(
+                    members.filter((member) => member.memberName.includes(e.target.value))
+                  );
+                }}
+              />
+            </InputGroup>
             <Flex flexDirection="column">
               {searched.map((member) => {
                 return (
-                  <Flex p="1" m="2" flexDirection="row" bg="myGray.50" fontSize="xl">
+                  <Flex p="1" m="2" flexDirection="row" fontSize="lg" alignItems="center">
                     <Checkbox
                       isChecked={selected.includes(member)}
                       size="lg"
@@ -102,20 +118,22 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                         }
                       }}
                     />
-                    <Avatar src={member.avatar} w={['28px']} />
+                    <Avatar src={member.avatar} w="24px" />
                     {member.memberName}
                   </Flex>
                 );
               })}
             </Flex>
           </Flex>
-          <Flex flexDirection="column" border="sm" p="2" fontSize="xl">
-            已选: {selected.length} 个
+          <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4">
+            <Box fontSize="sm">已选: {selected.length} 个</Box>
             {selected.map((member) => {
               return (
-                <Flex p="2" m="2" flexDirection="row" justifyContent="space-between">
-                  <Avatar src={member.avatar} w={['28px']} />
-                  <Box w="full">{member.memberName}</Box>
+                <Flex p="2" flexDirection="row" alignItems="center" justifyContent="space-between">
+                  <Avatar src={member.avatar} w="24px" />
+                  <Box w="full" fontSize="lg">
+                    {member.memberName}
+                  </Box>
                   <CloseButton
                     onClick={() =>
                       setSelected([...selected.filter((item) => item.tmbId != member.tmbId)])

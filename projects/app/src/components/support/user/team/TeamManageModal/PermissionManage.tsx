@@ -65,7 +65,8 @@ function PermissionManage() {
           </Box>
           <Box
             fontSize={['xs']}
-            bgColor={'myGray.200'}
+            color={'myGray.500'}
+            bgColor={'myGray.100'}
             alignItems={'center'}
             alignContent={'center'}
             mx={'6'}
@@ -94,9 +95,9 @@ function PermissionManage() {
         {members.map((member) => {
           if (hasManage(member.permission) && member.role !== TeamMemberRoleEnum.owner) {
             return (
-              <Tag key={member.memberName} mx={'2'} px="2" py="1">
-                <Avatar src={member.avatar} w={['28px']} />
-                <TagLabel fontSize={'md'} alignItems="center" px="4">
+              <Tag key={member.memberName} mx={'2'} px="4" py="2" bg="myGray.100">
+                <Avatar src={member.avatar} w="20px" />
+                <TagLabel fontSize={'md'} alignItems="center" mr="6" ml="2">
                   {member.memberName}
                 </TagLabel>
                 {userInfo?.team.role === 'owner' && (
