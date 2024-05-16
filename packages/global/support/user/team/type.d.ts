@@ -75,7 +75,7 @@ export type TeamMemberItemType = {
   // TODO: this should be deprecated.
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
-  permission: number;
+  permission: PermissionValueType;
 };
 
 export type TeamTagItemType = {
