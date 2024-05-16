@@ -37,8 +37,8 @@ export const datasetSearchQueryExtension = async ({
               return `${item.obj}: ${chatValue2RuntimePrompt(item.value).text}`;
             })
             .join('\n')}
-  Human: ${query}
-  `
+Human: ${query}
+`
         : query;
 
     /* if query already extension, direct parse */
