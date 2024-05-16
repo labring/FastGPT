@@ -4,7 +4,7 @@ import { TeamContext } from '.';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
+import RowTabs from '../../../../common/Rowtabs';
 import { useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -34,6 +34,7 @@ function TeamCard() {
 
   const Tablist: TabListType = [
     {
+      icon: 'support/team/memberLight',
       label: (
         <Flex alignItems={'center'}>
           <Box ml={1}>{t('user.team.Member')}</Box>
@@ -45,10 +46,12 @@ function TeamCard() {
       value: 'member'
     },
     {
+      icon: 'support/team/key',
       label: '权限',
       value: 'permission'
     }
   ];
+
   const [tab, setTab] = useState<string>(Tablist[0].value);
   return (
     <Flex
