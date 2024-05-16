@@ -16,6 +16,7 @@ import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from '.
 import { textareaMinH } from './constants';
 import { UseFormReturn, useFieldArray } from 'react-hook-form';
 import { useChatProviderStore } from './Provider';
+import QuestionGuide from './components/QustionGuide';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const MessageInput = ({
@@ -25,7 +26,8 @@ const MessageInput = ({
   showFileSelector = false,
   resetInputVal,
   chatForm,
-  appId
+  appId,
+  appQGuides
 }: {
   onSendMessage: (val: ChatBoxInputType & { autoTTSResponse?: boolean }) => void;
   onStop: () => void;
@@ -34,6 +36,7 @@ const MessageInput = ({
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   appId?: string;
+  appQGuides?: string[];
 }) => {
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -205,6 +208,14 @@ const MessageInput = ({
     startSpeak(finishWhisperTranscription);
   }, [finishWhisperTranscription, isSpeaking, startSpeak, stopSpeak]);
 
+  const appQGuidesFilter =
+    appQGuides
+      ?.filter((item) => item.includes(inputValue) && item !== inputValue)
+      .slice(0, 5)
+      .map((item) => {
+        return { key: item, label: item };
+      }) || [];
+
   return (
     <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
       <Box
@@ -214,7 +225,7 @@ const MessageInput = ({
         boxShadow={isSpeaking ? `0 0 10px rgba(54,111,255,0.4)` : `0 0 10px rgba(0,0,0,0.2)`}
         borderRadius={['none', 'md']}
         bg={'white'}
-        overflow={'hidden'}
+        overflow={'display'}
         {...(isPc
           ? {
               border: '1px solid',
@@ -242,6 +253,21 @@ const MessageInput = ({
           <Spinner size={'sm'} mr={4} />
           {t('core.chat.Converting to text')}
         </Flex>
+
+        {/* popup */}
+        {havInput && (
+          <QuestionGuide
+            variables={appQGuidesFilter}
+            setDropdownValue={(value) => setValue('input', value)}
+            bottom={'100%'}
+            top={'auto'}
+            left={0}
+            right={0}
+            mb={2}
+            overflowY={'auto'}
+            boxShadow={'sm'}
+          />
+        )}
 
         {/* file preview */}
         <Flex wrap={'wrap'} px={[2, 4]} userSelect={'none'}>

@@ -18,6 +18,7 @@ import { useAppStore } from '@/web/core/app/store/useAppStore';
 import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
 import { useI18n } from '@/web/context/I18n';
+import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
@@ -42,7 +43,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   const { feConfigs } = useSystemStore();
   const { toast } = useToast();
   const { appId } = router.query as { appId: string };
-  const { appDetail, loadAppDetail } = useAppStore();
+  const { appDetail, loadAppDetail, loadAppQGuide } = useAppStore();
 
   const setCurrentTab = useCallback(
     (tab: `${TabEnum}`) => {
@@ -97,6 +98,21 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
       router.prefetch(`/chat?appId=${appId}`);
     }
   });
+  useQuery(
+    ['loadAppQGuide', appId, appDetail?._id],
+    () => {
+      return loadAppQGuide(appId, true, getAppQGuideCustomURL(appDetail));
+    },
+    {
+      onError(err: any) {
+        toast({
+          title: err?.message || t('core.app.error.Get app failed'),
+          status: 'error'
+        });
+      },
+      enabled: !!appDetail?._id
+    }
+  );
 
   return (
     <>

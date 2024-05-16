@@ -20,7 +20,10 @@ import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
+import {
+  checkChatSupportSelectFileByChatModels,
+  getAppQuestionGuidesByUserGuideModule
+} from '@/web/core/chat/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -31,6 +34,9 @@ import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { connectToDatabase } from '@/service/mongo';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const OutLink = ({
   appName,
@@ -78,6 +84,17 @@ const OutLink = ({
   } = useChatStore();
   const appId = chatData.appId;
   const outLinkUid: string = authToken || localUId;
+  const { loadAppQGuide, AppQGuide, appDetail, loadAppDetail } = useAppStore();
+  useQuery(['loadAppDetail', appId], () => loadAppDetail(appId));
+  useQuery(
+    ['loadAppQGuide', appId],
+    () => {
+      return loadAppQGuide(appId, true, getAppQGuideCustomURL(appDetail));
+    },
+    {
+      enabled: !!appDetail?._id
+    }
+  );
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -378,6 +395,7 @@ const OutLink = ({
               history={chatData.history}
               showHistory={showHistory === '1'}
               onOpenSlider={onOpenSlider}
+              appId={chatData.appId}
             />
             {/* chat box */}
             <Box flex={1}>
@@ -388,6 +406,10 @@ const OutLink = ({
                 userAvatar={chatData.userAvatar}
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
+                appQuestionGuides={getAppQuestionGuidesByUserGuideModule(
+                  chatData.app.userGuideModule as StoreNodeItemType,
+                  AppQGuide
+                )}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}

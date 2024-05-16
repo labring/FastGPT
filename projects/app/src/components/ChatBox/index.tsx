@@ -58,7 +58,7 @@ import ChatProvider, { useChatProviderStore } from './Provider';
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
-import { useCreation, useUpdateEffect } from 'ahooks';
+import { useCreation } from 'ahooks';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
@@ -83,6 +83,7 @@ type Props = OutLinkChatAuthProps & {
   userAvatar?: string;
   userGuideModule?: StoreNodeItemType;
   showFileSelector?: boolean;
+  appQuestionGuides?: string[];
   active?: boolean; // can use
   appId: string;
 
@@ -116,6 +117,7 @@ const ChatBox = (
     appAvatar,
     userAvatar,
     showFileSelector,
+    appQuestionGuides,
     active = true,
     appId,
     chatId,
@@ -1008,6 +1010,7 @@ const ChatBox = (
           showFileSelector={showFileSelector}
           chatForm={chatForm}
           appId={appId}
+          appQGuides={appQuestionGuides}
         />
       )}
       {/* user feedback modal */}

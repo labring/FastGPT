@@ -7,6 +7,7 @@ import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAppVersion } from '@fastgpt/service/core/app/versionSchema';
 import { NextAPI } from '@/service/middle/entry';
+import { MongoAppQGuide } from '@fastgpt/service/core/app/qGuideSchema';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -41,6 +42,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     );
     // delete version
     await MongoAppVersion.deleteMany(
+      {
+        appId
+      },
+      { session }
+    );
+    await MongoAppQGuide.deleteMany(
       {
         appId
       },

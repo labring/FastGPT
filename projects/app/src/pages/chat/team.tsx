@@ -21,7 +21,10 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import ChatHeader from './components/ChatHeader';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
+import {
+  checkChatSupportSelectFileByChatModels,
+  getAppQuestionGuidesByUserGuideModule
+} from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
@@ -35,6 +38,9 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import SliderApps from './components/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const OutLink = () => {
   const { t } = useTranslation();
@@ -52,6 +58,18 @@ const OutLink = () => {
     teamToken: string;
     [key: string]: string;
   };
+
+  const { loadAppQGuide, AppQGuide, appDetail, loadAppDetail } = useAppStore();
+  useQuery(['loadAppDetail', appId], () => loadAppDetail(appId));
+  useQuery(
+    ['loadAppQGuide', appId],
+    () => {
+      return loadAppQGuide(appId, true, getAppQGuideCustomURL(appDetail));
+    },
+    {
+      enabled: !!appDetail?._id
+    }
+  );
 
   const { toast } = useToast();
   const theme = useTheme();
@@ -360,6 +378,10 @@ const OutLink = () => {
                 userAvatar={chatData.userAvatar}
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
+                appQuestionGuides={getAppQuestionGuidesByUserGuideModule(
+                  chatData.app.userGuideModule as StoreNodeItemType,
+                  AppQGuide
+                )}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}

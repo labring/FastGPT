@@ -33,10 +33,15 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
+import {
+  checkChatSupportSelectFileByChatModels,
+  getAppQuestionGuidesByUserGuideModule
+} from '@/web/core/chat/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -62,7 +67,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     setChatData,
     delOneHistoryItem
   } = useChatStore();
-  const { myApps, loadMyApps } = useAppStore();
+  const { myApps, loadMyApps, appDetail, loadAppDetail, loadAppQGuide, AppQGuide } = useAppStore();
   const { userInfo } = useUserStore();
 
   const { isPc } = useSystemStore();
@@ -129,6 +134,16 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   );
 
   useQuery(['loadModels'], () => loadMyApps(false));
+  useQuery(['loadAppDetail', appId], () => loadAppDetail(appId, false));
+  useQuery(
+    ['loadAppQGuide', appId],
+    () => {
+      return loadAppQGuide(appId, true, getAppQGuideCustomURL(appDetail));
+    },
+    {
+      enabled: !!appDetail?._id
+    }
+  );
 
   // get chat app info
   const loadChatInfo = useCallback(
@@ -351,6 +366,10 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 userAvatar={userInfo?.avatar}
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
+                appQuestionGuides={getAppQuestionGuidesByUserGuideModule(
+                  chatData.app.userGuideModule as StoreNodeItemType,
+                  AppQGuide
+                )}
                 feedbackType={'user'}
                 onStartChat={startChat}
                 onDelMessage={(e) => delOneHistoryItem({ ...e, appId, chatId })}

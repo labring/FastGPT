@@ -1,18 +1,20 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
-import { defaultApp } from '../constants';
+import { getMyApps, getModelById, putAppById, getMyQuestionGuides } from '@/web/core/app/api';
 import type { AppUpdateParams } from '@/global/core/app/api.d';
 import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
 import { PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp } from '../versionApi';
+import { defaultApp } from '../constants';
 
 type State = {
   myApps: AppListItemType[];
   loadMyApps: (init?: boolean) => Promise<AppListItemType[]>;
   appDetail: AppDetailType;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppDetailType>;
+  AppQGuide: string[];
+  loadAppQGuide: (id: string, init?: boolean, customURL?: string) => Promise<string[]>;
   updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
   publishApp(appId: string, data: PostPublishAppProps): Promise<void>;
   clearAppModules(): void;
@@ -39,6 +41,15 @@ export const useAppStore = create<State>()(
           const res = await getModelById(id);
           set((state) => {
             state.appDetail = res;
+          });
+          return res;
+        },
+        AppQGuide: [],
+        async loadAppQGuide(id: string, init = false, customURL?: string) {
+          if (id === get().appDetail._id && !init) return get().AppQGuide;
+          const res = await getMyQuestionGuides(id, customURL || '');
+          set((state) => {
+            state.AppQGuide = res;
           });
           return res;
         },

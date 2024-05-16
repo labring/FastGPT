@@ -32,3 +32,15 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
 
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/core/app/getChatLogs`, data);
+
+/**
+ * 导入提示词库
+ */
+export const importQuestionGuides = (data: { appId: string; text: string[]; customURL: string }) =>
+  POST(`/core/app/questionGuides/import`, data);
+
+/**
+ * 获取提示词库
+ */
+export const getMyQuestionGuides = (appId: string, customURL: string) =>
+  GET<string[]>(`/core/app/questionGuides/list?appId=${appId}&customURL=${customURL}`);

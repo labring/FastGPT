@@ -9,7 +9,10 @@ import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
-import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
+import {
+  checkChatSupportSelectFileByModules,
+  getAppQuestionGuidesByModules
+} from '@/web/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   getDefaultEntryNodeIds,
@@ -104,7 +107,7 @@ const ChatTest = ({
     return () => {
       wat.unsubscribe();
     };
-  }, []);
+  }, [setWorkflowData, watch]);
 
   return (
     <Flex
@@ -143,6 +146,7 @@ const ChatTest = ({
           showMarkIcon
           userGuideModule={userGuideModule}
           showFileSelector={checkChatSupportSelectFileByModules(workflowData.nodes)}
+          appQuestionGuides={getAppQuestionGuidesByModules(workflowData.nodes)}
           onStartChat={startChat}
           onDelMessage={() => {}}
         />
