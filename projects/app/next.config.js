@@ -36,6 +36,10 @@ const nextConfig = {
       unknownContextCritical: false
     };
 
+    if (!config.externals) {
+      config.externals = [];
+    }
+
     if (isServer) {
       config.externals.push('worker_threads');
 
@@ -73,10 +77,12 @@ const nextConfig = {
           fs: false
         }
       };
-      if (!config.externals) {
-        config.externals = [];
-      }
     }
+
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true
+    };
 
     return config;
   },

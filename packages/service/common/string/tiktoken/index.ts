@@ -47,41 +47,45 @@ export const countGptMessagesTokens = (
   tools?: ChatCompletionTool[],
   functionCall?: ChatCompletionCreateParams.Function[]
 ) => {
-  return new Promise<number>((resolve) => {
-    const start = Date.now();
+  return new Promise<number>(async (resolve) => {
+    try {
+      const start = Date.now();
 
-    const { worker, callbackMap } = getTiktokenWorker();
+      const { worker, callbackMap } = getTiktokenWorker();
 
-    const id = getNanoid();
+      const id = getNanoid();
 
-    const timer = setTimeout(() => {
-      console.log('Count token Time out');
-      resolve(
-        messages.reduce((sum, item) => {
-          if (item.content) {
-            return sum + item.content.length * 0.5;
-          }
-          return sum;
-        }, 0)
-      );
-      delete callbackMap[id];
-    }, 60000);
+      const timer = setTimeout(() => {
+        console.log('Count token Time out');
+        resolve(
+          messages.reduce((sum, item) => {
+            if (item.content) {
+              return sum + item.content.length * 0.5;
+            }
+            return sum;
+          }, 0)
+        );
+        delete callbackMap[id];
+      }, 60000);
 
-    callbackMap[id] = (data) => {
-      // 检测是否有内存泄漏
-      addLog.info(`Count token time: ${Date.now() - start}, token: ${data}`);
-      // console.log(process.memoryUsage());
+      callbackMap[id] = (data) => {
+        // 检测是否有内存泄漏
+        addLog.info(`Count token time: ${Date.now() - start}, token: ${data}`);
+        // console.log(process.memoryUsage());
 
-      resolve(data);
-      clearTimeout(timer);
-    };
+        resolve(data);
+        clearTimeout(timer);
+      };
 
-    worker.postMessage({
-      id,
-      messages,
-      tools,
-      functionCall
-    });
+      worker.postMessage({
+        id,
+        messages,
+        tools,
+        functionCall
+      });
+    } catch (error) {
+      resolve(0);
+    }
   });
 };
 
