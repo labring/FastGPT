@@ -111,6 +111,7 @@ parentPort?.on(
         data: total
       });
     } catch (error) {
+      console.log(error);
       parentPort?.postMessage({
         id,
         type: 'success',
