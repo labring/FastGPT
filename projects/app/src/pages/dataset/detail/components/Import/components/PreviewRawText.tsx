@@ -9,6 +9,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
+import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
 
 const PreviewRawText = ({
   previewSource,
@@ -18,32 +19,30 @@ const PreviewRawText = ({
   onClose: () => void;
 }) => {
   const { toast } = useToast();
-  const { importSource } = useContextSelector(DatasetImportContext, (v) => v);
+  const { importSource, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
 
   const { data, isLoading } = useQuery(
-    ['previewSource', previewSource?.dbFileId],
+    ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.sourceUrl],
     () => {
-      if (importSource === ImportDataSourceEnum.fileLocal && previewSource.dbFileId) {
-        return getPreviewFileContent({
-          fileId: previewSource.dbFileId,
-          csvFormat: true
-        });
+      if (importSource === ImportDataSourceEnum.fileCustom && previewSource.rawText) {
+        return {
+          previewContent: previewSource.rawText.slice(0, 3000)
+        };
       }
       if (importSource === ImportDataSourceEnum.csvTable && previewSource.dbFileId) {
         return getPreviewFileContent({
-          fileId: previewSource.dbFileId,
-          csvFormat: false
+          type: importType2ReadType(importSource),
+          sourceId: previewSource.dbFileId,
+          isQAImport: true
         });
       }
-      if (importSource === ImportDataSourceEnum.fileCustom) {
-        return {
-          previewContent: (previewSource.rawText || '').slice(0, 3000)
-        };
-      }
 
-      return {
-        previewContent: ''
-      };
+      return getPreviewFileContent({
+        type: importType2ReadType(importSource),
+        sourceId: previewSource.dbFileId || previewSource.link || previewSource.sourceUrl || '',
+        isQAImport: false,
+        selector: processParamsForm.getValues('webSelector')
+      });
     },
     {
       onError(err) {

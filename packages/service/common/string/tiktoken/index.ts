@@ -12,27 +12,34 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { addLog } from '../../system/log';
 
 export const getTiktokenWorker = () => {
-  if (global.tiktokenWorker) {
-    return global.tiktokenWorker;
+  const maxWorkers = global.systemEnv?.tokenWorkers || 20;
+
+  if (!global.tiktokenWorkers) {
+    global.tiktokenWorkers = [];
+  }
+
+  if (global.tiktokenWorkers.length >= maxWorkers) {
+    return global.tiktokenWorkers[Math.floor(Math.random() * global.tiktokenWorkers.length)];
   }
 
   const worker = getWorker(WorkerNameEnum.countGptMessagesTokens);
 
+  const i = global.tiktokenWorkers.push({
+    index: global.tiktokenWorkers.length,
+    worker,
+    callbackMap: {}
+  });
+
   worker.on('message', ({ id, data }: { id: string; data: number }) => {
-    const callback = global.tiktokenWorker?.callbackMap?.[id];
+    const callback = global.tiktokenWorkers[i - 1]?.callbackMap?.[id];
 
     if (callback) {
       callback?.(data);
-      delete global.tiktokenWorker.callbackMap[id];
+      delete global.tiktokenWorkers[i - 1].callbackMap[id];
     }
   });
 
-  global.tiktokenWorker = {
-    worker,
-    callbackMap: {}
-  };
-
-  return global.tiktokenWorker;
+  return global.tiktokenWorkers[i - 1];
 };
 
 export const countGptMessagesTokens = (
@@ -44,20 +51,29 @@ export const countGptMessagesTokens = (
     const start = Date.now();
 
     const { worker, callbackMap } = getTiktokenWorker();
+
     const id = getNanoid();
 
     const timer = setTimeout(() => {
-      resolve(0);
+      console.log('Count token Time out');
+      resolve(
+        messages.reduce((sum, item) => {
+          if (item.content) {
+            return sum + item.content.length * 0.5;
+          }
+          return sum;
+        }, 0)
+      );
       delete callbackMap[id];
-    }, 300);
+    }, 60000);
 
     callbackMap[id] = (data) => {
+      // 检测是否有内存泄漏
+      addLog.info(`Count token time: ${Date.now() - start}, token: ${data}`);
+      // console.log(process.memoryUsage());
+
       resolve(data);
       clearTimeout(timer);
-
-      // 检测是否有内存泄漏
-      // addLog.info(`Count token time: ${Date.now() - start}, token: ${data}`);
-      // console.log(process.memoryUsage());
     };
 
     worker.postMessage({

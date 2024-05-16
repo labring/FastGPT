@@ -10,6 +10,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
+import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
 
 const PreviewChunks = ({
   previewSource,
@@ -27,19 +28,7 @@ const PreviewChunks = ({
   const { data = [], isLoading } = useQuery(
     ['previewSource'],
     () => {
-      if (
-        importSource === ImportDataSourceEnum.fileLocal ||
-        importSource === ImportDataSourceEnum.csvTable ||
-        importSource === ImportDataSourceEnum.fileLink
-      ) {
-        return getPreviewChunks({
-          type: importSource,
-          sourceId: previewSource.dbFileId || previewSource.link || '',
-          chunkSize,
-          overlapRatio: chunkOverlapRatio,
-          customSplitChar: processParamsForm.getValues('customSplitChar')
-        });
-      } else if (importSource === ImportDataSourceEnum.fileCustom) {
+      if (importSource === ImportDataSourceEnum.fileCustom) {
         const customSplitChar = processParamsForm.getValues('customSplitChar');
         const { chunks } = splitText2Chunks({
           text: previewSource.rawText || '',
@@ -52,7 +41,27 @@ const PreviewChunks = ({
           a: ''
         }));
       }
-      return [];
+      if (importSource === ImportDataSourceEnum.csvTable) {
+        return getPreviewChunks({
+          type: importType2ReadType(importSource),
+          sourceId: previewSource.dbFileId || previewSource.link || previewSource.sourceUrl || '',
+          chunkSize,
+          overlapRatio: chunkOverlapRatio,
+          customSplitChar: processParamsForm.getValues('customSplitChar'),
+          selector: processParamsForm.getValues('webSelector'),
+          isQAImport: true
+        });
+      }
+
+      return getPreviewChunks({
+        type: importType2ReadType(importSource),
+        sourceId: previewSource.dbFileId || previewSource.link || previewSource.sourceUrl || '',
+        chunkSize,
+        overlapRatio: chunkOverlapRatio,
+        customSplitChar: processParamsForm.getValues('customSplitChar'),
+        selector: processParamsForm.getValues('webSelector'),
+        isQAImport: false
+      });
     },
     {
       onError(err) {

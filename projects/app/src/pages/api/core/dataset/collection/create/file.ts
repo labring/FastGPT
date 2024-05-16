@@ -22,6 +22,7 @@ import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { startTrainingQueue } from '@/service/core/dataset/training/utils';
 import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schema';
+import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const {
@@ -51,8 +52,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       fileId
     });
     // 2. split chunks
-    const { chunks } = splitText2Chunks({
-      text: rawText,
+    const chunks = rawText2Chunks({
+      rawText,
       chunkLen: chunkSize,
       overlapRatio: trainingType === TrainingModeEnum.chunk ? 0.2 : 0,
       customReg: chunkSplitter ? [chunkSplitter] : []
@@ -110,8 +111,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         trainingMode: trainingType,
         prompt: qaPrompt,
         billId,
-        data: chunks.map((text, index) => ({
-          q: text,
+        data: chunks.map((item, index) => ({
+          ...item,
           chunkIndex: index
         })),
         session
