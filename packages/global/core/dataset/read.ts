@@ -1,7 +1,5 @@
 import { DatasetSourceReadTypeEnum, ImportDataSourceEnum } from './constants';
 
-export const rawTextBackupPrefix = 'index,content';
-
 export const importType2ReadType = (type: ImportDataSourceEnum) => {
   if (type === ImportDataSourceEnum.csvTable || type === ImportDataSourceEnum.fileLocal) {
     return DatasetSourceReadTypeEnum.fileLocal;

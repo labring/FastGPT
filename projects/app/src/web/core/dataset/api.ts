@@ -85,7 +85,9 @@ export const getDatasetCollectionById = (id: string) =>
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const postCreateDatasetFileCollection = (data: FileIdCreateDatasetCollectionParams) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/file`, data, { timeout: 120000 });
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/fileId`, data, {
+    timeout: 120000
+  });
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
 export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>

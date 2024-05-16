@@ -1,11 +1,12 @@
-import { markdownProcess, simpleMarkdownText } from '@fastgpt/global/common/string/markdown';
+import { markdownProcess } from '@fastgpt/global/common/string/markdown';
 import { uploadMongoImg } from '../image/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { addHours } from 'date-fns';
 
 import { WorkerNameEnum, runWorker } from '../../../worker/utils';
+import fs from 'fs';
+import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { ReadFileResponse } from '../../../worker/file/type';
-import { rawTextBackupPrefix } from '@fastgpt/global/core/dataset/read';
 
 export const initMarkdownText = ({
   teamId,
@@ -28,7 +29,34 @@ export const initMarkdownText = ({
       })
   });
 
-export const readFileRawContent = async ({
+export type readRawTextByLocalFileParams = {
+  teamId: string;
+  path: string;
+  metadata?: Record<string, any>;
+};
+export const readRawTextByLocalFile = async (params: readRawTextByLocalFileParams) => {
+  const { path } = params;
+
+  const extension = path?.split('.')?.pop()?.toLowerCase() || '';
+
+  const buffer = fs.readFileSync(path);
+  const encoding = detectFileEncoding(buffer);
+
+  const { rawText } = await readRawContentByFileBuffer({
+    extension,
+    isQAImport: false,
+    teamId: params.teamId,
+    encoding,
+    buffer,
+    metadata: params.metadata
+  });
+
+  return {
+    rawText
+  };
+};
+
+export const readRawContentByFileBuffer = async ({
   extension,
   isQAImport,
   teamId,
@@ -68,10 +96,4 @@ export const readFileRawContent = async ({
   }
 
   return { rawText };
-};
-
-export const htmlToMarkdown = async (html?: string | null) => {
-  const md = await runWorker<string>(WorkerNameEnum.htmlStr2Md, { html: html || '' });
-
-  return simpleMarkdownText(md);
 };

@@ -26,6 +26,8 @@ export type DatasetCollectionChunkMetadataType = {
   qaPrompt?: string;
   metadata?: Record<string, any>;
 };
+
+// create collection params
 export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
   name: string;

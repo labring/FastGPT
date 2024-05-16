@@ -2,11 +2,10 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
-import { rawTextBackupPrefix } from '@fastgpt/global/core/dataset/read';
 import { parseCsvTable2Chunks } from './training/utils';
 import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
-import { readFileRawContent } from '../../common/file/read/utils';
+import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 
 export const readFileRawTextByUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
   const response = await axios({
@@ -18,7 +17,7 @@ export const readFileRawTextByUrl = async ({ teamId, url }: { teamId: string; ur
 
   const buffer = Buffer.from(response.data, 'binary');
 
-  const { rawText } = await readFileRawContent({
+  const { rawText } = await readRawContentByFileBuffer({
     extension,
     teamId,
     buffer,
