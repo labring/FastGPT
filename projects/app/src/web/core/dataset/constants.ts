@@ -1,5 +1,9 @@
 import { defaultQAModels, defaultVectorModels } from '@fastgpt/global/core/ai/model';
-import { DatasetTypeEnum, TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
+import {
+  DatasetCollectionTypeEnum,
+  DatasetTypeEnum,
+  TrainingModeEnum
+} from '@fastgpt/global/core/dataset/constants';
 import type {
   DatasetCollectionItemType,
   DatasetItemType
@@ -46,7 +50,7 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
   },
   parentId: '',
   name: '',
-  type: 'file',
+  type: DatasetCollectionTypeEnum.file,
   updateTime: new Date(),
   canWrite: false,
   sourceName: '',
