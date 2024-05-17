@@ -237,6 +237,7 @@ const InputDataModal = ({
             w={'210px'}
             className="textEllipsis3"
             whiteSpace={'pre-wrap'}
+            collectionId={collection._id}
             sourceName={collection.sourceName}
             sourceId={collection.sourceId}
             mb={6}

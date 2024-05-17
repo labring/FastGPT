@@ -14,6 +14,7 @@ import type {
   CreateDatasetCollectionParams,
   CsvTableCreateDatasetCollectionParams,
   DatasetUpdateBody,
+  ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
   LinkCreateDatasetCollectionParams,
   PostWebsiteSyncParams,
@@ -44,6 +45,7 @@ import type {
   PostPreviewFilesChunksProps,
   PreviewChunksResponse
 } from '@/pages/api/core/dataset/file/getPreviewChunks';
+import type { readCollectionSourceResponse } from '@/pages/api/core/dataset/collection/read';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: { parentId?: string; type?: DatasetTypeEnum }) =>
@@ -96,6 +98,12 @@ export const postCreateDatasetCsvTableCollection = (data: CsvTableCreateDatasetC
   POST<{ collectionId: string }>(`/core/dataset/collection/create/csvTable`, data, {
     timeout: 120000
   });
+export const postCreateDatasetExternalFileCollection = (
+  data: ExternalFileCreateDatasetCollectionParams
+) =>
+  POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/externalFileUrl`, data, {
+    timeout: 120000
+  });
 
 export const putDatasetCollectionById = (data: UpdateDatasetCollectionParams) =>
   POST(`/core/dataset/collection/update`, data);
@@ -146,6 +154,6 @@ export const getDatasetTrainingQueue = (datasetId: string) =>
 export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
   POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data);
 
-/* ================== file ======================== */
-export const getFileViewUrl = (fileId: string) =>
-  GET<string>('/core/dataset/file/getPreviewUrl', { fileId });
+/* ================== read source ======================== */
+export const getCollectionSource = (collectionId: string) =>
+  GET<readCollectionSourceResponse>('/core/dataset/collection/read', { collectionId });

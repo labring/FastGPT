@@ -44,10 +44,11 @@ export const DatasetStatusMap = {
 /* ------------ collection -------------- */
 export enum DatasetCollectionTypeEnum {
   folder = 'folder',
+  virtual = 'virtual',
+
   file = 'file',
   link = 'link', // one link
-  externalFile = 'externalFile',
-  virtual = 'virtual'
+  externalFile = 'externalFile'
 }
 export const DatasetCollectionTypeMap = {
   [DatasetCollectionTypeEnum.folder]: {

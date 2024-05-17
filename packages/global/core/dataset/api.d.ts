@@ -31,13 +31,13 @@ export type DatasetCollectionChunkMetadataType = {
 export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
   name: string;
-  type: `${DatasetCollectionTypeEnum}`;
+  type: DatasetCollectionTypeEnum;
 
-  sourceId?: string;
   fileId?: string;
   rawLink?: string;
+  externalFileId?: string;
 
-  externalSourceUrl?: string;
+  externalFileUrl?: string;
   rawTextLength?: number;
   hashRawText?: string;
 };
@@ -65,8 +65,8 @@ export type CsvTableCreateDatasetCollectionParams = {
   fileId: string;
 };
 export type ExternalFileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
-  externalId: string;
-  externalUrl: string;
+  externalFileId?: string;
+  externalFileUrl: string;
   filename?: string;
 };
 

@@ -74,12 +74,12 @@ const DatasetCollectionSchema = new Schema({
   // web link collection
   rawLink: String,
   // external collection
-  externalId: String,
+  externalFileId: String,
 
   // metadata
   rawTextLength: Number,
   hashRawText: String,
-  externalSourceUrl: String, // external import url
+  externalFileUrl: String, // external import url
   metadata: {
     type: Object,
     default: {}
