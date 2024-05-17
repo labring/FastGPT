@@ -208,6 +208,7 @@ export const iconPaths = {
   'support/outlink/iframeLight': () => import('./icons/support/outlink/iframeLight.svg'),
   'support/outlink/share': () => import('./icons/support/outlink/share.svg'),
   'support/outlink/shareLight': () => import('./icons/support/outlink/shareLight.svg'),
+  'support/permission/collaborator': () => import('./icons/support/permission/collaborator.svg'),
   'support/permission/privateLight': () => import('./icons/support/permission/privateLight.svg'),
   'support/permission/publicLight': () => import('./icons/support/permission/publicLight.svg'),
   'support/team/key': () => import('./icons/support/team/key.svg'),

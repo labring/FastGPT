@@ -47,14 +47,13 @@ function MemberTable() {
               </Td>
               <Td>
                 {hasManage(
-                  members.find((item) => item.tmbId.toString() === userInfo?.team.tmbId.toString())
-                    ?.permission!
+                  members.find((item) => item.tmbId === userInfo?.team.tmbId)?.permission!
                 ) &&
                   item.role !== TeamMemberRoleEnum.owner &&
                   item.tmbId !== userInfo?.team.tmbId && (
                     <MyMenu
                       width={20}
-                      trigger="click"
+                      trigger="hover"
                       Button={
                         <MenuButton
                           _hover={{

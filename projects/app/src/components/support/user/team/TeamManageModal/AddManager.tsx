@@ -41,7 +41,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const [search, setSearch] = useState<string>('');
   const [searched, setSearched] = useState<typeof members>(members);
 
-  const { mutate: submit } = useRequest({
+  const { mutate: submit, isLoading } = useRequest({
     mutationFn: async () => {
       console.log(selected);
       return updateMemberPermission({
@@ -66,7 +66,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   return (
     <MyModal
       isOpen
-      iconSrc="/imgs/modal/team.svg"
+      iconSrc={'support/permission/collaborator'}
       maxW={['90vw']}
       minW={['900px']}
       overflow={'unset'}
@@ -77,10 +77,10 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
       }
     >
       <ModalCloseButton onClick={onClose} />
-      <ModalBody>
+      <ModalBody py={6} px={10}>
         <Grid
           templateColumns="1fr 1fr"
-          minH="400px"
+          h="448px"
           borderRadius="8px"
           border="1px solid"
           borderColor="myGray.200"
@@ -88,7 +88,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           <Flex flexDirection="column" p="4">
             <InputGroup alignItems="center" h="32px" my="2" py="1">
               <InputLeftElement>
-                <MyIcon name="common/searchLight" w="16px" />
+                <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
               </InputLeftElement>
               <Input
                 placeholder="搜索用户名"
@@ -102,29 +102,28 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                 }}
               />
             </InputGroup>
-            <Flex flexDirection="column">
+            <Flex flexDirection="column" mt={3}>
               {searched.map((member) => {
                 return (
                   <Flex
-                    p="1"
-                    m="2"
-                    flexDirection="row"
+                    py="2"
+                    px={3}
+                    borderRadius={'md'}
                     fontSize="lg"
                     alignItems="center"
-                    key={member.memberName}
+                    key={member.tmbId}
+                    cursor={'pointer'}
+                    _hover={{ bg: 'myGray.50' }}
+                    _notLast={{ mb: 2 }}
+                    onClick={() => {
+                      if (selected.indexOf(member) == -1) {
+                        setSelected([...selected, member]);
+                      } else {
+                        setSelected([...selected.filter((item) => item.tmbId != member.tmbId)]);
+                      }
+                    }}
                   >
-                    <Checkbox
-                      isChecked={selected.includes(member)}
-                      size="lg"
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        if (selected.indexOf(member) == -1) {
-                          setSelected([...selected, member]);
-                        } else {
-                          setSelected([...selected.filter((item) => item.tmbId != member.tmbId)]);
-                        }
-                      }}
-                    />
+                    <Checkbox isChecked={selected.includes(member)} size="lg" />
                     <Avatar src={member.avatar} w="24px" />
                     {member.memberName}
                   </Flex>
@@ -133,33 +132,38 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             </Flex>
           </Flex>
           <Flex borderLeft="1px" borderColor="myGray.200" flexDirection="column" p="4">
-            <Box fontSize="sm">已选: {selected.length} 个</Box>
-            {selected.map((member) => {
-              return (
-                <Flex
-                  p="2"
-                  flexDirection="row"
-                  alignItems="center"
-                  justifyContent="space-between"
-                  key={member.memberName}
-                >
-                  <Avatar src={member.avatar} w="24px" />
-                  <Box w="full" fontSize="lg">
-                    {member.memberName}
-                  </Box>
-                  <CloseButton
-                    onClick={() =>
-                      setSelected([...selected.filter((item) => item.tmbId != member.tmbId)])
-                    }
-                  />
-                </Flex>
-              );
-            })}
+            <Box mt={3}>已选: {selected.length} 个</Box>
+            <Box mt={5}>
+              {selected.map((member) => {
+                return (
+                  <Flex
+                    alignItems="center"
+                    justifyContent="space-between"
+                    py="2"
+                    px={3}
+                    borderRadius={'md'}
+                    key={member.tmbId}
+                    _hover={{ bg: 'myGray.50' }}
+                    _notLast={{ mb: 2 }}
+                  >
+                    <Avatar src={member.avatar} w="24px" />
+                    <Box w="full" fontSize="lg">
+                      {member.memberName}
+                    </Box>
+                    <CloseButton
+                      onClick={() =>
+                        setSelected([...selected.filter((item) => item.tmbId != member.tmbId)])
+                      }
+                    />
+                  </Flex>
+                );
+              })}
+            </Box>
           </Flex>
         </Grid>
       </ModalBody>
       <ModalFooter alignItems="flex-end">
-        <Button h={'30px'} onClick={submit}>
+        <Button h={'30px'} isLoading={isLoading} onClick={submit}>
           确定
         </Button>
       </ModalFooter>

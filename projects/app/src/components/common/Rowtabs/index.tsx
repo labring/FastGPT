@@ -14,14 +14,7 @@ type Props = BoxProps & {
 
 const RowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
   return (
-    <Box
-      display={'inline-flex'}
-      px={'3px'}
-      borderBottom={'1px'}
-      borderColor={'blue.100'}
-      gap={'4px'}
-      {...props}
-    >
+    <Box display={'inline-flex'} px={'3px'} {...props}>
       {list.map((item) => (
         <Flex
           key={item.value}
@@ -32,14 +25,15 @@ const RowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: P
           py={py}
           userSelect={'none'}
           whiteSpace={'noWrap'}
+          borderBottom={'2px solid'}
           {...(value === item.value
             ? {
                 bg: 'white',
-                // boxShadow: '1.5',
                 color: 'primary.600',
-                borderBottom: '2px solid'
+                borderColor: 'primary.600'
               }
             : {
+                borderColor: 'myGray.100',
                 onClick: () => onChange(item.value)
               })}
         >

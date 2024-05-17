@@ -14,6 +14,7 @@ import MemberTable from './MemberTable';
 import PermissionManage from './PermissionManage';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { hasManage } from '@fastgpt/service/support/permission/resourcePermission/permisson';
+import { useI18n } from '@/web/context/I18n';
 type TabListType = Pick<React.ComponentProps<typeof RowTabs>, 'list'>['list'];
 enum TabListEnum {
   member = 'member',
@@ -23,6 +24,7 @@ enum TabListEnum {
 function TeamCard() {
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { userT } = useI18n();
   const members = useContextSelector(TeamContext, (v) => v.members);
   const onOpenInvite = useContextSelector(TeamContext, (v) => v.onOpenInvite);
   const onOpenTeamTagsAsync = useContextSelector(TeamContext, (v) => v.onOpenTeamTagsAsync);
@@ -52,7 +54,7 @@ function TeamCard() {
     },
     {
       icon: 'support/team/key',
-      label: '权限',
+      label: t('common.Role'),
       value: TabListEnum.permission
     }
   ];
