@@ -22,7 +22,7 @@ export const DatasetTypeMap = {
     collectionLabel: 'common.Website'
   },
   [DatasetTypeEnum.externalFile]: {
-    icon: 'core/dataset/commonDataset',
+    icon: 'core/dataset/externalDataset',
     label: 'External File',
     collectionLabel: 'common.File'
   }

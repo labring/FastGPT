@@ -7,6 +7,7 @@
   "External file Dataset Desc": "You can import files from an external file library to build a knowledge base. Files are not stored twice",
   "External id": "File id",
   "External read url": "External read url",
+  "External read url tip": "You can configure the reading address of your file library. This allows users to read and authenticate. You can currently use the {{fileId}} variable to refer to the external file ID.",
   "External url": "File read url",
   "Folder Dataset": "Folder",
   "Rebuild embedding start tip": "The task of switching index models has begun",

@@ -1,7 +1,6 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import type {
   PushDatasetDataProps,
   PushDatasetDataResponse

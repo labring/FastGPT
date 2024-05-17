@@ -7,6 +7,7 @@
   "External file Dataset Desc": "可以从外部文件库导入文件构建知识库，文件不会进行二次存储",
   "External id": "文件阅读ID",
   "External read url": "外部预览地址",
+  "External read url tip": "可以配置你文件库的阅读地址。便于对用户进行阅读鉴权操作。目前可以使用 {{fileId}} 变量来指代外部文件ID。",
   "External url": "文件访问URL",
   "Folder Dataset": "文件夹",
   "Rebuild embedding start tip": "切换索引模型任务已开始",
