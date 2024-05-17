@@ -24,6 +24,7 @@ usageMatchRegex:
   - "[^\\w\\d]fileT\\(['\"`]({key})['\"`]"
   - "[^\\w\\d]publishT\\(['\"`]({key})['\"`]"
   - "[^\\w\\d]workflowT\\(['\"`]({key})['\"`]"
+  - "[^\\w\\d]userT\\(['\"`]({key})['\"`]"
 
 # A RegEx to set a custom scope range. This scope will be used as a prefix when detecting keys
 # and works like how the i18next framework identifies the namespace scope from the
