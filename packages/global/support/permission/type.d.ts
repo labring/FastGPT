@@ -1,5 +1,7 @@
 import { AuthUserTypeEnum } from './constant';
 
+export type PermissionValueType = number;
+
 export type AuthResponseType = {
   teamId: string;
   tmbId: string;
@@ -8,4 +10,11 @@ export type AuthResponseType = {
   authType?: `${AuthUserTypeEnum}`;
   appId?: string;
   apikey?: string;
+};
+
+export type ResourcePermissionType = {
+  teamId: string;
+  tmbId: string;
+  resourceType: ResourceType;
+  permission: PermissionValueType;
 };
