@@ -13,7 +13,8 @@ import {
   InputGroup,
   InputRightElement,
   Checkbox,
-  useCheckboxGroup
+  useCheckboxGroup,
+  ModalFooter
 } from '@chakra-ui/react';
 import React, { ChangeEvent, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -25,6 +26,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { useI18n } from '@/web/context/I18n';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { fileDownload } from '@/web/common/file/utils';
+import { getDocPath } from '@/web/common/system/doc';
 
 const csvTemplate = `"第一列内容"
 "必填列"
@@ -84,7 +86,7 @@ const QGuidesConfig = ({
         isOpen={isOpen}
         onClose={onClose}
       >
-        <ModalBody px={[5, 16]} py={[4, 8]} w={'500px'}>
+        <ModalBody px={[5, 16]} pt={[4, 8]} w={'500px'}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
             {appT('modules.Question Guide Switch')}
             <Switch
@@ -122,7 +124,7 @@ const QGuidesConfig = ({
                 <Flex mt={8} alignItems={'center'}>
                   {appT('modules.Custom question guide URL')}
                   <Flex
-                    onClick={() => window.open(`${feConfigs.docUrl}/docs/course/custom_link`)}
+                    onClick={() => window.open(getDocPath('/docs/course/custom_link'))}
                     color={'primary.700'}
                     alignItems={'center'}
                     cursor={'pointer'}
@@ -146,13 +148,10 @@ const QGuidesConfig = ({
               </>
             </>
           )}
-          <Flex w={'full'}>
-            <Box flex={1} />
-            <Button mt={4} onClick={() => onClose()}>
-              {commonT('common.Confirm')}
-            </Button>
-          </Flex>
         </ModalBody>
+        <ModalFooter px={[5, 16]} pb={[4, 8]}>
+          <Button onClick={() => onClose()}>{commonT('common.Confirm')}</Button>
+        </ModalFooter>
       </MyModal>
 
       <TextConfigModal
@@ -218,7 +217,7 @@ const TextConfigModal = ({
   }, [searchKey, value.textList]);
 
   const allSelected = useMemo(() => {
-    return filterTextList?.length === checkboxValue.length;
+    return filterTextList?.length === checkboxValue.length && filterTextList?.length !== 0;
   }, [filterTextList, checkboxValue]);
 
   return (
@@ -351,14 +350,7 @@ const TextConfigModal = ({
               </Box>
             </Center>
           ) : (
-            <Box
-              height={'400px'}
-              pb={4}
-              overflow={'auto'}
-              onScroll={(e) => {
-                console.log('e');
-              }}
-            >
+            <Box height={'400px'} pb={4} overflow={'auto'}>
               {filterTextList.map((item, index) => {
                 const selected = checkboxValue.includes(item);
                 return (
