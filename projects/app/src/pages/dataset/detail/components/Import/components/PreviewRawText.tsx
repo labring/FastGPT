@@ -22,7 +22,7 @@ const PreviewRawText = ({
   const { importSource, processParamsForm } = useContextSelector(DatasetImportContext, (v) => v);
 
   const { data, isLoading } = useQuery(
-    ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.sourceUrl],
+    ['previewSource', previewSource.dbFileId, previewSource.link, previewSource.externalFileUrl],
     () => {
       if (importSource === ImportDataSourceEnum.fileCustom && previewSource.rawText) {
         return {
@@ -39,7 +39,8 @@ const PreviewRawText = ({
 
       return getPreviewFileContent({
         type: importType2ReadType(importSource),
-        sourceId: previewSource.dbFileId || previewSource.link || previewSource.sourceUrl || '',
+        sourceId:
+          previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
         isQAImport: false,
         selector: processParamsForm.getValues('webSelector')
       });

@@ -50,16 +50,16 @@ const CustomLinkInput = () => {
   const { register, reset, handleSubmit, control } = useForm<{
     list: {
       sourceName: string;
-      sourceUrl: string;
-      externalId: string;
+      externalFileUrl: string;
+      externalFileId: string;
     }[];
   }>({
     defaultValues: {
       list: [
         {
           sourceName: '',
-          sourceUrl: '',
-          externalId: ''
+          externalFileUrl: '',
+          externalFileId: ''
         }
       ]
     }
@@ -80,8 +80,8 @@ const CustomLinkInput = () => {
       reset({
         list: sources.map((item) => ({
           sourceName: item.sourceName,
-          sourceUrl: item.sourceUrl || '',
-          externalId: item.externalId || ''
+          externalFileUrl: item.externalFileUrl || '',
+          externalFileId: item.externalFileId || ''
         }))
       });
     }
@@ -104,7 +104,7 @@ const CustomLinkInput = () => {
               <Tr key={item.id}>
                 <Td>
                   <Input
-                    {...register(`list.${index}.sourceUrl`, {
+                    {...register(`list.${index}.externalFileUrl`, {
                       required: index !== list.length - 1,
                       onBlur(e) {
                         const val = (e.target.value || '') as string;
@@ -112,15 +112,15 @@ const CustomLinkInput = () => {
                           const sourceName = val.split('/').pop() || '';
                           update(index, {
                             ...list[index],
-                            sourceUrl: val,
+                            externalFileUrl: val,
                             sourceName: decodeURIComponent(sourceName)
                           });
                         }
                         if (val && index === list.length - 1) {
                           append({
                             sourceName: '',
-                            sourceUrl: '',
-                            externalId: ''
+                            externalFileUrl: '',
+                            externalFileId: ''
                           });
                         }
                       }
@@ -128,7 +128,7 @@ const CustomLinkInput = () => {
                   />
                 </Td>
                 <Td>
-                  <Input {...register(`list.${index}.externalId`)} />
+                  <Input {...register(`list.${index}.externalFileId`)} />
                 </Td>
                 <Td>
                   <Input {...register(`list.${index}.sourceName`)} />
@@ -154,26 +154,26 @@ const CustomLinkInput = () => {
           onClick={() => {
             append({
               sourceName: '',
-              sourceUrl: '',
-              externalId: ''
+              externalFileUrl: '',
+              externalFileId: ''
             });
           }}
         >
           {commonT('Add new')}
         </Button>
         <Button
-          isDisabled={list.filter((item) => !!item.sourceUrl).length === 0}
+          isDisabled={list.filter((item) => !!item.externalFileUrl).length === 0}
           onClick={handleSubmit((data) => {
             setSources(
               data.list
-                .filter((item) => !!item.sourceUrl)
+                .filter((item) => !!item.externalFileUrl)
                 .map((item) => ({
                   id: getNanoid(32),
                   createStatus: 'waiting',
-                  sourceName: item.sourceName || item.sourceUrl,
-                  icon: getFileIcon(item.sourceUrl),
-                  externalId: item.externalId,
-                  sourceUrl: item.sourceUrl
+                  sourceName: item.sourceName || item.externalFileUrl,
+                  icon: getFileIcon(item.externalFileUrl),
+                  externalFileId: item.externalFileId,
+                  externalFileUrl: item.externalFileUrl
                 }))
             );
 

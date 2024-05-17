@@ -2,13 +2,20 @@ import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { readFileContentFromMongo } from '../../common/file/gridfs/controller';
 import { urlsFetch } from '../../common/string/cheerio';
-import { rawTextBackupPrefix } from '@fastgpt/global/core/dataset/read';
 import { parseCsvTable2Chunks } from './training/utils';
 import { TextSplitProps, splitText2Chunks } from '@fastgpt/global/common/string/textSplitter';
 import axios from 'axios';
-import { readFileRawContent } from '../../common/file/read/utils';
+import { readRawContentByFileBuffer } from '../../common/file/read/utils';
 
-export const readFileRawTextByUrl = async ({ teamId, url }: { teamId: string; url: string }) => {
+export const readFileRawTextByUrl = async ({
+  teamId,
+  url,
+  relatedId
+}: {
+  teamId: string;
+  url: string;
+  relatedId?: string;
+}) => {
   const response = await axios({
     method: 'get',
     url: url,
@@ -18,11 +25,14 @@ export const readFileRawTextByUrl = async ({ teamId, url }: { teamId: string; ur
 
   const buffer = Buffer.from(response.data, 'binary');
 
-  const { rawText } = await readFileRawContent({
+  const { rawText } = await readRawContentByFileBuffer({
     extension,
     teamId,
     buffer,
-    encoding: 'utf-8'
+    encoding: 'utf-8',
+    metadata: {
+      relatedId
+    }
   });
 
   return rawText;
@@ -38,13 +48,15 @@ export const readDatasetSourceRawText = async ({
   type,
   sourceId,
   isQAImport,
-  selector
+  selector,
+  relatedId
 }: {
   teamId: string;
   type: DatasetSourceReadTypeEnum;
   sourceId: string;
   isQAImport?: boolean;
   selector?: string;
+  relatedId?: string;
 }): Promise<string> => {
   if (type === DatasetSourceReadTypeEnum.fileLocal) {
     const { rawText } = await readFileContentFromMongo({
@@ -64,7 +76,8 @@ export const readDatasetSourceRawText = async ({
   } else if (type === DatasetSourceReadTypeEnum.externalFile) {
     const rawText = await readFileRawTextByUrl({
       teamId,
-      url: sourceId
+      url: sourceId,
+      relatedId
     });
     return rawText;
   }

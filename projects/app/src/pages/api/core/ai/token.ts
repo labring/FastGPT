@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type';
 import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken';

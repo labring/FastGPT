@@ -44,7 +44,8 @@ const PreviewChunks = ({
       if (importSource === ImportDataSourceEnum.csvTable) {
         return getPreviewChunks({
           type: importType2ReadType(importSource),
-          sourceId: previewSource.dbFileId || previewSource.link || previewSource.sourceUrl || '',
+          sourceId:
+            previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
           chunkSize,
           overlapRatio: chunkOverlapRatio,
           customSplitChar: processParamsForm.getValues('customSplitChar'),
@@ -55,7 +56,8 @@ const PreviewChunks = ({
 
       return getPreviewChunks({
         type: importType2ReadType(importSource),
-        sourceId: previewSource.dbFileId || previewSource.link || previewSource.sourceUrl || '',
+        sourceId:
+          previewSource.dbFileId || previewSource.link || previewSource.externalFileUrl || '',
         chunkSize,
         overlapRatio: chunkOverlapRatio,
         customSplitChar: processParamsForm.getValues('customSplitChar'),

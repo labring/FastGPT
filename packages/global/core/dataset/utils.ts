@@ -3,7 +3,7 @@ import { getFileIcon } from '../../common/file/icon';
 import { strIsLink } from '../../common/string/tools';
 
 export function getCollectionIcon(
-  type: `${DatasetCollectionTypeEnum}` = DatasetCollectionTypeEnum.file,
+  type: DatasetCollectionTypeEnum = DatasetCollectionTypeEnum.file,
   name = ''
 ) {
   if (type === DatasetCollectionTypeEnum.folder) {
@@ -24,12 +24,12 @@ export function getSourceNameIcon({
   sourceName: string;
   sourceId?: string;
 }) {
-  if (strIsLink(sourceId)) {
-    return 'common/linkBlue';
-  }
-  const fileIcon = getFileIcon(sourceName, '');
+  const fileIcon = getFileIcon(decodeURIComponent(sourceName), '');
   if (fileIcon) {
     return fileIcon;
+  }
+  if (strIsLink(sourceId)) {
+    return 'common/linkBlue';
   }
 
   return 'file/fill/manual';

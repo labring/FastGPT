@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { checkExportDatasetLimit } from '@fastgpt/service/support/user/utils';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { datasetId } = req.query as {

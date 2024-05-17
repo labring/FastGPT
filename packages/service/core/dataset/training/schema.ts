@@ -35,7 +35,7 @@ const TrainingDataSchema = new Schema({
   },
   billId: {
     // concat bill
-    type: Schema.Types.ObjectId
+    type: String
   },
   mode: {
     type: String,

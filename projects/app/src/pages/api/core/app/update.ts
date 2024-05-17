@@ -3,7 +3,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 /* 获取我的模型 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

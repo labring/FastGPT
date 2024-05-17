@@ -1,4 +1,4 @@
-/* sourceId = prefix-id; id=fileId;link url;externalId */
+/* sourceId = prefix-id; id=fileId;link url;externalFileId */
 export enum CollectionSourcePrefixEnum {
   local = 'local',
   link = 'link',

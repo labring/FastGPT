@@ -9,7 +9,7 @@ import { getChatItems } from '@fastgpt/service/core/chat/controller';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(
   req: NextApiRequest,

@@ -14,6 +14,7 @@ import type {
   CreateDatasetCollectionParams,
   CsvTableCreateDatasetCollectionParams,
   DatasetUpdateBody,
+  ExternalFileCreateDatasetCollectionParams,
   FileIdCreateDatasetCollectionParams,
   LinkCreateDatasetCollectionParams,
   PostWebsiteSyncParams,
@@ -44,6 +45,7 @@ import type {
   PostPreviewFilesChunksProps,
   PreviewChunksResponse
 } from '@/pages/api/core/dataset/file/getPreviewChunks';
+import type { readCollectionSourceResponse } from '@/pages/api/core/dataset/collection/read';
 
 /* ======================== dataset ======================= */
 export const getDatasets = (data: { parentId?: string; type?: DatasetTypeEnum }) =>
@@ -85,13 +87,21 @@ export const getDatasetCollectionById = (id: string) =>
 export const postDatasetCollection = (data: CreateDatasetCollectionParams) =>
   POST<string>(`/core/dataset/collection/create`, data);
 export const postCreateDatasetFileCollection = (data: FileIdCreateDatasetCollectionParams) =>
-  POST<{ collectionId: string }>(`/core/dataset/collection/create/file`, data, { timeout: 120000 });
+  POST<{ collectionId: string }>(`/core/dataset/collection/create/fileId`, data, {
+    timeout: 120000
+  });
 export const postCreateDatasetLinkCollection = (data: LinkCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/link`, data);
 export const postCreateDatasetTextCollection = (data: TextCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/text`, data);
 export const postCreateDatasetCsvTableCollection = (data: CsvTableCreateDatasetCollectionParams) =>
   POST<{ collectionId: string }>(`/core/dataset/collection/create/csvTable`, data, {
+    timeout: 120000
+  });
+export const postCreateDatasetExternalFileCollection = (
+  data: ExternalFileCreateDatasetCollectionParams
+) =>
+  POST<{ collectionId: string }>(`/proApi/core/dataset/collection/create/externalFileUrl`, data, {
     timeout: 120000
   });
 
@@ -144,6 +154,6 @@ export const getDatasetTrainingQueue = (datasetId: string) =>
 export const getPreviewChunks = (data: PostPreviewFilesChunksProps) =>
   POST<PreviewChunksResponse>('/core/dataset/file/getPreviewChunks', data);
 
-/* ================== file ======================== */
-export const getFileViewUrl = (fileId: string) =>
-  GET<string>('/core/dataset/file/getPreviewUrl', { fileId });
+/* ================== read source ======================== */
+export const getCollectionSource = (collectionId: string) =>
+  GET<readCollectionSourceResponse>('/core/dataset/collection/read', { collectionId });

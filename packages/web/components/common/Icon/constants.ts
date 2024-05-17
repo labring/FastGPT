@@ -101,6 +101,7 @@ export const iconPaths = {
   'core/dataset/commonDataset': () => import('./icons/core/dataset/commonDataset.svg'),
   'core/dataset/datasetFill': () => import('./icons/core/dataset/datasetFill.svg'),
   'core/dataset/datasetLight': () => import('./icons/core/dataset/datasetLight.svg'),
+  'core/dataset/externalDataset': () => import('./icons/core/dataset/externalDataset.svg'),
   'core/dataset/fileCollection': () => import('./icons/core/dataset/fileCollection.svg'),
   'core/dataset/fullTextRecall': () => import('./icons/core/dataset/fullTextRecall.svg'),
   'core/dataset/manualCollection': () => import('./icons/core/dataset/manualCollection.svg'),

@@ -9,7 +9,7 @@ import { readXlsxRawText } from './extension/xlsx';
 import { readCsvRawText } from './extension/csv';
 
 parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
-  const readFileRawContent = async (params: ReadRawTextByBuffer) => {
+  const readRawContentByFileBuffer = async (params: ReadRawTextByBuffer) => {
     switch (params.extension) {
       case 'txt':
       case 'md':
@@ -41,7 +41,7 @@ parentPort?.on('message', async (props: ReadRawTextProps<Uint8Array>) => {
   try {
     parentPort?.postMessage({
       type: 'success',
-      data: await readFileRawContent(newProps)
+      data: await readRawContentByFileBuffer(newProps)
     });
   } catch (error) {
     console.log(error);

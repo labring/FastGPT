@@ -1,5 +1,5 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { MongoDatasetTraining } from '@fastgpt/service/core/dataset/training/schema';

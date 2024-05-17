@@ -218,6 +218,7 @@ const QuoteItem = ({
             <RawSourceBox
               fontWeight={'bold'}
               color={'black'}
+              collectionId={quoteItem.collectionId}
               sourceName={quoteItem.sourceName}
               sourceId={quoteItem.sourceId}
               canView={canViewSource}
