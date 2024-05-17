@@ -135,7 +135,7 @@ const EditForm = ({
       const questionGuideText = data.userGuide.questionGuideText;
       await importQuestionGuides({
         appId: appDetail._id,
-        text: questionGuideText.text,
+        textList: questionGuideText.textList,
         customURL: getAppQGuideCustomURL(appDetail)
       });
 

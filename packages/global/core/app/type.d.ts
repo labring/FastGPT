@@ -127,7 +127,7 @@ export type AppWhisperConfigType = {
 // question guide text
 export type AppQuestionGuideTextConfigType = {
   open: boolean;
-  text: string[];
+  textList: string[];
   customURL: string;
 };
 // interval timer

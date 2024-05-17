@@ -145,7 +145,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         const { questionGuideText } = splitGuideModule(getGuideModule(data.nodes));
         await importQuestionGuides({
           appId: app._id,
-          text: questionGuideText.text,
+          textList: questionGuideText.textList,
           customURL: getAppQGuideCustomURL(app)
         });
 

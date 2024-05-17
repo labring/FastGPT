@@ -1,9 +1,15 @@
 import { TeamCollectionName } from '@fastgpt/global/support/user/team/constant';
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
-import { AppQuestionGuideTextConfigType } from '@fastgpt/global/core/app/type';
 
 export const AppQGuideCollectionName = 'app_question_guides';
+
+type AppQGuideSchemaType = {
+  _id: string;
+  appId: string;
+  teamId: string;
+  text: string;
+};
 
 const AppQGuideSchema = new Schema({
   appId: {
@@ -17,8 +23,8 @@ const AppQGuideSchema = new Schema({
     required: true
   },
   text: {
-    type: Array,
-    default: []
+    type: String,
+    default: ''
   }
 });
 
@@ -28,7 +34,7 @@ try {
   console.log(error);
 }
 
-export const MongoAppQGuide: Model<AppQuestionGuideTextConfigType> =
+export const MongoAppQGuide: Model<AppQGuideSchemaType> =
   models[AppQGuideCollectionName] || model(AppQGuideCollectionName, AppQGuideSchema);
 
 MongoAppQGuide.syncIndexes();

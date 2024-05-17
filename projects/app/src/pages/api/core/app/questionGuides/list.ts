@@ -9,9 +9,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   if (!customURL) {
     const { teamId } = await authUserRole({ req, authToken: true });
 
-    const questionGuideText = await MongoAppQGuide.findOne({ appId, teamId });
+    const questionGuideText = await MongoAppQGuide.find({ appId, teamId });
+    const textList = questionGuideText.map((item) => item.text);
 
-    return questionGuideText?.text || [];
+    return textList || [];
   } else {
     try {
       const response = await axios.get(customURL as string, {

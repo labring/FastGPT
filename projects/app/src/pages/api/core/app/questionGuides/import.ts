@@ -5,25 +5,30 @@ import { MongoAppQGuide } from '@fastgpt/service/core/app/qGuideSchema';
 import axios from 'axios';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const { text = [], appId, customURL } = req.body;
+  const { textList = [], appId, customURL } = req.body;
 
   if (!customURL) {
     const { teamId } = await authUserNotVisitor({ req, authToken: true });
 
-    const qGuide = await MongoAppQGuide.find({ appId, teamId });
-    if (qGuide.length > 0) {
-      await MongoAppQGuide.updateOne({ appId, teamId }, { text });
-    } else {
-      await MongoAppQGuide.create({
-        text,
-        appId,
-        teamId
-      });
-    }
+    const currentQGuide = await MongoAppQGuide.find({ appId, teamId });
+    const currentTexts = currentQGuide.map((item) => item.text);
+    const textsToDelete = currentTexts.filter((text) => !textList.includes(text));
+
+    await MongoAppQGuide.deleteMany({ text: { $in: textsToDelete }, appId, teamId });
+
+    const newTexts = textList.filter((text: string) => !currentTexts.includes(text));
+
+    const newDocuments = newTexts.map((text: string) => ({
+      text: text,
+      appId: appId,
+      teamId: teamId
+    }));
+
+    await MongoAppQGuide.insertMany(newDocuments);
   } else {
     try {
       const response = await axios.post(customURL, {
-        text,
+        textList,
         appId
       });
       res.status(200).json(response.data);

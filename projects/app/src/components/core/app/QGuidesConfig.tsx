@@ -51,7 +51,7 @@ const QGuidesConfig = ({
   useEffect(() => {
     onChange({
       ...value,
-      text: AppQGuide
+      textList: AppQGuide
     });
   }, [AppQGuide]);
 
@@ -103,14 +103,17 @@ const QGuidesConfig = ({
               <Flex mt={8} alignItems={'center'}>
                 {appT('modules.Question Guide Texts')}
                 <Box fontSize={'xs'} px={2} bg={'myGray.100'} ml={1} rounded={'full'}>
-                  {value.text?.length || 0}
+                  {value.textList?.length || 0}
                 </Box>
                 <Box flex={'1 0 0'} />
                 <Button
                   variant={'whiteBase'}
                   size={'sm'}
                   leftIcon={<MyIcon boxSize={'4'} name={'common/settingLight'} />}
-                  onClick={onOpenTexts}
+                  onClick={() => {
+                    onOpenTexts();
+                    onClose();
+                  }}
                 >
                   {appT('modules.Config Texts')}
                 </Button>
@@ -155,6 +158,7 @@ const QGuidesConfig = ({
       <TextConfigModal
         isOpenTexts={isOpenTexts}
         onCloseTexts={onCloseTexts}
+        onOpen={onOpen}
         value={value}
         onChange={onChange}
       />
@@ -167,11 +171,13 @@ export default React.memo(QGuidesConfig);
 const TextConfigModal = ({
   isOpenTexts,
   onCloseTexts,
+  onOpen,
   value,
   onChange
 }: {
   isOpenTexts: boolean;
   onCloseTexts: () => void;
+  onOpen: () => void;
   value: AppQuestionGuideTextConfigType;
   onChange: (e: AppQuestionGuideTextConfigType) => void;
 }) => {
@@ -193,10 +199,10 @@ const TextConfigModal = ({
         const content = e.target?.result as string;
         const rows = content.split('\n');
         const texts = rows.map((row) => row.split(',')[0]);
-        const newText = texts.filter((row) => value.text.indexOf(row) === -1 && !!row);
+        const newText = texts.filter((row) => value.textList.indexOf(row) === -1 && !!row);
         onChange({
           ...value,
-          text: [...value.text, ...newText]
+          textList: [...newText, ...value.textList]
         });
 
         if (fileInputRef.current) {
@@ -208,8 +214,12 @@ const TextConfigModal = ({
   };
 
   const filterTextList = useMemo(() => {
-    return value.text?.filter((_) => _.includes(searchKey));
-  }, [searchKey, value.text]);
+    return value.textList?.filter((_) => _.includes(searchKey));
+  }, [searchKey, value.textList]);
+
+  const allSelected = useMemo(() => {
+    return filterTextList?.length === checkboxValue.length;
+  }, [filterTextList, checkboxValue]);
 
   return (
     <MyModal
@@ -220,6 +230,7 @@ const TextConfigModal = ({
         setCheckboxValue([]);
         setSearchKey('');
         onCloseTexts();
+        onOpen();
       }}
     >
       <ModalBody w={'500px'}>
@@ -234,7 +245,7 @@ const TextConfigModal = ({
               onChange={(e) => setSearchKey(e.target.value)}
             />
           </Box>
-          <input
+          <Input
             type="file"
             accept=".csv"
             style={{ display: 'none' }}
@@ -264,14 +275,28 @@ const TextConfigModal = ({
             <QuestionTip ml={-2} label={appT('modules.Only support CSV')} />
           </Box>
         </Flex>
-        <Box mt={4} minH={'300px'} maxH={'400px'}>
+        <Box mt={4}>
           <Flex justifyContent={'space-between'}>
             <Flex alignItems={'center'}>
               <Checkbox
+                sx={{
+                  '.chakra-checkbox__control': {
+                    bg: allSelected ? 'primary.50' : 'none',
+                    boxShadow: allSelected && '0 0 0 2px #F0F4FF',
+                    _hover: {
+                      bg: 'primary.50'
+                    },
+                    border: allSelected && '1px solid #3370FF',
+                    color: 'primary.600'
+                  },
+                  svg: {
+                    strokeWidth: '1px !important'
+                  }
+                }}
                 value={'all'}
                 size={'lg'}
                 mr={2}
-                defaultChecked={value.text && checkboxValue.length === value.text.length}
+                isChecked={allSelected}
                 onChange={(e) => {
                   if (e.target.checked) {
                     setCheckboxValue(filterTextList);
@@ -280,7 +305,9 @@ const TextConfigModal = ({
                   }
                 }}
               />
-              {commonT('common.Select all')}
+              <Box fontSize={'sm'} color={'myGray.600'} fontWeight={'medium'}>
+                {commonT('common.Select all')}
+              </Box>
             </Flex>
 
             <Flex gap={4}>
@@ -293,7 +320,7 @@ const TextConfigModal = ({
                   setCheckboxValue([]);
                   onChange({
                     ...value,
-                    text: value.text.filter((_) => !checkboxValue.includes(_))
+                    textList: value.textList.filter((_) => !checkboxValue.includes(_))
                   });
                 }}
               >
@@ -302,10 +329,10 @@ const TextConfigModal = ({
               <Button
                 display={checkboxValue.length !== 0 ? 'none' : 'flex'}
                 onClick={() => {
-                  setIsEditIndex(value.text.length);
+                  setIsEditIndex(0);
                   onChange({
                     ...value,
-                    text: [...value.text, '']
+                    textList: ['', ...value.textList]
                   });
                   setIsAdding(true);
                 }}
@@ -316,110 +343,136 @@ const TextConfigModal = ({
               </Button>
             </Flex>
           </Flex>
-          {!value.text || value.text?.length === 0 ? (
-            <Center flexDirection={'column'} mt={12}>
+          {!value.textList || value.textList?.length === 0 ? (
+            <Center flexDirection={'column'} height={'400px'}>
               <MyIcon name={'empty'} color={'transparent'} w={'54px'} />
               <Box mt={3} color={'myGray.600'}>
                 {commonT('No data')}
               </Box>
             </Center>
           ) : (
-            <Box height={'full'} pb={4} overflowY={'auto'}>
-              {filterTextList.map((item, index) => (
-                <Flex
-                  key={index}
-                  alignItems={'center'}
-                  h={10}
-                  mt={2}
-                  onMouseEnter={() => setShowIcons(index)}
-                  onMouseLeave={() => setShowIcons(null)}
-                >
-                  <Checkbox
-                    {...getCheckboxProps({ value: item })}
-                    size={'lg'}
-                    mr={2}
-                    isChecked={checkboxValue.includes(item)}
-                    onChange={(e) => {
-                      if (e.target.checked) {
-                        setCheckboxValue([...checkboxValue, item]);
-                      } else {
-                        setCheckboxValue(checkboxValue.filter((_) => _ !== item));
-                      }
-                    }}
-                  />
-                  {index === isEditIndex ? (
-                    <InputGroup alignItems={'center'} h={'full'}>
-                      <Input
-                        autoFocus
+            <Box
+              height={'400px'}
+              pb={4}
+              overflow={'auto'}
+              onScroll={(e) => {
+                console.log('e');
+              }}
+            >
+              {filterTextList.map((item, index) => {
+                const selected = checkboxValue.includes(item);
+                return (
+                  <Flex
+                    key={index}
+                    alignItems={'center'}
+                    h={10}
+                    mt={2}
+                    onMouseEnter={() => setShowIcons(index)}
+                    onMouseLeave={() => setShowIcons(null)}
+                  >
+                    <Checkbox
+                      {...getCheckboxProps({ value: item })}
+                      sx={{
+                        '.chakra-checkbox__control': {
+                          bg: selected ? 'primary.50' : 'none',
+                          boxShadow: selected ? '0 0 0 2px #F0F4FF' : 'none',
+                          _hover: {
+                            bg: 'primary.50'
+                          },
+                          border: selected && '1px solid #3370FF',
+                          color: 'primary.600'
+                        },
+                        svg: {
+                          strokeWidth: '1px !important'
+                        }
+                      }}
+                      size={'lg'}
+                      mr={2}
+                      isChecked={selected}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setCheckboxValue([...checkboxValue, item]);
+                        } else {
+                          setCheckboxValue(checkboxValue.filter((_) => _ !== item));
+                        }
+                      }}
+                    />
+                    {index === isEditIndex ? (
+                      <InputGroup alignItems={'center'} h={'full'}>
+                        <Input
+                          autoFocus
+                          h={'full'}
+                          defaultValue={item}
+                          onBlur={(e) => {
+                            setIsEditIndex(-1);
+                            if (
+                              !e.target.value ||
+                              (value.textList.indexOf(e.target.value) !== -1 &&
+                                value.textList.indexOf(e.target.value) !== index)
+                            ) {
+                              isAdding &&
+                                onChange({
+                                  ...value,
+                                  textList: value.textList?.filter((_, i) => i !== index)
+                                });
+                            } else {
+                              onChange({
+                                ...value,
+                                textList: value.textList?.map((v, i) =>
+                                  i !== index ? v : e.target.value
+                                )
+                              });
+                            }
+                            setIsAdding(false);
+                          }}
+                        />
+                        <InputRightElement alignItems={'center'} pr={4} display={'flex'}>
+                          <MyIcon name={'save'} boxSize={4} cursor={'pointer'} />
+                        </InputRightElement>
+                      </InputGroup>
+                    ) : (
+                      <Flex
                         h={'full'}
-                        defaultValue={item}
-                        onBlur={(e) => {
-                          setIsEditIndex(-1);
-                          if (
-                            !e.target.value ||
-                            (value.text.indexOf(e.target.value) !== -1 &&
-                              value.text.indexOf(e.target.value) !== index)
-                          ) {
-                            isAdding &&
-                              onChange({
-                                ...value,
-                                text: value.text?.filter((_, i) => i !== index)
-                              });
-                          } else {
-                            onChange({
-                              ...value,
-                              text: value.text?.map((v, i) => (i !== index ? v : e.target.value))
-                            });
-                          }
-                          setIsAdding(false);
-                        }}
-                      />
-                      <InputRightElement alignItems={'center'} pr={4} display={'flex'}>
-                        <MyIcon name={'save'} boxSize={4} cursor={'pointer'} />
-                      </InputRightElement>
-                    </InputGroup>
-                  ) : (
-                    <Flex
-                      h={'full'}
-                      w={'full'}
-                      rounded={'md'}
-                      px={4}
-                      bg={'myGray.50'}
-                      alignItems={'center'}
-                      border={'1px solid #F0F1F6'}
-                      _hover={{ border: '1px solid #94B5FF' }}
-                    >
-                      {item}
-                      <Box flex={1} />
-                      {checkboxValue.length === 0 && (
-                        <Box display={showIcons === index ? 'flex' : 'none'}>
-                          <MyIcon
-                            name={'edit'}
-                            boxSize={4}
-                            mr={2}
-                            color={'myGray.600'}
-                            cursor={'pointer'}
-                            onClick={() => setIsEditIndex(index)}
-                          />
-                          <MyIcon
-                            name={'delete'}
-                            boxSize={4}
-                            color={'myGray.600'}
-                            cursor={'pointer'}
-                            onClick={() => {
-                              const temp = value.text?.filter((_, i) => i !== index);
-                              onChange({
-                                ...value,
-                                text: temp
-                              });
-                            }}
-                          />
-                        </Box>
-                      )}
-                    </Flex>
-                  )}
-                </Flex>
-              ))}
+                        w={'full'}
+                        rounded={'md'}
+                        px={4}
+                        bg={'myGray.50'}
+                        alignItems={'center'}
+                        border={'1px solid #F0F1F6'}
+                        _hover={{ border: '1px solid #94B5FF' }}
+                      >
+                        {item}
+                        <Box flex={1} />
+                        {checkboxValue.length === 0 && (
+                          <Box display={showIcons === index ? 'flex' : 'none'}>
+                            <MyIcon
+                              name={'edit'}
+                              boxSize={4}
+                              mr={2}
+                              color={'myGray.600'}
+                              cursor={'pointer'}
+                              onClick={() => setIsEditIndex(index)}
+                            />
+                            <MyIcon
+                              name={'delete'}
+                              boxSize={4}
+                              color={'myGray.600'}
+                              cursor={'pointer'}
+                              onClick={() => {
+                                const temp = value.textList?.filter((_, i) => i !== index);
+                                onChange({
+                                  ...value,
+                                  textList: temp
+                                });
+                              }}
+                            />
+                          </Box>
+                        )}
+                      </Flex>
+                    )}
+                  </Flex>
+                );
+              })}
             </Box>
           )}
         </Box>

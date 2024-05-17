@@ -36,8 +36,11 @@ export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/core/app/ge
 /**
  * 导入提示词库
  */
-export const importQuestionGuides = (data: { appId: string; text: string[]; customURL: string }) =>
-  POST(`/core/app/questionGuides/import`, data);
+export const importQuestionGuides = (data: {
+  appId: string;
+  textList: string[];
+  customURL: string;
+}) => POST(`/core/app/questionGuides/import`, data);
 
 /**
  * 获取提示词库

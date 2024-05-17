@@ -21,6 +21,6 @@ export const defaultWhisperConfig: AppWhisperConfigType = {
 
 export const defaultQuestionGuideTextConfig = {
   open: false,
-  text: [],
+  textList: [],
   customURL: ''
 };
