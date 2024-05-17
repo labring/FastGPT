@@ -190,7 +190,7 @@ export async function getServerSideProps(content: any) {
   return {
     props: {
       currentTab: content?.query?.currentTab || TabEnum.info,
-      ...(await serviceSideProps(content, ['publish']))
+      ...(await serviceSideProps(content, ['publish', 'user']))
     }
   };
 }
