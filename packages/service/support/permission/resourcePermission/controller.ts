@@ -12,5 +12,5 @@ export async function getResourcePermission({
   return (await MongoResourcePermission.findOne({
     tmbId,
     resourceType
-  }).exec()) as ResourcePermissionType;
+  })) as ResourcePermissionType;
 }

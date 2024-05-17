@@ -105,7 +105,14 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <Flex flexDirection="column">
               {searched.map((member) => {
                 return (
-                  <Flex p="1" m="2" flexDirection="row" fontSize="lg" alignItems="center">
+                  <Flex
+                    p="1"
+                    m="2"
+                    flexDirection="row"
+                    fontSize="lg"
+                    alignItems="center"
+                    key={member.memberName}
+                  >
                     <Checkbox
                       isChecked={selected.includes(member)}
                       size="lg"
@@ -129,7 +136,13 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
             <Box fontSize="sm">已选: {selected.length} 个</Box>
             {selected.map((member) => {
               return (
-                <Flex p="2" flexDirection="row" alignItems="center" justifyContent="space-between">
+                <Flex
+                  p="2"
+                  flexDirection="row"
+                  alignItems="center"
+                  justifyContent="space-between"
+                  key={member.memberName}
+                >
                   <Avatar src={member.avatar} w="24px" />
                   <Box w="full" fontSize="lg">
                     {member.memberName}

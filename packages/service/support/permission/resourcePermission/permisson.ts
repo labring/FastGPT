@@ -4,6 +4,7 @@
 // The higher bits are advanced permissions or extended permissions, which could be customized.
 export type PermissionValueType = number;
 export type PermissionListType = { [key: string]: PermissionValueType };
+export const NullPermission: PermissionValueType = 0;
 
 // the Permission helper class
 export class Permission {
@@ -43,7 +44,7 @@ export class Permission {
 }
 
 export function constructPermission(permList: PermissionValueType[]) {
-  return new Permission(0).add(...permList);
+  return new Permission(NullPermission).add(...permList);
 }
 
 // The base Permissions List
@@ -57,10 +58,6 @@ export const PermissionList: PermissionListType = {
   Write: 0b010,
   Manage: 0b001
 };
-
-// export const ReadPerm: PermissionType = ['Read', 0b100];
-// export const WritePerm: PermissionType = ['Write', 0b010];
-// export const ManagePerm: PermissionType = ['Manage', 0b001];
 
 // list of permissions. could be customized.
 // ! removal of the basic permissions is not recommended.
