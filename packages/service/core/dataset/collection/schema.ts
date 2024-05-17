@@ -66,6 +66,11 @@ const DatasetCollectionSchema = new Schema({
     type: String
   },
 
+  tags: {
+    type: [String],
+    default: []
+  },
+
   // local file collection
   fileId: {
     type: Schema.Types.ObjectId,

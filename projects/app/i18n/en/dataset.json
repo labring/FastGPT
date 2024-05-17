@@ -1,4 +1,5 @@
 {
+  "Collection tags": "Tags",
   "Common Dataset": "Common dataset",
   "Common Dataset Desc": "Can be built by importing files, web links, or manual entry",
   "Confirm to rebuild embedding tip": "Are you sure to switch the knowledge base index?\nSwitching index is a very heavy operation that requires re-indexing all the data in your knowledge base, which may take a long time. Please ensure that the remaining points in your account are sufficient.\n\nIn addition, you need to be careful to modify the applications that select this knowledge base to avoid mixing them with other index model knowledge bases.",

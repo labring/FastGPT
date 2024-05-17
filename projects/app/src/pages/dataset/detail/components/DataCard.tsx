@@ -45,6 +45,7 @@ import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollect
 import MyTooltip from '@/components/MyTooltip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
+import { useI18n } from '@/web/context/I18n';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -59,6 +60,7 @@ const DataCard = () => {
   };
   const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
   const { t } = useTranslation();
+  const { datasetT } = useI18n();
   const [searchText, setSearchText] = useState('');
   const { toast } = useToast();
   const { openConfirm, ConfirmModal } = useConfirm({
@@ -167,7 +169,17 @@ const DataCard = () => {
               value: webSelector
             }
           ]
-        : [])
+        : []),
+      {
+        ...(collection.tags
+          ? [
+              {
+                label: datasetT('Collection tags'),
+                value: collection.tags?.join(', ') || '-'
+              }
+            ]
+          : [])
+      }
     ];
   }, [collection, t]);
 

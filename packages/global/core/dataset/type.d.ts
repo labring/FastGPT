@@ -50,6 +50,8 @@ export type DatasetCollectionSchemaType = {
   chunkSplitter?: string;
   qaPrompt?: string;
 
+  tags?: string[];
+
   fileId?: string; // local file id
   rawLink?: string; // link url
   externalFileId?: string; //external file id
