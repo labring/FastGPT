@@ -19,7 +19,9 @@ export const checkDatasetLimit = async ({
   if (!standardConstants) return;
 
   if (usedSize + insertLen >= datasetMaxSize) {
-    return Promise.reject(TeamErrEnum.datasetSizeNotEnough);
+    return Promise.reject(
+      `您的知识库容量为: ${datasetMaxSize}组，已使用: ${usedSize}组，导入当前文件需要: ${insertLen}组，请增加知识库容量后导入。`
+    );
   }
 
   if (usedPoints >= totalPoints) {

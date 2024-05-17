@@ -66,7 +66,11 @@ const DatasetCollectionSchema = new Schema({
     type: String
   },
 
-  sourceId: String,
+  tags: {
+    type: [String],
+    default: []
+  },
+
   // local file collection
   fileId: {
     type: Schema.Types.ObjectId,
@@ -74,13 +78,13 @@ const DatasetCollectionSchema = new Schema({
   },
   // web link collection
   rawLink: String,
-
   // external collection
+  externalFileId: String,
 
   // metadata
   rawTextLength: Number,
   hashRawText: String,
-  externalSourceUrl: String, // external import url
+  externalFileUrl: String, // external import url
   metadata: {
     type: Object,
     default: {}

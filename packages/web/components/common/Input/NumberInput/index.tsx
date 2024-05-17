@@ -10,6 +10,7 @@ import React from 'react';
 
 type Props = Omit<NumberInputProps, 'onChange'> & {
   onChange: (e: number | '') => any;
+  placeholder?: string;
 };
 
 const MyNumberInput = (props: Props) => {
@@ -24,7 +25,7 @@ const MyNumberInput = (props: Props) => {
         }
       }}
     >
-      <NumberInputField />
+      <NumberInputField placeholder={props?.placeholder} />
       <NumberInputStepper>
         <NumberIncrementStepper />
         <NumberDecrementStepper />

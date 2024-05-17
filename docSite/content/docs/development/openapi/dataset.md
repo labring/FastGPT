@@ -295,6 +295,24 @@ curl --location --request DELETE 'http://localhost:3000/api/core/dataset/delete?
 
 ## 集合
 
+### 通用创建参数说明
+
+**入参**
+
+| 参数 | 说明 | 必填 |
+| --- | --- | --- |
+| datasetId | 知识库ID | ✅ |
+| parentId： | 父级ID，不填则默认为根目录 |  |
+| trainingType | 训练模式。chunk: 按文本长度进行分割;qa: QA拆分;auto: 增强训练 | ✅ |
+| chunkSize | 预估块大小 |  |
+| chunkSplitter | 自定义最高优先分割符号 |  |
+| qaPrompt | qa拆分提示词 |  |
+
+**出参**
+
+- collectionId - 新建的集合ID  
+- insertLen：插入的块数量
+
 ### 创建一个空的集合
 
 {{< tabs tabTotal="3" >}}
@@ -500,7 +518,7 @@ data 为集合的 ID。
 {{< /tab >}}
 {{< /tabs >}}
 
-### 创建一个文件集合(商业版)
+### 创建一个文件集合
 
 传入一个文件，创建一个集合，会读取文件内容进行分割。目前支持：pdf, docx, md, txt, html, csv。
 
@@ -509,7 +527,7 @@ data 为集合的 ID。
 {{< markdownify >}}
 
 ```bash
-curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/collection/create/file' \
+curl --location --request POST 'http://localhost:3000/api/core/dataset/collection/create/localFile' \
 --header 'Authorization: Bearer {{authorization}}' \
 --form 'file=@"C:\\Users\\user\\Desktop\\fastgpt测试文件\\index.html"' \
 --form 'data="{\"datasetId\":\"6593e137231a2be9c5603ba7\",\"parentId\":null,\"trainingType\":\"chunk\",\"chunkSize\":512,\"chunkSplitter\":\"\",\"qaPrompt\":\"\",\"metadata\":{}}"'
@@ -558,6 +576,68 @@ data 为集合的 ID。
             "error": []
         }
     }
+}
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+### 创建一个外部文件库集合（商业版）
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="请求示例" >}}
+{{< markdownify >}}
+
+```bash
+curl --location --request POST 'http://localhost:3000/api/proApi/core/dataset/collection/create/externalFileUrl' \
+--header 'Authorization: Bearer {{authorization}}' \
+--header 'User-Agent: Apifox/1.0.0 (https://apifox.com)' \
+--header 'Content-Type: application/json' \
+--data-raw '{
+    "externalFileUrl":"https://image.xxxxx.com/fastgpt-dev/%E6%91%82.pdf",
+    "externalFileId":"1111",
+    "filename":"自定义文件名",
+    "datasetId":"6642d105a5e9d2b00255b27b",
+    "parentId": null,
+
+    "trainingType": "chunk",
+    "chunkSize":512,
+    "chunkSplitter":"",
+    "qaPrompt":""
+}'
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="参数说明" >}}
+{{< markdownify >}}
+
+| 参数 | 说明 | 必填 |
+| --- | --- | --- |
+| externalFileUrl | 文件访问链接（可以是临时链接） | ✅ |
+| externalFileId | 外部文件ID |  |
+| filename | 自定义文件名 |  |
+
+
+{{< /markdownify >}}
+{{< /tab >}}
+
+{{< tab tabName="响应示例" >}}
+{{< markdownify >}}
+
+data 为集合的 ID。
+
+```json
+{
+  "code": 200,
+  "statusText": "",
+  "message": "",
+  "data": {
+    "collectionId": "6646fcedfabd823cdc6de746",
+    "insertLen": 3
+  }
 }
 ```
 

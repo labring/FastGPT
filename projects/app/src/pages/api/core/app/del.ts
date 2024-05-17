@@ -6,7 +6,7 @@ import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAppVersion } from '@fastgpt/service/core/app/versionSchema';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };

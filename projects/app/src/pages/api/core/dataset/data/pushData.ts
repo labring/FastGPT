@@ -1,7 +1,6 @@
 /* push data to training queue */
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import type {
   PushDatasetDataProps,
   PushDatasetDataResponse
@@ -10,7 +9,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const body = req.body as PushDatasetDataProps;

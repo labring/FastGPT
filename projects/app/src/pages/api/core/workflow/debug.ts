@@ -7,7 +7,7 @@ import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { getUserChatInfoAndAuthTeamPoints } from '@/service/support/permission/auth/team';
 import { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core/workflow/api';
 import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(
   req: NextApiRequest,

@@ -3,7 +3,7 @@ import { authFile } from '@fastgpt/service/support/permission/auth/file';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 export type PostPreviewFilesChunksProps = {

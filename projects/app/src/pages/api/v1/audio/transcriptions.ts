@@ -9,7 +9,7 @@ import { authChatCert } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 const upload = getUploadModel({
   maxSize: 2

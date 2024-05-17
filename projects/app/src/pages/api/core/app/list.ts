@@ -3,7 +3,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<AppListItemType[]> {
   // 凭证校验

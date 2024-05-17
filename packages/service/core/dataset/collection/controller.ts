@@ -32,6 +32,9 @@ export async function createOneCollection({
   fileId,
   rawLink,
 
+  externalFileId,
+  externalFileUrl,
+
   hashRawText,
   rawTextLength,
   metadata = {},
@@ -61,6 +64,8 @@ export async function createOneCollection({
 
         fileId,
         rawLink,
+        externalFileId,
+        externalFileUrl,
 
         rawTextLength,
         hashRawText,

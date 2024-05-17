@@ -7,7 +7,7 @@ import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { PagingData } from '@/types';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let {
