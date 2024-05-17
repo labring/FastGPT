@@ -68,7 +68,9 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   });
 
   const { mutate: onclickRemove, isLoading: isDeleting } = useMutation({
-    mutationFn: async (id: string) => delOpenApiById(id),
+    mutationFn: async (id: string) => {
+      return delOpenApiById(id);
+    },
     onSuccess() {
       refetch();
     }
@@ -212,7 +214,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                         label: t('common.Delete'),
                         icon: 'delete',
                         type: 'danger',
-                        onClick: openConfirm(() => onclickRemove(_id))
+                        onClick: () => openConfirm(() => onclickRemove(_id))()
                       }
                     ]}
                   />
