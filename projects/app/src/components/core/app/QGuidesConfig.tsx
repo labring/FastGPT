@@ -232,8 +232,8 @@ const TextConfigModal = ({
         onOpen();
       }}
     >
-      <ModalBody w={'500px'}>
-        <Flex gap={4} alignItems={'center'} borderBottom={'1px solid #E8EBF0'} pb={4}>
+      <ModalBody w={'500px'} px={0}>
+        <Flex gap={4} px={8} alignItems={'center'} borderBottom={'1px solid #E8EBF0'} pb={4}>
           <Box flex={1}>
             <MyInput
               leftIcon={<MyIcon name={'common/searchLight'} boxSize={4} />}
@@ -275,7 +275,7 @@ const TextConfigModal = ({
           </Box>
         </Flex>
         <Box mt={4}>
-          <Flex justifyContent={'space-between'}>
+          <Flex justifyContent={'space-between'} px={8}>
             <Flex alignItems={'center'}>
               <Checkbox
                 sx={{
@@ -328,11 +328,11 @@ const TextConfigModal = ({
               <Button
                 display={checkboxValue.length !== 0 ? 'none' : 'flex'}
                 onClick={() => {
-                  setIsEditIndex(0);
                   onChange({
                     ...value,
                     textList: ['', ...value.textList]
                   });
+                  setIsEditIndex(0);
                   setIsAdding(true);
                 }}
                 size={'sm'}
@@ -350,7 +350,7 @@ const TextConfigModal = ({
               </Box>
             </Center>
           ) : (
-            <Box height={'400px'} pb={4} overflow={'auto'}>
+            <Box height={'400px'} pb={4} overflow={'auto'} px={8}>
               {filterTextList.map((item, index) => {
                 const selected = checkboxValue.includes(item);
                 return (

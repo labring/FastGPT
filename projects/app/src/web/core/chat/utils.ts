@@ -33,7 +33,7 @@ export function getAppQuestionGuidesByModules(modules: StoreNodeItemType[] = [])
     (item) => item.key === NodeInputKeyEnum.questionGuideText
   )?.value;
 
-  return questionGuideText?.open ? questionGuideText?.text : [];
+  return questionGuideText?.open ? questionGuideText?.textList : [];
 }
 
 export function getAppQuestionGuidesByUserGuideModule(

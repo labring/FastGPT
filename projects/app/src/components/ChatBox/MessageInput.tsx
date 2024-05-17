@@ -403,7 +403,12 @@ const MessageInput = ({
               // @ts-ignore
               e.key === 'a' && e.ctrlKey && e.target?.select();
 
-              if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
+              if (
+                (isPc || window !== parent) &&
+                e.keyCode === 13 &&
+                !e.shiftKey &&
+                !(havInput && appQGuidesFilter.length > 0)
+              ) {
                 handleSend();
                 e.preventDefault();
               }

@@ -21,8 +21,9 @@ export default function QuestionGuide({
         setHighlightedIndex((prevIndex) => Math.max(prevIndex - 1, 0));
       } else if (event.keyCode === 40) {
         setHighlightedIndex((prevIndex) => Math.min(prevIndex + 1, variables.length - 1));
-      } else if (event.keyCode === 9 && variables[highlightedIndex]?.key) {
+      } else if (event.keyCode === 13 && variables[highlightedIndex]?.key) {
         setDropdownValue?.(variables[highlightedIndex].key);
+        event.preventDefault();
       }
     },
     [highlightedIndex, setDropdownValue, variables]
