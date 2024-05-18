@@ -6,7 +6,7 @@ import { authDatasetData } from '@/service/support/permission/auth/dataset';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { UpdateDatasetDataProps } from '@/global/core/dataset/api';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { id, q = '', a, indexes = [] } = req.body as UpdateDatasetDataProps;

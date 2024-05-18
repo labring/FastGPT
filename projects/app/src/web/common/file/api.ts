@@ -1,3 +1,4 @@
+import type { PreviewContextProps } from '@/pages/api/common/file/previewContent';
 import { GET, POST } from '@/web/common/api/request';
 import type { UploadImgProps } from '@fastgpt/global/common/file/api.d';
 import { AxiosProgressEvent } from 'axios';
@@ -16,7 +17,7 @@ export const postUploadFiles = (
     }
   });
 
-export const getPreviewFileContent = (data: { fileId: string; csvFormat: boolean }) =>
+export const getPreviewFileContent = (data: PreviewContextProps) =>
   POST<{
     previewContent: string;
     totalLength: number;

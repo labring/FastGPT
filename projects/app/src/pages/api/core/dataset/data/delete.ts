@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { authDatasetData } from '@/service/support/permission/auth/dataset';
 import { deleteDatasetData } from '@/service/core/dataset/data/controller';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { id: dataId } = req.query as {

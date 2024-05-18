@@ -20,3 +20,9 @@ export const PermissionTypeMap = {
     label: 'permission.Public'
   }
 };
+
+export enum ResourceTypeEnum {
+  team = 'team',
+  app = 'app',
+  dataset = 'dataset'
+}

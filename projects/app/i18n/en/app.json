@@ -39,6 +39,7 @@
   },
   "module": {
     "Combine Modules": "Combine Modules",
+    "Confirm Sync": "Using the latest template will overwrite the existing one and may result in the loss of some previous configuration information. Please confirm.",
     "Custom Title Tip": "This title will be displayed during the conversation",
     "My Modules": "My Modules",
     "No Modules": "No modules yet~",

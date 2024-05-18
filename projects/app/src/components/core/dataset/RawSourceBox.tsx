@@ -1,33 +1,39 @@
 import React, { useMemo } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { getFileAndOpen } from '@/web/core/dataset/utils';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
 
 type Props = BoxProps & {
   sourceName?: string;
+  collectionId: string;
   sourceId?: string;
   canView?: boolean;
 };
 
-const RawSourceBox = ({ sourceId, sourceName = '', canView = true, ...props }: Props) => {
+const RawSourceBox = ({
+  sourceId,
+  collectionId,
+  sourceName = '',
+  canView = true,
+  ...props
+}: Props) => {
   const { t } = useTranslation();
   const { fileT } = useI18n();
-  const { toast } = useToast();
-  const { setLoading } = useSystemStore();
 
-  const canPreview = useMemo(() => !!sourceId && canView, [canView, sourceId]);
+  const canPreview = !!sourceId && canView;
 
   const icon = useMemo(() => getSourceNameIcon({ sourceId, sourceName }), [sourceId, sourceName]);
+  const read = getCollectionSourceAndOpen(collectionId);
 
   return (
-    <MyTooltip label={canPreview ? fileT('Click to view file') : ''} shouldWrapChildren={false}>
+    <MyTooltip
+      label={canPreview ? fileT('Click to view raw source') : ''}
+      shouldWrapChildren={false}
+    >
       <Box
         color={'myGray.900'}
         fontWeight={'medium'}
@@ -37,18 +43,7 @@ const RawSourceBox = ({ sourceId, sourceName = '', canView = true, ...props }: P
           ? {
               cursor: 'pointer',
               textDecoration: 'underline',
-              onClick: async () => {
-                setLoading(true);
-                try {
-                  await getFileAndOpen(sourceId as string);
-                } catch (error) {
-                  toast({
-                    title: getErrText(error, t('error.fileNotFound')),
-                    status: 'error'
-                  });
-                }
-                setLoading(false);
-              }
+              onClick: read
             }
           : {})}
         {...props}

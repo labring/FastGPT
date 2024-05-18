@@ -18,6 +18,7 @@ import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { jiebaSplit } from '../../../common/string/jieba';
+import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -98,7 +99,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       },
       'datasetId collectionId q a chunkIndex indexes'
     )
-      .populate('collectionId', 'name fileId rawLink')
+      .populate('collectionId', 'name fileId rawLink externalFileId externalFileUrl')
       .lean()) as DatasetDataWithCollectionType[];
 
     // add score to data(It's already sorted. The first one is the one with the most points)
@@ -130,8 +131,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId?._id),
-          sourceName: data.collectionId?.name || '',
-          sourceId: data.collectionId?.fileId || data.collectionId?.rawLink,
+          ...getCollectionSourceData(data.collectionId),
           score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
         };
 
@@ -205,8 +205,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           id: String(item._id),
           datasetId: String(item.datasetId),
           collectionId: String(item.collectionId),
-          sourceName: collection?.name || '',
-          sourceId: collection?.fileId || collection?.rawLink,
+          ...getCollectionSourceData(collection),
           q: item.q,
           a: item.a,
           chunkIndex: item.chunkIndex,

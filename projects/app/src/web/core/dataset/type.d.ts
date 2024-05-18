@@ -28,8 +28,8 @@ export type ImportSourceItemType = {
   rawText?: string;
 
   // external file
-  sourceUrl?: string;
-  externalId?: string;
+  externalFileUrl?: string;
+  externalFileId?: string;
 };
 
 export type ImportSourceParamsType = UseFormReturn<

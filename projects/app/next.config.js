@@ -36,6 +36,10 @@ const nextConfig = {
       unknownContextCritical: false
     };
 
+    if (!config.externals) {
+      config.externals = [];
+    }
+
     if (isServer) {
       config.externals.push('worker_threads');
 
@@ -73,17 +77,17 @@ const nextConfig = {
           fs: false
         }
       };
-      if (!config.externals) {
-        config.externals = [];
-      }
     }
+
+    config.experiments = {
+      asyncWebAssembly: true,
+      layers: true
+    };
 
     return config;
   },
   transpilePackages: ['@fastgpt/*', 'ahooks', '@chakra-ui/*', 'react'],
   experimental: {
-    // 外部包独立打包
-    serverComponentsExternalPackages: ['mongoose', 'pg'],
     // 指定导出包优化，按需引入包模块
     optimizePackageImports: ['mongoose', 'pg'],
     outputFileTracingRoot: path.join(__dirname, '../../')

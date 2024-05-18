@@ -11,7 +11,7 @@ RUN apk add --no-cache libc6-compat && npm install -g pnpm@8.6.0
 RUN [ -z "$proxy" ] || pnpm config set registry https://registry.npmmirror.com
 
 # copy packages and one project
-COPY pnpm-lock.yaml pnpm-workspace.yaml ./
+COPY pnpm-lock.yaml pnpm-workspace.yaml .npmrc ./
 COPY ./packages ./packages
 COPY ./projects/$name/package.json ./projects/$name/package.json
 
@@ -27,7 +27,7 @@ ARG name
 ARG proxy
 
 # copy common node_modules and one project node_modules
-COPY package.json pnpm-workspace.yaml ./
+COPY package.json pnpm-workspace.yaml .npmrc ./
 COPY --from=mainDeps /app/node_modules ./node_modules
 COPY --from=mainDeps /app/packages ./packages
 COPY ./projects/$name ./projects/$name
@@ -64,6 +64,11 @@ COPY --from=builder --chown=nextjs:nodejs /app/projects/$name/.next/static /app/
 COPY --from=builder --chown=nextjs:nodejs /app/projects/$name/.next/server/chunks /app/projects/$name/.next/server/chunks
 # copy worker
 COPY --from=builder --chown=nextjs:nodejs /app/projects/$name/.next/server/worker /app/projects/$name/.next/server/worker
+
+# copy tiktoken but not copy ./node_modules/tiktoken/encoders
+COPY --from=mainDeps /app/node_modules/tiktoken ./node_modules/tiktoken
+RUN rm -rf ./node_modules/tiktoken/encoders
+
 # copy package.json to version file
 COPY --from=builder /app/projects/$name/package.json ./package.json 
 # copy config

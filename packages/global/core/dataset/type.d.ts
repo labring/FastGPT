@@ -41,7 +41,7 @@ export type DatasetCollectionSchemaType = {
   datasetId: string;
   parentId?: string;
   name: string;
-  type: `${DatasetCollectionTypeEnum}`;
+  type: DatasetCollectionTypeEnum;
   createTime: Date;
   updateTime: Date;
 
@@ -50,13 +50,15 @@ export type DatasetCollectionSchemaType = {
   chunkSplitter?: string;
   qaPrompt?: string;
 
-  sourceId?: string; // relate CollectionSourcePrefixEnum
+  tags?: string[];
+
   fileId?: string; // local file id
   rawLink?: string; // link url
+  externalFileId?: string; //external file id
 
   rawTextLength?: number;
   hashRawText?: string;
-  externalSourceUrl?: string; // external import url
+  externalFileUrl?: string; // external import url
   metadata?: {
     webPageSelector?: string;
     relatedImgId?: string; // The id of the associated image collections

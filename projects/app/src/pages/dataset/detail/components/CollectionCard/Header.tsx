@@ -84,7 +84,7 @@ const Header = ({}: {}) => {
       ...props
     }: {
       name: string;
-      type: `${DatasetCollectionTypeEnum}`;
+      type: DatasetCollectionTypeEnum;
       callback?: (id: string) => void;
       trainingType?: TrainingModeEnum;
       rawLink?: string;

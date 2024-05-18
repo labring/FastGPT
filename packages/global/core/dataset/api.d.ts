@@ -26,18 +26,27 @@ export type DatasetCollectionChunkMetadataType = {
   qaPrompt?: string;
   metadata?: Record<string, any>;
 };
+
+// create collection params
 export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
   name: string;
-  type: `${DatasetCollectionTypeEnum}`;
+  type: DatasetCollectionTypeEnum;
+
+  tags?: string[];
+
   fileId?: string;
   rawLink?: string;
+  externalFileId?: string;
+
+  externalFileUrl?: string;
   rawTextLength?: number;
   hashRawText?: string;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
+  tags?: string[];
 };
 export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
@@ -57,6 +66,11 @@ export type CsvTableCreateDatasetCollectionParams = {
   datasetId: string;
   parentId?: string;
   fileId: string;
+};
+export type ExternalFileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  externalFileId?: string;
+  externalFileUrl: string;
+  filename?: string;
 };
 
 /* ================= data ===================== */

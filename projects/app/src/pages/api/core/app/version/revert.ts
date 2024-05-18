@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { MongoAppVersion } from '@fastgpt/service/core/app/versionSchema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';

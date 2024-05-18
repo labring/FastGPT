@@ -116,13 +116,13 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
                       value: DatasetTypeEnum.websiteDataset,
                       icon: 'core/dataset/websiteDataset',
                       desc: datasetT('Website Dataset Desc')
+                    },
+                    {
+                      title: datasetT('External File'),
+                      value: DatasetTypeEnum.externalFile,
+                      icon: 'core/dataset/externalDataset',
+                      desc: datasetT('External file Dataset Desc')
                     }
-                    // {
-                    //   title: datasetT('External File'),
-                    //   value: DatasetTypeEnum.externalFile,
-                    //   icon: 'core/dataset/websiteDataset',
-                    //   desc: datasetT('External file Dataset Desc')
-                    // }
                   ]
                 : [])
             ]}

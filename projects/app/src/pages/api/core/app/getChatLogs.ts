@@ -7,7 +7,7 @@ import { addDays } from 'date-fns';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
-import { NextAPI } from '@/service/middle/entry';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(
   req: NextApiRequest,

@@ -27,7 +27,8 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> 
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
     canWrite: tmb.role !== TeamMemberRoleEnum.visitor,
-    lafAccount: tmb.teamId.lafAccount
+    lafAccount: tmb.teamId.lafAccount,
+    defaultPermission: tmb.teamId.defaultPermission
   };
 }
 
