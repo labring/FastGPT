@@ -1,8 +1,8 @@
-import { NextAPI } from '@/service/middle/entry';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { NextApiRequest, NextApiResponse } from 'next';
 import { MongoAppQGuide } from '@fastgpt/service/core/app/qGuideSchema';
 import axios from 'axios';
+import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { textList = [], appId, customURL } = req.body;

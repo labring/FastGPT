@@ -1,8 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { NextAPI } from '@/service/middle/entry';
 import { MongoAppQGuide } from '@fastgpt/service/core/app/qGuideSchema';
 import axios from 'axios';
 import { PaginationProps } from '@fastgpt/web/common/fetch/type';
+import { NextAPI } from '@/service/middleware/entry';
 
 type Props = PaginationProps<{
   appId: string;

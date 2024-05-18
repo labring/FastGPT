@@ -123,7 +123,7 @@ const QGuidesConfig = ({
               <Flex mt={8} alignItems={'center'}>
                 {appT('modules.Question Guide Texts')}
                 <Box fontSize={'xs'} px={2} bg={'myGray.100'} ml={1} rounded={'full'}>
-                  {data?.total || 0}
+                  {value.textList.length || 0}
                 </Box>
                 <Box flex={'1 0 0'} />
                 <Button
@@ -232,7 +232,7 @@ const TextConfigModal = ({
   };
 
   const allSelected = useMemo(() => {
-    return value.textList?.length === checkboxValue.length && value.textList?.length !== 0;
+    return value.textList.length === checkboxValue.length && value.textList.length !== 0;
   }, [value.textList, checkboxValue]);
 
   return (
@@ -411,7 +411,7 @@ const TextConfigModal = ({
                             isAdding &&
                               onChange({
                                 ...value,
-                                textList: value.textList?.filter((_, i) => i !== index)
+                                textList: value.textList.filter((_, i) => i !== index)
                               });
                           } else {
                             onChange({
