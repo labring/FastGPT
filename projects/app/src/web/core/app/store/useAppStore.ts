@@ -13,8 +13,6 @@ type State = {
   loadMyApps: (init?: boolean) => Promise<AppListItemType[]>;
   appDetail: AppDetailType;
   loadAppDetail: (id: string, init?: boolean) => Promise<AppDetailType>;
-  AppQGuide: string[];
-  loadAppQGuide: (id: string, init?: boolean, customURL?: string) => Promise<string[]>;
   updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
   publishApp(appId: string, data: PostPublishAppProps): Promise<void>;
   clearAppModules(): void;
@@ -41,15 +39,6 @@ export const useAppStore = create<State>()(
           const res = await getModelById(id);
           set((state) => {
             state.appDetail = res;
-          });
-          return res;
-        },
-        AppQGuide: [],
-        async loadAppQGuide(id: string, init = false, customURL?: string) {
-          if (id === get().appDetail._id && !init) return get().AppQGuide;
-          const res = await getMyQuestionGuides(id, customURL || '');
-          set((state) => {
-            state.AppQGuide = res;
           });
           return res;
         },

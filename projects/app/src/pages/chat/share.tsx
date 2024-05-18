@@ -84,17 +84,6 @@ const OutLink = ({
   } = useChatStore();
   const appId = chatData.appId;
   const outLinkUid: string = authToken || localUId;
-  const { loadAppQGuide, AppQGuide, appDetail, loadAppDetail } = useAppStore();
-  useQuery(['loadAppDetail', appId], () => loadAppDetail(appId));
-  useQuery(
-    ['loadAppQGuide', appId],
-    () => {
-      return loadAppQGuide(appId, true, getAppQGuideCustomURL(appDetail));
-    },
-    {
-      enabled: !!appDetail?._id
-    }
-  );
 
   const startChat = useCallback(
     async ({ messages, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -406,10 +395,6 @@ const OutLink = ({
                 userAvatar={chatData.userAvatar}
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
-                appQuestionGuides={getAppQuestionGuidesByUserGuideModule(
-                  chatData.app.userGuideModule as StoreNodeItemType,
-                  AppQGuide
-                )}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}

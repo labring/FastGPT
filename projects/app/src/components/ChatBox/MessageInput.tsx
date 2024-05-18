@@ -17,6 +17,10 @@ import { textareaMinH } from './constants';
 import { UseFormReturn, useFieldArray } from 'react-hook-form';
 import { useChatProviderStore } from './Provider';
 import QuestionGuide from './components/QustionGuide';
+import { useQuery } from '@tanstack/react-query';
+import { getMyQuestionGuides } from '@/web/core/app/api';
+import { getAppQGuideCustomURL } from '@/web/core/app/utils';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
 const MessageInput = ({
@@ -26,8 +30,7 @@ const MessageInput = ({
   showFileSelector = false,
   resetInputVal,
   chatForm,
-  appId,
-  appQGuides
+  appId
 }: {
   onSendMessage: (val: ChatBoxInputType & { autoTTSResponse?: boolean }) => void;
   onStop: () => void;
@@ -36,7 +39,6 @@ const MessageInput = ({
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
   appId?: string;
-  appQGuides?: string[];
 }) => {
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -56,6 +58,7 @@ const MessageInput = ({
   const { isPc, whisperModel } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
+  const { appDetail } = useAppStore();
 
   const havInput = !!inputValue || fileList.length > 0;
   const hasFileUploading = fileList.some((item) => !item.url);
@@ -208,13 +211,22 @@ const MessageInput = ({
     startSpeak(finishWhisperTranscription);
   }, [finishWhisperTranscription, isSpeaking, startSpeak, stopSpeak]);
 
-  const appQGuidesFilter =
-    appQGuides
-      ?.filter((item) => item.includes(inputValue) && item !== inputValue)
-      .slice(0, 5)
-      .map((item) => {
-        return { key: item, label: item };
-      }) || [];
+  const { data } = useQuery(
+    [appId, inputValue],
+    async () => {
+      if (!appId) return { list: [], total: 0 };
+      return getMyQuestionGuides({
+        appId,
+        customURL: getAppQGuideCustomURL(appDetail),
+        pageSize: 5,
+        current: 1,
+        searchKey: inputValue
+      });
+    },
+    {
+      enabled: !!appId
+    }
+  );
 
   return (
     <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
@@ -257,7 +269,7 @@ const MessageInput = ({
         {/* popup */}
         {havInput && (
           <QuestionGuide
-            variables={appQGuidesFilter}
+            guides={data?.list || []}
             setDropdownValue={(value) => setValue('input', value)}
             bottom={'100%'}
             top={'auto'}
@@ -407,7 +419,7 @@ const MessageInput = ({
                 (isPc || window !== parent) &&
                 e.keyCode === 13 &&
                 !e.shiftKey &&
-                !(havInput && appQGuidesFilter.length > 0)
+                !(havInput && data?.list.length && data?.list.length > 0)
               ) {
                 handleSend();
                 e.preventDefault();

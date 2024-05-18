@@ -789,7 +789,7 @@ export const getNodesWithNoQGuide = (
           if (input.key === NodeInputKeyEnum.questionGuideText) {
             return {
               ...input,
-              value: { ...questionGuideText, text: [] }
+              value: { ...questionGuideText, textList: [] }
             };
           }
           return input;

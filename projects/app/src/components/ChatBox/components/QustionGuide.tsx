@@ -5,11 +5,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
 
 export default function QuestionGuide({
-  variables,
+  guides,
   setDropdownValue,
   ...props
 }: {
-  variables: EditorVariablePickerType[];
+  guides: string[];
   setDropdownValue?: (value: string) => void;
 } & BoxProps) {
   const [highlightedIndex, setHighlightedIndex] = React.useState(0);
@@ -20,13 +20,13 @@ export default function QuestionGuide({
       if (event.keyCode === 38) {
         setHighlightedIndex((prevIndex) => Math.max(prevIndex - 1, 0));
       } else if (event.keyCode === 40) {
-        setHighlightedIndex((prevIndex) => Math.min(prevIndex + 1, variables.length - 1));
-      } else if (event.keyCode === 13 && variables[highlightedIndex]?.key) {
-        setDropdownValue?.(variables[highlightedIndex].key);
+        setHighlightedIndex((prevIndex) => Math.min(prevIndex + 1, guides.length - 1));
+      } else if (event.keyCode === 13 && guides[highlightedIndex]) {
+        setDropdownValue?.(guides[highlightedIndex]);
         event.preventDefault();
       }
     },
-    [highlightedIndex, setDropdownValue, variables]
+    [highlightedIndex, setDropdownValue, guides]
   );
 
   useEffect(() => {
@@ -37,7 +37,7 @@ export default function QuestionGuide({
     };
   }, [handleKeyDown]);
 
-  return variables.length ? (
+  return guides.length ? (
     <Box
       bg={'white'}
       boxShadow={'lg'}
@@ -58,11 +58,11 @@ export default function QuestionGuide({
         <MyIcon name={'union'} />
         <Box>{appT('modules.Input Guide')}</Box>
       </Flex>
-      {variables.map((item, index) => (
+      {guides.map((item, index) => (
         <Flex
           alignItems={'center'}
           as={'li'}
-          key={item.key}
+          key={item}
           px={4}
           py={3}
           borderRadius={'sm'}
@@ -84,16 +84,13 @@ export default function QuestionGuide({
           onMouseDown={(e) => {
             e.preventDefault();
 
-            setDropdownValue?.(item.key);
+            setDropdownValue?.(item);
           }}
           onMouseEnter={() => {
             setHighlightedIndex(index);
           }}
         >
-          <Box fontSize={'sm'}>
-            {item.key}
-            {item.key !== item.label && `(${item.label})`}
-          </Box>
+          <Box fontSize={'sm'}>{item}</Box>
         </Flex>
       ))}
     </Box>

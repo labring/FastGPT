@@ -59,18 +59,6 @@ const OutLink = () => {
     [key: string]: string;
   };
 
-  const { loadAppQGuide, AppQGuide, appDetail, loadAppDetail } = useAppStore();
-  useQuery(['loadAppDetail', appId], () => loadAppDetail(appId));
-  useQuery(
-    ['loadAppQGuide', appId],
-    () => {
-      return loadAppQGuide(appId, true, getAppQGuideCustomURL(appDetail));
-    },
-    {
-      enabled: !!appDetail?._id
-    }
-  );
-
   const { toast } = useToast();
   const theme = useTheme();
   const { isPc } = useSystemStore();
@@ -378,10 +366,6 @@ const OutLink = () => {
                 userAvatar={chatData.userAvatar}
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
-                appQuestionGuides={getAppQuestionGuidesByUserGuideModule(
-                  chatData.app.userGuideModule as StoreNodeItemType,
-                  AppQGuide
-                )}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}
                 onStartChat={startChat}

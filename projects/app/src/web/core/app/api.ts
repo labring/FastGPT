@@ -1,7 +1,12 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import type { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
+import type {
+  AppDetailType,
+  AppListItemType,
+  AppQuestionGuideTextConfigType
+} from '@fastgpt/global/core/app/type.d';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { AppUpdateParams, CreateAppParams } from '@/global/core/app/api';
+import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 
 /**
  * 获取模型列表
@@ -45,5 +50,6 @@ export const importQuestionGuides = (data: {
 /**
  * 获取提示词库
  */
-export const getMyQuestionGuides = (appId: string, customURL: string) =>
-  GET<string[]>(`/core/app/questionGuides/list?appId=${appId}&customURL=${customURL}`);
+export const getMyQuestionGuides = (
+  data: PaginationProps<{ appId: string; customURL: string; searchKey: string }>
+) => GET<PaginationResponse<string>>(`/core/app/questionGuides/list`, data);

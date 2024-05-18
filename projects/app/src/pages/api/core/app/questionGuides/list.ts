@@ -1,18 +1,36 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 import { NextAPI } from '@/service/middle/entry';
 import { MongoAppQGuide } from '@fastgpt/service/core/app/qGuideSchema';
 import axios from 'axios';
+import { PaginationProps } from '@fastgpt/web/common/fetch/type';
+
+type Props = PaginationProps<{
+  appId: string;
+  customURL: string;
+  searchKey: string;
+}>;
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const { appId, customURL } = req.query;
+  const { appId, customURL, current, pageSize, searchKey } = req.query as unknown as Props;
+
   if (!customURL) {
-    const { teamId } = await authUserRole({ req, authToken: true });
+    const [result, total] = await Promise.all([
+      MongoAppQGuide.find({
+        appId,
+        ...(searchKey && { text: { $regex: new RegExp(searchKey, 'i') } })
+      })
+        .sort({
+          time: -1
+        })
+        .skip((current - 1) * pageSize)
+        .limit(pageSize),
+      MongoAppQGuide.countDocuments({ appId })
+    ]);
 
-    const questionGuideText = await MongoAppQGuide.find({ appId, teamId });
-    const textList = questionGuideText.map((item) => item.text);
-
-    return textList || [];
+    return {
+      list: result.map((item) => item.text) || [],
+      total
+    };
   } else {
     try {
       const response = await axios.get(customURL as string, {

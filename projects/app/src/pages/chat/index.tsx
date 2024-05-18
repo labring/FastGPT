@@ -67,7 +67,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     setChatData,
     delOneHistoryItem
   } = useChatStore();
-  const { myApps, loadMyApps, appDetail, loadAppDetail, loadAppQGuide, AppQGuide } = useAppStore();
+  const { myApps, loadMyApps } = useAppStore();
   const { userInfo } = useUserStore();
 
   const { isPc } = useSystemStore();
@@ -134,16 +134,6 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   );
 
   useQuery(['loadModels'], () => loadMyApps(false));
-  useQuery(['loadAppDetail', appId], () => loadAppDetail(appId, false));
-  useQuery(
-    ['loadAppQGuide', appId],
-    () => {
-      return loadAppQGuide(appId, true, getAppQGuideCustomURL(appDetail));
-    },
-    {
-      enabled: !!appDetail?._id
-    }
-  );
 
   // get chat app info
   const loadChatInfo = useCallback(
@@ -366,10 +356,6 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 userAvatar={userInfo?.avatar}
                 userGuideModule={chatData.app?.userGuideModule}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
-                appQuestionGuides={getAppQuestionGuidesByUserGuideModule(
-                  chatData.app.userGuideModule as StoreNodeItemType,
-                  AppQGuide
-                )}
                 feedbackType={'user'}
                 onStartChat={startChat}
                 onDelMessage={(e) => delOneHistoryItem({ ...e, appId, chatId })}

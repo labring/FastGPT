@@ -85,14 +85,16 @@ export function useScrollPagination<
       ...props
     }: { children: React.ReactNode; isLoading?: boolean } & BoxProps) => {
       return (
-        <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
-          <Box ref={wrapperRef}>{children}</Box>
+        <>
+          <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
+            <Box ref={wrapperRef}>{children}</Box>
+          </MyBox>
           {noMore.current && (
             <Box pb={2} textAlign={'center'} color={'myGray.600'} fontSize={'sm'}>
               {t('common.No more data')}
             </Box>
           )}
-        </MyBox>
+        </>
       );
     }
   );
@@ -115,6 +117,7 @@ export function useScrollPagination<
   return {
     containerRef,
     list,
+    data,
     isLoading,
     ScrollList,
     fetchData: loadData

@@ -155,7 +155,6 @@ const ChatTest = (
             showMarkIcon
             userGuideModule={getGuideModule(nodes)}
             showFileSelector={checkChatSupportSelectFileByModules(nodes)}
-            appQuestionGuides={getAppQuestionGuidesByModules(nodes)}
             onStartChat={startChat}
             onDelMessage={() => {}}
           />
