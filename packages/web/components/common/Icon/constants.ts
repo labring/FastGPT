@@ -1,6 +1,7 @@
 // @ts-nocheck
 
 export const iconPaths = {
+  book: () => import('./icons/book.svg'),
   change: () => import('./icons/change.svg'),
   chatSend: () => import('./icons/chatSend.svg'),
   closeSolid: () => import('./icons/closeSolid.svg'),
@@ -64,6 +65,7 @@ export const iconPaths = {
   'core/app/appApiLight': () => import('./icons/core/app/appApiLight.svg'),
   'core/app/customFeedback': () => import('./icons/core/app/customFeedback.svg'),
   'core/app/headphones': () => import('./icons/core/app/headphones.svg'),
+  'core/app/inputGuides': () => import('./icons/core/app/inputGuides.svg'),
   'core/app/logsLight': () => import('./icons/core/app/logsLight.svg'),
   'core/app/markLight': () => import('./icons/core/app/markLight.svg'),
   'core/app/publish/lark': () => import('./icons/core/app/publish/lark.svg'),
@@ -219,6 +221,7 @@ export const iconPaths = {
   'support/user/userFill': () => import('./icons/support/user/userFill.svg'),
   'support/user/userLight': () => import('./icons/support/user/userLight.svg'),
   text: () => import('./icons/text.svg'),
+  union: () => import('./icons/union.svg'),
   user: () => import('./icons/user.svg'),
   wx: () => import('./icons/wx.svg')
 };

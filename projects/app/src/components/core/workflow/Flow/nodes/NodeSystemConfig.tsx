@@ -9,6 +9,7 @@ import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 import QGSwitch from '@/components/core/app/QGSwitch';
 import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
+import QGuidesConfig from '@/components/core/app/QGuidesConfig';
 import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
@@ -21,11 +22,6 @@ import { WorkflowContext } from '../../context';
 import { VariableItemType } from '@fastgpt/global/core/app/type';
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
-import {
-  FlowNodeOutputTypeEnum,
-  FlowNodeTypeEnum
-} from '@fastgpt/global/core/workflow/node/constant';
-import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const theme = useTheme();
@@ -59,6 +55,9 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </Box>
           <Box mt={3} pt={3} borderTop={theme.borders.base}>
             <ScheduledTrigger data={data} />
+          </Box>
+          <Box mt={3} pt={3} borderTop={theme.borders.base}>
+            <QuestionInputGuide data={data} />
           </Box>
         </Box>
       </NodeCard>
@@ -233,6 +232,29 @@ function ScheduledTrigger({ data }: { data: FlowNodeItemType }) {
           type: 'updateInput',
           value: {
             ...inputs.find((item) => item.key === NodeInputKeyEnum.scheduleTrigger),
+            value: e
+          }
+        });
+      }}
+    />
+  );
+}
+
+function QuestionInputGuide({ data }: { data: FlowNodeItemType }) {
+  const { inputs, nodeId } = data;
+  const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const { questionGuideText } = splitGuideModule({ inputs } as StoreNodeItemType);
+
+  return (
+    <QGuidesConfig
+      value={questionGuideText}
+      onChange={(e) => {
+        onChangeNode({
+          nodeId,
+          key: NodeInputKeyEnum.questionGuideText,
+          type: 'updateInput',
+          value: {
+            ...inputs.find((item) => item.key === NodeInputKeyEnum.questionGuideText),
             value: e
           }
         });

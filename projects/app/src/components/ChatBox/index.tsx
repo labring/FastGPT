@@ -58,7 +58,7 @@ import ChatProvider, { useChatProviderStore } from './Provider';
 import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
-import { useCreation, useUpdateEffect } from 'ahooks';
+import { useCreation } from 'ahooks';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));

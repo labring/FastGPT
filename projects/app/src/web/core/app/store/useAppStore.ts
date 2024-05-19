@@ -1,12 +1,12 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
-import { defaultApp } from '../constants';
+import { getMyApps, getModelById, putAppById, getMyQuestionGuides } from '@/web/core/app/api';
 import type { AppUpdateParams } from '@/global/core/app/api.d';
 import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
 import { PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp } from '../versionApi';
+import { defaultApp } from '../constants';
 
 type State = {
   myApps: AppListItemType[];

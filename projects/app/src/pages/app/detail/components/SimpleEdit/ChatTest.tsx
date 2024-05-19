@@ -104,7 +104,7 @@ const ChatTest = ({
     return () => {
       wat.unsubscribe();
     };
-  }, []);
+  }, [setWorkflowData, watch]);
 
   return (
     <Flex

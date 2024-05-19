@@ -16,8 +16,10 @@ import MyTooltip from '@/components/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox from '@/components/ChatBox';
 import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
-import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
-import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
+import {
+  checkChatSupportSelectFileByModules,
+  getAppQuestionGuidesByModules
+} from '@/web/core/chat/utils';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
@@ -26,6 +28,7 @@ import {
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
+import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
