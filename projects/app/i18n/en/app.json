@@ -47,6 +47,14 @@
     "type": "\"{{type}}\" type\n{{description}}"
   },
   "modules": {
+    "Config Texts": "Config Texts",
+    "Config question guide": "Config question guide",
+    "Custom question guide URL": "Custom question guide URL",
+    "Input Guide": "Input Guide",
+    "Only support CSV": "Only support CSV",
+    "Question Guide": "Question guide",
+    "Question Guide Switch": "Open question guide",
+    "Question Guide Texts": "Texts",
     "Title is required": "Module name cannot be empty"
   }
 }

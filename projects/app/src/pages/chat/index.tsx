@@ -33,10 +33,15 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
-import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
+import {
+  checkChatSupportSelectFileByChatModels,
+  getAppQuestionGuidesByUserGuideModule
+} from '@/web/core/chat/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();

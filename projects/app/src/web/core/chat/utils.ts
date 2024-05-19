@@ -1,6 +1,7 @@
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 
 export function checkChatSupportSelectFileByChatModels(models: string[] = []) {
   const llmModelList = useSystemStore.getState().llmModelList;
@@ -24,4 +25,24 @@ export function checkChatSupportSelectFileByModules(modules: StoreNodeItemType[]
     (item) => item.inputs.find((item) => item.key === 'model')?.value || ''
   );
   return checkChatSupportSelectFileByChatModels(models);
+}
+
+export function getAppQuestionGuidesByModules(modules: StoreNodeItemType[] = []) {
+  const systemModule = modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
+  const questionGuideText = systemModule?.inputs.find(
+    (item) => item.key === NodeInputKeyEnum.questionGuideText
+  )?.value;
+
+  return questionGuideText?.open ? questionGuideText?.textList : [];
+}
+
+export function getAppQuestionGuidesByUserGuideModule(
+  module: StoreNodeItemType,
+  qGuideText: string[] = []
+) {
+  const questionGuideText = module?.inputs.find(
+    (item) => item.key === NodeInputKeyEnum.questionGuideText
+  )?.value;
+
+  return questionGuideText?.open ? qGuideText : [];
 }

@@ -110,7 +110,6 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
       maxW={['90vw', '700px']}
       w={'700px'}
       h={['90vh', '80vh']}
-      overflow={'none'}
     >
       {/* Header: row and search */}
       <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>

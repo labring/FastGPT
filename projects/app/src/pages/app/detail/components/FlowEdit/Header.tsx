@@ -27,6 +27,9 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
 import { useInterval, useUpdateEffect } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
+import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { importQuestionGuides } from '@/web/core/app/api';
+import { getAppQGuideCustomURL, getNodesWithNoQGuide } from '@/web/core/app/utils';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 const PublishHistories = dynamic(
@@ -139,8 +142,18 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     const data = await flowData2StoreDataAndCheck();
     if (data) {
       try {
+        const { questionGuideText } = splitGuideModule(getGuideModule(data.nodes));
+        await importQuestionGuides({
+          appId: app._id,
+          textList: questionGuideText.textList,
+          customURL: getAppQGuideCustomURL(app)
+        });
+
+        const newNodes = getNodesWithNoQGuide(data.nodes, questionGuideText);
+
         await publishApp(app._id, {
           ...data,
+          nodes: newNodes,
           type: AppTypeEnum.advanced,
           //@ts-ignore
           version: 'v2'

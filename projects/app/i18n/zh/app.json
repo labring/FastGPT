@@ -46,6 +46,14 @@
     "type": "\"{{type}}\"类型\n{{description}}"
   },
   "modules": {
+    "Config Texts": "配置词库",
+    "Config question guide": "配置输入提示",
+    "Custom question guide URL": "自定义词库地址",
+    "Input Guide": "智能推荐",
+    "Only support CSV": "仅支持 CSV 导入，点击下载模板",
+    "Question Guide": "输入提示",
+    "Question Guide Switch": "是否开启",
+    "Question Guide Texts": "词库",
     "Title is required": "模块名不能为空"
   }
 }

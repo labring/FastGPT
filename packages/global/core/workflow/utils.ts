@@ -11,7 +11,8 @@ import type {
   VariableItemType,
   AppTTSConfigType,
   AppWhisperConfigType,
-  AppScheduledTriggerConfigType
+  AppScheduledTriggerConfigType,
+  AppQuestionGuideTextConfigType
 } from '../app/type';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import { defaultWhisperConfig } from '../app/constants';
@@ -59,13 +60,20 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.scheduleTrigger)?.value ??
     null;
 
+  const questionGuideText: AppQuestionGuideTextConfigType = guideModules?.inputs?.find(
+    (item) => item.key === NodeInputKeyEnum.questionGuideText
+  )?.value || {
+    open: false
+  };
+
   return {
     welcomeText,
     variableNodes,
     questionGuide,
     ttsConfig,
     whisperConfig,
-    scheduledTriggerConfig
+    scheduledTriggerConfig,
+    questionGuideText
   };
 };
 export const replaceAppChatConfig = ({

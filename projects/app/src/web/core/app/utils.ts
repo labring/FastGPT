@@ -1,4 +1,9 @@
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import {
+  AppDetailType,
+  AppQuestionGuideTextConfigType,
+  AppSchema,
+  AppSimpleEditFormType
+} from '@fastgpt/global/core/app/type';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import {
   FlowNodeInputTypeEnum,
@@ -64,6 +69,12 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
           renderTypeList: [FlowNodeInputTypeEnum.hidden],
           label: '',
           value: formData.userGuide.scheduleTrigger
+        },
+        {
+          key: NodeInputKeyEnum.questionGuideText,
+          renderTypeList: [FlowNodeInputTypeEnum.hidden],
+          label: '',
+          value: formData.userGuide.questionGuideText
         }
       ],
       outputs: []
@@ -756,4 +767,35 @@ export const getSystemVariables = (t: TFunction): EditorVariablePickerType[] => 
       valueType: WorkflowIOValueTypeEnum.string
     }
   ];
+};
+
+export const getAppQGuideCustomURL = (appDetail: AppDetailType | AppSchema): string => {
+  return (
+    appDetail?.modules
+      .find((m) => m.flowNodeType === FlowNodeTypeEnum.systemConfig)
+      ?.inputs.find((i) => i.key === NodeInputKeyEnum.questionGuideText)?.value.customURL || ''
+  );
+};
+
+export const getNodesWithNoQGuide = (
+  nodes: StoreNodeItemType[],
+  questionGuideText: AppQuestionGuideTextConfigType
+): StoreNodeItemType[] => {
+  return nodes.map((node) => {
+    if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
+      return {
+        ...node,
+        inputs: node.inputs.map((input) => {
+          if (input.key === NodeInputKeyEnum.questionGuideText) {
+            return {
+              ...input,
+              value: { ...questionGuideText, textList: [] }
+            };
+          }
+          return input;
+        })
+      };
+    }
+    return node;
+  });
 };
