@@ -8,9 +8,11 @@
   "Custom input guide url": "Custom lexicon url",
   "Custom question guide URL": "Custom lexicon address ",
   "Input Guide": "Intelligent Recommendation ",
+  "Input guide": "Input guide",
   "Input guide lexicon": "Lexicon",
+  "Input guide tip": "You can configure some preset questions. When the user enters a question, the relevant question is retrieved from these preset questions for prompt.",
+  "Insert input guide, Some data already exists": "Duplicate data, automatically filtered, insert: {{len}} data",
   "New input guide lexicon": "New lexicon",
   "Only support CSV": "Only support CSV import, click download template ",
-  "Question Guide Texts": "Lexicon",
-  "Insert input guide, Some data already exists": "Duplicate data, automatically filtered, insert: {{len}} data"
+  "Question Guide Texts": "Lexicon"
 }

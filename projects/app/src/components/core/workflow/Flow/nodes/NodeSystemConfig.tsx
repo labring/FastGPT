@@ -242,11 +242,13 @@ function ScheduledTrigger({ data }: { data: FlowNodeItemType }) {
 
 function QuestionInputGuide({ data }: { data: FlowNodeItemType }) {
   const { inputs, nodeId } = data;
+  const appId = useContextSelector(WorkflowContext, (v) => v.appId);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const { chatInputGuide } = splitGuideModule({ inputs } as StoreNodeItemType);
 
-  return (
+  return appId ? (
     <InputGuideConfig
+      appId={appId}
       value={chatInputGuide}
       onChange={(e) => {
         onChangeNode({
@@ -260,5 +262,5 @@ function QuestionInputGuide({ data }: { data: FlowNodeItemType }) {
         });
       }}
     />
-  );
+  ) : null;
 }

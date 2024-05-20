@@ -42,6 +42,7 @@ const MyModal = ({
       onClose={() => onClose && onClose()}
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
+      blockScrollOnMount={false}
     >
       <ModalOverlay />
       <ModalContent

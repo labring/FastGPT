@@ -8,7 +8,8 @@ import {
   useDisclosure,
   Switch,
   Textarea,
-  Checkbox
+  Checkbox,
+  HStack
 } from '@chakra-ui/react';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -34,6 +35,7 @@ import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { readCsvRawText } from '@fastgpt/web/common/file/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRequest } from 'ahooks';
+import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 
 const csvTemplate = `"第一列内容"
 "只会将第一列内容导入，其余列会被忽略"
@@ -81,7 +83,10 @@ const InputGuideConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
-      <Box fontWeight={'medium'}>{chatT('Input guide')}</Box>
+      <HStack>
+        <Box>{chatT('Input guide')}</Box>
+        <QuestionTip label={chatT('Input guide tip')} />
+      </HStack>
       <Box flex={1} />
       <MyTooltip label={chatT('Config input guide')}>
         <Button
@@ -199,7 +204,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
     itemHeight: 46,
     overscan: 20,
 
-    pageSize: 30,
+    pageSize: 20,
     defaultParams: {
       appId,
       searchKey
@@ -362,6 +367,11 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
               onBlur={(e) => {
                 createNewData([e.target.value.trim()]);
               }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  createNewData([e.currentTarget.value.trim()]);
+                }
+              }}
             />
           </Box>
         )}
@@ -413,6 +423,14 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
                         dataId: item._id
                       });
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        onUpdateData({
+                          text: e.currentTarget.value.trim(),
+                          dataId: item._id
+                        });
+                      }
+                    }}
                   />
                 </Box>
               ) : (
@@ -428,7 +446,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
                   _hover={{ borderColor: 'primary.300' }}
                 >
                   <Box className="textEllipsis" w={0} flex={'1 0 0'}>
-                    {item.text}
+                    <HighlightText rawText={item.text} matchText={searchKey} />
                   </Box>
                   {selectedRows.length === 0 && (
                     <Box className="icon-list" display={'none'}>

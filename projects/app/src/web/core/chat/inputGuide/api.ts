@@ -13,6 +13,10 @@ import type {
 } from '@/pages/api/core/chat/inputGuide/create';
 import type { updateInputGuideBody } from '@/pages/api/core/chat/inputGuide/update';
 import type { deleteChatInputGuideQuery } from '@/pages/api/core/chat/inputGuide/delete';
+import type {
+  QueryChatInputGuideProps,
+  QueryChatInputGuideResponse
+} from '@/pages/api/core/chat/inputGuide/query';
 
 export const getCountChatInputGuideTotal = (data: countChatInputGuideTotalQuery) =>
   GET<countChatInputGuideTotalResponse>(`/core/chat/inputGuide/countTotal`, data);
@@ -21,6 +25,11 @@ export const getCountChatInputGuideTotal = (data: countChatInputGuideTotalQuery)
  */
 export const getChatInputGuideList = (data: ChatInputGuideProps) =>
   GET<ChatInputGuideResponse>(`/core/chat/inputGuide/list`, data);
+
+export const queryChatInputGuideList = (
+  data: QueryChatInputGuideProps,
+  url = `/core/chat/inputGuide/query`
+) => GET<QueryChatInputGuideResponse>(url, data);
 
 export const postChatInputGuides = (data: createInputGuideBody) =>
   POST<createInputGuideResponse>(`/core/chat/inputGuide/create`, data);

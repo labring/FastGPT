@@ -6,6 +6,7 @@ import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import {
   AppTTSConfigType,
   AppWhisperConfigType,
+  ChatInputGuideConfigType,
   VariableItemType
 } from '@fastgpt/global/core/app/type';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
@@ -38,6 +39,7 @@ type useChatStoreType = OutLinkChatAuthProps & {
   chatHistories: ChatSiteItemType[];
   setChatHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   isChatting: boolean;
+  chatInputGuide: ChatInputGuideConfigType;
 };
 const StateContext = createContext<useChatStoreType>({
   welcomeText: '',
@@ -87,6 +89,10 @@ const StateContext = createContext<useChatStoreType>({
   },
   finishSegmentedAudio: function (): void {
     throw new Error('Function not implemented.');
+  },
+  chatInputGuide: {
+    open: false,
+    customUrl: ''
   }
 });
 
@@ -110,10 +116,8 @@ const Provider = ({
 }: ChatProviderProps) => {
   const [chatHistories, setChatHistories] = useState<ChatSiteItemType[]>([]);
 
-  const { welcomeText, variableNodes, questionGuide, ttsConfig, whisperConfig } = useMemo(
-    () => splitGuideModule(userGuideModule),
-    [userGuideModule]
-  );
+  const { welcomeText, variableNodes, questionGuide, ttsConfig, whisperConfig, chatInputGuide } =
+    useMemo(() => splitGuideModule(userGuideModule), [userGuideModule]);
 
   // segment audio
   const [audioPlayingChatId, setAudioPlayingChatId] = useState<string>();
@@ -167,7 +171,8 @@ const Provider = ({
     setAudioPlayingChatId,
     chatHistories,
     setChatHistories,
-    isChatting
+    isChatting,
+    chatInputGuide
   };
 
   return <StateContext.Provider value={value}>{children}</StateContext.Provider>;

@@ -45,7 +45,7 @@ import type {
   ChatBoxInputType,
   ChatBoxInputFormType
 } from './type.d';
-import MessageInput from './MessageInput';
+import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../core/chat/Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -1000,7 +1000,7 @@ const ChatBox = (
       </Box>
       {/* message input */}
       {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && (
-        <MessageInput
+        <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}
           TextareaDom={TextareaDom}

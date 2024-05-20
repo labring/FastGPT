@@ -41,20 +41,22 @@ export const useRequest = ({ successToast, errorToast, onSuccess, onError, ...pr
   return mutation;
 };
 
-type UseRequestFunProps = Parameters<typeof ahooksUseRequest>;
-export const useRequest2 = (
-  server: UseRequestFunProps[0],
-  options: UseRequestFunProps[1] & {
+type UseRequestFunProps<TData, TParams extends any[]> = Parameters<
+  typeof ahooksUseRequest<TData, TParams>
+>;
+export const useRequest2 = <TData, TParams extends any[]>(
+  server: UseRequestFunProps<TData, TParams>[0],
+  options: UseRequestFunProps<TData, TParams>[1] & {
     errorToast?: string;
     successToast?: string;
   } = {},
-  plugin?: UseRequestFunProps[2]
+  plugin?: UseRequestFunProps<TData, TParams>[2]
 ) => {
   const { t } = useTranslation();
   const { errorToast, successToast, ...rest } = options || {};
   const { toast } = useToast();
 
-  const res = ahooksUseRequest(
+  const res = ahooksUseRequest<TData, TParams>(
     server,
     {
       ...rest,
