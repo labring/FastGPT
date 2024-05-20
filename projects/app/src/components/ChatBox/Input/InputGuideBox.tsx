@@ -32,7 +32,7 @@ export default function InputGuideBox({
           appId,
           searchKey: text
         },
-        chatInputGuide.customUrl
+        chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
       );
     },
     {

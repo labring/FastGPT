@@ -16,7 +16,7 @@ async function handler(
 ): Promise<QueryChatInputGuideResponse> {
   const { appId, searchKey } = req.query;
 
-  await authApp({ req, appId, authToken: true, per: 'r' });
+  await authApp({ req, appId, authToken: true, authApiKey: true, per: 'r' });
 
   const params = {
     appId,

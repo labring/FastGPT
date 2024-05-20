@@ -1,13 +1,14 @@
+import { AppCollectionName } from 'core/app/schema';
 import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type.d';
 
-export const AppQGuideCollectionName = 'chat_input_guides';
+export const ChatInputGuideCollectionName = 'chat_input_guides';
 
 const AppQGuideSchema = new Schema({
   appId: {
     type: Schema.Types.ObjectId,
-    ref: AppQGuideCollectionName,
+    ref: AppCollectionName,
     required: true
   },
   text: {
@@ -23,6 +24,6 @@ try {
 }
 
 export const MongoChatInputGuide: Model<ChatInputGuideSchemaType> =
-  models[AppQGuideCollectionName] || model(AppQGuideCollectionName, AppQGuideSchema);
+  models[ChatInputGuideCollectionName] || model(ChatInputGuideCollectionName, AppQGuideSchema);
 
 MongoChatInputGuide.syncIndexes();

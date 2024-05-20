@@ -123,12 +123,17 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           </>
         )}
       </Box>
-      {!!userInfo && <UpdateInviteModal />}
-      {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
-      {!!userInfo && <SystemMsgModal />}
-      {!!userInfo && importantInforms.length > 0 && (
-        <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
+      {feConfigs?.isPlus && (
+        <>
+          {!!userInfo && <UpdateInviteModal />}
+          {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
+          {!!userInfo && <SystemMsgModal />}
+          {!!userInfo && importantInforms.length > 0 && (
+            <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
+          )}
+        </>
       )}
+
       <Loading loading={loading} zIndex={999999} />
     </>
   );

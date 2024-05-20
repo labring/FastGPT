@@ -142,7 +142,7 @@ const InputGuideConfig = ({
                 <Flex mt={8} alignItems={'center'}>
                   {chatT('Custom input guide url')}
                   <Flex
-                    onClick={() => window.open(getDocPath('/docs/course/custom_link'))}
+                    onClick={() => window.open(getDocPath('/docs/course/chat_input_guide'))}
                     color={'primary.700'}
                     alignItems={'center'}
                     cursor={'pointer'}
