@@ -58,7 +58,7 @@ export const SystemConfigNode: FlowNodeTemplateType = {
       label: ''
     },
     {
-      key: NodeInputKeyEnum.questionGuideText,
+      key: NodeInputKeyEnum.chatInputGuide,
       renderTypeList: [FlowNodeInputTypeEnum.hidden],
       valueType: WorkflowIOValueTypeEnum.any,
       label: ''

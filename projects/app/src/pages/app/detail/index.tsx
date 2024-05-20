@@ -18,7 +18,6 @@ import { useAppStore } from '@/web/core/app/store/useAppStore';
 import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
 import { useI18n } from '@/web/context/I18n';
-import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
@@ -199,7 +198,7 @@ export async function getServerSideProps(context: any) {
   return {
     props: {
       currentTab,
-      ...(await serviceSideProps(context, ['app', 'file', 'publish', 'workflow']))
+      ...(await serviceSideProps(context, ['app', 'chat', 'file', 'publish', 'workflow']))
     }
   };
 }

@@ -18,7 +18,7 @@ import { UseFormReturn, useFieldArray } from 'react-hook-form';
 import { useChatProviderStore } from './Provider';
 import QuestionGuide from './components/QustionGuide';
 import { useQuery } from '@tanstack/react-query';
-import { getMyQuestionGuides } from '@/web/core/app/api';
+import { getChatInputGuideList } from '@/web/core/app/api';
 import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
@@ -215,9 +215,9 @@ const MessageInput = ({
     [appId, inputValue],
     async () => {
       if (!appId) return { list: [], total: 0 };
-      return getMyQuestionGuides({
+      return getChatInputGuideList({
         appId,
-        customURL: getAppQGuideCustomURL(appDetail),
+        customUrl: getAppQGuideCustomURL(appDetail),
         pageSize: 5,
         current: 1,
         searchKey: inputValue

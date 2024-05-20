@@ -5,7 +5,7 @@ import type { FlowNodeInputItemType } from '../workflow/type/io.d';
 import { getGuideModule, splitGuideModule } from '../workflow/utils';
 import { StoreNodeItemType } from '../workflow/type';
 import { DatasetSearchModeEnum } from '../dataset/constants';
-import { defaultQuestionGuideTextConfig, defaultWhisperConfig } from './constants';
+import { defaultInputGuideConfig, defaultWhisperConfig } from './constants';
 
 export const getDefaultAppForm = (): AppSimpleEditFormType => {
   return {
@@ -36,7 +36,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => {
       },
       whisper: defaultWhisperConfig,
       scheduleTrigger: null,
-      questionGuideText: defaultQuestionGuideTextConfig
+      chatInputGuide: defaultInputGuideConfig
     }
   };
 };
@@ -111,7 +111,7 @@ export const appWorkflow2Form = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
         ttsConfig,
         whisperConfig,
         scheduledTriggerConfig,
-        questionGuideText
+        chatInputGuide
       } = splitGuideModule(getGuideModule(nodes));
 
       defaultAppForm.userGuide = {
@@ -121,7 +121,7 @@ export const appWorkflow2Form = ({ nodes }: { nodes: StoreNodeItemType[] }) => {
         tts: ttsConfig,
         whisper: whisperConfig,
         scheduleTrigger: scheduledTriggerConfig,
-        questionGuideText: questionGuideText
+        chatInputGuide: chatInputGuide
       };
     } else if (node.flowNodeType === FlowNodeTypeEnum.pluginModule) {
       if (!node.pluginId) return;

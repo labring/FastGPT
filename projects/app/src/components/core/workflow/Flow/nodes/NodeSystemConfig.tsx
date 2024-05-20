@@ -9,7 +9,7 @@ import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 import QGSwitch from '@/components/core/app/QGSwitch';
 import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
-import QGuidesConfig from '@/components/core/app/QGuidesConfig';
+import InputGuideConfig from '@/components/core/chat/appConfig/InputGuideConfig';
 import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
@@ -243,18 +243,18 @@ function ScheduledTrigger({ data }: { data: FlowNodeItemType }) {
 function QuestionInputGuide({ data }: { data: FlowNodeItemType }) {
   const { inputs, nodeId } = data;
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
-  const { questionGuideText } = splitGuideModule({ inputs } as StoreNodeItemType);
+  const { chatInputGuide } = splitGuideModule({ inputs } as StoreNodeItemType);
 
   return (
-    <QGuidesConfig
-      value={questionGuideText}
+    <InputGuideConfig
+      value={chatInputGuide}
       onChange={(e) => {
         onChangeNode({
           nodeId,
-          key: NodeInputKeyEnum.questionGuideText,
+          key: NodeInputKeyEnum.chatInputGuide,
           type: 'updateInput',
           value: {
-            ...inputs.find((item) => item.key === NodeInputKeyEnum.questionGuideText),
+            ...inputs.find((item) => item.key === NodeInputKeyEnum.chatInputGuide),
             value: e
           }
         });

@@ -88,7 +88,7 @@ export type AppSimpleEditFormType = {
     };
     whisper: AppWhisperConfigType;
     scheduleTrigger: AppScheduledTriggerConfigType | null;
-    questionGuideText: AppQuestionGuideTextConfigType;
+    chatInputGuide: ChatInputGuideConfigType;
   };
 };
 
@@ -125,10 +125,9 @@ export type AppWhisperConfigType = {
   autoTTSResponse: boolean;
 };
 // question guide text
-export type AppQuestionGuideTextConfigType = {
+export type ChatInputGuideConfigType = {
   open: boolean;
-  textList: string[];
-  customURL: string;
+  customUrl: string;
 };
 // interval timer
 export type AppScheduledTriggerConfigType = {

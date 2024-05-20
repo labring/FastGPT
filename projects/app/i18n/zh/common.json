@@ -3,6 +3,7 @@
   "App": "应用",
   "Export": "导出",
   "Folder": "文件夹",
+  "Is open": "是否开启",
   "Login": "登录",
   "Move": "移动",
   "Name": "名称",
@@ -16,6 +17,7 @@
     "Action": "操作",
     "Add": "添加",
     "Add New": "新增",
+    "Add Success": "添加成功",
     "All": "全部",
     "Back": "返回",
     "Beta": "实验版",
@@ -1184,6 +1186,7 @@
     }
   },
   "error": {
+    "Create failed": "创建失败",
     "fileNotFound": "文件找不到了~",
     "team": {
       "overSize": "团队成员超出上限"

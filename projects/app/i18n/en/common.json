@@ -3,6 +3,7 @@
   "App": "App",
   "Export": "Export",
   "Folder": "Folder",
+  "Is open": "Opened",
   "Login": "Login",
   "Move": "Move",
   "Name": "Name",
@@ -16,6 +17,7 @@
     "Action": "Action",
     "Add": "Add",
     "Add New": "Add New",
+    "Add Success": "Add successfully",
     "All": "All",
     "Back": "Back",
     "Beta": "Beta",
@@ -1177,6 +1179,7 @@
     }
   },
   "error": {
+    "Create failed": "Create failed",
     "fileNotFound": "File not found~",
     "team": {
       "overSize": "Team members exceed the limit"

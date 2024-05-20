@@ -12,11 +12,7 @@ import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
-import {
-  form2AppWorkflow,
-  getAppQGuideCustomURL,
-  getNodesWithNoQGuide
-} from '@/web/core/app/utils';
+import { form2AppWorkflow, getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
@@ -34,7 +30,6 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import { getSystemVariables } from '@/web/core/app/utils';
 import { useUpdate } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
-import { importQuestionGuides } from '@/web/core/app/api';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -42,7 +37,7 @@ const ToolSelectModal = dynamic(() => import('./ToolSelectModal'));
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
 const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
-const QGuidesConfigModal = dynamic(() => import('@/components/core/app/QGuidesConfig'));
+const InputGuideConfig = dynamic(() => import('@/components/core/chat/appConfig/InputGuideConfig'));
 
 const BoxStyles: BoxProps = {
   px: 5,
@@ -118,7 +113,7 @@ const EditForm = ({
   const whisperConfig = getValues('userGuide.whisper');
   const postQuestionGuide = getValues('userGuide.questionGuide');
   const selectedTools = watch('selectedTools');
-  const QGuidesConfig = watch('userGuide.questionGuideText');
+  const inputGuideConfig = watch('userGuide.chatInputGuide');
 
   const selectDatasets = useMemo(
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
@@ -132,19 +127,10 @@ const EditForm = ({
   /* on save app */
   const { mutate: onSubmitPublish, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
-      const questionGuideText = data.userGuide.questionGuideText;
-      await importQuestionGuides({
-        appId: appDetail._id,
-        textList: questionGuideText.textList,
-        customURL: getAppQGuideCustomURL(appDetail)
-      });
-
       const { nodes, edges } = form2AppWorkflow(data);
 
-      const newNodes = getNodesWithNoQGuide(nodes, questionGuideText);
-
       await publishApp(appDetail._id, {
-        nodes: newNodes,
+        nodes,
         edges,
         type: AppTypeEnum.simple
       });
@@ -463,10 +449,11 @@ const EditForm = ({
 
           {/* question tips */}
           <Box {...BoxStyles} borderBottom={'none'}>
-            <QGuidesConfigModal
-              value={QGuidesConfig}
+            <InputGuideConfig
+              appId={appDetail._id}
+              value={inputGuideConfig}
               onChange={(e) => {
-                setValue('userGuide.questionGuideText', e);
+                setValue('userGuide.chatInputGuide', e);
               }}
             />
           </Box>

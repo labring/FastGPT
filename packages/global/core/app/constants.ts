@@ -19,8 +19,8 @@ export const defaultWhisperConfig: AppWhisperConfigType = {
   autoTTSResponse: false
 };
 
-export const defaultQuestionGuideTextConfig = {
+export const defaultInputGuideConfig = {
   open: false,
   textList: [],
-  customURL: ''
+  customUrl: ''
 };

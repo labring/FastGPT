@@ -2,7 +2,7 @@ import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type {
   AppDetailType,
   AppListItemType,
-  AppQuestionGuideTextConfigType
+  ChatInputGuideConfigType
 } from '@fastgpt/global/core/app/type.d';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { AppUpdateParams, CreateAppParams } from '@/global/core/app/api';
@@ -37,19 +37,3 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
 
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/core/app/getChatLogs`, data);
-
-/**
- * 导入提示词库
- */
-export const importQuestionGuides = (data: {
-  appId: string;
-  textList: string[];
-  customURL: string;
-}) => POST(`/core/app/questionGuides/import`, data);
-
-/**
- * 获取提示词库
- */
-export const getMyQuestionGuides = (
-  data: PaginationProps<{ appId: string; customURL: string; searchKey: string }>
-) => GET<PaginationResponse<string>>(`/core/app/questionGuides/list`, data);
