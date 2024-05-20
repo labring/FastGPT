@@ -2,6 +2,7 @@ import { jsonRes } from '../response';
 import type { NextApiResponse } from 'next';
 import { withNextCors } from './cors';
 import { ApiRequestProps } from '../../type/next';
+import { addLog } from '../system/log';
 
 export type NextApiHandler<T = any> = (
   req: ApiRequestProps,
@@ -11,6 +12,8 @@ export type NextApiHandler<T = any> = (
 export const NextEntry = ({ beforeCallback = [] }: { beforeCallback?: Promise<any>[] }) => {
   return (...args: NextApiHandler[]): NextApiHandler => {
     return async function api(req: ApiRequestProps, res: NextApiResponse) {
+      const start = Date.now();
+      addLog.info(`Request start ${req.url}`);
       try {
         await Promise.all([withNextCors(req, res), ...beforeCallback]);
 
@@ -20,6 +23,9 @@ export const NextEntry = ({ beforeCallback = [] }: { beforeCallback?: Promise<an
         }
 
         const contentType = res.getHeader('Content-Type');
+
+        addLog.info(`Request finish ${req.url}, time: ${Date.now() - start}ms`);
+
         if ((!contentType || contentType === 'application/json') && !res.writableFinished) {
           return jsonRes(res, {
             code: 200,

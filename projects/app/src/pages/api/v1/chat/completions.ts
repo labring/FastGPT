@@ -10,6 +10,7 @@ import type { ChatCompletionCreateParams } from '@fastgpt/global/core/ai/type.d'
 import type { ChatCompletionMessageParam } from '@fastgpt/global/core/ai/type.d';
 import {
   getDefaultEntryNodeIds,
+  getMaxHistoryLimitFromNodes,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes,
   textAdaptGptResponse
@@ -168,11 +169,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       })();
 
     // 1. get and concat history; 2. get app workflow
+    const limit = getMaxHistoryLimitFromNodes(app.modules);
     const [{ history }, { nodes, edges }] = await Promise.all([
       getChatItems({
         appId: app._id,
         chatId,
-        limit: 30,
+        limit,
         field: `dataId obj value`
       }),
       getAppLatestVersion(app._id, app)
