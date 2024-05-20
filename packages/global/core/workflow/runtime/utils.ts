@@ -1,5 +1,5 @@
 import { ChatCompletionRequestMessageRoleEnum } from '../../ai/constants';
-import { NodeOutputKeyEnum } from '../constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '../constants';
 import { FlowNodeTypeEnum } from '../node/constant';
 import { StoreNodeItemType } from '../type';
 import { StoreEdgeItemType } from '../type/edge';
@@ -7,6 +7,23 @@ import { RuntimeEdgeItemType, RuntimeNodeItemType } from './type';
 import { VARIABLE_NODE_ID } from '../constants';
 import { isReferenceValue } from '../utils';
 import { ReferenceValueProps } from '../type/io';
+
+export const getMaxHistoryLimitFromNodes = (nodes: StoreNodeItemType[]): number => {
+  let limit = 10;
+  nodes.forEach((node) => {
+    node.inputs.forEach((input) => {
+      if (
+        (input.key === NodeInputKeyEnum.history ||
+          input.key === NodeInputKeyEnum.historyMaxAmount) &&
+        typeof input.value === 'number'
+      ) {
+        limit = Math.max(limit, input.value);
+      }
+    });
+  });
+
+  return limit * 2;
+};
 
 export const initWorkflowEdgeStatus = (edges: StoreEdgeItemType[]): RuntimeEdgeItemType[] => {
   return (

@@ -86,4 +86,4 @@ USER nextjs
 
 ENV serverPath=./projects/$name/server.js
 
-ENTRYPOINT ["sh","-c","node ${serverPath}"]
+ENTRYPOINT ["sh","-c","node --max-old-space-size=4096 ${serverPath}"]

@@ -25,6 +25,7 @@ import { useTranslation } from 'next-i18next';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import {
   getDefaultEntryNodeIds,
+  getMaxHistoryLimitFromNodes,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -57,19 +58,8 @@ const ChatTest = (
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
       /* get histories */
-      let historyMaxLen = 6;
-      nodes.forEach((node) => {
-        node.inputs.forEach((input) => {
-          if (
-            (input.key === NodeInputKeyEnum.history ||
-              input.key === NodeInputKeyEnum.historyMaxAmount) &&
-            typeof input.value === 'number'
-          ) {
-            historyMaxLen = Math.max(historyMaxLen, input.value);
-          }
-        });
-      });
-      const history = chatList.slice(-(historyMaxLen * 2) - 2, -2);
+      let historyMaxLen = getMaxHistoryLimitFromNodes(nodes);
+      const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
       const { responseText, responseData, newVariables } = await streamFetch({

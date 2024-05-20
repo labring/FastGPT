@@ -4,7 +4,6 @@ import { useTranslation } from 'next-i18next';
 import React, { useCallback, useEffect, useRef } from 'react';
 import ChatBox from '@/components/ChatBox';
 import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
-import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { streamFetch } from '@/web/common/api/fetch';
 import MyTooltip from '@/components/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -13,6 +12,7 @@ import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
   getDefaultEntryNodeIds,
+  getMaxHistoryLimitFromNodes,
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
@@ -53,19 +53,9 @@ const ChatTest = ({
       if (!workflowData) return Promise.reject('workflowData is empty');
 
       /* get histories */
-      let historyMaxLen = 6;
-      workflowData?.nodes.forEach((node) => {
-        node.inputs.forEach((input) => {
-          if (
-            (input.key === NodeInputKeyEnum.history ||
-              input.key === NodeInputKeyEnum.historyMaxAmount) &&
-            typeof input.value === 'number'
-          ) {
-            historyMaxLen = Math.max(historyMaxLen, input.value);
-          }
-        });
-      });
-      const history = chatList.slice(-(historyMaxLen * 2) - 2, -2);
+      let historyMaxLen = getMaxHistoryLimitFromNodes(workflowData.nodes);
+
+      const history = chatList.slice(-historyMaxLen - 2, -2);
 
       // 流请求，获取数据
       const { responseText, responseData } = await streamFetch({
