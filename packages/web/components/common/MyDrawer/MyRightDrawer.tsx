@@ -67,7 +67,7 @@ const MyRightDrawer = ({
           <DrawerCloseButton position={'relative'} fontSize={'sm'} top={0} right={0} />
         </Flex>
 
-        <DrawerBody overflow={'unset'} px={props?.px}>
+        <DrawerBody overflow={'hidden'} px={props?.px}>
           {children}
           <Loading loading={isLoading} fixed={false} />
         </DrawerBody>
