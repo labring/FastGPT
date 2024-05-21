@@ -30,7 +30,8 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -55,7 +56,7 @@ const ChatTest = (
   const { t } = useTranslation();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const { userInfo } = useUserStore();
-  const { appDetail } = useAppStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {

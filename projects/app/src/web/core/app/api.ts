@@ -27,7 +27,7 @@ export const delModelById = (id: string) => DELETE(`/core/app/del?appId=${id}`);
 /**
  * 根据 ID 获取模型
  */
-export const getModelById = (id: string) => GET<AppDetailType>(`/core/app/detail?appId=${id}`);
+export const getAppDetailById = (id: string) => GET<AppDetailType>(`/core/app/detail?appId=${id}`);
 
 /**
  * 根据 ID 更新模型

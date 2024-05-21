@@ -39,7 +39,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useMemoizedFn } from 'ahooks';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { AppContext } from '@/web/core/app/context/appContext';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
@@ -252,7 +252,7 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
-  const { appDetail } = useAppStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod)?.value;
   const params = inputs.find((item) => item.key === NodeInputKeyEnum.httpParams);

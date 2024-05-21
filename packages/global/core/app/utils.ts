@@ -6,7 +6,7 @@ import { getAppChatConfig } from '../workflow/utils';
 import { StoreNodeItemType } from '../workflow/type';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 
-export const defaultAppForm: AppSimpleEditFormType = {
+export const getDefaultAppForm = (): AppSimpleEditFormType => ({
   aiSettings: {
     model: 'gpt-3.5-turbo',
     systemPrompt: '',
@@ -26,7 +26,7 @@ export const defaultAppForm: AppSimpleEditFormType = {
   },
   selectedTools: [],
   chatConfig: {}
-};
+});
 
 /* format app nodes to edit form */
 export const appWorkflow2Form = ({
@@ -36,6 +36,8 @@ export const appWorkflow2Form = ({
   nodes: StoreNodeItemType[];
   chatConfig: AppChatConfigType;
 }) => {
+  console.log(111111111111);
+  const defaultAppForm = getDefaultAppForm();
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
   };
@@ -118,5 +120,6 @@ export const appWorkflow2Form = ({
     }
   });
 
+  console.log(nodes, chatConfig, '=====');
   return defaultAppForm;
 };

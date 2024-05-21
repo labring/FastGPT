@@ -39,7 +39,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import SliderApps from './components/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const OutLink = () => {

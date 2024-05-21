@@ -22,7 +22,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -47,7 +47,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
   });
   const aiChatQuoteTemplate = watch('quoteTemplate');
   const aiChatQuotePrompt = watch('quotePrompt');
-  const { appDetail } = useAppStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const variables = useCreation(() => {
     const globalVariables = getWorkflowGlobalVariables({

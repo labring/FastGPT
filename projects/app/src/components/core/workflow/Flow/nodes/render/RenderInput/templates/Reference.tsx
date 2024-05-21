@@ -14,7 +14,7 @@ import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
@@ -99,7 +99,7 @@ export const useReference = ({
   value?: any;
 }) => {
   const { t } = useTranslation();
-  const { appDetail } = useAppStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const edges = useContextSelector(WorkflowContext, (v) => v.edges);
 

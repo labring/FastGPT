@@ -1,4 +1,4 @@
-import React, { useMemo, useTransition } from 'react';
+import React, { Dispatch, useMemo, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
 import { Box, Flex, Textarea, useTheme } from '@chakra-ui/react';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
@@ -18,19 +18,19 @@ import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../context';
-import { AppChatConfigType, VariableItemType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigType, AppDetailType, VariableItemType } from '@fastgpt/global/core/app/type';
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
-import { useAppStore, type State as AppStoreType } from '@/web/core/app/store/useAppStore';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
-  setAppDetail: AppStoreType['setAppDetail'];
+  setAppDetail: Dispatch<React.SetStateAction<AppDetailType>>;
 };
 
 const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const theme = useTheme();
-  const { appDetail, setAppDetail } = useAppStore();
+  const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
 
   const chatConfig = useMemo<AppChatConfigType>(() => {
     return getAppChatConfig({

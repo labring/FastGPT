@@ -11,7 +11,6 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 
 import dynamic from 'next/dynamic';
@@ -30,6 +29,8 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import { getSystemVariables } from '@/web/core/app/utils';
 import { useUpdate } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'), {
   ssr: false
@@ -76,7 +77,7 @@ const EditForm = ({
   const { t } = useTranslation();
   const { appT } = useI18n();
 
-  const { appDetail, publishApp } = useAppStore();
+  const { appDetail, publishApp } = useContextSelector(AppContext, (v) => v);
 
   const { allDatasets } = useDatasetStore();
   const { llmModelList } = useSystemStore();
@@ -140,7 +141,7 @@ const EditForm = ({
   const { mutate: onSubmitPublish, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
       const { nodes, edges } = form2AppWorkflow(data);
-      await publishApp(appDetail._id, {
+      await publishApp({
         nodes,
         edges,
         chatConfig: data.chatConfig,
