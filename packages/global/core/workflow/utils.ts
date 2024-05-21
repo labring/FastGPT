@@ -15,7 +15,11 @@ import type {
   ChatInputGuideConfigType
 } from '../app/type';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
-import { defaultWhisperConfig } from '../app/constants';
+import {
+  defaultChatInputGuideConfig,
+  defaultTTSConfig,
+  defaultWhisperConfig
+} from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
@@ -41,34 +45,32 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value || '';
 
-  const variableNodes: VariableItemType[] =
+  const variables: VariableItemType[] =
     guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value || [];
 
   const questionGuide: boolean =
     !!guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value ||
     false;
 
-  const ttsConfig: AppTTSConfigType = guideModules?.inputs?.find(
-    (item) => item.key === NodeInputKeyEnum.tts
-  )?.value || { type: 'web' };
+  const ttsConfig: AppTTSConfigType =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ||
+    defaultTTSConfig;
 
   const whisperConfig: AppWhisperConfigType =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.whisper)?.value ||
     defaultWhisperConfig;
 
-  const scheduledTriggerConfig: AppScheduledTriggerConfigType | null =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.scheduleTrigger)?.value ??
-    null;
+  const scheduledTriggerConfig: AppScheduledTriggerConfigType = guideModules?.inputs?.find(
+    (item) => item.key === NodeInputKeyEnum.scheduleTrigger
+  )?.value;
 
-  const chatInputGuide: ChatInputGuideConfigType = guideModules?.inputs?.find(
-    (item) => item.key === NodeInputKeyEnum.chatInputGuide
-  )?.value || {
-    open: false
-  };
+  const chatInputGuide: ChatInputGuideConfigType =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ||
+    defaultChatInputGuideConfig;
 
   return {
     welcomeText,
-    variableNodes,
+    variables,
     questionGuide,
     ttsConfig,
     whisperConfig,

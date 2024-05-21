@@ -13,7 +13,7 @@ import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
 
 type useChatStoreType = OutLinkChatAuthProps & {
   welcomeText: string;
-  variableNodes: VariableItemType[];
+  variableList: VariableItemType[];
   questionGuide: boolean;
   ttsConfig: AppTTSConfigType;
   whisperConfig: AppWhisperConfigType;
@@ -43,7 +43,7 @@ type useChatStoreType = OutLinkChatAuthProps & {
 };
 const StateContext = createContext<useChatStoreType>({
   welcomeText: '',
-  variableNodes: [],
+  variableList: [],
   questionGuide: false,
   ttsConfig: {
     type: 'none',
@@ -116,7 +116,7 @@ const Provider = ({
 }: ChatProviderProps) => {
   const [chatHistories, setChatHistories] = useState<ChatSiteItemType[]>([]);
 
-  const { welcomeText, variableNodes, questionGuide, ttsConfig, whisperConfig, chatInputGuide } =
+  const { welcomeText, variables, questionGuide, ttsConfig, whisperConfig, chatInputGuide } =
     useMemo(() => splitGuideModule(userGuideModule), [userGuideModule]);
 
   // segment audio
@@ -154,7 +154,7 @@ const Provider = ({
     teamId,
     teamToken,
     welcomeText,
-    variableNodes,
+    variableList: variables,
     questionGuide,
     ttsConfig,
     whisperConfig,

@@ -92,8 +92,8 @@ const ScheduledTriggerConfig = ({
   value,
   onChange
 }: {
-  value: AppScheduledTriggerConfigType | null;
-  onChange: (e: AppScheduledTriggerConfigType | null) => void;
+  value?: AppScheduledTriggerConfigType;
+  onChange: (e?: AppScheduledTriggerConfigType) => void;
 }) => {
   const { t } = useTranslation();
   const { isOpen, onOpen, onClose } = useDisclosure();
@@ -133,12 +133,12 @@ const ScheduledTriggerConfig = ({
   /* cron string to config field */
   const cronConfig = useMemo(() => {
     if (!cronString) {
-      return null;
+      return;
     }
     const cronField = cronParser2Fields(cronString);
 
     if (!cronField) {
-      return null;
+      return;
     }
 
     if (cronField.dayOfMonth.length !== 31) {
@@ -219,7 +219,7 @@ const ScheduledTriggerConfig = ({
   // update value
   watch((data) => {
     if (!data.cronString) {
-      onChange(null);
+      onChange(undefined);
       return;
     }
     onChange({

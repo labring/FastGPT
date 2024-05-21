@@ -10,6 +10,16 @@ import {
 
 export const AppCollectionName = 'apps';
 
+export const chatConfigType = {
+  welcomeText: String,
+  variables: Array,
+  questionGuide: Boolean,
+  ttsConfig: Object,
+  whisperConfig: Object,
+  scheduledTriggerConfig: Object,
+  chatInputGuide: Object
+};
+
 const AppSchema = new Schema({
   teamId: {
     type: Schema.Types.ObjectId,
@@ -47,6 +57,16 @@ const AppSchema = new Schema({
     default: () => new Date()
   },
 
+  // role and auth
+  permission: {
+    type: String,
+    enum: Object.keys(PermissionTypeMap),
+    default: PermissionTypeEnum.private
+  },
+  teamTags: {
+    type: [String]
+  },
+
   // tmp store
   modules: {
     type: Array,
@@ -55,6 +75,10 @@ const AppSchema = new Schema({
   edges: {
     type: Array,
     default: []
+  },
+  chatConfig: {
+    type: chatConfigType,
+    default: {}
   },
 
   scheduledTriggerConfig: {
@@ -74,14 +98,6 @@ const AppSchema = new Schema({
 
   inited: {
     type: Boolean
-  },
-  permission: {
-    type: String,
-    enum: Object.keys(PermissionTypeMap),
-    default: PermissionTypeEnum.private
-  },
-  teamTags: {
-    type: [String]
   }
 });
 

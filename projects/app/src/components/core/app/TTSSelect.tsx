@@ -11,12 +11,13 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySlider from '@/components/Slider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 
 const TTSSelect = ({
-  value,
+  value = defaultTTSConfig,
   onChange
 }: {
-  value: AppTTSConfigType;
+  value?: AppTTSConfigType;
   onChange: (e: AppTTSConfigType) => void;
 }) => {
   const { t } = useTranslation();

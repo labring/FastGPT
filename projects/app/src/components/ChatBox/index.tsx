@@ -149,7 +149,7 @@ const ChatBox = (
 
   const {
     welcomeText,
-    variableNodes,
+    variableList,
     questionGuide,
     startSegmentedAudio,
     finishSegmentedAudio,
@@ -174,8 +174,8 @@ const ChatBox = (
 
   /* variable */
   const filterVariableNodes = useCreation(
-    () => variableNodes.filter((item) => item.type !== VariableInputEnum.custom),
-    [variableNodes]
+    () => variableList.filter((item) => item.type !== VariableInputEnum.custom),
+    [variableList]
   );
 
   // 滚动到底部
@@ -390,9 +390,9 @@ const ChatBox = (
             return;
           }
 
-          // delete invalid variables， 只保留在 variableNodes 中的变量
+          // delete invalid variables， 只保留在 variableList 中的变量
           const requestVariables: Record<string, any> = {};
-          variableNodes?.forEach((item) => {
+          variableList?.forEach((item) => {
             requestVariables[item.key] = variables[item.key] || '';
           });
 
@@ -566,7 +566,7 @@ const ChatBox = (
       startSegmentedAudio,
       t,
       toast,
-      variableNodes
+      variableList
     ]
   );
 
@@ -907,7 +907,7 @@ const ChatBox = (
           {!!filterVariableNodes?.length && (
             <VariableInput
               appAvatar={appAvatar}
-              variableNodes={filterVariableNodes}
+              variableList={filterVariableNodes}
               chatForm={chatForm}
               onSubmitVariables={(data) => {
                 setValue('chatStarted', true);

@@ -1,14 +1,14 @@
 import { create } from 'zustand';
 import { devtools, persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { getMyApps, getModelById, putAppById, getChatInputGuideList } from '@/web/core/app/api';
+import { getMyApps, getModelById, putAppById } from '@/web/core/app/api';
 import type { AppUpdateParams } from '@/global/core/app/api.d';
 import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type.d';
 import { PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp } from '../versionApi';
 import { defaultApp } from '../constants';
 
-type State = {
+export type State = {
   myApps: AppListItemType[];
   loadMyApps: (init?: boolean) => Promise<AppListItemType[]>;
   appDetail: AppDetailType;
@@ -16,7 +16,7 @@ type State = {
   updateAppDetail(appId: string, data: AppUpdateParams): Promise<void>;
   publishApp(appId: string, data: PostPublishAppProps): Promise<void>;
   clearAppModules(): void;
-  setAppDetail(data: AppDetailType): void;
+  setAppDetail: (fn: (e: AppDetailType) => AppDetailType) => void;
 };
 
 export const useAppStore = create<State>()(
@@ -62,9 +62,9 @@ export const useAppStore = create<State>()(
             };
           });
         },
-        setAppDetail(data: AppDetailType) {
+        setAppDetail(fun) {
           set((state) => {
-            state.appDetail = data;
+            state.appDetail = fun(get().appDetail);
           });
         },
 

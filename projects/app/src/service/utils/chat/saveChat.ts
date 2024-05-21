@@ -72,7 +72,7 @@ export async function saveChat({
         chat.variables = variables || {};
         await chat.save({ session });
       } else {
-        const { welcomeText, variableNodes } = splitGuideModule(getGuideModule(nodes));
+        const { welcomeText, variables } = splitGuideModule(getGuideModule(nodes));
 
         await MongoChat.create(
           [
@@ -81,7 +81,7 @@ export async function saveChat({
               teamId,
               tmbId,
               appId,
-              variableList: variableNodes,
+              variableList: variables,
               welcomeText,
               variables,
               title,

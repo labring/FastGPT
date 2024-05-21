@@ -36,6 +36,7 @@ import { readCsvRawText } from '@fastgpt/web/common/file/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRequest } from 'ahooks';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
+import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 
 const csvTemplate = `"第一列内容"
 "只会将第一列内容导入，其余列会被忽略"
@@ -43,11 +44,11 @@ const csvTemplate = `"第一列内容"
 
 const InputGuideConfig = ({
   appId,
-  value,
+  value = defaultChatInputGuideConfig,
   onChange
 }: {
   appId: string;
-  value: ChatInputGuideConfigType;
+  value?: ChatInputGuideConfigType;
   onChange: (e: ChatInputGuideConfigType) => void;
 }) => {
   const { t } = useTranslation();

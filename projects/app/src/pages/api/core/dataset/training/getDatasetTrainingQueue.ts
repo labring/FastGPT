@@ -26,7 +26,7 @@ async function handler(
   });
 
   const [rebuildingCount, trainingCount] = await Promise.all([
-    MongoDatasetData.countDocuments({ teamId, datasetId, rebuilding: true }),
+    MongoDatasetData.countDocuments({ rebuilding: true, teamId, datasetId }),
     MongoDatasetTraining.countDocuments({ teamId, datasetId })
   ]);
 

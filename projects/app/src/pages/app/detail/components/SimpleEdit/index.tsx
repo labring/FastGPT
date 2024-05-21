@@ -22,7 +22,8 @@ const SimpleEdit = ({ appId }: { appId: string }) => {
 
   const editForm = useForm<AppSimpleEditFormType>({
     defaultValues: appWorkflow2Form({
-      nodes: appDetail.modules
+      nodes: appDetail.modules,
+      chatConfig: appDetail.chatConfig
     })
   });
 
@@ -33,7 +34,8 @@ const SimpleEdit = ({ appId }: { appId: string }) => {
     if (appDetail.version !== 'v2') {
       editForm.reset(
         appWorkflow2Form({
-          nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes
+          nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
+          chatConfig: appDetail.chatConfig
         })
       );
     }

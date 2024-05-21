@@ -9,7 +9,7 @@ import dynamic from 'next/dynamic';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatTest, { type ChatTestComponentRef } from '@/components/core/workflow/Flow/ChatTest';
-import { flowNode2StoreNodes } from '@/components/core/workflow/utils';
+import { uiWorkflow2StoreWorkflow } from '@/components/core/workflow/utils';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -27,8 +27,6 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
 import { useInterval, useUpdateEffect } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
-import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
-import { importQuestionGuides } from '@/web/core/app/api';
 
 const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
 const PublishHistories = dynamic(
@@ -60,6 +58,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
   const { toast } = useToast();
   const { t } = useTranslation();
   const { appT } = useI18n();
+  const { appDetail } = useAppStore();
 
   const { copyData } = useCopyData();
   const { openConfirm: openConfigPublish, ConfirmModal } = useConfirm({
@@ -89,7 +88,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
 
     if (!checkResults) {
-      const storeNodes = flowNode2StoreNodes({ nodes, edges });
+      const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
 
       return storeNodes;
     } else {
@@ -111,12 +110,13 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       if (nodes.length === 0) return null;
       setIsSaving(true);
 
-      const storeWorkflow = flowNode2StoreNodes({ nodes, edges });
+      const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
 
       try {
         await updateAppDetail(app._id, {
           ...storeWorkflow,
           type: AppTypeEnum.advanced,
+          chatConfig: appDetail.chatConfig,
           //@ts-ignore
           version: 'v2'
         });
@@ -133,7 +133,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
 
       return null;
     },
-    [isV2Workflow, isShowVersionHistories, edges, updateAppDetail, app._id, t]
+    [isV2Workflow, isShowVersionHistories, edges, updateAppDetail, app._id, appDetail.chatConfig, t]
   );
 
   const onclickPublish = useCallback(async () => {
@@ -144,6 +144,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         await publishApp(app._id, {
           ...data,
           type: AppTypeEnum.advanced,
+          chatConfig: appDetail.chatConfig,
           //@ts-ignore
           version: 'v2'
         });
@@ -161,7 +162,15 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
     }
 
     setIsSaving(false);
-  }, [flowData2StoreDataAndCheck, publishApp, app._id, toast, t, ChatTestRef]);
+  }, [
+    flowData2StoreDataAndCheck,
+    publishApp,
+    app._id,
+    appDetail.chatConfig,
+    toast,
+    t,
+    ChatTestRef
+  ]);
 
   const saveAndBack = useCallback(async () => {
     try {

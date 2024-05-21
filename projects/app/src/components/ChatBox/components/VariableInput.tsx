@@ -12,12 +12,12 @@ import { ChatBoxInputFormType } from '../type.d';
 
 const VariableInput = ({
   appAvatar,
-  variableNodes,
+  variableList,
   chatForm,
   onSubmitVariables
 }: {
   appAvatar?: string;
-  variableNodes: VariableItemType[];
+  variableList: VariableItemType[];
   onSubmitVariables: (e: Record<string, any>) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
 }) => {
@@ -40,7 +40,7 @@ const VariableInput = ({
           bg={'white'}
           boxShadow={'0 0 8px rgba(0,0,0,0.15)'}
         >
-          {variableNodes.map((item) => (
+          {variableList.map((item) => (
             <Box key={item.id} mb={4}>
               <Box as={'label'} display={'inline-block'} position={'relative'} mb={1}>
                 {item.label}

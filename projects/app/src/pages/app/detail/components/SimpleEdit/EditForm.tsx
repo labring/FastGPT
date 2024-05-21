@@ -12,7 +12,7 @@ import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
-import { form2AppWorkflow, getAppQGuideCustomURL } from '@/web/core/app/utils';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
@@ -102,18 +102,18 @@ const EditForm = ({
   const aiSystemPrompt = watch('aiSettings.systemPrompt');
   const selectLLMModel = watch('aiSettings.model');
   const datasetSearchSetting = watch('dataset');
-  const variables = watch('userGuide.variables');
+  const variables = watch('chatConfig.variables');
 
   const formatVariables: any = useMemo(
-    () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...variables]),
+    () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...(variables || [])]),
     [t, variables]
   );
-  const searchMode = watch('dataset.searchMode');
-  const tts = getValues('userGuide.tts');
-  const whisperConfig = getValues('userGuide.whisper');
-  const postQuestionGuide = getValues('userGuide.questionGuide');
+  const tts = getValues('chatConfig.ttsConfig');
+  const whisperConfig = getValues('chatConfig.whisperConfig');
+  const postQuestionGuide = getValues('chatConfig.questionGuide');
   const selectedTools = watch('selectedTools');
-  const inputGuideConfig = watch('userGuide.chatInputGuide');
+  const inputGuideConfig = watch('chatConfig.chatInputGuide');
+  const searchMode = watch('dataset.searchMode');
 
   const selectDatasets = useMemo(
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
@@ -128,10 +128,10 @@ const EditForm = ({
   const { mutate: onSubmitPublish, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
       const { nodes, edges } = form2AppWorkflow(data);
-
       await publishApp(appDetail._id, {
         nodes,
         edges,
+        chatConfig: data.chatConfig,
         type: AppTypeEnum.simple
       });
     },
@@ -389,7 +389,7 @@ const EditForm = ({
             <VariableEdit
               variables={variables}
               onChange={(e) => {
-                setValue('userGuide.variables', e);
+                setValue('chatConfig.variables', e);
               }}
             />
           </Box>
@@ -408,9 +408,9 @@ const EditForm = ({
               bg={'myWhite.400'}
               rows={5}
               placeholder={t(welcomeTextTip)}
-              defaultValue={getValues('userGuide.welcomeText')}
+              defaultValue={getValues('chatConfig.welcomeText')}
               onBlur={(e) => {
-                setValue('userGuide.welcomeText', e.target.value || '');
+                setValue('chatConfig.welcomeText', e.target.value || '');
               }}
             />
           </Box>
@@ -420,7 +420,7 @@ const EditForm = ({
             <TTSSelect
               value={tts}
               onChange={(e) => {
-                setValue('userGuide.tts', e);
+                setValue('chatConfig.ttsConfig', e);
               }}
             />
           </Box>
@@ -428,10 +428,10 @@ const EditForm = ({
           {/* whisper */}
           <Box {...BoxStyles}>
             <WhisperConfig
-              isOpenAudio={tts.type !== TTSTypeEnum.none}
+              isOpenAudio={tts?.type !== TTSTypeEnum.none}
               value={whisperConfig}
               onChange={(e) => {
-                setValue('userGuide.whisper', e);
+                setValue('chatConfig.whisperConfig', e);
               }}
             />
           </Box>
@@ -442,7 +442,7 @@ const EditForm = ({
               isChecked={postQuestionGuide}
               size={'lg'}
               onChange={(e) => {
-                setValue('userGuide.questionGuide', e.target.checked);
+                setValue('chatConfig.questionGuide', e.target.checked);
               }}
             />
           </Box>
@@ -453,7 +453,7 @@ const EditForm = ({
               appId={appDetail._id}
               value={inputGuideConfig}
               onChange={(e) => {
-                setValue('userGuide.chatInputGuide', e);
+                setValue('chatConfig.chatInputGuide', e);
               }}
             />
           </Box>

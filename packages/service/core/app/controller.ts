@@ -2,7 +2,7 @@ import { AppSchema } from '@fastgpt/global/core/app/type';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getLLMModel } from '../ai/model';
-import { MongoAppVersion } from './versionSchema';
+import { MongoAppVersion } from './version/schema';
 
 export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined>({
   nodes

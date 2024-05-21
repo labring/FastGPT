@@ -33,50 +33,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
         y: -486.7611729549753
       },
       version: '481',
-      inputs: [
-        {
-          key: NodeInputKeyEnum.welcomeText,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: 'core.app.Welcome Text',
-          value: formData.userGuide.welcomeText
-        },
-        {
-          key: NodeInputKeyEnum.variables,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: 'core.app.Chat Variable',
-          value: formData.userGuide.variables
-        },
-        {
-          key: NodeInputKeyEnum.questionGuide,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: 'core.app.Question Guide',
-          value: formData.userGuide.questionGuide
-        },
-        {
-          key: NodeInputKeyEnum.tts,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          value: formData.userGuide.tts
-        },
-        {
-          key: NodeInputKeyEnum.whisper,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          value: formData.userGuide.whisper
-        },
-        {
-          key: NodeInputKeyEnum.scheduleTrigger,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          value: formData.userGuide.scheduleTrigger
-        },
-        {
-          key: NodeInputKeyEnum.chatInputGuide,
-          renderTypeList: [FlowNodeInputTypeEnum.hidden],
-          label: '',
-          value: formData.userGuide.chatInputGuide
-        }
-      ],
+      inputs: [],
       outputs: []
     };
   }

@@ -73,11 +73,11 @@ const PublishHistoriesSlider = () => {
         editEdges: appDetail.edges
       });
 
-      setAppDetail({
-        ...appDetail,
+      setAppDetail((state) => ({
+        ...state,
         modules: data.nodes,
         edges: data.edges
-      });
+      }));
 
       onCloseSlider(data);
     }
