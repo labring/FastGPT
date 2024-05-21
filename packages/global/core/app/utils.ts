@@ -36,7 +36,6 @@ export const appWorkflow2Form = ({
   nodes: StoreNodeItemType[];
   chatConfig: AppChatConfigType;
 }) => {
-  console.log(111111111111);
   const defaultAppForm = getDefaultAppForm();
   const findInputValueByKey = (inputs: FlowNodeInputItemType[], key: string) => {
     return inputs.find((item) => item.key === key)?.value;
@@ -115,11 +114,11 @@ export const appWorkflow2Form = ({
     } else if (node.flowNodeType === FlowNodeTypeEnum.systemConfig) {
       defaultAppForm.chatConfig = getAppChatConfig({
         chatConfig,
-        systemConfigNode: node
+        systemConfigNode: node,
+        isPublicFetch: true
       });
     }
   });
 
-  console.log(nodes, chatConfig, '=====');
   return defaultAppForm;
 };

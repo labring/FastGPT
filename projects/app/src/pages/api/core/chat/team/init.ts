@@ -77,7 +77,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
             chatConfig: app.chatConfig,
             systemConfigNode: getGuideModule(nodes),
             storeVariables: chat?.variableList,
-            storeWelcomeText: chat?.welcomeText
+            storeWelcomeText: chat?.welcomeText,
+            isPublicFetch: false
           }),
           chatModels: getChatModelNameListByModules(nodes),
           name: app.name,

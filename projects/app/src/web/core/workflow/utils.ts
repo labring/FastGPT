@@ -311,7 +311,8 @@ export const getWorkflowGlobalVariables = ({
   const globalVariables = formatEditorVariablePickerIcon(
     getAppChatConfig({
       chatConfig,
-      systemConfigNode: getGuideModule(nodes)
+      systemConfigNode: getGuideModule(nodes),
+      isPublicFetch: true
     })?.variables || []
   ).map((item) => ({
     ...item,

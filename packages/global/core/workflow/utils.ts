@@ -83,12 +83,14 @@ export const getAppChatConfig = ({
   chatConfig,
   systemConfigNode,
   storeVariables,
-  storeWelcomeText
+  storeWelcomeText,
+  isPublicFetch = false
 }: {
   chatConfig?: AppChatConfigType;
   systemConfigNode?: StoreNodeItemType;
   storeVariables?: VariableItemType[];
   storeWelcomeText?: string;
+  isPublicFetch: boolean;
 }): AppChatConfigType => {
   const {
     welcomeText,
@@ -100,7 +102,7 @@ export const getAppChatConfig = ({
     chatInputGuide
   } = splitGuideModule(systemConfigNode);
 
-  const config = {
+  const config: AppChatConfigType = {
     questionGuide,
     ttsConfig,
     whisperConfig,
@@ -110,6 +112,13 @@ export const getAppChatConfig = ({
     variables: storeVariables ?? chatConfig?.variables ?? variables,
     welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText
   };
+
+  if (!isPublicFetch) {
+    if (config?.chatInputGuide?.customUrl) {
+      config.chatInputGuide.customUrl = '';
+    }
+    config.scheduledTriggerConfig = undefined;
+  }
 
   return config;
 };

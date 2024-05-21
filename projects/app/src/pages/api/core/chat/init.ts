@@ -65,7 +65,8 @@ async function handler(
         chatConfig: app.chatConfig,
         systemConfigNode: getGuideModule(nodes),
         storeVariables: chat?.variableList,
-        storeWelcomeText: chat?.welcomeText
+        storeWelcomeText: chat?.welcomeText,
+        isPublicFetch: false
       }),
       chatModels: getChatModelNameListByModules(nodes),
       name: app.name,

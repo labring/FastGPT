@@ -81,7 +81,8 @@ export async function saveChat({
       } else {
         const { welcomeText, variables: variableList } = getAppChatConfig({
           chatConfig: appChatConfig,
-          systemConfigNode: getGuideModule(nodes)
+          systemConfigNode: getGuideModule(nodes),
+          isPublicFetch: false
         });
 
         await MongoChat.create(

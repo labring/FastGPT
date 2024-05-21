@@ -35,7 +35,8 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const chatConfig = useMemo<AppChatConfigType>(() => {
     return getAppChatConfig({
       chatConfig: appDetail.chatConfig,
-      systemConfigNode: data
+      systemConfigNode: data,
+      isPublicFetch: true
     });
   }, [data, appDetail]);
 
