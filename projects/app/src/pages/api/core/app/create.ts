@@ -6,7 +6,7 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
-import { MongoAppVersion } from '@fastgpt/service/core/app/versionSchema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { NextAPI } from '@/service/middleware/entry';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {

@@ -168,7 +168,8 @@ export async function pushDataListToTrainingQueue({
         indexes: item.indexes
       })),
       {
-        session
+        session,
+        ordered: false
       }
     );
   } catch (error: any) {

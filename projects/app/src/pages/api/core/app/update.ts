@@ -7,7 +7,7 @@ import { NextAPI } from '@/service/middleware/entry';
 
 /* 获取我的模型 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const { name, avatar, type, intro, nodes, edges, permission, teamTags } =
+  const { name, avatar, type, intro, nodes, edges, chatConfig, permission, teamTags } =
     req.body as AppUpdateParams;
   const { appId } = req.query as { appId: string };
 
@@ -39,7 +39,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       }),
       ...(edges && {
         edges
-      })
+      }),
+      ...(chatConfig && { chatConfig })
     }
   );
 }

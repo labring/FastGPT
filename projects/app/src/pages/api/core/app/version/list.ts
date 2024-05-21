@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import { MongoAppVersion } from '@fastgpt/service/core/app/versionSchema';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/type';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 

@@ -19,22 +19,22 @@ import {
   TagLabel
 } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTeamsTags } from '@/web/support/user/team/api';
 import { useQuery } from '@tanstack/react-query';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { appDetail } = useAppStore();
   const { toast } = useToast();
-  const { updateAppDetail } = useAppStore();
+  const { appDetail, updateAppDetail } = useContextSelector(AppContext, (v) => v);
   const [selectedTags, setSelectedTags] = useState<string[]>(appDetail?.teamTags || []);
 
   // submit config
   const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
     mutationFn: async () => {
-      await updateAppDetail(appDetail._id, {
+      await updateAppDetail({
         teamTags: selectedTags
       });
     },

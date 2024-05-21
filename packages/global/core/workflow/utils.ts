@@ -12,10 +12,15 @@ import type {
   AppTTSConfigType,
   AppWhisperConfigType,
   AppScheduledTriggerConfigType,
-  AppQuestionGuideTextConfigType
+  ChatInputGuideConfigType,
+  AppChatConfigType
 } from '../app/type';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
-import { defaultWhisperConfig } from '../app/constants';
+import {
+  defaultChatInputGuideConfig,
+  defaultTTSConfig,
+  defaultWhisperConfig
+} from '../app/constants';
 import { IfElseResultEnum } from './template/system/ifElse/constant';
 
 export const getHandleId = (nodeId: string, type: 'source' | 'target', key: string) => {
@@ -41,70 +46,81 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
   const welcomeText: string =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.welcomeText)?.value || '';
 
-  const variableNodes: VariableItemType[] =
+  const variables: VariableItemType[] =
     guideModules?.inputs.find((item) => item.key === NodeInputKeyEnum.variables)?.value || [];
 
   const questionGuide: boolean =
     !!guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.questionGuide)?.value ||
     false;
 
-  const ttsConfig: AppTTSConfigType = guideModules?.inputs?.find(
-    (item) => item.key === NodeInputKeyEnum.tts
-  )?.value || { type: 'web' };
+  const ttsConfig: AppTTSConfigType =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.tts)?.value ||
+    defaultTTSConfig;
 
   const whisperConfig: AppWhisperConfigType =
     guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.whisper)?.value ||
     defaultWhisperConfig;
 
-  const scheduledTriggerConfig: AppScheduledTriggerConfigType | null =
-    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.scheduleTrigger)?.value ??
-    null;
+  const scheduledTriggerConfig: AppScheduledTriggerConfigType = guideModules?.inputs?.find(
+    (item) => item.key === NodeInputKeyEnum.scheduleTrigger
+  )?.value;
 
-  const questionGuideText: AppQuestionGuideTextConfigType = guideModules?.inputs?.find(
-    (item) => item.key === NodeInputKeyEnum.questionGuideText
-  )?.value || {
-    open: false
-  };
+  const chatInputGuide: ChatInputGuideConfigType =
+    guideModules?.inputs?.find((item) => item.key === NodeInputKeyEnum.chatInputGuide)?.value ||
+    defaultChatInputGuideConfig;
 
   return {
     welcomeText,
-    variableNodes,
+    variables,
     questionGuide,
     ttsConfig,
     whisperConfig,
     scheduledTriggerConfig,
-    questionGuideText
+    chatInputGuide
   };
 };
-export const replaceAppChatConfig = ({
-  node,
-  variableList,
-  welcomeText
+export const getAppChatConfig = ({
+  chatConfig,
+  systemConfigNode,
+  storeVariables,
+  storeWelcomeText,
+  isPublicFetch = false
 }: {
-  node?: StoreNodeItemType;
-  variableList?: VariableItemType[];
-  welcomeText?: string;
-}): StoreNodeItemType | undefined => {
-  if (!node) return;
-  return {
-    ...node,
-    inputs: node.inputs.map((input) => {
-      if (input.key === NodeInputKeyEnum.variables && variableList) {
-        return {
-          ...input,
-          value: variableList
-        };
-      }
-      if (input.key === NodeInputKeyEnum.welcomeText && welcomeText) {
-        return {
-          ...input,
-          value: welcomeText
-        };
-      }
+  chatConfig?: AppChatConfigType;
+  systemConfigNode?: StoreNodeItemType;
+  storeVariables?: VariableItemType[];
+  storeWelcomeText?: string;
+  isPublicFetch: boolean;
+}): AppChatConfigType => {
+  const {
+    welcomeText,
+    variables,
+    questionGuide,
+    ttsConfig,
+    whisperConfig,
+    scheduledTriggerConfig,
+    chatInputGuide
+  } = splitGuideModule(systemConfigNode);
 
-      return input;
-    })
+  const config: AppChatConfigType = {
+    questionGuide,
+    ttsConfig,
+    whisperConfig,
+    scheduledTriggerConfig,
+    chatInputGuide,
+    ...chatConfig,
+    variables: storeVariables ?? chatConfig?.variables ?? variables,
+    welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText
   };
+
+  if (!isPublicFetch) {
+    if (config?.chatInputGuide?.customUrl) {
+      config.chatInputGuide.customUrl = '';
+    }
+    config.scheduledTriggerConfig = undefined;
+  }
+
+  return config;
 };
 
 export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {

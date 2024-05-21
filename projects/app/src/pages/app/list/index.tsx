@@ -45,7 +45,7 @@ const MyApps = () => {
           title: '删除成功',
           status: 'success'
         });
-        loadMyApps(true);
+        loadMyApps();
       } catch (err: any) {
         toast({
           title: err?.message || t('common.Delete Failed'),
@@ -57,7 +57,7 @@ const MyApps = () => {
   );
 
   /* 加载模型 */
-  const { isFetching } = useQuery(['loadApps'], () => loadMyApps(true), {
+  const { isFetching } = useQuery(['loadApps'], () => loadMyApps(), {
     refetchOnMount: true
   });
 
@@ -182,7 +182,7 @@ const MyApps = () => {
       )}
       <ConfirmModal />
       {isOpenCreateModal && (
-        <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps(true)} />
+        <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps()} />
       )}
     </PageContainer>
   );

@@ -15,6 +15,7 @@ import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import WorkflowContextProvider, { WorkflowContext } from '@/components/core/workflow/context';
 import { useContextSelector } from 'use-context-selector';
+import { AppContextProvider } from '@/web/core/app/context/appContext';
 
 type Props = { pluginId: string };
 
@@ -77,13 +78,15 @@ const Render = ({ pluginId }: Props) => {
   );
 };
 
-export default function FlowEdit(props: any) {
+function Provider(props: Props) {
   return (
-    <WorkflowContextProvider
-      value={{ mode: 'plugin', basicNodeTemplates: pluginSystemModuleTemplates }}
-    >
-      <Render {...props} />
-    </WorkflowContextProvider>
+    <AppContextProvider appId={''}>
+      <WorkflowContextProvider
+        value={{ mode: 'plugin', basicNodeTemplates: pluginSystemModuleTemplates }}
+      >
+        <Render {...props} />
+      </WorkflowContextProvider>
+    </AppContextProvider>
   );
 }
 
@@ -95,3 +98,5 @@ export async function getServerSideProps(context: any) {
     }
   };
 }
+
+export default Provider;

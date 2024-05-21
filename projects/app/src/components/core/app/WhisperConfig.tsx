@@ -6,14 +6,15 @@ import { useTranslation } from 'next-i18next';
 import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
 
 const WhisperConfig = ({
   isOpenAudio,
-  value,
+  value = defaultWhisperConfig,
   onChange
 }: {
   isOpenAudio: boolean;
-  value: AppWhisperConfigType;
+  value?: AppWhisperConfigType;
   onChange: (e: AppWhisperConfigType) => void;
 }) => {
   const { t } = useTranslation();

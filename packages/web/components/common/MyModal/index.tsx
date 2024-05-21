@@ -11,11 +11,13 @@ import {
   useMediaQuery
 } from '@chakra-ui/react';
 import MyIcon from '../Icon';
+import MyBox from '../MyBox';
 
 export interface MyModalProps extends ModalContentProps {
   iconSrc?: string;
   title?: any;
   isCentered?: boolean;
+  isLoading?: boolean;
   isOpen: boolean;
   onClose?: () => void;
 }
@@ -27,6 +29,7 @@ const MyModal = ({
   title,
   children,
   isCentered,
+  isLoading,
   w = 'auto',
   maxW = ['90vw', '600px'],
   ...props
@@ -39,6 +42,7 @@ const MyModal = ({
       onClose={() => onClose && onClose()}
       autoFocus={false}
       isCentered={isPc ? isCentered : true}
+      blockScrollOnMount={false}
     >
       <ModalOverlay />
       <ModalContent
@@ -78,14 +82,15 @@ const MyModal = ({
           </ModalHeader>
         )}
 
-        <Box
+        <MyBox
+          isLoading={isLoading}
           overflow={props.overflow || 'overlay'}
           h={'100%'}
           display={'flex'}
           flexDirection={'column'}
         >
           {children}
-        </Box>
+        </MyBox>
       </ModalContent>
     </Modal>
   );

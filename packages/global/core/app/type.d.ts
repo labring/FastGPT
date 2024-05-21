@@ -8,7 +8,7 @@ import { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import { StoreEdgeItemType } from '../workflow/type/edge';
 
-export interface AppSchema {
+export type AppSchema = {
   _id: string;
   teamId: string;
   tmbId: string;
@@ -23,13 +23,14 @@ export interface AppSchema {
   edges: StoreEdgeItemType[];
 
   // App system config
+  chatConfig: AppChatConfigType;
   scheduledTriggerConfig?: AppScheduledTriggerConfigType | null;
   scheduledTriggerNextTime?: Date;
 
   permission: `${PermissionTypeEnum}`;
   inited?: boolean;
   teamTags: string[];
-}
+};
 
 export type AppListItemType = {
   _id: string;
@@ -66,33 +67,19 @@ export type AppSimpleEditFormType = {
     datasetSearchExtensionBg?: string;
   };
   selectedTools: FlowNodeTemplateType[];
-  userGuide: {
-    welcomeText: string;
-    variables: {
-      id: string;
-      key: string;
-      label: string;
-      type: `${VariableInputEnum}`;
-      required: boolean;
-      maxLen: number;
-      enums: {
-        value: string;
-      }[];
-    }[];
-    questionGuide: boolean;
-    tts: {
-      type: 'none' | 'web' | 'model';
-      model?: string | undefined;
-      voice?: string | undefined;
-      speed?: number | undefined;
-    };
-    whisper: AppWhisperConfigType;
-    scheduleTrigger: AppScheduledTriggerConfigType | null;
-    questionGuideText: AppQuestionGuideTextConfigType;
-  };
+  chatConfig: AppChatConfigType;
 };
 
-/* app function config */
+/* app chat config type */
+export type AppChatConfigType = {
+  welcomeText?: string;
+  variables?: VariableItemType[];
+  questionGuide?: boolean;
+  ttsConfig?: AppTTSConfigType;
+  whisperConfig?: AppWhisperConfigType;
+  scheduledTriggerConfig?: AppScheduledTriggerConfigType;
+  chatInputGuide?: ChatInputGuideConfigType;
+};
 export type SettingAIDataType = {
   model: string;
   temperature: number;
@@ -125,10 +112,9 @@ export type AppWhisperConfigType = {
   autoTTSResponse: boolean;
 };
 // question guide text
-export type AppQuestionGuideTextConfigType = {
+export type ChatInputGuideConfigType = {
   open: boolean;
-  textList: string[];
-  customURL: string;
+  customUrl: string;
 };
 // interval timer
 export type AppScheduledTriggerConfigType = {

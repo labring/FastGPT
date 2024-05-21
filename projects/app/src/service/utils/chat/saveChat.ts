@@ -7,7 +7,12 @@ import { addLog } from '@fastgpt/service/common/system/log';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
-import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
+import {
+  getAppChatConfig,
+  getGuideModule,
+  splitGuideModule
+} from '@fastgpt/global/core/workflow/utils';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 type Props = {
   chatId: string;
@@ -15,6 +20,7 @@ type Props = {
   teamId: string;
   tmbId: string;
   nodes: StoreNodeItemType[];
+  appChatConfig?: AppChatConfigType;
   variables?: Record<string, any>;
   isUpdateUseTime: boolean;
   source: `${ChatSourceEnum}`;
@@ -30,6 +36,7 @@ export async function saveChat({
   teamId,
   tmbId,
   nodes,
+  appChatConfig,
   variables,
   isUpdateUseTime,
   source,
@@ -72,7 +79,11 @@ export async function saveChat({
         chat.variables = variables || {};
         await chat.save({ session });
       } else {
-        const { welcomeText, variableNodes } = splitGuideModule(getGuideModule(nodes));
+        const { welcomeText, variables: variableList } = getAppChatConfig({
+          chatConfig: appChatConfig,
+          systemConfigNode: getGuideModule(nodes),
+          isPublicFetch: false
+        });
 
         await MongoChat.create(
           [
@@ -81,7 +92,7 @@ export async function saveChat({
               teamId,
               tmbId,
               appId,
-              variableList: variableNodes,
+              variableList,
               welcomeText,
               variables,
               title,

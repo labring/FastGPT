@@ -44,6 +44,7 @@ import { RuntimeEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { dispatchSystemConfig } from './init/systemConfig';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
+import { addLog } from '../../../common/system/log';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -137,7 +138,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
     }
     if (nodeDispatchUsages) {
       chatNodeUsages = chatNodeUsages.concat(nodeDispatchUsages);
-      props.maxRunTimes -= nodeDispatchUsages.length;
     }
     if (toolResponses !== undefined) {
       if (Array.isArray(toolResponses) && toolResponses.length === 0) return;
@@ -213,9 +213,11 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         });
 
         if (status === 'run') {
+          addLog.info(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
           return nodeRunWithActive(node);
         }
         if (status === 'skip') {
+          addLog.info(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
           return nodeRunWithSkip(node);
         }
 
@@ -274,6 +276,8 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         status: 'running'
       });
     }
+
+    props.maxRunTimes--;
 
     // get node running params
     const params = getNodeRunParams(node);

@@ -13,10 +13,19 @@ import Auth from './auth';
 
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
-const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/UpdateInviteModal'));
-const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'));
-const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'));
-const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'));
+const UpdateInviteModal = dynamic(
+  () => import('@/components/support/user/team/UpdateInviteModal'),
+  { ssr: false }
+);
+const NotSufficientModal = dynamic(() => import('@/components/support/wallet/NotSufficientModal'), {
+  ssr: false
+});
+const SystemMsgModal = dynamic(() => import('@/components/support/user/inform/SystemMsgModal'), {
+  ssr: false
+});
+const ImportantInform = dynamic(() => import('@/components/support/user/inform/ImportantInform'), {
+  ssr: false
+});
 
 const pcUnShowLayoutRoute: Record<string, boolean> = {
   '/': true,
@@ -114,12 +123,17 @@ const Layout = ({ children }: { children: JSX.Element }) => {
           </>
         )}
       </Box>
-      {!!userInfo && <UpdateInviteModal />}
-      {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
-      {!!userInfo && <SystemMsgModal />}
-      {!!userInfo && importantInforms.length > 0 && (
-        <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
+      {feConfigs?.isPlus && (
+        <>
+          {!!userInfo && <UpdateInviteModal />}
+          {isNotSufficientModal && !isHideNavbar && <NotSufficientModal />}
+          {!!userInfo && <SystemMsgModal />}
+          {!!userInfo && importantInforms.length > 0 && (
+            <ImportantInform informs={importantInforms} refetch={refetchUnRead} />
+          )}
+        </>
       )}
+
       <Loading loading={loading} zIndex={999999} />
     </>
   );

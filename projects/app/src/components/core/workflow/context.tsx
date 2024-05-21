@@ -13,7 +13,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/wor
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useCreation, useMemoizedFn } from 'ahooks';
+import { useMemoizedFn } from 'ahooks';
 import React, {
   Dispatch,
   SetStateAction,
@@ -32,11 +32,13 @@ import {
   useEdgesState,
   useNodesState
 } from 'reactflow';
-import { createContext } from 'use-context-selector';
+import { createContext, useContextSelector } from 'use-context-selector';
 import { defaultRunningStatus } from './constants';
 import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -83,7 +85,11 @@ type WorkflowContextType = {
     toolInputs: FlowNodeInputItemType[];
     commonInputs: FlowNodeInputItemType[];
   };
-  initData: (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => Promise<void>;
+  initData: (e: {
+    nodes: StoreNodeItemType[];
+    edges: StoreEdgeItemType[];
+    chatConfig?: AppChatConfigType;
+  }) => Promise<void>;
 
   // debug
   workflowDebugData:
@@ -223,6 +229,7 @@ const WorkflowContextProvider = ({
   const { appId, pluginId } = value;
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
+  const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
 
   /* edge */
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -426,12 +433,18 @@ const WorkflowContextProvider = ({
     };
   };
 
-  const initData = useMemoizedFn(
-    async (e: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
-      setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })) || []);
-      setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
+  const initData = useMemoizedFn(async (e: Parameters<WorkflowContextType['initData']>[0]) => {
+    setNodes(e.nodes?.map((item) => storeNode2FlowNode({ item })) || []);
+    setEdges(e.edges?.map((item) => storeEdgesRenderEdge({ edge: item })) || []);
+
+    const chatConfig = e.chatConfig;
+    if (chatConfig) {
+      setAppDetail((state) => ({
+        ...state,
+        chatConfig
+      }));
     }
-  );
+  });
 
   /* debug */
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();

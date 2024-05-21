@@ -86,7 +86,7 @@ const nextConfig = {
 
     return config;
   },
-  transpilePackages: ['@fastgpt/*', 'ahooks', '@chakra-ui/*', 'react'],
+  transpilePackages: ['@fastgpt/*', 'ahooks'],
   experimental: {
     // 指定导出包优化，按需引入包模块
     optimizePackageImports: ['mongoose', 'pg'],

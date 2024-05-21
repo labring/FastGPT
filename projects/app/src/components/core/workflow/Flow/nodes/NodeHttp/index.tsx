@@ -39,6 +39,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useMemoizedFn } from 'ahooks';
+import { AppContext } from '@/web/core/app/context/appContext';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
@@ -251,6 +252,7 @@ export function RenderHttpProps({
   const { t } = useTranslation();
   const [selectedTab, setSelectedTab] = useState(TabEnum.params);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const requestMethods = inputs.find((item) => item.key === NodeInputKeyEnum.httpMethod)?.value;
   const params = inputs.find((item) => item.key === NodeInputKeyEnum.httpParams);
@@ -262,7 +264,11 @@ export function RenderHttpProps({
 
   // get variable
   const variables = useMemo(() => {
-    const globalVariables = getWorkflowGlobalVariables(nodeList, t);
+    const globalVariables = getWorkflowGlobalVariables({
+      nodes: nodeList,
+      chatConfig: appDetail.chatConfig,
+      t
+    });
 
     const moduleVariables = formatEditorVariablePickerIcon(
       inputs

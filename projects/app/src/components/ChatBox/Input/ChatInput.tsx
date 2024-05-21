@@ -1,9 +1,9 @@
 import { useSpeech } from '@/web/common/hooks/useSpeech';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
-import React, { useRef, useEffect, useCallback, useTransition } from 'react';
+import React, { useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '../MyTooltip';
+import MyTooltip from '../../MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -12,18 +12,16 @@ import { ChatFileTypeEnum } from '@fastgpt/global/core/chat/constants';
 import { addDays } from 'date-fns';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from './type';
-import { textareaMinH } from './constants';
+import { ChatBoxInputFormType, ChatBoxInputType, UserInputFileItemType } from '../type';
+import { textareaMinH } from '../constants';
 import { UseFormReturn, useFieldArray } from 'react-hook-form';
-import { useChatProviderStore } from './Provider';
-import QuestionGuide from './components/QustionGuide';
-import { useQuery } from '@tanstack/react-query';
-import { getMyQuestionGuides } from '@/web/core/app/api';
-import { getAppQGuideCustomURL } from '@/web/core/app/utils';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
+import { useChatProviderStore } from '../Provider';
+import dynamic from 'next/dynamic';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 
-const MessageInput = ({
+const InputGuideBox = dynamic(() => import('./InputGuideBox'));
+
+const ChatInput = ({
   onSendMessage,
   onStop,
   TextareaDom,
@@ -38,7 +36,7 @@ const MessageInput = ({
   TextareaDom: React.MutableRefObject<HTMLTextAreaElement | null>;
   resetInputVal: (val: ChatBoxInputType) => void;
   chatForm: UseFormReturn<ChatBoxInputFormType>;
-  appId?: string;
+  appId: string;
 }) => {
   const { setValue, watch, control } = chatForm;
   const inputValue = watch('input');
@@ -53,12 +51,19 @@ const MessageInput = ({
     name: 'files'
   });
 
-  const { shareId, outLinkUid, teamId, teamToken, isChatting, whisperConfig, autoTTSResponse } =
-    useChatProviderStore();
+  const {
+    shareId,
+    outLinkUid,
+    teamId,
+    teamToken,
+    isChatting,
+    whisperConfig,
+    autoTTSResponse,
+    chatInputGuide
+  } = useChatProviderStore();
   const { isPc, whisperModel } = useSystemStore();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const { t } = useTranslation();
-  const { appDetail } = useAppStore();
 
   const havInput = !!inputValue || fileList.length > 0;
   const hasFileUploading = fileList.some((item) => !item.url);
@@ -150,9 +155,9 @@ const MessageInput = ({
   );
 
   /* on send */
-  const handleSend = async () => {
+  const handleSend = async (val?: string) => {
     if (!canSendMessage) return;
-    const textareaValue = TextareaDom.current?.value || '';
+    const textareaValue = val || TextareaDom.current?.value || '';
 
     onSendMessage({
       text: textareaValue.trim(),
@@ -211,23 +216,6 @@ const MessageInput = ({
     startSpeak(finishWhisperTranscription);
   }, [finishWhisperTranscription, isSpeaking, startSpeak, stopSpeak]);
 
-  const { data } = useQuery(
-    [appId, inputValue],
-    async () => {
-      if (!appId) return { list: [], total: 0 };
-      return getMyQuestionGuides({
-        appId,
-        customURL: getAppQGuideCustomURL(appDetail),
-        pageSize: 5,
-        current: 1,
-        searchKey: inputValue
-      });
-    },
-    {
-      enabled: !!appId
-    }
-  );
-
   return (
     <Box m={['0 auto', '10px auto']} w={'100%'} maxW={['auto', 'min(800px, 100%)']} px={[0, 5]}>
       <Box
@@ -248,6 +236,20 @@ const MessageInput = ({
               borderTopColor: 'rgba(0,0,0,0.15)'
             })}
       >
+        {/* Chat input guide box */}
+        {chatInputGuide.open && (
+          <InputGuideBox
+            appId={appId}
+            text={inputValue}
+            onSelect={(e) => {
+              setValue('input', e);
+            }}
+            onSend={(e) => {
+              handleSend(e);
+            }}
+          />
+        )}
+
         {/* translate loading */}
         <Flex
           position={'absolute'}
@@ -265,21 +267,6 @@ const MessageInput = ({
           <Spinner size={'sm'} mr={4} />
           {t('core.chat.Converting to text')}
         </Flex>
-
-        {/* popup */}
-        {havInput && (
-          <QuestionGuide
-            guides={data?.list || []}
-            setDropdownValue={(value) => setValue('input', value)}
-            bottom={'100%'}
-            top={'auto'}
-            left={0}
-            right={0}
-            mb={2}
-            overflowY={'auto'}
-            boxShadow={'sm'}
-          />
-        )}
 
         {/* file preview */}
         <Flex wrap={'wrap'} px={[2, 4]} userSelect={'none'}>
@@ -415,12 +402,7 @@ const MessageInput = ({
               // @ts-ignore
               e.key === 'a' && e.ctrlKey && e.target?.select();
 
-              if (
-                (isPc || window !== parent) &&
-                e.keyCode === 13 &&
-                !e.shiftKey &&
-                !(havInput && data?.list.length && data?.list.length > 0)
-              ) {
+              if ((isPc || window !== parent) && e.keyCode === 13 && !e.shiftKey) {
                 handleSend();
                 e.preventDefault();
               }
@@ -556,4 +538,4 @@ const MessageInput = ({
   );
 };
 
-export default React.memo(MessageInput);
+export default React.memo(ChatInput);

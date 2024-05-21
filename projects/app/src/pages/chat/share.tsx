@@ -20,10 +20,7 @@ import PageContainer from '@/components/PageContainer';
 import ChatHeader from './components/ChatHeader';
 import ChatHistorySlider from './components/ChatHistorySlider';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import {
-  checkChatSupportSelectFileByChatModels,
-  getAppQuestionGuidesByUserGuideModule
-} from '@/web/core/chat/utils';
+import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { useTranslation } from 'next-i18next';
 import { getInitOutLinkChatInfo } from '@/web/core/chat/api';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
@@ -34,9 +31,6 @@ import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { connectToDatabase } from '@/service/mongo';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
-import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const OutLink = ({
   appName,
@@ -393,7 +387,7 @@ const OutLink = ({
                 ref={ChatBoxRef}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}
-                userGuideModule={chatData.app?.userGuideModule}
+                chatConfig={chatData.app?.chatConfig}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}

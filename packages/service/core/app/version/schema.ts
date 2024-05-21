@@ -1,6 +1,7 @@
-import { connectionMongo, type Model } from '../../common/mongo';
+import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
+import { chatConfigType } from '../schema';
 
 export const AppVersionCollectionName = 'app_versions';
 
@@ -21,6 +22,10 @@ const AppVersionSchema = new Schema({
   edges: {
     type: Array,
     default: []
+  },
+  chatConfig: {
+    type: chatConfigType,
+    default: {}
   }
 });
 

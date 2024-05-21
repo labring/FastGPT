@@ -4,7 +4,7 @@ import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { FlowNodeItemType, StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { type Node, type Edge } from 'reactflow';
 
-export const flowNode2StoreNodes = ({
+export const uiWorkflow2StoreWorkflow = ({
   nodes,
   edges
 }: {
