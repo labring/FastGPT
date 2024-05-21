@@ -41,7 +41,7 @@ export default function InputGuideBox({
     }
   );
 
-  const filterData = data.filter((item) => item !== text);
+  const filterData = data.filter((item) => item !== text).slice(0, 5);
 
   return filterData.length ? (
     <Box
