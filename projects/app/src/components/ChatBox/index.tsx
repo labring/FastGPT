@@ -59,6 +59,7 @@ import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
 import { useCreation } from 'ahooks';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
@@ -81,7 +82,7 @@ type Props = OutLinkChatAuthProps & {
   showEmptyIntro?: boolean;
   appAvatar?: string;
   userAvatar?: string;
-  userGuideModule?: StoreNodeItemType;
+  chatConfig?: AppChatConfigType;
   showFileSelector?: boolean;
   active?: boolean; // can use
   appId: string;

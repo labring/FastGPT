@@ -38,15 +38,12 @@ const ChatTest = ({
   const { appDetail } = useAppStore();
 
   const { watch } = editForm;
+  const chatConfig = watch('chatConfig');
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
   });
-  const userGuideModule = useCreation(
-    () => getGuideModule(workflowData.nodes),
-    [workflowData.nodes]
-  );
 
   const startChat = useMemoizedFn(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -131,7 +128,7 @@ const ChatTest = ({
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon
-          userGuideModule={userGuideModule}
+          chatConfig={chatConfig}
           showFileSelector={checkChatSupportSelectFileByModules(workflowData.nodes)}
           onStartChat={startChat}
           onDelMessage={() => {}}

@@ -31,13 +31,24 @@ import { getSystemVariables } from '@/web/core/app/utils';
 import { useUpdate } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
-const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
-const ToolSelectModal = dynamic(() => import('./ToolSelectModal'));
-const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
-const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
-const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
-const InputGuideConfig = dynamic(() => import('@/components/core/chat/appConfig/InputGuideConfig'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'), {
+  ssr: false
+});
+const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'), {
+  ssr: false
+});
+const ToolSelectModal = dynamic(() => import('./ToolSelectModal'), { ssr: false });
+const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'), { ssr: false });
+const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'), { ssr: false });
+const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'), { ssr: false });
+const InputGuideConfig = dynamic(
+  () => import('@/components/core/chat/appConfig/InputGuideConfig'),
+  { ssr: false }
+);
+const ScheduledTriggerConfig = dynamic(
+  () => import('@/components/core/app/ScheduledTriggerConfig'),
+  { ssr: false }
+);
 
 const BoxStyles: BoxProps = {
   px: 5,
@@ -113,6 +124,7 @@ const EditForm = ({
   const postQuestionGuide = getValues('chatConfig.questionGuide');
   const selectedTools = watch('selectedTools');
   const inputGuideConfig = watch('chatConfig.chatInputGuide');
+  const scheduledTriggerConfig = watch('chatConfig.scheduledTriggerConfig');
   const searchMode = watch('dataset.searchMode');
 
   const selectDatasets = useMemo(
@@ -448,12 +460,22 @@ const EditForm = ({
           </Box>
 
           {/* question tips */}
-          <Box {...BoxStyles} borderBottom={'none'}>
+          <Box {...BoxStyles}>
             <InputGuideConfig
               appId={appDetail._id}
               value={inputGuideConfig}
               onChange={(e) => {
                 setValue('chatConfig.chatInputGuide', e);
+              }}
+            />
+          </Box>
+
+          {/* timer trigger */}
+          <Box {...BoxStyles} borderBottom={'none'}>
+            <ScheduledTriggerConfig
+              value={scheduledTriggerConfig}
+              onChange={(e) => {
+                setValue('chatConfig.scheduledTriggerConfig', e);
               }}
             />
           </Box>

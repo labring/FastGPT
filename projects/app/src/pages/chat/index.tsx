@@ -354,7 +354,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 showEmptyIntro
                 appAvatar={chatData.app.avatar}
                 userAvatar={userInfo?.avatar}
-                userGuideModule={chatData.app?.userGuideModule}
+                chatConfig={chatData.app?.chatConfig}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
                 onStartChat={startChat}

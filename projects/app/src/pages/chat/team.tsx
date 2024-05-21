@@ -364,7 +364,7 @@ const OutLink = () => {
                 ref={ChatBoxRef}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}
-                userGuideModule={chatData.app?.userGuideModule}
+                chatConfig={chatData.app?.chatConfig}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}

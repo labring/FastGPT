@@ -2,14 +2,19 @@ import React, { useContext, createContext, useState, useMemo, useEffect, useCall
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
-import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import {
+  AppChatConfigType,
   AppTTSConfigType,
   AppWhisperConfigType,
   ChatInputGuideConfigType,
   VariableItemType
 } from '@fastgpt/global/core/app/type';
 import { ChatSiteItemType } from '@fastgpt/global/core/chat/type';
+import {
+  defaultChatInputGuideConfig,
+  defaultTTSConfig,
+  defaultWhisperConfig
+} from '@fastgpt/global/core/app/constants';
 
 type useChatStoreType = OutLinkChatAuthProps & {
   welcomeText: string;
@@ -97,7 +102,7 @@ const StateContext = createContext<useChatStoreType>({
 });
 
 export type ChatProviderProps = OutLinkChatAuthProps & {
-  userGuideModule?: StoreNodeItemType;
+  chatConfig?: AppChatConfigType;
 
   // not chat test params
   chatId?: string;
@@ -111,13 +116,19 @@ const Provider = ({
   outLinkUid,
   teamId,
   teamToken,
-  userGuideModule,
+  chatConfig = {},
   children
 }: ChatProviderProps) => {
   const [chatHistories, setChatHistories] = useState<ChatSiteItemType[]>([]);
 
-  const { welcomeText, variables, questionGuide, ttsConfig, whisperConfig, chatInputGuide } =
-    useMemo(() => splitGuideModule(userGuideModule), [userGuideModule]);
+  const {
+    welcomeText = '',
+    variables = [],
+    questionGuide = false,
+    ttsConfig = defaultTTSConfig,
+    whisperConfig = defaultWhisperConfig,
+    chatInputGuide = defaultChatInputGuideConfig
+  } = useMemo(() => chatConfig, [chatConfig]);
 
   // segment audio
   const [audioPlayingChatId, setAudioPlayingChatId] = useState<string>();

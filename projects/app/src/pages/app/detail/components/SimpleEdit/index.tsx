@@ -6,7 +6,7 @@ import { useMount } from 'ahooks';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useForm } from 'react-hook-form';
-import { appWorkflow2Form } from '@fastgpt/global/core/app/utils';
+import { appWorkflow2Form, defaultAppForm } from '@fastgpt/global/core/app/utils';
 
 import ChatTest from './ChatTest';
 import AppCard from './AppCard';
@@ -21,15 +21,18 @@ const SimpleEdit = ({ appId }: { appId: string }) => {
   const { appDetail } = useAppStore();
 
   const editForm = useForm<AppSimpleEditFormType>({
-    defaultValues: appWorkflow2Form({
-      nodes: appDetail.modules,
-      chatConfig: appDetail.chatConfig
-    })
+    defaultValues: defaultAppForm
   });
 
   // show selected dataset
   useMount(() => {
     loadAllDatasets();
+    editForm.reset(
+      appWorkflow2Form({
+        nodes: appDetail.modules,
+        chatConfig: appDetail.chatConfig
+      })
+    );
 
     if (appDetail.version !== 'v2') {
       editForm.reset(

@@ -13,14 +13,20 @@ import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();
   const { nodeId, outputs } = data;
+  const { appDetail } = useAppStore();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const variablesOutputs = useCreation(() => {
-    const variables = getWorkflowGlobalVariables(nodeList, t);
+    const variables = getWorkflowGlobalVariables({
+      nodes: nodeList,
+      chatConfig: appDetail.chatConfig,
+      t
+    });
 
     return variables.map<FlowNodeOutputItemType>((item) => ({
       id: item.key,

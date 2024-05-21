@@ -7,7 +7,6 @@ import { getAIApi } from '@fastgpt/service/core/ai/config';
 import { pushWhisperUsage } from '@/service/support/wallet/usage/push';
 import { authChatCert } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { getGuideModule, splitGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { NextAPI } from '@/service/middleware/entry';
 
@@ -47,14 +46,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     // auth role
     const { teamId, tmbId } = await authChatCert({ req, authToken: true });
     // auth app
-    const app = await MongoApp.findById(appId, 'modules').lean();
-    if (!app) {
-      throw new Error('app not found');
-    }
-    const { whisperConfig } = splitGuideModule(getGuideModule(app?.modules));
-    if (!whisperConfig?.open) {
-      throw new Error('Whisper is not open in the app');
-    }
+    // const app = await MongoApp.findById(appId, 'modules').lean();
+    // if (!app) {
+    //   throw new Error('app not found');
+    // }
+    // if (!whisperConfig?.open) {
+    //   throw new Error('Whisper is not open in the app');
+    // }
 
     const ai = getAIApi();
 

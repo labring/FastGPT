@@ -9,7 +9,7 @@ import QGSwitch from '@/components/core/app/QGSwitch';
 import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
 import InputGuideConfig from '@/components/core/chat/appConfig/InputGuideConfig';
-import { splitGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -33,25 +33,10 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { appDetail, setAppDetail } = useAppStore();
 
   const chatConfig = useMemo<AppChatConfigType>(() => {
-    const {
-      welcomeText,
-      variables,
-      questionGuide,
-      ttsConfig,
-      whisperConfig,
-      scheduledTriggerConfig,
-      chatInputGuide
-    } = splitGuideModule(data);
-    return {
-      welcomeText,
-      variables,
-      questionGuide,
-      ttsConfig,
-      whisperConfig,
-      scheduledTriggerConfig,
-      chatInputGuide,
-      ...appDetail.chatConfig
-    };
+    return getAppChatConfig({
+      chatConfig: appDetail.chatConfig,
+      systemConfigNode: data
+    });
   }, [data, appDetail]);
 
   const componentsProps = useMemo(
@@ -59,7 +44,7 @@ const NodeUserGuide = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       chatConfig,
       setAppDetail
     }),
-    [chatConfig]
+    [chatConfig, setAppDetail]
   );
 
   return (

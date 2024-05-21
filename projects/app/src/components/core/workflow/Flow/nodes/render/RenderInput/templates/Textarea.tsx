@@ -7,15 +7,21 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 const TextareaRender = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
+  const { appDetail } = useAppStore();
 
   // get variable
   const variables = useCreation(() => {
-    const globalVariables = getWorkflowGlobalVariables(nodeList, t);
+    const globalVariables = getWorkflowGlobalVariables({
+      nodes: nodeList,
+      chatConfig: appDetail.chatConfig,
+      t
+    });
 
     const moduleVariables = formatEditorVariablePickerIcon(
       inputs

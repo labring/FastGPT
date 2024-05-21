@@ -30,6 +30,7 @@ import {
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -54,6 +55,7 @@ const ChatTest = (
   const { t } = useTranslation();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const { userInfo } = useUserStore();
+  const { appDetail } = useAppStore();
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -143,7 +145,7 @@ const ChatTest = (
             appAvatar={app.avatar}
             userAvatar={userInfo?.avatar}
             showMarkIcon
-            userGuideModule={getGuideModule(nodes)}
+            chatConfig={appDetail.chatConfig}
             showFileSelector={checkChatSupportSelectFileByModules(nodes)}
             onStartChat={startChat}
             onDelMessage={() => {}}

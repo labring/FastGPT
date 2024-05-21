@@ -170,7 +170,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
     // 1. get and concat history; 2. get app workflow
     const limit = getMaxHistoryLimitFromNodes(app.modules);
-    const [{ history }, { nodes, edges }] = await Promise.all([
+    const [{ history }, { nodes, edges, chatConfig }] = await Promise.all([
       getChatItems({
         appId: app._id,
         chatId,
@@ -249,6 +249,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         teamId,
         tmbId: tmbId,
         nodes,
+        appChatConfig: chatConfig,
         variables: newVariables,
         isUpdateUseTime: isOwnerUse && source === ChatSourceEnum.online, // owner update use time
         shareId,

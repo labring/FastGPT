@@ -12,7 +12,8 @@ import type {
   AppTTSConfigType,
   AppWhisperConfigType,
   AppScheduledTriggerConfigType,
-  ChatInputGuideConfigType
+  ChatInputGuideConfigType,
+  AppChatConfigType
 } from '../app/type';
 import { EditorVariablePickerType } from '../../../web/components/common/Textarea/PromptEditor/type';
 import {
@@ -78,35 +79,39 @@ export const splitGuideModule = (guideModules?: StoreNodeItemType) => {
     chatInputGuide
   };
 };
-export const replaceAppChatConfig = ({
-  node,
-  variableList,
-  welcomeText
+export const getAppChatConfig = ({
+  chatConfig,
+  systemConfigNode,
+  storeVariables,
+  storeWelcomeText
 }: {
-  node?: StoreNodeItemType;
-  variableList?: VariableItemType[];
-  welcomeText?: string;
-}): StoreNodeItemType | undefined => {
-  if (!node) return;
-  return {
-    ...node,
-    inputs: node.inputs.map((input) => {
-      if (input.key === NodeInputKeyEnum.variables && variableList) {
-        return {
-          ...input,
-          value: variableList
-        };
-      }
-      if (input.key === NodeInputKeyEnum.welcomeText && welcomeText) {
-        return {
-          ...input,
-          value: welcomeText
-        };
-      }
+  chatConfig?: AppChatConfigType;
+  systemConfigNode?: StoreNodeItemType;
+  storeVariables?: VariableItemType[];
+  storeWelcomeText?: string;
+}): AppChatConfigType => {
+  const {
+    welcomeText,
+    variables,
+    questionGuide,
+    ttsConfig,
+    whisperConfig,
+    scheduledTriggerConfig,
+    chatInputGuide
+  } = splitGuideModule(systemConfigNode);
 
-      return input;
-    })
+  const config = {
+    questionGuide,
+    ttsConfig,
+    whisperConfig,
+    scheduledTriggerConfig,
+    chatInputGuide,
+    ...chatConfig,
+    variables: storeVariables ?? chatConfig?.variables ?? variables,
+    welcomeText: storeWelcomeText ?? chatConfig?.welcomeText ?? welcomeText
   };
+
+  return config;
 };
 
 export const getOrInitModuleInputValue = (input: FlowNodeInputItemType) => {

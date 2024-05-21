@@ -55,11 +55,13 @@ export const getAppLatestVersion = async (appId: string, app?: AppSchema) => {
   if (version) {
     return {
       nodes: version.nodes,
-      edges: version.edges
+      edges: version.edges,
+      chatConfig: version.chatConfig || app?.chatConfig || {}
     };
   }
   return {
     nodes: app?.modules || [],
-    edges: app?.edges || []
+    edges: app?.edges || [],
+    chatConfig: app?.chatConfig || {}
   };
 };
