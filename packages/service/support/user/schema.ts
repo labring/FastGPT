@@ -45,7 +45,7 @@ const UserSchema = new Schema({
   inviterId: {
     // 谁邀请注册的
     type: Schema.Types.ObjectId,
-    ref: 'user'
+    ref: userCollectionName
   },
   promotionRate: {
     type: Number,

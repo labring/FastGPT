@@ -39,7 +39,6 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import SliderApps from './components/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const OutLink = () => {
@@ -364,7 +363,7 @@ const OutLink = () => {
                 ref={ChatBoxRef}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}
-                userGuideModule={chatData.app?.userGuideModule}
+                chatConfig={chatData.app?.chatConfig}
                 showFileSelector={checkChatSupportSelectFileByChatModels(chatData.app.chatModels)}
                 feedbackType={'user'}
                 onUpdateVariable={(e) => {}}

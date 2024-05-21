@@ -29,7 +29,8 @@ import {
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 export type ChatTestComponentRef = {
   resetChatTest: () => void;
@@ -37,13 +38,11 @@ export type ChatTestComponentRef = {
 
 const ChatTest = (
   {
-    app,
     isOpen,
     nodes = [],
     edges = [],
     onClose
   }: {
-    app: AppSchema;
     isOpen: boolean;
     nodes?: StoreNodeItemType[];
     edges?: StoreEdgeItemType[];
@@ -54,6 +53,7 @@ const ChatTest = (
   const { t } = useTranslation();
   const ChatBoxRef = useRef<ComponentRef>(null);
   const { userInfo } = useUserStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const startChat = useCallback(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -70,8 +70,8 @@ const ChatTest = (
           nodes: storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),
           edges: initWorkflowEdgeStatus(edges),
           variables,
-          appId: app._id,
-          appName: `调试-${app.name}`,
+          appId: appDetail._id,
+          appName: `调试-${appDetail.name}`,
           mode: 'test'
         },
         onMessage: generatingMessage,
@@ -80,7 +80,7 @@ const ChatTest = (
 
       return { responseText, responseData, newVariables };
     },
-    [app._id, app.name, edges, nodes]
+    [appDetail._id, appDetail.name, edges, nodes]
   );
 
   useImperativeHandle(ref, () => ({
@@ -139,11 +139,11 @@ const ChatTest = (
         <Box flex={1}>
           <ChatBox
             ref={ChatBoxRef}
-            appId={app._id}
-            appAvatar={app.avatar}
+            appId={appDetail._id}
+            appAvatar={appDetail.avatar}
             userAvatar={userInfo?.avatar}
             showMarkIcon
-            userGuideModule={getGuideModule(nodes)}
+            chatConfig={appDetail.chatConfig}
             showFileSelector={checkChatSupportSelectFileByModules(nodes)}
             onStartChat={startChat}
             onDelMessage={() => {}}

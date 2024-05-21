@@ -5,7 +5,7 @@ import { useCallback, useState } from 'react';
 import { checkWorkflowNodeAndConnection } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { flowNode2StoreNodes } from '../../utils';
+import { uiWorkflow2StoreWorkflow } from '../../utils';
 import { RuntimeNodeItemType } from '@fastgpt/global/core/workflow/runtime/type';
 
 import dynamic from 'next/dynamic';
@@ -52,7 +52,7 @@ export const useDebug = () => {
 
     const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
     if (!checkResults) {
-      const storeNodes = flowNode2StoreNodes({ nodes, edges });
+      const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
 
       return JSON.stringify(storeNodes);
     } else {

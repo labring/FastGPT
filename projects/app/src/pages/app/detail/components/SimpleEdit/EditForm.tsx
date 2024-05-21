@@ -11,12 +11,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
-import {
-  form2AppWorkflow,
-  getAppQGuideCustomURL,
-  getNodesWithNoQGuide
-} from '@/web/core/app/utils';
+import { form2AppWorkflow } from '@/web/core/app/utils';
 
 import dynamic from 'next/dynamic';
 import MyTooltip from '@/components/MyTooltip';
@@ -34,15 +29,27 @@ import { TTSTypeEnum } from '@/web/core/app/constants';
 import { getSystemVariables } from '@/web/core/app/utils';
 import { useUpdate } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
-import { importQuestionGuides } from '@/web/core/app/api';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
-const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
-const ToolSelectModal = dynamic(() => import('./ToolSelectModal'));
-const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
-const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
-const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
-const QGuidesConfigModal = dynamic(() => import('@/components/core/app/QGuidesConfig'));
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'), {
+  ssr: false
+});
+const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'), {
+  ssr: false
+});
+const ToolSelectModal = dynamic(() => import('./ToolSelectModal'), { ssr: false });
+const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'), { ssr: false });
+const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'), { ssr: false });
+const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'), { ssr: false });
+const InputGuideConfig = dynamic(
+  () => import('@/components/core/chat/appConfig/InputGuideConfig'),
+  { ssr: false }
+);
+const ScheduledTriggerConfig = dynamic(
+  () => import('@/components/core/app/ScheduledTriggerConfig'),
+  { ssr: false }
+);
 
 const BoxStyles: BoxProps = {
   px: 5,
@@ -70,7 +77,7 @@ const EditForm = ({
   const { t } = useTranslation();
   const { appT } = useI18n();
 
-  const { appDetail, publishApp } = useAppStore();
+  const { appDetail, publishApp } = useContextSelector(AppContext, (v) => v);
 
   const { allDatasets } = useDatasetStore();
   const { llmModelList } = useSystemStore();
@@ -107,18 +114,19 @@ const EditForm = ({
   const aiSystemPrompt = watch('aiSettings.systemPrompt');
   const selectLLMModel = watch('aiSettings.model');
   const datasetSearchSetting = watch('dataset');
-  const variables = watch('userGuide.variables');
+  const variables = watch('chatConfig.variables');
 
   const formatVariables: any = useMemo(
-    () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...variables]),
+    () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...(variables || [])]),
     [t, variables]
   );
-  const searchMode = watch('dataset.searchMode');
-  const tts = getValues('userGuide.tts');
-  const whisperConfig = getValues('userGuide.whisper');
-  const postQuestionGuide = getValues('userGuide.questionGuide');
+  const tts = getValues('chatConfig.ttsConfig');
+  const whisperConfig = getValues('chatConfig.whisperConfig');
+  const postQuestionGuide = getValues('chatConfig.questionGuide');
   const selectedTools = watch('selectedTools');
-  const QGuidesConfig = watch('userGuide.questionGuideText');
+  const inputGuideConfig = watch('chatConfig.chatInputGuide');
+  const scheduledTriggerConfig = watch('chatConfig.scheduledTriggerConfig');
+  const searchMode = watch('dataset.searchMode');
 
   const selectDatasets = useMemo(
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
@@ -132,20 +140,11 @@ const EditForm = ({
   /* on save app */
   const { mutate: onSubmitPublish, isLoading: isSaving } = useRequest({
     mutationFn: async (data: AppSimpleEditFormType) => {
-      const questionGuideText = data.userGuide.questionGuideText;
-      await importQuestionGuides({
-        appId: appDetail._id,
-        textList: questionGuideText.textList,
-        customURL: getAppQGuideCustomURL(appDetail)
-      });
-
       const { nodes, edges } = form2AppWorkflow(data);
-
-      const newNodes = getNodesWithNoQGuide(nodes, questionGuideText);
-
-      await publishApp(appDetail._id, {
-        nodes: newNodes,
+      await publishApp({
+        nodes,
         edges,
+        chatConfig: data.chatConfig,
         type: AppTypeEnum.simple
       });
     },
@@ -403,7 +402,7 @@ const EditForm = ({
             <VariableEdit
               variables={variables}
               onChange={(e) => {
-                setValue('userGuide.variables', e);
+                setValue('chatConfig.variables', e);
               }}
             />
           </Box>
@@ -422,9 +421,9 @@ const EditForm = ({
               bg={'myWhite.400'}
               rows={5}
               placeholder={t(welcomeTextTip)}
-              defaultValue={getValues('userGuide.welcomeText')}
+              defaultValue={getValues('chatConfig.welcomeText')}
               onBlur={(e) => {
-                setValue('userGuide.welcomeText', e.target.value || '');
+                setValue('chatConfig.welcomeText', e.target.value || '');
               }}
             />
           </Box>
@@ -434,7 +433,7 @@ const EditForm = ({
             <TTSSelect
               value={tts}
               onChange={(e) => {
-                setValue('userGuide.tts', e);
+                setValue('chatConfig.ttsConfig', e);
               }}
             />
           </Box>
@@ -442,10 +441,10 @@ const EditForm = ({
           {/* whisper */}
           <Box {...BoxStyles}>
             <WhisperConfig
-              isOpenAudio={tts.type !== TTSTypeEnum.none}
+              isOpenAudio={tts?.type !== TTSTypeEnum.none}
               value={whisperConfig}
               onChange={(e) => {
-                setValue('userGuide.whisper', e);
+                setValue('chatConfig.whisperConfig', e);
               }}
             />
           </Box>
@@ -456,17 +455,28 @@ const EditForm = ({
               isChecked={postQuestionGuide}
               size={'lg'}
               onChange={(e) => {
-                setValue('userGuide.questionGuide', e.target.checked);
+                setValue('chatConfig.questionGuide', e.target.checked);
               }}
             />
           </Box>
 
           {/* question tips */}
-          <Box {...BoxStyles} borderBottom={'none'}>
-            <QGuidesConfigModal
-              value={QGuidesConfig}
+          <Box {...BoxStyles}>
+            <InputGuideConfig
+              appId={appDetail._id}
+              value={inputGuideConfig}
               onChange={(e) => {
-                setValue('userGuide.questionGuideText', e);
+                setValue('chatConfig.chatInputGuide', e);
+              }}
+            />
+          </Box>
+
+          {/* timer trigger */}
+          <Box {...BoxStyles} borderBottom={'none'}>
+            <ScheduledTriggerConfig
+              value={scheduledTriggerConfig}
+              onChange={(e) => {
+                setValue('chatConfig.scheduledTriggerConfig', e);
               }}
             />
           </Box>

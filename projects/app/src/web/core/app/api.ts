@@ -2,7 +2,7 @@ import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
 import type {
   AppDetailType,
   AppListItemType,
-  AppQuestionGuideTextConfigType
+  ChatInputGuideConfigType
 } from '@fastgpt/global/core/app/type.d';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
 import { AppUpdateParams, CreateAppParams } from '@/global/core/app/api';
@@ -27,7 +27,7 @@ export const delModelById = (id: string) => DELETE(`/core/app/del?appId=${id}`);
 /**
  * 根据 ID 获取模型
  */
-export const getModelById = (id: string) => GET<AppDetailType>(`/core/app/detail?appId=${id}`);
+export const getAppDetailById = (id: string) => GET<AppDetailType>(`/core/app/detail?appId=${id}`);
 
 /**
  * 根据 ID 更新模型
@@ -37,19 +37,3 @@ export const putAppById = (id: string, data: AppUpdateParams) =>
 
 // =================== chat logs
 export const getAppChatLogs = (data: GetAppChatLogsParams) => POST(`/core/app/getChatLogs`, data);
-
-/**
- * 导入提示词库
- */
-export const importQuestionGuides = (data: {
-  appId: string;
-  textList: string[];
-  customURL: string;
-}) => POST(`/core/app/questionGuides/import`, data);
-
-/**
- * 获取提示词库
- */
-export const getMyQuestionGuides = (
-  data: PaginationProps<{ appId: string; customURL: string; searchKey: string }>
-) => GET<PaginationResponse<string>>(`/core/app/questionGuides/list`, data);

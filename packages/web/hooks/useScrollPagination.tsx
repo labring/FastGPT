@@ -1,9 +1,17 @@
-import { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { Box, BoxProps } from '@chakra-ui/react';
 import { useToast } from './useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { PaginationProps, PaginationResponse } from '../common/fetch/type';
-import { useBoolean, useLockFn, useMemoizedFn, useMount, useScroll, useVirtualList } from 'ahooks';
+import {
+  useBoolean,
+  useLockFn,
+  useMemoizedFn,
+  useMount,
+  useScroll,
+  useVirtualList,
+  useRequest
+} from 'ahooks';
 import MyBox from '../components/common/MyBox';
 import { useTranslation } from 'next-i18next';
 
@@ -13,12 +21,19 @@ export function useScrollPagination<
 >(
   api: (data: TParams) => Promise<TData>,
   {
+    debounceWait,
+    throttleWait,
+    refreshDeps,
     itemHeight = 50,
     overscan = 10,
 
     pageSize = 10,
     defaultParams = {}
   }: {
+    debounceWait?: number;
+    throttleWait?: number;
+    refreshDeps?: any[];
+
     itemHeight: number;
     overscan?: number;
 
@@ -45,7 +60,7 @@ export function useScrollPagination<
   });
 
   const loadData = useLockFn(async (num: number = current) => {
-    if (noMore.current) return;
+    if (noMore.current && num !== 1) return;
 
     setTrue();
 
@@ -59,7 +74,7 @@ export function useScrollPagination<
       setCurrent(num);
 
       if (num === 1) {
-        // reload
+        // init or reload
         setData(res.list);
         noMore.current = res.list.length >= res.total;
       } else {
@@ -78,34 +93,48 @@ export function useScrollPagination<
     setFalse();
   });
 
+  const scroll2Top = () => {
+    if (containerRef.current) {
+      containerRef.current.scrollTop = 0;
+    }
+  };
+
   const ScrollList = useMemoizedFn(
     ({
       children,
+      EmptyChildren,
       isLoading,
       ...props
-    }: { children: React.ReactNode; isLoading?: boolean } & BoxProps) => {
+    }: {
+      children: React.ReactNode;
+      EmptyChildren?: React.ReactNode;
+      isLoading?: boolean;
+    } & BoxProps) => {
       return (
         <>
           <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
             <Box ref={wrapperRef}>{children}</Box>
+            {noMore.current && list.length > 0 && (
+              <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'sm'}>
+                {t('common.No more data')}
+              </Box>
+            )}
+            {list.length === 0 && !isLoading && EmptyChildren && <>{EmptyChildren}</>}
           </MyBox>
-          {noMore.current && (
-            <Box pb={2} textAlign={'center'} color={'myGray.600'} fontSize={'sm'}>
-              {t('common.No more data')}
-            </Box>
-          )}
         </>
       );
     }
   );
 
-  useMount(() => {
-    loadData(1);
+  useRequest(() => loadData(1), {
+    refreshDeps,
+    debounceWait: data.length === 0 ? 0 : debounceWait,
+    throttleWait
   });
 
   const scroll = useScroll(containerRef);
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || list.length === 0) return;
 
     const { scrollTop, scrollHeight, clientHeight } = containerRef.current;
 
@@ -118,8 +147,10 @@ export function useScrollPagination<
     containerRef,
     list,
     data,
+    setData,
     isLoading,
     ScrollList,
-    fetchData: loadData
+    fetchData: loadData,
+    scroll2Top
   };
 }

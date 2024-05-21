@@ -16,12 +16,13 @@ import {
   initWorkflowEdgeStatus,
   storeNodes2RuntimeNodes
 } from '@fastgpt/global/core/workflow/runtime/utils';
-import { useCreation, useMemoizedFn, useSafeState } from 'ahooks';
+import { useMemoizedFn, useSafeState } from 'ahooks';
 import { UseFormReturn } from 'react-hook-form';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { useI18n } from '@/web/context/I18n';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const ChatTest = ({
   editForm,
@@ -35,18 +36,15 @@ const ChatTest = ({
 
   const { userInfo } = useUserStore();
   const ChatBoxRef = useRef<ComponentRef>(null);
-  const { appDetail } = useAppStore();
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const { watch } = editForm;
+  const chatConfig = watch('chatConfig');
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
   });
-  const userGuideModule = useCreation(
-    () => getGuideModule(workflowData.nodes),
-    [workflowData.nodes]
-  );
 
   const startChat = useMemoizedFn(
     async ({ chatList, controller, generatingMessage, variables }: StartChatFnProps) => {
@@ -131,7 +129,7 @@ const ChatTest = ({
           appAvatar={appDetail.avatar}
           userAvatar={userInfo?.avatar}
           showMarkIcon
-          userGuideModule={userGuideModule}
+          chatConfig={chatConfig}
           showFileSelector={checkChatSupportSelectFileByModules(workflowData.nodes)}
           onStartChat={startChat}
           onDelMessage={() => {}}

@@ -45,7 +45,7 @@ import type {
   ChatBoxInputType,
   ChatBoxInputFormType
 } from './type.d';
-import MessageInput from './MessageInput';
+import ChatInput from './Input/ChatInput';
 import ChatBoxDivider from '../core/chat/Divider';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
@@ -59,6 +59,7 @@ import ChatItem from './components/ChatItem';
 
 import dynamic from 'next/dynamic';
 import { useCreation } from 'ahooks';
+import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
@@ -81,7 +82,7 @@ type Props = OutLinkChatAuthProps & {
   showEmptyIntro?: boolean;
   appAvatar?: string;
   userAvatar?: string;
-  userGuideModule?: StoreNodeItemType;
+  chatConfig?: AppChatConfigType;
   showFileSelector?: boolean;
   active?: boolean; // can use
   appId: string;
@@ -149,7 +150,7 @@ const ChatBox = (
 
   const {
     welcomeText,
-    variableNodes,
+    variableList,
     questionGuide,
     startSegmentedAudio,
     finishSegmentedAudio,
@@ -174,8 +175,8 @@ const ChatBox = (
 
   /* variable */
   const filterVariableNodes = useCreation(
-    () => variableNodes.filter((item) => item.type !== VariableInputEnum.custom),
-    [variableNodes]
+    () => variableList.filter((item) => item.type !== VariableInputEnum.custom),
+    [variableList]
   );
 
   // 滚动到底部
@@ -390,9 +391,9 @@ const ChatBox = (
             return;
           }
 
-          // delete invalid variables， 只保留在 variableNodes 中的变量
+          // delete invalid variables， 只保留在 variableList 中的变量
           const requestVariables: Record<string, any> = {};
-          variableNodes?.forEach((item) => {
+          variableList?.forEach((item) => {
             requestVariables[item.key] = variables[item.key] || '';
           });
 
@@ -566,7 +567,7 @@ const ChatBox = (
       startSegmentedAudio,
       t,
       toast,
-      variableNodes
+      variableList
     ]
   );
 
@@ -907,7 +908,7 @@ const ChatBox = (
           {!!filterVariableNodes?.length && (
             <VariableInput
               appAvatar={appAvatar}
-              variableNodes={filterVariableNodes}
+              variableList={filterVariableNodes}
               chatForm={chatForm}
               onSubmitVariables={(data) => {
                 setValue('chatStarted', true);
@@ -1000,7 +1001,7 @@ const ChatBox = (
       </Box>
       {/* message input */}
       {onStartChat && (chatStarted || filterVariableNodes.length === 0) && active && (
-        <MessageInput
+        <ChatInput
           onSendMessage={sendPrompt}
           onStop={() => chatController.current?.abort('stop')}
           TextareaDom={TextareaDom}

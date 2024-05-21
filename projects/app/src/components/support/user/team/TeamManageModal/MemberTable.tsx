@@ -7,7 +7,7 @@ import {
   TeamMemberStatusMap
 } from '@fastgpt/global/support/user/team/constant';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '.';
 import { useUserStore } from '@/web/support/user/useUserStore';

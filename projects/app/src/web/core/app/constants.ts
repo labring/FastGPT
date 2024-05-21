@@ -9,6 +9,7 @@ export const defaultApp: AppDetailType = {
   intro: '',
   updateTime: Date.now(),
   modules: [],
+  chatConfig: {},
   teamId: '',
   tmbId: '',
   permission: 'private',

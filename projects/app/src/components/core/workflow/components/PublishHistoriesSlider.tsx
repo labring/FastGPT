@@ -8,7 +8,6 @@ import { Box, Button, Flex } from '@chakra-ui/react';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
@@ -16,6 +15,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const PublishHistoriesSlider = () => {
   const { t } = useTranslation();
@@ -23,7 +23,7 @@ const PublishHistoriesSlider = () => {
     content: t('core.workflow.publish.OnRevert version confirm')
   });
 
-  const { appDetail, setAppDetail } = useAppStore();
+  const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
   const appId = useContextSelector(WorkflowContext, (e) => e.appId);
   const setIsShowVersionHistories = useContextSelector(
     WorkflowContext,
@@ -73,11 +73,11 @@ const PublishHistoriesSlider = () => {
         editEdges: appDetail.edges
       });
 
-      setAppDetail({
-        ...appDetail,
+      setAppDetail((state) => ({
+        ...state,
         modules: data.nodes,
         edges: data.edges
-      });
+      }));
 
       onCloseSlider(data);
     }

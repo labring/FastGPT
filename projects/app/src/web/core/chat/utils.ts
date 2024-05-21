@@ -29,20 +29,20 @@ export function checkChatSupportSelectFileByModules(modules: StoreNodeItemType[]
 
 export function getAppQuestionGuidesByModules(modules: StoreNodeItemType[] = []) {
   const systemModule = modules.find((item) => item.flowNodeType === FlowNodeTypeEnum.systemConfig);
-  const questionGuideText = systemModule?.inputs.find(
-    (item) => item.key === NodeInputKeyEnum.questionGuideText
+  const chatInputGuide = systemModule?.inputs.find(
+    (item) => item.key === NodeInputKeyEnum.chatInputGuide
   )?.value;
 
-  return questionGuideText?.open ? questionGuideText?.textList : [];
+  return chatInputGuide?.open ? chatInputGuide?.textList : [];
 }
 
 export function getAppQuestionGuidesByUserGuideModule(
   module: StoreNodeItemType,
   qGuideText: string[] = []
 ) {
-  const questionGuideText = module?.inputs.find(
-    (item) => item.key === NodeInputKeyEnum.questionGuideText
+  const chatInputGuide = module?.inputs.find(
+    (item) => item.key === NodeInputKeyEnum.chatInputGuide
   )?.value;
 
-  return questionGuideText?.open ? qGuideText : [];
+  return chatInputGuide?.open ? qGuideText : [];
 }

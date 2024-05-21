@@ -15,7 +15,7 @@ import {
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useState } from 'react';
-import { useTranslation } from 'react-i18next';
+import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { TeamContext } from '.';
 import {

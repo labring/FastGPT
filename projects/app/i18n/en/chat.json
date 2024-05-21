@@ -1,0 +1,18 @@
+{
+  "Chat input guide lexicon is empty": "The lexicon has not been configured",
+  "Config Texts": "Config thesaurus ",
+  "Config input guide lexicon": "Config",
+  "Config input guide lexicon title": "Config lexicon",
+  "Config question guide": "Configuration input Prompt ",
+  "Csv input lexicon tip": "Only CSV can be imported in batches. Click to download the template",
+  "Custom input guide url": "Custom lexicon url",
+  "Custom question guide URL": "Custom lexicon address ",
+  "Input Guide": "Intelligent Recommendation ",
+  "Input guide": "Input guide",
+  "Input guide lexicon": "Lexicon",
+  "Input guide tip": "You can configure some preset questions. When the user enters a question, the relevant question is retrieved from these preset questions for prompt.",
+  "Insert input guide, Some data already exists": "Duplicate data, automatically filtered, insert: {{len}} data",
+  "New input guide lexicon": "New lexicon",
+  "Only support CSV": "Only support CSV import, click download template ",
+  "Question Guide Texts": "Lexicon"
+}

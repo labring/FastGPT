@@ -1,9 +1,7 @@
-import React, { useEffect, useMemo, useCallback } from 'react';
+import React, { useMemo, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, IconButton, useTheme } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
-import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useQuery } from '@tanstack/react-query';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 import Tabs from '@/components/Tabs';
@@ -14,11 +12,11 @@ import PageContainer from '@/components/PageContainer';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import SimpleEdit from './components/SimpleEdit';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import Head from 'next/head';
 import { useTranslation } from 'next-i18next';
 import { useI18n } from '@/web/context/I18n';
-import { getAppQGuideCustomURL } from '@/web/core/app/utils';
+import { AppContext, AppContextProvider } from '@/web/core/app/context/appContext';
+import { useContextSelector } from 'use-context-selector';
 
 const FlowEdit = dynamic(() => import('./components/FlowEdit'), {
   loading: () => <Loading />
@@ -34,19 +32,16 @@ enum TabEnum {
   'startChat' = 'startChat'
 }
 
-const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
+const AppDetail = ({ appId, currentTab }: { appId: string; currentTab: TabEnum }) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
-
   const router = useRouter();
   const theme = useTheme();
   const { feConfigs } = useSystemStore();
-  const { toast } = useToast();
-  const { appId } = router.query as { appId: string };
-  const { appDetail, loadAppDetail } = useAppStore();
+  const { appDetail, loadingApp } = useContextSelector(AppContext, (e) => e);
 
   const setCurrentTab = useCallback(
-    (tab: `${TabEnum}`) => {
+    (tab: TabEnum) => {
       router.push({
         query: {
           ...router.query,
@@ -86,26 +81,13 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
 
   const onCloseFlowEdit = useCallback(() => setCurrentTab(TabEnum.simpleEdit), [setCurrentTab]);
 
-  const { isSuccess, isLoading } = useQuery([appId], () => loadAppDetail(appId, true), {
-    onError(err: any) {
-      toast({
-        title: err?.message || t('core.app.error.Get app failed'),
-        status: 'error'
-      });
-      router.replace('/app/list');
-    },
-    onSettled() {
-      router.prefetch(`/chat?appId=${appId}`);
-    }
-  });
-
   return (
     <>
       <Head>
         <title>{appDetail.name}</title>
       </Head>
-      <PageContainer isLoading={isLoading}>
-        {isSuccess && (
+      <PageContainer isLoading={loadingApp}>
+        {!loadingApp && (
           <Flex flexDirection={['column', 'row']} h={'100%'}>
             {/* pc tab */}
             <Box
@@ -180,9 +162,7 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             </Box>
             <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
               {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
-              {currentTab === TabEnum.adEdit && appDetail && (
-                <FlowEdit app={appDetail} onClose={onCloseFlowEdit} />
-              )}
+              {currentTab === TabEnum.adEdit && appDetail && <FlowEdit onClose={onCloseFlowEdit} />}
               {currentTab === TabEnum.logs && <Logs appId={appId} />}
               {currentTab === TabEnum.publish && <Publish appId={appId} />}
             </Box>
@@ -193,15 +173,25 @@ const AppDetail = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
   );
 };
 
+const Provider = ({ appId, currentTab }: { appId: string; currentTab: TabEnum }) => {
+  return (
+    <AppContextProvider appId={appId}>
+      <AppDetail appId={appId} currentTab={currentTab} />
+    </AppContextProvider>
+  );
+};
+
 export async function getServerSideProps(context: any) {
   const currentTab = context?.query?.currentTab || TabEnum.simpleEdit;
+  const appId = context?.query?.appId || '';
 
   return {
     props: {
       currentTab,
-      ...(await serviceSideProps(context, ['app', 'file', 'publish', 'workflow']))
+      appId,
+      ...(await serviceSideProps(context, ['app', 'chat', 'file', 'publish', 'workflow']))
     }
   };
 }
 
-export default AppDetail;
+export default Provider;

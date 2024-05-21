@@ -39,10 +39,10 @@ import MyRadio from '@/components/common/MyRadio';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 
 const VariableEdit = ({
-  variables,
+  variables = [],
   onChange
 }: {
-  variables: VariableItemType[];
+  variables?: VariableItemType[];
   onChange: (data: VariableItemType[]) => void;
 }) => {
   const { t } = useTranslation();

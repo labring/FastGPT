@@ -30,6 +30,7 @@ import { SourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
 import { getReferenceDataValueType } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const ListItem = ({
   provided,
@@ -342,15 +343,17 @@ const ConditionSelect = ({
 }) => {
   const { t } = useTranslation();
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // get condition type
   const valueType = useMemo(() => {
     return getReferenceDataValueType({
       variable,
       nodeList,
+      chatConfig: appDetail.chatConfig,
       t
     });
-  }, [nodeList, t, variable]);
+  }, [appDetail.chatConfig, nodeList, t, variable]);
 
   const conditionList = useMemo(() => {
     if (valueType === WorkflowIOValueTypeEnum.string) return stringConditionList;
