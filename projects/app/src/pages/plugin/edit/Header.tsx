@@ -68,7 +68,7 @@ const Header = ({ plugin, onClose }: Props) => {
     }
   });
 
-  const onCopy = useCallback(async () => {
+  const onExportWorkflow = useCallback(async () => {
     const data = await flowData2StoreDataAndCheck();
     if (data) {
       copyData(
@@ -125,7 +125,7 @@ const Header = ({ plugin, onClose }: Props) => {
               {
                 label: appT('Export Configs'),
                 icon: 'export',
-                onClick: onCopy
+                onClick: onExportWorkflow
               }
             ]}
           />
@@ -147,7 +147,7 @@ const Header = ({ plugin, onClose }: Props) => {
     isOpenImport,
     onClose,
     onCloseImport,
-    onCopy,
+    onExportWorkflow,
     onOpenImport,
     onclickSave,
     plugin.name,

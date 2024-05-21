@@ -177,7 +177,8 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         JSON.stringify(
           {
             nodes: filterSensitiveNodesData(data.nodes),
-            edges: data.edges
+            edges: data.edges,
+            chatConfig: appDetail.chatConfig
           },
           null,
           2
@@ -185,7 +186,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
         appT('Export Config Successful')
       );
     }
-  }, [appT, copyData, flowData2StoreDataAndCheck]);
+  }, [appDetail.chatConfig, appT, copyData, flowData2StoreDataAndCheck]);
 
   // effect
   useBeforeunload({
