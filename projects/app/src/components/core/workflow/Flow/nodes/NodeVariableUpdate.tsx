@@ -32,6 +32,7 @@ import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
 import { getReferenceDataValueType } from '@/web/core/workflow/utils';
 import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { inputs = [], nodeId } = data;
@@ -39,6 +40,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
 
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   const updateList = useMemo(
     () =>
@@ -85,6 +87,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
           const valueType = getReferenceDataValueType({
             variable: updateItem.variable,
             nodeList,
+            chatConfig: appDetail.chatConfig,
             t
           });
 
