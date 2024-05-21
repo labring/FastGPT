@@ -39,6 +39,10 @@ export async function connectMongo({
       global.mongodb?.disconnect();
       global.mongodb = undefined;
     });
+    mongoose.connection.on('disconnected', () => {
+      console.log('mongo disconnected');
+      global.mongodb = undefined;
+    });
 
     console.log('mongo connected');
 

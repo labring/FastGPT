@@ -47,6 +47,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
     const { teamId, tmbId, dataset } = await authDataset({
       req,
+      authToken: true,
       authApiKey: true,
       per: 'w',
       datasetId: data.datasetId

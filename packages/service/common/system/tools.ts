@@ -32,3 +32,5 @@ export const systemStartCb = () => {
     // process.exit(1); // 退出进程
   });
 };
+
+export const surrenderProcess = () => new Promise((resolve) => setImmediate(resolve));
