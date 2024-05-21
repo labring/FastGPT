@@ -114,9 +114,6 @@ export const getAppChatConfig = ({
   };
 
   if (!isPublicFetch) {
-    if (config?.chatInputGuide?.customUrl) {
-      config.chatInputGuide.customUrl = '';
-    }
     config.scheduledTriggerConfig = undefined;
   }
 
