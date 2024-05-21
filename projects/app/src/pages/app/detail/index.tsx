@@ -162,9 +162,7 @@ const AppDetail = ({ appId, currentTab }: { appId: string; currentTab: TabEnum }
             </Box>
             <Box flex={'1 0 0'} h={[0, '100%']} overflow={['overlay', '']}>
               {currentTab === TabEnum.simpleEdit && <SimpleEdit appId={appId} />}
-              {currentTab === TabEnum.adEdit && appDetail && (
-                <FlowEdit app={appDetail} onClose={onCloseFlowEdit} />
-              )}
+              {currentTab === TabEnum.adEdit && appDetail && <FlowEdit onClose={onCloseFlowEdit} />}
               {currentTab === TabEnum.logs && <Logs appId={appId} />}
               {currentTab === TabEnum.publish && <Publish appId={appId} />}
             </Box>
