@@ -165,84 +165,82 @@ export const useDebug = () => {
         maxW={['90vw', '35vw']}
         px={0}
       >
-        <Flex flexDirection={'column'} h={'100%'} overflowY={'auto'}>
-          <Box flex={'1 0 0'} overflow={'auto'} px={6}>
-            {renderInputs.map((input) => {
-              const required = input.required || false;
-              console.log(input.valueType);
-              const RenderInput = (() => {
-                if (input.valueType === WorkflowIOValueTypeEnum.string) {
-                  return (
-                    <Textarea
+        <Box flex={'1 0 0'} overflow={'auto'} px={6}>
+          {renderInputs.map((input) => {
+            const required = input.required || false;
+            console.log(input.valueType);
+            const RenderInput = (() => {
+              if (input.valueType === WorkflowIOValueTypeEnum.string) {
+                return (
+                  <Textarea
+                    {...register(input.key, {
+                      required
+                    })}
+                    placeholder={t(input.placeholder || '')}
+                    bg={'myGray.50'}
+                  />
+                );
+              }
+              if (input.valueType === WorkflowIOValueTypeEnum.number) {
+                return (
+                  <NumberInput step={input.step} min={input.min} max={input.max} bg={'myGray.50'}>
+                    <NumberInputField
                       {...register(input.key, {
-                        required
+                        required: input.required,
+                        min: input.min,
+                        max: input.max,
+                        valueAsNumber: true
                       })}
-                      placeholder={t(input.placeholder || '')}
-                      bg={'myGray.50'}
                     />
-                  );
-                }
-                if (input.valueType === WorkflowIOValueTypeEnum.number) {
-                  return (
-                    <NumberInput step={input.step} min={input.min} max={input.max} bg={'myGray.50'}>
-                      <NumberInputField
-                        {...register(input.key, {
-                          required: input.required,
-                          min: input.min,
-                          max: input.max,
-                          valueAsNumber: true
-                        })}
-                      />
-                      <NumberInputStepper>
-                        <NumberIncrementStepper />
-                        <NumberDecrementStepper />
-                      </NumberInputStepper>
-                    </NumberInput>
-                  );
-                }
-                if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                  return (
-                    <Box>
-                      <Switch size={'lg'} {...register(input.key)} />
-                    </Box>
-                  );
-                }
-                if (typeof input.value === 'string') {
-                  return (
-                    <JsonEditor
-                      bg={'myGray.50'}
-                      placeholder={t(input.placeholder || '')}
-                      resize
-                      value={getValues(input.key)}
-                      onChange={(e) => {
-                        setValue(input.key, e);
-                      }}
-                    />
-                  );
-                }
-              })();
+                    <NumberInputStepper>
+                      <NumberIncrementStepper />
+                      <NumberDecrementStepper />
+                    </NumberInputStepper>
+                  </NumberInput>
+                );
+              }
+              if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
+                return (
+                  <Box>
+                    <Switch size={'lg'} {...register(input.key)} />
+                  </Box>
+                );
+              }
+              if (typeof input.value === 'string') {
+                return (
+                  <JsonEditor
+                    bg={'myGray.50'}
+                    placeholder={t(input.placeholder || '')}
+                    resize
+                    value={getValues(input.key)}
+                    onChange={(e) => {
+                      setValue(input.key, e);
+                    }}
+                  />
+                );
+              }
+            })();
 
-              return !!RenderInput ? (
-                <Box key={input.key} _notLast={{ mb: 4 }} px={1}>
-                  <Flex alignItems={'center'} mb={1}>
-                    <Box position={'relative'}>
-                      {required && (
-                        <Box position={'absolute'} right={-2} top={'-1px'} color={'red.600'}>
-                          *
-                        </Box>
-                      )}
-                      {t(input.debugLabel || input.label)}
-                    </Box>
-                    {input.description && <QuestionTip ml={2} label={input.description} />}
-                  </Flex>
-                  {RenderInput}
-                </Box>
-              ) : null;
-            })}
-          </Box>
-          <Flex py={2} justifyContent={'flex-end'}>
-            <Button onClick={handleSubmit(onclickRun)}>运行</Button>
-          </Flex>
+            return !!RenderInput ? (
+              <Box key={input.key} _notLast={{ mb: 4 }} px={1}>
+                <Flex alignItems={'center'} mb={1}>
+                  <Box position={'relative'}>
+                    {required && (
+                      <Box position={'absolute'} right={-2} top={'-1px'} color={'red.600'}>
+                        *
+                      </Box>
+                    )}
+                    {t(input.debugLabel || input.label)}
+                  </Box>
+                  {input.description && <QuestionTip ml={2} label={input.description} />}
+                </Flex>
+                {RenderInput}
+              </Box>
+            ) : null;
+          })}
+        </Box>
+        <Flex py={2} justifyContent={'flex-end'} px={6}>
+          <Button onClick={handleSubmit(onclickRun)}>运行</Button>
         </Flex>
       </MyRightDrawer>
     );
