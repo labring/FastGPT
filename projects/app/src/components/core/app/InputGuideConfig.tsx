@@ -37,6 +37,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useRequest } from 'ahooks';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
+import ChatFunctionTip from './Tip';
 
 const csvTemplate = `"第一列内容"
 "只会将第一列内容导入，其余列会被忽略"
@@ -86,7 +87,7 @@ const InputGuideConfig = ({
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
       <HStack>
         <Box>{chatT('Input guide')}</Box>
-        <QuestionTip label={chatT('Input guide tip')} />
+        <ChatFunctionTip type={'inputGuide'} />
       </HStack>
       <Box flex={1} />
       <MyTooltip label={chatT('Config input guide')}>

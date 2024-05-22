@@ -4,7 +4,6 @@ import { AddIcon, QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
-import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRouter } from 'next/router';
@@ -42,14 +41,16 @@ const ToolSelectModal = dynamic(() => import('./ToolSelectModal'), { ssr: false 
 const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'), { ssr: false });
 const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'), { ssr: false });
 const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'), { ssr: false });
-const InputGuideConfig = dynamic(
-  () => import('@/components/core/chat/appConfig/InputGuideConfig'),
-  { ssr: false }
-);
+const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'), {
+  ssr: false
+});
 const ScheduledTriggerConfig = dynamic(
   () => import('@/components/core/app/ScheduledTriggerConfig'),
   { ssr: false }
 );
+const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'), {
+  ssr: false
+});
 
 const BoxStyles: BoxProps = {
   px: 5,
@@ -409,18 +410,7 @@ const EditForm = ({
 
           {/* welcome */}
           <Box {...BoxStyles}>
-            <Flex alignItems={'center'}>
-              <MyIcon name={'core/app/simpleMode/chat'} w={'20px'} />
-              <Box mx={2}>{t('core.app.Welcome Text')}</Box>
-              <MyTooltip label={t(welcomeTextTip)} forceShow>
-                <QuestionOutlineIcon />
-              </MyTooltip>
-            </Flex>
-            <MyTextarea
-              mt={2}
-              bg={'myWhite.400'}
-              rows={5}
-              placeholder={t(welcomeTextTip)}
+            <WelcomeTextConfig
               defaultValue={getValues('chatConfig.welcomeText')}
               onBlur={(e) => {
                 setValue('chatConfig.welcomeText', e.target.value || '');
