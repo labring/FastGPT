@@ -35,8 +35,7 @@ type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.aiModel]: string;
 }>;
 type Response = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.success]?: boolean;
-  [NodeOutputKeyEnum.failed]?: boolean;
+  [NodeOutputKeyEnum.success]: boolean;
   [NodeOutputKeyEnum.contextExtractFields]: string;
 }>;
 
@@ -119,9 +118,7 @@ export async function dispatchContentExtract(props: Props): Promise<Response> {
   });
 
   return {
-    // [DispatchNodeResponseKeyEnum.skipHandleId]: success
-    //   ? [getHandleId(nodeId, 'source', NodeOutputKeyEnum.failed)]
-    //   : [getHandleId(nodeId, 'source', NodeOutputKeyEnum.success)],
+    [NodeOutputKeyEnum.success]: success,
     [NodeOutputKeyEnum.contextExtractFields]: JSON.stringify(arg),
     ...arg,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {

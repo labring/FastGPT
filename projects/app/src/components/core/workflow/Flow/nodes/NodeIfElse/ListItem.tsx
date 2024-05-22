@@ -28,7 +28,7 @@ import MyInput from '@/components/MyInput';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { SourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
-import { getReferenceDataValueType } from '@/web/core/workflow/utils';
+import { getRefData } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
 import { AppContext } from '@/web/core/app/context/appContext';
 
@@ -346,8 +346,8 @@ const ConditionSelect = ({
   const appDetail = useContextSelector(AppContext, (v) => v.appDetail);
 
   // get condition type
-  const valueType = useMemo(() => {
-    return getReferenceDataValueType({
+  const { valueType, required } = useMemo(() => {
+    return getRefData({
       variable,
       nodeList,
       chatConfig: appDetail.chatConfig,
@@ -376,11 +376,22 @@ const ConditionSelect = ({
 
     return [];
   }, [valueType]);
+  const filterQuiredConditionList = useMemo(() => {
+    if (required) {
+      return conditionList.filter(
+        (item) =>
+          item.value !== VariableConditionEnum.isEmpty &&
+          item.value !== VariableConditionEnum.isNotEmpty
+      );
+    }
+    return conditionList;
+  }, [conditionList, required]);
 
   return (
     <MySelect
+      className="nowheel"
       w={'100%'}
-      list={conditionList}
+      list={filterQuiredConditionList}
       value={condition}
       onchange={onSelect}
       placeholder="选择条件"
