@@ -33,7 +33,7 @@ type HttpRequestProps = ModuleDispatchProps<{
   [key: string]: any;
 }>;
 type HttpResponse = DispatchNodeResultType<{
-  [NodeOutputKeyEnum.failed]?: boolean;
+  [NodeOutputKeyEnum.error]?: object;
   [key: string]: any;
 }>;
 
@@ -159,20 +159,16 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   } catch (error) {
     addLog.error('Http request error', error);
 
-    if (isToolCall) {
-      return {
-        [NodeOutputKeyEnum.failed]: true,
-        [DispatchNodeResponseKeyEnum.nodeResponse]: {
-          totalPoints: 0,
-          params: Object.keys(params).length > 0 ? params : undefined,
-          body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
-          headers: Object.keys(headers).length > 0 ? headers : undefined,
-          httpResult: { error: formatHttpError(error) }
-        },
-        [NodeOutputKeyEnum.httpRawResponse]: getErrText(error)
-      };
-    }
-    return Promise.reject(error);
+    return {
+      [NodeOutputKeyEnum.error]: formatHttpError(error),
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        params: Object.keys(params).length > 0 ? params : undefined,
+        body: Object.keys(requestBody).length > 0 ? requestBody : undefined,
+        headers: Object.keys(headers).length > 0 ? headers : undefined,
+        httpResult: { error: formatHttpError(error) }
+      },
+      [NodeOutputKeyEnum.httpRawResponse]: getErrText(error)
+    };
   }
 };
 

@@ -157,7 +157,7 @@ export const computedNodeInputReference = ({
 
   return sourceNodes;
 };
-export const getReferenceDataValueType = ({
+export const getRefData = ({
   variable,
   nodeList,
   chatConfig,
@@ -168,16 +168,34 @@ export const getReferenceDataValueType = ({
   chatConfig: AppChatConfigType;
   t: TFunction;
 }) => {
-  if (!variable) return WorkflowIOValueTypeEnum.any;
+  if (!variable)
+    return {
+      valueType: WorkflowIOValueTypeEnum.any,
+      required: false
+    };
 
   const node = nodeList.find((node) => node.nodeId === variable[0]);
   const systemVariables = getWorkflowGlobalVariables({ nodes: nodeList, chatConfig, t });
 
-  if (!node) return systemVariables.find((item) => item.key === variable?.[1])?.valueType;
+  if (!node) {
+    const globalVariable = systemVariables.find((item) => item.key === variable?.[1]);
+    return {
+      valueType: globalVariable?.valueType || WorkflowIOValueTypeEnum.any,
+      required: !!globalVariable?.required
+    };
+  }
 
   const output = node.outputs.find((item) => item.id === variable[1]);
-  if (!output) return WorkflowIOValueTypeEnum.any;
-  return output.valueType;
+  if (!output)
+    return {
+      valueType: WorkflowIOValueTypeEnum.any,
+      required: false
+    };
+
+  return {
+    valueType: output.valueType,
+    required: !!output.required
+  };
 };
 
 /* Connection rules */

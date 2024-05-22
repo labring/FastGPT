@@ -9,6 +9,7 @@ import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { ChatBoxInputFormType } from '../type.d';
+import { useRefresh } from '@fastgpt/web/hooks/useRefresh';
 
 const VariableInput = ({
   appAvatar,
@@ -25,6 +26,7 @@ const VariableInput = ({
   const { register, setValue, handleSubmit: handleSubmitChat, watch } = chatForm;
   const variables = watch('variables');
   const chatStarted = watch('chatStarted');
+  const { refresh } = useRefresh();
 
   return (
     <Box py={3}>
@@ -86,6 +88,7 @@ const VariableInput = ({
                   })}
                   value={variables[item.key]}
                   onchange={(e) => {
+                    refresh();
                     setValue(`variables.${item.key}`, e);
                   }}
                 />

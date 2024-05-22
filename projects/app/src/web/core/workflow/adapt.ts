@@ -428,7 +428,7 @@ export const v1Workflow2V2 = (
       pluginId,
       pluginType: node.pluginType,
       parentId: node.parentId,
-      version: 'v2.0',
+      version: '481',
 
       inputs,
       outputs

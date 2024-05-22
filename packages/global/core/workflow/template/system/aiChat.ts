@@ -89,6 +89,7 @@ export const AiChatModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.history,
       key: NodeOutputKeyEnum.history,
+      required: true,
       label: 'core.module.output.label.New context',
       description: 'core.module.output.description.New context',
       valueType: WorkflowIOValueTypeEnum.chatHistory,
@@ -97,6 +98,7 @@ export const AiChatModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.answerText,
       key: NodeOutputKeyEnum.answerText,
+      required: true,
       label: 'core.module.output.label.Ai response content',
       description: 'core.module.output.description.Ai response content',
       valueType: WorkflowIOValueTypeEnum.string,

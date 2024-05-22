@@ -82,9 +82,18 @@ export const HttpModule468: FlowNodeTemplateType = {
   outputs: [
     Output_Template_AddOutput,
     {
+      id: NodeOutputKeyEnum.error,
+      key: NodeOutputKeyEnum.error,
+      label: '请求错误',
+      description: 'HTTP请求错误信息，成功时返回空',
+      valueType: WorkflowIOValueTypeEnum.object,
+      type: FlowNodeOutputTypeEnum.static
+    },
+    {
       id: NodeOutputKeyEnum.httpRawResponse,
       key: NodeOutputKeyEnum.httpRawResponse,
       label: '原始响应',
+      required: true,
       description: 'HTTP请求的原始响应。只能接受字符串或JSON类型响应数据。',
       valueType: WorkflowIOValueTypeEnum.any,
       type: FlowNodeOutputTypeEnum.static

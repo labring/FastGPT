@@ -30,7 +30,7 @@ import { SmallAddIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { ReferenceValueProps } from '@fastgpt/global/core/workflow/type/io';
 import { ReferSelector, useReference } from './render/RenderInput/templates/Reference';
-import { getReferenceDataValueType } from '@/web/core/workflow/utils';
+import { getRefData } from '@/web/core/workflow/utils';
 import { isReferenceValue } from '@fastgpt/global/core/workflow/utils';
 import { AppContext } from '@/web/core/app/context/appContext';
 
@@ -84,7 +84,7 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
     return (
       <>
         {updateList.map((updateItem, index) => {
-          const valueType = getReferenceDataValueType({
+          const { valueType } = getRefData({
             variable: updateItem.variable,
             nodeList,
             chatConfig: appDetail.chatConfig,

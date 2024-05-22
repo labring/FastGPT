@@ -24,6 +24,7 @@ export const AssignedAnswerModule: FlowNodeTemplateType = {
       key: NodeInputKeyEnum.answerText,
       renderTypeList: [FlowNodeInputTypeEnum.textarea, FlowNodeInputTypeEnum.reference],
       valueType: WorkflowIOValueTypeEnum.any,
+      required: true,
       label: 'core.module.input.label.Response content',
       description: 'core.module.input.description.Response content',
       placeholder: 'core.module.input.description.Response content'
