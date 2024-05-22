@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Box } from '@chakra-ui/react';
+import { Box, Flex } from '@chakra-ui/react';
 import { ImportSourceItemType } from '@/web/core/dataset/type';
 import { useQuery } from '@tanstack/react-query';
 import MyRightDrawer from '@fastgpt/web/components/common/MyDrawer/MyRightDrawer';
@@ -83,26 +83,28 @@ const PreviewChunks = ({
       isLoading={isLoading}
       maxW={['90vw', '40vw']}
     >
-      {data.map((item, index) => (
-        <Box
-          key={index}
-          whiteSpace={'pre-wrap'}
-          fontSize={'sm'}
-          p={4}
-          bg={index % 2 === 0 ? 'white' : 'myWhite.600'}
-          mb={3}
-          borderRadius={'md'}
-          borderWidth={'1px'}
-          borderColor={'borderColor.low'}
-          boxShadow={'2'}
-          _notLast={{
-            mb: 2
-          }}
-        >
-          <Box color={'myGray.900'}>{item.q}</Box>
-          <Box color={'myGray.500'}>{item.a}</Box>
-        </Box>
-      ))}
+      <Flex flexDirection={'column'} height={'100%'} overflowY={'auto'}>
+        {data.map((item, index) => (
+          <Box
+            key={index}
+            whiteSpace={'pre-wrap'}
+            fontSize={'sm'}
+            p={4}
+            bg={index % 2 === 0 ? 'white' : 'myWhite.600'}
+            mb={3}
+            borderRadius={'md'}
+            borderWidth={'1px'}
+            borderColor={'borderColor.low'}
+            boxShadow={'2'}
+            _notLast={{
+              mb: 2
+            }}
+          >
+            <Box color={'myGray.900'}>{item.q}</Box>
+            <Box color={'myGray.500'}>{item.a}</Box>
+          </Box>
+        ))}
+      </Flex>
     </MyRightDrawer>
   );
 };

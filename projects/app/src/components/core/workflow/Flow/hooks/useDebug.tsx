@@ -165,7 +165,7 @@ export const useDebug = () => {
         maxW={['90vw', '35vw']}
         px={0}
       >
-        <Flex flexDirection={'column'} h={'100%'}>
+        <Flex flexDirection={'column'} h={'100%'} overflowY={'auto'}>
           <Box flex={'1 0 0'} overflow={'auto'} px={6}>
             {renderInputs.map((input) => {
               const required = input.required || false;
