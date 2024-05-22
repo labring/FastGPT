@@ -1,19 +1,15 @@
 import React, { Dispatch, useMemo, useTransition } from 'react';
 import { NodeProps } from 'reactflow';
-import { Box, Flex, Textarea, useTheme } from '@chakra-ui/react';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import { Box, useTheme } from '@chakra-ui/react';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
-import { welcomeTextTip } from '@fastgpt/global/core/workflow/template/tip';
 
 import QGSwitch from '@/components/core/app/QGSwitch';
 import TTSSelect from '@/components/core/app/TTSSelect';
 import WhisperConfig from '@/components/core/app/WhisperConfig';
-import InputGuideConfig from '@/components/core/chat/appConfig/InputGuideConfig';
+import InputGuideConfig from '@/components/core/app/InputGuideConfig';
 import { getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import { TTSTypeEnum } from '@/web/core/app/constants';
-import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
 import NodeCard from './render/NodeCard';
 import ScheduledTriggerConfig from '@/components/core/app/ScheduledTriggerConfig';
 import { useContextSelector } from 'use-context-selector';
@@ -22,6 +18,7 @@ import { AppChatConfigType, AppDetailType, VariableItemType } from '@fastgpt/glo
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
 import { AppContext } from '@/web/core/app/context/appContext';
+import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 
 type ComponentProps = {
   chatConfig: AppChatConfigType;
@@ -94,22 +91,10 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
   const [, startTst] = useTransition();
 
   return (
-    <>
-      <Flex mb={1} alignItems={'center'}>
-        <MyIcon name={'core/modules/welcomeText'} mr={2} w={'14px'} color={'#E74694'} />
-        <Box fontWeight={'medium'}>{t('core.app.Welcome Text')}</Box>
-        <MyTooltip label={t(welcomeTextTip)} forceShow>
-          <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-        </MyTooltip>
-      </Flex>
-      <Textarea
-        className="nodrag"
-        rows={6}
-        fontSize={'12px'}
+    <Box className="nodrag">
+      <WelcomeTextConfig
         resize={'both'}
         defaultValue={welcomeText}
-        bg={'myWhite.500'}
-        placeholder={t(welcomeTextTip)}
         onChange={(e) => {
           startTst(() => {
             setAppDetail((state) => ({
@@ -122,7 +107,7 @@ function WelcomeText({ chatConfig: { welcomeText }, setAppDetail }: ComponentPro
           });
         }}
       />
-    </>
+    </Box>
   );
 }
 

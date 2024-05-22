@@ -132,17 +132,19 @@ export const embeddingRecall = async (
 ): Promise<{
   results: EmbeddingRecallItemType[];
 }> => {
-  const { datasetIds, vectors, limit, retry = 2 } = props;
+  const { teamId, datasetIds, vectors, limit, retry = 2 } = props;
 
   try {
     const results: any = await PgClient.query(
-      `BEGIN;
+      `
+      BEGIN;
         SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
         select id, collection_id, vector <#> '[${vectors[0]}]' AS score 
           from ${PgDatasetTableName} 
-          where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
+          where team_id='${teamId}'
+            AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
           order by score limit ${limit};
-        COMMIT;`
+      COMMIT;`
     );
 
     const rows = results?.[2]?.rows as PgSearchRawType[];

@@ -175,7 +175,7 @@ export const pluginData2FlowNodeIO = (
 };
 
 export const formatEditorVariablePickerIcon = (
-  variables: { key: string; label: string; type?: `${VariableInputEnum}` }[]
+  variables: { key: string; label: string; type?: `${VariableInputEnum}`; required?: boolean }[]
 ): EditorVariablePickerType[] => {
   return variables.map((item) => ({
     ...item,

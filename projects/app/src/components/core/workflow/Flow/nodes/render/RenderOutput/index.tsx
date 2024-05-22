@@ -171,6 +171,11 @@ const RenderOutput = ({
         {renderOutputs.map((output) => {
           return output.label ? (
             <Box key={output.key} _notLast={{ mb: 5 }} position={'relative'}>
+              {output.required && (
+                <Box position={'absolute'} left={'-6px'} top={-1} color={'red.600'}>
+                  *
+                </Box>
+              )}
               <OutputLabel nodeId={nodeId} output={output} />
             </Box>
           ) : null;

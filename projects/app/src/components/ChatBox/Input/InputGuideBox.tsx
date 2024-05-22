@@ -30,7 +30,7 @@ export default function InputGuideBox({
       return await queryChatInputGuideList(
         {
           appId,
-          searchKey: text
+          searchKey: text.slice(0, 50)
         },
         chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
       );

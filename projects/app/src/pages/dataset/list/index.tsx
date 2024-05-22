@@ -33,8 +33,8 @@ import ParentPaths from '@/components/common/ParentPaths';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { xmlDownloadFetch } from '@/web/common/api/xmlFetch';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
+import { downloadFetch } from '@/web/common/system/utils';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -93,7 +93,7 @@ const Dataset = () => {
       setLoading(true);
       await checkTeamExportDatasetLimit(dataset._id);
 
-      await xmlDownloadFetch({
+      await downloadFetch({
         url: `/api/core/dataset/exportAll?datasetId=${dataset._id}`,
         filename: `${dataset.name}.csv`
       });

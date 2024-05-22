@@ -32,6 +32,7 @@ const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
       id: item.key,
       type: FlowNodeOutputTypeEnum.static,
       key: item.key,
+      required: item.required,
       valueType: item.valueType || WorkflowIOValueTypeEnum.any,
       label: item.label
     }));

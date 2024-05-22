@@ -68,6 +68,7 @@ export const ClassifyQuestionModule: FlowNodeTemplateType = {
     {
       id: NodeOutputKeyEnum.cqResult,
       key: NodeOutputKeyEnum.cqResult,
+      required: true,
       label: '分类结果',
       valueType: WorkflowIOValueTypeEnum.string,
       type: FlowNodeOutputTypeEnum.static

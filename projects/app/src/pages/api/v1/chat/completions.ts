@@ -163,8 +163,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return authHeaderRequest({
           req,
           appId,
-          chatId,
-          detail
+          chatId
         });
       })();
 
@@ -292,17 +291,19 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         data: '[DONE]'
       });
 
-      if (responseDetail && detail) {
+      if (detail) {
         responseWrite({
           res,
           event: SseResponseEventEnum.updateVariables,
           data: JSON.stringify(newVariables)
         });
-        responseWrite({
-          res,
-          event: SseResponseEventEnum.flowResponses,
-          data: JSON.stringify(feResponseData)
-        });
+        if (responseDetail) {
+          responseWrite({
+            res,
+            event: SseResponseEventEnum.flowResponses,
+            data: JSON.stringify(feResponseData)
+          });
+        }
       }
 
       res.end();
@@ -443,13 +444,11 @@ const authTeamSpaceChat = async ({
 const authHeaderRequest = async ({
   req,
   appId,
-  chatId,
-  detail
+  chatId
 }: {
   req: NextApiRequest;
   appId?: string;
   chatId?: string;
-  detail?: boolean;
 }): Promise<AuthResponseType> => {
   const {
     appId: apiKeyAppId,
@@ -517,7 +516,7 @@ const authHeaderRequest = async ({
     tmbId,
     user,
     app,
-    responseDetail: detail,
+    responseDetail: true,
     apikey,
     authType,
     canWrite

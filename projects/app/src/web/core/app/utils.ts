@@ -701,6 +701,7 @@ export const getSystemVariables = (t: TFunction): EditorVariablePickerType[] => 
     {
       key: 'appId',
       label: t('core.module.http.AppId'),
+      required: true,
       valueType: WorkflowIOValueTypeEnum.string
     },
     {
@@ -716,11 +717,13 @@ export const getSystemVariables = (t: TFunction): EditorVariablePickerType[] => 
     {
       key: 'histories',
       label: t('core.module.http.Histories'),
+      required: true,
       valueType: WorkflowIOValueTypeEnum.chatHistory
     },
     {
       key: 'cTime',
       label: t('core.module.http.Current time'),
+      required: true,
       valueType: WorkflowIOValueTypeEnum.string
     }
   ];

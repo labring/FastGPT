@@ -8,7 +8,6 @@ import { AppScheduledTriggerConfigType } from '@fastgpt/global/core/app/type';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dynamic from 'next/dynamic';
 import type { MultipleSelectProps } from '@fastgpt/web/components/common/MySelect/type.d';
-import { useForm } from 'react-hook-form';
 import { cronParser2Fields } from '@fastgpt/global/common/string/time';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 

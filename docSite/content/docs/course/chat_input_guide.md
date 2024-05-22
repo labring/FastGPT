@@ -25,6 +25,8 @@ weight: 350
 curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/query?appId=663c75302caf8315b1c00194&searchKey=你'
 ```
 
+其中 `appId` 为应用ID，`searchKey` 为搜索关键字，最多是50个字符。
+
 **响应**
 
 ```json
@@ -42,6 +44,8 @@ curl --location --request GET 'http://localhost:3000/api/core/chat/inputGuide/qu
   ]
 }
 ```
+
+data是一个数组，包含了搜索到的问题，最多只需要返回5个问题。
 
 
 **参数说明：**

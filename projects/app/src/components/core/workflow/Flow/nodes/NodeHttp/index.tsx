@@ -280,7 +280,7 @@ export function RenderHttpProps({
     );
 
     return [...moduleVariables, ...globalVariables];
-  }, [inputs, nodeList, t]);
+  }, [appDetail.chatConfig, inputs, nodeList, t]);
 
   const variableText = useMemo(() => {
     return variables

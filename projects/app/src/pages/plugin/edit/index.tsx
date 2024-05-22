@@ -51,18 +51,14 @@ const Render = ({ pluginId }: Props) => {
   });
 
   useEffect(() => {
-    if (isV2Workflow) {
-      initData(JSON.parse(workflowStringData));
-    }
-  }, [initData, isV2Workflow, workflowStringData]);
-
-  useEffect(() => {
     if (!isV2Workflow && pluginDetail) {
       openConfirm(() => {
         initData(JSON.parse(JSON.stringify(v1Workflow2V2((pluginDetail.modules || []) as any))));
       })();
+    } else {
+      initData(JSON.parse(workflowStringData));
     }
-  }, [initData, isV2Workflow, openConfirm, pluginDetail]);
+  }, [pluginDetail]);
 
   useBeforeunload({
     tip: t('core.common.tip.leave page')

@@ -26,10 +26,11 @@ export const getCountChatInputGuideTotal = (data: countChatInputGuideTotalQuery)
 export const getChatInputGuideList = (data: ChatInputGuideProps) =>
   GET<ChatInputGuideResponse>(`/core/chat/inputGuide/list`, data);
 
-export const queryChatInputGuideList = (
-  data: QueryChatInputGuideProps,
-  url = `/core/chat/inputGuide/query`
-) => GET<QueryChatInputGuideResponse>(url, data);
+export const queryChatInputGuideList = (data: QueryChatInputGuideProps, url?: string) => {
+  return GET<QueryChatInputGuideResponse>(url ?? `/core/chat/inputGuide/query`, data, {
+    withCredentials: !url
+  });
+};
 
 export const postChatInputGuides = (data: createInputGuideBody) =>
   POST<createInputGuideResponse>(`/core/chat/inputGuide/create`, data);

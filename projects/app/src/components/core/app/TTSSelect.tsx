@@ -1,6 +1,5 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import { Box, Button, Flex, ModalBody, useDisclosure, Image } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -12,6 +11,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import MySlider from '@/components/Slider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
+import ChatFunctionTip from './Tip';
 
 const TTSSelect = ({
   value = defaultTTSConfig,
@@ -82,9 +82,7 @@ const TTSSelect = ({
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
       <Box fontWeight={'medium'}>{t('core.app.TTS')}</Box>
-      <MyTooltip label={t('core.app.TTS Tip')} forceShow>
-        <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-      </MyTooltip>
+      <ChatFunctionTip type={'tts'} />
       <Box flex={1} />
       <MyTooltip label={t('core.app.Select TTS')}>
         <Button
