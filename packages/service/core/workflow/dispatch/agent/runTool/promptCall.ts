@@ -125,7 +125,6 @@ export const runToolWithPromptCall = async (
   })();
 
   const { answer: replaceAnswer, toolJson } = parseAnswer(answer);
-  // console.log(parseAnswer, '==11==');
   // No tools
   if (!toolJson) {
     if (replaceAnswer === ERROR_TEXT && stream && detail) {
