@@ -24,6 +24,7 @@ export const RunAppModule: FlowNodeTemplateType = {
   intro: '可以选择一个其他应用进行调用',
   showStatus: true,
   version: '481',
+  isTool: true,
   inputs: [
     {
       key: NodeInputKeyEnum.runAppSelectApp,
