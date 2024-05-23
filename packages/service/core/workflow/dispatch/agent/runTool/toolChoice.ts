@@ -354,7 +354,7 @@ async function streamResponse({
     }
 
     const responseChoice = part.choices?.[0]?.delta;
-    // console.log(JSON.stringify(responseChoice, null, 2));
+
     if (responseChoice?.content) {
       const content = responseChoice.content || '';
       textAnswer += content;
@@ -369,7 +369,7 @@ async function streamResponse({
     } else if (responseChoice?.tool_calls?.[0]) {
       const toolCall: ChatCompletionMessageToolCall = responseChoice.tool_calls[0];
 
-      // 流响应中,每次只会返回一个工具. 如果带了 id，说明是执行一个工具
+      // In a stream response, only one tool is returned at a time.  If have id, description is executing a tool
       if (toolCall.id) {
         const toolNode = toolNodes.find((item) => item.nodeId === toolCall.function?.name);
 
@@ -400,10 +400,14 @@ async function streamResponse({
             });
           }
         }
+
+        continue;
       }
+
       /* arg 插入最后一个工具的参数里 */
-      const arg: string = responseChoice.tool_calls?.[0]?.function?.arguments;
+      const arg: string = toolCall?.function?.arguments;
       const currentTool = toolCalls[toolCalls.length - 1];
+
       if (currentTool) {
         currentTool.function.arguments += arg;
 
