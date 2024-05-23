@@ -88,8 +88,8 @@ const nextConfig = {
   },
   transpilePackages: ['@fastgpt/*', 'ahooks'],
   experimental: {
-    // 指定导出包优化，按需引入包模块
-    optimizePackageImports: ['mongoose', 'pg'],
+    // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
+    serverComponentsExternalPackages: ['mongoose', 'pg'],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };
