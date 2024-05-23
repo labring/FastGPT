@@ -20,7 +20,7 @@ import { dispatchWorkFlow } from '../../index';
 import { DispatchToolModuleProps, RunToolResponse, ToolNodeItemType } from './type.d';
 import json5 from 'json5';
 import { countGptMessagesTokens } from '../../../../../common/string/tiktoken/index';
-import { getNanoid, replaceVariable } from '@fastgpt/global/common/string/tools';
+import { getNanoid, replaceVariable, sliceJsonStr } from '@fastgpt/global/common/string/tools';
 import { AIChatItemType } from '@fastgpt/global/core/chat/type';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
 import { updateToolInputValue } from './utils';
@@ -32,6 +32,8 @@ type FunctionCallCompletion = {
   toolName?: string;
   toolAvatar?: string;
 };
+
+const ERROR_TEXT = 'Tool run error';
 
 export const runToolWithPromptCall = async (
   props: DispatchToolModuleProps & {
@@ -122,14 +124,23 @@ export const runToolWithPromptCall = async (
     }
   })();
 
-  const parseAnswerResult = parseAnswer(answer);
+  const { answer: replaceAnswer, toolJson } = parseAnswer(answer);
   // console.log(parseAnswer, '==11==');
   // No tools
-  if (typeof parseAnswerResult === 'string') {
+  if (!toolJson) {
+    if (replaceAnswer === ERROR_TEXT && stream && detail) {
+      responseWrite({
+        res,
+        event: SseResponseEventEnum.answer,
+        data: textAdaptGptResponse({
+          text: replaceAnswer
+        })
+      });
+    }
     // No tool is invoked, indicating that the process is over
     const gptAssistantResponse: ChatCompletionAssistantMessageParam = {
       role: ChatCompletionRequestMessageRoleEnum.Assistant,
-      content: parseAnswerResult
+      content: replaceAnswer
     };
     const completeMessages = filterMessages.concat(gptAssistantResponse);
     const tokens = await countGptMessagesTokens(completeMessages, undefined);
@@ -148,18 +159,16 @@ export const runToolWithPromptCall = async (
 
   // Run the selected tool.
   const toolsRunResponse = await (async () => {
-    if (!parseAnswerResult) return Promise.reject('tool run error');
-
-    const toolNode = toolNodes.find((item) => item.nodeId === parseAnswerResult.name);
+    const toolNode = toolNodes.find((item) => item.nodeId === toolJson.name);
     if (!toolNode) return Promise.reject('tool not found');
 
-    parseAnswerResult.toolName = toolNode.name;
-    parseAnswerResult.toolAvatar = toolNode.avatar;
+    toolJson.toolName = toolNode.name;
+    toolJson.toolAvatar = toolNode.avatar;
 
     // run tool flow
     const startParams = (() => {
       try {
-        return json5.parse(parseAnswerResult.arguments);
+        return json5.parse(toolJson.arguments);
       } catch (error) {
         return {};
       }
@@ -172,11 +181,11 @@ export const runToolWithPromptCall = async (
         event: SseResponseEventEnum.toolCall,
         data: JSON.stringify({
           tool: {
-            id: parseAnswerResult.id,
+            id: toolJson.id,
             toolName: toolNode.name,
             toolAvatar: toolNode.avatar,
-            functionName: parseAnswerResult.name,
-            params: parseAnswerResult.arguments,
+            functionName: toolJson.name,
+            params: toolJson.arguments,
             response: ''
           }
         })
@@ -211,7 +220,7 @@ export const runToolWithPromptCall = async (
         event: SseResponseEventEnum.toolResponse,
         data: JSON.stringify({
           tool: {
-            id: parseAnswerResult.id,
+            id: toolJson.id,
             toolName: '',
             toolAvatar: '',
             params: '',
@@ -237,7 +246,7 @@ export const runToolWithPromptCall = async (
   // 合并工具调用的结果，使用 functionCall 格式存储。
   const assistantToolMsgParams: ChatCompletionAssistantMessageParam = {
     role: ChatCompletionRequestMessageRoleEnum.Assistant,
-    function_call: parseAnswerResult
+    function_call: toolJson
   };
   const concatToolMessages = [
     ...filterMessages,
@@ -248,7 +257,7 @@ export const runToolWithPromptCall = async (
     ...concatToolMessages,
     {
       role: ChatCompletionRequestMessageRoleEnum.Function,
-      name: parseAnswerResult.name,
+      name: toolJson.name,
       content: toolsRunResponse.toolResponsePrompt
     }
   ];
@@ -266,7 +275,7 @@ export const runToolWithPromptCall = async (
     : [toolsRunResponse.moduleRunResponse];
 
   // get the next user prompt
-  lastMessage.content += `${answer}
+  lastMessage.content += `${replaceAnswer}
 TOOL_RESPONSE: """
 ${toolsRunResponse.toolResponsePrompt}
 """
@@ -362,24 +371,37 @@ async function streamResponse({
   return { answer: textAnswer.trim() };
 }
 
-const parseAnswer = (str: string): FunctionCallCompletion | string => {
-  // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
-  const prefix = '1:';
+const parseAnswer = (
+  str: string
+): {
+  answer: string;
+  toolJson?: FunctionCallCompletion;
+} => {
   str = str.trim();
-  if (str.startsWith(prefix)) {
-    const toolString = str.substring(prefix.length).trim();
+  // 首先，使用正则表达式提取TOOL_ID和TOOL_ARGUMENTS
+  const prefixReg = /^1(:|：)/;
+
+  if (prefixReg.test(str)) {
+    const toolString = sliceJsonStr(str);
 
     try {
       const toolCall = json5.parse(toolString);
       return {
-        id: getNanoid(),
-        name: toolCall.toolId,
-        arguments: JSON.stringify(toolCall.arguments || toolCall.parameters)
+        answer: `1: ${toolString}`,
+        toolJson: {
+          id: getNanoid(),
+          name: toolCall.toolId,
+          arguments: JSON.stringify(toolCall.arguments || toolCall.parameters)
+        }
       };
     } catch (error) {
-      return str;
+      return {
+        answer: ERROR_TEXT
+      };
     }
   } else {
-    return str;
+    return {
+      answer: str
+    };
   }
 };
