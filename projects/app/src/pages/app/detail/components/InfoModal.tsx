@@ -7,8 +7,7 @@ import {
   Input,
   Textarea,
   ModalFooter,
-  ModalBody,
-  Image
+  ModalBody
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -19,12 +18,12 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import PermissionRadio from '@/components/support/permission/Radio';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { AppContext } from '@/web/core/app/context/appContext';
-import { useContextSelector } from 'use-context-selector';
-
+import MemberManager from '@/components/support/permission/MemberManager';
+import { getCollaboratorList } from '@/web/core/app/collaborator';
+import { useQuery } from '@tanstack/react-query';
 const InfoModal = ({
   defaultApp,
   onClose,
@@ -59,8 +58,7 @@ const InfoModal = ({
       await updateAppDetail({
         name: data.name,
         avatar: data.avatar,
-        intro: data.intro,
-        permission: data.permission
+        intro: data.intro
       });
     },
     onSuccess() {
@@ -119,6 +117,10 @@ const InfoModal = ({
     [setValue, t, toast]
   );
 
+  const { data: CollaboratorList } = useQuery(['CollaboratorList'], () => {
+    return getCollaboratorList(defaultApp._id);
+  });
+
   return (
     <MyModal
       isOpen={true}
@@ -162,16 +164,8 @@ const InfoModal = ({
           bg={'myWhite.600'}
           {...register('intro')}
         />
-        <Box mt={4}>
-          <Box mb={1}>{t('user.Permission')}</Box>
-          <PermissionRadio
-            value={getValues('permission')}
-            onChange={(e) => {
-              setValue('permission', e);
-              setRefresh(!refresh);
-            }}
-          />
-        </Box>
+
+        <MemberManager collaboratorList={CollaboratorList} />
       </ModalBody>
 
       <ModalFooter>

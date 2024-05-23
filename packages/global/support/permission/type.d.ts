@@ -17,4 +17,5 @@ export type ResourcePermissionType = {
   tmbId: string;
   resourceType: ResourceType;
   permission: PermissionValueType;
+  resourceId: string;
 };
