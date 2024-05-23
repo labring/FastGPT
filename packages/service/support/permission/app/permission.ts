@@ -1,4 +1,5 @@
 import {
+  NullPermission,
   PermissionList,
   PermissionListType,
   constructPermission
@@ -11,11 +12,11 @@ export const AppPermissionList: PermissionListType = {
 };
 
 // the default DefaultPermission for App
-export const AppDefaultPermission = constructPermission([PermissionList['Read']]);
+export const AppDefaultPermission = NullPermission;
 
-export const AppCollaboratorPermission = AppDefaultPermission;
+export const AppReadPermission = constructPermission([PermissionList['Read']]);
 
-export const AppWritePermission = AppCollaboratorPermission.add(PermissionList['Write']);
+export const AppWritePermission = AppReadPermission.add(PermissionList['Write']);
 
 export const AppAdminPermission = AppWritePermission.add(PermissionList['Manage']);
 

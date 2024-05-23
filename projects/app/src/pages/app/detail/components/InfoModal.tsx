@@ -18,12 +18,34 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import MemberManager from '@/components/support/permission/MemberManager';
 import { getCollaboratorList } from '@/web/core/app/collaborator';
 import { useQuery } from '@tanstack/react-query';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
+import MyTooltip from '@/components/MyTooltip';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import { NullPermission } from '@fastgpt/service/support/permission/resourcePermission/permisson';
+import {
+  AppReadPermission,
+  AppWritePermission
+} from '@fastgpt/service/support/permission/app/permission';
+
+enum defaultPermissionEnum {
+  private = '0',
+  read = '4',
+  edit = '6'
+}
+
+const defaultPermissionSelectList = [
+  { label: '仅协作者访问', value: defaultPermissionEnum.private },
+  { label: '团队可访问', value: defaultPermissionEnum.read },
+  { label: '团队可编辑', value: defaultPermissionEnum.edit }
+];
+
 const InfoModal = ({
   defaultApp,
   onClose,
@@ -41,6 +63,7 @@ const InfoModal = ({
     fileType: '.jpg,.png',
     multiple: false
   });
+
   const {
     register,
     setValue,
@@ -58,7 +81,8 @@ const InfoModal = ({
       await updateAppDetail({
         name: data.name,
         avatar: data.avatar,
-        intro: data.intro
+        intro: data.intro,
+        defaultPermission: data.defaultPermission
       });
     },
     onSuccess() {
@@ -164,6 +188,23 @@ const InfoModal = ({
           bg={'myWhite.600'}
           {...register('intro')}
         />
+
+        <Flex mt="4" mb="1" justifyContent="space-between" w="full">
+          <Flex alignItems="center">
+            默认权限
+            <MyTooltip label={'默认权限相关文案'} forceShow>
+              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+            </MyTooltip>
+          </Flex>
+          <MySelect
+            list={defaultPermissionSelectList}
+            value={getValues('defaultPermission')?.toString() || defaultPermissionEnum.private}
+            onchange={(v) => {
+              setValue('defaultPermission', parseInt(v));
+              setRefresh((state) => !state);
+            }}
+          />
+        </Flex>
 
         <MemberManager collaboratorList={CollaboratorList} />
       </ModalBody>
