@@ -189,7 +189,7 @@ const InfoModal = ({
           {...register('intro')}
         />
 
-        <Flex mt="4" mb="1" justifyContent="space-between" w="full">
+        <Flex mt="4" mb="1" justifyContent="space-between" w="full" flexDirection="column">
           <Flex alignItems="center">
             默认权限
             <MyTooltip label={'默认权限相关文案'} forceShow>
@@ -197,6 +197,7 @@ const InfoModal = ({
             </MyTooltip>
           </Flex>
           <MySelect
+            mt="2"
             list={defaultPermissionSelectList}
             value={getValues('defaultPermission')?.toString() || defaultPermissionEnum.private}
             onchange={(v) => {
