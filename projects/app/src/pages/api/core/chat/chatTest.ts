@@ -72,7 +72,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
     /* start process */
-    const { flowResponses, flowUsages, newVariables } = await dispatchWorkFlow({
+    const { flowResponses, flowUsages } = await dispatchWorkFlow({
       res,
       mode: 'test',
       teamId,
@@ -99,11 +99,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       event: SseResponseEventEnum.flowResponses,
       data: JSON.stringify(flowResponses)
     });
-    responseWrite({
-      res,
-      event: SseResponseEventEnum.updateVariables,
-      data: JSON.stringify(newVariables)
-    });
+
     res.end();
 
     pushChatUsage({

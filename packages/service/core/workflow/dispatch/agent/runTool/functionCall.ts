@@ -385,7 +385,10 @@ async function streamResponse({
             });
           }
         }
+
+        continue;
       }
+
       /* arg 插入最后一个工具的参数里 */
       const arg: string = functionCall?.arguments || '';
       const currentTool = functionCalls[functionCalls.length - 1];

@@ -18,10 +18,9 @@ type StreamFetchProps = {
   onMessage: StartChatFnProps['generatingMessage'];
   abortCtrl: AbortController;
 };
-type StreamResponseType = {
+export type StreamResponseType = {
   responseText: string;
   [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
-  newVariables: Record<string, any>;
 };
 class FatalError extends Error {}
 
@@ -50,7 +49,6 @@ export const streamFetch = ({
     )[] = [];
     let errMsg: string | undefined;
     let responseData: ChatHistoryItemResType[] = [];
-    let newVariables: Record<string, any> = {};
     let finished = false;
 
     const finish = () => {
@@ -58,7 +56,6 @@ export const streamFetch = ({
         return failedFinish();
       }
       return resolve({
-        newVariables,
         responseText,
         responseData
       });
@@ -71,7 +68,7 @@ export const streamFetch = ({
       });
     };
 
-    const isAnswerEvent = (event: `${SseResponseEventEnum}`) =>
+    const isAnswerEvent = (event: SseResponseEventEnum) =>
       event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer;
     // animate response to make it looks smooth
     function animateResponseText() {
@@ -200,7 +197,10 @@ export const streamFetch = ({
           } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
             responseData = parseJson;
           } else if (event === SseResponseEventEnum.updateVariables) {
-            newVariables = parseJson;
+            onMessage({
+              event,
+              variables: parseJson
+            });
           } else if (event === SseResponseEventEnum.error) {
             if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
               useSystemStore.getState().setIsNotSufficientModal(true);
