@@ -21,10 +21,7 @@ import ChatHistorySlider from './components/ChatHistorySlider';
 import ChatHeader from './components/ChatHeader';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
-import {
-  checkChatSupportSelectFileByChatModels,
-  getAppQuestionGuidesByUserGuideModule
-} from '@/web/core/chat/utils';
+import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
@@ -38,8 +35,6 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import SliderApps from './components/SliderApps';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
-import { getAppQGuideCustomURL } from '@/web/core/app/utils';
 
 const OutLink = () => {
   const { t } = useTranslation();
@@ -84,7 +79,7 @@ const OutLink = () => {
       const prompts = messages.slice(-2);
       const completionChatId = chatId ? chatId : nanoid();
 
-      const { responseText, responseData, newVariables } = await streamFetch({
+      const { responseText, responseData } = await streamFetch({
         data: {
           messages: prompts,
           variables: {
@@ -140,9 +135,20 @@ const OutLink = () => {
         history: ChatBoxRef.current?.getChatHistories() || state.history
       }));
 
-      return { responseText, responseData, isNewChat: forbidRefresh.current, newVariables };
+      return { responseText, responseData, isNewChat: forbidRefresh.current };
     },
-    [appId, teamToken, chatId, histories, pushHistory, router, setChatData, teamId, updateHistory]
+    [
+      chatId,
+      customVariables,
+      appId,
+      teamId,
+      teamToken,
+      setChatData,
+      pushHistory,
+      router,
+      histories,
+      updateHistory
+    ]
   );
 
   /* replace router query to last chat */

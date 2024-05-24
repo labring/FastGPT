@@ -108,7 +108,7 @@
     },
     {
       "model": "text-embedding-ada-002",
-      "name": "Embedding-2",
+      "name": "text-embedding-ada-002",
       "avatar": "/imgs/model/openai.svg",
       "charsPointsPrice": 0,
       "defaultToken": 512,

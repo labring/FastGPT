@@ -71,7 +71,7 @@ export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\
 export const sliceJsonStr = (str: string) => {
   str = str.replace(/(\\n|\\)/g, '').replace(/  /g, '');
 
-  const jsonRegex = /{[^{}]*}/g;
+  const jsonRegex = /{(?:[^{}]|{(?:[^{}]|{[^{}]*})*})*}/g;
   const matches = str.match(jsonRegex);
 
   if (!matches) {

@@ -59,6 +59,7 @@ import ChatItem from './components/ChatItem';
 import dynamic from 'next/dynamic';
 import { useCreation } from 'ahooks';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import type { StreamResponseType } from '@/web/common/api/fetch';
 
 const ResponseTags = dynamic(() => import('./ResponseTags'));
 const FeedbackModal = dynamic(() => import('./FeedbackModal'));
@@ -90,12 +91,11 @@ type Props = OutLinkChatAuthProps & {
   chatId?: string;
 
   onUpdateVariable?: (e: Record<string, any>) => void;
-  onStartChat?: (e: StartChatFnProps) => Promise<{
-    responseText: string;
-    [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
-    newVariables?: Record<string, any>;
-    isNewChat?: boolean;
-  }>;
+  onStartChat?: (e: StartChatFnProps) => Promise<
+    StreamResponseType & {
+      isNewChat?: boolean;
+    }
+  >;
   onDelMessage?: (e: { contentId: string }) => void;
 };
 
@@ -207,7 +207,8 @@ const ChatBox = (
       status,
       name,
       tool,
-      autoTTSResponse
+      autoTTSResponse,
+      variables
     }: generatingMessageProps & { autoTTSResponse?: boolean }) => {
       setChatHistories((state) =>
         state.map((item, index) => {
@@ -290,6 +291,8 @@ const ChatBox = (
                 return val;
               })
             };
+          } else if (event === SseResponseEventEnum.updateVariables && variables) {
+            setValue('variables', variables);
           }
 
           return item;
@@ -297,7 +300,7 @@ const ChatBox = (
       );
       generatingScroll();
     },
-    [generatingScroll, setChatHistories, splitText2Audio]
+    [generatingScroll, setChatHistories, setValue, splitText2Audio]
   );
 
   // 重置输入内容
@@ -466,7 +469,6 @@ const ChatBox = (
             const {
               responseData,
               responseText,
-              newVariables,
               isNewChat = false
             } = await onStartChat({
               chatList: newChatList,
@@ -475,8 +477,6 @@ const ChatBox = (
               generatingMessage: (e) => generatingMessage({ ...e, autoTTSResponse }),
               variables: requestVariables
             });
-
-            newVariables && setValue('variables', newVariables);
 
             isNewChatReplace.current = isNewChat;
 
@@ -561,7 +561,6 @@ const ChatBox = (
       resetInputVal,
       setAudioPlayingChatId,
       setChatHistories,
-      setValue,
       splitText2Audio,
       startSegmentedAudio,
       t,
@@ -696,7 +695,7 @@ const ChatBox = (
         } catch (error) {}
       };
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
+    [appId, chatId, feedbackType, outLinkUid, setChatHistories, shareId, teamId, teamToken]
   );
   const onCloseUserLike = useCallback(
     (chat: ChatSiteItemType) => {

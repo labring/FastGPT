@@ -79,3 +79,15 @@ export const valueTypeFormat = (value: any, type?: WorkflowIOValueTypeEnum) => {
 
   return value;
 };
+
+/* remove system variable */
+export const removeSystemVariable = (variables: Record<string, any>) => {
+  const copyVariables = { ...variables };
+  delete copyVariables.appId;
+  delete copyVariables.chatId;
+  delete copyVariables.responseChatItemId;
+  delete copyVariables.histories;
+  delete copyVariables.cTime;
+
+  return copyVariables;
+};
