@@ -5,10 +5,9 @@ import { useTranslation } from 'next-i18next';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 
-export const useSpeech = (props?: OutLinkChatAuthProps) => {
+export const useSpeech = (props?: OutLinkChatAuthProps & { appId?: string }) => {
   const { t } = useTranslation();
   const mediaRecorder = useRef<MediaRecorder>();
-  // const mediaStream = useRef<MediaStream>();
   const [mediaStream, setMediaStream] = useState<MediaStream>();
   const { toast } = useToast();
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -16,6 +15,7 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
   const [audioSecond, setAudioSecond] = useState(0);
   const intervalRef = useRef<any>();
   const startTimestamp = useRef(0);
+  const cancelWhisperSignal = useRef(false);
 
   const speakingTimeString = useMemo(() => {
     const minutes: number = Math.floor(audioSecond / 60);
@@ -51,9 +51,18 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
   }, []);
 
   const startSpeak = async (onFinish: (text: string) => void) => {
+    if (!navigator?.mediaDevices?.getUserMedia) {
+      return toast({
+        status: 'warning',
+        title: t('common.speech.not support')
+      });
+    }
     try {
+      cancelWhisperSignal.current = false;
+
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       setMediaStream(stream);
+
       mediaRecorder.current = new MediaRecorder(stream);
       const chunks: Blob[] = [];
       setIsSpeaking(true);
@@ -73,35 +82,48 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
       };
 
       mediaRecorder.current.onstop = async () => {
-        const formData = new FormData();
-        const blob = new Blob(chunks, { type: 'audio/webm' });
+        if (!cancelWhisperSignal.current) {
+          const formData = new FormData();
+          let options = {};
+          if (MediaRecorder.isTypeSupported('audio/webm')) {
+            options = { type: 'audio/webm' };
+          } else if (MediaRecorder.isTypeSupported('video/mp3')) {
+            options = { type: 'video/mp3' };
+          } else {
+            console.error('no suitable mimetype found for this device');
+          }
+          const blob = new Blob(chunks, options);
+          const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
 
-        const duration = Math.round((Date.now() - startTimestamp.current) / 1000);
+          formData.append('file', blob, 'recording.mp3');
+          formData.append(
+            'data',
+            JSON.stringify({
+              ...props,
+              duration
+            })
+          );
 
-        formData.append('file', blob, 'recording.webm');
-        formData.append(
-          'data',
-          JSON.stringify({
-            ...props,
-            duration
-          })
-        );
-
-        setIsTransCription(true);
-        try {
-          const result = await POST<string>('/v1/audio/transcriptions', formData, {
-            timeout: 60000,
-            headers: {
-              'Content-Type': 'multipart/form-data; charset=utf-8'
-            }
-          });
-          onFinish(result);
-        } catch (error) {
-          toast({
-            status: 'warning',
-            title: getErrText(error, t('common.speech.error tip'))
-          });
+          setIsTransCription(true);
+          try {
+            const result = await POST<string>('/v1/audio/transcriptions', formData, {
+              timeout: 60000,
+              headers: {
+                'Content-Type': 'multipart/form-data; charset=utf-8'
+              }
+            });
+            onFinish(result);
+          } catch (error) {
+            toast({
+              status: 'warning',
+              title: getErrText(error, t('common.speech.error tip'))
+            });
+          }
         }
+
+        // close media stream
+        stream.getTracks().forEach((track) => track.stop());
+
         setIsTransCription(false);
         setIsSpeaking(false);
       };
@@ -113,11 +135,16 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
 
       mediaRecorder.current.start();
     } catch (error) {
-      console.error(error);
+      toast({
+        status: 'warning',
+        title: getErrText(error, 'Whisper error')
+      });
+      console.log(error);
     }
   };
 
-  const stopSpeak = () => {
+  const stopSpeak = (cancel = false) => {
+    cancelWhisperSignal.current = cancel;
     if (mediaRecorder.current) {
       mediaRecorder.current?.stop();
       clearInterval(intervalRef.current);
@@ -135,6 +162,13 @@ export const useSpeech = (props?: OutLinkChatAuthProps) => {
       }
     };
   }, []);
+
+  // listen minuted. over 60 seconds, stop speak
+  useEffect(() => {
+    if (audioSecond >= 60) {
+      stopSpeak();
+    }
+  }, [audioSecond]);
 
   return {
     startSpeak,

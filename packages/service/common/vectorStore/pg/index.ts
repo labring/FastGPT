@@ -13,8 +13,11 @@ export const connectPg = async (): Promise<Pool> => {
     max: Number(process.env.DB_MAX_LINK || 20),
     min: 10,
     keepAlive: true,
-    idleTimeoutMillis: 60000,
-    connectionTimeoutMillis: 20000
+    idleTimeoutMillis: 600000,
+    connectionTimeoutMillis: 20000,
+    query_timeout: 30000,
+    statement_timeout: 40000,
+    idle_in_transaction_session_timeout: 60000
   });
 
   global.pgClient.on('error', async (err) => {
@@ -166,7 +169,16 @@ class PgClass {
   }
   async query<T extends QueryResultRow = any>(sql: string) {
     const pg = await connectPg();
-    return pg.query<T>(sql);
+    const start = Date.now();
+    return pg.query<T>(sql).then((res) => {
+      const time = Date.now() - start;
+
+      if (time > 300) {
+        addLog.warn(`pg query time: ${time}ms, sql: ${sql}`);
+      }
+
+      return res;
+    });
   }
 }
 

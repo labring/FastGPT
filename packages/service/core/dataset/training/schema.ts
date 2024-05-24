@@ -10,7 +10,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const DatasetTrainingCollectionName = 'dataset.trainings';
+export const DatasetTrainingCollectionName = 'dataset_trainings';
 
 const TrainingDataSchema = new Schema({
   teamId: {
@@ -35,8 +35,7 @@ const TrainingDataSchema = new Schema({
   },
   billId: {
     // concat bill
-    type: String,
-    default: ''
+    type: String
   },
   mode: {
     type: String,
@@ -78,6 +77,9 @@ const TrainingDataSchema = new Schema({
     type: Number,
     default: 0
   },
+  dataId: {
+    type: Schema.Types.ObjectId
+  },
   indexes: {
     type: [
       {
@@ -92,8 +94,8 @@ const TrainingDataSchema = new Schema({
 });
 
 try {
-  // lock training data; delete training data
-  TrainingDataSchema.index({ teamId: 1, collectionId: 1 });
+  // lock training data(teamId); delete training data
+  TrainingDataSchema.index({ teamId: 1, datasetId: 1 });
   // get training data and sort
   TrainingDataSchema.index({ mode: 1, lockTime: 1, weight: -1 });
   TrainingDataSchema.index({ expireAt: 1 }, { expireAfterSeconds: 7 * 24 * 60 * 60 }); // 7 days

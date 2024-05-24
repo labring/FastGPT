@@ -32,21 +32,17 @@ const HttpInput = ({
 
   const [, startSts] = useTransition();
 
-  const onChangeInput = useCallback((editorState: EditorState) => {
-    const text = editorState.read(() => $getRoot().getTextContent());
-    const formatValue = text.replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
-    setCurrentValue(formatValue);
-    onChange?.(formatValue);
+  const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
+    const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+    setCurrentValue(text);
+    onChange?.(text);
   }, []);
   const onBlurInput = useCallback((editor: LexicalEditor) => {
     startSts(() => {
-      const text = editorStateToText(editor).replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
+      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
       onBlur?.(text);
     });
   }, []);
-  useEffect(() => {
-    setCurrentValue(value);
-  }, [value]);
 
   return (
     <>

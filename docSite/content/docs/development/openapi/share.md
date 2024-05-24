@@ -36,7 +36,7 @@ weight: 860
 
 ### 触发流程
 
-![](/imgs/sharelinkProcess.png)
+![](/imgs/sharelink_process.png)
 
 ## 配置教程
 ### 1. 配置身份校验地址
@@ -247,7 +247,7 @@ curl --location --request POST '{{host}}/shareAuth/finish' \
 
 ```ts
 type ResponseType = {
-    moduleType: `${FlowNodeTypeEnum}`; // 模块类型
+    moduleType: FlowNodeTypeEnum; // 模块类型
     moduleName: string; // 模块名
     moduleLogo?: string; // logo
     runningTime?: number; // 运行时间
@@ -286,7 +286,7 @@ type ResponseType = {
     pluginOutput?: Record<string, any>; // 插件输出
     pluginDetail?: ChatHistoryItemResType[]; // 插件详情
 
-    tfSwitchResult?: boolean; // 判断器结果
+    isElseResult?: boolean; // 判断器结果
 }
 ```
 

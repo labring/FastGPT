@@ -1,10 +1,9 @@
-export type DeleteDatasetVectorProps = {
+export type DeleteDatasetVectorProps = (
+  | { id: string }
+  | { datasetIds: string[]; collectionIds?: string[] }
+  | { idList: string[] }
+) & {
   teamId: string;
-
-  id?: string;
-  datasetIds?: string[];
-  collectionIds?: string[];
-  idList?: string[];
 };
 
 export type InsertVectorProps = {
@@ -14,7 +13,8 @@ export type InsertVectorProps = {
 };
 
 export type EmbeddingRecallProps = {
+  teamId: string;
   datasetIds: string[];
-  similarity?: number;
-  efSearch?: number;
+  // similarity?: number;
+  // efSearch?: number;
 };

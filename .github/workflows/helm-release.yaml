@@ -1,0 +1,34 @@
+name: Release helm chart
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+
+jobs:
+  helm:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-tags: true
+          fetch-depth: 0
+      - name: Set output
+        id: vars
+        run: echo "tag=$(git describe --tags)" >> $GITHUB_OUTPUT
+      - name: Release Helm
+        run: |
+          echo ${{ secrets.GH_PAT }} | helm registry login ghcr.io -u ${{ github.repository_owner }} --password-stdin
+          export APP_VERSION=${{ steps.vars.outputs.tag }}
+          export HELM_VERSION=${{ steps.vars.outputs.tag }}
+          export HELM_REPO=ghcr.io/${{ github.repository_owner }}
+          if [[ ! "$line" =~ ^v ]]
+          then
+            unset APP_VERSION
+            unset HELM_VERSION
+          fi
+          helm dependency update files/helm/fastgpt
+          helm package files/helm/fastgpt --version ${HELM_VERSION}-helm --app-version ${APP_VERSION} -d bin
+          helm push bin/fastgpt-${HELM_VERSION}-helm.tgz oci://${HELM_REPO}

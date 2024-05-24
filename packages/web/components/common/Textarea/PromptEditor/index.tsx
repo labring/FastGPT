@@ -1,10 +1,10 @@
 import { Button, ModalBody, ModalFooter, useDisclosure } from '@chakra-ui/react';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { editorStateToText } from './utils';
 import Editor from './Editor';
 import MyModal from '../../MyModal';
 import { useTranslation } from 'next-i18next';
-import { $getRoot, EditorState, type LexicalEditor } from 'lexical';
+import { EditorState, type LexicalEditor } from 'lexical';
 import { EditorVariablePickerType } from './type.d';
 import { useCallback, useTransition } from 'react';
 
@@ -16,8 +16,10 @@ const PromptEditor = ({
   onChange,
   onBlur,
   h,
+  maxLength,
   placeholder,
-  title
+  title,
+  isFlow
 }: {
   showOpenModal?: boolean;
   showResize?: boolean;
@@ -26,23 +28,22 @@ const PromptEditor = ({
   onChange?: (text: string) => void;
   onBlur?: (text: string) => void;
   h?: number;
+  maxLength?: number;
   placeholder?: string;
   title?: string;
+  isFlow?: boolean;
 }) => {
   const { isOpen, onOpen, onClose } = useDisclosure();
-
   const [, startSts] = useTransition();
-
   const { t } = useTranslation();
 
-  const onChangeInput = useCallback((editorState: EditorState) => {
-    const text = editorState.read(() => $getRoot().getTextContent());
-    const formatValue = text.replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
-    onChange?.(formatValue);
+  const onChangeInput = useCallback((editorState: EditorState, editor: LexicalEditor) => {
+    const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
+    onChange?.(text);
   }, []);
   const onBlurInput = useCallback((editor: LexicalEditor) => {
     startSts(() => {
-      const text = editorStateToText(editor).replaceAll('\n\n', '\n').replaceAll('}}{{', '}} {{');
+      const text = editorStateToText(editor).replaceAll('}}{{', '}} {{');
       onBlur?.(text);
     });
   }, []);
@@ -55,15 +56,18 @@ const PromptEditor = ({
         onOpenModal={onOpen}
         variables={variables}
         h={h}
+        maxLength={maxLength}
         value={value}
         onChange={onChangeInput}
         onBlur={onBlurInput}
         placeholder={placeholder}
+        isFlow={isFlow}
       />
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc="modal/edit" title={title} w={'full'}>
         <ModalBody>
           <Editor
             h={400}
+            maxLength={maxLength}
             showResize
             showOpenModal={false}
             variables={variables}

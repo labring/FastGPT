@@ -1,9 +1,8 @@
-import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import type { StartChatFnProps } from '@/components/ChatBox/type.d';
-import { getToken } from '@/web/support/user/auth';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import dayjs from 'dayjs';
 import {
   // refer to https://github.com/ChatGPTNextWeb/ChatGPT-Next-Web
@@ -22,7 +21,10 @@ type StreamFetchProps = {
 type StreamResponseType = {
   responseText: string;
   [DispatchNodeResponseKeyEnum.nodeResponse]: ChatHistoryItemResType[];
+  newVariables: Record<string, any>;
 };
+class FatalError extends Error {}
+
 export const streamFetch = ({
   url = '/api/v1/chat/completions',
   data,
@@ -48,6 +50,7 @@ export const streamFetch = ({
     )[] = [];
     let errMsg: string | undefined;
     let responseData: ChatHistoryItemResType[] = [];
+    let newVariables: Record<string, any> = {};
     let finished = false;
 
     const finish = () => {
@@ -55,6 +58,7 @@ export const streamFetch = ({
         return failedFinish();
       }
       return resolve({
+        newVariables,
         responseText,
         responseData
       });
@@ -83,8 +87,7 @@ export const streamFetch = ({
       }
 
       if (responseQueue.length > 0) {
-        const fetchCount = Math.max(1, Math.round(responseQueue.length / 10));
-
+        const fetchCount = Math.max(1, Math.round(responseQueue.length / 30));
         for (let i = 0; i < fetchCount; i++) {
           const item = responseQueue[i];
           onMessage(item);
@@ -108,13 +111,12 @@ export const streamFetch = ({
     try {
       // auto complete variables
       const variables = data?.variables || {};
-      variables.cTime = dayjs().format('YYYY-MM-DD HH:mm:ss');
+      variables.cTime = dayjs().format('YYYY-MM-DD HH:mm:ss dddd');
 
       const requestData = {
         method: 'POST',
         headers: {
-          'Content-Type': 'application/json',
-          token: getToken()
+          'Content-Type': 'application/json'
         },
         signal: abortCtrl.signal,
         body: JSON.stringify({
@@ -167,7 +169,15 @@ export const streamFetch = ({
             }
           })();
           // console.log(parseJson, event);
-          if (event === SseResponseEventEnum.answer || event === SseResponseEventEnum.fastAnswer) {
+          if (event === SseResponseEventEnum.answer) {
+            const text = parseJson.choices?.[0]?.delta?.content || '';
+            for (const item of text) {
+              responseQueue.push({
+                event,
+                text: item
+              });
+            }
+          } else if (event === SseResponseEventEnum.fastAnswer) {
             const text = parseJson.choices?.[0]?.delta?.content || '';
             responseQueue.push({
               event,
@@ -189,6 +199,8 @@ export const streamFetch = ({
             });
           } else if (event === SseResponseEventEnum.flowResponses && Array.isArray(parseJson)) {
             responseData = parseJson;
+          } else if (event === SseResponseEventEnum.updateVariables) {
+            newVariables = parseJson;
           } else if (event === SseResponseEventEnum.error) {
             if (parseJson.statusText === TeamErrEnum.aiPointsNotEnough) {
               useSystemStore.getState().setIsNotSufficientModal(true);
@@ -199,9 +211,12 @@ export const streamFetch = ({
         onclose() {
           finished = true;
         },
-        onerror(e) {
+        onerror(err) {
+          if (err instanceof FatalError) {
+            throw err;
+          }
           clearTimeout(timeoutId);
-          failedFinish(getErrText(e));
+          failedFinish(getErrText(err));
         },
         openWhenHidden: true
       });

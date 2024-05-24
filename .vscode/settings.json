@@ -4,12 +4,13 @@
     "typescript.tsdk": "node_modules/typescript/lib",
     "prettier.prettierPath": "",
     "i18n-ally.localesPaths": [
-        "projects/app/public/locales",
+        "projects/app/i18n",
     ],
-    "i18n-ally.enabledParsers": ["json"],
+    "i18n-ally.enabledParsers": ["json", "yaml", "js", "ts"],
     "i18n-ally.keystyle": "nested",
     "i18n-ally.sortKeys": true,
-    "i18n-ally.keepFulfilled": true,
+    "i18n-ally.keepFulfilled": false,
     "i18n-ally.sourceLanguage": "zh", // 根据此语言文件翻译其他语言文件的变量和内容
     "i18n-ally.displayLanguage": "zh", // 显示语言
+    "i18n-ally.extract.targetPickingStrategy": "most-similar-by-key"
 }

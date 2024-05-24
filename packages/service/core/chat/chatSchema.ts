@@ -6,7 +6,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { appCollectionName } from '../app/schema';
+import { AppCollectionName } from '../app/schema';
 
 export const chatCollectionName = 'chat';
 
@@ -31,7 +31,7 @@ const ChatSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: appCollectionName,
+    ref: AppCollectionName,
     required: true
   },
   updateTime: {
@@ -61,7 +61,15 @@ const ChatSchema = new Schema({
   outLinkUid: {
     type: String
   },
+
+  variableList: {
+    type: Array
+  },
+  welcomeText: {
+    type: String
+  },
   variables: {
+    // variable value
     type: Object,
     default: {}
   },

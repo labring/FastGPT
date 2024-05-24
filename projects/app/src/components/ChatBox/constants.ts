@@ -11,3 +11,9 @@ export const MessageCardStyle: BoxProps = {
   maxW: ['calc(100% - 25px)', 'calc(100% - 40px)'],
   color: 'myGray.900'
 };
+
+export enum FeedbackTypeEnum {
+  user = 'user',
+  admin = 'admin',
+  hidden = 'hidden'
+}

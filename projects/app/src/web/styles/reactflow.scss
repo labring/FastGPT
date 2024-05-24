@@ -1,6 +1,13 @@
-.react-flow__panel {
-  display: none;
-}
 .react-flow__panel.react-flow__attribution {
-  display: none !important;
+  z-index: 0;
+  left: 0;
+  background: transparent;
+}
+.react-flow__handle {
+  &.connecting {
+    border-color: #039855 !important;
+    & .flow-handle {
+      border-color: #039855 !important;
+    }
+  }
 }

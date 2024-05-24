@@ -2,14 +2,22 @@ import React from 'react';
 import { Box, Flex, useTheme, Grid, type GridProps, theme, Image } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
+import { useToast } from '@fastgpt/web/hooks/useToast';
 
 // @ts-ignore
 interface Props extends GridProps {
-  list: { icon?: string; title: string | React.ReactNode; desc?: string; value: any }[];
+  list: {
+    icon?: string;
+    title: string | React.ReactNode;
+    desc?: string;
+    value: any;
+    forbidTip?: string; // If this value is exists, it will be prompted to disable when clicked
+  }[];
   iconSize?: string;
   align?: 'top' | 'center';
   value: any;
   hiddenCircle?: boolean;
+
   onChange: (e: any) => void;
 }
 
@@ -25,6 +33,8 @@ const MyRadio = ({
 }: Props) => {
   const { t } = useTranslation();
   const theme = useTheme();
+  const { toast } = useToast();
+
   return (
     <Grid gridGap={[3, 5]} fontSize={['sm', 'md']} {...props}>
       {list.map((item) => (
@@ -73,7 +83,16 @@ const MyRadio = ({
                   borderColor: 'myGray.200'
                 })
           }}
-          onClick={() => onChange(item.value)}
+          onClick={() => {
+            if (item.forbidTip) {
+              toast({
+                status: 'warning',
+                title: item.forbidTip
+              });
+            } else {
+              onChange(item.value);
+            }
+          }}
         >
           {!!item.icon && (
             <>

@@ -1,245 +1,369 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { Box, Flex, IconButton, useTheme, useDisclosure } from '@chakra-ui/react';
-import { SmallCloseIcon } from '@chakra-ui/icons';
-import { ModuleItemType } from '@fastgpt/global/core/module/type';
-import { useRequest } from '@/web/common/hooks/useRequest';
-import { AppSchema } from '@fastgpt/global/core/app/type.d';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Box, Flex, IconButton, useTheme, useDisclosure, Button } from '@chakra-ui/react';
+import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
-import ChatTest, { type ChatTestComponentRef } from '@/components/core/module/Flow/ChatTest';
-import { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import { flowNode2Modules, filterExportModules } from '@/components/core/module/utils';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
+import ChatTest, { type ChatTestComponentRef } from '@/components/core/workflow/Flow/ChatTest';
+import { uiWorkflow2StoreWorkflow } from '@/components/core/workflow/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { getErrText } from '@fastgpt/global/common/error/utils';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
+import {
+  checkWorkflowNodeAndConnection,
+  filterSensitiveNodesData
+} from '@/web/core/workflow/utils';
+import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { formatTime2HM } from '@fastgpt/global/common/string/time';
+import { useContextSelector } from 'use-context-selector';
+import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
+import { useInterval, useUpdateEffect } from 'ahooks';
+import { useI18n } from '@/web/context/I18n';
+import { AppContext } from '@/web/core/app/context/appContext';
 
-const ImportSettings = dynamic(() => import('@/components/core/module/Flow/ImportSettings'));
+const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
+const PublishHistories = dynamic(
+  () => import('@/components/core/workflow/components/PublishHistoriesSlider')
+);
 
-type Props = { app: AppSchema; onClose: () => void };
+type Props = { onClose: () => void };
 
 const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
-  app,
   ChatTestRef,
-  testModules,
-  setTestModules,
+  setWorkflowTestData,
   onClose
 }: Props & {
   ChatTestRef: React.RefObject<ChatTestComponentRef>;
-  testModules?: ModuleItemType[];
-  setTestModules: React.Dispatch<ModuleItemType[] | undefined>;
+  setWorkflowTestData: React.Dispatch<
+    React.SetStateAction<
+      | {
+          nodes: StoreNodeItemType[];
+          edges: StoreEdgeItemType[];
+        }
+      | undefined
+    >
+  >;
 }) {
+  const { appDetail } = useContextSelector(AppContext, (v) => v);
+
+  const isV2Workflow = appDetail?.version === 'v2';
+
   const theme = useTheme();
   const { toast } = useToast();
   const { t } = useTranslation();
+  const { appT } = useI18n();
+
   const { copyData } = useCopyData();
-  const { openConfirm: openConfirmOut, ConfirmModal } = useConfirm({
-    content: t('core.app.edit.Out Ad Edit')
+  const { openConfirm: openConfigPublish, ConfirmModal } = useConfirm({
+    content: t('core.app.Publish Confirm')
   });
-  const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
-  const { updateAppDetail } = useAppStore();
-  const { nodes, edges, splitToolInputs } = useFlowProviderStore();
+  const { publishApp, updateAppDetail } = useContextSelector(AppContext, (v) => v);
+  const edges = useContextSelector(WorkflowContext, (v) => v.edges);
+
   const [isSaving, setIsSaving] = useState(false);
+  const [saveLabel, setSaveLabel] = useState(t('core.app.Onclick to save'));
+  const onUpdateNodeError = useContextSelector(WorkflowContext, (v) => v.onUpdateNodeError);
 
-  const flow2ModulesAndCheck = useCallback(async () => {
-    const modules = flowNode2Modules({ nodes, edges });
-    // check required connect
-    for (let i = 0; i < modules.length; i++) {
-      const item = modules[i];
+  const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
 
-      const { isTool } = splitToolInputs(item.inputs, item.moduleId);
+  const isShowVersionHistories = useContextSelector(
+    WorkflowContext,
+    (v) => v.isShowVersionHistories
+  );
+  const setIsShowVersionHistories = useContextSelector(
+    WorkflowContext,
+    (v) => v.setIsShowVersionHistories
+  );
+  const workflowDebugData = useContextSelector(WorkflowContext, (v) => v.workflowDebugData);
 
-      const unconnected = item.inputs.find((input) => {
-        if (!input.required || input.connected || (isTool && input.toolDescription)) {
-          return false;
-        }
-        if (input.value === undefined || input.value === '' || input.value?.length === 0) {
-          return true;
-        }
-        return false;
+  const flowData2StoreDataAndCheck = useCallback(async () => {
+    const { nodes } = await getWorkflowStore();
+    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+
+    if (!checkResults) {
+      const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+      return storeNodes;
+    } else {
+      checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
+      toast({
+        status: 'warning',
+        title: t('core.workflow.Check Failed')
       });
-
-      if (unconnected) {
-        const msg = t('core.module.Unlink tip', { name: t(item.name) });
-
-        toast({
-          status: 'warning',
-          title: msg
-        });
-        return false;
-      }
     }
-    return modules;
-  }, [edges, nodes, splitToolInputs, t, toast]);
+  }, [edges, onUpdateNodeError, t, toast]);
 
   const onclickSave = useCallback(
-    async (modules: ModuleItemType[]) => {
+    async (forbid?: boolean) => {
+      // version preview / debug mode, not save
+      if (!isV2Workflow || isShowVersionHistories || forbid) return;
+
+      const { nodes } = await getWorkflowStore();
+
+      if (nodes.length === 0) return null;
       setIsSaving(true);
+
+      const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+
       try {
-        await updateAppDetail(app._id, {
-          modules: modules,
+        await updateAppDetail({
+          ...storeWorkflow,
           type: AppTypeEnum.advanced,
-          permission: undefined
+          chatConfig: appDetail.chatConfig,
+          //@ts-ignore
+          version: 'v2'
+        });
+
+        setSaveLabel(
+          t('core.app.Auto Save time', {
+            time: formatTime2HM()
+          })
+        );
+        // ChatTestRef.current?.resetChatTest();
+      } catch (error) {}
+
+      setIsSaving(false);
+
+      return null;
+    },
+    [isV2Workflow, isShowVersionHistories, edges, updateAppDetail, appDetail.chatConfig, t]
+  );
+
+  const onclickPublish = useCallback(async () => {
+    setIsSaving(true);
+    const data = await flowData2StoreDataAndCheck();
+    if (data) {
+      try {
+        await publishApp({
+          ...data,
+          type: AppTypeEnum.advanced,
+          chatConfig: appDetail.chatConfig,
+          //@ts-ignore
+          version: 'v2'
         });
         toast({
           status: 'success',
-          title: t('common.Save Success')
+          title: t('core.app.Publish Success')
         });
         ChatTestRef.current?.resetChatTest();
       } catch (error) {
         toast({
           status: 'warning',
-          title: getErrText(error, t('common.Save Failed'))
+          title: getErrText(error, t('core.app.Publish Failed'))
         });
       }
-      setIsSaving(false);
-    },
-    [ChatTestRef, app._id, t, toast, updateAppDetail]
-  );
+    }
+
+    setIsSaving(false);
+  }, [flowData2StoreDataAndCheck, publishApp, appDetail.chatConfig, toast, t, ChatTestRef]);
 
   const saveAndBack = useCallback(async () => {
     try {
-      const modules = await flow2ModulesAndCheck();
-      if (modules) {
-        await onclickSave(modules);
-      }
+      await onclickSave();
       onClose();
-    } catch (error) {
-      toast({
-        status: 'warning',
-        title: getErrText(error)
-      });
+    } catch (error) {}
+  }, [onClose, onclickSave]);
+
+  const onExportWorkflow = useCallback(async () => {
+    const data = await flowData2StoreDataAndCheck();
+    if (data) {
+      copyData(
+        JSON.stringify(
+          {
+            nodes: filterSensitiveNodesData(data.nodes),
+            edges: data.edges,
+            chatConfig: appDetail.chatConfig
+          },
+          null,
+          2
+        ),
+        appT('Export Config Successful')
+      );
     }
-  }, [flow2ModulesAndCheck, onClose, onclickSave, toast]);
+  }, [appDetail.chatConfig, appT, copyData, flowData2StoreDataAndCheck]);
+
+  // effect
+  useBeforeunload({
+    callback: onclickSave,
+    tip: t('core.common.tip.leave page')
+  });
+
+  useInterval(() => {
+    if (!appDetail._id) return;
+    onclickSave(!!workflowDebugData);
+  }, 20000);
+
+  const Render = useMemo(() => {
+    return (
+      <>
+        <Flex
+          py={3}
+          px={[2, 5, 8]}
+          borderBottom={theme.borders.base}
+          alignItems={'center'}
+          userSelect={'none'}
+          bg={'myGray.25'}
+          h={'67px'}
+        >
+          <IconButton
+            size={'smSquare'}
+            icon={<MyIcon name={'common/backFill'} w={'14px'} />}
+            borderRadius={'50%'}
+            w={'26px'}
+            h={'26px'}
+            borderColor={'myGray.300'}
+            variant={'whiteBase'}
+            aria-label={''}
+            isLoading={isSaving}
+            onClick={saveAndBack}
+          />
+          <Box ml={[2, 4]}>
+            <Box fontSize={['md', 'lg']} fontWeight={'bold'}>
+              {appDetail.name}
+            </Box>
+            {!isShowVersionHistories && isV2Workflow && (
+              <MyTooltip label={t('core.app.Onclick to save')}>
+                <Box
+                  fontSize={'sm'}
+                  mt={1}
+                  display={'inline-block'}
+                  borderRadius={'xs'}
+                  cursor={'pointer'}
+                  onClick={() => onclickSave()}
+                  color={'myGray.500'}
+                >
+                  {saveLabel}
+                </Box>
+              </MyTooltip>
+            )}
+          </Box>
+
+          <Box flex={1} />
+
+          {!isShowVersionHistories && (
+            <>
+              <MyMenu
+                Button={
+                  <IconButton
+                    mr={[2, 4]}
+                    icon={<MyIcon name={'more'} w={'14px'} p={2} />}
+                    aria-label={''}
+                    size={'sm'}
+                    variant={'whitePrimary'}
+                  />
+                }
+                menuList={[
+                  {
+                    label: appT('Import Configs'),
+                    icon: 'common/importLight',
+                    onClick: onOpenImport
+                  },
+                  {
+                    label: appT('Export Configs'),
+                    icon: 'export',
+                    onClick: onExportWorkflow
+                  }
+                ]}
+              />
+
+              <IconButton
+                mr={[2, 4]}
+                icon={<MyIcon name={'history'} w={'18px'} />}
+                aria-label={''}
+                size={'sm'}
+                w={'30px'}
+                variant={'whitePrimary'}
+                onClick={() => setIsShowVersionHistories(true)}
+              />
+            </>
+          )}
+
+          <Button
+            size={'sm'}
+            leftIcon={<MyIcon name={'core/workflow/debug'} w={['14px', '16px']} />}
+            variant={'whitePrimary'}
+            onClick={async () => {
+              const data = await flowData2StoreDataAndCheck();
+              if (data) {
+                setWorkflowTestData(data);
+              }
+            }}
+          >
+            {t('core.workflow.Debug')}
+          </Button>
+
+          {!isShowVersionHistories && (
+            <Button
+              ml={[2, 4]}
+              size={'sm'}
+              isLoading={isSaving}
+              leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
+              onClick={openConfigPublish(onclickPublish)}
+            >
+              {t('core.app.Publish')}
+            </Button>
+          )}
+        </Flex>
+        <ConfirmModal confirmText={t('core.app.Publish')} />
+      </>
+    );
+  }, [
+    theme.borders.base,
+    isSaving,
+    saveAndBack,
+    appDetail.name,
+    isShowVersionHistories,
+    isV2Workflow,
+    t,
+    saveLabel,
+    appT,
+    onOpenImport,
+    onExportWorkflow,
+    openConfigPublish,
+    onclickPublish,
+    ConfirmModal,
+    onclickSave,
+    setIsShowVersionHistories,
+    flowData2StoreDataAndCheck,
+    setWorkflowTestData
+  ]);
 
   return (
     <>
-      <Flex
-        py={3}
-        px={[2, 5, 8]}
-        borderBottom={theme.borders.base}
-        alignItems={'center'}
-        userSelect={'none'}
-        bg={'myGray.25'}
-      >
-        <IconButton
-          size={'smSquare'}
-          icon={<MyIcon name={'common/backFill'} w={'14px'} />}
-          borderRadius={'50%'}
-          w={'26px'}
-          h={'26px'}
-          borderColor={'myGray.300'}
-          variant={'whiteBase'}
-          aria-label={''}
-          isLoading={isSaving}
-          onClick={openConfirmOut(saveAndBack, onClose)}
-        />
-        <Box ml={[3, 6]} fontSize={['md', '2xl']} flex={1}>
-          {app.name}
-        </Box>
-
-        <MyTooltip label={t('app.Import Configs')}>
-          <IconButton
-            mr={[3, 6]}
-            size={'smSquare'}
-            icon={<MyIcon name={'common/importLight'} w={['14px', '16px']} />}
-            variant={'whitePrimary'}
-            aria-label={'save'}
-            onClick={onOpenImport}
-          />
-        </MyTooltip>
-        <MyTooltip label={t('app.Export Configs')}>
-          <IconButton
-            mr={[3, 6]}
-            icon={<MyIcon name={'export'} w={['14px', '16px']} />}
-            size={'smSquare'}
-            variant={'whitePrimary'}
-            aria-label={'save'}
-            onClick={async () => {
-              const modules = await flow2ModulesAndCheck();
-              if (modules) {
-                copyData(filterExportModules(modules), t('app.Export Config Successful'));
-              }
-            }}
-          />
-        </MyTooltip>
-
-        {testModules ? (
-          <IconButton
-            mr={[3, 6]}
-            icon={<SmallCloseIcon fontSize={'25px'} />}
-            variant={'whitePrimary'}
-            size={'smSquare'}
-            aria-label={''}
-            onClick={() => setTestModules(undefined)}
-          />
-        ) : (
-          <MyTooltip label={t('core.Chat test')}>
-            <IconButton
-              mr={[3, 6]}
-              icon={<MyIcon name={'core/chat/chatLight'} w={['14px', '16px']} />}
-              size={'smSquare'}
-              aria-label={'save'}
-              variant={'whitePrimary'}
-              onClick={async () => {
-                const modules = await flow2ModulesAndCheck();
-                if (modules) {
-                  setTestModules(modules);
-                }
-              }}
-            />
-          </MyTooltip>
-        )}
-
-        <MyTooltip label={t('common.Save')}>
-          <IconButton
-            icon={<MyIcon name={'common/saveFill'} w={['14px', '16px']} />}
-            size={'smSquare'}
-            isLoading={isSaving}
-            aria-label={'save'}
-            onClick={async () => {
-              const modules = await flow2ModulesAndCheck();
-              if (modules) {
-                onclickSave(modules);
-              }
-            }}
-          />
-        </MyTooltip>
-      </Flex>
+      {Render}
       {isOpenImport && <ImportSettings onClose={onCloseImport} />}
-      <ConfirmModal
-        closeText={t('core.app.edit.UnSave')}
-        confirmText={t('core.app.edit.Save and out')}
-      />
+      {isShowVersionHistories && <PublishHistories />}
     </>
   );
 });
 
 const Header = (props: Props) => {
-  const { app } = props;
   const ChatTestRef = useRef<ChatTestComponentRef>(null);
 
-  const [testModules, setTestModules] = useState<ModuleItemType[]>();
+  const [workflowTestData, setWorkflowTestData] = useState<{
+    nodes: StoreNodeItemType[];
+    edges: StoreEdgeItemType[];
+  }>();
+  const { isOpen: isOpenTest, onOpen: onOpenTest, onClose: onCloseTest } = useDisclosure();
+
+  useUpdateEffect(() => {
+    onOpenTest();
+  }, [workflowTestData]);
 
   return (
     <>
       <RenderHeaderContainer
         {...props}
         ChatTestRef={ChatTestRef}
-        testModules={testModules}
-        setTestModules={setTestModules}
+        setWorkflowTestData={setWorkflowTestData}
       />
-      <ChatTest
-        ref={ChatTestRef}
-        modules={testModules}
-        app={app}
-        onClose={() => setTestModules(undefined)}
-      />
+      <ChatTest ref={ChatTestRef} isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} />
     </>
   );
 };

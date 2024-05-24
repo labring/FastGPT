@@ -57,7 +57,7 @@ export const useSendCode = () => {
       }
       setCodeSending(false);
     },
-    [codeCountDown, toast]
+    [codeCountDown, feConfigs?.googleClientVerKey, toast]
   );
 
   return {

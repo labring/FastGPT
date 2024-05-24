@@ -7,7 +7,7 @@ import { postCheckStandardSub, postUpdateStandardSub } from '@/web/support/walle
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { standardSubLevelMap } from '@fastgpt/global/support/wallet/sub/constants';
 import { StandardSubPlanParams } from '@fastgpt/global/support/wallet/sub/api';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { StandardSubPlanUpdateResponse } from '@fastgpt/global/support/wallet/sub/api.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { formatStorePrice2Read } from '@fastgpt/global/support/wallet/usage/tools';
@@ -101,7 +101,9 @@ const Standard = ({
         {t('support.wallet.subscription.Sub plan')}
       </Box>
       <Box mt={8} mb={10} color={'myGray.500'} fontSize={'lg'}>
-        {t('support.wallet.subscription.Sub plan tip')}
+        {t('support.wallet.subscription.Sub plan tip', {
+          title: feConfigs?.systemTitle
+        })}
       </Box>
       <Box>
         <RowTabs

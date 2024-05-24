@@ -1,23 +1,18 @@
 import React from 'react';
-import { useImportStore } from '../Provider';
 import Preview from '../components/Preview';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetImportContext } from '../Context';
 
-const PreviewData = ({
-  showPreviewChunks,
-  goToNext
-}: {
-  showPreviewChunks: boolean;
-  goToNext: () => void;
-}) => {
+const PreviewData = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
   const { t } = useTranslation();
-  const { sources, setSources } = useImportStore();
+  const goToNext = useContextSelector(DatasetImportContext, (v) => v.goToNext);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} maxW={'1080px'}>
+    <Flex flexDirection={'column'} h={'100%'}>
       <Box flex={'1 0 0 '}>
-        <Preview showPreviewChunks={showPreviewChunks} sources={sources} />
+        <Preview showPreviewChunks={showPreviewChunks} />
       </Box>
       <Flex mt={2} justifyContent={'flex-end'}>
         <Button onClick={goToNext}>{t('common.Next Step')}</Button>

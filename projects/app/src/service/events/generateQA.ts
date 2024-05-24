@@ -12,8 +12,8 @@ import { getLLMModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamAiPointsAndLock } from './utils';
 import { checkInvalidChunkAndLock } from '@fastgpt/service/core/dataset/training/utils';
 import { addMinutes } from 'date-fns';
-import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
-import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
+import { countGptMessagesTokens } from '@fastgpt/service/common/string/tiktoken/index';
+import { pushDataListToTrainingQueueByCollectionId } from '@fastgpt/service/core/dataset/training/controller';
 
 const reduceQueue = () => {
   global.qaQueueLen = global.qaQueueLen > 0 ? global.qaQueueLen - 1 : 0;
@@ -46,7 +46,6 @@ export async function generateQA(): Promise<any> {
       )
         .select({
           _id: 1,
-          userId: 1,
           teamId: 1,
           tmbId: 1,
           datasetId: 1,
@@ -128,7 +127,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
     });
 
     // get vector and insert
-    const { insertLen } = await pushDataListToTrainingQueue({
+    const { insertLen } = await pushDataListToTrainingQueueByCollectionId({
       teamId: data.teamId,
       tmbId: data.tmbId,
       collectionId: data.collectionId,
@@ -148,7 +147,7 @@ ${replaceVariable(Prompt_AgentQA.fixedText, { text })}`;
       pushQAUsage({
         teamId: data.teamId,
         tmbId: data.tmbId,
-        tokens: countGptMessagesTokens(messages),
+        tokens: await countGptMessagesTokens(messages),
         billId: data.billId,
         model
       });

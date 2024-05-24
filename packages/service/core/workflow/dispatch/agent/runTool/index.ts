@@ -1,13 +1,13 @@
-import { ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import type {
   DispatchNodeResultType,
-  RunningModuleItemType
-} from '@fastgpt/global/core/module/runtime/type';
+  RuntimeNodeItemType
+} from '@fastgpt/global/core/workflow/runtime/type';
 import { ModelTypeEnum, getLLMModel } from '../../../../ai/model';
-import { getHistories } from '../../utils';
+import { filterToolNodeIdByEdges, getHistories } from '../../utils';
 import { runToolWithToolChoice } from './toolChoice';
-import { DispatchToolModuleProps, ToolModuleItemType } from './type.d';
+import { DispatchToolModuleProps, ToolNodeItemType } from './type.d';
 import { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import {
@@ -23,12 +23,15 @@ import { runToolWithPromptCall } from './promptCall';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { Prompt_Tool_Call } from './constants';
 
-type Response = DispatchNodeResultType<{}>;
+type Response = DispatchNodeResultType<{
+  [NodeOutputKeyEnum.answerText]: string;
+}>;
 
 export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<Response> => {
   const {
-    module: { name, outputs },
-    runtimeModules,
+    node: { nodeId, name, outputs },
+    runtimeNodes,
+    runtimeEdges,
     histories,
     params: { model, systemPrompt, userChatInput, history = 6 }
   } = props;
@@ -38,26 +41,19 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
   /* get tool params */
 
-  // get tool output targets
-  const toolOutput = outputs.find((output) => output.key === ModuleOutputKeyEnum.selectedTools);
-
-  if (!toolOutput) {
-    return Promise.reject('No tool output found');
-  }
-
-  const targets = toolOutput.targets;
+  const toolNodeIds = filterToolNodeIdByEdges({ nodeId, edges: runtimeEdges });
 
   // Gets the module to which the tool is connected
-  const toolModules = targets
-    .map((item) => {
-      const tool = runtimeModules.find((module) => module.moduleId === item.moduleId);
+  const toolNodes = toolNodeIds
+    .map((nodeId) => {
+      const tool = runtimeNodes.find((item) => item.nodeId === nodeId);
       return tool;
     })
     .filter(Boolean)
-    .map<ToolModuleItemType>((tool) => {
+    .map<ToolNodeItemType>((tool) => {
       const toolParams = tool?.inputs.filter((input) => !!input.toolDescription) || [];
       return {
-        ...(tool as RunningModuleItemType),
+        ...(tool as RuntimeNodeItemType),
         toolParams
       };
     });
@@ -85,7 +81,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.toolChoice) {
       return runToolWithToolChoice({
         ...props,
-        toolModules,
+        toolNodes,
         toolModel,
         messages: adaptMessages
       });
@@ -93,7 +89,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
     if (toolModel.functionCall) {
       return runToolWithFunctionCall({
         ...props,
-        toolModules,
+        toolNodes,
         toolModel,
         messages: adaptMessages
       });
@@ -110,7 +106,7 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
 
     return runToolWithPromptCall({
       ...props,
-      toolModules,
+      toolNodes,
       toolModel,
       messages: adaptMessages
     });
@@ -135,6 +131,10 @@ export const dispatchRunTools = async (props: DispatchToolModuleProps): Promise<
   const flatUsages = dispatchFlowResponse.map((item) => item.flowUsages).flat();
 
   return {
+    [NodeOutputKeyEnum.answerText]: assistantResponses
+      .filter((item) => item.text?.content)
+      .map((item) => item.text?.content || '')
+      .join(''),
     [DispatchNodeResponseKeyEnum.assistantResponses]: assistantResponses,
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
       totalPoints: totalPointsUsage,

@@ -1,24 +1,99 @@
 import { getErrText } from '../error/utils';
-import { countPromptTokens } from './tiktoken';
+import { replaceRegChars } from './tools';
 
-/**
- * text split into chunks
- * chunkLen - one chunk len. max: 3500
- * overlapLen - The size of the before and after Text
- * chunkLen > overlapLen
- * markdown
- */
-export const splitText2Chunks = (props: {
+export const CUSTOM_SPLIT_SIGN = '-----CUSTOM_SPLIT_SIGN-----';
+
+type SplitProps = {
   text: string;
   chunkLen: number;
   overlapRatio?: number;
   customReg?: string[];
-}): {
+};
+export type TextSplitProps = Omit<SplitProps, 'text' | 'chunkLen'> & {
+  chunkLen?: number;
+};
+
+type SplitResponse = {
   chunks: string[];
   chars: number;
-  overlapRatio?: number;
-} => {
+};
+
+// 判断字符串是否为markdown的表格形式
+const strIsMdTable = (str: string) => {
+  // 检查是否包含表格分隔符 |
+  if (!str.includes('|')) {
+    return false;
+  }
+
+  const lines = str.split('\n');
+
+  // 检查表格是否至少有两行
+  if (lines.length < 2) {
+    return false;
+  }
+
+  // 检查表头行是否包含 |
+  const headerLine = lines[0].trim();
+  if (!headerLine.startsWith('|') || !headerLine.endsWith('|')) {
+    return false;
+  }
+
+  // 检查分隔行是否由 | 和 - 组成
+  const separatorLine = lines[1].trim();
+  const separatorRegex = /^(\|[\s:]*-+[\s:]*)+\|$/;
+  if (!separatorRegex.test(separatorLine)) {
+    return false;
+  }
+
+  // 检查数据行是否包含 |
+  for (let i = 2; i < lines.length; i++) {
+    const dataLine = lines[i].trim();
+    if (dataLine && (!dataLine.startsWith('|') || !dataLine.endsWith('|'))) {
+      return false;
+    }
+  }
+
+  return true;
+};
+const markdownTableSplit = (props: SplitProps): SplitResponse => {
+  let { text = '', chunkLen } = props;
+  const splitText2Lines = text.split('\n');
+  const header = splitText2Lines[0];
+  const headerSize = header.split('|').length - 2;
+
+  const mdSplitString = `| ${new Array(headerSize > 0 ? headerSize : 1)
+    .fill(0)
+    .map(() => '---')
+    .join(' | ')} |`;
+
+  const chunks: string[] = [];
+  let chunk = `${header}
+${mdSplitString}
+`;
+
+  for (let i = 2; i < splitText2Lines.length; i++) {
+    if (chunk.length + splitText2Lines[i].length > chunkLen * 1.2) {
+      chunks.push(chunk);
+      chunk = `${header}
+${mdSplitString}
+`;
+    }
+    chunk += `${splitText2Lines[i]}\n`;
+  }
+
+  if (chunk) {
+    chunks.push(chunk);
+  }
+
+  return {
+    chunks,
+    chars: chunks.reduce((sum, chunk) => sum + chunk.length, 0)
+  };
+};
+
+const commonSplit = (props: SplitProps): SplitResponse => {
   let { text = '', chunkLen, overlapRatio = 0.2, customReg = [] } = props;
+
   const splitMarker = 'SPLIT_HERE_SPLIT_HERE';
   const codeBlockMarker = 'CODE_BLOCK_LINE_MARKER';
   const overlapLen = Math.round(chunkLen * overlapRatio);
@@ -30,16 +105,19 @@ export const splitText2Chunks = (props: {
 
   // The larger maxLen is, the next sentence is less likely to trigger splitting
   const stepReges: { reg: RegExp; maxLen: number }[] = [
-    ...customReg.map((text) => ({ reg: new RegExp(`(${text})`, 'g'), maxLen: chunkLen * 1.4 })),
+    ...customReg.map((text) => ({
+      reg: new RegExp(`(${replaceRegChars(text)})`, 'g'),
+      maxLen: chunkLen * 1.4
+    })),
     { reg: /^(#\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
     { reg: /^(##\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
     { reg: /^(###\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
     { reg: /^(####\s[^\n]+)\n/gm, maxLen: chunkLen * 1.2 },
 
     { reg: /([\n]([`~]))/g, maxLen: chunkLen * 4 }, // code block
-    { reg: /([\n](?!\s*[\*\-|>0-9]))/g, maxLen: chunkLen * 2 }, // (?![\*\-|>`0-9]): markdown special char
+    { reg: /([\n](?!\s*[\*\-|>0-9]))/g, maxLen: chunkLen * 2 }, // 增大块，尽可能保证它是一个完整的段落。 (?![\*\-|>`0-9]): markdown special char
     { reg: /([\n])/g, maxLen: chunkLen * 1.2 },
-
+    // ------ There's no overlap on the top
     { reg: /([。]|([a-zA-Z])\.\s)/g, maxLen: chunkLen * 1.2 },
     { reg: /([！]|!\s)/g, maxLen: chunkLen * 1.2 },
     { reg: /([？]|\?\s)/g, maxLen: chunkLen * 1.4 },
@@ -53,7 +131,7 @@ export const splitText2Chunks = (props: {
   const checkIndependentChunk = (step: number) => step >= customRegLen && step <= 4 + customRegLen;
   const checkForbidOverlap = (step: number) => step <= 6 + customRegLen;
 
-  // if use markdown title split, Separate record title title
+  // if use markdown title split, Separate record title
   const getSplitTexts = ({ text, step }: { text: string; step: number }) => {
     if (step >= stepReges.length) {
       return [
@@ -94,6 +172,7 @@ export const splitText2Chunks = (props: {
       .filter((item) => item.text.trim());
   };
 
+  /* Gets the overlap at the end of a text as the beginning of the next block */
   const getOneTextOverlapText = ({ text, step }: { text: string; step: number }): string => {
     const forbidOverlap = checkForbidOverlap(step);
     const maxOverlapLen = chunkLen * 0.4;
@@ -248,4 +327,30 @@ export const splitText2Chunks = (props: {
   } catch (err) {
     throw new Error(getErrText(err));
   }
+};
+
+/**
+ * text split into chunks
+ * chunkLen - one chunk len. max: 3500
+ * overlapLen - The size of the before and after Text
+ * chunkLen > overlapLen
+ * markdown
+ */
+export const splitText2Chunks = (props: SplitProps): SplitResponse => {
+  let { text = '' } = props;
+
+  const splitWithCustomSign = text.split(CUSTOM_SPLIT_SIGN);
+
+  const splitResult = splitWithCustomSign.map((item) => {
+    if (strIsMdTable(item)) {
+      return markdownTableSplit(props);
+    }
+
+    return commonSplit(props);
+  });
+
+  return {
+    chunks: splitResult.map((item) => item.chunks).flat(),
+    chars: splitResult.reduce((sum, item) => sum + item.chars, 0)
+  };
 };

@@ -23,16 +23,10 @@ export async function initPg() {
     `);
 
     await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 64);`
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
     );
     await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_index ON ${PgDatasetTableName} USING btree(team_id, dataset_id);`
-    );
-    await PgClient.query(
-      ` CREATE INDEX CONCURRENTLY IF NOT EXISTS team_collection_index ON ${PgDatasetTableName} USING btree(team_id, collection_id);`
-    );
-    await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_id_index ON ${PgDatasetTableName} USING btree(team_id, id);`
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${PgDatasetTableName} USING btree(team_id, dataset_id, collection_id);`
     );
     await PgClient.query(
       `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${PgDatasetTableName} USING btree(createtime);`
@@ -83,30 +77,35 @@ export const deleteDatasetDataVector = async (
     retry?: number;
   }
 ): Promise<any> => {
-  const { teamId, id, datasetIds, collectionIds, idList, retry = 2 } = props;
+  const { teamId, retry = 2 } = props;
 
   const teamIdWhere = `team_id='${String(teamId)}' AND`;
 
   const where = await (() => {
-    if (id) return `${teamIdWhere} id=${id}`;
+    if ('id' in props && props.id) return `${teamIdWhere} id=${props.id}`;
 
-    if (datasetIds) {
-      return `${teamIdWhere} dataset_id IN (${datasetIds
+    if ('datasetIds' in props && props.datasetIds) {
+      const datasetIdWhere = `dataset_id IN (${props.datasetIds
         .map((id) => `'${String(id)}'`)
         .join(',')})`;
+
+      if ('collectionIds' in props && props.collectionIds) {
+        return `${teamIdWhere} ${datasetIdWhere} AND collection_id IN (${props.collectionIds
+          .map((id) => `'${String(id)}'`)
+          .join(',')})`;
+      }
+
+      return `${teamIdWhere} ${datasetIdWhere}`;
     }
 
-    if (collectionIds) {
-      return `${teamIdWhere} collection_id IN (${collectionIds
-        .map((id) => `'${String(id)}'`)
-        .join(',')})`;
-    }
-
-    if (idList) {
-      return `${teamIdWhere} id IN (${idList.map((id) => `'${String(id)}'`).join(',')})`;
+    if ('idList' in props && Array.isArray(props.idList)) {
+      if (props.idList.length === 0) return;
+      return `${teamIdWhere} id IN (${props.idList.map((id) => `'${String(id)}'`).join(',')})`;
     }
     return Promise.reject('deleteDatasetData: no where');
   })();
+
+  if (!where) return;
 
   try {
     await PgClient.delete(PgDatasetTableName, {
@@ -133,18 +132,19 @@ export const embeddingRecall = async (
 ): Promise<{
   results: EmbeddingRecallItemType[];
 }> => {
-  const { datasetIds, vectors, limit, similarity = 0, retry = 2, efSearch = 100 } = props;
+  const { teamId, datasetIds, vectors, limit, retry = 2 } = props;
 
   try {
     const results: any = await PgClient.query(
-      `BEGIN;
-        SET LOCAL hnsw.ef_search = ${efSearch};
+      `
+      BEGIN;
+        SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
         select id, collection_id, vector <#> '[${vectors[0]}]' AS score 
           from ${PgDatasetTableName} 
-          where dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
-              AND vector <#> '[${vectors[0]}]' < -${similarity}
+          where team_id='${teamId}'
+            AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
           order by score limit ${limit};
-        COMMIT;`
+      COMMIT;`
     );
 
     const rows = results?.[2]?.rows as PgSearchRawType[];
@@ -157,10 +157,14 @@ export const embeddingRecall = async (
       }))
     };
   } catch (error) {
+    console.log(error);
     if (retry <= 0) {
       return Promise.reject(error);
     }
-    return embeddingRecall(props);
+    return embeddingRecall({
+      ...props,
+      retry: retry - 1
+    });
   }
 };
 

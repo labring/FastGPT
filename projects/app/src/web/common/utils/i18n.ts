@@ -1,3 +1,4 @@
+import { I18nNsType } from '@/types/i18n';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 export const LANG_KEY = 'NEXT_LOCALE_LANG';
@@ -16,8 +17,8 @@ export const langMap = {
   }
 };
 
-export const serviceSideProps = (content: any) => {
-  return serverSideTranslations(content.locale, undefined, null, content.locales);
+export const serviceSideProps = (content: any, ns: I18nNsType = []) => {
+  return serverSideTranslations(content.locale, ['common', ...ns], null, content.locales);
 };
 
 export const getLng = (lng: string) => {

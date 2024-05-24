@@ -1,5 +1,6 @@
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import { useCallback } from 'react';
 
 /**
  * copy text data
@@ -8,12 +9,8 @@ export const useCopyData = () => {
   const { t } = useTranslation();
   const { toast } = useToast();
 
-  return {
-    copyData: async (
-      data: string,
-      title: string | null = t('common.Copy Successful'),
-      duration = 1000
-    ) => {
+  const copyData = useCallback(
+    async (data: string, title: string | null = t('common.Copy Successful'), duration = 1000) => {
       try {
         if (navigator.clipboard) {
           await navigator.clipboard.writeText(data);
@@ -31,11 +28,18 @@ export const useCopyData = () => {
         document.body?.removeChild(textarea);
       }
 
-      toast({
-        title,
-        status: 'success',
-        duration
-      });
-    }
+      if (title) {
+        toast({
+          title,
+          status: 'success',
+          duration
+        });
+      }
+    },
+    [t, toast]
+  );
+
+  return {
+    copyData
   };
 };

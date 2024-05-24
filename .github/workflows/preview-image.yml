@@ -54,3 +54,14 @@ jobs:
           -t ${DOCKER_REPO_TAGGED} \
           -f Dockerfile \
           .
+
+  helm-check:
+    runs-on: ubuntu-20.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+      - name: Helm Check
+        run: |
+          helm dependency update files/helm/fastgpt
+          helm lint files/helm/fastgpt
+          helm package files/helm/fastgpt

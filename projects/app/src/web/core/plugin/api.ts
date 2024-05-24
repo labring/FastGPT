@@ -1,5 +1,5 @@
 import { GET, POST, DELETE, PUT } from '@/web/common/api/request';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
 import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import {
@@ -17,7 +17,13 @@ export const getPluginPaths = (parentId?: string) =>
 
 // http plugin
 export const getApiSchemaByUrl = (url: string) =>
-  POST<Object>('/core/plugin/httpPlugin/getApiSchemaByUrl', { url });
+  POST<Object>(
+    '/core/plugin/httpPlugin/getApiSchemaByUrl',
+    { url },
+    {
+      timeout: 30000
+    }
+  );
 
 /* work flow */
 export const getPlugTemplates = () => GET<FlowNodeTemplateType[]>('/core/plugin/templates');
@@ -30,6 +36,6 @@ export const getSystemPlugTemplates = () =>
   GET<FlowNodeTemplateType[]>('/core/plugin/pluginTemplate/getSystemPluginTemplates');
 
 export const getPreviewPluginModule = (id: string) =>
-  GET<FlowNodeTemplateType>('/core/plugin/getPreviewModule', { id });
+  GET<FlowNodeTemplateType>('/core/plugin/getPreviewNode', { id });
 export const getOnePlugin = (id: string) => GET<PluginItemSchema>('/core/plugin/detail', { id });
 export const delOnePlugin = (pluginId: string) => DELETE('/core/plugin/delete', { pluginId });

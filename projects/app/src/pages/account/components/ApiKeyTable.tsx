@@ -1,10 +1,11 @@
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import ApiKeyTable from '@/components/support/apikey/Table';
+import { useI18n } from '@/web/context/I18n';
 
 const ApiKey = () => {
-  const { t } = useTranslation();
-  return <ApiKeyTable tips={t('openapi.key tips')}></ApiKeyTable>;
+  const { publishT } = useI18n();
+  return <ApiKeyTable tips={publishT('key tips')}></ApiKeyTable>;
 };
 
 export default ApiKey;

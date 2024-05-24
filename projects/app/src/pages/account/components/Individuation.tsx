@@ -1,8 +1,7 @@
-import { Box, Card, Flex, Select } from '@chakra-ui/react';
-import React, { useCallback, useRef } from 'react';
+import { Box, Card, Flex } from '@chakra-ui/react';
+import React, { useCallback } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
-import { timezoneList } from '@fastgpt/global/common/time/timezone';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { UserType } from '@fastgpt/global/support/user/type';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -11,11 +10,11 @@ import { UserUpdateParams } from '@/types/user';
 import { langMap, setLngStore } from '@/web/common/utils/i18n';
 import { useRouter } from 'next/router';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
 
 const Individuation = () => {
   const { t, i18n } = useTranslation();
-  const timezones = useRef(timezoneList());
-  const { userInfo, updateUserInfo, initUserInfo } = useUserStore();
+  const { userInfo, updateUserInfo } = useUserStore();
   const { toast } = useToast();
   const router = useRouter();
 
@@ -70,19 +69,13 @@ const Individuation = () => {
         </Flex>
         <Flex mt={6} alignItems={'center'} w={['85%', '350px']}>
           <Box flex={'0 0 80px'}>{t('user.Timezone')}:&nbsp;</Box>
-          <Select
+          <TimezoneSelect
             value={userInfo?.timezone}
             onChange={(e) => {
               if (!userInfo) return;
-              onclickSave({ ...userInfo, timezone: e.target.value });
+              onclickSave({ ...userInfo, timezone: e });
             }}
-          >
-            {timezones.current.map((item) => (
-              <option key={item.value} value={item.value}>
-                {item.name}
-              </option>
-            ))}
-          </Select>
+          />
         </Flex>
       </Card>
     </Box>

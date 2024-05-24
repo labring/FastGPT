@@ -2,7 +2,7 @@ import { connectionMongo, type Model } from '../../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { TTSBufferSchemaType } from './type.d';
 
-export const collectionName = 'ttsbuffers';
+export const collectionName = 'buffer_tts';
 
 const TTSBufferSchema = new Schema({
   bufferId: {

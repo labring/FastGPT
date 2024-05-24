@@ -1,11 +1,12 @@
-import { ChatRoleEnum, IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
-import { countGptMessagesTokens } from '@fastgpt/global/common/string/tiktoken';
+import { IMG_BLOCK_KEY } from '@fastgpt/global/core/chat/constants';
+import { countGptMessagesTokens } from '../../common/string/tiktoken/index';
 import type {
   ChatCompletionContentPart,
   ChatCompletionMessageParam
 } from '@fastgpt/global/core/ai/type.d';
 import axios from 'axios';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
+import { guessBase64ImageType } from '../../common/file/utils';
 
 /* slice chat context by tokens */
 const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
@@ -17,13 +18,14 @@ const filterEmptyMessages = (messages: ChatCompletionMessageParam[]) => {
     return true;
   });
 };
-export function filterGPTMessageByMaxTokens({
+
+export const filterGPTMessageByMaxTokens = async ({
   messages = [],
   maxTokens
 }: {
   messages: ChatCompletionMessageParam[];
   maxTokens: number;
-}) {
+}) => {
   if (!Array.isArray(messages)) {
     return [];
   }
@@ -58,7 +60,7 @@ export function filterGPTMessageByMaxTokens({
   const chatPrompts: ChatCompletionMessageParam[] = messages.slice(chatStartIndex);
 
   // reduce token of systemPrompt
-  maxTokens -= countGptMessagesTokens(systemPrompts);
+  maxTokens -= await countGptMessagesTokens(systemPrompts);
 
   // Save the last chat prompt(question)
   const question = chatPrompts.pop();
@@ -75,7 +77,7 @@ export function filterGPTMessageByMaxTokens({
       break;
     }
 
-    const tokens = countGptMessagesTokens([assistant, user]);
+    const tokens = await countGptMessagesTokens([assistant, user]);
     maxTokens -= tokens;
     /* 整体 tokens 超出范围，截断  */
     if (maxTokens < 0) {
@@ -91,7 +93,8 @@ export function filterGPTMessageByMaxTokens({
   }
 
   return filterEmptyMessages([...systemPrompts, ...chats]);
-}
+};
+
 export const formatGPTMessagesInRequestBefore = (messages: ChatCompletionMessageParam[]) => {
   return messages
     .map((item) => {
@@ -242,7 +245,11 @@ export const loadChatImgToBase64 = async (content: string | ChatCompletionConten
         responseType: 'arraybuffer'
       });
       const base64 = Buffer.from(response.data).toString('base64');
-      item.image_url.url = `data:${response.headers['content-type']};base64,${base64}`;
+      let imageType = response.headers['content-type'];
+      if (imageType === undefined) {
+        imageType = guessBase64ImageType(base64);
+      }
+      item.image_url.url = `data:${imageType};base64,${base64}`;
       return item;
     })
   );

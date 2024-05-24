@@ -26,8 +26,8 @@ import {
   billTypeMap
 } from '@fastgpt/global/support/wallet/bill/constants';
 // import { usePagination } from '@/web/common/hooks/usePagination';
-import MyBox from '@/components/common/MyBox';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/sub/constants';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';

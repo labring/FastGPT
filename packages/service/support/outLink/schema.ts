@@ -1,12 +1,11 @@
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import { OutLinkSchema as SchemaType } from '@fastgpt/global/support/outLink/type';
-import { OutLinkTypeEnum } from '@fastgpt/global/support/outLink/constant';
 import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
-import { appCollectionName } from '../../core/app/schema';
+import { AppCollectionName } from '../../core/app/schema';
 
 const OutLinkSchema = new Schema({
   shareId: {
@@ -25,12 +24,12 @@ const OutLinkSchema = new Schema({
   },
   appId: {
     type: Schema.Types.ObjectId,
-    ref: appCollectionName,
+    ref: AppCollectionName,
     required: true
   },
   type: {
     type: String,
-    default: OutLinkTypeEnum.share
+    required: true
   },
   name: {
     type: String,
@@ -62,6 +61,26 @@ const OutLinkSchema = new Schema({
     hookUrl: {
       type: String
     }
+  },
+  app: {
+    appId: {
+      type: String
+    },
+    appSecret: {
+      type: String
+    },
+    encryptKey: {
+      type: String
+    },
+    verificationToken: {
+      type: String
+    }
+  },
+  immediateResponse: {
+    type: String
+  },
+  defaultResponse: {
+    type: String
   }
 });
 

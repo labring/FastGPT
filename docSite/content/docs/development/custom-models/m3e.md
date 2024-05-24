@@ -4,7 +4,7 @@ description: ' 将 FastGPT 接入私有化模型 M3E'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 920
+weight: 940
 ---
 
 ## 前言

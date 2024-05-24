@@ -3,9 +3,9 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { FlowNodeTemplateType } from '@fastgpt/global/core/module/type';
-import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/module/constants';
+import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
+import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
+import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
@@ -39,13 +39,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     const data: FlowNodeTemplateType[] = userPlugins.map((plugin) => ({
       id: String(plugin._id),
       parentId: String(plugin.parentId),
+      pluginId: String(plugin._id),
       pluginType: plugin.type,
       templateType: FlowNodeTemplateTypeEnum.personalPlugin,
-      flowType: FlowNodeTypeEnum.pluginModule,
+      flowNodeType: FlowNodeTypeEnum.pluginModule,
       avatar: plugin.avatar,
       name: plugin.name,
       intro: plugin.intro,
       showStatus: false,
+      version: '481',
       inputs: [],
       outputs: []
     }));

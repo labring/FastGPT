@@ -1,0 +1,342 @@
+{
+  "author": "FastGPT Team",
+  "templateType": "other",
+  "name": "自定义反馈",
+  "avatar": "/imgs/module/customFeedback.svg",
+  "intro": "该模块被触发时，会给当前的对话记录增加一条反馈。可用于自动记录对话效果等。",
+  "showStatus": false,
+  "isTool": false,
+  "weight": 0,
+  "modules": [
+    {
+      "moduleId": "w90mfp",
+      "name": "自定义插件输入",
+      "flowType": "pluginInput",
+      "showStatus": false,
+      "position": {
+        "x": 515.1887815471657,
+        "y": -169.04905809653783
+      },
+      "inputs": [
+        {
+          "key": "defaultFeedback",
+          "valueType": "string",
+          "label": "默认反馈内容",
+          "type": "textarea",
+          "required": false,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true,
+            "inputType": true
+          },
+          "connected": true
+        },
+        {
+          "key": "customFeedback",
+          "valueType": "string",
+          "label": "自定义反馈内容",
+          "type": "target",
+          "required": false,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true,
+            "inputType": true
+          },
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "defaultFeedback",
+          "valueType": "string",
+          "label": "默认反馈内容",
+          "type": "source",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "49de3g",
+              "key": "defaultFeedback"
+            }
+          ]
+        },
+        {
+          "key": "customFeedback",
+          "valueType": "string",
+          "label": "自定义反馈内容",
+          "type": "source",
+          "edit": true,
+          "targets": [
+            {
+              "moduleId": "49de3g",
+              "key": "customFeedback"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "49de3g",
+      "name": "HTTP模块",
+      "flowType": "httpRequest468",
+      "showStatus": true,
+      "position": {
+        "x": 1086.8929621216014,
+        "y": -451.7550009773506
+      },
+      "inputs": [
+        {
+          "key": "switch",
+          "type": "target",
+          "label": "core.module.input.label.switch",
+          "description": "core.module.input.description.Trigger",
+          "valueType": "any",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": false
+        },
+        {
+          "key": "system_httpMethod",
+          "type": "custom",
+          "valueType": "string",
+          "label": "",
+          "value": "POST",
+          "list": [
+            {
+              "label": "GET",
+              "value": "GET"
+            },
+            {
+              "label": "POST",
+              "value": "POST"
+            }
+          ],
+          "required": true,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "system_httpReqUrl",
+          "type": "hidden",
+          "valueType": "string",
+          "label": "",
+          "description": "core.module.input.description.Http Request Url",
+          "placeholder": "https://api.ai.com/getInventory",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "value": "/api/plugins/customFeedback",
+          "connected": false
+        },
+        {
+          "key": "system_httpHeader",
+          "type": "custom",
+          "valueType": "any",
+          "value": "",
+          "label": "",
+          "description": "core.module.input.description.Http Request Header",
+          "placeholder": "core.module.input.description.Http Request Header",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "system_httpParams",
+          "type": "hidden",
+          "valueType": "any",
+          "value": [],
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "system_httpJsonBody",
+          "type": "hidden",
+          "valueType": "any",
+          "value": "{\r\n  \"appId\": \"{{appId}}\",\r\n  \"chatId\": \"{{chatId}}\",\r\n  \"responseChatItemId\": \"{{responseChatItemId}}\",\r\n  \"defaultFeedback\": \"{{defaultFeedback}}\",\r\n  \"customFeedback\": \"{{customFeedback}}\"\r\n}",
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "connected": false
+        },
+        {
+          "key": "DYNAMIC_INPUT_KEY",
+          "type": "target",
+          "valueType": "any",
+          "label": "core.module.inputType.dynamicTargetInput",
+          "description": "core.module.input.description.dynamic input",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": true,
+          "hideInApp": true,
+          "connected": false
+        },
+        {
+          "valueType": "string",
+          "label": "defaultFeedback",
+          "type": "target",
+          "required": true,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true
+          },
+          "connected": true,
+          "key": "defaultFeedback"
+        },
+        {
+          "key": "customFeedback",
+          "valueType": "string",
+          "label": "customFeedback",
+          "type": "target",
+          "required": true,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true
+          },
+          "connected": true
+        },
+        {
+          "key": "system_addInputParam",
+          "type": "addInputParam",
+          "valueType": "any",
+          "label": "",
+          "required": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true
+          },
+          "defaultEditField": {
+            "label": "",
+            "key": "",
+            "description": "",
+            "inputType": "target",
+            "valueType": "string",
+            "required": true
+          },
+          "connected": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "finish",
+          "label": "core.module.output.label.running done",
+          "description": "core.module.output.description.running done",
+          "valueType": "boolean",
+          "type": "hidden",
+          "targets": []
+        },
+        {
+          "key": "system_addOutputParam",
+          "type": "addOutputParam",
+          "valueType": "any",
+          "label": "",
+          "targets": [],
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "dataType": true
+          },
+          "defaultEditField": {
+            "label": "",
+            "key": "",
+            "description": "",
+            "outputType": "source",
+            "valueType": "string"
+          }
+        },
+        {
+          "type": "source",
+          "valueType": "string",
+          "label": "response",
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "dataType": true
+          },
+          "targets": [
+            {
+              "moduleId": "s15f3v",
+              "key": "text"
+            }
+          ],
+          "key": "response"
+        }
+      ]
+    },
+    {
+      "moduleId": "s15f3v",
+      "name": "指定回复",
+      "flowType": "answerNode",
+      "position": {
+        "x": 1705.6337348182756,
+        "y": -37.53826066726282
+      },
+      "inputs": [
+        {
+          "key": "switch",
+          "type": "target",
+          "label": "core.module.input.label.switch",
+          "description": "core.module.input.description.Trigger",
+          "valueType": "any",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": false
+        },
+        {
+          "key": "text",
+          "type": "textarea",
+          "valueType": "any",
+          "label": "core.module.input.label.Response content",
+          "description": "core.module.input.description.Response content",
+          "placeholder": "core.module.input.description.Response content",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "finish",
+          "label": "core.module.output.label.running done",
+          "description": "core.module.output.description.running done",
+          "valueType": "boolean",
+          "type": "hidden",
+          "targets": []
+        }
+      ]
+    }
+  ]
+}

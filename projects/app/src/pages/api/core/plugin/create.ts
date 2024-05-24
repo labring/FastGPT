@@ -4,7 +4,6 @@ import { connectToDatabase } from '@/service/mongo';
 import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
-import { checkTeamPluginLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { httpApiSchema2Plugins } from '@fastgpt/global/core/plugin/httpPlugin/utils';
 
@@ -25,13 +24,14 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               ...body,
               parentId: null,
               teamId,
-              tmbId
+              tmbId,
+              version: 'v2'
             }
           ],
           { session }
         );
 
-        const childrenPlugins = httpApiSchema2Plugins({
+        const childrenPlugins = await httpApiSchema2Plugins({
           parentId,
           apiSchemaStr: body.metadata?.apiSchemaStr,
           customHeader: body.metadata?.customHeaders
@@ -44,7 +44,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
               pluginUid: item.name
             },
             teamId,
-            tmbId
+            tmbId,
+            version: 'v2'
           })),
           {
             session
@@ -60,7 +61,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       const { _id } = await MongoPlugin.create({
         ...body,
         teamId,
-        tmbId
+        tmbId,
+        version: 'v2'
       });
       jsonRes(res, {
         data: _id

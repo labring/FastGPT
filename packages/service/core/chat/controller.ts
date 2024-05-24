@@ -32,7 +32,7 @@ export async function getChatItems({
 
   return { history };
 }
-/* 临时适配旧的对话记录,清洗完数据后可删除（4.30刪除） */
+/* 临时适配旧的对话记录 */
 export const adaptStringValue = (value: any): ChatItemValueItemType[] => {
   if (typeof value === 'string') {
     return [

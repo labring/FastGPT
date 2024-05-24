@@ -1,0 +1,195 @@
+{
+  "author": "FastGPT Team",
+  "templateType": "tools",
+  "name": "获取当前时间",
+  "avatar": "/imgs/module/getCurrentTime.svg",
+  "intro": "获取用户当前时区的时间。",
+  "showStatus": false,
+  "isTool": true,
+  "weight": 10,
+  "modules": [
+    {
+      "moduleId": "m8dupj",
+      "name": "自定义插件输入",
+      "intro": "自定义配置外部输入，使用插件时，仅暴露自定义配置的输入",
+      "avatar": "/imgs/module/input.png",
+      "flowType": "pluginInput",
+      "showStatus": false,
+      "position": {
+        "x": 187.94161749205568,
+        "y": 179.78772129776746
+      },
+      "inputs": [
+        {
+          "key": "pluginStart",
+          "type": "hidden",
+          "valueType": "boolean",
+          "label": "插件开始运行",
+          "description": "插件开始运行时，会输出一个 True 的标识。有时候，插件不会有额外的的输入，为了顺利的进入下一个阶段，你可以将该值连接到下一个节点的触发器中。",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "pluginStart",
+          "label": "插件开始运行",
+          "type": "source",
+          "valueType": "boolean",
+          "targets": [
+            {
+              "moduleId": "cv13yt",
+              "key": "switch"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "moduleId": "bjsa7r",
+      "name": "自定义插件输出",
+      "intro": "自定义配置外部输出，使用插件时，仅暴露自定义配置的输出",
+      "avatar": "/imgs/module/output.png",
+      "flowType": "pluginOutput",
+      "showStatus": false,
+      "position": {
+        "x": 1176.9471084832217,
+        "y": 138.94098316727695
+      },
+      "inputs": [
+        {
+          "key": "time",
+          "valueType": "string",
+          "label": "time",
+          "type": "target",
+          "required": true,
+          "description": "",
+          "edit": true,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": false,
+            "dataType": true,
+            "inputType": false
+          },
+          "connected": true
+        }
+      ],
+      "outputs": [
+        {
+          "key": "time",
+          "valueType": "string",
+          "label": "time",
+          "type": "source",
+          "edit": true,
+          "targets": []
+        }
+      ]
+    },
+    {
+      "moduleId": "cv13yt",
+      "name": "文本加工",
+      "intro": "可对固定或传入的文本进行加工后输出，非字符串类型数据最终会转成字符串类型。",
+      "avatar": "/imgs/module/textEditor.svg",
+      "flowType": "pluginModule",
+      "showStatus": false,
+      "position": {
+        "x": 600.7190079155914,
+        "y": 1.4754510232677944
+      },
+      "inputs": [
+        {
+          "key": "pluginId",
+          "type": "hidden",
+          "label": "",
+          "value": "community-textEditor",
+          "valueType": "string",
+          "connected": false,
+          "showTargetInApp": false,
+          "showTargetInPlugin": false
+        },
+        {
+          "key": "switch",
+          "type": "triggerAndFinish",
+          "label": "",
+          "description": "core.module.input.description.Trigger",
+          "valueType": "any",
+          "showTargetInApp": true,
+          "showTargetInPlugin": true,
+          "connected": true
+        },
+        {
+          "key": "textarea",
+          "valueType": "string",
+          "label": "文本内容",
+          "type": "textarea",
+          "required": true,
+          "description": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
+          "edit": false,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true,
+            "inputType": true
+          },
+          "connected": false,
+          "placeholder": "可以通过 {{key}} 的方式引用传入的变量。变量仅支持字符串或数字。",
+          "value": "{{cTime}}"
+        },
+        {
+          "key": "DYNAMIC_INPUT_KEY",
+          "valueType": "any",
+          "label": "需要加工的输入",
+          "type": "addInputParam",
+          "required": false,
+          "description": "可动态的添加字符串类型变量，在文本编辑中通过 {{key}} 使用变量。非字符串类型，会自动转成字符串类型。",
+          "edit": false,
+          "editField": {
+            "key": true,
+            "name": true,
+            "description": true,
+            "required": true,
+            "dataType": true,
+            "inputType": false
+          },
+          "defaultEditField": {
+            "label": "",
+            "key": "",
+            "description": "",
+            "inputType": "target",
+            "valueType": "string",
+            "required": true
+          },
+          "connected": false
+        }
+      ],
+      "outputs": [
+        {
+          "key": "text",
+          "valueType": "string",
+          "label": "core.module.output.label.text",
+          "type": "source",
+          "edit": false,
+          "targets": [
+            {
+              "moduleId": "bjsa7r",
+              "key": "time"
+            }
+          ]
+        },
+        {
+          "key": "finish",
+          "label": "",
+          "description": "",
+          "valueType": "boolean",
+          "type": "hidden",
+          "targets": []
+        }
+      ]
+    }
+  ]
+}

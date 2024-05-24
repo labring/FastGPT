@@ -38,6 +38,7 @@ export type FastGPTFeConfigsType = {
   openAPIDocUrl?: string;
   systemTitle?: string;
   systemSubTitle?: string;
+  systemDescription?: string;
   googleClientVerKey?: string;
   isPlus?: boolean;
   show_phoneLogin?: boolean;
@@ -56,7 +57,9 @@ export type FastGPTFeConfigsType = {
   customApiDomain?: string;
   customSharePageDomain?: string;
 
+  uploadFileMaxAmount?: number;
   uploadFileMaxSize?: number;
+  lafEnv?: string;
 };
 
 export type SystemEnvType = {
@@ -64,6 +67,8 @@ export type SystemEnvType = {
   vectorMaxProcess: number;
   qaMaxProcess: number;
   pgHNSWEfSearch: number;
+  tokenWorkers: number; // token count max worker
+
   oneapiUrl?: string;
   chatApiKey?: string;
 };

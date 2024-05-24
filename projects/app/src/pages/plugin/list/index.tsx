@@ -11,13 +11,16 @@ import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
 import EditModal, { defaultForm } from './component/EditModal';
 import { getPluginPaths, getUserPlugins } from '@/web/core/plugin/api';
-import EmptyTip from '@/components/EmptyTip';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import MyMenu from '@/components/MyMenu';
-import HttpPluginEditModal, { defaultHttpPlugin } from './component/HttpPluginEditModal';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import { defaultHttpPlugin } from './component/HttpPluginEditModal';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import ParentPaths from '@/components/common/ParentPaths';
 import { EditFormType } from './component/type';
+import dynamic from 'next/dynamic';
+
+const HttpPluginEditModal = dynamic(() => import('./component/HttpPluginEditModal'));
 
 const TeamPlugins = () => {
   const { t } = useTranslation();
@@ -58,7 +61,7 @@ const TeamPlugins = () => {
           }))}
           FirstPathDom={
             <Flex flex={1} alignItems={'center'}>
-              <Image src={'/imgs/module/plugin.svg'} alt={''} mr={2} h={'24px'} />
+              <Image src={'/imgs/workflow/plugin.svg'} alt={''} mr={2} h={'24px'} />
               <Box className="textlg" letterSpacing={1} fontSize={'24px'} fontWeight={'bold'}>
                 {t('plugin.My Plugins')}({t('common.Beta')})
               </Box>
@@ -88,7 +91,7 @@ const TeamPlugins = () => {
               {
                 label: (
                   <Flex>
-                    <Image src={'/imgs/module/plugin.svg'} alt={''} w={'18px'} mr={1} />
+                    <Image src={'/imgs/workflow/plugin.svg'} alt={''} w={'18px'} mr={1} />
                     {t('plugin.Custom Plugin')}
                   </Flex>
                 ),
@@ -97,7 +100,7 @@ const TeamPlugins = () => {
               {
                 label: (
                   <Flex display={'flex'} alignItems={'center'}>
-                    <Image src={'/imgs/module/http.png'} alt={''} w={'18px'} h={'14px'} mr={1} />
+                    <Image src={'/imgs/workflow/http.png'} alt={''} w={'18px'} h={'14px'} mr={1} />
                     {t('plugin.HTTP Plugin')}
                   </Flex>
                 ),

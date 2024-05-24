@@ -42,7 +42,7 @@ curl https://doc.fastgpt.in/docs/intro/
 
 ## 创建应用，绑定知识库
 
-![](/imgs/webSync6.jpg)
+![](/imgs/webSync6.webp)
 
 ## 选择器如何使用
 
@@ -50,9 +50,9 @@ curl https://doc.fastgpt.in/docs/intro/
 
 ### 首先打开浏览器调试面板（通常是 F12，或者【右键 - 检查】）
 
-![](/imgs/webSync7.jpg)
+![](/imgs/webSync7.webp)
 
-![](/imgs/webSync8.jpg)
+![](/imgs/webSync8.webp)
 
 ### 输入对应元素的选择器
 
@@ -63,7 +63,7 @@ curl https://doc.fastgpt.in/docs/intro/
 
 除了属性选择器，常见的还有类和ID选择器。例如：
 
-![](/imgs/webSync9.jpg)
+![](/imgs/webSync9.webp)
 
 上图 class 里的是类名（可能包含多个类名，都是空格隔开的，选择一个即可），选择器可以为：**`.docs-content`**
 
@@ -71,7 +71,7 @@ curl https://doc.fastgpt.in/docs/intro/
 
 在开头的演示中，我们对 FastGPT 文档是使用了多选择器的方式来选择，通过逗号隔开了两个选择器。
 
-![](/imgs/webSync10.jpg)
+![](/imgs/webSync10.webp)
 
 我们希望选中上图两个标签中的内容，此时就需要两组选择器。一组是：`.docs-content .mb-0.d-flex`，含义是 `docs-content` 类下同时包含 `mb-0`和`d-flex` 两个类的子元素；
 

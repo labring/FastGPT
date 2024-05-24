@@ -4,7 +4,7 @@ import axios, {
   AxiosResponse,
   AxiosProgressEvent
 } from 'axios';
-import { clearToken, getToken } from '@/web/support/user/auth';
+import { clearToken } from '@/web/support/user/auth';
 import { TOKEN_ERROR_CODE } from '@fastgpt/global/common/error/errorCode';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { useSystemStore } from '../system/useSystemStore';
@@ -15,6 +15,7 @@ interface ConfigType {
   onUploadProgress?: (progressEvent: AxiosProgressEvent) => void;
   cancelToken?: AbortController;
   maxQuantity?: number;
+  withCredentials?: boolean;
 }
 interface ResponseDataType {
   code: number;
@@ -61,7 +62,6 @@ function requestFinish({ url }: { url: string }) {
  */
 function startInterceptors(config: InternalAxiosRequestConfig): InternalAxiosRequestConfig {
   if (config.headers) {
-    config.headers.token = getToken();
   }
 
   return config;
@@ -138,7 +138,7 @@ instance.interceptors.response.use(responseSuccess, (err) => Promise.reject(err)
 function request(
   url: string,
   data: any,
-  { cancelToken, maxQuantity, ...config }: ConfigType,
+  { cancelToken, maxQuantity, withCredentials, ...config }: ConfigType,
   method: Method
 ): any {
   /* 去空 */
@@ -158,6 +158,7 @@ function request(
       data: ['POST', 'PUT'].includes(method) ? data : null,
       params: !['POST', 'PUT'].includes(method) ? data : null,
       signal: cancelToken?.signal,
+      withCredentials,
       ...config // 用户自定义配置，可以覆盖前面的配置
     })
     .then((res) => checkRes(res.data))

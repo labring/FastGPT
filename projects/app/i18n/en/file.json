@@ -1,0 +1,24 @@
+{
+  "Click to view raw source": "View source",
+  "Click to view file": "Click to view the original file",
+  "Release the mouse to upload the file": "Release the mouse to upload the file",
+  "upload error description": "Only supports uploading multiple files or one folder at a time",
+
+  "Empty file tip": "The file content is empty, the file may not be readable or it may be a pure image file.",
+  "File Content": "File Content",
+  "File Name": "File Name",
+  "File Size": "File Size",
+  "File content can not be empty": "File content cannot be empty",
+  "Filename Can not Be Empty": "Filename cannot be empty",
+  "Read File Error": "File parsing failed",
+  "Select and drag file tip": "Click or drag files here to upload",
+  "Select failed": "File selection failed",
+  "Select file amount limit": "You can select up to {{max}} files",
+  "Select file amount limit 100": "You can select up to 100 files at a time",
+  "Some file count exceeds limit": "Exceeds {{maxCount}} files, automatically truncated",
+  "Some file size exceeds limit": "Some files exceed: {{maxSize}}, have been filtered",
+  "Support file type": "Supports {{fileType}} type files",
+  "Support max count": "Supports up to {{maxCount}} files.",
+  "Support max size": "Maximum size per file: {{maxSize}}.",
+  "Upload failed": "Upload failed"
+}

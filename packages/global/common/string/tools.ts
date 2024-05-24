@@ -28,7 +28,9 @@ export const simpleText = (text = '') => {
 /* 
   replace {{variable}} to value
 */
-export function replaceVariable(text: string, obj: Record<string, string | number>) {
+export function replaceVariable(text: any, obj: Record<string, string | number>) {
+  if (!(typeof text === 'string')) return text;
+
   for (const key in obj) {
     const val = obj[key];
     if (!['string', 'number'].includes(typeof val)) continue;
@@ -48,6 +50,36 @@ export const replaceSensitiveText = (text: string) => {
   return text;
 };
 
+/* Make sure the first letter is definitely lowercase */
 export const getNanoid = (size = 12) => {
-  return customAlphabet('abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890', size)();
+  const firstChar = customAlphabet('abcdefghijklmnopqrstuvwxyz', 1)();
+
+  if (size === 1) return firstChar;
+
+  const randomsStr = customAlphabet(
+    'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890',
+    size - 1
+  )();
+
+  return `${firstChar}${randomsStr}`;
+};
+
+/* Custom text to reg, need to replace special chats */
+export const replaceRegChars = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/* slice json str */
+export const sliceJsonStr = (str: string) => {
+  str = str.replace(/(\\n|\\)/g, '').replace(/  /g, '');
+
+  const jsonRegex = /{[^{}]*}/g;
+  const matches = str.match(jsonRegex);
+
+  if (!matches) {
+    return '';
+  }
+
+  // 找到第一个完整的 JSON 字符串
+  const jsonStr = matches[0];
+
+  return jsonStr;
 };

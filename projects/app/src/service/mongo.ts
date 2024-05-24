@@ -11,6 +11,7 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { initGlobal } from './common/system';
 import { startMongoWatch } from './common/system/volumnMongoWatch';
 import { startTrainingQueue } from './core/dataset/training/utils';
+import { systemStartCb } from '@fastgpt/service/common/system/tools';
 
 /**
  * connect MongoDB and init data
@@ -21,9 +22,10 @@ export function connectToDatabase(): Promise<void> {
       initGlobal();
     },
     afterHook: async () => {
+      systemStartCb();
       // init system config
       getInitConfig();
-      // init vector database, init root user
+      //init vector database, init root user
       await Promise.all([initVectorStore(), initRootUser()]);
 
       startMongoWatch();
@@ -36,7 +38,7 @@ export function connectToDatabase(): Promise<void> {
   });
 }
 
-async function initRootUser() {
+async function initRootUser(retry = 3): Promise<any> {
   try {
     const rootUser = await MongoUser.findOne({
       username: 'root'
@@ -48,12 +50,9 @@ async function initRootUser() {
     await mongoSessionRun(async (session) => {
       // init root user
       if (rootUser) {
-        await MongoUser.findOneAndUpdate(
-          { username: 'root' },
-          {
-            password: hashStr(psw)
-          }
-        );
+        await rootUser.updateOne({
+          password: hashStr(psw)
+        });
       } else {
         const [{ _id }] = await MongoUser.create(
           [
@@ -75,7 +74,12 @@ async function initRootUser() {
       password: psw
     });
   } catch (error) {
-    console.log('init root user error', error);
-    exit(1);
+    if (retry > 0) {
+      console.log('retry init root user');
+      return initRootUser(retry - 1);
+    } else {
+      console.error('init root user error', error);
+      exit(1);
+    }
   }
 }

@@ -42,16 +42,17 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
           borderRadius={'md'}
           px={3}
           mb={2}
+          fontWeight={'medium'}
           alignItems={'center'}
           {...(activeId === item.id
             ? {
                 bg: ' primary.100 !important',
-                fontWeight: 'bold',
                 color: 'primary.600 ',
                 cursor: 'default'
               }
             : {
-                cursor: 'pointer'
+                cursor: 'pointer',
+                color: 'myGray.600'
               })}
           _hover={{
             bg: 'myGray.05'
@@ -61,7 +62,7 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
             onChange(item.id);
           }}
         >
-          <MyIcon mr={2} name={item.icon as IconNameType} w={'16px'} />
+          <MyIcon mr={2} name={item.icon as IconNameType} w={'20px'} />
           {item.label}
         </Flex>
       ))}

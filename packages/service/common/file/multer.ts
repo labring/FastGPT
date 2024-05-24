@@ -3,6 +3,7 @@ import multer from 'multer';
 import path from 'path';
 import { BucketNameEnum, bucketNameMap } from '@fastgpt/global/common/file/constants';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { tmpFileDirPath } from './constants';
 
 type FileType = {
   fieldname: string;
@@ -36,7 +37,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
     async doUpload<T = Record<string, any>>(
       req: NextApiRequest,
       res: NextApiResponse,
-      originBuckerName?: `${BucketNameEnum}`
+      originBucketName?: `${BucketNameEnum}`
     ) {
       return new Promise<{
         file: FileType;
@@ -51,7 +52,7 @@ export const getUploadModel = ({ maxSize = 500 }: { maxSize?: number }) => {
           }
 
           // check bucket name
-          const bucketName = (req.body?.bucketName || originBuckerName) as `${BucketNameEnum}`;
+          const bucketName = (req.body?.bucketName || originBucketName) as `${BucketNameEnum}`;
           if (bucketName && !bucketNameMap[bucketName]) {
             return reject('BucketName is invalid');
           }

@@ -4,7 +4,7 @@ export enum BucketNameEnum {
 }
 export const bucketNameMap = {
   [BucketNameEnum.dataset]: {
-    label: 'common.file.bucket.dataset'
+    label: 'file.bucket.dataset'
   }
 };
 

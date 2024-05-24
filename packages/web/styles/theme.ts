@@ -181,6 +181,28 @@ const Button = defineStyleConfig({
         color: 'myGray.600 !important'
       }
     },
+    whiteFlow: {
+      color: 'myGray.600',
+      border: '1px solid',
+      borderColor: 'myGray.200',
+      height: '40px',
+      bg: 'white',
+      px: '12px',
+      py: '0',
+      borderRadius: '6px',
+      transition: 'background 0.1s',
+      _hover: {
+        color: 'primary.600',
+        background: 'primary.1',
+        borderColor: 'primary.300'
+      },
+      _active: {
+        color: 'primary.600'
+      },
+      _disabled: {
+        color: 'myGray.600 !important'
+      }
+    },
     whiteDanger: {
       color: 'myGray.600',
       border: '1px solid',
@@ -205,7 +227,7 @@ const Button = defineStyleConfig({
         bg: 'primary.50'
       },
       _disabled: {
-        bg: 'myGray.50'
+        bg: 'myGray.50 !important'
       }
     },
     grayDanger: {
@@ -498,6 +520,19 @@ export const theme = extendTheme({
       700: '#027A48',
       800: '#05603A',
       900: '#054F31'
+    },
+    yellow: {
+      25: '#FFFDFA',
+      50: '#FFFAEB',
+      100: '#FEF0C7',
+      200: '#FEDF89',
+      300: '#F5C149',
+      400: '#FDB022',
+      500: '#F79009',
+      600: '#DC6803',
+      700: '#B54708',
+      800: '#93370D',
+      900: '#7A2E0E'
     },
     borderColor: {
       low: '#E8EBF0',

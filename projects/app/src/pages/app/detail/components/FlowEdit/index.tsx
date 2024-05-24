@@ -1,59 +1,70 @@
 import React, { useEffect, useMemo } from 'react';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
 import Header from './Header';
-import Flow from '@/components/core/module/Flow';
-import FlowProvider, { useFlowProviderStore } from '@/components/core/module/Flow/FlowProvider';
-import type { FlowNodeTemplateType } from '@fastgpt/global/core/module/type.d';
-import { appSystemModuleTemplates } from '@fastgpt/global/core/module/template/constants';
-import { FlowNodeTypeEnum } from '@fastgpt/global/core/module/node/constant';
-import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
+import Flow from '@/components/core/workflow/Flow';
+import { appSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
+import WorkflowContextProvider, { WorkflowContext } from '@/components/core/workflow/context';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
+import { useMount } from 'ahooks';
 
-type Props = { app: AppSchema; onClose: () => void };
+type Props = { onClose: () => void };
 
-const Render = ({ app, onClose }: Props) => {
-  const { nodes, initData } = useFlowProviderStore();
-  const { setBasicNodeTemplates } = useWorkflowStore();
+const Render = ({ onClose }: Props) => {
+  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
 
-  useEffect(() => {
-    initData(JSON.parse(JSON.stringify(app.modules)));
-  }, [app.modules]);
+  const isV2Workflow = appDetail?.version === 'v2';
+  const { openConfirm, ConfirmModal } = useConfirm({
+    showCancel: false,
+    content:
+      '检测到您的高级编排为旧版，系统将为您自动格式化成新版工作流。\n\n由于版本差异较大，会导致一些工作流无法正常排布，请重新手动连接工作流。如仍异常，可尝试删除对应节点后重新添加。\n\n你可以直接点击调试进行工作流测试，调试完毕后点击发布。直到你点击发布，新工作流才会真正保存生效。\n\n在你发布新工作流前，自动保存不会生效。'
+  });
 
-  useEffect(() => {
-    const concatTemplates = [...appSystemModuleTemplates];
+  const initData = useContextSelector(WorkflowContext, (v) => v.initData);
 
-    const copyTemplates: FlowNodeTemplateType[] = JSON.parse(JSON.stringify(concatTemplates));
+  const workflowStringData = JSON.stringify({
+    nodes: appDetail.modules || [],
+    edges: appDetail.edges || []
+  });
 
-    const filterType: Record<string, 1> = {
-      [FlowNodeTypeEnum.userGuide]: 1
-    };
-
-    // filter some template, There can only be one
-    nodes.forEach((node) => {
-      if (node.type && filterType[node.type]) {
-        copyTemplates.forEach((module, index) => {
-          if (module.flowType === node.type) {
-            copyTemplates.splice(index, 1);
-          }
-        });
-      }
-    });
-
-    setBasicNodeTemplates(copyTemplates);
-  }, [nodes, setBasicNodeTemplates]);
+  useMount(() => {
+    if (!isV2Workflow) {
+      openConfirm(() => {
+        initData(JSON.parse(JSON.stringify(v1Workflow2V2((appDetail.modules || []) as any))));
+      })();
+    } else {
+      initData(JSON.parse(workflowStringData));
+    }
+  });
 
   const memoRender = useMemo(() => {
-    return <Flow Header={<Header app={app} onClose={onClose} />} />;
-  }, [app, onClose]);
+    return <Flow Header={<Header onClose={onClose} />} />;
+  }, [onClose]);
 
-  return memoRender;
+  return (
+    <>
+      {memoRender}
+      {!isV2Workflow && <ConfirmModal countDown={0} />}
+    </>
+  );
 };
 
 export default React.memo(function FlowEdit(props: Props) {
-  const filterAppIds = useMemo(() => [props.app._id], [props.app._id]);
+  const appDetail = useContextSelector(AppContext, (e) => e.appDetail);
+  const filterAppIds = useMemo(() => [appDetail._id], [appDetail._id]);
 
   return (
-    <FlowProvider mode={'app'} filterAppIds={filterAppIds}>
+    <WorkflowContextProvider
+      value={{
+        appId: appDetail._id,
+        mode: 'app',
+        filterAppIds,
+        basicNodeTemplates: appSystemModuleTemplates
+      }}
+    >
       <Render {...props} />
-    </FlowProvider>
+    </WorkflowContextProvider>
   );
 });

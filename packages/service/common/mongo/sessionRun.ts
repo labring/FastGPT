@@ -8,14 +8,12 @@ export const mongoSessionRun = async <T = unknown>(fn: (session: ClientSession) 
     const result = await fn(session);
 
     await session.commitTransaction();
-    session.endSession();
+    await session.endSession();
 
     return result as T;
   } catch (error) {
-    console.log(error);
-
     await session.abortTransaction();
-    session.endSession();
+    await session.endSession();
     return Promise.reject(error);
   }
 };

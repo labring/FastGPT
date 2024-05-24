@@ -9,7 +9,7 @@ import { PluginListItemType } from '@fastgpt/global/core/plugin/controller';
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { parentId, type } = req.query as { parentId?: string; type?: `${DatasetTypeEnum}` };
+    const { parentId, type } = req.query as { parentId?: string; type?: DatasetTypeEnum };
 
     const { teamId } = await authCert({ req, authToken: true });
 

@@ -1,36 +1,35 @@
 import {
   DispatchNodeResponseType,
   DispatchNodeResultType
-} from '@fastgpt/global/core/module/runtime/type.d';
+} from '@fastgpt/global/core/workflow/runtime/type.d';
 import { formatModelChars2Points } from '../../../../support/wallet/usage/utils';
-import type { SelectedDatasetType } from '@fastgpt/global/core/module/api.d';
+import type { SelectedDatasetType } from '@fastgpt/global/core/workflow/api.d';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
 import { ModelTypeEnum, getLLMModel, getVectorModel } from '../../../ai/model';
 import { searchDatasetData } from '../../../dataset/search/controller';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getHistories } from '../utils';
 import { datasetSearchQueryExtension } from '../../../dataset/search/utils';
 import { ChatNodeUsageType } from '@fastgpt/global/support/wallet/bill/type';
 import { checkTeamReRankPermission } from '../../../../support/permission/teamLimit';
+import { MongoDataset } from '../../../dataset/schema';
 
 type DatasetSearchProps = ModuleDispatchProps<{
-  [ModuleInputKeyEnum.datasetSelectList]: SelectedDatasetType;
-  [ModuleInputKeyEnum.datasetSimilarity]: number;
-  [ModuleInputKeyEnum.datasetMaxTokens]: number;
-  [ModuleInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
-  [ModuleInputKeyEnum.userChatInput]: string;
-  [ModuleInputKeyEnum.datasetSearchUsingReRank]: boolean;
-  [ModuleInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
-  [ModuleInputKeyEnum.datasetSearchExtensionModel]: string;
-  [ModuleInputKeyEnum.datasetSearchExtensionBg]: string;
+  [NodeInputKeyEnum.datasetSelectList]: SelectedDatasetType;
+  [NodeInputKeyEnum.datasetSimilarity]: number;
+  [NodeInputKeyEnum.datasetMaxTokens]: number;
+  [NodeInputKeyEnum.datasetSearchMode]: `${DatasetSearchModeEnum}`;
+  [NodeInputKeyEnum.userChatInput]: string;
+  [NodeInputKeyEnum.datasetSearchUsingReRank]: boolean;
+  [NodeInputKeyEnum.datasetSearchUsingExtensionQuery]: boolean;
+  [NodeInputKeyEnum.datasetSearchExtensionModel]: string;
+  [NodeInputKeyEnum.datasetSearchExtensionBg]: string;
 }>;
 export type DatasetSearchResponse = DispatchNodeResultType<{
-  [ModuleOutputKeyEnum.datasetIsEmpty]?: boolean;
-  [ModuleOutputKeyEnum.datasetUnEmpty]?: boolean;
-  [ModuleOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
+  [NodeOutputKeyEnum.datasetQuoteQA]: SearchDataResponseItemType[];
 }>;
 
 export async function dispatchDatasetSearch(
@@ -39,7 +38,7 @@ export async function dispatchDatasetSearch(
   const {
     teamId,
     histories,
-    module,
+    node,
     params: {
       datasets = [],
       similarity,
@@ -67,10 +66,10 @@ export async function dispatchDatasetSearch(
   }
 
   // query extension
-  const extensionModel =
-    datasetSearchUsingExtensionQuery && datasetSearchExtensionModel
-      ? getLLMModel(datasetSearchExtensionModel)
-      : undefined;
+  const extensionModel = datasetSearchUsingExtensionQuery
+    ? getLLMModel(datasetSearchExtensionModel)
+    : undefined;
+
   const { concatQueries, rewriteQuery, aiExtensionResult } = await datasetSearchQueryExtension({
     query: userChatInput,
     extensionModel,
@@ -81,7 +80,9 @@ export async function dispatchDatasetSearch(
   // console.log(concatQueries, rewriteQuery, aiExtensionResult);
 
   // get vector
-  const vectorModel = getVectorModel(datasets[0]?.vectorModel?.model);
+  const vectorModel = getVectorModel(
+    (await MongoDataset.findById(datasets[0].datasetId, 'vectorModel').lean())?.vectorModel
+  );
 
   // start search
   const {
@@ -122,7 +123,7 @@ export async function dispatchDatasetSearch(
   const nodeDispatchUsages: ChatNodeUsageType[] = [
     {
       totalPoints,
-      moduleName: module.name,
+      moduleName: node.name,
       model: modelName,
       tokens
     }
@@ -151,8 +152,6 @@ export async function dispatchDatasetSearch(
   }
 
   return {
-    isEmpty: searchRes.length === 0 ? true : undefined,
-    unEmpty: searchRes.length > 0 ? true : undefined,
     quoteQA: searchRes,
     [DispatchNodeResponseKeyEnum.nodeResponse]: responseData,
     nodeDispatchUsages,

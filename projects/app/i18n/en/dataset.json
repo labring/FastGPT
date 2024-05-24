@@ -1,0 +1,19 @@
+{
+  "Collection tags": "Tags",
+  "Common Dataset": "Common dataset",
+  "Common Dataset Desc": "Can be built by importing files, web links, or manual entry",
+  "Confirm to rebuild embedding tip": "Are you sure to switch the knowledge base index?\nSwitching index is a very heavy operation that requires re-indexing all the data in your knowledge base, which may take a long time. Please ensure that the remaining points in your account are sufficient.\n\nIn addition, you need to be careful to modify the applications that select this knowledge base to avoid mixing them with other index model knowledge bases.",
+  "External file": "External file",
+  "External file Dataset Desc": "You can import files from an external file library to build a knowledge base. Files are not stored twice",
+  "External id": "File id",
+  "External read url": "External read url",
+  "External read url tip": "You can configure the reading address of your file library. This allows users to read and authenticate. You can currently use the {{fileId}} variable to refer to the external file ID.",
+  "External url": "File read url",
+  "Folder Dataset": "Folder",
+  "Rebuild embedding start tip": "The task of switching index models has begun",
+  "Rebuilding index count": "Rebuilding count: {{count}}",
+  "The knowledge base has indexes that are being trained or being rebuilt": "The knowledge base has indexes that are being trained or being rebuilt",
+  "Website Dataset": "Web site",
+  "Website Dataset Desc": "Web site synchronization allows you to use a web page link to build a dataset",
+  "filename": "filename"
+}

@@ -22,7 +22,10 @@ export async function getUserDetail({
 }): Promise<UserType> {
   const tmb = await (async () => {
     if (tmbId) {
-      return getTmbInfoByTmbId({ tmbId });
+      try {
+        const result = await getTmbInfoByTmbId({ tmbId });
+        return result;
+      } catch (error) {}
     }
     if (userId) {
       return getUserDefaultTeam({ userId });
@@ -39,7 +42,6 @@ export async function getUserDetail({
     _id: user._id,
     username: user.username,
     avatar: user.avatar,
-    balance: user.balance,
     timezone: user.timezone,
     promotionRate: user.promotionRate,
     openaiAccount: user.openaiAccount,

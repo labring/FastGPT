@@ -1,7 +1,7 @@
-import { DispatchNodeResponseType } from '../module/runtime/type';
-import { FlowNodeInputTypeEnum, FlowNodeTypeEnum } from '../module/node/constant';
+import { DispatchNodeResponseType } from '../workflow/runtime/type';
+import { FlowNodeTypeEnum } from '../workflow/node/constant';
 import { ChatItemValueTypeEnum, ChatRoleEnum } from './constants';
-import { ChatHistoryItemResType, ChatItemType } from './type.d';
+import { ChatHistoryItemResType, ChatItemType, UserChatItemValueItemType } from './type.d';
 
 export const getChatTitleFromChatMessage = (message?: ChatItemType, defaultValue = '新对话') => {
   // @ts-ignore
@@ -76,4 +76,16 @@ export const filterPublicNodeResponseData = ({
       }
       return obj as ChatHistoryItemResType;
     });
+};
+
+export const removeEmptyUserInput = (input: UserChatItemValueItemType[]) => {
+  return input.filter((item) => {
+    if (item.type === ChatItemValueTypeEnum.text && !item.text?.content?.trim()) {
+      return false;
+    }
+    if (item.type === ChatItemValueTypeEnum.file && !item.file?.url) {
+      return false;
+    }
+    return true;
+  });
 };

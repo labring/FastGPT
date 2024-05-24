@@ -8,18 +8,13 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 
-export const DatasetColCollectionName = 'dataset.collections';
+export const DatasetColCollectionName = 'dataset_collections';
 
 const DatasetCollectionSchema = new Schema({
   parentId: {
     type: Schema.Types.ObjectId,
     ref: DatasetColCollectionName,
     default: null
-  },
-  userId: {
-    // abandoned
-    type: Schema.Types.ObjectId,
-    ref: 'user'
   },
   teamId: {
     type: Schema.Types.ObjectId,
@@ -54,6 +49,7 @@ const DatasetCollectionSchema = new Schema({
     default: () => new Date()
   },
 
+  // chunk filed
   trainingType: {
     type: String,
     enum: Object.keys(TrainingTypeMap),
@@ -70,20 +66,25 @@ const DatasetCollectionSchema = new Schema({
     type: String
   },
 
+  tags: {
+    type: [String],
+    default: []
+  },
+
+  // local file collection
   fileId: {
     type: Schema.Types.ObjectId,
     ref: 'dataset.files'
   },
-  rawLink: {
-    type: String
-  },
+  // web link collection
+  rawLink: String,
+  // external collection
+  externalFileId: String,
 
-  rawTextLength: {
-    type: Number
-  },
-  hashRawText: {
-    type: String
-  },
+  // metadata
+  rawTextLength: Number,
+  hashRawText: String,
+  externalFileUrl: String, // external import url
   metadata: {
     type: Object,
     default: {}

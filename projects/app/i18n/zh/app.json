@@ -1,0 +1,51 @@
+{
+  "AI Settings": "AI 配置",
+  "Advance App TestTip": "当前应用可能为高级编排模式\n如需切换为【简易模式】请点击左侧保存按键",
+  "App Detail": "应用详情",
+  "Apps Share": "应用分享",
+  "Basic Settings": "基本信息",
+  "Chat Debug": "调试预览",
+  "Chat Logs Tips": "日志会记录该应用的在线、分享和 API(需填写 chatId) 对话记录",
+  "Chat logs": "对话日志",
+  "Confirm Del App Tip": "确认删除该应用及其所有聊天记录？",
+  "Connection is invalid": "连接无效",
+  "Connection type is different": "连接的类型不一致",
+  "Copy Module Config": "复制配置",
+  "Dataset Quote Template": "知识库问答模式",
+  "Export Config Successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
+  "Export Configs": "导出配置",
+  "Feedback Count": "用户反馈",
+  "Import Configs": "导入配置",
+  "Import Configs Failed": "导入配置失败，请确保配置正常！",
+  "Input Field Settings": "输入字段编辑",
+  "Logs Empty": "还没有日志噢~",
+  "Logs Message Total": "消息总数",
+  "Logs Source": "来源",
+  "Logs Time": "时间",
+  "Logs Title": "标题",
+  "Mark Count": "标注答案数量",
+  "My Apps": "我的应用",
+  "Output Field Settings": "输出字段编辑",
+  "Paste Config": "粘贴配置",
+  "To Chat": "前去对话",
+  "To Settings": "查看详情",
+  "Variable Key Repeat Tip": "变量 key 重复",
+  "app": {
+    "modules": {
+      "click to update": "点击更新",
+      "has new version": "有新版本"
+    }
+  },
+  "module": {
+    "Combine Modules": "组合模块",
+    "Confirm Sync": "将会使用最新模板进行覆盖，可能会丢失一些旧的配置信息，请确认",
+    "Custom Title Tip": "该标题名字会展示在对话过程中",
+    "My Modules": "",
+    "No Modules": "还没有模块~",
+    "System Module": "系统模块",
+    "type": "\"{{type}}\"类型\n{{description}}"
+  },
+  "modules": {
+    "Title is required": "模块名不能为空"
+  }
+}

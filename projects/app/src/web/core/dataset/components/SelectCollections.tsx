@@ -1,7 +1,7 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import ParentPaths from '@/components/common/ParentPaths';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getDatasetCollectionPathById, getDatasetCollections } from '@/web/core/dataset/api';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { Box, Flex, ModalFooter, Button, useTheme, Grid, Card, ModalBody } from '@chakra-ui/react';
@@ -11,6 +11,8 @@ import { useQuery } from '@tanstack/react-query';
 import React, { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
+import { useContextSelector } from 'use-context-selector';
+import { DatasetPageContext } from '../context/datasetPageContext';
 
 const SelectCollections = ({
   datasetId,
@@ -37,7 +39,8 @@ const SelectCollections = ({
 }) => {
   const { t } = useTranslation();
   const theme = useTheme();
-  const { datasetDetail, loadDatasetDetail } = useDatasetStore();
+  const { loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
+
   const { Loading } = useLoading();
   const [selectedDatasetCollectionIds, setSelectedDatasetCollectionIds] =
     useState<string[]>(defaultSelectedId);

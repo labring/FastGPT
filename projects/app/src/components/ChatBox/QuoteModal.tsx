@@ -46,7 +46,7 @@ const QuoteModal = ({
         title={
           <Box>
             {metadata ? (
-              <RawSourceBox {...metadata} canView={false} />
+              <RawSourceBox {...metadata} canView={showDetail} />
             ) : (
               <>{t('core.chat.Quote Amount', { amount: rawSearch.length })}</>
             )}

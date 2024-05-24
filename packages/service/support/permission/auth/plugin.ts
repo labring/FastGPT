@@ -10,11 +10,11 @@ import { splitCombinePluginId } from '../../../core/plugin/controller';
 import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 
 export async function authPluginCrud({
-  id,
+  pluginId,
   per = 'owner',
   ...props
 }: AuthModeType & {
-  id: string;
+  pluginId: string;
 }): Promise<
   AuthResponseType & {
     plugin: PluginItemSchema;
@@ -26,7 +26,7 @@ export async function authPluginCrud({
   const { role } = await getTmbInfoByTmbId({ tmbId });
 
   const { plugin, isOwner, canWrite } = await (async () => {
-    const plugin = await MongoPlugin.findOne({ _id: id, teamId });
+    const plugin = await MongoPlugin.findOne({ _id: pluginId, teamId });
 
     if (!plugin) {
       throw new Error(PluginErrEnum.unExist);

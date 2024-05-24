@@ -1,13 +1,12 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback } from 'react';
 import { Box, Grid, Flex, IconButton, Button, useDisclosure } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useQuery } from '@tanstack/react-query';
 import { AddIcon } from '@chakra-ui/icons';
 import { delModelById } from '@/web/core/app/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useConfirm } from '@/web/common/hooks/useConfirm';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
@@ -16,14 +15,17 @@ import CreateModal from './component/CreateModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import { useI18n } from '@/web/context/I18n';
+import { useTranslation } from 'next-i18next';
 
 const MyApps = () => {
-  const { toast } = useToast();
   const { t } = useTranslation();
+  const { toast } = useToast();
+  const { appT, commonT } = useI18n();
+
   const router = useRouter();
   const { userInfo } = useUserStore();
   const { myApps, loadMyApps } = useAppStore();
-  const [teamsTags, setTeamTags] = useState([]);
   const { openConfirm, ConfirmModal } = useConfirm({
     title: '删除提示',
     content: '确认删除该应用所有信息？'
@@ -43,19 +45,19 @@ const MyApps = () => {
           title: '删除成功',
           status: 'success'
         });
-        loadMyApps(true);
+        loadMyApps();
       } catch (err: any) {
         toast({
-          title: err?.message || '删除失败',
+          title: err?.message || t('common.Delete Failed'),
           status: 'error'
         });
       }
     },
-    [toast, loadMyApps]
+    [toast, loadMyApps, t]
   );
 
   /* 加载模型 */
-  const { isFetching } = useQuery(['loadApps'], () => loadMyApps(true), {
+  const { isFetching } = useQuery(['loadApps'], () => loadMyApps(), {
     refetchOnMount: true
   });
 
@@ -63,10 +65,10 @@ const MyApps = () => {
     <PageContainer isLoading={isFetching} insertProps={{ px: [5, '48px'] }}>
       <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
-          {t('app.My Apps')}
+          {appT('My Apps')}
         </Box>
         <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
-          {t('common.New Create')}
+          {commonT('New Create')}
         </Button>
       </Flex>
       <Grid
@@ -77,7 +79,7 @@ const MyApps = () => {
         {myApps.map((app) => (
           <MyTooltip
             key={app._id}
-            label={userInfo?.team.canWrite ? t('app.To Settings') : t('app.To Chat')}
+            label={userInfo?.team.canWrite ? appT('To Settings') : appT('To Chat')}
           >
             <Box
               lineHeight={1.5}
@@ -169,9 +171,6 @@ const MyApps = () => {
           </MyTooltip>
         ))}
       </Grid>
-      {/* (
-        <ShareBox></ShareBox>
-      ) */}
 
       {myApps.length === 0 && (
         <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
@@ -183,7 +182,7 @@ const MyApps = () => {
       )}
       <ConfirmModal />
       {isOpenCreateModal && (
-        <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps(true)} />
+        <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps()} />
       )}
     </PageContainer>
   );
@@ -192,7 +191,7 @@ const MyApps = () => {
 export async function getServerSideProps(content: any) {
   return {
     props: {
-      ...(await serviceSideProps(content))
+      ...(await serviceSideProps(content, ['app']))
     }
   };
 }

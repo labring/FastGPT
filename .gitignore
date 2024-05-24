@@ -41,3 +41,7 @@ docSite/.vercel
 
 .idea/
 *.tar
+files/helm/fastgpt/fastgpt-0.1.0.tgz
+files/helm/fastgpt/charts/*.tgz
+
+tmp/

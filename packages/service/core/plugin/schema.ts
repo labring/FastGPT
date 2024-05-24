@@ -50,12 +50,24 @@ const PluginSchema = new Schema({
     type: Array,
     default: []
   },
+  edges: {
+    type: Array,
+    default: []
+  },
   metadata: {
     type: {
       pluginUid: String,
       apiSchemaStr: String,
       customHeaders: String
     }
+  },
+  version: {
+    type: String,
+    enum: ['v1', 'v2']
+  },
+  nodeVersion: {
+    type: String,
+    default: ''
   }
 });
 

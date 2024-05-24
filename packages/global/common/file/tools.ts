@@ -1,3 +1,5 @@
+import { detect } from 'jschardet';
+
 export const formatFileSize = (bytes: number): string => {
   if (bytes === 0) return '0 B';
 
@@ -6,4 +8,8 @@ export const formatFileSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
+export const detectFileEncoding = (buffer: Buffer) => {
+  return detect(buffer.slice(0, 200))?.encoding?.toLocaleLowerCase();
 };

@@ -1,5 +1,7 @@
 import type { UserModelSchema } from '../type';
 import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
+import { LafAccountType } from './type';
+import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
 
 export type TeamSchema = {
   _id: string;
@@ -13,6 +15,8 @@ export type TeamSchema = {
     lastExportDatasetTime: Date;
     lastWebsiteSyncTime: Date;
   };
+  lafAccount: LafAccountType;
+  defaultPermission: PermissionValueType;
 };
 export type tagsType = {
   label: string;
@@ -58,6 +62,8 @@ export type TeamItemType = {
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
   canWrite: boolean;
+  lafAccount?: LafAccountType;
+  defaultPermission: PermissionValueType;
 };
 
 export type TeamMemberItemType = {
@@ -66,11 +72,19 @@ export type TeamMemberItemType = {
   teamId: string;
   memberName: string;
   avatar: string;
+  // TODO: this should be deprecated.
   role: `${TeamMemberRoleEnum}`;
   status: `${TeamMemberStatusEnum}`;
+  permission: PermissionValueType;
 };
 
 export type TeamTagItemType = {
   label: string;
   key: string;
+};
+
+export type LafAccountType = {
+  token: string;
+  appid: string;
+  pat: string;
 };

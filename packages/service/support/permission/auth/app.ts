@@ -30,12 +30,10 @@ export async function authApp({
     // get app
     const app = await MongoApp.findOne({ _id: appId, teamId }).lean();
     if (!app) {
-      return Promise.reject(AppErrEnum.unAuthApp);
+      return Promise.reject(AppErrEnum.unExist);
     }
 
-    const isOwner =
-      role !== TeamMemberRoleEnum.visitor &&
-      (String(app.tmbId) === tmbId || role === TeamMemberRoleEnum.owner);
+    const isOwner = String(app.tmbId) === tmbId || role === TeamMemberRoleEnum.owner;
     const canWrite =
       isOwner ||
       (app.permission === PermissionTypeEnum.public && role !== TeamMemberRoleEnum.visitor);

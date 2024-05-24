@@ -92,9 +92,9 @@ export const useEditTextarea = ({
       closeBtnText?: string;
     }) => (
       <MyModal isOpen={isOpen} onClose={onClose} iconSrc={iconSrc} title={title} maxW={'500px'}>
-        <ModalBody>
+        <ModalBody pt={tip ? '3 !important' : '5 !important'}>
           {!!tip && (
-            <Box mb={2} color={'myGray.500'} fontSize={'sm'}>
+            <Box mb={3} color={'myGray.500'} fontSize={'sm'}>
               {tip}
             </Box>
           )}

@@ -4,7 +4,7 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2-6B'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 910
+weight: 930
 ---
 
 ## 前言

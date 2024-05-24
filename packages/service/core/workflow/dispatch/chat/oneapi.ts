@@ -6,8 +6,8 @@ import {
 } from '../../../chat/utils';
 import type { ChatItemType, UserChatItemValueItemType } from '@fastgpt/global/core/chat/type.d';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { textAdaptGptResponse } from '@fastgpt/global/core/workflow/runtime/utils';
 import { getAIApi } from '../../../ai/config';
 import type {
   ChatCompletion,
@@ -18,14 +18,14 @@ import { formatModelChars2Points } from '../../../../support/wallet/usage/utils'
 import type { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { postTextCensor } from '../../../../common/api/requestPlusApi';
 import { ChatCompletionRequestMessageRoleEnum } from '@fastgpt/global/core/ai/constants';
-import type { ModuleItemType } from '@fastgpt/global/core/module/type.d';
-import type { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
+import type { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import {
   countGptMessagesTokens,
   countMessagesTokens
-} from '@fastgpt/global/common/string/tiktoken';
+} from '../../../../common/string/tiktoken/index';
 import {
   chats2GPTMessages,
+  chatValue2RuntimePrompt,
   getSystemPrompt,
   GPTMessages2Chats,
   runtimePrompt2ChatsValue
@@ -34,28 +34,28 @@ import {
   Prompt_QuotePromptList,
   Prompt_QuoteTemplateList
 } from '@fastgpt/global/core/ai/prompt/AIChat';
-import type { AIChatModuleProps } from '@fastgpt/global/core/module/node/type.d';
+import type { AIChatNodeProps } from '@fastgpt/global/core/workflow/runtime/type.d';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
 import { responseWrite, responseWriteController } from '../../../../common/response';
 import { getLLMModel, ModelTypeEnum } from '../../../ai/model';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getHistories } from '../utils';
-import { filterSearchResultsByMaxChars } from '@fastgpt/global/core/dataset/search/utils';
+import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
 
 export type ChatProps = ModuleDispatchProps<
-  AIChatModuleProps & {
-    [ModuleInputKeyEnum.userChatInput]: string;
-    [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
-    [ModuleInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
+  AIChatNodeProps & {
+    [NodeInputKeyEnum.userChatInput]: string;
+    [NodeInputKeyEnum.history]?: ChatItemType[] | number;
+    [NodeInputKeyEnum.aiChatDatasetQuote]?: SearchDataResponseItemType[];
   }
 >;
 export type ChatResponse = DispatchNodeResultType<{
-  [ModuleOutputKeyEnum.answerText]: string;
-  [ModuleOutputKeyEnum.history]: ChatItemType[];
+  [NodeOutputKeyEnum.answerText]: string;
+  [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
 
 /* request openai chat */
@@ -66,14 +66,14 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     detail = false,
     user,
     histories,
-    module: { name, outputs },
-    inputFiles = [],
+    node: { name },
+    query,
     params: {
       model,
       temperature = 0,
       maxToken = 4000,
       history = 6,
-      quoteQA = [],
+      quoteQA,
       userChatInput,
       isResponseAnswerText = true,
       systemPrompt = '',
@@ -81,6 +81,8 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
       quotePrompt
     }
   } = props;
+  const { files: inputFiles } = chatValue2RuntimePrompt(query);
+
   if (!userChatInput && inputFiles.length === 0) {
     return Promise.reject('Question is empty');
   }
@@ -95,7 +97,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     return Promise.reject('The chat model is undefined, you need to select a chat model.');
   }
 
-  const { quoteText } = filterQuote({
+  const { quoteText } = await filterQuote({
     quoteQA,
     model: modelConstantsData,
     quoteTemplate
@@ -111,9 +113,10 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
     });
   }
 
-  const { filterMessages } = getChatMessages({
+  const { filterMessages } = await getChatMessages({
     model: modelConstantsData,
     histories: chatHistories,
+    quoteQA,
     quoteText,
     quotePrompt,
     userChatInput,
@@ -181,15 +184,13 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   );
 
   const { answerText } = await (async () => {
-    if (stream) {
+    if (res && stream) {
       // sse response
       const { answer } = await streamResponse({
         res,
         detail,
         stream: response
       });
-
-      targetResponse({ res, detail, outputs });
 
       return {
         answerText: answer
@@ -210,7 +211,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   });
   const chatCompleteMessages = GPTMessages2Chats(completeMessages);
 
-  const tokens = countMessagesTokens(chatCompleteMessages);
+  const tokens = await countMessagesTokens(chatCompleteMessages);
   const { totalPoints, modelName } = formatModelChars2Points({
     model,
     tokens,
@@ -241,7 +242,7 @@ export const dispatchChatCompletion = async (props: ChatProps): Promise<ChatResp
   };
 };
 
-function filterQuote({
+async function filterQuote({
   quoteQA = [],
   model,
   quoteTemplate
@@ -261,7 +262,7 @@ function filterQuote({
   }
 
   // slice filterSearch
-  const filterQuoteQA = filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
+  const filterQuoteQA = await filterSearchResultsByMaxChars(quoteQA, model.quoteMaxToken);
 
   const quoteText =
     filterQuoteQA.length > 0
@@ -269,13 +270,13 @@ function filterQuote({
       : '';
 
   return {
-    filterQuoteQA: filterQuoteQA,
     quoteText
   };
 }
-function getChatMessages({
+async function getChatMessages({
   quotePrompt,
   quoteText,
+  quoteQA,
   histories = [],
   systemPrompt,
   userChatInput,
@@ -284,18 +285,20 @@ function getChatMessages({
 }: {
   quotePrompt?: string;
   quoteText: string;
+  quoteQA: ChatProps['params']['quoteQA'];
   histories: ChatItemType[];
   systemPrompt: string;
   userChatInput: string;
   inputFiles: UserChatItemValueItemType['file'][];
   model: LLMModelItemType;
 }) {
-  const replaceInputValue = quoteText
-    ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
-        quote: quoteText,
-        question: userChatInput
-      })
-    : userChatInput;
+  const replaceInputValue =
+    quoteQA !== undefined
+      ? replaceVariable(quotePrompt || Prompt_QuotePromptList[0].value, {
+          quote: quoteText,
+          question: userChatInput
+        })
+      : userChatInput;
 
   const messages: ChatItemType[] = [
     ...getSystemPrompt(systemPrompt),
@@ -310,7 +313,7 @@ function getChatMessages({
   ];
   const adaptMessages = chats2GPTMessages({ messages, reserveId: false });
 
-  const filterMessages = filterGPTMessageByMaxTokens({
+  const filterMessages = await filterGPTMessageByMaxTokens({
     messages: adaptMessages,
     maxTokens: model.maxContext - 300 // filter token. not response maxToken
   });
@@ -319,7 +322,7 @@ function getChatMessages({
     filterMessages
   };
 }
-function getMaxTokens({
+async function getMaxTokens({
   maxToken,
   model,
   filterMessages = []
@@ -332,7 +335,7 @@ function getMaxTokens({
   const tokensLimit = model.maxContext;
 
   /* count response max token */
-  const promptsToken = countGptMessagesTokens(filterMessages);
+  const promptsToken = await countGptMessagesTokens(filterMessages);
   maxToken = promptsToken + maxToken > tokensLimit ? tokensLimit - promptsToken : maxToken;
 
   if (maxToken <= 0) {
@@ -341,28 +344,6 @@ function getMaxTokens({
   return {
     max_tokens: maxToken
   };
-}
-
-function targetResponse({
-  res,
-  outputs,
-  detail
-}: {
-  res: NextApiResponse;
-  outputs: ModuleItemType['outputs'];
-  detail: boolean;
-}) {
-  const targets =
-    outputs.find((output) => output.key === ModuleOutputKeyEnum.answerText)?.targets || [];
-
-  if (targets.length === 0) return;
-  responseWrite({
-    res,
-    event: detail ? SseResponseEventEnum.answer : undefined,
-    data: textAdaptGptResponse({
-      text: '\n'
-    })
-  });
 }
 
 async function streamResponse({

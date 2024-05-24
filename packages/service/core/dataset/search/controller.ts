@@ -14,10 +14,11 @@ import {
 } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetCollection } from '../collection/schema';
 import { reRankRecall } from '../../../core/ai/rerank';
-import { countPromptTokens } from '@fastgpt/global/common/string/tiktoken';
+import { countPromptTokens } from '../../../common/string/tiktoken/index';
 import { datasetSearchResultConcat } from '@fastgpt/global/core/dataset/search/utils';
 import { hashStr } from '@fastgpt/global/common/string/tools';
 import { jiebaSplit } from '../../../common/string/jieba';
+import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 
 type SearchDatasetDataProps = {
   teamId: string;
@@ -59,32 +60,33 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   const countRecallLimit = () => {
     if (searchMode === DatasetSearchModeEnum.embedding) {
       return {
-        embeddingLimit: 150,
+        embeddingLimit: 100,
         fullTextLimit: 0
       };
     }
     if (searchMode === DatasetSearchModeEnum.fullTextRecall) {
       return {
         embeddingLimit: 0,
-        fullTextLimit: 150
+        fullTextLimit: 100
       };
     }
     return {
-      embeddingLimit: 100,
-      fullTextLimit: 80
+      embeddingLimit: 80,
+      fullTextLimit: 60
     };
   };
   const embeddingRecall = async ({ query, limit }: { query: string; limit: number }) => {
     const { vectors, tokens } = await getVectorsByText({
       model: getVectorModel(model),
-      input: query
+      input: query,
+      type: 'query'
     });
 
     const { results } = await recallFromVectorStore({
-      vectors,
-      limit,
+      teamId,
       datasetIds,
-      efSearch: global.systemEnv?.pgHNSWEfSearch
+      vectors,
+      limit
     });
 
     // get q and a
@@ -92,11 +94,12 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       {
         teamId,
         datasetId: { $in: datasetIds },
+        collectionId: { $in: results.map((item) => item.collectionId) },
         'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
       },
       'datasetId collectionId q a chunkIndex indexes'
     )
-      .populate('collectionId', 'name fileId rawLink')
+      .populate('collectionId', 'name fileId rawLink externalFileId externalFileUrl')
       .lean()) as DatasetDataWithCollectionType[];
 
     // add score to data(It's already sorted. The first one is the one with the most points)
@@ -128,8 +131,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           chunkIndex: data.chunkIndex,
           datasetId: String(data.datasetId),
           collectionId: String(data.collectionId?._id),
-          sourceName: data.collectionId?.name || '',
-          sourceId: data.collectionId?.fileId || data.collectionId?.rawLink,
+          ...getCollectionSourceData(data.collectionId),
           score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
         };
 
@@ -203,8 +205,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
           id: String(item._id),
           datasetId: String(item.datasetId),
           collectionId: String(item.collectionId),
-          sourceName: collection?.name || '',
-          sourceId: collection?.fileId || collection?.rawLink,
+          ...getCollectionSourceData(collection),
           q: item.q,
           a: item.a,
           chunkIndex: item.chunkIndex,
@@ -225,7 +226,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     try {
       const results = await reRankRecall({
         query,
-        inputs: data.map((item) => ({
+        documents: data.map((item) => ({
           id: item.id,
           text: `${item.q}\n${item.a}`
         }))
@@ -256,13 +257,16 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       return [];
     }
   };
-  const filterResultsByMaxTokens = (list: SearchDataResponseItemType[], maxTokens: number) => {
+  const filterResultsByMaxTokens = async (
+    list: SearchDataResponseItemType[],
+    maxTokens: number
+  ) => {
     const results: SearchDataResponseItemType[] = [];
     let totalTokens = 0;
 
-    for (let i = 0; i < list.length; i++) {
-      const item = list[i];
-      totalTokens += countPromptTokens(item.q + item.a);
+    for await (const item of list) {
+      totalTokens += await countPromptTokens(item.q + item.a);
+
       if (totalTokens > maxTokens + 500) {
         break;
       }
@@ -396,7 +400,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
   })();
 
   return {
-    searchRes: filterResultsByMaxTokens(scoreFilter, maxTokens),
+    searchRes: await filterResultsByMaxTokens(scoreFilter, maxTokens),
     tokens,
     searchMode,
     limit: maxTokens,

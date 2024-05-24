@@ -12,12 +12,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
     const { teamId } = await authChatCert({ req, authToken: true });
 
-    const data = await uploadMongoImg({
+    const imgId = await uploadMongoImg({
       teamId,
       ...body
     });
 
-    jsonRes(res, { data });
+    jsonRes(res, { data: imgId });
   } catch (error) {
     jsonRes(res, {
       code: 500,

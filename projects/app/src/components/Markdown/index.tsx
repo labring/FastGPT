@@ -14,16 +14,15 @@ import MyTooltip from '../MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getFileAndOpen } from '@/web/core/dataset/utils';
 import { MARKDOWN_QUOTE_SIGN } from '@fastgpt/global/core/chat/constants';
 
-const CodeLight = dynamic(() => import('./CodeLight'));
-const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'));
-const MdImage = dynamic(() => import('./img/Image'));
-const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'));
+const CodeLight = dynamic(() => import('./CodeLight'), { ssr: false });
+const MermaidCodeBlock = dynamic(() => import('./img/MermaidCodeBlock'), { ssr: false });
+const MdImage = dynamic(() => import('./img/Image'), { ssr: false });
+const EChartsCodeBlock = dynamic(() => import('./img/EChartsCodeBlock'), { ssr: false });
 
-const ChatGuide = dynamic(() => import('./chat/Guide'));
-const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'));
+const ChatGuide = dynamic(() => import('./chat/Guide'), { ssr: false });
+const QuestionGuide = dynamic(() => import('./chat/QuestionGuide'), { ssr: false });
 
 export enum CodeClassName {
   guide = 'guide',
@@ -53,7 +52,7 @@ const Markdown = ({
   );
 
   const formatSource = source
-    .replace(/\\n/g, '\n&nbsp;')
+    // .replace(/\\n/g, '\n')
     .replace(/(http[s]?:\/\/[^\s，。]+)([。，])/g, '$1 $2')
     .replace(/\n*(\[QUOTE SIGN\]\(.*\))/g, '$1');
 
@@ -132,7 +131,7 @@ const A = React.memo(function A({ children, ...props }: any) {
     );
   }
 
-  // quote link
+  // quote link(未使用)
   if (children?.length === 1 && typeof children?.[0] === 'string') {
     const text = String(children);
     if (text === MARKDOWN_QUOTE_SIGN && props.href) {
@@ -147,7 +146,7 @@ const A = React.memo(function A({ children, ...props }: any) {
             _hover={{
               color: 'primary.700'
             }}
-            onClick={() => getFileAndOpen(props.href)}
+            // onClick={() => getCollectionSourceAndOpen(props.href)}
           />
         </MyTooltip>
       );

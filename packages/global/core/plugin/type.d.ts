@@ -1,5 +1,6 @@
-import { ModuleTemplateTypeEnum } from 'core/module/constants';
-import type { FlowModuleTemplateType, ModuleItemType } from '../module/type.d';
+import { StoreEdgeItemType } from 'core/workflow/type/edge';
+import { ModuleTemplateTypeEnum } from '../workflow/constants';
+import type { FlowModuleTemplateType, StoreNodeItemType } from '../workflow/type';
 import { PluginSourceEnum, PluginTypeEnum } from './constants';
 import { MethodType } from './controller';
 
@@ -12,7 +13,8 @@ export type PluginItemSchema = {
   avatar: string;
   intro: string;
   updateTime: Date;
-  modules: ModuleItemType[];
+  modules: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
   parentId: string;
   type: `${PluginTypeEnum}`;
   metadata?: {
@@ -20,6 +22,8 @@ export type PluginItemSchema = {
     apiSchemaStr?: string;
     customHeaders?: string;
   };
+  version?: 'v1' | 'v2';
+  nodeVersion?: string;
 };
 
 /* plugin template */
@@ -29,7 +33,7 @@ export type PluginTemplateType = PluginRuntimeType & {
   source: `${PluginSourceEnum}`;
   templateType: FlowNodeTemplateType['templateType'];
   intro: string;
-  modules: ModuleItemType[];
+  nodeVersion: string;
 };
 
 export type PluginRuntimeType = {
@@ -38,5 +42,6 @@ export type PluginRuntimeType = {
   avatar: string;
   showStatus?: boolean;
   isTool?: boolean;
-  modules: ModuleItemType[];
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
 };

@@ -62,7 +62,7 @@ const DatasetSchema = new Schema({
   vectorModel: {
     type: String,
     required: true,
-    default: 'text-embedding-ada-002'
+    default: 'text-embedding-3-small'
   },
   agentModel: {
     type: String,
@@ -89,7 +89,8 @@ const DatasetSchema = new Schema({
         default: 'body'
       }
     }
-  }
+  },
+  externalReadUrl: String
 });
 
 try {

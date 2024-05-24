@@ -1,17 +1,23 @@
-import { InformTypeEnum } from './constants';
+import { InformLevelEnum } from './constants';
 
 export type SendInformProps = {
-  tmbId?: string;
-  type: `${InformTypeEnum}`;
   title: string;
   content: string;
+  level: `${InformLevelEnum}`;
+};
+export type SendInform2UserProps = SendInformProps & {
+  tmbId: string;
+};
+export type SendInform2User = SendInformProps & {
+  type: `${InformTypeEnum}`;
+  tmbId: string;
 };
 
 export type UserInformSchema = {
   _id: string;
   userId: string;
   time: Date;
-  type: `${InformTypeEnum}`;
+  level: `${InformLevelEnum}`;
   title: string;
   content: string;
   read: boolean;

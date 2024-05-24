@@ -4,7 +4,7 @@ description: ' 将 FastGPT 接入私有化模型 ChatGLM2和m3e-large'
 icon: 'model_training'
 draft: false
 toc: true
-weight: 930
+weight: 950
 ---
 
 ## 前言

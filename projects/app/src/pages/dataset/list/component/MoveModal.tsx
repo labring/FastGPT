@@ -18,7 +18,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { getDatasets, putDatasetById, getDatasetPaths } from '@/web/core/dataset/api';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 const MoveModal = ({
   onClose,
@@ -35,7 +35,10 @@ const MoveModal = ({
   const [parentId, setParentId] = useState<string>('');
 
   const { data } = useQuery(['getDatasets', parentId], () => {
-    return Promise.all([getDatasets({ parentId, type: 'folder' }), getDatasetPaths(parentId)]);
+    return Promise.all([
+      getDatasets({ parentId, type: DatasetTypeEnum.folder }),
+      getDatasetPaths(parentId)
+    ]);
   });
   const paths = useMemo(
     () => [

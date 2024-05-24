@@ -19,22 +19,22 @@ import {
   TagLabel
 } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { getTeamsTags } from '@/web/support/user/team/api';
 import { useQuery } from '@tanstack/react-query';
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
 
 const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
-  const { appDetail } = useAppStore();
   const { toast } = useToast();
-  const { replaceAppDetail } = useAppStore();
+  const { appDetail, updateAppDetail } = useContextSelector(AppContext, (v) => v);
   const [selectedTags, setSelectedTags] = useState<string[]>(appDetail?.teamTags || []);
 
   // submit config
   const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
     mutationFn: async () => {
-      await replaceAppDetail(appDetail._id, {
+      await updateAppDetail({
         teamTags: selectedTags
       });
     },
@@ -59,7 +59,7 @@ const TagsEditModal = ({ onClose }: { onClose: () => void }) => {
       style={{ width: '900px' }}
       isOpen
       onClose={onClose}
-      iconSrc="/imgs/module/ai.svg"
+      iconSrc="/imgs/workflow/ai.svg"
       title={t('core.app.Team tags')}
     >
       <ModalBody>

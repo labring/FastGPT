@@ -1,0 +1,52 @@
+{
+  "AI Advanced Settings": "AI Advanced Settings",
+  "AI Settings": "AI Settings",
+  "Advance App TestTip": "Current app may be in advanced orchestration mode\nTo switch to【Simple Mode】please click the save button on the left",
+  "App Detail": "App Details",
+  "Apps Share": "Apps Share",
+  "Basic Settings": "Basic Settings",
+  "Chat Debug": "Chat Debug",
+  "Chat Logs Tips": "Logs will record online, shared and API (chatId required) conversation records for this app",
+  "Chat logs": "Chat Logs",
+  "Confirm Del App Tip": "Confirm to delete this app and all its chat records?",
+  "Connection is invalid": "Connection is invalid",
+  "Connection type is different": "Connection type is different",
+  "Copy Module Config": "Copy Config",
+  "Dataset Quote Template": "Knowledge Base QA Mode",
+  "Export Config Successful": "Config copied, please check for important data",
+  "Export Configs": "Export Configs",
+  "Feedback Count": "User Feedback",
+  "Import Configs": "Import Configs",
+  "Import Configs Failed": "Failed to import configs, please ensure configs are valid!",
+  "Input Field Settings": "Input Field Settings",
+  "Logs Empty": "No logs yet~",
+  "Logs Message Total": "Total Messages",
+  "Logs Source": "Source",
+  "Logs Time": "Time",
+  "Logs Title": "Title",
+  "Mark Count": "Marked Answer Count",
+  "My Apps": "My Apps",
+  "Output Field Settings": "Output Field Settings",
+  "Paste Config": "Paste Config",
+  "To Chat": "Go to Chat",
+  "To Settings": "View Details",
+  "Variable Key Repeat Tip": "Variable key is duplicate",
+  "app": {
+    "modules": {
+      "click to update": "click to update",
+      "has new version": "has new version"
+    }
+  },
+  "module": {
+    "Combine Modules": "Combine Modules",
+    "Confirm Sync": "Using the latest template will overwrite the existing one and may result in the loss of some previous configuration information. Please confirm.",
+    "Custom Title Tip": "This title will be displayed during the conversation",
+    "My Modules": "My Modules",
+    "No Modules": "No modules yet~",
+    "System Module": "System Module",
+    "type": "\"{{type}}\" type\n{{description}}"
+  },
+  "modules": {
+    "Title is required": "Module name cannot be empty"
+  }
+}

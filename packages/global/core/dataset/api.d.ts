@@ -11,31 +11,42 @@ export type DatasetUpdateBody = {
   intro?: string;
   permission?: DatasetSchemaType['permission'];
   agentModel?: LLMModelItemType;
-  websiteConfig?: DatasetSchemaType['websiteConfig'];
   status?: DatasetSchemaType['status'];
+
+  websiteConfig?: DatasetSchemaType['websiteConfig'];
+  externalReadUrl?: DatasetSchemaType['externalReadUrl'];
 };
 
 /* ================= collection ===================== */
 export type DatasetCollectionChunkMetadataType = {
   parentId?: string;
-  trainingType?: `${TrainingModeEnum}`;
+  trainingType?: TrainingModeEnum;
   chunkSize?: number;
   chunkSplitter?: string;
   qaPrompt?: string;
   metadata?: Record<string, any>;
 };
+
+// create collection params
 export type CreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
   name: string;
-  type: `${DatasetCollectionTypeEnum}`;
+  type: DatasetCollectionTypeEnum;
+
+  tags?: string[];
+
   fileId?: string;
   rawLink?: string;
+  externalFileId?: string;
+
+  externalFileUrl?: string;
   rawTextLength?: number;
   hashRawText?: string;
 };
 
 export type ApiCreateDatasetCollectionParams = DatasetCollectionChunkMetadataType & {
   datasetId: string;
+  tags?: string[];
 };
 export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   name: string;
@@ -44,13 +55,22 @@ export type TextCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams
 export type LinkCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
   link: string;
 };
+export type FileIdCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  fileId: string;
+};
 export type FileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
-  name: string;
-  rawTextLength: number;
-  hashRawText: string;
-
   fileMetadata?: Record<string, any>;
   collectionMetadata?: Record<string, any>;
+};
+export type CsvTableCreateDatasetCollectionParams = {
+  datasetId: string;
+  parentId?: string;
+  fileId: string;
+};
+export type ExternalFileCreateDatasetCollectionParams = ApiCreateDatasetCollectionParams & {
+  externalFileId?: string;
+  externalFileUrl: string;
+  filename?: string;
 };
 
 /* ================= data ===================== */
@@ -74,7 +94,7 @@ export type PostWebsiteSyncParams = {
 export type PushDatasetDataProps = {
   collectionId: string;
   data: PushDatasetDataChunkProps[];
-  trainingMode: `${TrainingModeEnum}`;
+  trainingMode: TrainingModeEnum;
   prompt?: string;
   billId?: string;
 };

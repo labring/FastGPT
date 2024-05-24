@@ -25,6 +25,8 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
+import { useChatProviderStore } from '../Provider';
+import Avatar from '@/components/Avatar';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -56,11 +58,9 @@ const ChatItem = ({
     status: `${ChatStatusEnum}`;
     name: string;
   };
-  isLastChild?: boolean;
   questionGuides?: string[];
   children?: React.ReactNode;
 } & ChatControllerProps) => {
-  const theme = useTheme();
   const styleMap: BoxProps =
     type === ChatRoleEnum.Human
       ? {
@@ -77,7 +77,9 @@ const ChatItem = ({
           textAlign: 'left',
           bg: 'myGray.50'
         };
-  const { chat, isChatting } = chatControllerProps;
+
+  const { isChatting } = useChatProviderStore();
+  const { chat } = chatControllerProps;
 
   const ContentCard = useMemo(() => {
     if (type === 'Human') {
@@ -90,15 +92,17 @@ const ChatItem = ({
         </>
       );
     }
+
     /* AI */
     return (
-      <Flex flexDirection={'column'} gap={2}>
+      <Flex flexDirection={'column'} key={chat.dataId} gap={2}>
         {chat.value.map((value, i) => {
           const key = `${chat.dataId}-ai-${i}`;
-          if (value.text) {
-            let source = value.text?.content || '';
 
-            if (!source && chat.value.length > 1) return <></>;
+          if (value.text) {
+            let source = (value.text?.content || '').trim();
+
+            if (!source && chat.value.length > 1) return null;
 
             if (
               isLastChild &&
@@ -137,6 +141,7 @@ ${JSON.stringify(questionGuides)}`;
                       return tool.response;
                     }
                   })();
+
                   return (
                     <Box key={tool.id}>
                       <Accordion allowToggle>
@@ -153,7 +158,7 @@ ${JSON.stringify(questionGuides)}`;
                               color: 'primary.600'
                             }}
                           >
-                            <Image src={tool.toolAvatar} alt={''} w={'14px'} mr={2} />
+                            <Avatar src={tool.toolAvatar} borderRadius={'md'} w={'14px'} mr={2} />
                             <Box mr={1}>{tool.toolName}</Box>
                             {isChatting && !tool.response && (
                               <MyIcon name={'common/loading'} w={'14px'} />
@@ -169,7 +174,7 @@ ${JSON.stringify(questionGuides)}`;
                             maxH={'500px'}
                             overflowY={'auto'}
                           >
-                            {toolParams && (
+                            {toolParams && toolParams !== '{}' && (
                               <Markdown
                                 source={`~~~json#Input
 ${toolParams}`}
@@ -190,6 +195,7 @@ ${toolResponse}`}
               </Box>
             );
           }
+          return null;
         })}
       </Flex>
     );
@@ -206,7 +212,7 @@ ${toolResponse}`}
       <Flex w={'100%'} alignItems={'center'} gap={2} justifyContent={styleMap.justifyContent}>
         {isChatting && type === ChatRoleEnum.AI && isLastChild ? null : (
           <Box order={styleMap.order} ml={styleMap.ml}>
-            <ChatController {...chatControllerProps} />
+            <ChatController {...chatControllerProps} isLastChild={isLastChild} />
           </Box>
         )}
         <ChatAvatar src={avatar} type={type} />

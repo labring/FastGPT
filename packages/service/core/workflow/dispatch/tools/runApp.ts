@@ -1,26 +1,31 @@
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import type { ModuleDispatchProps } from '@fastgpt/global/core/module/type.d';
-import { SelectAppItemType } from '@fastgpt/global/core/module/type';
+import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
+import { SelectAppItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { dispatchWorkFlow } from '../index';
 import { MongoApp } from '../../../../core/app/schema';
 import { responseWrite } from '../../../../common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { SseResponseEventEnum } from '@fastgpt/global/core/module/runtime/constants';
-import { textAdaptGptResponse } from '@fastgpt/global/core/module/runtime/utils';
-import { ModuleInputKeyEnum, ModuleOutputKeyEnum } from '@fastgpt/global/core/module/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/module/runtime/constants';
-import { getHistories, setEntryEntries } from '../utils';
+import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  getDefaultEntryNodeIds,
+  initWorkflowEdgeStatus,
+  storeNodes2RuntimeNodes,
+  textAdaptGptResponse
+} from '@fastgpt/global/core/workflow/runtime/utils';
+import { NodeInputKeyEnum, NodeOutputKeyEnum } from '@fastgpt/global/core/workflow/constants';
+import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import { getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
-import { DispatchNodeResultType } from '@fastgpt/global/core/module/runtime/type';
+import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 
 type Props = ModuleDispatchProps<{
-  [ModuleInputKeyEnum.userChatInput]: string;
-  [ModuleInputKeyEnum.history]?: ChatItemType[] | number;
+  [NodeInputKeyEnum.userChatInput]: string;
+  [NodeInputKeyEnum.history]?: ChatItemType[] | number;
   app: SelectAppItemType;
 }>;
 type Response = DispatchNodeResultType<{
-  [ModuleOutputKeyEnum.answerText]: string;
-  [ModuleOutputKeyEnum.history]: ChatItemType[];
+  [NodeOutputKeyEnum.answerText]: string;
+  [NodeOutputKeyEnum.history]: ChatItemType[];
 }>;
 
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
@@ -30,7 +35,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     stream,
     detail,
     histories,
-    inputFiles,
+    query,
     params: { userChatInput, history, app }
   } = props;
   let start = Date.now();
@@ -48,7 +53,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     return Promise.reject('App not found');
   }
 
-  if (stream) {
+  if (res && stream) {
     responseWrite({
       res,
       event: detail ? SseResponseEventEnum.answer : undefined,
@@ -63,11 +68,12 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
     appId: app.id,
-    modules: setEntryEntries(appData.modules),
-    runtimeModules: undefined, // must reset
+    runtimeNodes: storeNodes2RuntimeNodes(appData.modules, getDefaultEntryNodeIds(appData.modules)),
+    runtimeEdges: initWorkflowEdgeStatus(appData.edges),
     histories: chatHistories,
-    inputFiles,
-    startParams: {
+    query,
+    variables: {
+      ...props.variables,
       userChatInput
     }
   });
@@ -75,10 +81,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const completeMessages = chatHistories.concat([
     {
       obj: ChatRoleEnum.Human,
-      value: runtimePrompt2ChatsValue({
-        files: inputFiles,
-        text: userChatInput
-      })
+      value: query
     },
     {
       obj: ChatRoleEnum.AI,

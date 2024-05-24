@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 import { useChatBox } from '@/components/ChatBox/hooks/useChatBox';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
-import { Menu, MenuButton, MenuList, MenuItem, Box, IconButton } from '@chakra-ui/react';
+import { Box, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
-import MyMenu from '@/components/MyMenu';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 
 const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
   const { t } = useTranslation();

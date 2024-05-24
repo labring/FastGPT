@@ -1,4 +1,4 @@
-import { NextApiRequest } from 'next';
+import { ApiRequestProps } from '../../type/next';
 
 export type ReqHeaderAuthType = {
   cookie?: string;
@@ -9,7 +9,7 @@ export type ReqHeaderAuthType = {
   authorization?: string;
 };
 export type AuthModeType = {
-  req: NextApiRequest;
+  req: ApiRequestProps;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;

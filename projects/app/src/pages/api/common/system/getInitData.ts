@@ -25,8 +25,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       reRankModels:
         global.reRankModels?.map((item) => ({
           ...item,
-          requestUrl: undefined,
-          requestAuth: undefined
+          requestUrl: '',
+          requestAuth: ''
         })) || [],
       whisperModel: global.whisperModel,
       audioSpeechModels: global.audioSpeechModels,
@@ -64,7 +64,10 @@ export async function getInitConfig() {
       initSystemConfig(),
       // getSimpleModeTemplates(),
       getSystemVersion(),
-      getSystemPlugin()
+      getSystemPlugin(),
+
+      // abandon
+      getSystemPluginV1()
     ]);
 
     console.log({
@@ -91,6 +94,7 @@ export async function initSystemConfig() {
   // get config from database
   const config: FastGPTConfigFileType = {
     feConfigs: {
+      ...fileRes?.feConfigs,
       ...defaultFeConfigs,
       ...(dbConfig.feConfigs || {}),
       isPlus: !!FastGPTProUrl
@@ -151,7 +155,7 @@ function getSystemPlugin() {
   const filterFiles = files.filter((item) => item.endsWith('.json'));
 
   // read json file
-  const fileTemplates: PluginTemplateType[] = filterFiles.map((filename) => {
+  const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
     const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
       ...JSON.parse(content),
@@ -160,5 +164,33 @@ function getSystemPlugin() {
     };
   });
 
+  fileTemplates.sort((a, b) => b.weight - a.weight);
+
   global.communityPlugins = fileTemplates;
+}
+function getSystemPluginV1() {
+  if (global.communityPluginsV1 && global.communityPluginsV1.length > 0) return;
+
+  const basePath =
+    process.env.NODE_ENV === 'development'
+      ? 'data/pluginTemplates/v1'
+      : '/app/data/pluginTemplates/v1';
+  // read data/pluginTemplates directory, get all json file
+  const files = readdirSync(basePath);
+  // filter json file
+  const filterFiles = files.filter((item) => item.endsWith('.json'));
+
+  // read json file
+  const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
+    const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
+    return {
+      ...JSON.parse(content),
+      id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
+      source: PluginSourceEnum.community
+    };
+  });
+
+  fileTemplates.sort((a, b) => b.weight - a.weight);
+
+  global.communityPluginsV1 = fileTemplates;
 }

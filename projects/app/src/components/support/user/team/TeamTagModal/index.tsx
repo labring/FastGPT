@@ -15,7 +15,7 @@ import { putUpdateTeam } from '@/web/support/user/team/api';
 import { useFieldArray, useForm } from 'react-hook-form';
 import { useTranslation } from 'next-i18next';
 import type { TeamTagItemType } from '@fastgpt/global/support/user/team/type';
-import { useRequest } from '@/web/common/hooks/useRequest';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { RepeatIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
