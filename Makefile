@@ -1,8 +1,8 @@
 .PHONY: install\
 build_image
 
-IMAGE_NAME = fastgpt
-IMAGE_VERSION = 4.6.8-20240329
+IMAGE_NAME = cmsrllm
+IMAGE_VERSION = 4.8.0-20240524
 IMAGE_TAG = mickeyzhoudocker/${IMAGE_NAME}:${IMAGE_VERSION}
 
 install: 
