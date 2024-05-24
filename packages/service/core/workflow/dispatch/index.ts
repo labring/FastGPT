@@ -28,7 +28,7 @@ import { dispatchQueryExtension } from './tools/queryExternsion';
 import { dispatchRunPlugin } from './plugin/run';
 import { dispatchPluginInput } from './plugin/runInput';
 import { dispatchPluginOutput } from './plugin/runOutput';
-import { valueTypeFormat } from './utils';
+import { removeSystemVariable, valueTypeFormat } from './utils';
 import {
   filterWorkflowEdges,
   checkNodeRunStatus
@@ -418,18 +418,6 @@ export function getSystemVariable({
     cTime: getSystemTime(user.timezone)
   };
 }
-
-/* remove system variable */
-const removeSystemVariable = (variables: Record<string, any>) => {
-  const copyVariables = { ...variables };
-  delete copyVariables.appId;
-  delete copyVariables.chatId;
-  delete copyVariables.responseChatItemId;
-  delete copyVariables.histories;
-  delete copyVariables.cTime;
-
-  return copyVariables;
-};
 
 /* Merge consecutive text messages into one */
 export const mergeAssistantResponseAnswerText = (response: AIChatItemValueItemType[]) => {

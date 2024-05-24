@@ -292,11 +292,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
       });
 
       if (detail) {
-        responseWrite({
-          res,
-          event: SseResponseEventEnum.updateVariables,
-          data: JSON.stringify(newVariables)
-        });
         if (responseDetail) {
           responseWrite({
             res,
@@ -315,7 +310,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
         return assistantResponses;
       })();
       res.json({
-        ...(detail ? { responseData: feResponseData } : {}),
+        ...(detail ? { responseData: feResponseData, newVariables } : {}),
         id: chatId || '',
         model: '',
         usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 1 },

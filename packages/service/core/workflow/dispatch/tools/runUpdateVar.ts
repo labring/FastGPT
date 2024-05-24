@@ -1,19 +1,22 @@
 import { NodeInputKeyEnum, VARIABLE_NODE_ID } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
+import {
+  DispatchNodeResponseKeyEnum,
+  SseResponseEventEnum
+} from '@fastgpt/global/core/workflow/runtime/constants';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
 import { TUpdateListItem } from '@fastgpt/global/core/workflow/template/system/variableUpdate/type';
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
-import { valueTypeFormat } from '../utils';
+import { removeSystemVariable, valueTypeFormat } from '../utils';
+import { responseWrite } from '../../../../common/response';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.updateList]: TUpdateListItem[];
 }>;
+type Response = DispatchNodeResultType<{}>;
 
-export const dispatchUpdateVariable = async (
-  props: Props
-): Promise<DispatchNodeResultType<any>> => {
-  const { params, variables, runtimeNodes } = props;
+export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
+  const { res, detail, params, variables, runtimeNodes } = props;
 
   const { updateList } = params;
   updateList.forEach((item) => {
@@ -50,6 +53,14 @@ export const dispatchUpdateVariable = async (
         });
     }
   });
+
+  if (detail) {
+    responseWrite({
+      res,
+      event: SseResponseEventEnum.updateVariables,
+      data: JSON.stringify(removeSystemVariable(variables))
+    });
+  }
 
   return {
     [DispatchNodeResponseKeyEnum.nodeResponse]: {
