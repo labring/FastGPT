@@ -83,7 +83,7 @@
   "vectorModels": [
     {
       "model": "text-embedding-3-large",
-      "name": "Embedding-2",
+      "name": "Embedding-3-large",
       "avatar": "/imgs/model/openai.svg",
       "charsPointsPrice": 0,
       "defaultToken": 512,
@@ -97,7 +97,7 @@
     },
     {
       "model": "text-embedding-3-small",
-      "name": "Embedding-2",
+      "name": "Embedding-3-small",
       "avatar": "/imgs/model/openai.svg",
       "charsPointsPrice": 0,
       "defaultToken": 512,
