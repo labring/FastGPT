@@ -82,9 +82,15 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
         >
           <Image src={LOGO_ICON} w={'24px'} alt={'icon'} />
         </Flex>
-        <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
-          {feConfigs?.systemTitle}
-        </Box>
+
+        <Flex direction={'column'}>
+          <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
+            {feConfigs?.systemTitle}
+          </Box>
+          <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'normal'}>
+            {feConfigs?.systemSubTitle}
+          </Box>
+        </Flex>
       </Flex>
       {children}
       <Box flex={1} />
