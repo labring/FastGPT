@@ -1,25 +1,25 @@
-## 前提
+## Premise
 
-由于 FastGPT 采用了 monorepo 的方式进行管理，所以在开发时建议先安装`make`。
+Since FastGPT is managed in the same way as monorepo, it is recommended to install 'make' first during development.
 
-monorepo 项目名：
+monorepo Project Name:
 
-- app: 主项目
-- ......
+- app: main project
+-......
 
 ## Dev
 
 ```sh
-# 给自动化脚本代码执行权限(非 linux 系统, 可以手动执行里面的 postinstall.sh 文件内容)
+# Give automatic script code execution permission (on non-Linux systems, you can manually execute the postinstall.sh file content)
 chmod -R +x ./scripts/
-# 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
+# Executing under the code root directory installs all dependencies within the root package, projects, and packages
 pnpm i
 
-# 非 Make 运行
+# Not make cmd
 cd projects/app
 pnpm dev
 
-# Make 运行
+# Make cmd
 make dev name=app
 ```
 
