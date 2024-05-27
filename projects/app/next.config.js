@@ -89,7 +89,7 @@ const nextConfig = {
   transpilePackages: ['@fastgpt/*', 'ahooks'],
   experimental: {
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
-    serverComponentsExternalPackages: ['mongoose', 'pg'],
+    serverComponentsExternalPackages: ['mongoose', 'pg', '@node-rs/jieba'],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };
