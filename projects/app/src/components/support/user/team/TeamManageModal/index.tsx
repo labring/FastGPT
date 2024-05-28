@@ -4,7 +4,6 @@ import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import {
   getTeamMembers,
-  putUpdateMember,
   delRemoveMember,
   getTeamList,
   delLeaveTeam,
@@ -68,16 +67,9 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
     ['getMembers', userInfo?.team?.teamId],
     () => {
       if (!userInfo?.team?.teamId) return [];
-      return getTeamMembers(userInfo.team.teamId);
+      return getTeamMembers();
     }
   );
-
-  const { mutate: onUpdateMember, isLoading: isLoadingUpdateMember } = useRequest({
-    mutationFn: putUpdateMember,
-    onSuccess() {
-      refetchMembers();
-    }
-  });
 
   const { mutate: onRemoveMember, isLoading: isLoadingRemoveMember } = useRequest({
     mutationFn: delRemoveMember,
@@ -147,13 +139,7 @@ const TeamManageModal = ({ onClose }: { onClose: () => void }) => {
           <TeamList />
           <TeamCard />
           <Loading
-            loading={
-              isLoadingUpdateMember ||
-              isLoadingRemoveMember ||
-              isLoadingTeams ||
-              isLoadingLeaveTeam ||
-              isSwitchTeam
-            }
+            loading={isLoadingRemoveMember || isLoadingTeams || isLoadingLeaveTeam || isSwitchTeam}
             fixed={false}
           />
         </Box>
