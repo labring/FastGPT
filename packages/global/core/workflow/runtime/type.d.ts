@@ -31,6 +31,7 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
+  error?: Record<string, any>;
   customInputs?: Record<string, any>;
   customOutputs?: Record<string, any>;
 

@@ -185,6 +185,7 @@ export const ResponseBox = React.memo(function ResponseBox({
             label={t('core.chat.response.context total length')}
             value={activeModule?.contextTotalLen}
           />
+          <Row label={workflowT('response.Error')} value={activeModule?.error} />
         </>
 
         {/* ai chat */}
