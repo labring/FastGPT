@@ -50,7 +50,7 @@ import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/c
 import { formatChatValue2InputType } from './utils';
 import { textareaMinH } from './constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import ChatProvider, { useChatProviderStore } from './Provider';
+import ChatProvider, { ChatBoxContext } from './Provider';
 
 import ChatItem from './components/ChatItem';
 
@@ -58,6 +58,7 @@ import dynamic from 'next/dynamic';
 import { useCreation } from 'ahooks';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StreamResponseType } from '@/web/common/api/fetch';
+import { useContextSelector } from 'use-context-selector';
 
 const ResponseTags = dynamic(() => import('./components/ResponseTags'));
 const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
@@ -156,7 +157,7 @@ const ChatBox = (
     chatHistories,
     setChatHistories,
     isChatting
-  } = useChatProviderStore();
+  } = useContextSelector(ChatBoxContext, (v) => v);
 
   // compute variable input is finish.
   const chatForm = useForm<ChatBoxInputFormType>({

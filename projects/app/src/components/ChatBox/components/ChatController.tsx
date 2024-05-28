@@ -7,7 +7,8 @@ import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { formatChatValue2InputType } from '../utils';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
-import { useChatProviderStore } from '../Provider';
+import { ChatBoxContext } from '../Provider';
+import { useContextSelector } from 'use-context-selector';
 
 export type ChatControllerProps = {
   isLastChild: boolean;
@@ -45,7 +46,7 @@ const ChatController = ({
     cancelAudio,
     audioPlayingChatId,
     setAudioPlayingChatId
-  } = useChatProviderStore();
+  } = useContextSelector(ChatBoxContext, (v) => v);
   const controlIconStyle = {
     w: '14px',
     cursor: 'pointer',

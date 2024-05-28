@@ -1,4 +1,4 @@
-import React, { useContext, createContext, useState, useMemo } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import {
@@ -14,6 +14,7 @@ import {
   defaultTTSConfig,
   defaultWhisperConfig
 } from '@fastgpt/global/core/app/constants';
+import { createContext } from 'use-context-selector';
 
 type useChatStoreType = OutLinkChatAuthProps & {
   welcomeText: string;
@@ -45,7 +46,7 @@ type useChatStoreType = OutLinkChatAuthProps & {
   isChatting: boolean;
   chatInputGuide: ChatInputGuideConfigType;
 };
-const StateContext = createContext<useChatStoreType>({
+export const ChatBoxContext = createContext<useChatStoreType>({
   welcomeText: '',
   variableList: [],
   questionGuide: false,
@@ -107,8 +108,6 @@ export type ChatProviderProps = OutLinkChatAuthProps & {
   chatId?: string;
   children: React.ReactNode;
 };
-
-export const useChatProviderStore = () => useContext(StateContext);
 
 const Provider = ({
   shareId,
@@ -185,7 +184,7 @@ const Provider = ({
     chatInputGuide
   };
 
-  return <StateContext.Provider value={value}>{children}</StateContext.Provider>;
+  return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;
 };
 
 export default React.memo(Provider);
