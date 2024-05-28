@@ -15,14 +15,12 @@ import type {
   ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type.d';
-import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { Box, Flex, Checkbox } from '@chakra-ui/react';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { chats2GPTMessages } from '@fastgpt/global/core/chat/adapt';
 import { VariableInputEnum } from '@fastgpt/global/core/workflow/constants';
-import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { useForm } from 'react-hook-form';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -32,7 +30,7 @@ import {
   updateChatAdminFeedback,
   updateChatUserFeedback
 } from '@/web/core/chat/api';
-import type { AdminMarkType } from './SelectMarkCollection';
+import type { AdminMarkType } from './components/SelectMarkCollection';
 
 import MyTooltip from '../MyTooltip';
 
@@ -61,10 +59,10 @@ import { useCreation } from 'ahooks';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
 import type { StreamResponseType } from '@/web/common/api/fetch';
 
-const ResponseTags = dynamic(() => import('./ResponseTags'));
-const FeedbackModal = dynamic(() => import('./FeedbackModal'));
-const ReadFeedbackModal = dynamic(() => import('./ReadFeedbackModal'));
-const SelectMarkCollection = dynamic(() => import('./SelectMarkCollection'));
+const ResponseTags = dynamic(() => import('./components/ResponseTags'));
+const FeedbackModal = dynamic(() => import('./components/FeedbackModal'));
+const ReadFeedbackModal = dynamic(() => import('./components/ReadFeedbackModal'));
+const SelectMarkCollection = dynamic(() => import('./components/SelectMarkCollection'));
 const Empty = dynamic(() => import('./components/Empty'));
 const WelcomeBox = dynamic(() => import('./components/WelcomeBox'));
 const VariableInput = dynamic(() => import('./components/VariableInput'));

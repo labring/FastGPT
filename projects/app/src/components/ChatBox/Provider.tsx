@@ -1,7 +1,6 @@
-import React, { useContext, createContext, useState, useMemo, useEffect, useCallback } from 'react';
+import React, { useContext, createContext, useState, useMemo } from 'react';
 import { useAudioPlay } from '@/web/common/utils/voice';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
-import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import {
   AppChatConfigType,
   AppTTSConfigType,

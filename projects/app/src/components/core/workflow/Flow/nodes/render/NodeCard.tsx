@@ -2,10 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Box, Button, Card, Flex } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
-import type {
-  FlowNodeItemType,
-  FlowNodeTemplateType
-} from '@fastgpt/global/core/workflow/type/index.d';
+import type { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { useTranslation } from 'next-i18next';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -16,7 +13,7 @@ import { ToolTargetHandle } from './Handle/ToolHandle';
 import { useEditTextarea } from '@fastgpt/web/hooks/useEditTextarea';
 import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/ConnectionHandle';
 import { useDebug } from '../../hooks/useDebug';
-import { ResponseBox } from '@/components/ChatBox/WholeResponseModal';
+import { ResponseBox } from '@/components/ChatBox/components/WholeResponseModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { getPreviewPluginModule } from '@/web/core/plugin/api';
 import { storeNode2FlowNode, updateFlowNodeVersion } from '@/web/core/workflow/utils';
@@ -27,7 +24,6 @@ import { useI18n } from '@/web/context/I18n';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@/components/MyTooltip';
-import { isEqual } from 'lodash';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = FlowNodeItemType & {
