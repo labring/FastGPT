@@ -1,3 +1,12 @@
 {
-  "Field required": "必填"
+  "Code": "代码",
+  "Field required": "必填",
+  "code": {
+    "Reset template": "还原模板",
+    "Reset template confirm": "确认还原代码模板？请注意保存当前代码。"
+  },
+  "response": {
+    "Custom inputs": "自定义输入",
+    "Custom outputs": "自定义输出"
+  }
 }

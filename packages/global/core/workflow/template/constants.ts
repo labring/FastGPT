@@ -22,6 +22,7 @@ import type { FlowNodeTemplateType } from '../type';
 import { LafModule } from './system/laf';
 import { IfElseNode } from './system/ifElse/index';
 import { VariableUpdateNode } from './system/variableUpdate';
+import { CodeNode } from './system/sandbox';
 
 /* app flow module templates */
 export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -40,7 +41,8 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   AiQueryExtension,
   LafModule,
   IfElseNode,
-  VariableUpdateNode
+  VariableUpdateNode,
+  CodeNode
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
@@ -59,7 +61,8 @@ export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
   AiQueryExtension,
   LafModule,
   IfElseNode,
-  VariableUpdateNode
+  VariableUpdateNode,
+  CodeNode
 ];
 
 /* all module */
@@ -84,5 +87,6 @@ export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
   AiQueryExtension,
   LafModule,
   IfElseNode,
-  VariableUpdateNode
+  VariableUpdateNode,
+  CodeNode
 ];
