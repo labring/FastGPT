@@ -1,5 +1,10 @@
 {
+  "Code": "Code",
   "Field required": "Required",
+  "code": {
+    "Reset template": "Reset template",
+    "Reset template confirm": "Are you sure to restore the code template? Be careful to save the current code."
+  },
   "response": {
     "Custom inputs": "Custom inputs",
     "Custom outputs": "Custom outputs"

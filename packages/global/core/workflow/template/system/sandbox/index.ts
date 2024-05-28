@@ -13,9 +13,10 @@ import { FlowNodeTemplateType } from '../../../type';
 import { getHandleConfig } from '../../utils';
 import { Input_Template_DynamicInput } from '../../input';
 import { Output_Template_AddOutput } from '../../output';
+import { JS_TEMPLATE } from './constants';
 
 export const CodeNode: FlowNodeTemplateType = {
-  id: FlowNodeTypeEnum.ifElseNode,
+  id: FlowNodeTypeEnum.code,
   templateType: FlowNodeTemplateTypeEnum.tools,
   flowNodeType: FlowNodeTypeEnum.code,
   sourceHandle: getHandleConfig(true, true, true, true),
@@ -42,8 +43,9 @@ export const CodeNode: FlowNodeTemplateType = {
     },
     {
       key: NodeInputKeyEnum.code,
-      renderTypeList: [FlowNodeInputTypeEnum.textarea],
-      label: '代码内容'
+      renderTypeList: [FlowNodeInputTypeEnum.custom],
+      label: '',
+      value: JS_TEMPLATE
     }
   ],
   outputs: [
