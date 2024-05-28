@@ -7,6 +7,7 @@
   },
   "response": {
     "Custom inputs": "自定义输入",
-    "Custom outputs": "自定义输出"
+    "Custom outputs": "自定义输出",
+    "Error": "错误信息"
   }
 }

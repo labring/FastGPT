@@ -183,7 +183,7 @@ ${description ? `- ${description}` : ''}
   > = {};
   extractKeys.forEach((item) => {
     properties[item.key] = {
-      type: 'string',
+      type: item.valueType || 'string',
       description: item.desc,
       ...(item.enum ? { enum: item.enum.split('\n') } : {})
     };
@@ -198,7 +198,7 @@ ${description ? `- ${description}` : ''}
       required: []
     }
   };
-
+  console.log(properties);
   return {
     filterMessages,
     agentFunction
@@ -319,12 +319,16 @@ const completions = async ({
             content: replaceVariable(extractModel.customExtractPrompt || Prompt_ExtractJson, {
               description,
               json: extractKeys
-                .map(
-                  (item) =>
-                    `{"key":"${item.key}", "description":"${item.desc}"${
-                      item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
-                    }}`
-                )
+                .map((item) => {
+                  const valueType = item.valueType || 'string';
+                  if (valueType !== 'string' && valueType !== 'number') {
+                    item.enum = undefined;
+                  }
+
+                  return `{"type":${item.valueType || 'string'}, "key":"${item.key}", "description":"${item.desc}" ${
+                    item.enum ? `, "enum":"[${item.enum.split('\n')}]"` : ''
+                  }}`;
+                })
                 .join('\n'),
               text: `${histories.map((item) => `${item.obj}:${chatValue2RuntimePrompt(item.value).text}`).join('\n')}
 Human: ${content}`
@@ -365,6 +369,7 @@ Human: ${content}`
       arg: json5.parse(jsonStr) as Record<string, any>
     };
   } catch (error) {
+    console.log('Extract error, ai answer:', answer);
     console.log(error);
     return {
       rawResponse: answer,

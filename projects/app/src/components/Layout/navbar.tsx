@@ -102,7 +102,13 @@ const Navbar = ({ unread }: { unread: number }) => {
         cursor={'pointer'}
         onClick={() => router.push('/account')}
       >
-        <Avatar w={'36px'} h={'36px'} src={userInfo?.avatar} fallbackSrc={HUMAN_ICON} />
+        <Avatar
+          w={'36px'}
+          h={'36px'}
+          src={userInfo?.avatar}
+          fallbackSrc={HUMAN_ICON}
+          borderRadius={'50%'}
+        />
       </Box>
       {/* 导航列表 */}
       <Box flex={1}>

@@ -1,14 +1,14 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, useTheme, Flex, Image, BoxProps } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 
-import Tabs from '../Tabs';
+import Tabs from '../../Tabs';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTooltip from '../MyTooltip';
+import MyTooltip from '../../MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import Markdown from '../Markdown';
+import Markdown from '../../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
@@ -185,6 +185,7 @@ export const ResponseBox = React.memo(function ResponseBox({
             label={t('core.chat.response.context total length')}
             value={activeModule?.contextTotalLen}
           />
+          <Row label={workflowT('response.Error')} value={activeModule?.error} />
         </>
 
         {/* ai chat */}

@@ -45,7 +45,11 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
     }
   } catch (error) {
     return {
-      [NodeOutputKeyEnum.error]: formatHttpError(error)
+      [NodeOutputKeyEnum.error]: formatHttpError(error),
+      [DispatchNodeResponseKeyEnum.nodeResponse]: {
+        customInputs: customVariables,
+        error: formatHttpError(error)
+      }
     };
   }
 };

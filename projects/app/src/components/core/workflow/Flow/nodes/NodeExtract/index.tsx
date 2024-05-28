@@ -18,7 +18,6 @@ import NodeCard from '../render/NodeCard';
 import Container from '../../components/Container';
 import { AddIcon } from '@chakra-ui/icons';
 import RenderInput from '../render/RenderInput';
-import Divider from '../../components/Divider';
 import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import RenderOutput from '../render/RenderOutput';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -79,7 +78,7 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
               <Table bg={'white'}>
                 <Thead>
                   <Tr>
-                    <Th bg={'myGray.50'}>字段 key</Th>
+                    <Th bg={'myGray.50'}>字段名</Th>
                     <Th bg={'myGray.50'}>字段描述</Th>
                     <Th bg={'myGray.50'}>必须</Th>
                     <Th bg={'myGray.50'}></Th>

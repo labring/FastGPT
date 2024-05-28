@@ -118,7 +118,6 @@ function responseError(
       })
         .then((res) => {
           putUpdateTeam({
-            teamId: useUserStore.getState().userInfo?.team.teamId || '',
             lafAccount: {
               ...useUserStore.getState().userInfo?.team?.lafAccount,
               token: res
