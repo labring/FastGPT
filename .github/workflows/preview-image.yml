@@ -47,7 +47,7 @@ jobs:
           -f projects/app/Dockerfile \
           --label "org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/FastGPT" \
           --label "org.opencontainers.image.description=fastgpt-pr imae" \
-          --label "org.opencontainers.image.licenses=Apache" \g
+          --label "org.opencontainers.image.licenses=Apache" \
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \

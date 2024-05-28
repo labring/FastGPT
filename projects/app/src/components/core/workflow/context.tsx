@@ -70,6 +70,8 @@ type WorkflowContextType = {
     sourceHandle?: string | undefined;
     targetHandle?: string | undefined;
   }) => void;
+  hoverEdgeId?: string;
+  setHoverEdgeId: React.Dispatch<React.SetStateAction<string | undefined>>;
 
   // connect
   connectingEdge?: OnConnectStartParams;
@@ -216,6 +218,9 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   isShowVersionHistories: false,
   setIsShowVersionHistories: function (value: React.SetStateAction<boolean>): void {
     throw new Error('Function not implemented.');
+  },
+  setHoverEdgeId: function (value: React.SetStateAction<string | undefined>): void {
+    throw new Error('Function not implemented.');
   }
 });
 
@@ -233,6 +238,7 @@ const WorkflowContextProvider = ({
 
   /* edge */
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [hoverEdgeId, setHoverEdgeId] = useState<string>();
   const onDelEdge = useCallback(
     ({
       nodeId,
@@ -673,6 +679,8 @@ const WorkflowContextProvider = ({
         // edge
         edges,
         setEdges,
+        hoverEdgeId,
+        setHoverEdgeId,
         onEdgesChange,
         connectingEdge,
         setConnectingEdge,
