@@ -22,8 +22,7 @@ export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
   GET<TeamItemType[]>(`/proApi/support/user/team/list`, { status });
 export const postCreateTeam = (data: CreateTeamProps) =>
   POST<string>(`/proApi/support/user/team/create`, data);
-export const putUpdateTeam = (data: UpdateTeamProps) =>
-  PUT(`/proApi/support/user/team/update`, data);
+export const putUpdateTeam = (data: UpdateTeamProps) => PUT(`/support/user/team/update`, data);
 export const putSwitchTeam = (teamId: string) =>
   PUT<string>(`/proApi/support/user/team/switch`, { teamId });
 

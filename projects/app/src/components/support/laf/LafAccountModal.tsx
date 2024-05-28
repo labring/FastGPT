@@ -84,7 +84,6 @@ const LafAccountModal = ({
     mutationFn: async (data: LafAccountType) => {
       if (!userInfo?.team.teamId) return;
       return putUpdateTeam({
-        teamId: userInfo?.team.teamId,
         lafAccount: data
       });
     },
@@ -142,7 +141,6 @@ const LafAccountModal = ({
               onClick={() => {
                 onResetForm();
                 putUpdateTeam({
-                  teamId: userInfo?.team.teamId || '',
                   lafAccount: { token: '', appid: '', pat: '' }
                 });
               }}
