@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Box, useTheme, Flex, Image } from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, useTheme, Flex, Image, BoxProps } from '@chakra-ui/react';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
@@ -12,42 +12,68 @@ import Markdown from '../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
+import { useI18n } from '@/web/context/I18n';
 
+function RowRender({
+  children,
+  mb,
+  label,
+  ...props
+}: { children: React.ReactNode; label: string } & BoxProps) {
+  return (
+    <Box mb={3}>
+      <Box fontSize={['sm', 'md']} mb={mb} flex={'0 0 90px'}>
+        {label}:
+      </Box>
+      <Box borderRadius={'sm'} fontSize={'sm'} bg={'myGray.50'} {...props}>
+        {children}
+      </Box>
+    </Box>
+  );
+}
 function Row({
   label,
   value,
   rawDom
 }: {
   label: string;
-  value?: string | number | boolean;
+  value?: string | number | boolean | object;
   rawDom?: React.ReactNode;
 }) {
-  const { t } = useTranslation();
   const theme = useTheme();
   const val = value || rawDom;
-  const strValue = `${value}`;
-  const isCodeBlock = strValue.startsWith('~~~json');
+  const isObject = typeof value === 'object';
 
-  return val !== undefined && val !== '' && val !== 'undefined' ? (
-    <Box mb={3}>
-      <Box fontSize={['sm', 'md']} mb={isCodeBlock ? 0 : 1} flex={'0 0 90px'}>
-        {t(label)}:
-      </Box>
-      <Box
-        borderRadius={'sm'}
-        fontSize={'sm'}
-        bg={'myGray.50'}
-        {...(isCodeBlock
-          ? { transform: 'translateY(-3px)' }
-          : value
-            ? { px: 3, py: 2, border: theme.borders.base }
-            : {})}
-      >
-        {value && <Markdown source={strValue} />}
+  const formatValue = useMemo(() => {
+    if (isObject) {
+      return `~~~json\n${JSON.stringify(value, null, 2)}`;
+    }
+    return `${value}`;
+  }, [isObject, value]);
+
+  if (rawDom) {
+    return (
+      <RowRender label={label} mb={1}>
         {rawDom}
-      </Box>
-    </Box>
-  ) : null;
+      </RowRender>
+    );
+  }
+
+  if (val === undefined || val === '' || val === 'undefined') return null;
+
+  return (
+    <RowRender
+      label={label}
+      mb={isObject ? 0 : 1}
+      {...(isObject
+        ? { transform: 'translateY(-3px)' }
+        : value
+          ? { px: 3, py: 2, border: theme.borders.base }
+          : {})}
+    >
+      <Markdown source={formatValue} />
+    </RowRender>
+  );
 }
 
 const WholeResponseModal = ({
@@ -98,6 +124,7 @@ export const ResponseBox = React.memo(function ResponseBox({
 }) {
   const theme = useTheme();
   const { t } = useTranslation();
+  const { workflowT } = useI18n();
 
   const list = useMemo(
     () =>
@@ -251,47 +278,26 @@ export const ResponseBox = React.memo(function ResponseBox({
             label={t('core.chat.response.module extract description')}
             value={activeModule?.extractDescription}
           />
-          {activeModule?.extractResult && (
-            <Row
-              label={t('core.chat.response.module extract result')}
-              value={`~~~json\n${JSON.stringify(activeModule?.extractResult, null, 2)}`}
-            />
-          )}
+          <Row
+            label={t('core.chat.response.module extract result')}
+            value={activeModule?.extractResult}
+          />
         </>
 
         {/* http */}
         <>
-          {activeModule?.headers && (
-            <Row
-              label={'Headers'}
-              value={`~~~json\n${JSON.stringify(activeModule?.headers, null, 2)}`}
-            />
-          )}
-          {activeModule?.params && (
-            <Row
-              label={'Params'}
-              value={`~~~json\n${JSON.stringify(activeModule?.params, null, 2)}`}
-            />
-          )}
-          {activeModule?.body && (
-            <Row label={'Body'} value={`~~~json\n${JSON.stringify(activeModule?.body, null, 2)}`} />
-          )}
-          {activeModule?.httpResult && (
-            <Row
-              label={t('core.chat.response.module http result')}
-              value={`~~~json\n${JSON.stringify(activeModule?.httpResult, null, 2)}`}
-            />
-          )}
+          <Row label={'Headers'} value={activeModule?.headers} />
+          <Row label={'Params'} value={activeModule?.params} />
+          <Row label={'Body'} value={activeModule?.body} />
+          <Row
+            label={t('core.chat.response.module http result')}
+            value={activeModule?.httpResult}
+          />
         </>
 
         {/* plugin */}
         <>
-          {activeModule?.pluginOutput && (
-            <Row
-              label={t('core.chat.response.plugin output')}
-              value={`~~~json\n${JSON.stringify(activeModule?.pluginOutput, null, 2)}`}
-            />
-          )}
+          <Row label={t('core.chat.response.plugin output')} value={activeModule?.pluginOutput} />
           {activeModule?.pluginDetail && activeModule?.pluginDetail.length > 0 && (
             <Row
               label={t('core.chat.response.Plugin response detail')}
@@ -310,6 +316,10 @@ export const ResponseBox = React.memo(function ResponseBox({
             rawDom={<ResponseBox response={activeModule.toolDetail} showDetail={showDetail} />}
           />
         )}
+
+        {/* code */}
+        <Row label={workflowT('response.Custom inputs')} value={activeModule?.customInputs} />
+        <Row label={workflowT('response.Custom outputs')} value={activeModule?.customOutputs} />
       </Box>
     </>
   );

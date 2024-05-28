@@ -9,7 +9,7 @@ import {
   SseResponseEventEnum
 } from '@fastgpt/global/core/workflow/runtime/constants';
 import axios from 'axios';
-import { valueTypeFormat } from '../utils';
+import { formatHttpError, valueTypeFormat } from '../utils';
 import { SERVICE_LOCAL_HOST } from '../../../../common/system/tools';
 import { addLog } from '../../../../common/system/log';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
@@ -309,15 +309,4 @@ function removeUndefinedSign(obj: Record<string, any>) {
     }
   }
   return obj;
-}
-function formatHttpError(error: any) {
-  return {
-    message: error?.message,
-    name: error?.name,
-    method: error?.config?.method,
-    baseURL: error?.config?.baseURL,
-    url: error?.config?.url,
-    code: error?.code,
-    status: error?.status
-  };
 }

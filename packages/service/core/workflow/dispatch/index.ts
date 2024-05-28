@@ -46,6 +46,7 @@ import { dispatchSystemConfig } from './init/systemConfig';
 import { dispatchUpdateVariable } from './tools/runUpdateVar';
 import { addLog } from '../../../common/system/log';
 import { surrenderProcess } from '../../../common/system/tools';
+import { dispatchRunCode } from './code/run';
 
 const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.workflowStart]: dispatchWorkflowStart,
@@ -66,6 +67,7 @@ const callbackMap: Record<FlowNodeTypeEnum, Function> = {
   [FlowNodeTypeEnum.lafModule]: dispatchLafRequest,
   [FlowNodeTypeEnum.ifElseNode]: dispatchIfElse,
   [FlowNodeTypeEnum.variableUpdate]: dispatchUpdateVariable,
+  [FlowNodeTypeEnum.code]: dispatchRunCode,
 
   // none
   [FlowNodeTypeEnum.systemConfig]: dispatchSystemConfig,

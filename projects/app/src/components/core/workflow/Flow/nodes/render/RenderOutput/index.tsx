@@ -13,6 +13,7 @@ import { FlowValueTypeMap } from '@/web/core/workflow/constants/dataType';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const RenderList: {
   types: `${FlowNodeOutputTypeEnum}`[];
@@ -61,6 +62,7 @@ const RenderOutput = ({
           <Box position={'relative'} fontWeight={'medium'}>
             {t('core.workflow.Custom outputs')}
           </Box>
+          <QuestionTip ml={1} label={addOutput.description} />
           <Box flex={'1 0 0'} />
           <Button
             variant={'whitePrimary'}
