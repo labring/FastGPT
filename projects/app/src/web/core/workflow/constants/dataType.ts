@@ -85,3 +85,18 @@ export const FlowValueTypeMap = {
     description: ''
   }
 };
+
+export const fnValueTypeSelect = [
+  {
+    label: 'String',
+    value: 'string'
+  },
+  {
+    label: 'Number',
+    value: 'number'
+  },
+  {
+    label: 'Boolean',
+    value: 'boolean'
+  }
+];

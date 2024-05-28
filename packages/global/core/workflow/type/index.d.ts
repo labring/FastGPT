@@ -115,6 +115,7 @@ export type ClassifyQuestionAgentItemType = {
   key: string;
 };
 export type ContextExtractAgentItemType = {
+  valueType: 'string' | 'number' | 'boolean';
   desc: string;
   key: string;
   required: boolean;

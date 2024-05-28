@@ -24,22 +24,26 @@ A2:
 `
 };
 
-export const Prompt_ExtractJson = `你可以从 <对话记录></对话记录> 中提取指定 JSON 信息，你仅需返回 JSON 字符串，无需回答问题。
+export const Prompt_ExtractJson = `你可以从 <对话记录></对话记录> 中提取指定 Json 信息，你仅需返回 Json 字符串，无需回答问题。
 <提取要求>
 {{description}}
 </提取要求>
 
-<字段说明>
-1. 下面的 JSON 字符串均按照 JSON Schema 的规则描述。
-2. key 代表字段名；description 代表字段的描述；enum 是可选值，代表可选的 value。
-3. 如果没有可提取的内容，忽略该字段。
-4. 本次需提取的JSON Schema：{{json}}
-</字段说明>
+<提取规则>
+- 本次需提取的 json 字符串，需符合 JsonSchema 的规则。
+- type 代表数据类型; key 代表字段名; description 代表字段的描述; enum 是枚举值，代表可选的 value。
+- 如果没有可提取的内容，忽略该字段。
+</提取规则>
+
+<JsonSchema>
+{{json}}
+</JsonSchema>
 
 <对话记录>
 {{text}}
 </对话记录>
-`;
+
+提取的 json 字符串:`;
 
 export const Prompt_CQJson = `请帮我执行一个“问题分类”任务，将问题分类为以下几种类型之一：
 

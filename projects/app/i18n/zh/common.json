@@ -3,6 +3,7 @@
   "App": "应用",
   "Code editor": "代码编辑",
   "Export": "导出",
+  "Field name": "字段名",
   "Folder": "文件夹",
   "Is open": "是否开启",
   "Login": "登录",
@@ -476,7 +477,7 @@
         "context total length": "上下文总长度",
         "module cq": "问题分类列表",
         "module cq result": "分类结果",
-        "module extract description": "提取要求描述",
+        "module extract description": "提取背景描述",
         "module extract result": "提取结果",
         "module historyPreview": "完整记录",
         "module http body": "请求体",
@@ -584,8 +585,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",

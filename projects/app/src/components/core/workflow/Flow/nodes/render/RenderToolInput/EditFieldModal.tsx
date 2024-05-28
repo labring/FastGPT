@@ -20,6 +20,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
+import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
 
 const EditFieldModal = ({
   defaultValue = defaultEditFormData,
@@ -34,21 +35,6 @@ const EditFieldModal = ({
     defaultValues: defaultValue
   });
   const valueType = watch('valueType');
-
-  const selectTypeList = useRef([
-    {
-      label: t('core.module.valueType.string'),
-      value: 'string'
-    },
-    {
-      label: t('core.module.valueType.number'),
-      value: 'number'
-    },
-    {
-      label: t('core.module.valueType.boolean'),
-      value: 'boolean'
-    }
-  ]);
 
   const { mutate: onclickSubmit } = useRequest({
     mutationFn: async (e: FlowNodeInputItemType) => {
@@ -105,7 +91,7 @@ const EditFieldModal = ({
           <Box flex={'0 0 80px'}>{t('core.module.Data Type')}</Box>
           <Box flex={'1 0 0'}>
             <MySelect
-              list={selectTypeList.current}
+              list={fnValueTypeSelect}
               value={valueType}
               onchange={(e: any) => {
                 setValue('valueType', e);
