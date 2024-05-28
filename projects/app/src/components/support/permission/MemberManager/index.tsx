@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Flex, Box, Button, Tag, TagLabel } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import Avatar from '@/components/Avatar';
 import { AddMemberModal } from './AddMemberModal';
 import { useQuery } from '@tanstack/react-query';
@@ -45,6 +44,11 @@ function MemberManger({ collaboratorList }: MemberManagerPropsType) {
       </Flex>
 
       <Flex w="full" bg="myGray.100" p="2" gap="2" borderRadius="md">
+        {teamMemberList?.length !== 0 && (
+          <Box my="2" mx="auto" color="myGray.600">
+            暂无协作者
+          </Box>
+        )}
         {teamMemberList?.map((member) => {
           if (collaboratorList?.find((collaborator) => collaborator.tmbId === member.tmbId)) {
             return (

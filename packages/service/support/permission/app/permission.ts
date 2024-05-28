@@ -1,5 +1,5 @@
 import {
-  NullPermission,
+  Permission,
   PermissionList,
   PermissionListType,
   constructPermission
@@ -11,14 +11,17 @@ export const AppPermissionList: PermissionListType = {
   DownloadFile: 0b10000
 };
 
-// the default DefaultPermission for App
-export const AppDefaultPermission = NullPermission;
+export const AppDefaultPermission = new Permission(); // 0
 
-export const AppReadPermission = constructPermission([PermissionList['Read']]);
+export const AppReadPermission = new Permission().add(PermissionList['Read']); // 4
 
-export const AppWritePermission = AppReadPermission.add(PermissionList['Write']);
+export const AppWritePermission = new Permission(AppReadPermission.value).add(
+  PermissionList['Write']
+); // 6
 
-export const AppAdminPermission = AppWritePermission.add(PermissionList['Manage']);
+export const AppAdminPermission = new Permission(AppWritePermission.value).add(
+  PermissionList['Manage']
+); // 7
 
 export const AppOwnerPermission = constructPermission([
   PermissionList['Read'],
@@ -26,4 +29,4 @@ export const AppOwnerPermission = constructPermission([
   PermissionList['Delete'],
   PermissionList['ReadLog'],
   PermissionList['DownloadFile']
-]);
+]); // 31

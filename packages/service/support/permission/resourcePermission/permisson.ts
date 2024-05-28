@@ -9,8 +9,8 @@ export const NullPermission: PermissionValueType = 0;
 // the Permission helper class
 export class Permission {
   value: PermissionValueType;
-  constructor(value: PermissionValueType) {
-    this.value = value;
+  constructor(value?: PermissionValueType) {
+    this.value = value ?? 0;
   }
 
   // add permission(s)

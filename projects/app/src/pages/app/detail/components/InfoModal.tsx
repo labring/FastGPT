@@ -28,16 +28,17 @@ import { AppContext } from '@/web/core/app/context/appContext';
 import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { NullPermission } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 import {
+  AppDefaultPermission,
+  AppPermissionList,
   AppReadPermission,
   AppWritePermission
 } from '@fastgpt/service/support/permission/app/permission';
 
 enum defaultPermissionEnum {
-  private = '0',
-  read = '4',
-  edit = '6'
+  private = 'private',
+  read = 'read',
+  edit = 'edit'
 }
 
 const defaultPermissionSelectList = [
@@ -45,6 +46,15 @@ const defaultPermissionSelectList = [
   { label: '团队可访问', value: defaultPermissionEnum.read },
   { label: '团队可编辑', value: defaultPermissionEnum.edit }
 ];
+
+const defaultPermissionMap = {
+  [defaultPermissionEnum.private]: AppDefaultPermission.value,
+  [defaultPermissionEnum.read]: AppReadPermission.value,
+  [defaultPermissionEnum.edit]: AppWritePermission.value,
+  [AppDefaultPermission.value]: defaultPermissionEnum.private,
+  [AppReadPermission.value]: defaultPermissionEnum.read,
+  [AppWritePermission.value]: defaultPermissionEnum.edit
+};
 
 const InfoModal = ({
   defaultApp,
@@ -199,9 +209,11 @@ const InfoModal = ({
           <MySelect
             mt="2"
             list={defaultPermissionSelectList}
-            value={getValues('defaultPermission')?.toString() || defaultPermissionEnum.private}
+            value={
+              defaultPermissionMap[getValues('defaultPermission')] || defaultPermissionEnum.private
+            }
             onchange={(v) => {
-              setValue('defaultPermission', parseInt(v));
+              setValue('defaultPermission', defaultPermissionMap[v]);
               setRefresh((state) => !state);
             }}
           />
