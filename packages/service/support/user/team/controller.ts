@@ -7,6 +7,7 @@ import {
 } from '@fastgpt/global/support/user/team/constant';
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
+import { UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
@@ -107,4 +108,19 @@ export async function createDefaultTeam({
       }
     });
   }
+}
+
+export async function updateTeam({
+  teamId,
+  name,
+  avatar,
+  teamDomain,
+  lafAccount
+}: UpdateTeamProps & { teamId: string }) {
+  await MongoTeam.findByIdAndUpdate(teamId, {
+    name,
+    avatar,
+    teamDomain,
+    lafAccount
+  });
 }

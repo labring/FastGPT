@@ -83,7 +83,6 @@ function EditModal({
     mutationFn: async (data: FormDataType) => {
       if (!data.id) return Promise.resolve('');
       return putUpdateTeam({
-        teamId: data.id,
         name: data.name,
         avatar: data.avatar
       });

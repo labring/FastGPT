@@ -4,8 +4,8 @@ import { ModalBody, Box, useTheme } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
-import QuoteItem from '../core/dataset/QuoteItem';
-import RawSourceBox from '../core/dataset/RawSourceBox';
+import QuoteItem from '../../core/dataset/QuoteItem';
+import RawSourceBox from '../../core/dataset/RawSourceBox';
 
 const QuoteModal = ({
   rawSearch = [],

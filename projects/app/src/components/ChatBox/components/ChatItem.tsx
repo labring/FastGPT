@@ -25,8 +25,9 @@ import {
   ChatStatusEnum
 } from '@fastgpt/global/core/chat/constants';
 import FilesBlock from './FilesBox';
-import { useChatProviderStore } from '../Provider';
+import { ChatBoxContext } from '../Provider';
 import Avatar from '@/components/Avatar';
+import { useContextSelector } from 'use-context-selector';
 
 const colorMap = {
   [ChatStatusEnum.loading]: {
@@ -78,7 +79,7 @@ const ChatItem = ({
           bg: 'myGray.50'
         };
 
-  const { isChatting } = useChatProviderStore();
+  const isChatting = useContextSelector(ChatBoxContext, (v) => v.isChatting);
   const { chat } = chatControllerProps;
 
   const ContentCard = useMemo(() => {

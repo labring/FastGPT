@@ -79,7 +79,6 @@ const NodeLaf = (props: NodeProps<FlowNodeItemType>) => {
         };
       } catch (err) {
         await putUpdateTeam({
-          teamId: userInfo?.team.teamId || '',
           lafAccount: { token: '', appid: '', pat: '' }
         });
         initUserInfo();

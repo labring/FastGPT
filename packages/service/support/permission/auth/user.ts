@@ -5,6 +5,7 @@ import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { UserErrEnum } from '../../../../global/common/error/code/user';
+import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
 export async function authUserNotVisitor(props: AuthModeType): Promise<
   AuthResponseType & {
@@ -46,4 +47,20 @@ export async function authUserRole(props: AuthModeType): Promise<
     teamOwner: userRole === TeamMemberRoleEnum.owner,
     canWrite
   };
+}
+
+/* auth teamMember in team role */
+export async function authTeamOwner(props: AuthModeType): Promise<
+  AuthResponseType & {
+    role: `${TeamMemberRoleEnum}`;
+    teamOwner: boolean;
+  }
+> {
+  const authRes = await authUserRole(props);
+
+  if (authRes.role !== TeamMemberRoleEnum.owner) {
+    return Promise.reject(TeamErrEnum.unAuthTeam);
+  }
+
+  return authRes;
 }

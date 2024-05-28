@@ -57,7 +57,7 @@ const TeamTagsAsync = ({ onClose }: { onClose: () => void }) => {
   // tags Async
   const { mutate: onclickUpdate, isLoading: isUpdating } = useRequest({
     mutationFn: async (data: FormType) => {
-      return putUpdateTeam({ teamDomain: data.teamDomain, teamId: teamInfo?.teamId });
+      return putUpdateTeam({ teamDomain: data.teamDomain });
     },
     onSuccess() {
       initUserInfo();
