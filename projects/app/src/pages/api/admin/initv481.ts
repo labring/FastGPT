@@ -148,7 +148,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
 
       if ((await targetCol.countDocuments()) > 1) {
         // 除了root
-        console.log('team_members 中有数据，无法自动将 buffer.tts 迁移到 team_members，请手动操作');
+        console.log('team_members 中有数据，无法自动将 team.tts 迁移到 team_members，请手动操作');
       } else {
         await sourceCol.rename('team_members', { dropTarget: true });
         console.log('success rename team.members -> team_members');

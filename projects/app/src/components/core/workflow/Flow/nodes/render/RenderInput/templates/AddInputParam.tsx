@@ -72,7 +72,6 @@ const AddInputParam = (props: RenderInputProps) => {
             leftIcon={<SmallAddIcon />}
             iconSpacing={1}
             size={'sm'}
-            mr={'-5px'}
             onClick={() => setEditField(item.dynamicParamDefaultValue ?? {})}
           >
             {t('common.Add New')}

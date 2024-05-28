@@ -16,8 +16,9 @@ weight: 705
 
 - [Git](http://git-scm.com/)
 - [Docker](https://www.docker.com/)（构建镜像）
-- [Node.js v18.x (不推荐最新的，可能有兼容问题)](http://nodejs.org)
-- [pnpm](https://pnpm.io/) 版本 8.x.x 
+- [Node.js v18.17 / v20.x](http://nodejs.org)
+- [pnpm](https://pnpm.io/) 版本 8.6.0 (目前官方的开发环境)
+- make命令: 根据不同平台，百度安装 (官方是GNU Make 4.3)
 
 ## 开始本地开发
 
@@ -72,24 +73,34 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 
 ### 5. 运行
 
+可参考项目根目录下的 `dev.md`
+
 ```bash
 # 给自动化脚本代码执行权限(非 linux 系统, 可以手动执行里面的 postinstall.sh 文件内容)
 chmod -R +x ./scripts/
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
 pnpm i
-# 切换到应用目录
-cd projects/app 
-# 开发模式运行
+
+# 非 Make 运行
+cd projects/app
 pnpm dev
+
+# Make 运行
+make dev name=app
 ```
 
 ### 6. 部署打包
 
 ```bash
-# 根目录下执行
-docker build -t dockername/fastgpt:tag --build-arg name=app .
-# 使用代理
-docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=taobao .
+# Docker cmd: Build image, not proxy
+docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app
+# Make cmd: Build image, not proxy
+make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1
+
+# Docker cmd: Build image with proxy
+docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 . --build-arg name=app --build-arg proxy=taobao
+# Make cmd: Build image with proxy
+make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 proxy=taobao
 ```
 
 ## 提交代码至开源仓库
@@ -101,21 +112,21 @@ docker build -t dockername/fastgpt:tag --build-arg name=app --build-arg proxy=ta
 如果遇到问题，比如合并冲突或不知道如何打开拉取请求，请查看 GitHub 的[拉取请求教程](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests)，了解如何解决合并冲突和其他问题。一旦您的 PR 被合并，您将自豪地被列为[贡献者表](https://github.com/labring/FastGPT/graphs/contributors)中的一员。
 
 
-
 ## QA
 
 ### 本地数据库无法连接
 
 1. 如果你是连接远程的数据库，先检查对应的端口是否开放。
 2. 如果是本地运行的数据库，可尝试`host`改成`localhost`或`127.0.0.1`
+3. 本地连接远程的 Mongo，需要增加 `directConnection=true` 参数，才能连接上副本集的数据库。
+4. mongo使用`mongocompass`客户端进行连接测试和可视化管理。
+5. pg使用`navicat`进行连接和管理。
 
 ### sh ./scripts/postinstall.sh 没权限
 
 FastGPT 在`pnpm i`后会执行`postinstall`脚本，用于自动生成`ChakraUI`的`Type`。如果没有权限，可以先执行`chmod -R +x ./scripts/`，再执行`pnpm i`。
 
-### 长时间运行后崩溃
-
-似乎是由于 tiktoken 库的开发环境问题，生产环境中未遇到，暂时可忽略。
+仍不可行的话，可以手动执行`./scripts/postinstall.sh`里的内容。
 
 ### TypeError: Cannot read properties of null (reading 'useMemo' )
 
