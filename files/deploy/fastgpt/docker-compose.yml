@@ -67,10 +67,17 @@ services:
 
         # 等待docker-entrypoint.sh脚本执行的MongoDB服务进程
         wait $$!
+  sandbox:
+    container_name: sandbox
+    image: ghcr.io/labring/fastgpt-sandbox:v4.8.2 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.8.2 # 阿里云
+    networks:
+      - fastgpt
+    restart: always
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.8.1 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.8.2 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.2 # 阿里云
     ports:
       - 3000:3000
     networks:
@@ -78,6 +85,7 @@ services:
     depends_on:
       - mongo
       - pg
+      - sandbox
     restart: always
     environment:
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
@@ -98,6 +106,8 @@ services:
       - MONGODB_URI=mongodb://myusername:mypassword@mongo:27017/fastgpt?authSource=admin
       # pg 连接参数
       - PG_URL=postgresql://username:password@pg:5432/postgres
+      # sandbox 地址
+      - SANDBOX_URL=http://sandbox:3000
     volumes:
       - ./config.json:/app/data/config.json
       - ./fastgpt/tmp:/app/tmp
