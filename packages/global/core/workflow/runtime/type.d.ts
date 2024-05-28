@@ -31,6 +31,8 @@ export type DispatchNodeResponseType = {
   runningTime?: number;
   query?: string;
   textOutput?: string;
+  customInputs?: Record<string, any>;
+  customOutputs?: Record<string, any>;
 
   // bill
   tokens?: number;

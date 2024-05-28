@@ -1,3 +1,7 @@
 {
-  "Field required": "Required"
+  "Field required": "Required",
+  "response": {
+    "Custom inputs": "Custom inputs",
+    "Custom outputs": "Custom outputs"
+  }
 }

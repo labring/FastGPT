@@ -1,3 +1,7 @@
 {
-  "Field required": "必填"
+  "Field required": "必填",
+  "response": {
+    "Custom inputs": "自定义输入",
+    "Custom outputs": "自定义输出"
+  }
 }
