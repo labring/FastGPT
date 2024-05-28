@@ -44,18 +44,17 @@ export const useConfirm = (props?: {
   const confirmCb = useRef<Function>();
   const cancelCb = useRef<any>();
 
-  const openConfirm = (
-    confirm?: Function,
-    cancel?: any,
-    customContent?: string | React.ReactNode
-  ) => {
-    confirmCb.current = confirm;
-    cancelCb.current = cancel;
+  const openConfirm = useCallback(
+    (confirm?: Function, cancel?: any, customContent?: string | React.ReactNode) => {
+      confirmCb.current = confirm;
+      cancelCb.current = cancel;
 
-    customContent && setCustomContent(customContent);
+      customContent && setCustomContent(customContent);
 
-    return onOpen;
-  };
+      return onOpen;
+    },
+    []
+  );
 
   const ConfirmModal = useCallback(
     ({

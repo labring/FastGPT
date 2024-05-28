@@ -29,8 +29,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
     content: workflowT('code.Reset template confirm')
   });
 
-  const CustomComponent = useMemo(
-    () => ({
+  const CustomComponent = useMemo(() => {
+    return {
       [NodeInputKeyEnum.code]: (item: FlowNodeInputItemType) => {
         return (
           <Box>
@@ -74,9 +74,8 @@ const NodeCode = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
           </Box>
         );
       }
-    }),
-    [nodeId, onChangeNode, openConfirm, workflowT]
-  );
+    };
+  }, [nodeId, onChangeNode, openConfirm, workflowT]);
 
   return (
     <NodeCard minW={'400px'} selected={selected} {...data}>
