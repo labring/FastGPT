@@ -78,17 +78,16 @@ const CollectionPageContextProvider = ({ children }: { children: ReactNode }) =>
     mutationFn: async (websiteConfig: DatasetSchemaType['websiteConfig']) => {
       onCloseWebsiteModal();
       await checkTeamWebSyncLimit();
-      const billId = await postCreateTrainingUsage({
-        name: t('core.dataset.training.Website Sync'),
-        datasetId: datasetId
-      });
-      await postWebsiteSync({ datasetId: datasetId, billId });
-
       await updateDataset({
         id: datasetId,
         websiteConfig,
         status: DatasetStatusEnum.syncing
       });
+      const billId = await postCreateTrainingUsage({
+        name: t('core.dataset.training.Website Sync'),
+        datasetId: datasetId
+      });
+      await postWebsiteSync({ datasetId: datasetId, billId });
 
       return;
     },
