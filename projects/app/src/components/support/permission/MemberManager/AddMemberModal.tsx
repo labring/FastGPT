@@ -85,25 +85,64 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                   return member.memberName.includes(searchText); // search filter
                 })
                 ?.map((member) => {
+                  const change = () => {
+                    if (selectedMembers.includes(member.userId)) {
+                      setSelectedMembers(selectedMembers.filter((v) => v !== member.userId));
+                    } else {
+                      setSelectedMembers([...selectedMembers, member.userId]);
+                    }
+                  };
                   return (
                     <Flex
                       key={member.userId}
                       mt="1"
                       alignItems="center"
-                      justifyContent="space-between"
+                      _hover={{
+                        bgColor: 'myGray.50',
+                        cursor: 'pointer'
+                      }}
+                      {...(selectedMembers.includes(member.userId) && {
+                        bgColor: 'myGray.50'
+                      })}
+                      flexDirection="row"
                     >
-                      <Flex flexDirection="row">
-                        <Checkbox size="lg" mr="3" />
-                        <MyAvatar src={member.avatar} w="24px" />
-                        <Box ml="2">{member.memberName}</Box>
+                      <Checkbox
+                        size="lg"
+                        mr="3"
+                        isChecked={selectedMembers.includes(member.userId)}
+                        onChange={change}
+                      />
+                      <Flex
+                        flexDirection="row"
+                        onClick={change}
+                        w="full"
+                        justifyContent="space-between"
+                      >
+                        <Flex flexDirection="row">
+                          <MyAvatar src={member.avatar} w="24px" />
+                          <Box ml="2">{member.memberName}</Box>
+                        </Flex>
+                        <Flex flexDirection="row">aaa</Flex>
                       </Flex>
-                      <Flex flexDirection="row">aaa</Flex>
                     </Flex>
                   );
                 })}
             </Flex>
           </Flex>
-          <Box p="4">bbb</Box>
+          <Flex p="4" flexDirection="column">
+            <Box>已选: {selectedMembers.length}</Box>
+            <Flex flexDirection="column" mt="2">
+              {selectedMembers.map((userId) => {
+                const member = teamMemberList?.find((v) => v.userId === userId);
+                return (
+                  <Flex key={userId} mt="1" alignItems="start" flexDirection="row">
+                    <MyAvatar src={member?.avatar} w="24px" />
+                    <Box ml="2">{member?.memberName}</Box>
+                  </Flex>
+                );
+              })}
+            </Flex>
+          </Flex>
         </Grid>
       </ModalBody>
       <ModalFooter>

@@ -127,10 +127,9 @@ function PermissionSelect({
                 _hover={{
                   bg: 'myGray.50'
                 }}
-                onClick={change}
               >
                 <Radio size="lg" isChecked={singleSelectedValue === item.value} onChange={change} />
-                <Flex mx="4" flexDirection="column">
+                <Flex mx="4" flexDirection="column" onClick={change}>
                   <Box fontWeight="500">{item.name}</Box>
                   <Box fontWeight="400">{item.description}</Box>
                 </Flex>
@@ -172,14 +171,13 @@ function PermissionSelect({
                 _hover={{
                   bg: 'myGray.50'
                 }}
-                onClick={change}
               >
                 <Checkbox
                   size="lg"
                   isChecked={checkPermission(value, item.value)}
                   onChange={change}
                 />
-                <Flex mx="4" flexDirection="column">
+                <Flex mx="4" flexDirection="column" onClick={change}>
                   <Box fontWeight="500">{item.name}</Box>
                   <Box fontWeight="400">{item.description}</Box>
                 </Flex>
