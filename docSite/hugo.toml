@@ -156,6 +156,11 @@ defaultContentLanguage = 'zh-cn'
         #   ["Something else"]
         # ]
 
+    [params.umamiAnalytics]
+      websiteid = "69b3f2c6-39a5-4937-b92d-6fdd5c8f5958"
+      domain = "umami.fastgpt.in"
+      scriptName = "fastgpt"
+
 [menu]
 [[menu.primary]]
     name  = "Docs"

@@ -106,6 +106,11 @@
     {{- end -}}
     {{- end -}}
     <!-- change -->
+    {{- if not .Site.IsServer }}
+        {{ with site.Params.umamiAnalytics.websiteid }}
+            {{- partialCached (printf "%s/%s" ($.Scratch.Get "pathName") "analytics/umami.html") . -}}
+        {{ end }}
+    {{ end }}
     <link rel="preload" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css" as="style" />
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/lxgw-wenkai-screen-webfont@1.1.0/style.css" />
 </head>
