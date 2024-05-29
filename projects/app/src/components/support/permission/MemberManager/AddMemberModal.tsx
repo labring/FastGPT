@@ -1,12 +1,49 @@
-import { Flex, Box, Grid, ModalBody, InputGroup, InputLeftElement, Input } from '@chakra-ui/react';
+import {
+  Flex,
+  Box,
+  Grid,
+  ModalBody,
+  InputGroup,
+  InputLeftElement,
+  Input,
+  Checkbox,
+  ModalFooter,
+  Button
+} from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useContextSelector } from 'use-context-selector';
+import { CollaboratorContext } from '.';
+import MyAvatar from '@/components/Avatar';
+import { useState } from 'react';
+import PermissionSelect, { type PermissionSelectListType } from './PermissionSelect';
 
 export type AddModalPropsType = {
   onClose: () => void;
 };
 
 export function AddMemberModal({ onClose }: AddModalPropsType) {
+  const { teamMemberList, collaboratorList, permissionConfig, permissionList } = useContextSelector(
+    CollaboratorContext,
+    (v) => v
+  );
+  const [searchText, setSearchText] = useState<string>('');
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+  const SelectPermissionList: PermissionSelectListType = Object.entries(permissionConfig).map(
+    ([key, value]) => {
+      return {
+        name: value.name,
+        value: parseInt(key),
+        description: value.description,
+        type: value.type
+      };
+    }
+  );
+
+  const [selectedPermission, setSelectedPermission] = useState<number>(
+    SelectPermissionList[0].value
+  );
+
   return (
     <MyModal
       isOpen
@@ -20,7 +57,6 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
           border="1px solid"
           borderColor="myGray.200"
           mt="6"
-          mb="16"
           mx="8"
           borderRadius="0.5rem"
           templateColumns="60% 40%"
@@ -40,16 +76,44 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                 placeholder="搜索用户名"
                 fontSize="lg"
                 bgColor="myGray.50"
-                // TODO: Search
+                onChange={(e) => setSearchText(e.target.value)}
               />
             </InputGroup>
             <Flex flexDirection="column" mt="2">
-              aaa
+              {teamMemberList
+                ?.filter((member) => {
+                  return member.memberName.includes(searchText); // search filter
+                })
+                ?.map((member) => {
+                  return (
+                    <Flex
+                      key={member.userId}
+                      mt="1"
+                      alignItems="center"
+                      justifyContent="space-between"
+                    >
+                      <Flex flexDirection="row">
+                        <Checkbox size="lg" mr="3" />
+                        <MyAvatar src={member.avatar} w="24px" />
+                        <Box ml="2">{member.memberName}</Box>
+                      </Flex>
+                      <Flex flexDirection="row">aaa</Flex>
+                    </Flex>
+                  );
+                })}
             </Flex>
           </Flex>
           <Box p="4">bbb</Box>
         </Grid>
       </ModalBody>
+      <ModalFooter>
+        <PermissionSelect
+          list={SelectPermissionList}
+          value={selectedPermission}
+          onChange={(v) => setSelectedPermission(v)}
+        />
+        <Button ml="4">确认</Button>
+      </ModalFooter>
     </MyModal>
   );
 }

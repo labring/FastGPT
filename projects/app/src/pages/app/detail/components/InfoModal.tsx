@@ -29,11 +29,15 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
+  AppAdminPermission,
   AppDefaultPermission,
+  AppPermissionEnum,
   AppPermissionList,
   AppReadPermission,
   AppWritePermission
 } from '@fastgpt/service/support/permission/app/permission';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 enum defaultPermissionEnum {
   private = 'private',
@@ -73,6 +77,8 @@ const InfoModal = ({
     fileType: '.jpg,.png',
     multiple: false
   });
+
+  const { userInfo } = useUserStore();
 
   const {
     register,
@@ -219,7 +225,37 @@ const InfoModal = ({
           />
         </Flex>
 
-        <MemberManager collaboratorList={CollaboratorList} />
+        <MemberManager
+          collaboratorList={CollaboratorList}
+          permissionList={AppPermissionList}
+          permissionConfig={{
+            [AppReadPermission.value]: {
+              type: 'single',
+              name: '读权限',
+              description: '读权限相关文案'
+            },
+            [AppWritePermission.value]: {
+              type: 'single',
+              name: '写权限',
+              description: '写权限相关文案'
+            },
+            [AppAdminPermission.value]: {
+              type: 'single',
+              name: '管理权限',
+              description: '管理权限相关文案'
+            },
+            [AppPermissionList[AppPermissionEnum.DownloadFile]]: {
+              type: 'multiple',
+              name: '下载权限',
+              description: '下载权限相关文案'
+            },
+            [AppPermissionList[AppPermissionEnum.ReadLog]]: {
+              type: 'multiple',
+              name: '查看日志',
+              description: '查看日志相关文案'
+            }
+          }}
+        />
       </ModalBody>
 
       <ModalFooter>

@@ -5,10 +5,15 @@ import {
   constructPermission
 } from '../resourcePermission/permisson';
 
+export enum AppPermissionEnum {
+  ReadLog = 'ReadLog',
+  DownloadFile = 'DownloadFile'
+}
+
 export const AppPermissionList: PermissionListType = {
   ...PermissionList,
-  ReadLog: 0b1000,
-  DownloadFile: 0b10000
+  [AppPermissionEnum.ReadLog]: 0b1000,
+  [AppPermissionEnum.DownloadFile]: 0b10000
 };
 
 export const AppDefaultPermission = new Permission(); // 0
