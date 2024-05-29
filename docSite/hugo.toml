@@ -1,4 +1,4 @@
-baseURL = "fastgpt.in"
+baseURL = "https://fastgpt.in"
 languageCode = "en-GB"
 contentDir = "content"
 enableEmoji = true
