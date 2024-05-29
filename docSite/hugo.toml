@@ -5,6 +5,7 @@ enableEmoji = true
 enableGitInfo = false # N.B. .GitInfo does not currently function with git submodule content directories
 
 defaultContentLanguage = 'zh-cn'
+defaultContentLanguageInSubdir = false
 [languages]
   [languages.zh-cn]
     title = "FastGPT"
