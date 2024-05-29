@@ -13,14 +13,14 @@ export const checkDatasetLimit = async ({
   teamId: string;
   insertLen?: number;
 }) => {
-  const [{ standardConstants, totalPoints, usedPoints, datasetMaxSize }, usedSize] =
-    await Promise.all([getTeamPlanStatus({ teamId }), getVectorCountByTeamId(teamId)]);
+  const { standardConstants, totalPoints, usedPoints, datasetMaxSize, usedDatasetSize } =
+    await getTeamPlanStatus({ teamId });
 
   if (!standardConstants) return;
 
-  if (usedSize + insertLen >= datasetMaxSize) {
+  if (usedDatasetSize + insertLen >= datasetMaxSize) {
     return Promise.reject(
-      `您的知识库容量为: ${datasetMaxSize}组，已使用: ${usedSize}组，导入当前文件需要: ${insertLen}组，请增加知识库容量后导入。`
+      `您的知识库容量为: ${datasetMaxSize}组，已使用: ${usedDatasetSize}组，导入当前文件需要: ${insertLen}组，请增加知识库容量后导入。`
     );
   }
 

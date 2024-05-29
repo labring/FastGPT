@@ -1,10 +1,14 @@
 /* pg vector crud */
-import { PgDatasetTableName } from '@fastgpt/global/common/vectorStore/constants';
+import { DatasetVectorTableName } from '../constants';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { PgClient, connectPg } from './index';
 import { PgSearchRawType } from '@fastgpt/global/core/dataset/api';
-import { EmbeddingRecallItemType } from '../type';
-import { DeleteDatasetVectorProps, EmbeddingRecallProps, InsertVectorProps } from '../controller.d';
+import {
+  DelDatasetVectorCtrlProps,
+  EmbeddingRecallCtrlProps,
+  EmbeddingRecallResponse,
+  InsertVectorControllerProps
+} from '../controller.d';
 import dayjs from 'dayjs';
 
 export async function initPg() {
@@ -12,7 +16,7 @@ export async function initPg() {
     await connectPg();
     await PgClient.query(`
       CREATE EXTENSION IF NOT EXISTS vector;
-      CREATE TABLE IF NOT EXISTS ${PgDatasetTableName} (
+      CREATE TABLE IF NOT EXISTS ${DatasetVectorTableName} (
           id BIGSERIAL PRIMARY KEY,
           vector VECTOR(1536) NOT NULL,
           team_id VARCHAR(50) NOT NULL,
@@ -23,13 +27,13 @@ export async function initPg() {
     `);
 
     await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${PgDatasetTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS vector_index ON ${DatasetVectorTableName} USING hnsw (vector vector_ip_ops) WITH (m = 32, ef_construction = 128);`
     );
     await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${PgDatasetTableName} USING btree(team_id, dataset_id, collection_id);`
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS team_dataset_collection_index ON ${DatasetVectorTableName} USING btree(team_id, dataset_id, collection_id);`
     );
     await PgClient.query(
-      `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${PgDatasetTableName} USING btree(createtime);`
+      `CREATE INDEX CONCURRENTLY IF NOT EXISTS create_time_index ON ${DatasetVectorTableName} USING btree(createtime);`
     );
 
     console.log('init pg successful');
@@ -39,18 +43,15 @@ export async function initPg() {
 }
 
 export const insertDatasetDataVector = async (
-  props: InsertVectorProps & {
-    vectors: number[][];
-    retry?: number;
-  }
+  props: InsertVectorControllerProps
 ): Promise<{ insertId: string }> => {
-  const { teamId, datasetId, collectionId, vectors, retry = 3 } = props;
+  const { teamId, datasetId, collectionId, vector, retry = 3 } = props;
 
   try {
-    const { rows } = await PgClient.insert(PgDatasetTableName, {
+    const { rows } = await PgClient.insert(DatasetVectorTableName, {
       values: [
         [
-          { key: 'vector', value: `[${vectors[0]}]` },
+          { key: 'vector', value: `[${vector}]` },
           { key: 'team_id', value: String(teamId) },
           { key: 'dataset_id', value: String(datasetId) },
           { key: 'collection_id', value: String(collectionId) }
@@ -72,11 +73,7 @@ export const insertDatasetDataVector = async (
   }
 };
 
-export const deleteDatasetDataVector = async (
-  props: DeleteDatasetVectorProps & {
-    retry?: number;
-  }
-): Promise<any> => {
+export const deleteDatasetDataVector = async (props: DelDatasetVectorCtrlProps): Promise<any> => {
   const { teamId, retry = 2 } = props;
 
   const teamIdWhere = `team_id='${String(teamId)}' AND`;
@@ -100,7 +97,7 @@ export const deleteDatasetDataVector = async (
 
     if ('idList' in props && Array.isArray(props.idList)) {
       if (props.idList.length === 0) return;
-      return `${teamIdWhere} id IN (${props.idList.map((id) => `'${String(id)}'`).join(',')})`;
+      return `${teamIdWhere} id IN (${props.idList.map((id) => String(id)).join(',')})`;
     }
     return Promise.reject('deleteDatasetData: no where');
   })();
@@ -108,7 +105,7 @@ export const deleteDatasetDataVector = async (
   if (!where) return;
 
   try {
-    await PgClient.delete(PgDatasetTableName, {
+    await PgClient.delete(DatasetVectorTableName, {
       where: [where]
     });
   } catch (error) {
@@ -124,23 +121,17 @@ export const deleteDatasetDataVector = async (
 };
 
 export const embeddingRecall = async (
-  props: EmbeddingRecallProps & {
-    vectors: number[][];
-    limit: number;
-    retry?: number;
-  }
-): Promise<{
-  results: EmbeddingRecallItemType[];
-}> => {
-  const { teamId, datasetIds, vectors, limit, retry = 2 } = props;
+  props: EmbeddingRecallCtrlProps
+): Promise<EmbeddingRecallResponse> => {
+  const { teamId, datasetIds, vector, limit, retry = 2 } = props;
 
   try {
     const results: any = await PgClient.query(
       `
       BEGIN;
         SET LOCAL hnsw.ef_search = ${global.systemEnv?.pgHNSWEfSearch || 100};
-        select id, collection_id, vector <#> '[${vectors[0]}]' AS score 
-          from ${PgDatasetTableName} 
+        select id, collection_id, vector <#> '[${vector}]' AS score 
+          from ${DatasetVectorTableName} 
           where team_id='${teamId}'
             AND dataset_id IN (${datasetIds.map((id) => `'${String(id)}'`).join(',')})
           order by score limit ${limit};
@@ -151,13 +142,12 @@ export const embeddingRecall = async (
 
     return {
       results: rows.map((item) => ({
-        id: item.id,
+        id: String(item.id),
         collectionId: item.collection_id,
         score: item.score * -1
       }))
     };
   } catch (error) {
-    console.log(error);
     if (retry <= 0) {
       return Promise.reject(error);
     }
@@ -169,7 +159,7 @@ export const embeddingRecall = async (
 };
 
 export const getVectorCountByTeamId = async (teamId: string) => {
-  const total = await PgClient.count(PgDatasetTableName, {
+  const total = await PgClient.count(DatasetVectorTableName, {
     where: [['team_id', String(teamId)]]
   });
 
@@ -181,7 +171,7 @@ export const getVectorDataByTime = async (start: Date, end: Date) => {
     team_id: string;
     dataset_id: string;
   }>(`SELECT id, team_id, dataset_id
-  FROM ${PgDatasetTableName}
+  FROM ${DatasetVectorTableName}
   WHERE createtime BETWEEN '${dayjs(start).format('YYYY-MM-DD HH:mm:ss')}' AND '${dayjs(end).format(
     'YYYY-MM-DD HH:mm:ss'
   )}';

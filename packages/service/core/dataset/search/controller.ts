@@ -85,7 +85,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
     const { results } = await recallFromVectorStore({
       teamId,
       datasetIds,
-      vectors,
+      vector: vectors[0],
       limit
     });
 
@@ -94,7 +94,7 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
       {
         teamId,
         datasetId: { $in: datasetIds },
-        collectionId: { $in: results.map((item) => item.collectionId) },
+        collectionId: { $in: Array.from(new Set(results.map((item) => item.collectionId))) },
         'indexes.dataId': { $in: results.map((item) => item.id?.trim()) }
       },
       'datasetId collectionId q a chunkIndex indexes'
@@ -118,26 +118,24 @@ export async function searchDatasetData(props: SearchDatasetDataProps) {
 
     concatResults.sort((a, b) => b.score - a.score);
 
-    const formatResult = concatResults
-      .map((data, index) => {
-        if (!data.collectionId) {
-          console.log('Collection is not found', data);
-        }
+    const formatResult = concatResults.map((data, index) => {
+      if (!data.collectionId) {
+        console.log('Collection is not found', data);
+      }
 
-        const result: SearchDataResponseItemType = {
-          id: String(data._id),
-          q: data.q,
-          a: data.a,
-          chunkIndex: data.chunkIndex,
-          datasetId: String(data.datasetId),
-          collectionId: String(data.collectionId?._id),
-          ...getCollectionSourceData(data.collectionId),
-          score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
-        };
+      const result: SearchDataResponseItemType = {
+        id: String(data._id),
+        q: data.q,
+        a: data.a,
+        chunkIndex: data.chunkIndex,
+        datasetId: String(data.datasetId),
+        collectionId: String(data.collectionId?._id),
+        ...getCollectionSourceData(data.collectionId),
+        score: [{ type: SearchScoreTypeEnum.embedding, value: data.score, index }]
+      };
 
-        return result;
-      })
-      .filter((item) => item !== null) as SearchDataResponseItemType[];
+      return result;
+    });
 
     return {
       embeddingRecallResults: formatResult,
