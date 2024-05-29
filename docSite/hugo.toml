@@ -1,4 +1,4 @@
-baseURL = "https://fastgpt.in"
+baseURL = "https://doc.fastgpt.in"
 languageCode = "en-GB"
 contentDir = "content"
 enableEmoji = true
@@ -9,7 +9,7 @@ defaultContentLanguage = 'zh-cn'
   [languages.zh-cn]
     title = "FastGPT"
     languageName = "简体中文"
-    #contentDir = "content/zh-cn"
+    contentDir = "content/zh-cn"
     weight = 10
   [languages.en]
     title = "FastGPT Docs"
