@@ -2,10 +2,12 @@
 const { i18n } = require('./next-i18next.config');
 const path = require('path');
 
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig = {
   i18n,
   output: 'standalone',
-  reactStrictMode: process.env.NODE_ENV === 'development' ? false : true,
+  reactStrictMode: isDev ? false : true,
   compress: true,
   webpack(config, { isServer, nextRuntime }) {
     Object.assign(config.resolve.alias, {
@@ -41,11 +43,9 @@ const nextConfig = {
     }
 
     if (isServer) {
-      config.externals.push('worker_threads');
+      // config.externals.push('@zilliz/milvus2-sdk-node');
 
       if (nextRuntime === 'nodejs') {
-        // config.output.globalObject = 'self';
-
         const oldEntry = config.entry;
         config = {
           ...config,
@@ -89,7 +89,12 @@ const nextConfig = {
   transpilePackages: ['@fastgpt/*', 'ahooks'],
   experimental: {
     // 优化 Server Components 的构建和运行，避免不必要的客户端打包。
-    serverComponentsExternalPackages: ['mongoose', 'pg', '@node-rs/jieba'],
+    serverComponentsExternalPackages: [
+      'mongoose',
+      'pg',
+      '@node-rs/jieba',
+      '@zilliz/milvus2-sdk-node'
+    ],
     outputFileTracingRoot: path.join(__dirname, '../../')
   }
 };

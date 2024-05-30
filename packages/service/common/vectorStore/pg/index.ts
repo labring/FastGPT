@@ -2,6 +2,7 @@ import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../system/log';
 import { Pool } from 'pg';
 import type { QueryResultRow } from 'pg';
+import { PG_ADDRESS } from '../constants';
 
 export const connectPg = async (): Promise<Pool> => {
   if (global.pgClient) {
@@ -9,7 +10,7 @@ export const connectPg = async (): Promise<Pool> => {
   }
 
   global.pgClient = new Pool({
-    connectionString: process.env.PG_URL,
+    connectionString: PG_ADDRESS,
     max: Number(process.env.DB_MAX_LINK || 20),
     min: 10,
     keepAlive: true,
