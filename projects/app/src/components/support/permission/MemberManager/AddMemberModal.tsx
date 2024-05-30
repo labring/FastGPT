@@ -10,7 +10,8 @@ import {
   ModalFooter,
   Button,
   Toast,
-  useToast
+  useToast,
+  CloseButton
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -131,7 +132,18 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
               {selectedMembers.map((tmbId) => {
                 const member = teamMemberList?.find((v) => v.tmbId === tmbId);
                 return (
-                  <Flex key={tmbId} mt="1" alignItems="start" flexDirection="row">
+                  <Flex
+                    key={tmbId}
+                    mt="1"
+                    alignItems="start"
+                    flexDirection="row"
+                    _hover={{
+                      bgColor: 'myGray.50',
+                      cursor: 'pointer'
+                    }}
+                    onClick={() => setSelectedMembers(selectedMembers.filter((v) => v !== tmbId))}
+                  >
+                    <CloseButton />
                     <MyAvatar src={member?.avatar} w="24px" />
                     <Box ml="2">{member?.memberName}</Box>
                   </Flex>
