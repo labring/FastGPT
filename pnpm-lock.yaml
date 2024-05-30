@@ -4,6 +4,12 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+overrides:
+  react: 18.3.1
+  react-dom: 18.3.1
+  '@types/react': 18.3.0
+  '@types/react-dom': 18.3.0
+
 importers:
 
   .:
@@ -160,8 +166,8 @@ importers:
         specifier: 14.2.3
         version: 14.2.3(@babel/core@7.24.4)(react-dom@18.3.1)(react@18.3.1)(sass@1.58.3)
       nextjs-cors:
-        specifier: ^2.1.2
-        version: 2.1.2(next@14.2.3)
+        specifier: ^2.2.0
+        version: 2.2.0(next@14.2.3)
       node-cron:
         specifier: ^3.0.3
         version: 3.0.3
@@ -12627,10 +12633,10 @@ packages:
       - '@babel/core'
       - babel-plugin-macros
 
-  /nextjs-cors@2.1.2(next@14.2.3):
-    resolution: {integrity: sha512-2yOVivaaf2ILe4f/qY32hnj3oC77VCOsUQJQfhVMGsXE/YMEWUY2zy78sH9FKUCM7eG42/l3pDofIzMD781XGA==}
+  /nextjs-cors@2.2.0(next@14.2.3):
+    resolution: {integrity: sha512-FZu/A+L59J4POJNqwXYyCPDvsLDeu5HjSBvytzS6lsrJeDz5cmnH45zV+VoNic0hjaeER9xGaiIjZIWzEHnxQg==}
     peerDependencies:
-      next: ^8.1.1-canary.54 || ^9.0.0 || ^10.0.0-0 || ^11.0.0 || ^12.0.0 || ^13.0.0
+      next: ^8.1.1-canary.54 || ^9.0.0 || ^10.0.0-0 || ^11.0.0 || ^12.0.0 || ^13.0.0 || ^14.0.0
     dependencies:
       cors: 2.8.5
       next: 14.2.3(@babel/core@7.24.4)(react-dom@18.3.1)(react@18.3.1)(sass@1.58.3)
