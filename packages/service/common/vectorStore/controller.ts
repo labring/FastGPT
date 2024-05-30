@@ -7,8 +7,8 @@ import { MILVUS_ADDRESS, PG_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
 
 const getVectorObj = () => {
-  if (MILVUS_ADDRESS) return new MilvusCtrl();
   if (PG_ADDRESS) return new PgVectorCtrl();
+  if (MILVUS_ADDRESS) return new MilvusCtrl();
 
   return new PgVectorCtrl();
 };
