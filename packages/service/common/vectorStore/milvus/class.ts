@@ -88,15 +88,15 @@ export class MilvusCtrl {
           },
           {
             field_name: 'teamId',
-            index_type: 'INVERTED'
+            index_type: 'Trie'
           },
           {
             field_name: 'datasetId',
-            index_type: 'INVERTED'
+            index_type: 'Trie'
           },
           {
             field_name: 'collectionId',
-            index_type: 'INVERTED'
+            index_type: 'Trie'
           },
           {
             field_name: 'createTime',

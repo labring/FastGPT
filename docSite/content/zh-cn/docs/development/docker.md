@@ -31,7 +31,7 @@ weight: 707
 | ---- | ---- | ---- |
 | 测试 | 2c2g  | 2c4g |
 | 100w 组向量 | 4c8g 50GB | 4c16g 50GB |
-| 500w 组向量 | 8c32g | 16c64g 200GB |
+| 500w 组向量 | 8c32g 200GB | 16c64g 200GB |
 {{< /table >}}
 
 ### Milvus版本
@@ -48,7 +48,7 @@ weight: 707
 | 500w 组向量 |  |  |
 {{< /table >}}
 
-### zilliz版本
+### zilliz cloud版本
 
 亿级以上向量首选。
 
@@ -129,7 +129,7 @@ mkdir fastgpt
 cd fastgpt
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 
-# pgvector 版本
+# pgvector 版本(测试推荐，简单快捷)
 curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-pgvector.yml
 # milvus 版本
 # curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-milvus.yml
@@ -161,9 +161,13 @@ curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/do
 {{< tab tabName="Zilliz版本" >}}
 {{< markdownify >}}
 
-```
-修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数
-```
+![zilliz_key](/imgs/zilliz_key.png)
+
+{{% alert icon="🤖" context="success" %}}
+
+修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数，分别对应 `zilliz` 的 `Public Endpoint` 和 `Api key`，记得把自己ip加入白名单。
+
+{{% /alert %}}
 
 {{< /markdownify >}}
 {{< /tab >}}
@@ -200,7 +204,9 @@ docker restart oneapi
 
 ### Mongo 副本集自动初始化失败
 
-最新的 docker-compose 示例优化 Mongo 副本集初始化，实现了全自动。目前在 unbuntu20,22 centos7, wsl2, mac, window 均通过测试。如果你的环境特殊，可以手动初始化副本集：
+最新的 docker-compose 示例优化 Mongo 副本集初始化，实现了全自动。目前在 unbuntu20,22 centos7, wsl2, mac, window 均通过测试。仍无法正常启动，大部分是因为 cpu 不支持 AUX 指令集，可以切换 Mongo4.x 版本。
+
+如果是由于，无法自动初始化副本集合，可以手动初始化副本集：
 
 1. 终端中执行下面命令，创建mongo密钥：
 

@@ -94,7 +94,8 @@ services:
       - SANDBOX_URL=http://sandbox:3000
     volumes:
       - ./config.json:/app/data/config.json
-      - ./fastgpt/tmp:/app/tmp
+
+  # oneapi
   mysql:
     image: mysql:8.0.36
     container_name: mysql
