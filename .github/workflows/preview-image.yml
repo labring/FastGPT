@@ -4,8 +4,6 @@ on:
     paths:
       - 'projects/app/**'
       - 'packages/**'
-    branches:
-      - 'main'
   workflow_dispatch:
 
 jobs:
