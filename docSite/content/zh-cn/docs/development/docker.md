@@ -7,7 +7,24 @@ toc: true
 weight: 707
 ---
 
+## 部署架构图
+
+![](/imgs/sealos-fastgpt.webp)
+
+
+{{% alert icon="🤖" context="success" %}}
+
+- MongoDB：用于存储除了向量外的各类数据
+- PostgreSQL/Milvus：存储向量数据
+- OneAPI: 聚合各类 AI API，支持多模型调用 （任何模型问题，先自行通过 OneAPI 测试校验）
+
+{{% /alert %}}
+
 ## 推荐配置
+
+### PgVector版本
+
+体验测试首选
 
 {{< table "table-hover table-striped-columns" >}}
 | 环境 | 最低配置（单节点） | 推荐配置 |
@@ -17,24 +34,33 @@ weight: 707
 | 500w 组向量 | 8c32g | 16c64g 200GB |
 {{< /table >}}
 
-## 部署架构图
+### Milvus版本
 
-![](/imgs/sealos-fastgpt.webp)
+对于千万级以上向量性能更优秀。
 
+[点击查看 Milvus 官方推荐配置](https://milvus.io/docs/prerequisite-docker.md)
 
-### 1. 准备好代理环境（国外服务器可忽略）
+{{< table "table-hover table-striped-columns" >}}
+| 环境 | 最低配置（单节点） | 推荐配置 |
+| ---- | ---- | ---- |
+| 测试 | 2c8g  | 4c16g |
+| 100w 组向量 | 未测试 |  |
+| 500w 组向量 |  |  |
+{{< /table >}}
 
-确保可以访问 OpenAI，具体方案可以参考：[代理方案](/docs/development/proxy/)。或直接在 Sealos 上 [部署 OneAPI](/docs/development/one-api)，既解决代理问题也能实现多 Key 轮询、接入其他大模型。
+### zilliz版本
 
-### 2. 多模型支持
+亿级以上向量首选。
 
-FastGPT 使用了 one-api 项目来管理模型池，其可以兼容 OpenAI 、Azure 、国内主流模型和本地模型等。
+由于向量库使用了 Cloud，无需占用本地资源，无需太关注。
 
-可选择 [Sealos 快速部署 OneAPI](/docs/development/one-api)，更多部署方法可参考该项目的 [README](https://github.com/songquanpeng/one-api)，也可以直接通过以下按钮一键部署：
+## 前置工作
 
-<a href="https://template.cloud.sealos.io/deploy?templateName=one-api" rel="external" target="_blank"><img src="https://cdn.jsdelivr.net/gh/labring-actions/templates@main/Deploy-on-Sealos.svg" alt="Deploy on Sealos"/></a>
+### 1. 确保网络环境
 
-## 一、安装 Docker 和 docker-compose
+如果使用`OpenAI`等国外模型接口，请确保可以正常访问，否则会报错：`Connection error` 等。 方案可以参考：[代理方案](/docs/development/proxy/)
+
+### 2. 准备 Docker 环境
 
 {{< tabs tabTotal="3" >}}
 {{< tab tabName="Linux" >}}
@@ -79,22 +105,71 @@ brew install orbstack
 {{< /tab >}}
 {{< /tabs >}}
 
-## 二、创建目录并下载 docker-compose.yml
 
-依次执行下面命令，创建 FastGPT 文件并拉取`docker-compose.yml`和`config.json`，执行完后目录下会有 2 个文件。
+## 开始部署
 
-非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载下面2个链接的文件: [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/files/deploy/fastgpt/docker-compose.yml),[config.json](https://github.com/labring/FastGPT/blob/main/projects/app/data/config.json)
+### 1. 下载 docker-compose.yml
 
-**注意: `docker-compose.yml` 配置文件中 Mongo 为 5.x，部分服务器不支持，需手动更改其镜像版本为 4.4.24**（需要自己在docker hub下载，阿里云镜像没做备份）
+
+非 Linux 环境或无法访问外网环境，可手动创建一个目录，并下载配置文件和对应版本的`docker-compose.yml`
+
+- [config.json](https://github.com/labring/FastGPT/blob/main/projects/app/data/config.json)
+- [docker-compose.yml](https://github.com/labring/FastGPT/blob/main/files/docker) (注意，不同向量库版本的文件不一样)
+
+{{% alert icon="🤖" context="success" %}}
+
+所有 `docker-compose.yml` 配置文件中 `MongoDB` 为 5.x，需要用到AUX指令集，部分 CPU 不支持，需手动更改其镜像版本为 4.4.24**（需要自己在docker hub下载，阿里云镜像没做备份）
+
+{{% /alert %}}
+
+**Linux 快速脚本**
 
 ```bash
 mkdir fastgpt
 cd fastgpt
-curl -O https://raw.githubusercontent.com/labring/FastGPT/main/files/deploy/fastgpt/docker-compose.yml
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
+
+# pgvector 版本
+curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-pgvector.yml
+# milvus 版本
+# curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-milvus.yml
+# zilliz 版本
+# curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-zilliz.yml
 ```
 
-## 三、启动容器
+### 2. 修改 docker-compose.yml 环境变量
+
+{{< tabs tabTotal="3" >}}
+{{< tab tabName="PgVector版本" >}}
+{{< markdownify >}}
+
+```
+无需操作
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< tab tabName="Milvus版本" >}}
+{{< markdownify >}}
+
+```
+无需操作
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< tab tabName="Zilliz版本" >}}
+{{< markdownify >}}
+
+```
+修改`MILVUS_ADDRESS`和`MILVUS_TOKEN`链接参数
+```
+
+{{< /markdownify >}}
+{{< /tab >}}
+{{< /tabs >}}
+
+### 3. 启动容器
 
 在 docker-compose.yml 同级目录下执行。请确保`docker-compose`版本最好在2.17以上，否则可能无法执行自动化命令。
 
@@ -107,13 +182,13 @@ sleep 10
 docker restart oneapi
 ```
 
-## 四、打开 OneAPI 添加模型
+### 4. 打开 OneAPI 添加模型
 
 可以通过`ip:3001`访问OneAPI，默认账号为`root`密码为`123456`。
 
 在OneApi中添加合适的AI模型渠道。[点击查看相关教程](/docs/development/one-api/)
 
-## 五、访问 FastGPT
+### 5. 访问 FastGPT
 
 目前可以通过 `ip:3000` 直接访问(注意防火墙)。登录用户名为 `root`，密码为`docker-compose.yml`环境变量里设置的 `DEFAULT_ROOT_PSW`。
 

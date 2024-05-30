@@ -1,5 +1,10 @@
 import { DataType, MilvusClient } from '@zilliz/milvus2-sdk-node';
-import { DatasetVectorTableName, MILVUS_ADDRESS, MILVUS_TOKEN } from '../constants';
+import {
+  DatasetVectorDbName,
+  DatasetVectorTableName,
+  MILVUS_ADDRESS,
+  MILVUS_TOKEN
+} from '../constants';
 import type {
   DelDatasetVectorCtrlProps,
   EmbeddingRecallCtrlProps,
@@ -8,8 +13,9 @@ import type {
 } from '../controller.d';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../../common/system/log';
+import { isProduction } from '../../../common/system/constants';
 
-export class Milvus {
+export class MilvusCtrl {
   client: MilvusClient | undefined;
   constructor() {}
   getClient = async () => {
@@ -20,7 +26,8 @@ export class Milvus {
 
     this.client = new MilvusClient({
       address: MILVUS_ADDRESS,
-      token: MILVUS_TOKEN
+      token: MILVUS_TOKEN,
+      database: DatasetVectorDbName
     });
 
     addLog.info(`Milvus connected`);
@@ -29,47 +36,65 @@ export class Milvus {
   };
   init = async () => {
     const client = await this.getClient();
+
+    // init collection and index
     const { value: hasCollection } = await client.hasCollection({
       collection_name: DatasetVectorTableName
     });
+    if (!hasCollection) {
+      const result = await client.createCollection({
+        collection_name: DatasetVectorTableName,
+        description: 'Store dataset vector',
+        enableDynamicField: true,
+        fields: [
+          {
+            name: 'id',
+            data_type: DataType.Int64,
+            is_primary_key: true,
+            autoID: true
+          },
+          {
+            name: 'vector',
+            data_type: DataType.FloatVector,
+            dim: 1536
+          },
+          { name: 'teamId', data_type: DataType.VarChar, max_length: 64 },
+          { name: 'datasetId', data_type: DataType.VarChar, max_length: 64 },
+          { name: 'collectionId', data_type: DataType.VarChar, max_length: 64 },
+          {
+            name: 'createTime',
+            data_type: DataType.Int64
+          }
+        ],
+        index_params: [
+          {
+            field_name: 'vector',
+            index_name: 'vector_HNSW',
+            index_type: 'HNSW',
+            metric_type: 'IP',
+            params: { efConstruction: 32, M: 64 }
+          },
+          {
+            field_name: 'teamId',
+            index_type: 'INVERTED'
+          },
+          {
+            field_name: 'datasetId',
+            index_type: 'INVERTED'
+          },
+          {
+            field_name: 'collectionId',
+            index_type: 'INVERTED'
+          },
+          {
+            field_name: 'createTime',
+            index_type: 'STL_SORT'
+          }
+        ]
+      });
 
-    if (hasCollection) return;
-
-    // create collection and index
-    await client.createCollection({
-      collection_name: DatasetVectorTableName,
-      description: 'Store dataset vector',
-      enableDynamicField: true,
-      fields: [
-        {
-          name: 'id',
-          data_type: DataType.Int64,
-          is_primary_key: true,
-          autoID: true
-        },
-        {
-          name: 'vector',
-          data_type: DataType.FloatVector,
-          dim: 1536
-        },
-        { name: 'teamId', data_type: DataType.VarChar, max_length: 64 },
-        { name: 'datasetId', data_type: DataType.VarChar, max_length: 64 },
-        { name: 'collectionId', data_type: DataType.VarChar, max_length: 64 },
-        {
-          name: 'createTime',
-          data_type: DataType.Int64
-        }
-      ],
-      index_params: [
-        {
-          field_name: 'vector',
-          index_name: 'vector_HNSW',
-          index_type: 'HNSW',
-          metric_type: 'IP',
-          params: { efConstruction: 32, M: 64 }
-        }
-      ]
-    });
+      addLog.info(`Create milvus collection: `, result);
+    }
   };
 
   insert = async (props: InsertVectorControllerProps): Promise<{ insertId: string }> => {
@@ -117,17 +142,17 @@ export class Milvus {
 
     const teamIdWhere = `(teamId=="${String(teamId)}")`;
     const where = await (() => {
-      if ('id' in props && props.id) return `id==${props.id}`;
+      if ('id' in props && props.id) return `(id==${props.id})`;
 
       if ('datasetIds' in props && props.datasetIds) {
-        const datasetIdWhere = `datasetId in [${props.datasetIds
+        const datasetIdWhere = `(datasetId in [${props.datasetIds
           .map((id) => `"${String(id)}"`)
-          .join(',')}]`;
+          .join(',')}])`;
 
         if ('collectionIds' in props && props.collectionIds) {
-          return `${datasetIdWhere} AND collectionId in [${props.collectionIds
+          return `${datasetIdWhere} and (collectionId in [${props.collectionIds
             .map((id) => `"${String(id)}"`)
-            .join(',')}]`;
+            .join(',')}])`;
         }
 
         return `${datasetIdWhere}`;
@@ -135,14 +160,14 @@ export class Milvus {
 
       if ('idList' in props && Array.isArray(props.idList)) {
         if (props.idList.length === 0) return;
-        return `id in [${props.idList.map((id) => String(id)).join(',')}]`;
+        return `(id in [${props.idList.map((id) => String(id)).join(',')}])`;
       }
       return Promise.reject('deleteDatasetData: no where');
     })();
 
     if (!where) return;
 
-    const concatWhere = `${teamIdWhere} and (${where})`;
+    const concatWhere = `${teamIdWhere} and ${where}`;
 
     try {
       await client.delete({
@@ -160,7 +185,7 @@ export class Milvus {
       });
     }
   };
-  recall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
+  embRecall = async (props: EmbeddingRecallCtrlProps): Promise<EmbeddingRecallResponse> => {
     const client = await this.getClient();
     const { teamId, datasetIds, vector, limit, retry = 2 } = props;
 
@@ -190,7 +215,7 @@ export class Milvus {
       if (retry <= 0) {
         return Promise.reject(error);
       }
-      return this.recall({
+      return this.embRecall({
         ...props,
         retry: retry - 1
       });
@@ -236,9 +261,10 @@ export class Milvus {
 }
 
 export const getMilvusClient = () => {
-  if (global.milvusClient) return global.milvusClient;
+  // dev mode, need to refresh object
+  if (isProduction && global.milvusClient) return global.milvusClient;
 
-  global.milvusClient = new Milvus();
+  global.milvusClient = new MilvusCtrl();
 
   return global.milvusClient;
 };

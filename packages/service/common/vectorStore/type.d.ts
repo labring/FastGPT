@@ -1,9 +1,9 @@
 import type { Pool } from 'pg';
-import type { Milvus } from './milvus/class';
+import type { MilvusCtrl } from './milvus/class';
 
 declare global {
   var pgClient: Pool | null;
-  var milvusClient: Milvus;
+  var milvusClient: MilvusCtrl;
 }
 
 export type EmbeddingRecallItemType = {

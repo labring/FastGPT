@@ -7,12 +7,12 @@ import {
   getVectorCountByTeamId
 } from './controller';
 
-export class PgVector {
+export class PgVectorCtrl {
   constructor() {}
   init = initPg;
   insert = insertDatasetDataVector;
   delete = deleteDatasetDataVector;
-  recall = embeddingRecall;
+  embRecall = embeddingRecall;
   getVectorCountByTeamId = getVectorCountByTeamId;
   getVectorDataByTime = getVectorDataByTime;
 }
