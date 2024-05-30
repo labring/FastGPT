@@ -4,7 +4,6 @@ import {
   Flex,
   Menu,
   MenuButton,
-  MenuItemProps,
   MenuList,
   useDisclosure,
   Box,
@@ -20,34 +19,27 @@ import {
   checkPermission,
   Permission
 } from '@fastgpt/service/support/permission/resourcePermission/permisson';
+import { useContextSelector } from 'use-context-selector';
+import { CollaboratorContext } from '.';
 
-export type PermissionSelectListType = {
-  value: PermissionValueType;
-  name: string;
-  description?: string;
-  type?: 'single' | 'multiple'; // default: single
-}[];
+// export type PermissionSelectListType = {
+//   value: PermissionValueType;
+//   name: string;
+//   description?: string;
+//   type?: 'single' | 'multiple'; // default: single
+// }[];
 
 export type PermissionSelectProps = {
-  list: PermissionSelectListType;
   value?: PermissionValueType;
   onChange?: (value: PermissionValueType) => void;
 } & Omit<ButtonProps, 'onChange' | 'value'>;
 
-function PermissionSelect({
-  list,
-  value,
-  isLoading,
-  width,
-  onChange,
-  ...props
-}: PermissionSelectProps) {
+function PermissionSelect({ value, isLoading, width, onChange, ...props }: PermissionSelectProps) {
+  const { permissionConfig: list } = useContextSelector(CollaboratorContext, (v) => v);
   const ref = useRef<HTMLButtonElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
-  // const selectItem = useMemo(() => list.find((item) => item.value === value), [list, value]);
   const singleValues = list.filter((item) => item.type === 'single').map((item) => item.value);
   const multipleValues = list.filter((item) => item.type === 'multiple').map((item) => item.value);
-  // const singleSelectedValue = new Permission(value).remove(...multipleValues).value;
   const singleSelectedValue = useMemo(() => {
     return new Permission(value).remove(...multipleValues).value;
   }, [value, multipleValues]);

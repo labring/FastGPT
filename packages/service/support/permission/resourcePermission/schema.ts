@@ -26,7 +26,7 @@ export const ResourcePermissionSchema = new Schema({
   },
   // Resrouce ID: App or DataSet or any other resource type.
   // It is null if the resourceType is team.
-  ResourceId: {
+  resourceId: {
     type: Schema.Types.ObjectId
   }
 });

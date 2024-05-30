@@ -11,25 +11,23 @@ import { PermissionListType } from '@fastgpt/service/support/permission/resource
 import { createContext } from 'use-context-selector';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import PermissionTags from './PermissionTags';
 
 export type PermissionConfigType = {
-  [key: PermissionValueType]: {
-    type: 'single' | 'multiple';
-    name: string;
-    description: string;
-  };
-};
+  value: PermissionValueType;
+  type: 'single' | 'multiple';
+  name: string;
+  description: string;
+}[];
 
 export type MemberManagerPropsType = {
   collaboratorList?: AppCollaboratorType[];
   permissionList: PermissionListType;
   permissionConfig: PermissionConfigType;
+  addCollaborators: (tmbIds: string[], permission: PermissionValueType) => any;
 };
 
-export type CollaboratorContextType = {
-  collaboratorList?: AppCollaboratorType[];
-  permissionList: PermissionListType;
-  permissionConfig: PermissionConfigType;
+export type CollaboratorContextType = MemberManagerPropsType & {
   teamMemberList?: TeamMemberItemType[];
 };
 
@@ -37,25 +35,20 @@ export const CollaboratorContext = createContext<CollaboratorContextType>(
   {} as CollaboratorContextType
 );
 
-function MemberManger({
-  collaboratorList,
-  permissionList,
-  permissionConfig
-}: MemberManagerPropsType) {
+function MemberManger({ collaboratorList, ...props }: MemberManagerPropsType) {
   const [addMember, setAddMember] = useState<boolean>();
   const { userInfo } = useUserStore();
-  const { data: teamMemberList } = useQuery(['getMembers'], async () => {
+  const { data: teamMemberList, refetch } = useQuery(['getMembers'], async () => {
     if (!userInfo?.team?.teamId) return [];
-    return (await getTeamMembers(userInfo.team.teamId)).filter(
+    return (await getTeamMembers()).filter(
       (member) => member.userId != userInfo.team.userId // remove the teamMember itself
     );
   });
 
   const contextValue: CollaboratorContextType = {
     collaboratorList,
-    permissionList,
-    permissionConfig,
-    teamMemberList
+    teamMemberList,
+    ...props
   };
 
   return (
@@ -82,25 +75,38 @@ function MemberManger({
           </Flex>
         </Flex>
 
-        <Flex w="full" bg="myGray.100" p="2" gap="2" borderRadius="md">
-          {teamMemberList?.length !== 0 && (
+        <Flex w="full" bg="myGray.100" p="2" gap="2" borderRadius="md" flexDirection="column">
+          {collaboratorList?.length === 0 && (
             <Box my="2" mx="auto" color="myGray.600">
               暂无协作者
             </Box>
           )}
 
-          {teamMemberList?.map((member) => {
-            if (collaboratorList?.find((collaborator) => collaborator.tmbId === member.tmbId)) {
-              return (
-                <Tag px="3" py="2" bgColor="white" key={member.memberName}>
-                  <Avatar src={member.avatar} w="24px" />
-                  <TagLabel ml="2">{member.memberName}</TagLabel>
-                </Tag>
-              );
-            }
+          {collaboratorList?.map((collaborator) => {
+            const member = teamMemberList?.find(
+              (member) => member.tmbId.toString() === collaborator.tmbId.toString()
+            );
+            return (
+              <Tag px="3" py="2" bgColor="white" key={collaborator.tmbId}>
+                <Flex justifyContent="space-between" w="full">
+                  <Flex alignItems="center">
+                    <Avatar src={member?.avatar} w="24px" />
+                    <TagLabel ml="2">{member?.memberName}</TagLabel>
+                  </Flex>
+                  <PermissionTags permission={collaborator.permission} />
+                </Flex>
+              </Tag>
+            );
           })}
         </Flex>
-        {addMember && <AddMemberModal onClose={() => setAddMember(false)} />}
+        {addMember && (
+          <AddMemberModal
+            onClose={() => {
+              setAddMember(false);
+              refetch();
+            }}
+          />
+        )}
       </Flex>
     </CollaboratorContext.Provider>
   );

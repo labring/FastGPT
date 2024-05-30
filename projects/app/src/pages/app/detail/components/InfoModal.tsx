@@ -21,7 +21,7 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import MemberManager from '@/components/support/permission/MemberManager';
-import { getCollaboratorList } from '@/web/core/app/collaborator';
+import { addAppCollaborators, getCollaboratorList } from '@/web/core/app/collaborator';
 import { useQuery } from '@tanstack/react-query';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
@@ -38,6 +38,11 @@ import {
 } from '@fastgpt/service/support/permission/app/permission';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import {
+  PermissionListType,
+  PermissionValueType
+} from '@fastgpt/service/support/permission/resourcePermission/permisson';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 enum defaultPermissionEnum {
   private = 'private',
@@ -78,7 +83,8 @@ const InfoModal = ({
     multiple: false
   });
 
-  const { userInfo } = useUserStore();
+  // const { userInfo } = useUserStore();
+  const { myApps } = useAppStore();
 
   const {
     register,
@@ -228,33 +234,47 @@ const InfoModal = ({
         <MemberManager
           collaboratorList={CollaboratorList}
           permissionList={AppPermissionList}
-          permissionConfig={{
-            [AppReadPermission.value]: {
+          addCollaborators={(tmbIds: string[], permission: PermissionValueType) => {
+            const res = addAppCollaborators({
+              tmbIds,
+              permission,
+              appId: defaultApp._id
+            });
+            setRefresh(!refresh);
+            return res;
+          }}
+          permissionConfig={[
+            {
+              value: AppReadPermission.value, // 4
               type: 'single',
               name: '读权限',
               description: '读权限相关文案'
             },
-            [AppWritePermission.value]: {
+            {
+              value: AppWritePermission.value, // 6
               type: 'single',
               name: '写权限',
               description: '写权限相关文案'
             },
-            [AppAdminPermission.value]: {
+            {
+              value: AppAdminPermission.value, // 7
               type: 'single',
               name: '管理权限',
               description: '管理权限相关文案'
             },
-            [AppPermissionList[AppPermissionEnum.DownloadFile]]: {
+            {
+              value: AppPermissionList[AppPermissionEnum.DownloadFile], // 8
               type: 'multiple',
               name: '下载权限',
               description: '下载权限相关文案'
             },
-            [AppPermissionList[AppPermissionEnum.ReadLog]]: {
+            {
+              value: AppPermissionList[AppPermissionEnum.ReadLog], // 16
               type: 'multiple',
               name: '查看日志',
               description: '查看日志相关文案'
             }
-          }}
+          ]}
         />
       </ModalBody>
 

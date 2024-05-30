@@ -8,7 +8,9 @@ import {
   Input,
   Checkbox,
   ModalFooter,
-  Button
+  Button,
+  Toast,
+  useToast
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -16,33 +18,21 @@ import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from '.';
 import MyAvatar from '@/components/Avatar';
 import { useState } from 'react';
-import PermissionSelect, { type PermissionSelectListType } from './PermissionSelect';
+import PermissionSelect from './PermissionSelect';
+import PermissionTags from './PermissionTags';
 
 export type AddModalPropsType = {
   onClose: () => void;
 };
 
 export function AddMemberModal({ onClose }: AddModalPropsType) {
-  const { teamMemberList, collaboratorList, permissionConfig, permissionList } = useContextSelector(
-    CollaboratorContext,
-    (v) => v
-  );
+  const { teamMemberList, permissionConfig, collaboratorList, permissionList, addCollaborators } =
+    useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const SelectPermissionList: PermissionSelectListType = Object.entries(permissionConfig).map(
-    ([key, value]) => {
-      return {
-        name: value.name,
-        value: parseInt(key),
-        description: value.description,
-        type: value.type
-      };
-    }
-  );
+  const toast = useToast();
 
-  const [selectedPermission, setSelectedPermission] = useState<number>(
-    SelectPermissionList[0].value
-  );
+  const [selectedPermission, setSelectedPermission] = useState<number>(permissionConfig[0].value);
 
   return (
     <MyModal
@@ -86,22 +76,22 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                 })
                 ?.map((member) => {
                   const change = () => {
-                    if (selectedMembers.includes(member.userId)) {
-                      setSelectedMembers(selectedMembers.filter((v) => v !== member.userId));
+                    if (selectedMembers.includes(member.tmbId)) {
+                      setSelectedMembers(selectedMembers.filter((v) => v !== member.tmbId));
                     } else {
-                      setSelectedMembers([...selectedMembers, member.userId]);
+                      setSelectedMembers([...selectedMembers, member.tmbId]);
                     }
                   };
                   return (
                     <Flex
-                      key={member.userId}
+                      key={member.tmbId}
                       mt="1"
                       alignItems="center"
                       _hover={{
                         bgColor: 'myGray.50',
                         cursor: 'pointer'
                       }}
-                      {...(selectedMembers.includes(member.userId) && {
+                      {...(selectedMembers.includes(member.tmbId) && {
                         bgColor: 'myGray.50'
                       })}
                       flexDirection="row"
@@ -109,7 +99,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                       <Checkbox
                         size="lg"
                         mr="3"
-                        isChecked={selectedMembers.includes(member.userId)}
+                        isChecked={selectedMembers.includes(member.tmbId)}
                         onChange={change}
                       />
                       <Flex
@@ -122,7 +112,13 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                           <MyAvatar src={member.avatar} w="24px" />
                           <Box ml="2">{member.memberName}</Box>
                         </Flex>
-                        <Flex flexDirection="row">aaa</Flex>
+                        {collaboratorList?.find((v) => v.tmbId === member.tmbId)?.permission && (
+                          <PermissionTags
+                            permission={
+                              collaboratorList?.find((v) => v.tmbId === member.tmbId)?.permission
+                            }
+                          />
+                        )}
                       </Flex>
                     </Flex>
                   );
@@ -132,10 +128,10 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
           <Flex p="4" flexDirection="column">
             <Box>已选: {selectedMembers.length}</Box>
             <Flex flexDirection="column" mt="2">
-              {selectedMembers.map((userId) => {
-                const member = teamMemberList?.find((v) => v.userId === userId);
+              {selectedMembers.map((tmbId) => {
+                const member = teamMemberList?.find((v) => v.tmbId === tmbId);
                 return (
-                  <Flex key={userId} mt="1" alignItems="start" flexDirection="row">
+                  <Flex key={tmbId} mt="1" alignItems="start" flexDirection="row">
                     <MyAvatar src={member?.avatar} w="24px" />
                     <Box ml="2">{member?.memberName}</Box>
                   </Flex>
@@ -146,12 +142,23 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
         </Grid>
       </ModalBody>
       <ModalFooter>
-        <PermissionSelect
-          list={SelectPermissionList}
-          value={selectedPermission}
-          onChange={(v) => setSelectedPermission(v)}
-        />
-        <Button ml="4">确认</Button>
+        <PermissionSelect value={selectedPermission} onChange={(v) => setSelectedPermission(v)} />
+        <Button
+          ml="4"
+          onClick={() => {
+            if (addCollaborators(selectedMembers, selectedPermission)) {
+              toast({
+                title: '添加成功',
+                status: 'success',
+                duration: 3000,
+                isClosable: true
+              });
+              onClose();
+            }
+          }}
+        >
+          确认
+        </Button>
       </ModalFooter>
     </MyModal>
   );
