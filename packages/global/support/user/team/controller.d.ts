@@ -14,6 +14,7 @@ export type CreateTeamProps = {
   lafAccount?: LafAccountType;
 };
 export type UpdateTeamProps = {
+  teamId: string;
   name?: string;
   avatar?: string;
   teamDomain?: string;

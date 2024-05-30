@@ -11,7 +11,7 @@ import { PermissionListType } from '@fastgpt/service/support/permission/resource
 import { createContext } from 'use-context-selector';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import PermissionTags from './PermissionTags';
+import ManageModal from './ManageModal';
 
 export type PermissionConfigType = {
   value: PermissionValueType;
@@ -22,9 +22,11 @@ export type PermissionConfigType = {
 
 export type MemberManagerPropsType = {
   collaboratorList?: AppCollaboratorType[];
+  refetchCollaboratorList?: () => void;
   permissionList: PermissionListType;
   permissionConfig: PermissionConfigType;
   addCollaborators: (tmbIds: string[], permission: PermissionValueType) => any;
+  deleteCollaborator: (tmbId: string) => any;
 };
 
 export type CollaboratorContextType = MemberManagerPropsType & {
@@ -35,8 +37,13 @@ export const CollaboratorContext = createContext<CollaboratorContextType>(
   {} as CollaboratorContextType
 );
 
-function MemberManger({ collaboratorList, ...props }: MemberManagerPropsType) {
+function MemberManger({
+  collaboratorList,
+  refetchCollaboratorList,
+  ...props
+}: MemberManagerPropsType) {
   const [addMember, setAddMember] = useState<boolean>();
+  const [managePermission, setManagePermission] = useState<boolean>();
   const { userInfo } = useUserStore();
   const { data: teamMemberList, refetch } = useQuery(['getMembers'], async () => {
     if (!userInfo?.team?.teamId) return [];
@@ -61,6 +68,7 @@ function MemberManger({ collaboratorList, ...props }: MemberManagerPropsType) {
               size="sm"
               variant="whitePrimary"
               leftIcon={<MyIcon w="4" name="common/settingLight" />}
+              onClick={() => setManagePermission(true)}
             >
               管理
             </Button>
@@ -82,28 +90,38 @@ function MemberManger({ collaboratorList, ...props }: MemberManagerPropsType) {
             </Box>
           )}
 
-          {collaboratorList?.map((collaborator) => {
-            const member = teamMemberList?.find(
-              (member) => member.tmbId.toString() === collaborator.tmbId.toString()
-            );
-            return (
-              <Tag px="3" py="2" bgColor="white" key={collaborator.tmbId}>
-                <Flex justifyContent="space-between" w="full">
+          <Flex gap="2">
+            {collaboratorList?.map((collaborator) => {
+              const member = teamMemberList?.find(
+                (member) => member.tmbId.toString() === collaborator.tmbId.toString()
+              );
+              return (
+                <Tag px="3" py="2" bgColor="white" key={collaborator.tmbId} width="fit-content">
                   <Flex alignItems="center">
                     <Avatar src={member?.avatar} w="24px" />
-                    <TagLabel ml="2">{member?.memberName}</TagLabel>
+                    <TagLabel mx="2">{member?.memberName}</TagLabel>
+                    {/* <PermissionTags permission={collaborator.permission} /> */}
                   </Flex>
-                  <PermissionTags permission={collaborator.permission} />
-                </Flex>
-              </Tag>
-            );
-          })}
+                </Tag>
+              );
+            })}
+          </Flex>
         </Flex>
         {addMember && (
           <AddMemberModal
             onClose={() => {
               setAddMember(false);
               refetch();
+              refetchCollaboratorList?.();
+            }}
+          />
+        )}
+        {managePermission && (
+          <ManageModal
+            onClose={() => {
+              setManagePermission(false);
+              refetch();
+              refetchCollaboratorList?.();
             }}
           />
         )}

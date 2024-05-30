@@ -8,7 +8,8 @@ import {
   useDisclosure,
   Box,
   Checkbox,
-  Radio
+  Radio,
+  IconButton
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
@@ -22,43 +23,70 @@ import {
 import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from '.';
 
-// export type PermissionSelectListType = {
-//   value: PermissionValueType;
-//   name: string;
-//   description?: string;
-//   type?: 'single' | 'multiple'; // default: single
-// }[];
-
 export type PermissionSelectProps = {
   value?: PermissionValueType;
   onChange?: (value: PermissionValueType) => void;
+  deleteButton?: boolean;
+  onDelete?: () => void;
+  iconButton?: boolean;
 } & Omit<ButtonProps, 'onChange' | 'value'>;
 
-function PermissionSelect({ value, isLoading, width, onChange, ...props }: PermissionSelectProps) {
+function PermissionSelect({
+  value,
+  isLoading,
+  width,
+  onChange,
+  deleteButton,
+  onDelete,
+  iconButton,
+  ...props
+}: PermissionSelectProps) {
   const { permissionConfig: list } = useContextSelector(CollaboratorContext, (v) => v);
   const ref = useRef<HTMLButtonElement>(null);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const singleValues = list.filter((item) => item.type === 'single').map((item) => item.value);
   const multipleValues = list.filter((item) => item.type === 'multiple').map((item) => item.value);
+  const [valueState, setValueState] = React.useState(value);
+
   const singleSelectedValue = useMemo(() => {
-    return new Permission(value).remove(...multipleValues).value;
-  }, [value, multipleValues]);
-  const [refresh, setRefresh] = React.useState(true);
+    return new Permission(valueState).remove(...multipleValues).value;
+  }, [valueState, multipleValues]);
 
   return (
-    <Menu autoSelect={false} isOpen={isOpen} onOpen={onOpen} onClose={onClose}>
+    <Menu
+      autoSelect={false}
+      isOpen={isOpen}
+      onOpen={onOpen}
+      onClose={() => {
+        onChange?.(valueState!);
+        onClose();
+      }}
+    >
       <MenuButton
-        as={Button}
+        as={iconButton ? MyIcon : Button}
         ref={ref}
         width={width}
         px={3}
-        rightIcon={<ChevronDownIcon />}
-        variant={'whitePrimary'}
+        {...(iconButton
+          ? {
+              name: 'edit',
+              w: '16px',
+              _hover: {
+                color: 'primary.500',
+                bg: 'myWhite.300',
+                cursor: 'pointer'
+              }
+            }
+          : {
+              rightIcon: <ChevronDownIcon />,
+              variant: 'whitePrimary'
+            })}
+        // variant={'whitePrimary'}
         textAlign={'left'}
         _active={{
           transform: 'none'
         }}
-        {...(isOpen
+        {...(isOpen && !iconButton
           ? {
               boxShadow: '0px 0px 4px #A8DBFF',
               borderColor: 'primary.500'
@@ -66,15 +94,17 @@ function PermissionSelect({ value, isLoading, width, onChange, ...props }: Permi
           : {})}
         {...props}
       >
-        <Flex alignItems={'center'}>
-          {isLoading && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
-          {list.find((item) => item.value === singleSelectedValue)?.name || '请选择权限'}
-          {list.map((item) => {
-            if (item.type === 'multiple' && checkPermission(value, item.value)) {
-              return '、' + item.name;
-            }
-          })}
-        </Flex>
+        {iconButton ? null : (
+          <Flex alignItems={'center'}>
+            {isLoading && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
+            {list.find((item) => item.value === singleSelectedValue)?.name || '请选择权限'}
+            {list.map((item) => {
+              if (item.type === 'multiple' && checkPermission(value, item.value)) {
+                return '、' + item.name;
+              }
+            })}
+          </Flex>
+        )}
       </MenuButton>
       <MenuList
         className={props.className}
@@ -98,10 +128,9 @@ function PermissionSelect({ value, isLoading, width, onChange, ...props }: Permi
           .filter((item) => item.type === 'single')
           .map((item) => {
             const change = () => {
-              if (onChange) {
-                onChange(new Permission(value).remove(...singleValues).add(item.value).value);
-              }
-              setRefresh(!refresh);
+              setValueState(
+                new Permission(valueState).remove(...singleValues).add(item.value).value
+              );
             };
             return (
               <Flex
@@ -138,19 +167,16 @@ function PermissionSelect({ value, isLoading, width, onChange, ...props }: Permi
           .filter((item) => item.type === 'multiple')
           .map((item) => {
             const change = () => {
-              if (onChange) {
-                if (checkPermission(value, item.value)) {
-                  onChange(new Permission(value).remove(item.value).value);
-                } else {
-                  onChange(new Permission(value).add(item.value).value);
-                }
+              if (checkPermission(valueState, item.value)) {
+                setValueState(new Permission(valueState).remove(item.value).value);
+              } else {
+                setValueState(new Permission(valueState).add(item.value).value);
               }
-              setRefresh(!refresh);
             };
             return (
               <Flex
                 key={item.value}
-                {...(checkPermission(value, item.value)
+                {...(checkPermission(valueState, item.value)
                   ? {
                       color: 'primary.500',
                       bg: 'myWhite.300'
@@ -166,7 +192,7 @@ function PermissionSelect({ value, isLoading, width, onChange, ...props }: Permi
               >
                 <Checkbox
                   size="lg"
-                  isChecked={checkPermission(value, item.value)}
+                  isChecked={checkPermission(valueState, item.value)}
                   onChange={change}
                 />
                 <Flex mx="4" flexDirection="column" onClick={change}>
@@ -176,6 +202,28 @@ function PermissionSelect({ value, isLoading, width, onChange, ...props }: Permi
               </Flex>
             );
           })}
+        {deleteButton && (
+          <>
+            <hr />
+            <Flex
+              mt="4"
+              p="2"
+              alignItems="center"
+              gap="2"
+              _hover={{
+                bgColor: 'myGray.50',
+                cursor: 'pointer'
+              }}
+              onClick={() => {
+                onDelete?.();
+                onClose();
+              }}
+            >
+              <MyIcon name="delete" w="20px" color="red.600" />
+              <Box color="red.600"> 删除</Box>
+            </Flex>
+          </>
+        )}
       </MenuList>
     </Menu>
   );

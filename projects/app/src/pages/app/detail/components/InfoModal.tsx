@@ -21,7 +21,11 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import MemberManager from '@/components/support/permission/MemberManager';
-import { addAppCollaborators, getCollaboratorList } from '@/web/core/app/collaborator';
+import {
+  addAppCollaborators,
+  deleteAppCollaborators,
+  getCollaboratorList
+} from '@/web/core/app/collaborator';
 import { useQuery } from '@tanstack/react-query';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
@@ -36,12 +40,7 @@ import {
   AppReadPermission,
   AppWritePermission
 } from '@fastgpt/service/support/permission/app/permission';
-import { getTeamMembers } from '@/web/support/user/team/api';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import {
-  PermissionListType,
-  PermissionValueType
-} from '@fastgpt/service/support/permission/resourcePermission/permisson';
+import { PermissionValueType } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 
 enum defaultPermissionEnum {
@@ -163,9 +162,12 @@ const InfoModal = ({
     [setValue, t, toast]
   );
 
-  const { data: CollaboratorList } = useQuery(['CollaboratorList'], () => {
-    return getCollaboratorList(defaultApp._id);
-  });
+  const { data: CollaboratorList, refetch: refetchCollaboratorList } = useQuery(
+    ['CollaboratorList'],
+    () => {
+      return getCollaboratorList(defaultApp._id);
+    }
+  );
 
   return (
     <MyModal
@@ -240,7 +242,7 @@ const InfoModal = ({
               permission,
               appId: defaultApp._id
             });
-            setRefresh(!refresh);
+            refetchCollaboratorList();
             return res;
           }}
           permissionConfig={[
@@ -275,6 +277,17 @@ const InfoModal = ({
               description: '查看日志相关文案'
             }
           ]}
+          refetchCollaboratorList={() => {
+            refetchCollaboratorList();
+          }}
+          deleteCollaborator={(tmbId: string) => {
+            const res = deleteAppCollaborators({
+              appId: defaultApp._id,
+              tmbId
+            });
+            refetchCollaboratorList();
+            return res;
+          }}
         />
       </ModalBody>
 
