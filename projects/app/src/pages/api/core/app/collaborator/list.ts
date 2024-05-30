@@ -5,6 +5,7 @@ import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/resourcePermission/schema';
 import { ResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppCollaboratorType } from '@fastgpt/global/core/app/type';
+import { NullPermission } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 
 async function handler(req: NextApiRequest) {
   // Authorization
@@ -13,7 +14,7 @@ async function handler(req: NextApiRequest) {
     req,
     authToken: true,
     appId,
-    per: AppAdminPermission.value
+    per: NullPermission // any one can view collaborator list
   });
 
   return (
