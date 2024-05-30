@@ -29,7 +29,7 @@
   },
   "lint-staged": {
     "./**/**/*.{ts,tsx,scss}": "npm run format-code",
-    "./**/**/*.md": "npm run format-doc"
+    "./docSite/**/**/*.md": "npm run format-doc"
   },
   "engines": {
     "node": ">=18.0.0",
