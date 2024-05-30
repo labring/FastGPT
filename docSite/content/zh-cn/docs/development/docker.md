@@ -347,13 +347,14 @@ PG 数据库没有连接上/初始化失败，可以查看日志。FastGPT 会�
 
 ### Operation `auth_codes.findOne()` buffering timed out after 10000ms
 
-mongo连接失败，查看mongo的运行状态对应日志。
+mongo连接失败，查看mongo的运行状态**对应日志**。
 
 可能原因：
 
 1. mongo 服务有没有起来（有些 cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x，可以docker hub找个最新的4.x，修改镜像版本，重新运行）
 2. 连接数据库的环境变量填写错误（账号密码，注意host和port，非容器网络连接，需要用公网ip并加上 directConnection=true）
 3. 副本集启动失败。导致容器一直重启。
+4. `Illegal instruction.... Waiting for MongoDB to start`: cpu 不支持 AVX，无法用 mongo5，需要换成 mongo4.x
 
 ### 首次部署，root用户提示未注册
 
