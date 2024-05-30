@@ -5,6 +5,10 @@
     "Reset template": "还原模板",
     "Reset template confirm": "确认还原代码模板？请注意保存当前代码。"
   },
+  "ifelse": {
+    "Input value": "输入值",
+    "Select value": "选择值"
+  },
   "response": {
     "Custom inputs": "自定义输入",
     "Custom outputs": "自定义输出",

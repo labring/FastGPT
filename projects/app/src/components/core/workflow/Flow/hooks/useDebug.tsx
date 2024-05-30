@@ -168,7 +168,7 @@ export const useDebug = () => {
         <Box flex={'1 0 0'} overflow={'auto'} px={6}>
           {renderInputs.map((input) => {
             const required = input.required || false;
-            console.log(input.valueType);
+
             const RenderInput = (() => {
               if (input.valueType === WorkflowIOValueTypeEnum.string) {
                 return (
