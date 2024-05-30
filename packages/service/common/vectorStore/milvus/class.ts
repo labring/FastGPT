@@ -13,29 +13,41 @@ import type {
 } from '../controller.d';
 import { delay } from '@fastgpt/global/common/system/utils';
 import { addLog } from '../../../common/system/log';
-import { isProduction } from '../../../common/system/constants';
 
 export class MilvusCtrl {
-  client: MilvusClient | undefined;
   constructor() {}
   getClient = async () => {
     if (!MILVUS_ADDRESS) {
       return Promise.reject('MILVUS_ADDRESS is not set');
     }
-    if (this.client) return this.client;
+    if (global.milvusClient) return global.milvusClient;
 
-    this.client = new MilvusClient({
+    global.milvusClient = new MilvusClient({
       address: MILVUS_ADDRESS,
-      token: MILVUS_TOKEN,
-      database: DatasetVectorDbName
+      token: MILVUS_TOKEN
     });
 
     addLog.info(`Milvus connected`);
 
-    return this.client;
+    return global.milvusClient;
   };
   init = async () => {
     const client = await this.getClient();
+
+    // init db(zilliz cloud will error)
+    try {
+      const { db_names } = await client.listDatabases();
+
+      if (!db_names.includes(DatasetVectorDbName)) {
+        await client.createDatabase({
+          db_name: DatasetVectorDbName
+        });
+      }
+
+      await client.useDatabase({
+        db_name: DatasetVectorDbName
+      });
+    } catch (error) {}
 
     // init collection and index
     const { value: hasCollection } = await client.hasCollection({
@@ -259,12 +271,3 @@ export class MilvusCtrl {
     }));
   };
 }
-
-export const getMilvusClient = () => {
-  // dev mode, need to refresh object
-  if (isProduction && global.milvusClient) return global.milvusClient;
-
-  global.milvusClient = new MilvusCtrl();
-
-  return global.milvusClient;
-};

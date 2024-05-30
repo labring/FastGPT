@@ -4,10 +4,10 @@ import { getVectorsByText } from '../../core/ai/embedding';
 import { InsertVectorProps } from './controller.d';
 import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
 import { MILVUS_ADDRESS, PG_ADDRESS } from './constants';
-import { getMilvusClient } from './milvus/class';
+import { MilvusCtrl } from './milvus/class';
 
 const getVectorObj = () => {
-  if (MILVUS_ADDRESS) return getMilvusClient();
+  if (MILVUS_ADDRESS) return new MilvusCtrl();
   if (PG_ADDRESS) return new PgVectorCtrl();
 
   return new PgVectorCtrl();
