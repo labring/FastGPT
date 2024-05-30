@@ -45,7 +45,7 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { getHistories } from '../utils';
 import { filterSearchResultsByMaxChars } from '../../utils';
 import { getHistoryPreview } from '@fastgpt/global/core/chat/utils';
-import { addLog } from 'common/system/log';
+import { addLog } from '../../../../common/system/log';
 
 export type ChatProps = ModuleDispatchProps<
   AIChatNodeProps & {
