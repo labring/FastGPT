@@ -32,7 +32,7 @@ export type AppSchema = {
   inited?: boolean;
   teamTags: string[];
   defaultPermission: PermissionValueType;
-}
+};
 
 export type AppListItemType = {
   _id: string;
@@ -41,6 +41,7 @@ export type AppListItemType = {
   intro: string;
   isOwner: boolean;
   permission: `${PermissionTypeEnum}`;
+  defaultPermission: PermissionValueType;
 };
 
 export type AppDetailType = AppSchema & {

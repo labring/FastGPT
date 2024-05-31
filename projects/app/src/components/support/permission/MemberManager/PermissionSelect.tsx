@@ -16,6 +16,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import {
   checkPermission,
+  NullPermission,
   Permission
 } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 import { useContextSelector } from 'use-context-selector';
@@ -44,7 +45,7 @@ function PermissionSelect({
   const { isOpen, onOpen, onClose } = useDisclosure();
   const singleValues = list.filter((item) => item.type === 'single').map((item) => item.value);
   const multipleValues = list.filter((item) => item.type === 'multiple').map((item) => item.value);
-  const [valueState, setValueState] = React.useState(value);
+  const [valueState, setValueState] = React.useState(value ?? NullPermission);
 
   const singleSelectedValue = useMemo(() => {
     return new Permission(valueState).remove(...multipleValues).value;

@@ -1,5 +1,6 @@
 import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import { NullPermission } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 
 export const defaultApp: AppDetailType = {
   _id: '',
@@ -17,7 +18,8 @@ export const defaultApp: AppDetailType = {
   canWrite: false,
   teamTags: [],
   edges: [],
-  version: 'v2'
+  version: 'v2',
+  defaultPermission: NullPermission
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {

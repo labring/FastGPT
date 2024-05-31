@@ -80,10 +80,7 @@ export const PermissionList: PermissionListType = {
 // example:
 // const perm = user.permission // get this permisiion from db or somewhere else
 // const ok = checkPermission(perm, PermissionList['Read'])
-export function checkPermission(val?: PermissionValueType, perm: PermissionValueType): boolean {
-  if (val === undefined) {
-    return false;
-  }
+export function checkPermission(val: PermissionValueType, perm: PermissionValueType): boolean {
   return (val & perm) === perm;
 }
 

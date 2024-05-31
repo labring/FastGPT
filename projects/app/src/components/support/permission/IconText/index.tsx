@@ -12,11 +12,11 @@ const PermissionIconText = ({
   ...props
 }: {
   permission?: `${PermissionTypeEnum}`;
-  defaultPermission: PermissionValueType;
+  defaultPermission?: PermissionValueType;
 } & FlexProps) => {
   const { t } = useTranslation();
   if (!permission) {
-    permission = hasRead(defaultPermission) ? 'public' : 'private';
+    permission = hasRead(defaultPermission!) ? 'public' : 'private';
   }
   return PermissionTypeMap[permission] ? (
     <Flex alignItems={'center'} {...props}>

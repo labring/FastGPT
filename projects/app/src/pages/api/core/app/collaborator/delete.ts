@@ -1,13 +1,9 @@
-import type { NextApiRequest } from 'next';
+import type { NextApiRequest, NextApiResponse } from 'next';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  AppAdminPermission,
-  AppPermissionList
-} from '@fastgpt/service/support/permission/app/permission';
+import { AppPermissionList } from '@fastgpt/service/support/permission/app/permission';
 import { authApp } from '@fastgpt/service/support/permission/auth/app';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/resourcePermission/schema';
 import { ResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { AppCollaboratorType } from '@fastgpt/global/core/app/type';
 import { hasManage } from '@fastgpt/service/support/permission/resourcePermission/permisson';
 export type AppCollaboratorDeleteParams = {
   appId: string;
