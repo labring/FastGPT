@@ -1,3 +1,5 @@
+import { getErrText } from '@fastgpt/global/common/error/utils';
+import { replaceSensitiveText } from '@fastgpt/global/common/string/tools';
 import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import {
   WorkflowIOValueTypeEnum,
@@ -89,11 +91,10 @@ export const removeSystemVariable = (variables: Record<string, any>) => {
 
 export const formatHttpError = (error: any) => {
   return {
-    message: error?.message,
+    message: getErrText(error),
+    data: error?.response?.data,
     name: error?.name,
     method: error?.config?.method,
-    baseURL: error?.config?.baseURL,
-    url: error?.config?.url,
     code: error?.code,
     status: error?.status
   };

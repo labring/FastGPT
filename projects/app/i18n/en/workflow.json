@@ -10,6 +10,7 @@
     "Select value": "Select"
   },
   "response": {
+    "Code log": "Log",
     "Custom inputs": "Custom inputs",
     "Custom outputs": "Custom outputs",
     "Error": "Error"

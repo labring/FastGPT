@@ -84,6 +84,9 @@ export type DispatchNodeResponseType = {
   toolCallTokens?: number;
   toolDetail?: ChatHistoryItemResType[];
   toolStop?: boolean;
+
+  // code
+  codeLog?: string;
 };
 
 export type DispatchNodeResultType<T> = {

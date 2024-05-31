@@ -167,7 +167,7 @@ type V1WorkflowType = {
     };
     defaultEditField?: {
       inputType?: InputTypeEnum; // input type
-      outputType?: `${FlowNodeOutputTypeEnum}`;
+      outputType?: FlowNodeOutputTypeEnum;
       required?: boolean;
       key?: string;
       label?: string;
@@ -219,7 +219,7 @@ type V1WorkflowType = {
     };
     defaultEditField?: {
       inputType?: `${FlowNodeInputTypeEnum}`; // input type
-      outputType?: `${FlowNodeOutputTypeEnum}`;
+      outputType?: FlowNodeOutputTypeEnum;
       required?: boolean;
       key?: string;
       label?: string;
