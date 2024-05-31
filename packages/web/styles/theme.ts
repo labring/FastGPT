@@ -20,6 +20,8 @@ const { definePartsStyle: numInputPart, defineMultiStyleConfig: numInputMultiSty
 const { definePartsStyle: checkBoxPart, defineMultiStyleConfig: checkBoxMultiStyle } =
   createMultiStyleConfigHelpers(checkboxAnatomy.keys);
 
+const shadowLight = '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)';
+
 // 按键
 const Button = defineStyleConfig({
   baseStyle: {
@@ -289,7 +291,7 @@ const Input: ComponentStyleConfig = {
         borderColor: 'borderColor.low',
         _focus: {
           borderColor: 'primary.500',
-          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+          boxShadow: shadowLight,
           bg: 'white'
         },
         _disabled: {
@@ -328,7 +330,7 @@ const NumberInput = numInputMultiStyle({
         borderColor: 'myGray.200',
         _focus: {
           borderColor: 'primary.500 !important',
-          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15) !important',
+          boxShadow: `${shadowLight} !important`,
           bg: 'transparent'
         },
         _disabled: {
@@ -362,7 +364,7 @@ const Textarea: ComponentStyleConfig = {
       },
       _focus: {
         borderColor: 'primary.500',
-        boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+        boxShadow: shadowLight,
         bg: 'white'
       }
     }
@@ -396,7 +398,7 @@ const Select = selectMultiStyle({
       field: {
         borderColor: 'myGray.200',
         _focusWithin: {
-          boxShadow: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)',
+          boxShadow: shadowLight,
           borderColor: 'primary.500'
         }
       }
@@ -410,7 +412,19 @@ const Checkbox = checkBoxMultiStyle({
       fontFamily: 'mono' // change the font family of the label
     },
     control: {
-      boxShadow: 'none !important'
+      bg: 'none',
+      _checked: {
+        bg: 'primary.50',
+        borderColor: 'primary.600',
+        color: 'primary.600',
+        boxShadow: `${shadowLight} !important`,
+        _hover: {
+          bg: 'primary.50'
+        }
+      },
+      _hover: {
+        borderColor: 'primary.400'
+      }
     }
   })
 });
@@ -440,6 +454,11 @@ export const theme = extendTheme({
       },
       a: {
         color: 'primary.600'
+      },
+      '*': {
+        _focusVisible: {
+          boxShadow: 'none'
+        }
       }
     }
   },
@@ -601,7 +620,8 @@ export const theme = extendTheme({
     5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 20px 24px -8px rgba(19, 51, 107, 0.15)',
     6: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 24px 48px -12px rgba(19, 51, 107, 0.20)',
     7: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)',
-    focus: '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)'
+    focus: shadowLight,
+    outline: 'none'
   },
   breakpoints: {
     sm: '900px',
