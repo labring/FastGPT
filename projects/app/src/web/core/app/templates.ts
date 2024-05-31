@@ -3,6 +3,7 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 
@@ -109,7 +110,7 @@ export const appTemplates: (AppItemType & {
             key: 'userChatInput',
             label: 'core.module.input.label.user question',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       },
@@ -220,7 +221,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.New context',
             description: 'core.module.output.description.New context',
             valueType: WorkflowIOValueTypeEnum.chatHistory,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           },
           {
             id: 'answerText',
@@ -228,7 +229,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.Ai response content',
             description: 'core.module.output.description.Ai response content',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       }
@@ -356,7 +357,7 @@ export const appTemplates: (AppItemType & {
             key: 'userChatInput',
             label: 'core.module.input.label.user question',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       },
@@ -467,7 +468,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.New context',
             description: 'core.module.output.description.New context',
             valueType: WorkflowIOValueTypeEnum.chatHistory,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           },
           {
             id: 'answerText',
@@ -475,7 +476,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.Ai response content',
             description: 'core.module.output.description.Ai response content',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       }
@@ -586,7 +587,7 @@ export const appTemplates: (AppItemType & {
             key: 'userChatInput',
             label: 'core.module.input.label.user question',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       },
@@ -698,7 +699,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.New context',
             description: 'core.module.output.description.New context',
             valueType: WorkflowIOValueTypeEnum.chatHistory,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           },
           {
             id: 'answerText',
@@ -706,7 +707,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.Ai response content',
             description: 'core.module.output.description.Ai response content',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       },
@@ -795,7 +796,7 @@ export const appTemplates: (AppItemType & {
             id: 'quoteQA',
             key: 'quoteQA',
             label: 'core.module.Dataset quote.label',
-            type: 'static',
+            type: FlowNodeOutputTypeEnum.static,
             valueType: WorkflowIOValueTypeEnum.datasetQuote,
             description: '特殊数组格式，搜索结果为空时，返回空数组。'
           }
@@ -914,7 +915,7 @@ export const appTemplates: (AppItemType & {
             key: 'userChatInput',
             label: 'core.module.input.label.user question',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       },
@@ -1026,7 +1027,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.New context',
             description: 'core.module.output.description.New context',
             valueType: WorkflowIOValueTypeEnum.chatHistory,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           },
           {
             id: 'answerText',
@@ -1034,7 +1035,7 @@ export const appTemplates: (AppItemType & {
             label: 'core.module.output.label.Ai response content',
             description: 'core.module.output.description.Ai response content',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       },
@@ -1116,7 +1117,7 @@ export const appTemplates: (AppItemType & {
             key: 'cqResult',
             label: '分类结果',
             valueType: WorkflowIOValueTypeEnum.string,
-            type: 'static'
+            type: FlowNodeOutputTypeEnum.static
           }
         ]
       },
@@ -1232,7 +1233,7 @@ export const appTemplates: (AppItemType & {
             key: 'quoteQA',
             label: 'core.module.Dataset quote.label',
             description: '特殊数组格式，搜索结果为空时，返回空数组。',
-            type: 'static',
+            type: FlowNodeOutputTypeEnum.static,
             valueType: WorkflowIOValueTypeEnum.datasetQuote
           }
         ]
