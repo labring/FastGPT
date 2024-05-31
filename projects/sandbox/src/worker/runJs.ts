@@ -18,7 +18,11 @@ parentPort?.on('message', ({ code, variables = {} }: RunCodeDto) => {
   const CustomLogStr = 'CUSTOM_LOG';
   code = code.replace(/console\.log/g, `${CustomLogStr}`);
   jail.setSync(CustomLogStr, function (...args) {
-    logData.push(args.join(', '));
+    logData.push(
+      args
+        .map((item) => (typeof item === 'object' ? JSON.stringify(item, null, 2) : item))
+        .join(', ')
+    );
   });
 
   jail.setSync('responseData', function (args: any): any {
