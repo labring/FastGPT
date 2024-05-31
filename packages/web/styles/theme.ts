@@ -408,6 +408,9 @@ const Checkbox = checkBoxMultiStyle({
   baseStyle: checkBoxPart({
     label: {
       fontFamily: 'mono' // change the font family of the label
+    },
+    control: {
+      boxShadow: 'none !important'
     }
   })
 });
@@ -473,6 +476,25 @@ export const theme = extendTheme({
       900: '#111824'
     },
     primary: {
+      1: 'rgba(51, 112, 255, 0.1)',
+      '015': 'rgba(51, 112, 255, 0.15)',
+      3: 'rgba(51, 112, 255, 0.3)',
+      5: 'rgba(51, 112, 255, 0.5)',
+      7: 'rgba(51, 112, 255, 0.7)',
+      9: 'rgba(51, 112, 255, 0.9)',
+
+      50: '#F0F4FF',
+      100: '#E1EAFF',
+      200: '#C5D7FF',
+      300: '#94B5FF',
+      400: '#5E8FFF',
+      500: '#487FFF',
+      600: '#3370FF',
+      700: '#2B5FD9',
+      800: '#2450B5',
+      900: '#1D4091'
+    },
+    blue: {
       1: 'rgba(51, 112, 255, 0.1)',
       '015': 'rgba(51, 112, 255, 0.15)',
       3: 'rgba(51, 112, 255, 0.3)',

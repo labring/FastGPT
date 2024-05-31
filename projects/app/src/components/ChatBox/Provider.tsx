@@ -45,6 +45,7 @@ type useChatStoreType = OutLinkChatAuthProps & {
   setChatHistories: React.Dispatch<React.SetStateAction<ChatSiteItemType[]>>;
   isChatting: boolean;
   chatInputGuide: ChatInputGuideConfigType;
+  outLinkAuthData: OutLinkChatAuthProps;
 };
 export const ChatBoxContext = createContext<useChatStoreType>({
   welcomeText: '',
@@ -98,7 +99,8 @@ export const ChatBoxContext = createContext<useChatStoreType>({
   chatInputGuide: {
     open: false,
     customUrl: ''
-  }
+  },
+  outLinkAuthData: {}
 });
 
 export type ChatProviderProps = OutLinkChatAuthProps & {
@@ -128,6 +130,16 @@ const Provider = ({
     chatInputGuide = defaultChatInputGuideConfig
   } = useMemo(() => chatConfig, [chatConfig]);
 
+  const outLinkAuthData = useMemo(
+    () => ({
+      shareId,
+      outLinkUid,
+      teamId,
+      teamToken
+    }),
+    [shareId, outLinkUid, teamId, teamToken]
+  );
+
   // segment audio
   const [audioPlayingChatId, setAudioPlayingChatId] = useState<string>();
   const {
@@ -141,10 +153,7 @@ const Provider = ({
     splitText2Audio
   } = useAudioPlay({
     ttsConfig,
-    shareId,
-    outLinkUid,
-    teamId,
-    teamToken
+    ...outLinkAuthData
   });
 
   const autoTTSResponse =
@@ -181,7 +190,8 @@ const Provider = ({
     chatHistories,
     setChatHistories,
     isChatting,
-    chatInputGuide
+    chatInputGuide,
+    outLinkAuthData
   };
 
   return <ChatBoxContext.Provider value={value}>{children}</ChatBoxContext.Provider>;
