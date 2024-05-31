@@ -31,26 +31,17 @@ import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
 
-const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'), {
-  ssr: false
-});
-const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'), {
-  ssr: false
-});
-const ToolSelectModal = dynamic(() => import('./ToolSelectModal'), { ssr: false });
-const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'), { ssr: false });
-const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'), { ssr: false });
-const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'), { ssr: false });
-const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'), {
-  ssr: false
-});
+const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
+const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
+const ToolSelectModal = dynamic(() => import('./ToolSelectModal'));
+const TTSSelect = dynamic(() => import('@/components/core/app/TTSSelect'));
+const QGSwitch = dynamic(() => import('@/components/core/app/QGSwitch'));
+const WhisperConfig = dynamic(() => import('@/components/core/app/WhisperConfig'));
+const InputGuideConfig = dynamic(() => import('@/components/core/app/InputGuideConfig'));
 const ScheduledTriggerConfig = dynamic(
-  () => import('@/components/core/app/ScheduledTriggerConfig'),
-  { ssr: false }
+  () => import('@/components/core/app/ScheduledTriggerConfig')
 );
-const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'), {
-  ssr: false
-});
+const WelcomeTextConfig = dynamic(() => import('@/components/core/app/WelcomeTextConfig'));
 
 const BoxStyles: BoxProps = {
   px: 5,

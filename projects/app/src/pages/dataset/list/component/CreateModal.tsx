@@ -18,21 +18,19 @@ import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useI18n } from '@/web/context/I18n';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
   const { datasetT } = useI18n();
-  const [refresh, setRefresh] = useState(false);
   const { toast } = useToast();
   const router = useRouter();
   const { isPc, feConfigs, vectorModelList, datasetModelList } = useSystemStore();
 
   const filterNotHiddenVectorModelList = vectorModelList.filter((item) => !item.hidden);
 
-  const { register, setValue, getValues, handleSubmit } = useForm<CreateDatasetParams>({
+  const { register, setValue, handleSubmit, watch } = useForm<CreateDatasetParams>({
     defaultValues: {
       parentId,
       type: DatasetTypeEnum.dataset,
@@ -43,6 +41,10 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       agentModel: datasetModelList[0].model
     }
   });
+  const avatar = watch('avatar');
+  const datasetType = watch('type');
+  const vectorModel = watch('vectorModel');
+  const agentModel = watch('agentModel');
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -61,7 +63,6 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
           maxH: 300
         });
         setValue('avatar', src);
-        setRefresh((state) => !state);
       } catch (err: any) {
         toast({
           title: getErrText(err, t('common.avatar.Select Failed')),
@@ -84,6 +85,22 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       router.push(`/dataset/detail?datasetId=${id}`);
     }
   });
+
+  const onSelectDatasetType = useCallback(
+    (e: DatasetTypeEnum) => {
+      if (
+        !feConfigs?.isPlus &&
+        (e === DatasetTypeEnum.websiteDataset || e === DatasetTypeEnum.externalFile)
+      ) {
+        return toast({
+          status: 'warning',
+          title: t('common.system.Commercial version function')
+        });
+      }
+      setValue('type', e);
+    },
+    [feConfigs?.isPlus, setValue, t, toast]
+  );
 
   return (
     <MyModal
@@ -109,28 +126,21 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
                 icon: 'core/dataset/commonDataset',
                 desc: datasetT('Common Dataset Desc')
               },
-              ...(feConfigs.isPlus
-                ? [
-                    {
-                      title: datasetT('Website Dataset'),
-                      value: DatasetTypeEnum.websiteDataset,
-                      icon: 'core/dataset/websiteDataset',
-                      desc: datasetT('Website Dataset Desc')
-                    },
-                    {
-                      title: datasetT('External File'),
-                      value: DatasetTypeEnum.externalFile,
-                      icon: 'core/dataset/externalDataset',
-                      desc: datasetT('External file Dataset Desc')
-                    }
-                  ]
-                : [])
+              {
+                title: datasetT('Website Dataset'),
+                value: DatasetTypeEnum.websiteDataset,
+                icon: 'core/dataset/websiteDataset',
+                desc: datasetT('Website Dataset Desc')
+              },
+              {
+                title: datasetT('External File'),
+                value: DatasetTypeEnum.externalFile,
+                icon: 'core/dataset/externalDataset',
+                desc: datasetT('External file Dataset Desc')
+              }
             ]}
-            value={getValues('type')}
-            onChange={(e) => {
-              setValue('type', e as DatasetTypeEnum);
-              setRefresh(!refresh);
-            }}
+            value={datasetType}
+            onChange={onSelectDatasetType}
           />
         </>
         <Box mt={5}>
@@ -141,7 +151,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             <MyTooltip label={t('common.avatar.Select Avatar')}>
               <Avatar
                 flexShrink={0}
-                src={getValues('avatar')}
+                src={avatar}
                 w={['28px', '32px']}
                 h={['28px', '32px']}
                 cursor={'pointer'}
@@ -173,14 +183,13 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             <Box flex={1}>
               <AIModelSelector
                 w={'100%'}
-                value={getValues('vectorModel')}
+                value={vectorModel}
                 list={filterNotHiddenVectorModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}
                 onchange={(e) => {
                   setValue('vectorModel', e);
-                  setRefresh((state) => !state);
                 }}
               />
             </Box>
@@ -192,14 +201,13 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
             <Box flex={1}>
               <AIModelSelector
                 w={'100%'}
-                value={getValues('agentModel')}
+                value={agentModel}
                 list={datasetModelList.map((item) => ({
                   label: item.name,
                   value: item.model
                 }))}
                 onchange={(e) => {
                   setValue('agentModel', e);
-                  setRefresh((state) => !state);
                 }}
               />
             </Box>
