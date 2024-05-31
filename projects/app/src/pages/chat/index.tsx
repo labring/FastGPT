@@ -338,7 +338,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
               history={chatData.history}
               chatModels={chatData.app.chatModels}
               onOpenSlider={onOpenSlider}
-              onRoute2AppDetail={() => router.push(`/app/detail/${appId}`)}
+              onRoute2AppDetail={() => router.push(`/app/detail?appId=${appId}`)}
               showHistory
             />
 
