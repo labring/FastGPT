@@ -15,16 +15,16 @@ const ChatHeader = ({
   appName,
   appAvatar,
   chatModels,
-  appId,
   showHistory,
+  onRoute2AppDetail,
   onOpenSlider
 }: {
   history: ChatItemType[];
   appName: string;
   appAvatar: string;
   chatModels?: string[];
-  appId?: string;
   showHistory?: boolean;
+  onRoute2AppDetail?: () => void;
   onOpenSlider: () => void;
 }) => {
   const router = useRouter();
@@ -80,13 +80,7 @@ const ChatHeader = ({
 
           <Flex px={3} alignItems={'center'} flex={'1 0 0'} w={0} justifyContent={'center'}>
             <Avatar src={appAvatar} w={'16px'} />
-            <Box
-              ml={1}
-              className="textEllipsis"
-              onClick={() => {
-                appId && router.push(`/app/detail?appId=${appId}`);
-              }}
-            >
+            <Box ml={1} className="textEllipsis" onClick={onRoute2AppDetail}>
               {appName}
             </Box>
           </Flex>
