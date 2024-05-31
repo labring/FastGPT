@@ -50,7 +50,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
           mt="6"
           mx="8"
           borderRadius="0.5rem"
-          templateColumns="60% 40%"
+          templateColumns="55% 45%"
         >
           <Flex
             flexDirection="column"
@@ -87,6 +87,9 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                     <Flex
                       key={member.tmbId}
                       mt="1"
+                      py="1"
+                      px="3"
+                      borderRadius="sm"
                       alignItems="center"
                       _hover={{
                         bgColor: 'myGray.50',
@@ -109,8 +112,8 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                         w="full"
                         justifyContent="space-between"
                       >
-                        <Flex flexDirection="row">
-                          <MyAvatar src={member.avatar} w="24px" />
+                        <Flex flexDirection="row" alignItems="center">
+                          <MyAvatar src={member.avatar} w="32px" />
                           <Box ml="2">{member.memberName}</Box>
                         </Flex>
                         {collaboratorList?.find((v) => v.tmbId === member.tmbId)?.permission && (
@@ -135,17 +138,28 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                   <Flex
                     key={tmbId}
                     mt="1"
-                    alignItems="start"
+                    alignItems="center"
+                    justifyContent="space-between"
                     flexDirection="row"
                     _hover={{
                       bgColor: 'myGray.50',
                       cursor: 'pointer'
                     }}
-                    onClick={() => setSelectedMembers(selectedMembers.filter((v) => v !== tmbId))}
+                    borderRadius="sm"
+                    p="1"
                   >
-                    <CloseButton />
-                    <MyAvatar src={member?.avatar} w="24px" />
-                    <Box ml="2">{member?.memberName}</Box>
+                    <Flex>
+                      <MyAvatar src={member?.avatar} w="24px" />
+                      <Box ml="2">{member?.memberName}</Box>
+                    </Flex>
+                    <MyIcon
+                      name="common/closeLight"
+                      w="16px"
+                      _hover={{
+                        color: 'primary.500'
+                      }}
+                      onClick={() => setSelectedMembers(selectedMembers.filter((v) => v !== tmbId))}
+                    />
                   </Flex>
                 );
               })}

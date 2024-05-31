@@ -8,7 +8,9 @@ import {
   Th,
   Thead,
   Tr,
-  useToast
+  Td,
+  useToast,
+  Box
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useState } from 'react';
@@ -34,13 +36,13 @@ function ManageModal({ onClose }: ManageModalProps) {
   return (
     <MyModal isOpen onClose={onClose} minW="600px" title="管理协作者" iconSrc="common/settingLight">
       <ModalBody>
-        <TableContainer>
+        <TableContainer borderRadius="md">
           <Table>
             <Thead bg="myWhite.400">
               <Tr>
-                <Th>协作者</Th>
-                <Th>权限</Th>
-                <Th>操作</Th>
+                <Th border="none">协作者</Th>
+                <Th border="none">权限</Th>
+                <Th border="none">操作</Th>
               </Tr>
             </Thead>
             <Tbody>
@@ -49,12 +51,17 @@ function ManageModal({ onClose }: ManageModalProps) {
                   (v) => v.tmbId.toString() === collaborator.tmbId.toString()
                 );
                 return (
-                  <Tr key={collaborator.tmbId.toString()}>
-                    <Th>{teamMember?.memberName}</Th>
-                    <Th>
+                  <Tr
+                    key={collaborator.tmbId.toString()}
+                    _hover={{
+                      bg: 'myWhite.300'
+                    }}
+                  >
+                    <Td border="none">{teamMember?.memberName}</Td>
+                    <Td border="none">
                       <PermissionTags permission={collaborator.permission} />
-                    </Th>
-                    <Th>
+                    </Td>
+                    <Td border="none">
                       <PermissionSelect
                         iconButton
                         value={collaborator.permission}
@@ -77,7 +84,7 @@ function ManageModal({ onClose }: ManageModalProps) {
                           }
                         }}
                       />
-                    </Th>
+                    </Td>
                   </Tr>
                 );
               })}

@@ -8,11 +8,9 @@ import {
   useDisclosure,
   Box,
   Checkbox,
-  Radio,
-  IconButton
+  Radio
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
-import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import React, { useMemo, useRef } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -63,43 +61,36 @@ function PermissionSelect({
       }}
     >
       <MenuButton
-        as={iconButton ? MyIcon : Button}
         ref={ref}
         width={width}
         px={3}
+        textAlign={'left'}
         {...(iconButton
           ? {
-              name: 'edit',
-              w: '16px',
               _hover: {
-                color: 'primary.500',
-                bg: 'myWhite.300',
-                cursor: 'pointer'
+                color: 'primary.500'
               }
             }
           : {
+              as: Button,
               rightIcon: <ChevronDownIcon />,
-              variant: 'whitePrimary'
+              variant: 'whitePrimary',
+              ...(isOpen
+                ? {
+                    boxShadow: '0px 0px 4px #A8DBFF',
+                    borderColor: 'primary.500'
+                  }
+                : {})
             })}
-        // variant={'whitePrimary'}
-        textAlign={'left'}
-        _active={{
-          transform: 'none'
-        }}
-        {...(isOpen && !iconButton
-          ? {
-              boxShadow: '0px 0px 4px #A8DBFF',
-              borderColor: 'primary.500'
-            }
-          : {})}
-        {...props}
       >
-        {iconButton ? null : (
+        {iconButton ? (
+          <MyIcon name="edit" w="16px" />
+        ) : (
           <Flex alignItems={'center'}>
             {isLoading && <MyIcon mr={2} name={'common/loading'} w={'16px'} />}
             {list.find((item) => item.value === singleSelectedValue)?.name || '请选择权限'}
             {list.map((item) => {
-              if (item.type === 'multiple' && checkPermission(value, item.value)) {
+              if (item.type === 'multiple' && checkPermission(valueState, item.value)) {
                 return '、' + item.name;
               }
             })}
@@ -195,7 +186,7 @@ function PermissionSelect({
                   isChecked={checkPermission(valueState, item.value)}
                   onChange={change}
                 />
-                <Flex mx="4" flexDirection="column" onClick={change}>
+                <Flex px="4" flexDirection="column" onClick={change}>
                   <Box fontWeight="500">{item.name}</Box>
                   <Box fontWeight="400">{item.description}</Box>
                 </Flex>
@@ -206,7 +197,7 @@ function PermissionSelect({
           <>
             <hr />
             <Flex
-              mt="4"
+              mt="2"
               p="2"
               alignItems="center"
               gap="2"

@@ -36,15 +36,17 @@ export async function authApp({
   }); // this could be null
 
   let permission;
-  if (rp) {
-    permission = rp.permission;
-  } else {
-    permission = NullPermission;
-  }
 
   const { app, isOwner, canWrite } = await (async () => {
     // get app
     const app = await MongoApp.findOne({ _id: appId, teamId }).lean();
+
+    if (rp) {
+      permission = rp.permission;
+    } else {
+      permission = app?.defaultPermission;
+    }
+
     if (!app) {
       return Promise.reject(AppErrEnum.unExist);
     }

@@ -26,11 +26,13 @@ function PermissionTags({ permission }: PermissionTagsProp) {
   }, [permission, multiPermissions]);
 
   return (
-    <Flex gap="2">
-      <Tag>{permissionConfig.find((v) => v.value === singlePermission)?.name}</Tag>
+    <Flex gap="2" alignItems="center">
+      <Tag fontSize="xs" py="3px" borderRadius="xs" border="none">
+        {permissionConfig.find((v) => v.value === singlePermission)?.name}
+      </Tag>
       {multiPermissionsValues &&
         multiPermissionsValues.map((v) => (
-          <Tag key={v} colorSchema="gray">
+          <Tag key={v} colorSchema="gray" fontSize="xs" py="3px" borderRadius="xs" border="none">
             {permissionConfig.find((p) => p.value === v)?.name}
           </Tag>
         ))}
