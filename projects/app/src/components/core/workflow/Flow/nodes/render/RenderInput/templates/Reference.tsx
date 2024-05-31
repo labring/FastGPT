@@ -42,7 +42,7 @@ const Reference = ({ item, nodeId }: RenderInputProps) => {
   const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
 
   const onSelect = useCallback(
-    (e: any) => {
+    (e: ReferenceValueProps) => {
       const workflowStartNode = nodeList.find(
         (node) => node.flowNodeType === FlowNodeTypeEnum.workflowStart
       );
