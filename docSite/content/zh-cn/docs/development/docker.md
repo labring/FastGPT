@@ -130,11 +130,11 @@ cd fastgpt
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 
 # pgvector 版本(测试推荐，简单快捷)
-curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-pgvector.yml
+curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-milvus.yml
 # milvus 版本
-# curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-milvus.yml
+# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-milvus.yml
 # zilliz 版本
-# curl -o docker-compose.yml https://github.com/labring/FastGPT/blob/main/files/docker/docker-compose-zilliz.yml
+# curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-zilliz.yml
 ```
 
 ### 2. 修改 docker-compose.yml 环境变量
