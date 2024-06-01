@@ -36,7 +36,7 @@ function ManageModal({ onClose }: ManageModalProps) {
   return (
     <MyModal isOpen onClose={onClose} minW="600px" title="管理协作者" iconSrc="common/settingLight">
       <ModalBody>
-        <TableContainer borderRadius="md">
+        <TableContainer borderRadius="md" minH="400px">
           <Table>
             <Thead bg="myWhite.400">
               <Tr>
@@ -46,6 +46,15 @@ function ManageModal({ onClose }: ManageModalProps) {
               </Tr>
             </Thead>
             <Tbody>
+              {collaboratorList?.length === 0 && (
+                <Tr>
+                  <Td colSpan={3} border="none">
+                    <Box textAlign="center" p={4}>
+                      暂无协作者
+                    </Box>
+                  </Td>
+                </Tr>
+              )}
               {collaboratorList?.map((collaborator) => {
                 const teamMember = teamMemberList?.find(
                   (v) => v.tmbId.toString() === collaborator.tmbId.toString()

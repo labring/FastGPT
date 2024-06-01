@@ -43,6 +43,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
     >
       <ModalBody>
         <Grid
+          minH="400px"
           border="1px solid"
           borderColor="myGray.200"
           mt="6"
