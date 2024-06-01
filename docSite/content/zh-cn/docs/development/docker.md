@@ -130,7 +130,7 @@ cd fastgpt
 curl -O https://raw.githubusercontent.com/labring/FastGPT/main/projects/app/data/config.json
 
 # pgvector 版本(测试推荐，简单快捷)
-curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-milvus.yml
+curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-docker.yml
 # milvus 版本
 # curl -o docker-compose.yml https://raw.githubusercontent.com/labring/FastGPT/main/files/docker/docker-compose-milvus.yml
 # zilliz 版本
