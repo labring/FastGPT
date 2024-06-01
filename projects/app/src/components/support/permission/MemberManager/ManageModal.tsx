@@ -10,7 +10,8 @@ import {
   Tr,
   Td,
   useToast,
-  Box
+  Box,
+  Flex
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import React, { useState } from 'react';
@@ -18,6 +19,7 @@ import { useContextSelector } from 'use-context-selector';
 import { CollaboratorContext } from '.';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
+import Avatar from '@/components/Avatar';
 
 export type ManageModalProps = {
   onClose: () => void;
@@ -66,7 +68,12 @@ function ManageModal({ onClose }: ManageModalProps) {
                       bg: 'myWhite.300'
                     }}
                   >
-                    <Td border="none">{teamMember?.memberName}</Td>
+                    <Td border="none">
+                      <Flex alignItems="center">
+                        <Avatar src={teamMember?.avatar} w="24px" mr={2} />
+                        {teamMember?.memberName}
+                      </Flex>
+                    </Td>
                     <Td border="none">
                       <PermissionTags permission={collaborator.permission} />
                     </Td>
