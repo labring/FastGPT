@@ -145,10 +145,27 @@ export const useDebug = () => {
           node.nodeId === runtimeNode.nodeId
             ? {
                 ...runtimeNode,
-                inputs: runtimeNode.inputs.map((input) => ({
-                  ...input,
-                  value: data[input.key] ?? input.value
-                }))
+                inputs: runtimeNode.inputs.map((input) => {
+                  let parseValue = (() => {
+                    try {
+                      if (
+                        input.valueType === WorkflowIOValueTypeEnum.string ||
+                        input.valueType === WorkflowIOValueTypeEnum.number ||
+                        input.valueType === WorkflowIOValueTypeEnum.boolean
+                      )
+                        return data[input.key];
+
+                      return JSON.parse(data[input.key]);
+                    } catch (e) {
+                      return data[input.key];
+                    }
+                  })();
+
+                  return {
+                    ...input,
+                    value: parseValue ?? input.value
+                  };
+                })
               }
             : node
         ),
@@ -168,7 +185,7 @@ export const useDebug = () => {
         <Box flex={'1 0 0'} overflow={'auto'} px={6}>
           {renderInputs.map((input) => {
             const required = input.required || false;
-            console.log(input.valueType);
+
             const RenderInput = (() => {
               if (input.valueType === WorkflowIOValueTypeEnum.string) {
                 return (
@@ -206,19 +223,23 @@ export const useDebug = () => {
                   </Box>
                 );
               }
-              if (typeof input.value === 'string') {
-                return (
-                  <JsonEditor
-                    bg={'myGray.50'}
-                    placeholder={t(input.placeholder || '')}
-                    resize
-                    value={getValues(input.key)}
-                    onChange={(e) => {
-                      setValue(input.key, e);
-                    }}
-                  />
-                );
+
+              let value = getValues(input.key) || '';
+              if (typeof value !== 'string') {
+                value = JSON.stringify(value, null, 2);
               }
+
+              return (
+                <JsonEditor
+                  bg={'myGray.50'}
+                  placeholder={t(input.placeholder || '')}
+                  resize
+                  value={value}
+                  onChange={(e) => {
+                    setValue(input.key, e);
+                  }}
+                />
+              );
             })();
 
             return !!RenderInput ? (

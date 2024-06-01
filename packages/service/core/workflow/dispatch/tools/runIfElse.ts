@@ -13,6 +13,7 @@ import {
 import { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type';
 import { getElseIFLabel, getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { getReferenceVariableValue } from '@fastgpt/global/core/workflow/runtime/utils';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.condition]: IfElseConditionType;
@@ -48,39 +49,52 @@ function isInclude(value: any, target: any) {
   }
 }
 
-function checkCondition(condition: VariableConditionEnum, variableValue: any, value: string) {
-  const operations = {
-    [VariableConditionEnum.isEmpty]: () => isEmpty(variableValue),
-    [VariableConditionEnum.isNotEmpty]: () => !isEmpty(variableValue),
+function checkCondition(condition: VariableConditionEnum, inputValue: any, value: string) {
+  const operations: Record<VariableConditionEnum, () => boolean> = {
+    [VariableConditionEnum.isEmpty]: () => isEmpty(inputValue),
+    [VariableConditionEnum.isNotEmpty]: () => !isEmpty(inputValue),
 
-    [VariableConditionEnum.equalTo]: () => String(variableValue) === value,
-    [VariableConditionEnum.notEqual]: () => String(variableValue) !== value,
+    [VariableConditionEnum.equalTo]: () => String(inputValue) === value,
+    [VariableConditionEnum.notEqual]: () => String(inputValue) !== value,
 
     // number
-    [VariableConditionEnum.greaterThan]: () => Number(variableValue) > Number(value),
-    [VariableConditionEnum.lessThan]: () => Number(variableValue) < Number(value),
-    [VariableConditionEnum.greaterThanOrEqualTo]: () => Number(variableValue) >= Number(value),
-    [VariableConditionEnum.lessThanOrEqualTo]: () => Number(variableValue) <= Number(value),
+    [VariableConditionEnum.greaterThan]: () => Number(inputValue) > Number(value),
+    [VariableConditionEnum.lessThan]: () => Number(inputValue) < Number(value),
+    [VariableConditionEnum.greaterThanOrEqualTo]: () => Number(inputValue) >= Number(value),
+    [VariableConditionEnum.lessThanOrEqualTo]: () => Number(inputValue) <= Number(value),
 
     // array or string
-    [VariableConditionEnum.include]: () => isInclude(variableValue, value),
-    [VariableConditionEnum.notInclude]: () => !isInclude(variableValue, value),
+    [VariableConditionEnum.include]: () => isInclude(inputValue, value),
+    [VariableConditionEnum.notInclude]: () => !isInclude(inputValue, value),
 
     // string
-    [VariableConditionEnum.startWith]: () => variableValue?.startsWith(value),
-    [VariableConditionEnum.endWith]: () => variableValue?.endsWith(value),
+    [VariableConditionEnum.startWith]: () => inputValue?.startsWith(value),
+    [VariableConditionEnum.endWith]: () => inputValue?.endsWith(value),
+    [VariableConditionEnum.reg]: () => {
+      if (typeof inputValue !== 'string' || !value) return false;
+      if (value.startsWith('/')) {
+        value = value.slice(1);
+      }
+      if (value.endsWith('/')) {
+        value = value.slice(0, -1);
+      }
+
+      const reg = new RegExp(value, 'g');
+      const result = reg.test(inputValue);
+
+      return result;
+    },
 
     // array
-    [VariableConditionEnum.lengthEqualTo]: () => variableValue?.length === Number(value),
-    [VariableConditionEnum.lengthNotEqualTo]: () => variableValue?.length !== Number(value),
-    [VariableConditionEnum.lengthGreaterThan]: () => variableValue?.length > Number(value),
-    [VariableConditionEnum.lengthGreaterThanOrEqualTo]: () =>
-      variableValue?.length >= Number(value),
-    [VariableConditionEnum.lengthLessThan]: () => variableValue?.length < Number(value),
-    [VariableConditionEnum.lengthLessThanOrEqualTo]: () => variableValue?.length <= Number(value)
+    [VariableConditionEnum.lengthEqualTo]: () => inputValue?.length === Number(value),
+    [VariableConditionEnum.lengthNotEqualTo]: () => inputValue?.length !== Number(value),
+    [VariableConditionEnum.lengthGreaterThan]: () => inputValue?.length > Number(value),
+    [VariableConditionEnum.lengthGreaterThanOrEqualTo]: () => inputValue?.length >= Number(value),
+    [VariableConditionEnum.lengthLessThan]: () => inputValue?.length < Number(value),
+    [VariableConditionEnum.lengthLessThanOrEqualTo]: () => inputValue?.length <= Number(value)
   };
 
-  return (operations[condition] || (() => false))();
+  return operations[condition]?.() ?? false;
 }
 
 function getResult(
@@ -92,13 +106,13 @@ function getResult(
   const listResult = list.map((item) => {
     const { variable, condition: variableCondition, value } = item;
 
-    const variableValue = getReferenceVariableValue({
+    const inputValue = getReferenceVariableValue({
       value: variable,
       variables,
       nodes: runtimeNodes
     });
 
-    return checkCondition(variableCondition as VariableConditionEnum, variableValue, value || '');
+    return checkCondition(variableCondition as VariableConditionEnum, inputValue, value || '');
   });
 
   return condition === 'AND' ? listResult.every(Boolean) : listResult.some(Boolean);

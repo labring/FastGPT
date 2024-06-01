@@ -378,7 +378,6 @@ const OutLink = ({
               history={chatData.history}
               showHistory={showHistory === '1'}
               onOpenSlider={onOpenSlider}
-              appId={chatData.appId}
             />
             {/* chat box */}
             <Box flex={1}>

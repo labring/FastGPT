@@ -8,6 +8,8 @@ export enum VariableConditionEnum {
   startWith = 'startWith',
   endWith = 'endWith',
 
+  reg = 'reg',
+
   greaterThan = 'greaterThan',
   greaterThanOrEqualTo = 'greaterThanOrEqualTo',
   lessThan = 'lessThan',
@@ -31,6 +33,7 @@ export const stringConditionList = [
   { label: '不为空', value: VariableConditionEnum.isNotEmpty },
   { label: '等于', value: VariableConditionEnum.equalTo },
   { label: '不等于', value: VariableConditionEnum.notEqual },
+  { label: '正则', value: VariableConditionEnum.reg },
   { label: '包含', value: VariableConditionEnum.include },
   { label: '不包含', value: VariableConditionEnum.notInclude },
   { label: '开始为', value: VariableConditionEnum.startWith },
