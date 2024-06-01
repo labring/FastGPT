@@ -1,4 +1,4 @@
-import { DataType, MilvusClient } from '@zilliz/milvus2-sdk-node';
+import { DataType, LoadState, MilvusClient } from '@zilliz/milvus2-sdk-node';
 import {
   DatasetVectorDbName,
   DatasetVectorTableName,
@@ -106,6 +106,20 @@ export class MilvusCtrl {
       });
 
       addLog.info(`Create milvus collection: `, result);
+    }
+
+    const { state: colLoadState } = await client.getLoadState({
+      collection_name: DatasetVectorTableName
+    });
+
+    if (
+      colLoadState === LoadState.LoadStateNotExist ||
+      colLoadState === LoadState.LoadStateNotLoad
+    ) {
+      await client.loadCollectionSync({
+        collection_name: DatasetVectorTableName
+      });
+      addLog.info(`Milvus collection load success`);
     }
   };
 

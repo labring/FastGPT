@@ -5,6 +5,7 @@ import { MongoPlugin } from '../../core/plugin/schema';
 import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
+import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
 
 export const checkDatasetLimit = async ({
   teamId,
@@ -58,6 +59,9 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
 
   if (standardConstants && datasetCount >= standardConstants.maxDatasetAmount) {
     return Promise.reject(TeamErrEnum.datasetAmountNotEnough);
+  }
+  if (!global.feConfigs.isPlus && datasetCount >= 30) {
+    return Promise.reject(SystemErrEnum.communityVersionNumLimit);
   }
 };
 export const checkTeamAppLimit = async (teamId: string) => {

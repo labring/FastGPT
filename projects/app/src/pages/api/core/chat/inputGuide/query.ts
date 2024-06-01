@@ -2,21 +2,29 @@ import type { NextApiResponse } from 'next';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { authChatCert } from '@/service/support/permission/auth/chat';
+import { MongoApp } from '@fastgpt/service/core/app/schema';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 
-export type QueryChatInputGuideProps = {
+export type QueryChatInputGuideBody = OutLinkChatAuthProps & {
   appId: string;
   searchKey: string;
 };
 export type QueryChatInputGuideResponse = string[];
 
 async function handler(
-  req: ApiRequestProps<{}, QueryChatInputGuideProps>,
+  req: ApiRequestProps<QueryChatInputGuideBody>,
   res: NextApiResponse<any>
 ): Promise<QueryChatInputGuideResponse> {
-  const { appId, searchKey } = req.query;
+  const { appId, searchKey } = req.body;
 
-  await authApp({ req, appId, authToken: true, authApiKey: true, per: 'r' });
+  // tmp auth
+  const { teamId } = await authChatCert({ req, authToken: true });
+  const app = await MongoApp.findOne({ _id: appId, teamId });
+  if (!app) {
+    return Promise.reject(AppErrEnum.unAuthApp);
+  }
 
   const params = {
     appId,

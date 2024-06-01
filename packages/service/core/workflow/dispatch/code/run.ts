@@ -25,7 +25,10 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
   try {
     const { data: runResult } = await axios.post<{
       success: boolean;
-      data: Record<string, any>;
+      data: {
+        codeReturn: Record<string, any>;
+        log: string;
+      };
     }>(sandBoxRequestUrl, {
       code,
       variables: customVariables
@@ -33,10 +36,11 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
 
     if (runResult.success) {
       return {
-        [NodeOutputKeyEnum.rawResponse]: runResult.data,
+        [NodeOutputKeyEnum.rawResponse]: runResult.data.codeReturn,
         [DispatchNodeResponseKeyEnum.nodeResponse]: {
           customInputs: customVariables,
-          customOutputs: runResult.data
+          customOutputs: runResult.data.codeReturn,
+          codeLog: runResult.data.log
         },
         ...runResult.data
       };

@@ -1,6 +1,6 @@
 import { ErrType } from '../errorCode';
 
-/* dataset: 507000 */
+/* dataset: 508000 */
 export enum PluginErrEnum {
   unExist = 'pluginUnExist',
   unAuth = 'pluginUnAuth'
@@ -19,7 +19,7 @@ export default errList.reduce((acc, cur, index) => {
   return {
     ...acc,
     [cur.statusText]: {
-      code: 507000 + index,
+      code: 508000 + index,
       statusText: cur.statusText,
       message: cur.message,
       data: null
