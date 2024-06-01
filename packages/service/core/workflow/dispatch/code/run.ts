@@ -42,7 +42,7 @@ export const dispatchRunCode = async (props: RunCodeType): Promise<RunCodeRespon
           customOutputs: runResult.data.codeReturn,
           codeLog: runResult.data.log
         },
-        ...runResult.data
+        ...runResult.data.codeReturn
       };
     } else {
       throw new Error('Run code failed');
