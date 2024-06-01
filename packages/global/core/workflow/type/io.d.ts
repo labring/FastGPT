@@ -43,7 +43,7 @@ export type FlowNodeInputItemType = {
 
 export type FlowNodeOutputItemType = {
   id: string; // output unique id(Does not follow the key change)
-  type: `${FlowNodeOutputTypeEnum}`;
+  type: FlowNodeOutputTypeEnum;
   key: `${NodeOutputKeyEnum}` | string;
   valueType?: WorkflowIOValueTypeEnum;
   value?: any;

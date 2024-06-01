@@ -16,7 +16,7 @@ type Props = ModuleDispatchProps<{
 type Response = DispatchNodeResultType<{}>;
 
 export const dispatchUpdateVariable = async (props: Props): Promise<Response> => {
-  const { res, detail, params, variables, runtimeNodes } = props;
+  const { res, detail, stream, params, variables, runtimeNodes } = props;
 
   const { updateList } = params;
   updateList.forEach((item) => {
@@ -54,7 +54,7 @@ export const dispatchUpdateVariable = async (props: Props): Promise<Response> =>
     }
   });
 
-  if (detail) {
+  if (detail && stream) {
     responseWrite({
       res,
       event: SseResponseEventEnum.updateVariables,

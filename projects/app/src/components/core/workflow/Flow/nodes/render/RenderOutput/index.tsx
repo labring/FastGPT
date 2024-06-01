@@ -16,7 +16,7 @@ import { WorkflowContext } from '@/components/core/workflow/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const RenderList: {
-  types: `${FlowNodeOutputTypeEnum}`[];
+  types: FlowNodeOutputTypeEnum[];
   Component: React.ComponentType<RenderOutputProps>;
 }[] = [];
 

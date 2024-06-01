@@ -67,6 +67,20 @@ export const CodeNode: FlowNodeTemplateType = {
       description: '代码运行错误信息，成功时返回空',
       valueType: WorkflowIOValueTypeEnum.object,
       type: FlowNodeOutputTypeEnum.static
+    },
+    {
+      id: 'qLUQfhG0ILRX',
+      type: FlowNodeOutputTypeEnum.dynamic,
+      key: 'result',
+      valueType: WorkflowIOValueTypeEnum.string,
+      label: 'result'
+    },
+    {
+      id: 'gR0mkQpJ4Og8',
+      type: FlowNodeOutputTypeEnum.dynamic,
+      key: 'data2',
+      valueType: WorkflowIOValueTypeEnum.string,
+      label: 'data2'
     }
   ]
 };

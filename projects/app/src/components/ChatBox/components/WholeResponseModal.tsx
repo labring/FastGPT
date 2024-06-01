@@ -321,6 +321,7 @@ export const ResponseBox = React.memo(function ResponseBox({
         {/* code */}
         <Row label={workflowT('response.Custom inputs')} value={activeModule?.customInputs} />
         <Row label={workflowT('response.Custom outputs')} value={activeModule?.customOutputs} />
+        <Row label={workflowT('response.Code log')} value={activeModule?.codeLog} />
       </Box>
     </>
   );

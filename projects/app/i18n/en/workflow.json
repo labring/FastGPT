@@ -5,7 +5,12 @@
     "Reset template": "Reset template",
     "Reset template confirm": "Are you sure to restore the code template? Be careful to save the current code."
   },
+  "ifelse": {
+    "Input value": "Input",
+    "Select value": "Select"
+  },
   "response": {
+    "Code log": "Log",
     "Custom inputs": "Custom inputs",
     "Custom outputs": "Custom outputs",
     "Error": "Error"

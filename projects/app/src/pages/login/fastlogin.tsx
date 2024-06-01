@@ -1,6 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
 import { useChatStore } from '@/web/core/chat/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
@@ -9,7 +8,6 @@ import { postFastLogin } from '@/web/support/user/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useQuery } from '@tanstack/react-query';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 
 const FastLogin = ({
