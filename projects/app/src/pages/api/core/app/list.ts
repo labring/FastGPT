@@ -11,18 +11,16 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
   // 凭证校验
   const { teamId, tmbId, teamOwner } = await authUserRole({ req, authToken: true });
 
-  let myApps = await MongoApp.find(
-    { teamId },
-    '_id avatar name intro tmbId permission defaultPermission'
-  ).sort({
-    updateTime: -1
-  });
-
-  const rp = await MongoResourcePermission.find({
-    teamId,
-    tmbId,
-    resourceType: ResourceTypeEnum.app
-  });
+  let [myApps, rp] = await Promise.all([
+    MongoApp.find({ teamId }, '_id avatar name intro tmbId permission defaultPermission').sort({
+      updateTime: -1
+    }),
+    MongoResourcePermission.find({
+      teamId,
+      tmbId,
+      resourceType: ResourceTypeEnum.app
+    })
+  ]);
 
   myApps = myApps.filter((app) => {
     const permission = rp.find(

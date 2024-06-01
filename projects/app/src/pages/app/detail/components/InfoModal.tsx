@@ -33,10 +33,8 @@ import MyTooltip from '@/components/MyTooltip';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
-  AppAdminPermission,
   AppDefaultPermission,
   AppPermission,
-  AppPermissionEnum,
   AppPermissionList,
   AppReadPermission,
   AppWritePermission
@@ -82,9 +80,6 @@ const InfoModal = ({
     fileType: '.jpg,.png',
     multiple: false
   });
-
-  // const { userInfo } = useUserStore();
-  const { myApps } = useAppStore();
 
   const {
     register,
