@@ -152,7 +152,7 @@ function PermissionSelect({
 
         <hr />
 
-        <Box m="4">其他权限（多选）</Box>
+        {multipleValues.length > 0 && <Box m="4">其他权限（多选）</Box>}
 
         {/* The list of multiple select permissions */}
         {list

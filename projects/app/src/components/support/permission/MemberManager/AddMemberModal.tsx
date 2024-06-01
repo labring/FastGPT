@@ -9,9 +9,7 @@ import {
   Checkbox,
   ModalFooter,
   Button,
-  Toast,
-  useToast,
-  CloseButton
+  useToast
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -27,7 +25,7 @@ export type AddModalPropsType = {
 };
 
 export function AddMemberModal({ onClose }: AddModalPropsType) {
-  const { teamMemberList, permissionConfig, collaboratorList, permissionList, addCollaborators } =
+  const { teamMemberList, permissionConfig, collaboratorList, addCollaborators } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
   const [selectedMembers, setSelectedMembers] = useState<string[]>([]);

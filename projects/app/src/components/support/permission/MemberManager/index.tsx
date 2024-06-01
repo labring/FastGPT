@@ -15,7 +15,7 @@ import ManageModal from './ManageModal';
 
 export type PermissionConfigType = {
   value: PermissionValueType;
-  type: 'single' | 'multiple';
+  type?: 'single' | 'multiple';
   name: string;
   description: string;
 }[];

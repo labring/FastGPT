@@ -35,6 +35,7 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
   AppAdminPermission,
   AppDefaultPermission,
+  AppPermission,
   AppPermissionEnum,
   AppPermissionList,
   AppReadPermission,
@@ -245,38 +246,14 @@ const InfoModal = ({
             refetchCollaboratorList();
             return res;
           }}
-          permissionConfig={[
-            {
-              value: AppReadPermission.value, // 4
-              type: 'single',
-              name: '读权限',
-              description: '读权限相关文案'
-            },
-            {
-              value: AppWritePermission.value, // 6
-              type: 'single',
-              name: '写权限',
-              description: '写权限相关文案'
-            },
-            {
-              value: AppAdminPermission.value, // 7
-              type: 'single',
-              name: '管理权限',
-              description: '管理权限相关文案'
-            },
-            {
-              value: AppPermissionList[AppPermissionEnum.DownloadFile], // 8
-              type: 'multiple',
-              name: '下载权限',
-              description: '下载权限相关文案'
-            },
-            {
-              value: AppPermissionList[AppPermissionEnum.ReadLog], // 16
-              type: 'multiple',
-              name: '查看日志',
-              description: '查看日志相关文案'
-            }
-          ]}
+          permissionConfig={Object.entries(AppPermission).map(([_, value]) => {
+            return {
+              type: value.type,
+              name: value.name,
+              description: value.description,
+              value: value.value
+            };
+          })}
           refetchCollaboratorList={() => {
             refetchCollaboratorList();
           }}
