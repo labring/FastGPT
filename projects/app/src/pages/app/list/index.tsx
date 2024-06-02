@@ -146,7 +146,11 @@ const MyApps = () => {
               </Box>
               <Flex h={'34px'} alignItems={'flex-end'}>
                 <Box flex={1}>
-                  <PermissionIconText permission={app.permission} color={'myGray.600'} />
+                  <PermissionIconText
+                    // permission={app.permission}
+                    defaultPermission={app.defaultPermission}
+                    color={'myGray.600'}
+                  />
                 </Box>
                 {userInfo?.team.canWrite && (
                   <IconButton

@@ -9,8 +9,8 @@ export const NullPermission: PermissionValueType = 0;
 // the Permission helper class
 export class Permission {
   value: PermissionValueType;
-  constructor(value: PermissionValueType) {
-    this.value = value;
+  constructor(value?: PermissionValueType) {
+    this.value = value ?? 0;
   }
 
   // add permission(s)
@@ -53,10 +53,17 @@ export function constructPermission(permList: PermissionValueType[]) {
 //   ...PermissionList,
 //   'Invite': 0b1000
 // }
+
+export enum PermissionKeyEnum {
+  Read = 'Read',
+  Write = 'Write',
+  Manage = 'Manage'
+}
+
 export const PermissionList: PermissionListType = {
-  Read: 0b100,
-  Write: 0b010,
-  Manage: 0b001
+  [PermissionKeyEnum.Read]: 0b100,
+  [PermissionKeyEnum.Write]: 0b010,
+  [PermissionKeyEnum.Manage]: 0b001
 };
 
 // list of permissions. could be customized.

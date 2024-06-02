@@ -7,6 +7,7 @@ import { SelectedDatasetType } from '../workflow/api';
 import { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import { StoreEdgeItemType } from '../workflow/type/edge';
+import { PermissionValueType } from 'support/permission/type';
 
 export type AppSchema = {
   _id: string;
@@ -30,6 +31,7 @@ export type AppSchema = {
   permission: `${PermissionTypeEnum}`;
   inited?: boolean;
   teamTags: string[];
+  defaultPermission: PermissionValueType;
 };
 
 export type AppListItemType = {
@@ -39,6 +41,7 @@ export type AppListItemType = {
   intro: string;
   isOwner: boolean;
   permission: `${PermissionTypeEnum}`;
+  defaultPermission: PermissionValueType;
 };
 
 export type AppDetailType = AppSchema & {
@@ -121,4 +124,11 @@ export type AppScheduledTriggerConfigType = {
   cronString: string;
   timezone: string;
   defaultPrompt: string;
+};
+
+export type AppCollaboratorType = {
+  tmbId: string;
+  teamId: string;
+  permission: PermissionValueType;
+  appId: string;
 };

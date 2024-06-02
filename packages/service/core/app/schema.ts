@@ -7,6 +7,7 @@ import {
   TeamCollectionName,
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
+import { AppDefaultPermission } from '../../support/permission/app/permission';
 
 export const AppCollectionName = 'apps';
 
@@ -98,6 +99,12 @@ const AppSchema = new Schema({
 
   inited: {
     type: Boolean
+  },
+
+  // the default permission of a app
+  defaultPermission: {
+    type: Number,
+    default: AppDefaultPermission.value
   }
 });
 

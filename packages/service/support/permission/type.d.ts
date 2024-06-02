@@ -8,10 +8,11 @@ export type ReqHeaderAuthType = {
   userid?: string;
   authorization?: string;
 };
+
 export type AuthModeType = {
   req: ApiRequestProps;
   authToken?: boolean;
   authRoot?: boolean;
   authApiKey?: boolean;
-  per?: 'r' | 'w' | 'owner';
+  per?: PermissionValueType | 'r' | 'w' | 'owner'; // this is for compatibility
 };

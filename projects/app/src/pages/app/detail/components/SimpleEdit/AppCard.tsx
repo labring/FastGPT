@@ -58,7 +58,10 @@ const AppCard = ({ appId }: { appId: string }) => {
       <Box px={4}>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-            <PermissionIconText permission={appDetail.permission} />
+            <PermissionIconText
+              permission={appDetail.permission}
+              defaultPermission={appDetail.defaultPermission}
+            />
           </Box>
           <Box color={'myGray.500'} fontSize={'sm'}>
             AppId:{' '}

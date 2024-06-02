@@ -23,6 +23,11 @@ export const ResourcePermissionSchema = new Schema({
   permission: {
     type: Number,
     required: true
+  },
+  // Resrouce ID: App or DataSet or any other resource type.
+  // It is null if the resourceType is team.
+  resourceId: {
+    type: Schema.Types.ObjectId
   }
 });
 

@@ -7,8 +7,7 @@ import {
   Input,
   Textarea,
   ModalFooter,
-  ModalBody,
-  Image
+  ModalBody
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
@@ -19,11 +18,50 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import PermissionRadio from '@/components/support/permission/Radio';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { AppContext } from '@/web/core/app/context/appContext';
+import MemberManager from '@/components/support/permission/MemberManager';
+import {
+  addAppCollaborators,
+  deleteAppCollaborators,
+  getCollaboratorList
+} from '@/web/core/app/collaborator';
+import { useQuery } from '@tanstack/react-query';
 import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '@/web/core/app/context/appContext';
+import MyTooltip from '@/components/MyTooltip';
+import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MySelect from '@fastgpt/web/components/common/MySelect';
+import {
+  AppDefaultPermission,
+  AppPermission,
+  AppPermissionList,
+  AppReadPermission,
+  AppWritePermission
+} from '@fastgpt/service/support/permission/app/permission';
+import { PermissionValueType } from '@fastgpt/service/support/permission/resourcePermission/permisson';
+import { useAppStore } from '@/web/core/app/store/useAppStore';
+
+enum defaultPermissionEnum {
+  private = 'private',
+  read = 'read',
+  edit = 'edit'
+}
+
+const defaultPermissionSelectList = [
+  { label: '仅协作者访问', value: defaultPermissionEnum.private },
+  { label: '团队可访问', value: defaultPermissionEnum.read },
+  { label: '团队可编辑', value: defaultPermissionEnum.edit }
+];
+
+const defaultPermissionMap = {
+  [defaultPermissionEnum.private]: AppDefaultPermission.value,
+  [defaultPermissionEnum.read]: AppReadPermission.value,
+  [defaultPermissionEnum.edit]: AppWritePermission.value,
+  [AppDefaultPermission.value]: defaultPermissionEnum.private,
+  [AppReadPermission.value]: defaultPermissionEnum.read,
+  [AppWritePermission.value]: defaultPermissionEnum.edit
+};
 
 const InfoModal = ({
   defaultApp,
@@ -42,6 +80,7 @@ const InfoModal = ({
     fileType: '.jpg,.png',
     multiple: false
   });
+
   const {
     register,
     setValue,
@@ -60,7 +99,7 @@ const InfoModal = ({
         name: data.name,
         avatar: data.avatar,
         intro: data.intro,
-        permission: data.permission
+        defaultPermission: data.defaultPermission
       });
     },
     onSuccess() {
@@ -119,6 +158,13 @@ const InfoModal = ({
     [setValue, t, toast]
   );
 
+  const { data: CollaboratorList, refetch: refetchCollaboratorList } = useQuery(
+    ['CollaboratorList'],
+    () => {
+      return getCollaboratorList(defaultApp._id);
+    }
+  );
+
   return (
     <MyModal
       isOpen={true}
@@ -162,16 +208,59 @@ const InfoModal = ({
           bg={'myWhite.600'}
           {...register('intro')}
         />
-        <Box mt={4}>
-          <Box mb={1}>{t('user.Permission')}</Box>
-          <PermissionRadio
-            value={getValues('permission')}
-            onChange={(e) => {
-              setValue('permission', e);
-              setRefresh(!refresh);
+
+        <Flex mt="4" mb="1" justifyContent="space-between" w="full" flexDirection="column">
+          <Flex alignItems="center">
+            默认权限
+            <MyTooltip label={'默认权限相关文案'} forceShow>
+              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
+            </MyTooltip>
+          </Flex>
+          <MySelect
+            mt="2"
+            list={defaultPermissionSelectList}
+            value={
+              defaultPermissionMap[getValues('defaultPermission')] || defaultPermissionEnum.private
+            }
+            onchange={(v) => {
+              setValue('defaultPermission', defaultPermissionMap[v]);
+              setRefresh((state) => !state);
             }}
           />
-        </Box>
+        </Flex>
+
+        <MemberManager
+          collaboratorList={CollaboratorList}
+          permissionList={AppPermissionList}
+          addCollaborators={(tmbIds: string[], permission: PermissionValueType) => {
+            const res = addAppCollaborators({
+              tmbIds,
+              permission,
+              appId: defaultApp._id
+            });
+            refetchCollaboratorList();
+            return res;
+          }}
+          permissionConfig={Object.entries(AppPermission).map(([_, value]) => {
+            return {
+              type: value.type,
+              name: value.name,
+              description: value.description,
+              value: value.value
+            };
+          })}
+          refetchCollaboratorList={() => {
+            refetchCollaboratorList();
+          }}
+          deleteCollaborator={(tmbId: string) => {
+            const res = deleteAppCollaborators({
+              appId: defaultApp._id,
+              tmbId
+            });
+            refetchCollaboratorList();
+            return res;
+          }}
+        />
       </ModalBody>
 
       <ModalFooter>

@@ -19,6 +19,7 @@ export type AppUpdateParams = {
   chatConfig?: AppSchema['chatConfig'];
   permission?: AppSchema['permission'];
   teamTags?: AppSchema['teamTags'];
+  defaultPermission?: AppSchema['defaultPermission'];
 };
 
 export type PostPublishAppProps = {

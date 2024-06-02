@@ -9,7 +9,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   if (!appId) {
     throw new Error('参数错误');
   }
-
   // 凭证校验
   const { app } = await authApp({ req, authToken: true, appId, per: 'w' });
 
