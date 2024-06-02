@@ -12,7 +12,7 @@ export class HttpExceptionFilter implements ExceptionFilter {
     response.status(500).send({
       success: false,
       time: new Date(),
-      msg: getErrText(error)
+      message: getErrText(error)
     });
   }
 }

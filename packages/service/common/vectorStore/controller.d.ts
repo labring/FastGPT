@@ -1,3 +1,5 @@
+import type { EmbeddingRecallItemType } from './type';
+
 export type DeleteDatasetVectorProps = (
   | { id: string }
   | { datasetIds: string[]; collectionIds?: string[] }
@@ -5,11 +7,18 @@ export type DeleteDatasetVectorProps = (
 ) & {
   teamId: string;
 };
+export type DelDatasetVectorCtrlProps = DeleteDatasetVectorProps & {
+  retry?: number;
+};
 
 export type InsertVectorProps = {
   teamId: string;
   datasetId: string;
   collectionId: string;
+};
+export type InsertVectorControllerProps = InsertVectorProps & {
+  vector: number[];
+  retry?: number;
 };
 
 export type EmbeddingRecallProps = {
@@ -17,4 +26,12 @@ export type EmbeddingRecallProps = {
   datasetIds: string[];
   // similarity?: number;
   // efSearch?: number;
+};
+export type EmbeddingRecallCtrlProps = EmbeddingRecallProps & {
+  vector: number[];
+  limit: number;
+  retry?: number;
+};
+export type EmbeddingRecallResponse = {
+  results: EmbeddingRecallItemType[];
 };

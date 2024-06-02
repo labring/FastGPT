@@ -52,10 +52,10 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
 `1` 应用编排能力
    - [x] 提供简易模式，无需操作编排
    - [x] 工作流编排
-   - [x] 源文件引用追踪
    - [x] 工具调用
    - [x] 插件 - 工作流封装能力
-   - [ ] Code sandbox
+   - [x] Code sandbox
+   - [ ] 循环调用
 
 `2` 知识库能力
    - [x] 多库复用，混用
@@ -65,7 +65,7 @@ https://github.com/labring/FastGPT/assets/15308462/7d3a38df-eb0e-4388-9250-2409b
    - [x] 支持 txt，md，html，pdf，docx，pptx，csv，xlsx (有需要更多可 PR file loader)
    - [x] 支持 url 读取、CSV 批量导入
    - [x] 混合检索 & 重排
-   - [ ] 支持文件阅读器
+   - [ ] 标签过滤
   
 `3` 应用调试能力
    - [x] 知识库单点搜索测试

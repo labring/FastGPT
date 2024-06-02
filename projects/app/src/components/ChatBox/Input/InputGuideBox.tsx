@@ -24,6 +24,7 @@ export default function InputGuideBox({
   const { t } = useTranslation();
   const { chatT } = useI18n();
   const chatInputGuide = useContextSelector(ChatBoxContext, (v) => v.chatInputGuide);
+  const outLinkAuthData = useContextSelector(ChatBoxContext, (v) => v.outLinkAuthData);
 
   const { data = [] } = useRequest2(
     async () => {
@@ -31,7 +32,8 @@ export default function InputGuideBox({
       return await queryChatInputGuideList(
         {
           appId,
-          searchKey: text.slice(0, 50)
+          searchKey: text.slice(0, 50),
+          ...outLinkAuthData
         },
         chatInputGuide.customUrl ? chatInputGuide.customUrl : undefined
       );

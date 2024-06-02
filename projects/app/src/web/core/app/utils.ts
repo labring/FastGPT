@@ -7,6 +7,7 @@ import {
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import {
   FlowNodeInputTypeEnum,
+  FlowNodeOutputTypeEnum,
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -65,7 +66,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
           key: 'userChatInput',
           label: 'core.module.input.label.user question',
           valueType: WorkflowIOValueTypeEnum.string,
-          type: 'static'
+          type: FlowNodeOutputTypeEnum.static
         }
       ]
     };
@@ -181,7 +182,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
               label: 'core.module.output.label.New context',
               description: 'core.module.output.description.New context',
               valueType: WorkflowIOValueTypeEnum.chatHistory,
-              type: 'static'
+              type: FlowNodeOutputTypeEnum.static
             },
             {
               id: 'answerText',
@@ -189,7 +190,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
               label: 'core.module.output.label.Ai response content',
               description: 'core.module.output.description.Ai response content',
               valueType: WorkflowIOValueTypeEnum.string,
-              type: 'static'
+              type: FlowNodeOutputTypeEnum.static
             }
           ]
         }
@@ -315,7 +316,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
               label: 'core.module.output.label.New context',
               description: 'core.module.output.description.New context',
               valueType: WorkflowIOValueTypeEnum.chatHistory,
-              type: 'static'
+              type: FlowNodeOutputTypeEnum.static
             },
             {
               id: 'answerText',
@@ -323,7 +324,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
               label: 'core.module.output.label.Ai response content',
               description: 'core.module.output.description.Ai response content',
               valueType: WorkflowIOValueTypeEnum.string,
-              type: 'static'
+              type: FlowNodeOutputTypeEnum.static
             }
           ]
         },
@@ -416,7 +417,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
               id: 'quoteQA',
               key: 'quoteQA',
               label: 'core.module.Dataset quote.label',
-              type: 'static',
+              type: FlowNodeOutputTypeEnum.static,
               valueType: WorkflowIOValueTypeEnum.datasetQuote
             }
           ]
@@ -537,7 +538,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
                     id: 'quoteQA',
                     key: 'quoteQA',
                     label: 'core.module.Dataset quote.label',
-                    type: 'static',
+                    type: FlowNodeOutputTypeEnum.static,
                     valueType: WorkflowIOValueTypeEnum.datasetQuote
                   }
                 ]
