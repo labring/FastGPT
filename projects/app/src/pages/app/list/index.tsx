@@ -67,9 +67,11 @@ const MyApps = () => {
         <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
           {appT('My Apps')}
         </Box>
-        <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
-          {commonT('New Create')}
-        </Button>
+        {userInfo?.team.permission.hasWritePer && (
+          <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
+            {commonT('New Create')}
+          </Button>
+        )}
       </Flex>
       <Grid
         py={[4, 6]}
@@ -79,7 +81,7 @@ const MyApps = () => {
         {myApps.map((app) => (
           <MyTooltip
             key={app._id}
-            label={userInfo?.team.permission.hasWritePer ? appT('To Settings') : appT('To Chat')}
+            label={app.permission.hasWritePer ? appT('To Settings') : appT('To Chat')}
           >
             <Box
               lineHeight={1.5}
@@ -106,7 +108,7 @@ const MyApps = () => {
                 }
               }}
               onClick={() => {
-                if (userInfo?.team.permission.hasWritePer) {
+                if (app.permission.hasWritePer) {
                   router.push(`/app/detail?appId=${app._id}`);
                 } else {
                   router.push(`/chat?appId=${app._id}`);
@@ -116,7 +118,7 @@ const MyApps = () => {
               <Flex alignItems={'center'} h={'38px'}>
                 <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
                 <Box ml={3}>{app.name}</Box>
-                {app.permission.isOwner && userInfo?.team.permission.hasWritePer && (
+                {app.permission.isOwner && (
                   <IconButton
                     className="delete"
                     position={'absolute'}
@@ -151,7 +153,7 @@ const MyApps = () => {
                     color={'myGray.600'}
                   />
                 </Box>
-                {userInfo?.team.permission.hasWritePer && (
+                {app.permission.hasWritePer && (
                   <IconButton
                     className="chat"
                     size={'xsSquare'}

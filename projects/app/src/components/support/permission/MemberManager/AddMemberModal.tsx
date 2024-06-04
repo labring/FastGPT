@@ -51,10 +51,11 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
   const filterMembers = useMemo(() => {
     return members.filter((item) => {
       if (item.permission.isOwner) return false;
+      if (item.tmbId === userInfo?.team?.tmbId) return false;
       if (!searchText) return true;
       return item.memberName.includes(searchText);
     });
-  }, [members, searchText]);
+  }, [members, searchText, userInfo?.team?.tmbId]);
 
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
   const [selectedPermission, setSelectedPermission] = useState(permissionList['read'].value);

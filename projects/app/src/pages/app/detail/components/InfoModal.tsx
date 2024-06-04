@@ -26,30 +26,20 @@ import {
   deleteAppCollaborators,
   getCollaboratorList
 } from '@/web/core/app/api/collaborator';
-import { useQuery } from '@tanstack/react-query';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
 import {
   AppDefaultPermission,
   AppPermissionList
 } from '@fastgpt/global/support/permission/app/constant';
-import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 
-const InfoModal = ({
-  defaultApp,
-  onClose,
-  onSuccess
-}: {
-  defaultApp: AppSchema;
-  onClose: () => void;
-  onSuccess?: () => void;
-}) => {
+const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { updateAppDetail } = useContextSelector(AppContext, (v) => v);
+  const { updateAppDetail, appDetail } = useContextSelector(AppContext, (v) => v);
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -64,7 +54,7 @@ const InfoModal = ({
     handleSubmit,
     watch
   } = useForm({
-    defaultValues: defaultApp
+    defaultValues: appDetail
   });
   const defaultPermission = watch('defaultPermission');
   const avatar = getValues('avatar');
@@ -80,7 +70,6 @@ const InfoModal = ({
       });
     },
     onSuccess() {
-      onSuccess && onSuccess();
       onClose();
       toast({
         title: t('common.Update Success'),
@@ -138,12 +127,12 @@ const InfoModal = ({
     await postUpdateAppCollaborators({
       tmbIds,
       permission,
-      appId: defaultApp._id
+      appId: appDetail._id
     });
   };
   const onDelCollaborator = async (tmbId: string) => {
     await deleteAppCollaborators({
-      appId: defaultApp._id,
+      appId: appDetail._id,
       tmbId
     });
   };
@@ -190,25 +179,30 @@ const InfoModal = ({
         />
 
         {/* role */}
-        <Box mt="4">
-          <Box>{t('permission.Default permission')}</Box>
-          <DefaultPermissionList
-            mt="2"
-            per={defaultPermission}
-            defaultPer={AppDefaultPermission}
-            readPer={ReadPermissionVal}
-            writePer={WritePermissionVal}
-            onChange={(v) => setValue('defaultPermission', v)}
-          />
-        </Box>
-        <Box mt={6}>
-          <MemberManager
-            onGetCollaboratorList={() => getCollaboratorList(defaultApp._id)}
-            permissionList={AppPermissionList}
-            onUpdateCollaborators={onUpdateCollaborators}
-            onDelOneCollaborator={onDelCollaborator}
-          />
-        </Box>
+        {appDetail.permission.hasManagePer && (
+          <>
+            {' '}
+            <Box mt="4">
+              <Box>{t('permission.Default permission')}</Box>
+              <DefaultPermissionList
+                mt="2"
+                per={defaultPermission}
+                defaultPer={AppDefaultPermission}
+                readPer={ReadPermissionVal}
+                writePer={WritePermissionVal}
+                onChange={(v) => setValue('defaultPermission', v)}
+              />
+            </Box>
+            <Box mt={6}>
+              <MemberManager
+                onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
+                permissionList={AppPermissionList}
+                onUpdateCollaborators={onUpdateCollaborators}
+                onDelOneCollaborator={onDelCollaborator}
+              />
+            </Box>
+          </>
+        )}
       </ModalBody>
 
       <ModalFooter>

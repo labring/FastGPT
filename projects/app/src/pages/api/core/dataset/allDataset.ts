@@ -14,14 +14,14 @@ async function handler(
   res: NextApiResponse<any>
 ): Promise<DatasetSimpleItemType[]> {
   // 凭证校验
-  const { teamId, tmbId, role } = await authUserPer({
+  const { teamId, tmbId, permission } = await authUserPer({
     req,
     authToken: true,
     per: ReadPermissionVal
   });
 
   const datasets = await MongoDataset.find({
-    ...mongoRPermission({ teamId, tmbId, role }),
+    ...mongoRPermission({ teamId, tmbId, permission }),
     type: { $ne: DatasetTypeEnum.folder }
   }).lean();
 

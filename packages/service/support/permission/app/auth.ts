@@ -1,7 +1,6 @@
 import { MongoApp } from '../../../core/app/schema';
 import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import { AuthPropsType } from '../type';
-import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { parseHeaderCert } from '../controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -9,6 +8,7 @@ import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getResourcePermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
+import { AuthResponseType } from '@fastgpt/global/support/permission/type/auth.d';
 
 // 模型使用权校验
 export async function authApp({
@@ -19,9 +19,7 @@ export async function authApp({
   appId: string;
 }): Promise<
   AuthResponseType & {
-    teamOwner: boolean;
     app: AppDetailType;
-    role: `${TeamMemberRoleEnum}`;
   }
 > {
   const result = await parseHeaderCert(props);
@@ -35,7 +33,7 @@ export async function authApp({
     resourceType: PerResourceTypeEnum.app
   }); // this could be null
 
-  const { app, isOwner, canWrite } = await (async () => {
+  const app = await (async () => {
     // get app
     const app = await MongoApp.findOne({ _id: appId, teamId }).lean();
 
@@ -44,30 +42,21 @@ export async function authApp({
     }
 
     const isOwner = role === 'owner' || String(app.tmbId) === tmbId;
-    const Per = new AppPermission({ per: rp ? rp.permission : app.defaultPermission, isOwner });
-    const canWrite = isOwner || Per.hasWritePer;
+    const Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
 
     if (!Per.checkPer(per)) {
       return Promise.reject(AppErrEnum.unAuthApp);
     }
 
     return {
-      app: {
-        ...app,
-        isOwner,
-        canWrite
-      },
-      isOwner,
-      canWrite
+      ...app,
+      permission: Per
     };
   })();
 
   return {
     ...result,
-    app,
-    role,
-    isOwner,
-    canWrite,
-    teamOwner: role === TeamMemberRoleEnum.owner
+    permission: app.permission,
+    app
   };
 }

@@ -41,7 +41,7 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemTyp
     defaultTeam: tmb.defaultTeam,
     lafAccount: tmb.teamId.lafAccount,
     permission: new TeamPermission({
-      per: tmbPer?.permission ?? tmb.teamId.defaultPermission ?? ReadPermissionVal,
+      per: tmbPer?.permission ?? tmb.teamId.defaultPermission,
       isOwner: tmb.role === TeamMemberRoleEnum.owner
     })
   };

@@ -40,7 +40,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     .map((app) => {
       const perVal = rpList.find((item) => String(item.resourceId) === String(app._id))?.permission;
       const Per = new AppPermission({
-        per: perVal || app.defaultPermission,
+        per: perVal ?? app.defaultPermission,
         isOwner: String(app.tmbId) === tmbId || tmbPer.isOwner
       });
 

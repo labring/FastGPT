@@ -64,18 +64,18 @@ export async function autChatCrud({
     if (!chat) return { id: outLinkUid };
 
     //  auth req
-    const { teamId, tmbId, role } = await authUserPer({
+    const { teamId, tmbId, permission } = await authUserPer({
       ...props,
       per: ReadPermissionVal
     });
 
     if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
 
-    if (role === TeamMemberRoleEnum.owner) return { uid: outLinkUid };
+    if (permission.isOwner) return { uid: outLinkUid };
     if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
 
     // admin
-    if (per === 'r' && role === TeamMemberRoleEnum.admin) return { uid: outLinkUid };
+    if (per === 'r' && permission.hasManagePer) return { uid: outLinkUid };
 
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();

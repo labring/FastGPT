@@ -20,12 +20,14 @@ import { CollaboratorContext } from './context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 export type ManageModalProps = {
   onClose: () => void;
 };
 
 function ManageModal({ onClose }: ManageModalProps) {
+  const { userInfo } = useUserStore();
   const { collaboratorList, onUpdateCollaborators, onDelOneCollaborator } = useContextSelector(
     CollaboratorContext,
     (v) => v
@@ -92,21 +94,23 @@ function ManageModal({ onClose }: ManageModalProps) {
                       <PermissionTags permission={item.permission} />
                     </Td>
                     <Td border="none">
-                      <PermissionSelect
-                        Button={
-                          <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
-                        }
-                        value={item.permission}
-                        onChange={(per) => {
-                          onUpdate({
-                            tmbId: item.tmbId,
-                            per
-                          });
-                        }}
-                        onDelete={() => {
-                          onDelete(item.tmbId);
-                        }}
-                      />
+                      {item.tmbId !== userInfo?.team?.tmbId && (
+                        <PermissionSelect
+                          Button={
+                            <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
+                          }
+                          value={item.permission}
+                          onChange={(per) => {
+                            onUpdate({
+                              tmbId: item.tmbId,
+                              per
+                            });
+                          }}
+                          onDelete={() => {
+                            onDelete(item.tmbId);
+                          }}
+                        />
+                      )}
                     </Td>
                   </Tr>
                 );

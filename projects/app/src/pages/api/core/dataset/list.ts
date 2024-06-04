@@ -12,7 +12,7 @@ import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { parentId, type } = req.query as { parentId?: string; type?: DatasetTypeEnum };
   // 凭证校验
-  const { teamId, tmbId, role, permission } = await authUserPer({
+  const { teamId, tmbId, permission } = await authUserPer({
     req,
     authToken: true,
     authApiKey: true,
@@ -20,7 +20,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   });
 
   const datasets = await MongoDataset.find({
-    ...mongoRPermission({ teamId, tmbId, role }),
+    ...mongoRPermission({ teamId, tmbId, permission }),
     ...(parentId !== undefined && { parentId: parentId || null }),
     ...(type && { type })
   })
