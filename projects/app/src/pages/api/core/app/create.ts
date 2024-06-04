@@ -3,11 +3,12 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import type { CreateAppParams } from '@/global/core/app/api.d';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { checkTeamAppLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { NextAPI } from '@/service/middleware/entry';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const {
@@ -23,7 +24,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // 凭证校验
-  const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
+  const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
 
   // 上限校验
   await checkTeamAppLimit(teamId);

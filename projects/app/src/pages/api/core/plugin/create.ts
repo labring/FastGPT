@@ -2,15 +2,16 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
-import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { httpApiSchema2Plugins } from '@fastgpt/global/core/plugin/httpPlugin/utils';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
+    const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
     const body = req.body as CreateOnePluginParams;
 
     // await checkTeamPluginLimit(teamId);

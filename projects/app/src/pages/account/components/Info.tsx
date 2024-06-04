@@ -265,7 +265,7 @@ const MyInfo = () => {
               <Box flex={1}>
                 <strong>{formatStorePrice2Read(userInfo?.team?.balance).toFixed(3)}</strong> 元
               </Box>
-              {feConfigs?.show_pay && userInfo?.team?.canWrite && (
+              {feConfigs?.show_pay && userInfo?.team?.permission.hasWritePer && (
                 <Button variant={'whitePrimary'} size={'sm'} ml={5} onClick={onOpenPayModal}>
                   {t('user.Pay')}
                 </Button>

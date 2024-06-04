@@ -182,16 +182,17 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                         label: t('common.Delete'),
                         icon: 'delete',
                         type: 'danger',
-                        onClick: openConfirm(async () => {
-                          setIsLoading(true);
-                          try {
-                            await delShareChatById(item._id);
-                            refetchShareChatList();
-                          } catch (error) {
-                            console.log(error);
-                          }
-                          setIsLoading(false);
-                        })
+                        onClick: () =>
+                          openConfirm(async () => {
+                            setIsLoading(true);
+                            try {
+                              await delShareChatById(item._id);
+                              refetchShareChatList();
+                            } catch (error) {
+                              console.log(error);
+                            }
+                            setIsLoading(false);
+                          })()
                       }
                     ]}
                   />

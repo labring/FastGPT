@@ -27,7 +27,7 @@ const MyApps = () => {
   const { userInfo } = useUserStore();
   const { myApps, loadMyApps } = useAppStore();
   const { openConfirm, ConfirmModal } = useConfirm({
-    title: '删除提示',
+    type: 'delete',
     content: '确认删除该应用所有信息？'
   });
   const {
@@ -67,9 +67,11 @@ const MyApps = () => {
         <Box letterSpacing={1} fontSize={['20px', '24px']} color={'myGray.900'}>
           {appT('My Apps')}
         </Box>
-        <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
-          {commonT('New Create')}
-        </Button>
+        {userInfo?.team.permission.hasWritePer && (
+          <Button leftIcon={<AddIcon />} variant={'primaryOutline'} onClick={onOpenCreateModal}>
+            {commonT('New Create')}
+          </Button>
+        )}
       </Flex>
       <Grid
         py={[4, 6]}
@@ -79,7 +81,7 @@ const MyApps = () => {
         {myApps.map((app) => (
           <MyTooltip
             key={app._id}
-            label={userInfo?.team.canWrite ? appT('To Settings') : appT('To Chat')}
+            label={app.permission.hasWritePer ? appT('To Settings') : appT('To Chat')}
           >
             <Box
               lineHeight={1.5}
@@ -106,7 +108,7 @@ const MyApps = () => {
                 }
               }}
               onClick={() => {
-                if (userInfo?.team.canWrite) {
+                if (app.permission.hasWritePer) {
                   router.push(`/app/detail?appId=${app._id}`);
                 } else {
                   router.push(`/chat?appId=${app._id}`);
@@ -116,7 +118,7 @@ const MyApps = () => {
               <Flex alignItems={'center'} h={'38px'}>
                 <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
                 <Box ml={3}>{app.name}</Box>
-                {app.isOwner && userInfo?.team.canWrite && (
+                {app.permission.isOwner && (
                   <IconButton
                     className="delete"
                     position={'absolute'}
@@ -146,9 +148,12 @@ const MyApps = () => {
               </Box>
               <Flex h={'34px'} alignItems={'flex-end'}>
                 <Box flex={1}>
-                  <PermissionIconText permission={app.permission} color={'myGray.600'} />
+                  <PermissionIconText
+                    defaultPermission={app.defaultPermission}
+                    color={'myGray.600'}
+                  />
                 </Box>
-                {userInfo?.team.canWrite && (
+                {app.permission.hasWritePer && (
                   <IconButton
                     className="chat"
                     size={'xsSquare'}

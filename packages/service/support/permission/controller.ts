@@ -3,10 +3,76 @@ import { ERROR_ENUM } from '@fastgpt/global/common/error/errorCode';
 import jwt from 'jsonwebtoken';
 import { NextApiResponse } from 'next';
 import type { AuthModeType, ReqHeaderAuthType } from './type.d';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
+import { MongoResourcePermission } from './schema';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
 
+export const getResourcePermission = async ({
+  resourceType,
+  teamId,
+  tmbId,
+  resourceId
+}: {
+  resourceType: PerResourceTypeEnum;
+  teamId: string;
+  tmbId: string;
+  resourceId?: string;
+}) => {
+  const per = await MongoResourcePermission.findOne({
+    tmbId,
+    teamId,
+    resourceType,
+    resourceId
+  });
+
+  if (!per) {
+    return null;
+  }
+  return per;
+};
+export const delResourcePermissionById = (id: string) => {
+  return MongoResourcePermission.findByIdAndRemove(id);
+};
+export const updateResourcePermission = async ({
+  resourceId,
+  resourceType,
+  teamId,
+  tmbIdList,
+  permission
+}: {
+  resourceId?: string;
+  resourceType: PerResourceTypeEnum;
+  teamId: string;
+  tmbIdList: string[];
+  permission: PermissionValueType;
+}) => {
+  await mongoSessionRun((session) => {
+    return Promise.all(
+      tmbIdList.map((tmbId) =>
+        MongoResourcePermission.findOneAndUpdate(
+          {
+            resourceType,
+            teamId,
+            tmbId,
+            resourceId
+          },
+          {
+            permission
+          },
+          {
+            session,
+            upsert: true
+          }
+        )
+      )
+    );
+  });
+};
+
+/* 下面代码等迁移 */
 /* create token */
 export function createJWT(user: { _id?: string; team?: { teamId?: string; tmbId: string } }) {
   const key = process.env.TOKEN_KEY as string;

@@ -1212,6 +1212,8 @@
     "Tools": "Tools"
   },
   "permission": {
+    "Default permission": "Default permission",
+    "Manage": "Manage",
     "Private": "Private",
     "Private Tip": "Only available to oneself",
     "Public": "Team",

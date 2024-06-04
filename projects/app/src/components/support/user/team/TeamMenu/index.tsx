@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Button, Flex, Image, useDisclosure, useTheme } from '@chakra-ui/react';
+import { Box, Button, Flex, Image, useDisclosure } from '@chakra-ui/react';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '@/components/MyTooltip';
@@ -10,7 +10,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 const TeamManageModal = dynamic(() => import('../TeamManageModal'));
 
 const TeamMenu = () => {
-  const theme = useTheme();
   const { feConfigs } = useSystemStore();
   const { t } = useTranslation();
   const { userInfo } = useUserStore();
@@ -38,7 +37,7 @@ const TeamMenu = () => {
         } else {
           toast({
             status: 'warning',
-            title: t('common.Business edition features')
+            title: t('common.system.Commercial version function')
           });
         }
       }}

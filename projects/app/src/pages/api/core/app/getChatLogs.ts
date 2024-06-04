@@ -5,9 +5,10 @@ import { AppLogsListItemType } from '@/types/app';
 import { Types } from '@fastgpt/service/common/mongo';
 import { addDays } from 'date-fns';
 import type { GetAppChatLogsParams } from '@/global/core/api/appReq.d';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ChatItemCollectionName } from '@fastgpt/service/core/chat/chatItemSchema';
 import { NextAPI } from '@/service/middleware/entry';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(
   req: NextApiRequest,
@@ -26,7 +27,7 @@ async function handler(
   }
 
   // 凭证校验
-  const { teamId } = await authApp({ req, authToken: true, appId, per: 'w' });
+  const { teamId } = await authApp({ req, authToken: true, appId, per: WritePermissionVal });
 
   const where = {
     teamId: new Types.ObjectId(teamId),

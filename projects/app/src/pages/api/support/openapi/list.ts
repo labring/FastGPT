@@ -3,8 +3,9 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import type { GetApiKeyProps } from '@/global/support/openapi/api';
-import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -12,11 +13,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { appId } = req.query as GetApiKeyProps;
 
     if (appId) {
-      const { tmbId, teamOwner } = await authApp({ req, authToken: true, appId, per: 'w' });
+      await authApp({
+        req,
+        authToken: true,
+        appId,
+        per: ManagePermissionVal
+      });
 
       const findResponse = await MongoOpenApi.find({
-        appId,
-        ...(!teamOwner && { tmbId })
+        appId
       }).sort({ _id: -1 });
 
       return jsonRes(res, {
@@ -24,16 +29,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const {
-      teamId,
-      tmbId,
-      isOwner: teamOwner
-    } = await authUserNotVisitor({ req, authToken: true });
+    const { teamId, tmbId, permission } = await authUserPer({
+      req,
+      authToken: true,
+      per: ManagePermissionVal
+    });
 
     const findResponse = await MongoOpenApi.find({
       appId,
       teamId,
-      ...(!teamOwner && { tmbId })
+      ...(!permission.isOwner && { tmbId })
     }).sort({ _id: -1 });
 
     return jsonRes(res, {

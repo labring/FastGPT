@@ -75,7 +75,7 @@ const TeamPlugins = () => {
             });
           }}
         />
-        {userInfo?.team?.canWrite && (
+        {userInfo?.team?.permission.hasWritePer && (
           <MyMenu
             offset={[-30, 5]}
             width={120}
