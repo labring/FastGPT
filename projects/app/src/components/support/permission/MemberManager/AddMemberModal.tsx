@@ -75,13 +75,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
   });
 
   return (
-    <MyModal
-      isOpen
-      onClose={onClose}
-      iconSrc="support/permission/collaborator"
-      title="添加协作者"
-      minW="800px"
-    >
+    <MyModal isOpen onClose={onClose} iconSrc="modal/AddClb" title="添加协作者" minW="800px">
       <ModalBody>
         <MyBox
           isLoading={loadingMembers}

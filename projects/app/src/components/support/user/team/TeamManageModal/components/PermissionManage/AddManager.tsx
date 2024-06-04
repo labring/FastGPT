@@ -62,7 +62,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   return (
     <MyModal
       isOpen
-      iconSrc={'support/permission/collaborator'}
+      iconSrc={'modal/AddClb'}
       maxW={['90vw']}
       minW={['900px']}
       overflow={'unset'}

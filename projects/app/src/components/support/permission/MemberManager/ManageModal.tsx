@@ -21,6 +21,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 export type ManageModalProps = {
   onClose: () => void;
@@ -67,15 +68,6 @@ function ManageModal({ onClose }: ManageModalProps) {
               </Tr>
             </Thead>
             <Tbody>
-              {collaboratorList?.length === 0 && (
-                <Tr>
-                  <Td colSpan={3} border="none">
-                    <Box textAlign="center" p={4}>
-                      暂无协作者
-                    </Box>
-                  </Td>
-                </Tr>
-              )}
               {collaboratorList?.map((item) => {
                 return (
                   <Tr
@@ -117,6 +109,7 @@ function ManageModal({ onClose }: ManageModalProps) {
               })}
             </Tbody>
           </Table>
+          {collaboratorList?.length === 0 && <EmptyTip text={'暂无协作者'} />}
         </TableContainer>
       </ModalBody>
     </MyModal>
