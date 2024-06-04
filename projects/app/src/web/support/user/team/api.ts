@@ -11,7 +11,7 @@ import {
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
 import {
-  TeamItemType,
+  TeamTmbItemType,
   TeamMemberItemType,
   TeamMemberSchema
 } from '@fastgpt/global/support/user/team/type.d';
@@ -19,7 +19,7 @@ import { FeTeamPlanStatusType, TeamSubSchema } from '@fastgpt/global/support/wal
 
 /* --------------- team  ---------------- */
 export const getTeamList = (status: `${TeamMemberSchema['status']}`) =>
-  GET<TeamItemType[]>(`/proApi/support/user/team/list`, { status });
+  GET<TeamTmbItemType[]>(`/proApi/support/user/team/list`, { status });
 export const postCreateTeam = (data: CreateTeamProps) =>
   POST<string>(`/proApi/support/user/team/create`, data);
 export const putUpdateTeam = (data: UpdateTeamProps) => PUT(`/support/user/team/update`, data);

@@ -6,14 +6,14 @@ import { useQuery } from '@tanstack/react-query';
 import { getTeamList, getTeamMembers, putSwitchTeam } from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import type { TeamItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
+import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 
 const EditInfoModal = dynamic(() => import('./components/EditInfoModal'));
 
 type TeamModalContextType = {
-  myTeams: TeamItemType[];
+  myTeams: TeamTmbItemType[];
   refetchTeams: () => void;
   isLoading: boolean;
   onSwitchTeam: (teamId: string) => void;

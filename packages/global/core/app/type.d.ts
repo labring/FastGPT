@@ -8,6 +8,7 @@ import { DatasetSearchModeEnum } from '../dataset/constants';
 import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/user/team/type.d';
 import { StoreEdgeItemType } from '../workflow/type/edge';
 import { PermissionValueType } from '../../support/permission/type';
+import { AppPermission } from 'support/permission/app/controller';
 
 export type AppSchema = {
   _id: string;
@@ -39,9 +40,8 @@ export type AppListItemType = {
   name: string;
   avatar: string;
   intro: string;
-  isOwner: boolean;
-  permission: `${PermissionTypeEnum}`;
   defaultPermission: PermissionValueType;
+  permission: AppPermission;
 };
 
 export type AppDetailType = AppSchema & {

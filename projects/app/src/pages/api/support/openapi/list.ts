@@ -30,16 +30,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       });
     }
 
-    const {
-      teamId,
-      tmbId,
-      isOwner: teamOwner
-    } = await authUserNotVisitor({ req, authToken: true });
+    const { teamId, tmbId, permission } = await authUserNotVisitor({ req, authToken: true });
 
     const findResponse = await MongoOpenApi.find({
       appId,
       teamId,
-      ...(!teamOwner && { tmbId })
+      ...(!permission.isOwner && { tmbId })
     }).sort({ _id: -1 });
 
     return jsonRes(res, {

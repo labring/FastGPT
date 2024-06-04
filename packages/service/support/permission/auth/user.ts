@@ -1,66 +1,50 @@
-import { AuthResponseType } from '@fastgpt/global/support/permission/type';
-import { AuthModeType } from '../type';
-import { TeamItemType } from '@fastgpt/global/support/user/team/type';
+import { AuthResponseType } from '@fastgpt/global/support/permission/type/auth.d';
+import { AuthPropsType } from '../type';
+import { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { UserErrEnum } from '../../../../global/common/error/code/user';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 
-export async function authUserNotVisitor(props: AuthModeType): Promise<
+export async function authUserNotVisitor(props: Omit<AuthPropsType, 'per'>): Promise<
   AuthResponseType & {
-    team: TeamItemType;
+    tmb: TeamTmbItemType;
     role: `${TeamMemberRoleEnum}`;
   }
 > {
   const { teamId, tmbId } = await parseHeaderCert(props);
-  const team = await getTmbInfoByTmbId({ tmbId });
+  const tmb = await getTmbInfoByTmbId({ tmbId });
 
-  if (team.role === TeamMemberRoleEnum.visitor) {
+  if (tmb.role === TeamMemberRoleEnum.visitor) {
     return Promise.reject(UserErrEnum.binVisitor);
   }
 
   return {
     teamId,
     tmbId,
-    team,
-    role: team.role,
-    isOwner: team.role === TeamMemberRoleEnum.owner, // teamOwner
-    canWrite: true
+    tmb,
+    role: tmb.role,
+    permission: tmb.permission
   };
 }
 
 /* auth user role  */
-export async function authUserRole(props: AuthModeType): Promise<
+export async function authUserPer(props: AuthPropsType): Promise<
   AuthResponseType & {
     role: `${TeamMemberRoleEnum}`;
-    teamOwner: boolean;
   }
 > {
   const result = await parseHeaderCert(props);
-  const { role: userRole, canWrite } = await getTmbInfoByTmbId({ tmbId: result.tmbId });
+  const { role: userRole, permission } = await getTmbInfoByTmbId({ tmbId: result.tmbId });
 
-  return {
-    ...result,
-    isOwner: true,
-    role: userRole,
-    teamOwner: userRole === TeamMemberRoleEnum.owner,
-    canWrite
-  };
-}
-
-/* auth teamMember in team role */
-export async function authTeamOwner(props: AuthModeType): Promise<
-  AuthResponseType & {
-    role: `${TeamMemberRoleEnum}`;
-    teamOwner: boolean;
-  }
-> {
-  const authRes = await authUserRole(props);
-
-  if (authRes.role !== TeamMemberRoleEnum.owner) {
+  if (!permission.checkPer(props.per)) {
     return Promise.reject(TeamErrEnum.unAuthTeam);
   }
 
-  return authRes;
+  return {
+    ...result,
+    role: userRole,
+    permission
+  };
 }

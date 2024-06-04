@@ -50,7 +50,7 @@ export type TeamMemberWithTeamAndUserSchema = Omit<TeamMemberWithTeamSchema, 'us
   userId: UserModelSchema;
 };
 
-export type TeamItemType = {
+export type TeamTmbItemType = {
   userId: string;
   teamId: string;
   teamName: string;

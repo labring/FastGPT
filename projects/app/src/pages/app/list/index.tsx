@@ -116,7 +116,7 @@ const MyApps = () => {
               <Flex alignItems={'center'} h={'38px'}>
                 <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
                 <Box ml={3}>{app.name}</Box>
-                {app.isOwner && userInfo?.team.permission.hasWritePer && (
+                {app.permission.isOwner && userInfo?.team.permission.hasWritePer && (
                   <IconButton
                     className="delete"
                     position={'absolute'}

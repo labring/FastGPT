@@ -1,55 +1,61 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
-import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/auth/user';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
-import { Permission } from '@fastgpt/global/support/permission/controller';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<AppListItemType[]> {
   // 凭证校验
-  const { teamId, tmbId, teamOwner } = await authUserRole({ req, authToken: true });
-
-  let [myApps, rp] = await Promise.all([
-    MongoApp.find({ teamId }, '_id avatar name intro tmbId permission defaultPermission').sort({
-      updateTime: -1
-    }),
-    MongoResourcePermission.find({
-      teamId,
-      tmbId,
-      resourceType: PerResourceTypeEnum.app
-    })
-  ]);
-
-  myApps = myApps.filter((app) => {
-    const permission = rp.find(
-      (item) => item.resourceId.toString() === app._id.toString()
-    )?.permission;
-    if (app.tmbId.toString() === tmbId.toString()) {
-      // owner
-      return true;
-    }
-
-    if (permission && new Permission(permission).hasReadPer) {
-      // has permission to read the app
-      return true;
-    }
-
-    if (new Permission(app.defaultPermission).hasReadPer && !permission) {
-      // defaultPermission is readable and the permission is not configured
-      return true;
-    }
-    // otherwise, the app is not readable
-    return false;
+  const {
+    teamId,
+    tmbId,
+    permission: tmbPer
+  } = await authUserPer({
+    req,
+    authToken: true,
+    per: ReadPermissionVal
   });
 
-  return myApps.map((app) => ({
+  /* temp: get all apps and per */
+  const [myApps, rpList] = await Promise.all([
+    MongoApp.find({ teamId }, '_id avatar name intro tmbId defaultPermission')
+      .sort({
+        updateTime: -1
+      })
+      .lean(),
+    MongoResourcePermission.find({
+      resourceType: PerResourceTypeEnum.app,
+      teamId,
+      tmbId
+    }).lean()
+  ]);
+
+  const filterApps = myApps
+    .map((app) => {
+      const perVal = rpList.find((item) => String(item.resourceId) === String(app._id))?.permission;
+      const Per = new AppPermission({
+        per: perVal || app.defaultPermission,
+        isOwner: String(app.tmbId) === tmbId || tmbPer.isOwner
+      });
+
+      return {
+        ...app,
+        permission: Per
+      };
+    })
+    .filter((app) => app.permission.hasReadPer);
+
+  return filterApps.map((app) => ({
     _id: app._id,
     avatar: app.avatar,
     name: app.name,
     intro: app.intro,
-    isOwner: teamOwner || String(app.tmbId) === tmbId,
     permission: app.permission,
     defaultPermission: app.defaultPermission
   }));

@@ -1,4 +1,4 @@
-import { TeamItemType, TeamMemberWithTeamSchema } from '@fastgpt/global/support/user/team/type';
+import { TeamTmbItemType, TeamMemberWithTeamSchema } from '@fastgpt/global/support/user/team/type';
 import { ClientSession, Types } from '../../../common/mongo';
 import {
   TeamMemberRoleEnum,
@@ -15,7 +15,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/team/controller';
 
-async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> {
+async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
   if (!tmb) {
     return Promise.reject('member not exist');

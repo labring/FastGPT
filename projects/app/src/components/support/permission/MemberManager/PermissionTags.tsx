@@ -17,7 +17,15 @@ function PermissionTags({ permission }: PermissionTagsProp) {
   return (
     <Flex gap="2" alignItems="center">
       {perTagList.map((item) => (
-        <Tag key={item} colorSchema="blue" border="none" py={2} px={3} fontSize={'xs'}>
+        <Tag
+          mixBlendMode={'multiply'}
+          key={item}
+          colorSchema="blue"
+          border="none"
+          py={2}
+          px={3}
+          fontSize={'xs'}
+        >
           {item}
         </Tag>
       ))}

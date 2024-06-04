@@ -56,7 +56,13 @@ function MemberManger() {
       </Flex>
 
       {/* member list */}
-      <MyBox isLoading={isFetchingCollaborator} mt={2} bg="myGray.100" borderRadius="md">
+      <MyBox
+        isLoading={isFetchingCollaborator}
+        mt={2}
+        bg="myGray.100"
+        borderRadius="md"
+        size={'md'}
+      >
         {collaboratorList?.length === 0 ? (
           <Box p={3} color="myGray.600" fontSize={'xs'} textAlign={'center'}>
             暂无协作者
