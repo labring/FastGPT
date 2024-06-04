@@ -3,13 +3,14 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin';
-import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   try {
     await connectToDatabase();
-    const { teamId } = await authUserNotVisitor({ req, authToken: true });
+    const { teamId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
     const { pluginId } = req.query as { pluginId: string };
 
     if (!pluginId) {

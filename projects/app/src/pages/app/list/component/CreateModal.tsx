@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Flex,
@@ -8,12 +8,8 @@ import {
   Input,
   Grid,
   useTheme,
-  Card,
-  Text,
-  HStack,
-  Tag
+  Card
 } from '@chakra-ui/react';
-import { AddIcon } from '@chakra-ui/icons';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
@@ -136,52 +132,48 @@ const CreateModal = ({ onClose, onSuccess }: { onClose: () => void; onSuccess: (
             })}
           />
         </Flex>
-        {!feConfigs?.hide_app_flow && (
-          <>
-            <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
-              {t('core.app.Select app from template')}
-            </Box>
-            <Grid
-              userSelect={'none'}
-              gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
-              gridGap={[2, 4]}
+        <Box mt={[4, 7]} mb={[0, 3]} color={'myGray.800'} fontWeight={'bold'}>
+          {t('core.app.Select app from template')}
+        </Box>
+        <Grid
+          userSelect={'none'}
+          gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
+          gridGap={[2, 4]}
+        >
+          {appTemplates.map((item) => (
+            <Card
+              key={item.id}
+              border={theme.borders.base}
+              p={3}
+              borderRadius={'md'}
+              cursor={'pointer'}
+              boxShadow={'sm'}
+              {...(templateId === item.id
+                ? {
+                    bg: 'primary.50',
+                    borderColor: 'primary.500'
+                  }
+                : {
+                    _hover: {
+                      boxShadow: 'md'
+                    }
+                  })}
+              onClick={() => {
+                setValue('templateId', item.id);
+              }}
             >
-              {appTemplates.map((item) => (
-                <Card
-                  key={item.id}
-                  border={theme.borders.base}
-                  p={3}
-                  borderRadius={'md'}
-                  cursor={'pointer'}
-                  boxShadow={'sm'}
-                  {...(templateId === item.id
-                    ? {
-                        bg: 'primary.50',
-                        borderColor: 'primary.500'
-                      }
-                    : {
-                        _hover: {
-                          boxShadow: 'md'
-                        }
-                      })}
-                  onClick={() => {
-                    setValue('templateId', item.id);
-                  }}
-                >
-                  <Flex alignItems={'center'}>
-                    <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
-                    <Box ml={3} fontWeight={'bold'}>
-                      {t(item.name)}
-                    </Box>
-                  </Flex>
-                  <Box fontSize={'sm'} mt={4}>
-                    {t(item.intro)}
-                  </Box>
-                </Card>
-              ))}
-            </Grid>
-          </>
-        )}
+              <Flex alignItems={'center'}>
+                <Avatar src={item.avatar} borderRadius={'md'} w={'20px'} />
+                <Box ml={3} fontWeight={'bold'}>
+                  {t(item.name)}
+                </Box>
+              </Flex>
+              <Box fontSize={'sm'} mt={4}>
+                {t(item.intro)}
+              </Box>
+            </Card>
+          ))}
+        </Grid>
       </ModalBody>
 
       <ModalFooter>

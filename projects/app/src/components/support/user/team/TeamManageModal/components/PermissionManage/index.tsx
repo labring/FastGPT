@@ -1,26 +1,24 @@
 import React from 'react';
 import { Box, Button, Flex, Tag, TagLabel, useDisclosure } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { TeamContext } from '.';
 import { useContextSelector } from 'use-context-selector';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import Avatar from '@/components/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import AddManagerModal from './AddManager';
-import { updateMemberPermission } from '@/web/support/user/team/api';
+import { delMemberPermission } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import {
-  constructPermission,
-  hasManage,
-  PermissionList
-} from '@fastgpt/service/support/permission/resourcePermission/permisson';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+
+import { TeamModalContext } from '../../context';
+import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
+import dynamic from 'next/dynamic';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+
+const AddManagerModal = dynamic(() => import('./AddManager'));
 
 function PermissionManage() {
   const { t } = useTranslation();
-  const members = useContextSelector(TeamContext, (v) => v.members);
-  const refetchMembers = useContextSelector(TeamContext, (v) => v.refetchMembers);
   const { userInfo } = useUserStore();
+  const { members, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
 
   const {
     isOpen: isOpenAddManager,
@@ -28,30 +26,19 @@ function PermissionManage() {
     onClose: onCloseAddManager
   } = useDisclosure();
 
-  const { mutate: removeManager } = useRequest({
+  const { mutate: removeManager, isLoading: isRemovingManager } = useRequest({
     mutationFn: async (memberId: string) => {
-      return updateMemberPermission({
-        teamId: userInfo!.team.teamId,
-        permission: constructPermission([PermissionList['Read'], PermissionList['Write']]).value,
-        memberIds: [memberId]
-      });
+      return delMemberPermission(memberId);
     },
-    successToast: 'Success',
-    errorToast: 'Error',
+    successToast: '删除管理员成功',
+    errorToast: '删除管理员异常',
     onSuccess: () => {
-      refetchMembers();
-    },
-    onError: () => {
       refetchMembers();
     }
   });
 
   return (
-    <Flex flexDirection={'column'} flex={'1'} h={['auto', '100%']} bg={'white'}>
-      {isOpenAddManager && (
-        <AddManagerModal onClose={onCloseAddManager} onSuccess={onCloseAddManager} />
-      )}
-
+    <MyBox h={'100%'} isLoading={isRemovingManager} bg={'white'}>
       <Flex
         mx={'5'}
         flexDirection={'row'}
@@ -73,7 +60,7 @@ function PermissionManage() {
             px={'3'}
             borderRadius={'sm'}
           >
-            可邀请, 删除成员
+            {TeamPermissionList['manage'].description}
           </Box>
         </Flex>
         {userInfo?.team.role === 'owner' && (
@@ -93,7 +80,7 @@ function PermissionManage() {
       </Flex>
       <Flex mt="4" mx="4">
         {members.map((member) => {
-          if (hasManage(member.permission) && member.role !== TeamMemberRoleEnum.owner) {
+          if (member.permission.hasManagePer && !member.permission.isOwner) {
             return (
               <Tag key={member.memberName} mx={'2'} px="4" py="2" bg="myGray.100">
                 <Avatar src={member.avatar} w="20px" />
@@ -106,6 +93,7 @@ function PermissionManage() {
                     w="16px"
                     color="myGray.500"
                     cursor="pointer"
+                    _hover={{ color: 'red.600' }}
                     onClick={() => {
                       removeManager(member.tmbId);
                     }}
@@ -116,7 +104,11 @@ function PermissionManage() {
           }
         })}
       </Flex>
-    </Flex>
+
+      {isOpenAddManager && (
+        <AddManagerModal onClose={onCloseAddManager} onSuccess={onCloseAddManager} />
+      )}
+    </MyBox>
   );
 }
 

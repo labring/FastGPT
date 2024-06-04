@@ -3,20 +3,15 @@ import Avatar from '@/components/Avatar';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import EditModal, { defaultForm } from './EditModal';
+import { defaultForm } from './components/EditInfoModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';
-import { TeamContext } from '.';
+import { TeamModalContext } from './context';
 
 function TeamList() {
   const { t } = useTranslation();
-  const { userInfo, initUserInfo } = useUserStore();
-  const editTeamData = useContextSelector(TeamContext, (v) => v.editTeamData);
-  const setEditTeamData = useContextSelector(TeamContext, (v) => v.setEditTeamData);
-  const myTeams = useContextSelector(TeamContext, (v) => v.myTeams);
-  const refetchTeam = useContextSelector(TeamContext, (v) => v.refetchTeam);
-  const onSwitchTeam = useContextSelector(TeamContext, (v) => v.onSwitchTeam);
-  // get the list of teams
+  const { userInfo } = useUserStore();
+  const { myTeams, onSwitchTeam, setEditTeamData } = useContextSelector(TeamModalContext, (v) => v);
 
   return (
     <Flex
@@ -100,16 +95,6 @@ function TeamList() {
           </Flex>
         ))}
       </Box>
-      {!!editTeamData && (
-        <EditModal
-          defaultData={editTeamData}
-          onClose={() => setEditTeamData(undefined)}
-          onSuccess={() => {
-            refetchTeam();
-            initUserInfo();
-          }}
-        />
-      )}
     </Flex>
   );
 }

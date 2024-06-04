@@ -56,7 +56,7 @@ const SimpleEdit = ({ appId }: { appId: string }) => {
         pb={10}
         overflow={'overlay'}
       >
-        <AppCard appId={appId} />
+        <AppCard />
 
         <Box mt={2}>
           <EditForm editForm={editForm} divRef={divRef} isSticky={isSticky} />

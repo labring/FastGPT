@@ -168,7 +168,7 @@ const Dataset = () => {
           }}
         />
         {/* create icon */}
-        {userInfo?.team?.canWrite && (
+        {userInfo?.team?.permission.hasWritePer && (
           <MyMenu
             offset={[-30, 5]}
             width={120}
@@ -276,7 +276,7 @@ const Dataset = () => {
               }
             }}
           >
-            {userInfo?.team.canWrite && dataset.isOwner && (
+            {userInfo?.team?.permission.hasWritePer && dataset.isOwner && (
               <Box
                 position={'absolute'}
                 top={3}

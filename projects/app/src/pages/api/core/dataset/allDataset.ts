@@ -3,9 +3,10 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
-import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 /* get all dataset by teamId or tmbId */
 async function handler(
@@ -13,10 +14,14 @@ async function handler(
   res: NextApiResponse<any>
 ): Promise<DatasetSimpleItemType[]> {
   // 凭证校验
-  const { teamId, tmbId, teamOwner, role } = await authUserRole({ req, authToken: true });
+  const { teamId, tmbId, permission } = await authUserPer({
+    req,
+    authToken: true,
+    per: ReadPermissionVal
+  });
 
   const datasets = await MongoDataset.find({
-    ...mongoRPermission({ teamId, tmbId, role }),
+    ...mongoRPermission({ teamId, tmbId, permission }),
     type: { $ne: DatasetTypeEnum.folder }
   }).lean();
 

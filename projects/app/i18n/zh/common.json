@@ -585,7 +585,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1218,6 +1219,8 @@
     "Tools": "工具"
   },
   "permission": {
+    "Default permission": "默认权限",
+    "Manage": "管理",
     "Private": "私有",
     "Private Tip": "仅自己可用",
     "Public": "团队",
@@ -1574,7 +1577,7 @@
       "Processing invitations": "处理邀请",
       "Processing invitations Tips": "你有{{amount}}个需要处理的团队邀请",
       "Reinvite": "重新邀请",
-      "Remove Member Confirm Tip": "确认将 {{username}} 移出团队？其所有资源将转让到团队创建者的账户内。",
+      "Remove Member Confirm Tip": "确认将 {{username}} 移出团队？",
       "Remove Member Failed": "移除团队成员异常",
       "Remove Member Success": "移除团队成员成功",
       "Remove Member Tip": "移出团队",

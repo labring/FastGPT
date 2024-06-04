@@ -1,7 +1,8 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type deleteChatInputGuideQuery = {};
 
@@ -14,7 +15,7 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<deleteInputGuideResponse> {
   const { appId, dataIdList } = req.body;
-  await authApp({ req, appId, authToken: true, per: 'r' });
+  await authApp({ req, appId, authToken: true, per: ReadPermissionVal });
   console.log(dataIdList);
   await MongoChatInputGuide.deleteMany({
     _id: { $in: dataIdList },

@@ -3,12 +3,12 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink, authOutLinkInit } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { authTeamSpaceToken } from './team';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { authOutLinkValid } from '@fastgpt/service/support/permission/auth/outLink';
-import { AuthUserTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
+import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 /* 
@@ -64,15 +64,18 @@ export async function autChatCrud({
     if (!chat) return { id: outLinkUid };
 
     //  auth req
-    const { teamId, tmbId, role } = await authUserRole(props);
+    const { teamId, tmbId, permission } = await authUserPer({
+      ...props,
+      per: ReadPermissionVal
+    });
 
     if (String(teamId) !== String(chat.teamId)) return Promise.reject(ChatErrEnum.unAuthChat);
 
-    if (role === TeamMemberRoleEnum.owner) return { uid: outLinkUid };
+    if (permission.isOwner) return { uid: outLinkUid };
     if (String(tmbId) === String(chat.tmbId)) return { uid: outLinkUid };
 
     // admin
-    if (per === 'r' && role === TeamMemberRoleEnum.admin) return { uid: outLinkUid };
+    if (per === 'r' && permission.hasManagePer) return { uid: outLinkUid };
 
     return Promise.reject(ChatErrEnum.unAuthChat);
   })();
