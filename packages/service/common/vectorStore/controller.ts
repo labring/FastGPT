@@ -3,12 +3,14 @@ import { PgVectorCtrl } from './pg/class';
 import { getVectorsByText } from '../../core/ai/embedding';
 import { InsertVectorProps } from './controller.d';
 import { VectorModelItemType } from '@fastgpt/global/core/ai/model.d';
-import { MILVUS_ADDRESS, PG_ADDRESS } from './constants';
+import { MILVUS_ADDRESS, PG_ADDRESS, QDRANT_ADDRESS } from './constants';
 import { MilvusCtrl } from './milvus/class';
+import { QdrantCtrl } from './qdrant/class';
 
 const getVectorObj = () => {
   if (PG_ADDRESS) return new PgVectorCtrl();
   if (MILVUS_ADDRESS) return new MilvusCtrl();
+  if (QDRANT_ADDRESS) return new QdrantCtrl();
 
   return new PgVectorCtrl();
 };

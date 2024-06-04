@@ -4,6 +4,7 @@
   "dependencies": {
     "@fastgpt/global": "workspace:*",
     "@node-rs/jieba": "1.10.0",
+    "@qdrant/qdrant-js": "^1.9.0",
     "@xmldom/xmldom": "^0.8.10",
     "@zilliz/milvus2-sdk-node": "2.4.2",
     "axios": "^1.5.1",
