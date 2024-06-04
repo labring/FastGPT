@@ -13,7 +13,7 @@ export const AppPermissionList: PermissionListType = {
   },
   [PermissionKeyEnum.manage]: {
     ...PermissionList[PermissionKeyEnum.manage],
-    description: '写权限基础上，可分配该应用权限'
+    description: '写权限基础上，可配置发布渠道、查看对话日志、分配该应用权限'
   }
 };
 

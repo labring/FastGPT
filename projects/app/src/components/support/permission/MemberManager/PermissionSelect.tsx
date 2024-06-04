@@ -164,6 +164,7 @@ function PermissionSelect({
                   : {})}
                 {...MenuStyle}
                 onClick={change}
+                maxW={['70vw', '300px']}
               >
                 <Radio size="lg" isChecked={selectedSingleValue === item.value} />
                 <Box ml={4}>
