@@ -1,5 +1,5 @@
-import { AuthResponseType } from '@fastgpt/global/support/permission/type/auth.d';
-import { AuthPropsType } from '../type';
+import { AuthResponseType } from '../type/auth.d';
+import { AuthPropsType } from '../type/auth.d';
 import { TeamTmbItemType } from '@fastgpt/global/support/user/team/type';
 import { parseHeaderCert } from '../controller';
 import { getTmbInfoByTmbId } from '../../user/team/controller';

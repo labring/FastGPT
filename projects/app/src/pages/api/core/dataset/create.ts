@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
 import { createDefaultCollection } from '@fastgpt/service/core/dataset/collection/controller';
-import { authUserPer } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { getLLMModel, getVectorModel, getDatasetModel } from '@fastgpt/service/core/ai/model';
 import { checkTeamDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';

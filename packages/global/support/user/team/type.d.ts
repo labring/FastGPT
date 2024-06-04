@@ -2,7 +2,7 @@ import type { UserModelSchema } from '../type';
 import type { TeamMemberRoleEnum, TeamMemberStatusEnum } from './constant';
 import { LafAccountType } from './type';
 import { PermissionValueType, ResourcePermissionType } from '../../permission/type';
-import { TeamPermission } from '../../permission/team/controller';
+import { TeamPermission } from '../../permission/user/controller';
 
 export type TeamSchema = {
   _id: string;

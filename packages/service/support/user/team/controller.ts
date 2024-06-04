@@ -13,7 +13,7 @@ import {
   PerResourceTypeEnum,
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
-import { TeamPermission } from '@fastgpt/global/support/permission/team/controller';
+import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;

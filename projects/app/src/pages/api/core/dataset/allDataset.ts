@@ -3,7 +3,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
-import { authUserPer } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';

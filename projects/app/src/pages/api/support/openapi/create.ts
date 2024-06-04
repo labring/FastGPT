@@ -4,7 +4,7 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { customAlphabet } from 'nanoid';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
-import { authUserPer } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 

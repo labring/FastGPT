@@ -1,14 +1,13 @@
 import { MongoApp } from '../../../core/app/schema';
 import { AppDetailType } from '@fastgpt/global/core/app/type.d';
-import { AuthPropsType } from '../type';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
+import { AuthPropsType } from '../type/auth.d';
 import { parseHeaderCert } from '../controller';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { getResourcePermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
-import { AuthResponseType } from '@fastgpt/global/support/permission/type/auth.d';
+import { AuthResponseType } from '../type/auth.d';
 
 // 模型使用权校验
 export async function authApp({

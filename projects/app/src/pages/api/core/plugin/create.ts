@@ -2,7 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import type { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
-import { authUserPer } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { httpApiSchema2Plugins } from '@fastgpt/global/core/plugin/httpPlugin/utils';

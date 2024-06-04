@@ -3,7 +3,7 @@ import { jsonRes } from '@fastgpt/service/common/response';
 import { connectToDatabase } from '@/service/mongo';
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin';
-import { authUserPer } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 

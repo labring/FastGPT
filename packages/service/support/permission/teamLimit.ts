@@ -1,4 +1,3 @@
-import { getVectorCountByTeamId } from '../../common/vectorStore/controller';
 import { getTeamPlanStatus, getTeamStandPlan } from '../../support/wallet/sub/utils';
 import { MongoApp } from '../../core/app/schema';
 import { MongoPlugin } from '../../core/plugin/schema';

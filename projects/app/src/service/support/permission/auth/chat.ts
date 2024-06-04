@@ -3,7 +3,7 @@ import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { AuthModeType } from '@fastgpt/service/support/permission/type';
 import { authOutLink, authOutLinkInit } from './outLink';
 import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
-import { authUserPer } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { authTeamSpaceToken } from './team';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';

@@ -9,7 +9,7 @@ import { delMemberPermission } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
 import { TeamModalContext } from '../../context';
-import { TeamPermissionList } from '@fastgpt/global/support/permission/team/constant';
+import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 

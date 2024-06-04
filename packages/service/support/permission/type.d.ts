@@ -17,11 +17,3 @@ export type AuthModeType = {
   authApiKey?: boolean;
   per?: PermissionValueType | 'r' | 'w' | 'owner'; // this is for compatibility
 };
-
-export type AuthPropsType = {
-  req: ApiRequestProps;
-  authToken?: boolean;
-  authRoot?: boolean;
-  authApiKey?: boolean;
-  per: PermissionValueType;
-};
