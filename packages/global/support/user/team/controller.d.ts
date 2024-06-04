@@ -1,4 +1,4 @@
-import { PermissionValueType } from 'support/permission/type';
+import { PermissionValueType } from '../../permission/type';
 import { TeamMemberRoleEnum } from './constant';
 import { LafAccountType, TeamMemberSchema } from './type';
 
@@ -22,7 +22,6 @@ export type UpdateTeamProps = {
 
 /* ------------- member ----------- */
 export type DelMemberProps = {
-  teamId: string;
   memberId: string;
 };
 export type UpdateTeamMemberProps = {
@@ -46,7 +45,6 @@ export type InviteMemberResponse = Record<
 >;
 
 export type UpdateTeamMemberPermissionProps = {
-  teamId: string;
   memberIds: string[];
   permission: PermissionValueType;
 };

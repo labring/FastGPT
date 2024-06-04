@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { getGuideModule, getAppChatConfig } from '@fastgpt/global/core/workflow/utils';
 import { getChatModelNameListByModules } from '@/service/core/app/workflow';
 import type { InitChatProps, InitChatResponse } from '@/global/core/chat/api.d';
@@ -10,6 +10,7 @@ import { ChatErrEnum } from '@fastgpt/global/common/error/code/chat';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(
   req: NextApiRequest,
@@ -30,13 +31,13 @@ async function handler(
       req,
       authToken: true,
       appId,
-      per: 'r'
+      per: ReadPermissionVal
     }),
     chatId ? MongoChat.findOne({ appId, chatId }) : undefined
   ]);
 
   // auth chat permission
-  if (chat && !app.canWrite && String(tmbId) !== String(chat?.tmbId)) {
+  if (chat && !app.permission.hasManagePer && String(tmbId) !== String(chat?.tmbId)) {
     throw new Error(ChatErrEnum.unAuthChat);
   }
 

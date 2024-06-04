@@ -1,5 +1,7 @@
 import { AppDetailType } from '@fastgpt/global/core/app/type.d';
 import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type.d';
+import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
+import { NullPermission } from '@fastgpt/global/support/permission/constant';
 
 export const defaultApp: AppDetailType = {
   _id: '',
@@ -12,12 +14,11 @@ export const defaultApp: AppDetailType = {
   chatConfig: {},
   teamId: '',
   tmbId: '',
-  permission: 'private',
-  isOwner: false,
-  canWrite: false,
   teamTags: [],
   edges: [],
-  version: 'v2'
+  version: 'v2',
+  defaultPermission: NullPermission,
+  permission: new AppPermission()
 };
 
 export const defaultOutLinkForm: OutLinkEditType = {

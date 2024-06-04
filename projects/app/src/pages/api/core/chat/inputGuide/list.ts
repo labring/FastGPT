@@ -4,7 +4,8 @@ import { PaginationProps, PaginationResponse } from '@fastgpt/web/common/fetch/t
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { ChatInputGuideSchemaType } from '@fastgpt/global/core/chat/inputGuide/type';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type ChatInputGuideProps = PaginationProps<{
   appId: string;
@@ -18,7 +19,7 @@ async function handler(
 ): Promise<ChatInputGuideResponse> {
   const { appId, pageSize, current, searchKey } = req.query;
 
-  await authApp({ req, appId, authToken: true, per: 'r' });
+  await authApp({ req, appId, authToken: true, per: ReadPermissionVal });
 
   const params = {
     appId,

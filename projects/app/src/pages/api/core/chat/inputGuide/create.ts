@@ -1,7 +1,8 @@
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type createChatInputGuideQuery = {};
 
@@ -19,7 +20,7 @@ async function handler(
   res: ApiResponseType<any>
 ): Promise<createInputGuideResponse> {
   const { appId, textList } = req.body;
-  await authApp({ req, appId, authToken: true, per: 'r' });
+  await authApp({ req, appId, authToken: true, per: WritePermissionVal });
 
   try {
     const result = await MongoChatInputGuide.insertMany(

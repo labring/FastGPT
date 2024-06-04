@@ -4,13 +4,15 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import { customAlphabet } from 'nanoid';
 import type { EditApiKeyProps } from '@/global/support/openapi/api';
-import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { getNanoid } from '@fastgpt/global/common/string/tools';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
     await connectToDatabase();
     const { appId, name, limit } = req.body as EditApiKeyProps;
-    const { teamId, tmbId } = await authUserNotVisitor({ req, authToken: true });
+    const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
 
     const count = await MongoOpenApi.find({ tmbId, appId }).countDocuments();
 
@@ -18,11 +20,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       throw new Error('最多 10 组 API 秘钥');
     }
 
-    const nanoid = customAlphabet(
-      'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890',
-      Math.floor(Math.random() * 14) + 52
-    );
-    const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid()}`;
+    const nanoid = getNanoid(Math.floor(Math.random() * 14) + 52);
+    const apiKey = `${global.systemEnv?.openapiPrefix || 'fastgpt'}-${nanoid}`;
 
     await MongoOpenApi.create({
       teamId,

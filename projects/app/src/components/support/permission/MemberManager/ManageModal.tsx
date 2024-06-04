@@ -1,0 +1,119 @@
+import {
+  ModalBody,
+  Table,
+  TableContainer,
+  Tbody,
+  Th,
+  Thead,
+  Tr,
+  Td,
+  Box,
+  Flex
+} from '@chakra-ui/react';
+import MyModal from '@fastgpt/web/components/common/MyModal';
+import React from 'react';
+import { useContextSelector } from 'use-context-selector';
+import PermissionSelect from './PermissionSelect';
+import PermissionTags from './PermissionTags';
+import Avatar from '@/components/Avatar';
+import { CollaboratorContext } from './context';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+
+export type ManageModalProps = {
+  onClose: () => void;
+};
+
+function ManageModal({ onClose }: ManageModalProps) {
+  const { userInfo } = useUserStore();
+  const { collaboratorList, onUpdateCollaborators, onDelOneCollaborator } = useContextSelector(
+    CollaboratorContext,
+    (v) => v
+  );
+
+  const { mutate: onDelete, isLoading: isDeleting } = useRequest({
+    mutationFn: (tmbId: string) => onDelOneCollaborator(tmbId)
+  });
+
+  const { mutate: onUpdate, isLoading: isUpdating } = useRequest({
+    mutationFn: ({ tmbId, per }: { tmbId: string; per: PermissionValueType }) => {
+      return onUpdateCollaborators([tmbId], per);
+    },
+    successToast: '更新成功',
+    errorToast: 'Error'
+  });
+
+  const loading = isDeleting || isUpdating;
+
+  return (
+    <MyModal
+      isLoading={loading}
+      isOpen
+      onClose={onClose}
+      minW="600px"
+      title="管理协作者"
+      iconSrc="common/settingLight"
+    >
+      <ModalBody>
+        <TableContainer borderRadius="md" minH="400px">
+          <Table>
+            <Thead bg="myGray.100">
+              <Tr>
+                <Th border="none">名称</Th>
+                <Th border="none">权限</Th>
+                <Th border="none">操作</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {collaboratorList?.map((item) => {
+                return (
+                  <Tr
+                    key={item.tmbId}
+                    _hover={{
+                      bg: 'myGray.50'
+                    }}
+                  >
+                    <Td border="none">
+                      <Flex alignItems="center">
+                        <Avatar src={item.avatar} w="24px" mr={2} />
+                        {item.name}
+                      </Flex>
+                    </Td>
+                    <Td border="none">
+                      <PermissionTags permission={item.permission} />
+                    </Td>
+                    <Td border="none">
+                      {item.tmbId !== userInfo?.team?.tmbId && (
+                        <PermissionSelect
+                          Button={
+                            <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
+                          }
+                          value={item.permission}
+                          onChange={(per) => {
+                            onUpdate({
+                              tmbId: item.tmbId,
+                              per
+                            });
+                          }}
+                          onDelete={() => {
+                            onDelete(item.tmbId);
+                          }}
+                        />
+                      )}
+                    </Td>
+                  </Tr>
+                );
+              })}
+            </Tbody>
+          </Table>
+          {collaboratorList?.length === 0 && <EmptyTip text={'暂无协作者'} />}
+        </TableContainer>
+      </ModalBody>
+    </MyModal>
+  );
+}
+
+export default ManageModal;
