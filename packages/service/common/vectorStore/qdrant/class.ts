@@ -117,40 +117,38 @@ export class QdrantCtrl {
       if (teamId) {
         // 处理 datasetIds 和 collectionIds，构建 OR 逻辑
         if ('datasetIds' in props && props.datasetIds && props.datasetIds.length > 0) {
-          if ('collectionIds' in props && props.collectionIds && props.collectionIds.length > 0) {
-            const should: any[] = [];
-            // 对每个 datasetId 和每个 collectionId 创建一个 AND 组合
-            props.datasetIds.forEach((datasetId) => {
-              props.collectionIds.forEach((collectionId) => {
-                should.push({
-                  must: [
-                    { key: 'teamId', match: { value: String(teamId) } },
-                    { key: 'datasetId', match: { value: datasetId } },
-                    { key: 'collectionId', match: { value: collectionId } }
-                  ]
-                });
+          const should: any[] = [];
+          props.datasetIds.forEach((datasetId) => {
+            // 使用可选链操作符确保collectionIds存在并进行迭代
+            props.collectionIds?.forEach((collectionId) => {
+              should.push({
+                must: [
+                  { key: 'teamId', match: { value: String(teamId) } },
+                  { key: 'datasetId', match: { value: datasetId } },
+                  { key: 'collectionId', match: { value: collectionId } }
+                ]
               });
             });
-            return should;
-          } else {
-            const should: any[] = [];
-            // 对每个 datasetId 和每个 collectionId 创建一个 AND 组合
-            props.datasetIds.forEach((datasetId) => {
+
+            // 如果 collectionIds 为空或未定义，只添加 datasetId 和 teamId
+            if (!props.collectionIds || props.collectionIds.length === 0) {
               should.push({
                 must: [
                   { key: 'teamId', match: { value: String(teamId) } },
                   { key: 'datasetId', match: { value: datasetId } }
                 ]
               });
-            });
-            return should;
-          }
-        } else {
-          const should: any[] = [];
-          should.push({
-            must: [{ key: 'teamId', match: { value: String(teamId) } }]
+            }
           });
+
           return should;
+        } else {
+          // 当没有 datasetIds 时，只基于 teamId 创建条件
+          return [
+            {
+              must: [{ key: 'teamId', match: { value: String(teamId) } }]
+            }
+          ];
         }
       } else {
         return [];
