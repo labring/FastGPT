@@ -5,7 +5,7 @@ import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import type { GetApiKeyProps } from '@/global/support/openapi/api';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
-import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -13,16 +13,15 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { appId } = req.query as GetApiKeyProps;
 
     if (appId) {
-      const { tmbId, teamOwner } = await authApp({
+      await authApp({
         req,
         authToken: true,
         appId,
-        per: WritePermissionVal
+        per: ManagePermissionVal
       });
 
       const findResponse = await MongoOpenApi.find({
-        appId,
-        ...(!teamOwner && { tmbId })
+        appId
       }).sort({ _id: -1 });
 
       return jsonRes(res, {
@@ -33,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { teamId, tmbId, permission } = await authUserPer({
       req,
       authToken: true,
-      per: WritePermissionVal
+      per: ManagePermissionVal
     });
 
     const findResponse = await MongoOpenApi.find({

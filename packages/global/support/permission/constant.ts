@@ -61,4 +61,4 @@ export const NullPermission = 0;
 export const OwnerPermissionVal = ~0 >>> 0;
 export const ReadPermissionVal = PermissionList['read'].value;
 export const WritePermissionVal = PermissionList['write'].value;
-export const AdminPermissionVal = PermissionList['manage'].value;
+export const ManagePermissionVal = PermissionList['manage'].value;

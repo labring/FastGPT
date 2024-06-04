@@ -483,7 +483,7 @@ const authHeaderRequest = async ({
       if (!appId) {
         return Promise.reject('appId is empty');
       }
-      const { app, canWrite } = await authApp({
+      const { app, permission } = await authApp({
         req,
         authToken: true,
         appId,
@@ -492,8 +492,7 @@ const authHeaderRequest = async ({
 
       return {
         app,
-
-        canWrite: canWrite
+        canWrite: permission.hasReadPer
       };
     }
   })();

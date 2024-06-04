@@ -37,7 +37,7 @@ async function handler(
   ]);
 
   // auth chat permission
-  if (chat && !app.canWrite && String(tmbId) !== String(chat?.tmbId)) {
+  if (chat && !app.permission.hasManagePer && String(tmbId) !== String(chat?.tmbId)) {
     throw new Error(ChatErrEnum.unAuthChat);
   }
 

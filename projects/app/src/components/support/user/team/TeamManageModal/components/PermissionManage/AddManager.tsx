@@ -21,7 +21,7 @@ import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { updateMemberPermission } from '@/web/support/user/team/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { AdminPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { TeamModalContext } from '../../context';
 import { useI18n } from '@/web/context/I18n';
 
@@ -37,7 +37,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
   const { mutate: submit, isLoading } = useRequest({
     mutationFn: async () => {
       return updateMemberPermission({
-        permission: AdminPermissionVal,
+        permission: ManagePermissionVal,
         memberIds: selected.map((item) => {
           return item.tmbId;
         })

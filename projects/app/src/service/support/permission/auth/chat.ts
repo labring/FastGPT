@@ -7,7 +7,7 @@ import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { authTeamSpaceToken } from './team';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
-import { authOutLinkValid } from '@fastgpt/service/support/permission/auth/outLink';
+import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/authLink';
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';

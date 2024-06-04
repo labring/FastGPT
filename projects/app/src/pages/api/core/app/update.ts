@@ -5,7 +5,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
 import {
-  AdminPermissionVal,
+  ManagePermissionVal,
   WritePermissionVal,
   OwnerPermissionVal
 } from '@fastgpt/global/support/permission/constant';
@@ -34,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   if (permission) {
     await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
   } else if (defaultPermission) {
-    await authApp({ req, authToken: true, appId, per: AdminPermissionVal });
+    await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
   } else {
     await authApp({ req, authToken: true, appId, per: WritePermissionVal });
   }
