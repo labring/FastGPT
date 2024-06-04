@@ -16,12 +16,12 @@ import { useLoading } from '../../../hooks/useLoading';
 import MyIcon from '../Icon';
 
 export type SelectProps = ButtonProps & {
-  value?: string;
+  value?: string | number;
   placeholder?: string;
   list: {
     alias?: string;
     label: string | React.ReactNode;
-    value: string;
+    value: string | number;
   }[];
   isLoading?: boolean;
   onchange?: (val: any) => void;

@@ -1,9 +1,14 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@/global/core/app/api';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { NextAPI } from '@/service/middleware/entry';
+import {
+  AdminPermissionVal,
+  WritePermissionVal,
+  OwnerPermissionVal
+} from '@fastgpt/global/support/permission/constant';
 
 /* 获取我的模型 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
@@ -26,7 +31,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // 凭证校验
-  await authApp({ req, authToken: true, appId, per: permission ? 'owner' : 'w' });
+  if (permission) {
+    await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
+  } else if (defaultPermission) {
+    await authApp({ req, authToken: true, appId, per: AdminPermissionVal });
+  } else {
+    await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+  }
 
   // format nodes data
   // 1. dataset search limit, less than model quoteMaxToken

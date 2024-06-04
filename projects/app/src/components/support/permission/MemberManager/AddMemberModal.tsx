@@ -14,24 +14,64 @@ import {
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useContextSelector } from 'use-context-selector';
-import { CollaboratorContext } from '.';
 import MyAvatar from '@/components/Avatar';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
+import { CollaboratorContext } from './context';
+import { useQuery } from '@tanstack/react-query';
+import { useUserStore } from '@/web/support/user/useUserStore';
+import { getTeamMembers } from '@/web/support/user/team/api';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { Permission } from '@fastgpt/global/support/permission/controller';
+import { ChevronDownIcon } from '@chakra-ui/icons';
+import Avatar from '@/components/Avatar';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
 
 export type AddModalPropsType = {
   onClose: () => void;
 };
 
 export function AddMemberModal({ onClose }: AddModalPropsType) {
-  const { teamMemberList, permissionConfig, collaboratorList, addCollaborators } =
+  const toast = useToast();
+  const { userInfo } = useUserStore();
+
+  const { permissionList, collaboratorList, onUpdateCollaborators, getPreLabelList } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
-  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
-  const toast = useToast();
+  const {
+    data: members = [],
+    refetch: refetchMembers,
+    isLoading: loadingMembers
+  } = useQuery(['getMembers', userInfo?.team?.teamId], async () => {
+    if (!userInfo?.team?.teamId) return [];
+    const members = await getTeamMembers();
+    return members;
+  });
+  const filterMembers = useMemo(() => {
+    return members.filter((item) => {
+      if (item.permission.isOwner) return false;
+      if (!searchText) return true;
+      return item.memberName.includes(searchText);
+    });
+  }, [members, searchText]);
 
-  const [selectedPermission, setSelectedPermission] = useState<number>(permissionConfig[0].value);
+  const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
+  const [selectedPermission, setSelectedPermission] = useState(permissionList['read'].value);
+  const perLabel = useMemo(() => {
+    return getPreLabelList(selectedPermission).join('、');
+  }, [getPreLabelList, selectedPermission]);
+
+  const { mutate: onConfirm, isLoading: isUpdating } = useRequest({
+    mutationFn: () => {
+      return onUpdateCollaborators(selectedMemberIdList, selectedPermission);
+    },
+    successToast: '添加成功',
+    errorToast: 'Error',
+    onSuccess() {
+      onClose();
+    }
+  });
 
   return (
     <MyModal
@@ -42,14 +82,14 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
       minW="800px"
     >
       <ModalBody>
-        <Grid
+        <MyBox
+          isLoading={loadingMembers}
+          display={'grid'}
           minH="400px"
           border="1px solid"
           borderColor="myGray.200"
-          mt="6"
-          mx="8"
           borderRadius="0.5rem"
-          templateColumns="55% 45%"
+          gridTemplateColumns="55% 45%"
         >
           <Flex
             flexDirection="column"
@@ -70,118 +110,109 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
               />
             </InputGroup>
             <Flex flexDirection="column" mt="2">
-              {teamMemberList
-                ?.filter((member) => {
-                  return member.memberName.includes(searchText); // search filter
-                })
-                ?.map((member) => {
-                  const change = () => {
-                    if (selectedMembers.includes(member.tmbId)) {
-                      setSelectedMembers(selectedMembers.filter((v) => v !== member.tmbId));
-                    } else {
-                      setSelectedMembers([...selectedMembers, member.tmbId]);
-                    }
-                  };
-                  return (
-                    <Flex
-                      key={member.tmbId}
-                      mt="1"
-                      py="1"
-                      px="3"
-                      borderRadius="sm"
-                      alignItems="center"
-                      _hover={{
-                        bgColor: 'myGray.50',
-                        cursor: 'pointer'
-                      }}
-                      {...(selectedMembers.includes(member.tmbId) && {
-                        bgColor: 'myGray.50'
-                      })}
-                      flexDirection="row"
-                    >
-                      <Checkbox
-                        size="lg"
-                        mr="3"
-                        isChecked={selectedMembers.includes(member.tmbId)}
-                        onChange={change}
-                      />
-                      <Flex
-                        flexDirection="row"
-                        onClick={change}
-                        w="full"
-                        justifyContent="space-between"
-                      >
-                        <Flex flexDirection="row" alignItems="center">
-                          <MyAvatar src={member.avatar} w="32px" />
-                          <Box ml="2">{member.memberName}</Box>
-                        </Flex>
-                        {collaboratorList?.find((v) => v.tmbId === member.tmbId)?.permission && (
-                          <PermissionTags
-                            permission={
-                              collaboratorList?.find((v) => v.tmbId === member.tmbId)?.permission
-                            }
-                          />
-                        )}
-                      </Flex>
-                    </Flex>
-                  );
-                })}
-            </Flex>
-          </Flex>
-          <Flex p="4" flexDirection="column">
-            <Box>已选: {selectedMembers.length}</Box>
-            <Flex flexDirection="column" mt="2">
-              {selectedMembers.map((tmbId) => {
-                const member = teamMemberList?.find((v) => v.tmbId === tmbId);
+              {filterMembers.map((member) => {
+                const onChange = () => {
+                  if (selectedMemberIdList.includes(member.tmbId)) {
+                    setSelectedMembers(selectedMemberIdList.filter((v) => v !== member.tmbId));
+                  } else {
+                    setSelectedMembers([...selectedMemberIdList, member.tmbId]);
+                  }
+                };
+                const collaborator = collaboratorList.find((v) => v.tmbId === member.tmbId);
                 return (
                   <Flex
-                    key={tmbId}
+                    key={member.tmbId}
                     mt="1"
+                    py="1"
+                    px="3"
+                    borderRadius="sm"
                     alignItems="center"
-                    justifyContent="space-between"
-                    flexDirection="row"
                     _hover={{
                       bgColor: 'myGray.50',
                       cursor: 'pointer'
                     }}
-                    borderRadius="sm"
-                    p="1"
                   >
-                    <Flex>
-                      <MyAvatar src={member?.avatar} w="24px" />
-                      <Box ml="2">{member?.memberName}</Box>
-                    </Flex>
-                    <MyIcon
-                      name="common/closeLight"
-                      w="16px"
-                      _hover={{
-                        color: 'primary.500'
-                      }}
-                      onClick={() => setSelectedMembers(selectedMembers.filter((v) => v !== tmbId))}
+                    <Checkbox
+                      size="lg"
+                      mr="3"
+                      isChecked={selectedMemberIdList.includes(member.tmbId)}
+                      onChange={onChange}
                     />
+                    <Flex
+                      flexDirection="row"
+                      onClick={onChange}
+                      w="full"
+                      justifyContent="space-between"
+                    >
+                      <Flex flexDirection="row" alignItems="center">
+                        <MyAvatar src={member.avatar} w="32px" />
+                        <Box ml="2">{member.memberName}</Box>
+                      </Flex>
+                      {!!collaborator && <PermissionTags permission={collaborator.permission} />}
+                    </Flex>
                   </Flex>
                 );
               })}
             </Flex>
           </Flex>
-        </Grid>
+          <Flex p="4" flexDirection="column">
+            <Box>已选: {selectedMemberIdList.length}</Box>
+            <Flex flexDirection="column" mt="2">
+              {selectedMemberIdList.map((tmbId) => {
+                const member = filterMembers.find((v) => v.tmbId === tmbId);
+                return member ? (
+                  <Flex
+                    key={tmbId}
+                    alignItems="center"
+                    justifyContent="space-between"
+                    py="2"
+                    px={3}
+                    borderRadius={'md'}
+                    _hover={{ bg: 'myGray.50' }}
+                    _notLast={{ mb: 2 }}
+                  >
+                    <Avatar src={member.avatar} w="24px" />
+                    <Box w="full" fontSize="lg">
+                      {member.memberName}
+                    </Box>
+                    <MyIcon
+                      name="common/closeLight"
+                      w="16px"
+                      cursor={'pointer'}
+                      _hover={{
+                        color: 'red.600'
+                      }}
+                      onClick={() =>
+                        setSelectedMembers(selectedMemberIdList.filter((v) => v !== tmbId))
+                      }
+                    />
+                  </Flex>
+                ) : null;
+              })}
+            </Flex>
+          </Flex>
+        </MyBox>
       </ModalBody>
       <ModalFooter>
-        <PermissionSelect value={selectedPermission} onChange={(v) => setSelectedPermission(v)} />
-        <Button
-          ml="4"
-          onClick={() => {
-            if (addCollaborators(selectedMembers, selectedPermission)) {
-              toast({
-                title: '添加成功',
-                status: 'success',
-                duration: 3000,
-                isClosable: true
-              });
-              onClose();
-            }
-          }}
-        >
+        <PermissionSelect
+          value={selectedPermission}
+          Button={
+            <Flex
+              alignItems={'center'}
+              bg={'myGray.50'}
+              border="base"
+              fontSize={'sm'}
+              px={3}
+              borderRadius={'md'}
+              h={'32px'}
+            >
+              {perLabel}
+              <ChevronDownIcon fontSize={'lg'} />
+            </Flex>
+          }
+          onChange={(v) => setSelectedPermission(v)}
+        />
+        <Button isLoading={isUpdating} ml="4" h={'32px'} onClick={onConfirm}>
           确认
         </Button>
       </ModalFooter>

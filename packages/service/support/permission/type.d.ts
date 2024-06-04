@@ -1,4 +1,5 @@
 import { ApiRequestProps } from '../../type/next';
+import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 export type ReqHeaderAuthType = {
   cookie?: string;
@@ -15,4 +16,12 @@ export type AuthModeType = {
   authRoot?: boolean;
   authApiKey?: boolean;
   per?: PermissionValueType | 'r' | 'w' | 'owner'; // this is for compatibility
+};
+
+export type AuthPropsType = {
+  req: ApiRequestProps;
+  authToken?: boolean;
+  authRoot?: boolean;
+  authApiKey?: boolean;
+  per: PermissionValueType;
 };

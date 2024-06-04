@@ -19,13 +19,14 @@ import { AppContext } from '@/web/core/app/context/appContext';
 import { useContextSelector } from 'use-context-selector';
 const InfoModal = dynamic(() => import('../InfoModal'));
 
-const AppCard = ({ appId }: { appId: string }) => {
+const AppCard = () => {
   const router = useRouter();
   const { t } = useTranslation();
   const { appT } = useI18n();
 
   const { toast } = useToast();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
+  const appId = appDetail._id;
   const { feConfigs } = useSystemStore();
   const [settingAppInfo, setSettingAppInfo] = useState<AppSchema>();
   const [TeamTagsSet, setTeamTagsSet] = useState<AppSchema>();
@@ -58,10 +59,7 @@ const AppCard = ({ appId }: { appId: string }) => {
       <Box px={4}>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
           <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-            <PermissionIconText
-              permission={appDetail.permission}
-              defaultPermission={appDetail.defaultPermission}
-            />
+            <PermissionIconText defaultPermission={appDetail.defaultPermission} />
           </Box>
           <Box color={'myGray.500'} fontSize={'sm'}>
             AppId:{' '}

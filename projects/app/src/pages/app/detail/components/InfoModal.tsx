@@ -22,46 +22,21 @@ import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import MemberManager from '@/components/support/permission/MemberManager';
 import {
-  addAppCollaborators,
+  postUpdateAppCollaborators,
   deleteAppCollaborators,
   getCollaboratorList
-} from '@/web/core/app/collaborator';
+} from '@/web/core/app/api/collaborator';
 import { useQuery } from '@tanstack/react-query';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
-import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MySelect from '@fastgpt/web/components/common/MySelect';
 import {
   AppDefaultPermission,
-  AppPermission,
-  AppPermissionList,
-  AppReadPermission,
-  AppWritePermission
-} from '@fastgpt/service/support/permission/app/permission';
-import { PermissionValueType } from '@fastgpt/service/support/permission/resourcePermission/permisson';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
-
-enum defaultPermissionEnum {
-  private = 'private',
-  read = 'read',
-  edit = 'edit'
-}
-
-const defaultPermissionSelectList = [
-  { label: '仅协作者访问', value: defaultPermissionEnum.private },
-  { label: '团队可访问', value: defaultPermissionEnum.read },
-  { label: '团队可编辑', value: defaultPermissionEnum.edit }
-];
-
-const defaultPermissionMap = {
-  [defaultPermissionEnum.private]: AppDefaultPermission.value,
-  [defaultPermissionEnum.read]: AppReadPermission.value,
-  [defaultPermissionEnum.edit]: AppWritePermission.value,
-  [AppDefaultPermission.value]: defaultPermissionEnum.private,
-  [AppReadPermission.value]: defaultPermissionEnum.read,
-  [AppWritePermission.value]: defaultPermissionEnum.edit
-};
+  AppPermissionList
+} from '@fastgpt/global/support/permission/app/constant';
+import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
+import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 
 const InfoModal = ({
   defaultApp,
@@ -86,11 +61,13 @@ const InfoModal = ({
     setValue,
     getValues,
     formState: { errors },
-    handleSubmit
+    handleSubmit,
+    watch
   } = useForm({
     defaultValues: defaultApp
   });
-  const [refresh, setRefresh] = useState(false);
+  const defaultPermission = watch('defaultPermission');
+  const avatar = getValues('avatar');
 
   // submit config
   const { mutate: saveSubmitSuccess, isLoading: btnLoading } = useRequest({
@@ -147,7 +124,6 @@ const InfoModal = ({
           maxH: 300
         });
         setValue('avatar', src);
-        setRefresh((state) => !state);
       } catch (err: any) {
         toast({
           title: getErrText(err, t('common.error.Select avatar failed')),
@@ -158,12 +134,19 @@ const InfoModal = ({
     [setValue, t, toast]
   );
 
-  const { data: CollaboratorList, refetch: refetchCollaboratorList } = useQuery(
-    ['CollaboratorList'],
-    () => {
-      return getCollaboratorList(defaultApp._id);
-    }
-  );
+  const onUpdateCollaborators = async (tmbIds: string[], permission: PermissionValueType) => {
+    await postUpdateAppCollaborators({
+      tmbIds,
+      permission,
+      appId: defaultApp._id
+    });
+  };
+  const onDelCollaborator = async (tmbId: string) => {
+    await deleteAppCollaborators({
+      appId: defaultApp._id,
+      tmbId
+    });
+  };
 
   return (
     <MyModal
@@ -176,7 +159,7 @@ const InfoModal = ({
         <Box>{t('core.app.Name and avatar')}</Box>
         <Flex mt={2} alignItems={'center'}>
           <Avatar
-            src={getValues('avatar')}
+            src={avatar}
             w={['26px', '34px']}
             h={['26px', '34px']}
             cursor={'pointer'}
@@ -198,9 +181,6 @@ const InfoModal = ({
         <Box mt={4} mb={1}>
           {t('core.app.App intro')}
         </Box>
-        {/* <Box color={'myGray.500'} mb={2} fontSize={'sm'}>
-            该介绍主要用于记忆和在应用市场展示
-          </Box> */}
         <Textarea
           rows={4}
           maxLength={500}
@@ -209,58 +189,26 @@ const InfoModal = ({
           {...register('intro')}
         />
 
-        <Flex mt="4" mb="1" justifyContent="space-between" w="full" flexDirection="column">
-          <Flex alignItems="center">
-            默认权限
-            <MyTooltip label={'默认权限相关文案'} forceShow>
-              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-            </MyTooltip>
-          </Flex>
-          <MySelect
+        {/* role */}
+        <Box mt="4">
+          <Box>{t('permission.Default permission')}</Box>
+          <DefaultPermissionList
             mt="2"
-            list={defaultPermissionSelectList}
-            value={
-              defaultPermissionMap[getValues('defaultPermission')] || defaultPermissionEnum.private
-            }
-            onchange={(v) => {
-              setValue('defaultPermission', defaultPermissionMap[v]);
-              setRefresh((state) => !state);
-            }}
+            per={defaultPermission}
+            defaultPer={AppDefaultPermission}
+            readPer={ReadPermissionVal}
+            writePer={WritePermissionVal}
+            onChange={(v) => setValue('defaultPermission', v)}
           />
-        </Flex>
-
-        <MemberManager
-          collaboratorList={CollaboratorList}
-          permissionList={AppPermissionList}
-          addCollaborators={(tmbIds: string[], permission: PermissionValueType) => {
-            const res = addAppCollaborators({
-              tmbIds,
-              permission,
-              appId: defaultApp._id
-            });
-            refetchCollaboratorList();
-            return res;
-          }}
-          permissionConfig={Object.entries(AppPermission).map(([_, value]) => {
-            return {
-              type: value.type,
-              name: value.name,
-              description: value.description,
-              value: value.value
-            };
-          })}
-          refetchCollaboratorList={() => {
-            refetchCollaboratorList();
-          }}
-          deleteCollaborator={(tmbId: string) => {
-            const res = deleteAppCollaborators({
-              appId: defaultApp._id,
-              tmbId
-            });
-            refetchCollaboratorList();
-            return res;
-          }}
-        />
+        </Box>
+        <Box mt={6}>
+          <MemberManager
+            onGetCollaboratorList={() => getCollaboratorList(defaultApp._id)}
+            permissionList={AppPermissionList}
+            onUpdateCollaborators={onUpdateCollaborators}
+            onDelOneCollaborator={onDelCollaborator}
+          />
+        </Box>
       </ModalBody>
 
       <ModalFooter>

@@ -8,12 +8,24 @@ import {
 import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 import { UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
+import { getResourcePermission } from '../../permission/controller';
+import {
+  PerResourceTypeEnum,
+  ReadPermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { TeamPermission } from '@fastgpt/global/support/permission/team/controller';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> {
   const tmb = (await MongoTeamMember.findOne(match).populate('teamId')) as TeamMemberWithTeamSchema;
   if (!tmb) {
     return Promise.reject('member not exist');
   }
+
+  const tmbPer = await getResourcePermission({
+    resourceType: PerResourceTypeEnum.team,
+    teamId: tmb.teamId._id,
+    tmbId: tmb._id
+  });
 
   return {
     userId: String(tmb.userId),
@@ -27,9 +39,11 @@ async function getTeamMember(match: Record<string, any>): Promise<TeamItemType> 
     role: tmb.role,
     status: tmb.status,
     defaultTeam: tmb.defaultTeam,
-    canWrite: tmb.role !== TeamMemberRoleEnum.visitor,
     lafAccount: tmb.teamId.lafAccount,
-    defaultPermission: tmb.teamId.defaultPermission
+    permission: new TeamPermission({
+      per: tmbPer?.permission ?? tmb.teamId.defaultPermission ?? ReadPermissionVal,
+      isOwner: tmb.role === TeamMemberRoleEnum.owner
+    })
   };
 }
 

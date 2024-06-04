@@ -39,8 +39,12 @@ export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
 export const delLeaveTeam = (teamId: string) =>
   DELETE('/proApi/support/user/team/member/leave', { teamId });
+
+/* -------------- team collaborator -------------------- */
 export const updateMemberPermission = (data: UpdateTeamMemberPermissionProps) =>
-  PUT('/proApi/support/user/team/member/updatePermission', data);
+  PUT('/proApi/support/user/team/collaborator/update', data);
+export const delMemberPermission = (tmbId: string) =>
+  DELETE('/proApi/support/user/team/collaborator/delete', { tmbId });
 
 /* --------------- team tags ---------------- */
 export const getTeamsTags = () => GET<TeamTagSchema[]>(`/proApi/support/user/team/tag/list`);

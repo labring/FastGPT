@@ -3,9 +3,9 @@ import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { authUserRole } from '@fastgpt/service/support/permission/auth/user';
 import { NextAPI } from '@/service/middleware/entry';
-import { hasRead } from '@fastgpt/service/support/permission/resourcePermission/permisson';
-import { MongoResourcePermission } from '@fastgpt/service/support/permission/resourcePermission/schema';
-import { ResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<AppListItemType[]> {
   // 凭证校验
@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     MongoResourcePermission.find({
       teamId,
       tmbId,
-      resourceType: ResourceTypeEnum.app
+      resourceType: PerResourceTypeEnum.app
     })
   ]);
 
@@ -31,12 +31,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
       return true;
     }
 
-    if (permission && hasRead(permission)) {
+    if (permission && new Permission(permission).hasReadPer) {
       // has permission to read the app
       return true;
     }
 
-    if (hasRead(app.defaultPermission) && !permission) {
+    if (new Permission(app.defaultPermission).hasReadPer && !permission) {
       // defaultPermission is readable and the permission is not configured
       return true;
     }

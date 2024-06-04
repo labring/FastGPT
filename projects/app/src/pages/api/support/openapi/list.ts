@@ -4,7 +4,8 @@ import { connectToDatabase } from '@/service/mongo';
 import { MongoOpenApi } from '@fastgpt/service/support/openapi/schema';
 import type { GetApiKeyProps } from '@/global/support/openapi/api';
 import { authUserNotVisitor } from '@fastgpt/service/support/permission/auth/user';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   try {
@@ -12,7 +13,12 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const { appId } = req.query as GetApiKeyProps;
 
     if (appId) {
-      const { tmbId, teamOwner } = await authApp({ req, authToken: true, appId, per: 'w' });
+      const { tmbId, teamOwner } = await authApp({
+        req,
+        authToken: true,
+        appId,
+        per: WritePermissionVal
+      });
 
       const findResponse = await MongoOpenApi.find({
         appId,

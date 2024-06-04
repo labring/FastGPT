@@ -27,7 +27,7 @@ const MyApps = () => {
   const { userInfo } = useUserStore();
   const { myApps, loadMyApps } = useAppStore();
   const { openConfirm, ConfirmModal } = useConfirm({
-    title: '删除提示',
+    type: 'delete',
     content: '确认删除该应用所有信息？'
   });
   const {
@@ -79,7 +79,7 @@ const MyApps = () => {
         {myApps.map((app) => (
           <MyTooltip
             key={app._id}
-            label={userInfo?.team.canWrite ? appT('To Settings') : appT('To Chat')}
+            label={userInfo?.team.permission.hasWritePer ? appT('To Settings') : appT('To Chat')}
           >
             <Box
               lineHeight={1.5}
@@ -106,7 +106,7 @@ const MyApps = () => {
                 }
               }}
               onClick={() => {
-                if (userInfo?.team.canWrite) {
+                if (userInfo?.team.permission.hasWritePer) {
                   router.push(`/app/detail?appId=${app._id}`);
                 } else {
                   router.push(`/chat?appId=${app._id}`);
@@ -116,7 +116,7 @@ const MyApps = () => {
               <Flex alignItems={'center'} h={'38px'}>
                 <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
                 <Box ml={3}>{app.name}</Box>
-                {app.isOwner && userInfo?.team.canWrite && (
+                {app.isOwner && userInfo?.team.permission.hasWritePer && (
                   <IconButton
                     className="delete"
                     position={'absolute'}
@@ -147,12 +147,11 @@ const MyApps = () => {
               <Flex h={'34px'} alignItems={'flex-end'}>
                 <Box flex={1}>
                   <PermissionIconText
-                    // permission={app.permission}
                     defaultPermission={app.defaultPermission}
                     color={'myGray.600'}
                   />
                 </Box>
-                {userInfo?.team.canWrite && (
+                {userInfo?.team.permission.hasWritePer && (
                   <IconButton
                     className="chat"
                     size={'xsSquare'}

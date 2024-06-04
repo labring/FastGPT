@@ -1,7 +1,5 @@
 import {
-  Button,
   ModalBody,
-  ModalFooter,
   Table,
   TableContainer,
   Tbody,
@@ -9,40 +7,59 @@ import {
   Thead,
   Tr,
   Td,
-  useToast,
   Box,
   Flex
 } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import React, { useState } from 'react';
+import React from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { CollaboratorContext } from '.';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import Avatar from '@/components/Avatar';
+import { CollaboratorContext } from './context';
+import MyIcon from '@fastgpt/web/components/common/Icon';
+import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 
 export type ManageModalProps = {
   onClose: () => void;
 };
 
 function ManageModal({ onClose }: ManageModalProps) {
-  const {
-    collaboratorList,
-    teamMemberList,
-    addCollaborators,
-    refetchCollaboratorList,
-    deleteCollaborator
-  } = useContextSelector(CollaboratorContext, (v) => v);
-  const toast = useToast();
-  const [refresh, setRefresh] = useState<boolean>(false);
+  const { collaboratorList, onUpdateCollaborators, onDelOneCollaborator } = useContextSelector(
+    CollaboratorContext,
+    (v) => v
+  );
+
+  const { mutate: onDelete, isLoading: isDeleting } = useRequest({
+    mutationFn: (tmbId: string) => onDelOneCollaborator(tmbId)
+  });
+
+  const { mutate: onUpdate, isLoading: isUpdating } = useRequest({
+    mutationFn: ({ tmbId, per }: { tmbId: string; per: PermissionValueType }) => {
+      return onUpdateCollaborators([tmbId], per);
+    },
+    successToast: '更新成功',
+    errorToast: 'Error'
+  });
+
+  const loading = isDeleting || isUpdating;
+
   return (
-    <MyModal isOpen onClose={onClose} minW="600px" title="管理协作者" iconSrc="common/settingLight">
+    <MyModal
+      isLoading={loading}
+      isOpen
+      onClose={onClose}
+      minW="600px"
+      title="管理协作者"
+      iconSrc="common/settingLight"
+    >
       <ModalBody>
         <TableContainer borderRadius="md" minH="400px">
           <Table>
-            <Thead bg="myWhite.400">
+            <Thead bg="myGray.100">
               <Tr>
-                <Th border="none">协作者</Th>
+                <Th border="none">名称</Th>
                 <Th border="none">权限</Th>
                 <Th border="none">操作</Th>
               </Tr>
@@ -57,47 +74,37 @@ function ManageModal({ onClose }: ManageModalProps) {
                   </Td>
                 </Tr>
               )}
-              {collaboratorList?.map((collaborator) => {
-                const teamMember = teamMemberList?.find(
-                  (v) => v.tmbId.toString() === collaborator.tmbId.toString()
-                );
+              {collaboratorList?.map((item) => {
                 return (
                   <Tr
-                    key={collaborator.tmbId.toString()}
+                    key={item.tmbId}
                     _hover={{
-                      bg: 'myWhite.300'
+                      bg: 'myGray.50'
                     }}
                   >
                     <Td border="none">
                       <Flex alignItems="center">
-                        <Avatar src={teamMember?.avatar} w="24px" mr={2} />
-                        {teamMember?.memberName}
+                        <Avatar src={item.avatar} w="24px" mr={2} />
+                        {item.name}
                       </Flex>
                     </Td>
                     <Td border="none">
-                      <PermissionTags permission={collaborator.permission} />
+                      <PermissionTags permission={item.permission} />
                     </Td>
                     <Td border="none">
                       <PermissionSelect
-                        iconButton
-                        value={collaborator.permission}
-                        onChange={(v) => {
-                          if (v == collaborator.permission) return;
-                          if (addCollaborators([collaborator.tmbId.toString()], v)) {
-                            toast({
-                              title: '修改成功',
-                              status: 'success'
-                            });
-                          }
+                        Button={
+                          <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
+                        }
+                        value={item.permission}
+                        onChange={(per) => {
+                          onUpdate({
+                            tmbId: item.tmbId,
+                            per
+                          });
                         }}
-                        deleteButton
                         onDelete={() => {
-                          if (deleteCollaborator(collaborator.tmbId.toString())) {
-                            toast({
-                              title: '删除成功',
-                              status: 'success'
-                            });
-                          }
+                          onDelete(item.tmbId);
                         }}
                       />
                     </Td>
@@ -108,9 +115,6 @@ function ManageModal({ onClose }: ManageModalProps) {
           </Table>
         </TableContainer>
       </ModalBody>
-      <ModalFooter>
-        <Button onClick={onClose}>确认</Button>
-      </ModalFooter>
     </MyModal>
   );
 }

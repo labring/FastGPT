@@ -1,41 +1,26 @@
-import { Flex, TagLabel } from '@chakra-ui/react';
+import { Flex } from '@chakra-ui/react';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import {
-  checkPermission,
-  Permission
-} from '@fastgpt/service/support/permission/resourcePermission/permisson';
 import Tag from '@fastgpt/web/components/common/Tag';
-import React, { useMemo } from 'react';
+import React from 'react';
 import { useContextSelector } from 'use-context-selector';
-import { CollaboratorContext } from '.';
+import { CollaboratorContext } from './context';
 
 export type PermissionTagsProp = {
   permission: PermissionValueType;
 };
 
 function PermissionTags({ permission }: PermissionTagsProp) {
-  const { permissionConfig } = useContextSelector(CollaboratorContext, (v) => v);
-  const multiPermissions = permissionConfig
-    .filter((v) => v.type === 'multiple')
-    .map((v) => v.value);
-  const singlePermission = useMemo(() => {
-    return new Permission(permission).remove(...multiPermissions).value;
-  }, [permission, multiPermissions]);
-  const multiPermissionsValues = useMemo(() => {
-    return multiPermissions.filter((v) => checkPermission(permission, v));
-  }, [permission, multiPermissions]);
+  const { getPreLabelList } = useContextSelector(CollaboratorContext, (v) => v);
+
+  const perTagList = getPreLabelList(permission);
 
   return (
     <Flex gap="2" alignItems="center">
-      <Tag fontSize="xs" py="3px" borderRadius="xs" border="none">
-        {permissionConfig.find((v) => v.value === singlePermission)?.name}
-      </Tag>
-      {multiPermissionsValues &&
-        multiPermissionsValues.map((v) => (
-          <Tag key={v} colorSchema="gray" fontSize="xs" py="3px" borderRadius="xs" border="none">
-            {permissionConfig.find((p) => p.value === v)?.name}
-          </Tag>
-        ))}
+      {perTagList.map((item) => (
+        <Tag key={item} colorSchema="blue" border="none" py={2} px={3} fontSize={'xs'}>
+          {item}
+        </Tag>
+      ))}
     </Flex>
   );
 }

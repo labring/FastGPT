@@ -1,5 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { authApp } from '@fastgpt/service/support/permission/auth/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { sseErrRes, jsonRes } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
@@ -47,6 +47,7 @@ import { dispatchWorkFlowV1 } from '@fastgpt/service/core/workflow/dispatchV1';
 import { setEntryEntries } from '@fastgpt/service/core/workflow/dispatchV1/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { getAppLatestVersion } from '@fastgpt/service/core/app/controller';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type FastGptWebChatProps = {
   chatId?: string; // undefined: nonuse history, '': new chat, 'xxxxx': use history
@@ -486,7 +487,7 @@ const authHeaderRequest = async ({
         req,
         authToken: true,
         appId,
-        per: 'r'
+        per: ReadPermissionVal
       });
 
       return {
