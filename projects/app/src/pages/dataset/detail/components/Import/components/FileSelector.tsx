@@ -150,7 +150,7 @@ const FileSelector = ({
 
       return onSelectFile(filterFiles);
     },
-    [maxCount, maxSize, onSelectFile, selectFiles.length, t, toast]
+    [fileT, maxCount, maxSize, onSelectFile, selectFiles.length, toast]
   );
 
   const handleDragEnter = (e: DragEvent<HTMLDivElement>) => {

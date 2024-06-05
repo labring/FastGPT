@@ -8,7 +8,7 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readRawContentByFileBuffer } from '../read/utils';
-import { PassThrough } from 'stream';
+import { gridFsStream2Buffer } from './utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -113,35 +113,16 @@ export async function getDownloadStream({
   fileId: string;
 }) {
   const bucket = getGridBucket(bucketName);
-  const stream = bucket.openDownloadStream(new Types.ObjectId(fileId));
-  const copyStream = stream.pipe(new PassThrough());
+  const encodeStream = bucket.openDownloadStream(new Types.ObjectId(fileId), { end: 100 });
+  const rawStream = bucket.openDownloadStream(new Types.ObjectId(fileId));
 
   /* get encoding */
-  const buffer = await (() => {
-    return new Promise<Buffer>((resolve, reject) => {
-      let tmpBuffer: Buffer = Buffer.from([]);
-
-      stream.on('data', (chunk) => {
-        if (tmpBuffer.length < 20) {
-          tmpBuffer = Buffer.concat([tmpBuffer, chunk]);
-        }
-        if (tmpBuffer.length >= 20) {
-          resolve(tmpBuffer);
-        }
-      });
-      stream.on('end', () => {
-        resolve(tmpBuffer);
-      });
-      stream.on('error', (err) => {
-        reject(err);
-      });
-    });
-  })();
+  const buffer = await gridFsStream2Buffer(encodeStream);
 
   const encoding = detectFileEncoding(buffer);
 
   return {
-    fileStream: copyStream,
+    fileStream: rawStream,
     encoding
     // encoding: 'utf-8'
   };
@@ -169,32 +150,21 @@ export const readFileContentFromMongo = async ({
       filename: fileBuffer.metadata?.filename || ''
     };
   }
+  const start = Date.now();
 
   const [file, { encoding, fileStream }] = await Promise.all([
     getFileById({ bucketName, fileId }),
     getDownloadStream({ bucketName, fileId })
   ]);
-
+  // console.log('get file stream', Date.now() - start);
   if (!file) {
     return Promise.reject(CommonErrEnum.fileNotFound);
   }
 
   const extension = file?.filename?.split('.')?.pop()?.toLowerCase() || '';
 
-  const fileBuffers = await (() => {
-    return new Promise<Buffer>((resolve, reject) => {
-      let buffer = Buffer.from([]);
-      fileStream.on('data', (chunk) => {
-        buffer = Buffer.concat([buffer, chunk]);
-      });
-      fileStream.on('end', () => {
-        resolve(buffer);
-      });
-      fileStream.on('error', (err) => {
-        reject(err);
-      });
-    });
-  })();
+  const fileBuffers = await gridFsStream2Buffer(fileStream);
+  // console.log('get file buffer', Date.now() - start);
 
   const { rawText } = await readRawContentByFileBuffer({
     extension,

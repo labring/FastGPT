@@ -21,9 +21,10 @@ const ButtonEdge = (props: EdgeProps) => {
     sourcePosition,
     targetPosition,
     selected,
-    sourceHandleId,
     source,
+    sourceHandleId,
     target,
+    targetHandleId,
     style
   } = props;
 
@@ -86,12 +87,13 @@ const ButtonEdge = (props: EdgeProps) => {
 
   const edgeColor = useMemo(() => {
     const targetEdge = workflowDebugData?.runtimeEdges.find(
-      (edge) => edge.source === source && edge.target === target
+      (edge) => edge.sourceHandle === sourceHandleId && edge.targetHandle === targetHandleId
     );
     if (!targetEdge) {
       if (highlightEdge) return '#3370ff';
       return '#94B5FF';
     }
+    console.log(targetEdge);
     // debug mode
     const colorMap = {
       [RuntimeEdgeStatusEnum.active]: '#39CC83',
@@ -99,7 +101,7 @@ const ButtonEdge = (props: EdgeProps) => {
       [RuntimeEdgeStatusEnum.skipped]: '#8A95A7'
     };
     return colorMap[targetEdge.status];
-  }, [highlightEdge, source, target, workflowDebugData?.runtimeEdges]);
+  }, [highlightEdge, sourceHandleId, targetHandleId, workflowDebugData?.runtimeEdges]);
 
   const memoEdgeLabel = useMemo(() => {
     const arrowTransform = (() => {
