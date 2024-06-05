@@ -239,45 +239,49 @@ const ChatHistorySlider = ({
                         />
                       }
                       menuList={[
-                        ...(onSetHistoryTop
-                          ? [
-                              {
-                                label: item.top ? t('core.chat.Unpin') : t('core.chat.Pin'),
-                                icon: 'core/chat/setTopLight',
-                                onClick: () => {
-                                  onSetHistoryTop({ chatId: item.id, top: !item.top });
-                                }
-                              }
-                            ]
-                          : []),
-                        ...(onSetCustomTitle
-                          ? [
-                              {
-                                label: t('common.Custom Title'),
-                                icon: 'common/customTitleLight',
-                                onClick: () => {
-                                  onOpenModal({
-                                    defaultVal: item.customTitle || item.title,
-                                    onSuccess: (e) =>
-                                      onSetCustomTitle({
-                                        chatId: item.id,
-                                        title: e
-                                      })
-                                  });
-                                }
-                              }
-                            ]
-                          : []),
                         {
-                          label: t('common.Delete'),
-                          icon: 'delete',
-                          onClick: () => {
-                            onDelHistory({ chatId: item.id });
-                            if (item.id === activeChatId) {
-                              onChangeChat();
+                          children: [
+                            ...(onSetHistoryTop
+                              ? [
+                                  {
+                                    label: item.top ? t('core.chat.Unpin') : t('core.chat.Pin'),
+                                    icon: 'core/chat/setTopLight',
+                                    onClick: () => {
+                                      onSetHistoryTop({ chatId: item.id, top: !item.top });
+                                    }
+                                  }
+                                ]
+                              : []),
+                            ...(onSetCustomTitle
+                              ? [
+                                  {
+                                    label: t('common.Custom Title'),
+                                    icon: 'common/customTitleLight',
+                                    onClick: () => {
+                                      onOpenModal({
+                                        defaultVal: item.customTitle || item.title,
+                                        onSuccess: (e) =>
+                                          onSetCustomTitle({
+                                            chatId: item.id,
+                                            title: e
+                                          })
+                                      });
+                                    }
+                                  }
+                                ]
+                              : []),
+                            {
+                              label: t('common.Delete'),
+                              icon: 'delete',
+                              onClick: () => {
+                                onDelHistory({ chatId: item.id });
+                                if (item.id === activeChatId) {
+                                  onChangeChat();
+                                }
+                              },
+                              type: 'danger'
                             }
-                          },
-                          type: 'danger'
+                          ]
                         }
                       ]}
                     />

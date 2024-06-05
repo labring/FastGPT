@@ -198,21 +198,25 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                     }
                     menuList={[
                       {
-                        label: t('common.Edit'),
-                        icon: 'edit',
-                        onClick: () =>
-                          setEditData({
-                            _id,
-                            name,
-                            limit,
-                            appId
-                          })
-                      },
-                      {
-                        label: t('common.Delete'),
-                        icon: 'delete',
-                        type: 'danger',
-                        onClick: () => openConfirm(() => onclickRemove(_id))()
+                        children: [
+                          {
+                            label: t('common.Edit'),
+                            icon: 'edit',
+                            onClick: () =>
+                              setEditData({
+                                _id,
+                                name,
+                                limit,
+                                appId
+                              })
+                          },
+                          {
+                            label: t('common.Delete'),
+                            icon: 'delete',
+                            type: 'danger',
+                            onClick: () => openConfirm(() => onclickRemove(_id))()
+                          }
+                        ]
                       }
                     ]}
                   />

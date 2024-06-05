@@ -5,7 +5,8 @@ import {
   selectAnatomy,
   numberInputAnatomy,
   checkboxAnatomy,
-  tableAnatomy
+  tableAnatomy,
+  radioAnatomy
 } from '@chakra-ui/anatomy';
 import { createMultiStyleConfigHelpers, defineStyle } from '@chakra-ui/styled-system';
 
@@ -21,6 +22,8 @@ const { definePartsStyle: checkBoxPart, defineMultiStyleConfig: checkBoxMultiSty
   createMultiStyleConfigHelpers(checkboxAnatomy.keys);
 const { definePartsStyle: tablePart, defineMultiStyleConfig: tableMultiStyle } =
   createMultiStyleConfigHelpers(tableAnatomy.keys);
+const { definePartsStyle: radioParts, defineMultiStyleConfig: radioStyle } =
+  createMultiStyleConfigHelpers(radioAnatomy.keys);
 
 const shadowLight = '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)';
 
@@ -408,6 +411,27 @@ const Select = selectMultiStyle({
   }
 });
 
+const Radio = radioStyle({
+  baseStyle: radioParts({
+    control: {
+      _hover: {
+        borderColor: 'primary.300',
+        bg: 'primary.50'
+      },
+      _checked: {
+        borderColor: 'primary.600',
+        bg: 'primary.50',
+        boxShadow: shadowLight,
+        _before: {
+          bg: 'primary.600'
+        },
+        _hover: {
+          bg: 'primary.50'
+        }
+      }
+    }
+  })
+});
 const Checkbox = checkBoxMultiStyle({
   baseStyle: checkBoxPart({
     label: {
@@ -505,6 +529,7 @@ export const theme = extendTheme({
       a: {
         color: 'primary.600'
       },
+
       '*': {
         _focusVisible: {
           boxShadow: 'none'
@@ -697,6 +722,7 @@ export const theme = extendTheme({
     Checkbox,
     Modal,
     Tooltip,
-    Table
+    Table,
+    Radio
   }
 });

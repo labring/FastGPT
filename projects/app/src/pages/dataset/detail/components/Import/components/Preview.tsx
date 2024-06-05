@@ -54,22 +54,26 @@ const Preview = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
                   }
                   menuList={[
                     {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'core/dataset/fileCollection'} w={'14px'} mr={2} />
-                          {t('core.dataset.import.Preview raw text')}
-                        </Flex>
-                      ),
-                      onClick: () => setPreviewRawTextSource(source)
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'core/dataset/splitLight'} w={'14px'} mr={2} />
-                          {t('core.dataset.import.Preview chunks')}
-                        </Flex>
-                      ),
-                      onClick: () => setPreviewChunkSource(source)
+                      children: [
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'core/dataset/fileCollection'} w={'14px'} mr={2} />
+                              {t('core.dataset.import.Preview raw text')}
+                            </Flex>
+                          ),
+                          onClick: () => setPreviewRawTextSource(source)
+                        },
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'core/dataset/splitLight'} w={'14px'} mr={2} />
+                              {t('core.dataset.import.Preview chunks')}
+                            </Flex>
+                          ),
+                          onClick: () => setPreviewChunkSource(source)
+                        }
+                      ]
                     }
                   ]}
                 />

@@ -55,7 +55,8 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
                 color: 'myGray.600'
               })}
           _hover={{
-            color: 'primary.600'
+            color: 'primary.600',
+            bg: 'myGray.100'
           }}
           onClick={() => {
             if (activeId === item.id) return;

@@ -121,11 +121,19 @@ const Header = ({ plugin, onClose }: Props) => {
               />
             }
             menuList={[
-              { label: appT('Import Configs'), icon: 'common/importLight', onClick: onOpenImport },
               {
-                label: appT('Export Configs'),
-                icon: 'export',
-                onClick: onExportWorkflow
+                children: [
+                  {
+                    label: appT('Import Configs'),
+                    icon: 'common/importLight',
+                    onClick: onOpenImport
+                  },
+                  {
+                    label: appT('Export Configs'),
+                    icon: 'export',
+                    onClick: onExportWorkflow
+                  }
+                ]
               }
             ]}
           />

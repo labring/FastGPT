@@ -81,19 +81,23 @@ function MemberTable() {
                         }
                         menuList={[
                           {
-                            label: t('user.team.Remove Member Tip'),
-                            onClick: () =>
-                              openRemoveMember(
-                                () =>
-                                  onRemoveMember({
-                                    teamId: item.teamId,
-                                    memberId: item.tmbId
-                                  }),
-                                undefined,
-                                t('user.team.Remove Member Confirm Tip', {
-                                  username: item.memberName
-                                })
-                              )()
+                            children: [
+                              {
+                                label: t('user.team.Remove Member Tip'),
+                                onClick: () =>
+                                  openRemoveMember(
+                                    () =>
+                                      onRemoveMember({
+                                        teamId: item.teamId,
+                                        memberId: item.tmbId
+                                      }),
+                                    undefined,
+                                    t('user.team.Remove Member Confirm Tip', {
+                                      username: item.memberName
+                                    })
+                                  )()
+                              }
+                            ]
                           }
                         ]}
                       />

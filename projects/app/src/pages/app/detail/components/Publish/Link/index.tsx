@@ -170,31 +170,35 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
                     }
                     menuList={[
                       {
-                        label: t('common.Edit'),
-                        icon: 'edit',
-                        onClick: () =>
-                          setEditLinkData({
-                            _id: item._id,
-                            name: item.name,
-                            responseDetail: item.responseDetail,
-                            limit: item.limit
-                          })
-                      },
-                      {
-                        label: t('common.Delete'),
-                        icon: 'delete',
-                        type: 'danger',
-                        onClick: () =>
-                          openConfirm(async () => {
-                            setIsLoading(true);
-                            try {
-                              await delShareChatById(item._id);
-                              refetchShareChatList();
-                            } catch (error) {
-                              console.log(error);
-                            }
-                            setIsLoading(false);
-                          })()
+                        children: [
+                          {
+                            label: t('common.Edit'),
+                            icon: 'edit',
+                            onClick: () =>
+                              setEditLinkData({
+                                _id: item._id,
+                                name: item.name,
+                                responseDetail: item.responseDetail,
+                                limit: item.limit
+                              })
+                          },
+                          {
+                            label: t('common.Delete'),
+                            icon: 'delete',
+                            type: 'danger',
+                            onClick: () =>
+                              openConfirm(async () => {
+                                setIsLoading(true);
+                                try {
+                                  await delShareChatById(item._id);
+                                  refetchShareChatList();
+                                } catch (error) {
+                                  console.log(error);
+                                }
+                                setIsLoading(false);
+                              })()
+                          }
+                        ]
                       }
                     ]}
                   />

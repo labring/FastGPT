@@ -165,12 +165,12 @@ function PermissionSelect({
                   : {})}
                 {...MenuStyle}
                 onClick={change}
-                maxW={['70vw', '300px']}
+                maxW={['70vw', '260px']}
               >
                 <Radio isChecked={selectedSingleValue === item.value} />
                 <Box ml={4}>
                   <Box>{item.name}</Box>
-                  <Box color={'myGray.500'} fontSize={'xs'}>
+                  <Box color={'myGray.500'} fontSize={'mini'}>
                     {item.description}
                   </Box>
                 </Box>

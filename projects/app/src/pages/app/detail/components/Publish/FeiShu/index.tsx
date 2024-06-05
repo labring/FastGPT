@@ -122,32 +122,36 @@ const FeiShu = ({ appId }: { appId: string }) => {
                     }
                     menuList={[
                       {
-                        label: t('common.Edit'),
-                        icon: 'edit',
-                        onClick: () =>
-                          setEditFeiShuLinkData({
-                            _id: item._id,
-                            name: item.name,
-                            limit: item.limit,
-                            app: item.app,
-                            responseDetail: item.responseDetail,
-                            defaultResponse: item.defaultResponse,
-                            immediateResponse: item.immediateResponse
-                          })
-                      },
-                      {
-                        label: t('common.Delete'),
-                        icon: 'delete',
-                        onClick: async () => {
-                          setIsLoading(true);
-                          try {
-                            await delShareChatById(item._id);
-                            refetchShareChatList();
-                          } catch (error) {
-                            console.log(error);
+                        children: [
+                          {
+                            label: t('common.Edit'),
+                            icon: 'edit',
+                            onClick: () =>
+                              setEditFeiShuLinkData({
+                                _id: item._id,
+                                name: item.name,
+                                limit: item.limit,
+                                app: item.app,
+                                responseDetail: item.responseDetail,
+                                defaultResponse: item.defaultResponse,
+                                immediateResponse: item.immediateResponse
+                              })
+                          },
+                          {
+                            label: t('common.Delete'),
+                            icon: 'delete',
+                            onClick: async () => {
+                              setIsLoading(true);
+                              try {
+                                await delShareChatById(item._id);
+                                refetchShareChatList();
+                              } catch (error) {
+                                console.log(error);
+                              }
+                              setIsLoading(false);
+                            }
                           }
-                          setIsLoading(false);
-                        }
+                        ]
                       }
                     ]}
                   />
