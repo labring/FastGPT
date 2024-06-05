@@ -35,6 +35,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { downloadFetch } from '@/web/common/system/utils';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -452,12 +453,7 @@ const Dataset = () => {
         ))}
       </Grid>
       {myDatasets.length === 0 && (
-        <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            {t('core.dataset.Empty Dataset Tips')}
-          </Box>
-        </Flex>
+        <EmptyTip pt={'35vh'} text={t('core.dataset.Empty Dataset Tips')}></EmptyTip>
       )}
       <ConfirmModal />
       <EditTitleModal />

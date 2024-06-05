@@ -510,12 +510,6 @@ const Table = tableMultiStyle({
   }
 });
 
-const Tooltip = defineStyleConfig({
-  baseStyle: defineStyle({
-    fontsize: 'xs'
-  })
-});
-
 // 全局主题
 export const theme = extendTheme({
   styles: {
@@ -721,7 +715,6 @@ export const theme = extendTheme({
     NumberInput,
     Checkbox,
     Modal,
-    Tooltip,
     Table,
     Radio
   }

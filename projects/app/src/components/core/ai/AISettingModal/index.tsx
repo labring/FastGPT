@@ -19,7 +19,6 @@ import type { SettingAIDataType } from '@fastgpt/global/core/app/type.d';
 import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const AIChatSettingsModal = ({
@@ -64,7 +63,8 @@ const AIChatSettingsModal = ({
   const LabelStyles: BoxProps = {
     display: 'flex',
     alignItems: 'center',
-    fontSize: ['sm', 'md'],
+    fontSize: 'sm',
+    color: 'myGray.900',
     width: ['80px', '90px']
   };
 

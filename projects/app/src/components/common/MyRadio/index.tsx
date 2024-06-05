@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Flex, useTheme, Grid, type GridProps, theme, Image } from '@chakra-ui/react';
+import { Box, Flex, useTheme, Grid, type GridProps, theme, Image, Radio } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -44,8 +44,7 @@ const MyRadio = ({
           cursor={'pointer'}
           userSelect={'none'}
           py={3}
-          pl={'14px'}
-          pr={hiddenCircle ? '14px' : '36px'}
+          px={'4'}
           p={p !== undefined ? `${p} !important` : undefined}
           border={theme.borders.sm}
           borderWidth={'1.5px'}
@@ -62,27 +61,6 @@ const MyRadio = ({
                   borderColor: 'primary.400'
                 }
               })}
-          _after={{
-            content: '""',
-            display: hiddenCircle ? 'none' : 'block',
-            position: 'absolute',
-            right: '14px',
-            w: '16px',
-            h: '16px',
-            mr: 1,
-            borderRadius: '16px',
-            transition: '0.2s',
-            boxSizing: 'border-box',
-            ...(value === item.value
-              ? {
-                  border: '5px solid',
-                  borderColor: 'primary.600'
-                }
-              : {
-                  border: '2px solid',
-                  borderColor: 'myGray.200'
-                })
-          }}
           onClick={() => {
             if (item.forbidTip) {
               toast({
@@ -103,7 +81,7 @@ const MyRadio = ({
               )}
             </>
           )}
-          <Box pr={hiddenCircle ? 0 : 2}>
+          <Box pr={hiddenCircle ? 0 : 2} flex={'1 0 0'}>
             <Box fontSize={'sm'} color={'myGray.800'}>
               {typeof item.title === 'string' ? t(item.title) : item.title}
             </Box>
@@ -113,6 +91,7 @@ const MyRadio = ({
               </Box>
             )}
           </Box>
+          <Radio isChecked={value === item.value} />
         </Flex>
       ))}
     </Grid>

@@ -34,6 +34,7 @@ import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/D
 import { formatChatValue2InputType } from '@/components/ChatBox/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useI18n } from '@/web/context/I18n';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
@@ -175,14 +176,7 @@ const Logs = ({ appId }: { appId: string }) => {
           </Tbody>
         </Table>
       </TableContainer>
-      {logs.length === 0 && !isLoading && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            {appT('Logs Empty')}
-          </Box>
-        </Flex>
-      )}
+      {logs.length === 0 && !isLoading && <EmptyTip text={appT('Logs Empty')}></EmptyTip>}
       <Flex w={'100%'} p={4} alignItems={'center'} justifyContent={'flex-end'}>
         <DateRangePicker
           defaultDate={dateRange}

@@ -74,7 +74,7 @@ const SelectAppModal = ({
                 })}
           >
             <Avatar src={app.avatar} w={['16px', '22px']} />
-            <Box fontWeight={'bold'} ml={1}>
+            <Box fontSize={'sm'} color={'myGray.900'} ml={1}>
               {app.name}
             </Box>
           </Flex>

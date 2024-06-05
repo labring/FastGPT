@@ -23,6 +23,7 @@ import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/web/core/app/context/appContext';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -178,7 +179,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
           <ModalBody>
             <Box>
               <Flex {...LabelStyles} mb={1}>
-                {t('core.app.Quote templates')}
+                <FormLabel>{t('core.app.Quote templates')}</FormLabel>
                 <QuestionTip
                   ml={1}
                   label={t('template.Quote Content Tip', {
@@ -188,6 +189,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
                 <Box flex={1} />
                 <Box
                   {...selectTemplateBtn}
+                  fontSize={'sm'}
                   onClick={() =>
                     setSelectTemplateData({
                       title: t('core.app.Select quote template'),
@@ -214,7 +216,7 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
             </Box>
             <Box mt={4}>
               <Flex {...LabelStyles} mb={1}>
-                {t('core.app.Quote prompt')}
+                <FormLabel>{t('core.app.Quote prompt')}</FormLabel>
                 <QuestionTip
                   ml={1}
                   label={t('template.Quote Prompt Tip', {

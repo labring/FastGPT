@@ -27,6 +27,7 @@ import dayjs from 'dayjs';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const Promotion = () => {
   const { t } = useTranslation();
@@ -123,14 +124,7 @@ const Promotion = () => {
           </Table>
         </TableContainer>
 
-        {!isLoading && promotionRecords.length === 0 && (
-          <Flex mt={'10vh'} flexDirection={'column'} alignItems={'center'}>
-            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-            <Box mt={2} color={'myGray.500'}>
-              无邀请记录~
-            </Box>
-          </Flex>
-        )}
+        {!isLoading && promotionRecords.length === 0 && <EmptyTip text="无邀请记录~"></EmptyTip>}
         {total > pageSize && (
           <Flex mt={4} justifyContent={'flex-end'}>
             <Pagination />

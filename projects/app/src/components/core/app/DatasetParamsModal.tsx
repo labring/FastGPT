@@ -29,6 +29,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import SelectAiModel from '@/components/Select/AIModelSelector';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -158,8 +159,7 @@ const DatasetParamsModal = ({
                 cursor={'pointer'}
                 userSelect={'none'}
                 py={3}
-                pl={'14px'}
-                pr={'16px'}
+                px={4}
                 border={theme.borders.sm}
                 borderWidth={'1.5px'}
                 borderRadius={'md'}
@@ -191,8 +191,8 @@ const DatasetParamsModal = ({
               >
                 <MyIcon name="core/dataset/rerank" w={'18px'} mr={'14px'} />
                 <Box pr={2} color={'myGray.800'} flex={'1 0 0'}>
-                  <Box>{t('core.dataset.search.ReRank')}</Box>
-                  <Box fontSize={['xs', 'sm']} color={'myGray.500'}>
+                  <Box fontSize={'sm'}>{t('core.dataset.search.ReRank')}</Box>
+                  <Box fontSize={'xs'} color={'myGray.500'}>
                     {t('core.dataset.search.ReRank desc')}
                   </Box>
                 </Box>
@@ -208,14 +208,13 @@ const DatasetParamsModal = ({
           <Box pt={5}>
             {limit !== undefined && (
               <Box display={['block', 'flex']}>
-                <Box flex={'0 0 120px'} mb={[8, 0]}>
-                  {t('core.dataset.search.Max Tokens')}
+                <Flex flex={'0 0 120px'} mb={[8, 0]}>
+                  <FormLabel>{t('core.dataset.search.Max Tokens')}</FormLabel>
                   <QuestionTip
                     ml={1}
                     label={t('core.dataset.search.Max Tokens Tips')}
-                    forceShow
                   ></QuestionTip>
-                </Box>
+                </Flex>
                 <Box flex={1} mx={4}>
                   <MySlider
                     markList={[
@@ -235,14 +234,13 @@ const DatasetParamsModal = ({
               </Box>
             )}
             <Box display={['block', 'flex']} mt={10}>
-              <Box flex={'0 0 120px'} mb={[8, 0]}>
-                {t('core.dataset.search.Min Similarity')}
+              <Flex flex={'0 0 120px'} mb={[8, 0]}>
+                <FormLabel>{t('core.dataset.search.Min Similarity')}</FormLabel>
                 <QuestionTip
                   ml={1}
                   label={t('core.dataset.search.Min Similarity Tips')}
-                  forceShow
                 ></QuestionTip>
-              </Box>
+              </Flex>
               <Box flex={1} mx={4}>
                 {showSimilarity ? (
                   <MySlider
@@ -268,7 +266,7 @@ const DatasetParamsModal = ({
         )}
         {currentTabType === SearchSettingTabEnum.queryExtension && (
           <Box>
-            <Box fontSize={'xs'} color={'myGray.500'}>
+            <Box transform={'translateY(-5px)'} fontSize={'xs'} color={'myGray.500'}>
               {t('core.dataset.Query extension intro')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
@@ -278,8 +276,8 @@ const DatasetParamsModal = ({
             {datasetSearchUsingCfrForm === true && (
               <>
                 <Flex mt={4} alignItems={'center'}>
-                  <Box flex={'0 0 100px'}>{t('core.ai.Model')}</Box>
-                  <Box flex={'1 0 0'}>
+                  <FormLabel flex={['0 0 80px', '1 0 0']}>{t('core.ai.Model')}</FormLabel>
+                  <Box flex={['1 0 0', '0 0 300px']}>
                     <SelectAiModel
                       width={'100%'}
                       value={queryExtensionModel}
@@ -292,7 +290,7 @@ const DatasetParamsModal = ({
                 </Flex>
                 <Box mt={3}>
                   <Flex alignItems={'center'}>
-                    {t('core.app.edit.Query extension background prompt')}
+                    <FormLabel>{t('core.app.edit.Query extension background prompt')}</FormLabel>
                     <QuestionTip
                       ml={1}
                       label={t('core.app.edit.Query extension background tip')}

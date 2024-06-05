@@ -8,6 +8,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useTranslation } from 'next-i18next';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const InformTable = () => {
   const { t } = useTranslation();
@@ -78,14 +79,7 @@ const InformTable = () => {
             )}
           </Box>
         ))}
-        {!isLoading && informs.length === 0 && (
-          <Flex flex={'1 0 0'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-            <Box mt={2} color={'myGray.500'}>
-              暂无通知~
-            </Box>
-          </Flex>
-        )}
+        {!isLoading && informs.length === 0 && <EmptyTip text={'暂无通知~'}></EmptyTip>}
       </Box>
 
       {total > pageSize && (

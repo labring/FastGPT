@@ -26,6 +26,7 @@ import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/
 import dynamic from 'next/dynamic';
 import MyNumberInput from '@fastgpt/web/components/common/Input/NumberInput/index';
 import { useI18n } from '@/web/context/I18n';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const JsonEditor = dynamic(() => import('@fastgpt/web/components/common/Textarea/JsonEditor'));
 const EmptyTip = dynamic(() => import('@fastgpt/web/components/common/EmptyTip'));
@@ -304,7 +305,7 @@ const FieldEditModal = ({
           <Stack flex={1} gap={5}>
             {showInputTypeSelect && (
               <Flex alignItems={'center'}>
-                <Box flex={'0 0 70px'}>{t('core.module.Input Type')}</Box>
+                <FormLabel flex={'0 0 70px'}>{t('core.module.Input Type')}</FormLabel>
                 <Box flex={1}>
                   <MySelect
                     list={inputTypeList}
@@ -320,7 +321,7 @@ const FieldEditModal = ({
             )}
             {showValueTypeSelect && !showInputTypeSelect && (
               <Flex alignItems={'center'}>
-                <Box flex={'0 0 70px'}>{t('core.module.Data Type')}</Box>
+                <FormLabel flex={'0 0 70px'}>{t('core.module.Data Type')}</FormLabel>
                 <Box flex={1}>
                   <MySelect
                     w={'full'}
@@ -336,7 +337,7 @@ const FieldEditModal = ({
             )}
             {showKeyInput && (
               <Flex alignItems={'center'}>
-                <Box flex={'0 0 70px'}>{t('core.module.Field Name')}</Box>
+                <FormLabel flex={'0 0 70px'}>{t('core.module.Field Name')}</FormLabel>
                 <Input
                   bg={'myGray.50'}
                   placeholder="appointment/sql"
@@ -348,9 +349,9 @@ const FieldEditModal = ({
             )}
             {showDescriptionInput && (
               <Box alignItems={'flex-start'}>
-                <Box flex={'0 0 70px'} mb={'1px'}>
+                <FormLabel flex={'0 0 70px'} mb={'1px'}>
                   {t('core.module.Field Description')}
-                </Box>
+                </FormLabel>
                 <Textarea
                   bg={'myGray.50'}
                   placeholder={
@@ -366,18 +367,18 @@ const FieldEditModal = ({
           {showInputTypeSelect && (
             <Stack flex={1} gap={5}>
               <Flex alignItems={'center'}>
-                <Box flex={'0 0 70px'}>{workflowT('Field required')}</Box>
+                <FormLabel flex={'0 0 70px'}>{workflowT('Field required')}</FormLabel>
                 <Switch {...register('required')} />
               </Flex>
               {showToolInput && (
                 <Flex alignItems={'center'}>
-                  <Box flex={'0 0 70px'}>工具参数</Box>
+                  <FormLabel flex={'0 0 70px'}>工具参数</FormLabel>
                   <Switch {...register('isToolInput')} />
                 </Flex>
               )}
               {showValueTypeSelect && (
                 <Flex alignItems={'center'}>
-                  <Box flex={'0 0 70px'}>{t('core.module.Data Type')}</Box>
+                  <FormLabel flex={'0 0 70px'}>{t('core.module.Data Type')}</FormLabel>
                   <Box flex={1}>
                     <MySelect
                       w={'full'}
@@ -393,7 +394,7 @@ const FieldEditModal = ({
               )}
               {showDefaultValue && (
                 <Flex alignItems={'center'}>
-                  <Box flex={'0 0 70px'}>{t('core.module.Default Value')}</Box>
+                  <FormLabel flex={'0 0 70px'}>{t('core.module.Default Value')}</FormLabel>
                   {inputType === FlowNodeInputTypeEnum.numberInput && (
                     <Input
                       bg={'myGray.50'}
@@ -430,7 +431,7 @@ const FieldEditModal = ({
               )}
               {showMaxLenInput && (
                 <Flex alignItems={'center'}>
-                  <Box flex={'0 0 70px'}>{t('core.module.Max Length')}</Box>
+                  <FormLabel flex={'0 0 70px'}>{t('core.module.Max Length')}</FormLabel>
                   <MyNumberInput
                     flex={'1 0 0'}
                     bg={'myGray.50'}
@@ -447,7 +448,7 @@ const FieldEditModal = ({
               {showMinMaxInput && (
                 <>
                   <Flex alignItems={'center'}>
-                    <Box flex={'0 0 70px'}>{t('core.module.Max Value')}</Box>
+                    <FormLabel flex={'0 0 70px'}>{t('core.module.Max Value')}</FormLabel>
                     <MyNumberInput
                       flex={'1 0 0'}
                       bg={'myGray.50'}
@@ -459,7 +460,7 @@ const FieldEditModal = ({
                     />
                   </Flex>
                   <Flex alignItems={'center'}>
-                    <Box flex={'0 0 70px'}>{t('core.module.Min Value')}</Box>
+                    <FormLabel flex={'0 0 70px'}>{t('core.module.Min Value')}</FormLabel>
                     <MyNumberInput
                       flex={'1 0 0'}
                       bg={'myGray.50'}
@@ -475,13 +476,13 @@ const FieldEditModal = ({
               {showDynamicInput && (
                 <Stack gap={5}>
                   <Flex alignItems={'center'}>
-                    <Box flex={'0 0 70px'}>{t('core.module.Input Type')}</Box>
+                    <FormLabel flex={'0 0 70px'}>{t('core.module.Input Type')}</FormLabel>
                     <Box flex={1} fontWeight={'bold'}>
                       {t('core.workflow.inputType.Reference')}
                     </Box>
                   </Flex>
                   <Flex alignItems={'center'}>
-                    <Box flex={'0 0 70px'}>{t('core.module.Data Type')}</Box>
+                    <FormLabel flex={'0 0 70px'}>{t('core.module.Data Type')}</FormLabel>
                     <Box flex={1}>
                       <MySelect
                         list={dataTypeSelectList}
@@ -496,7 +497,7 @@ const FieldEditModal = ({
                     </Box>
                   </Flex>
                   <Flex alignItems={'center'}>
-                    <Box flex={'0 0 70px'}>{t('core.workflow.inputType.Required')}</Box>
+                    <FormLabel flex={'0 0 70px'}>{t('core.workflow.inputType.Required')}</FormLabel>
                     <Box flex={1}>
                       <Switch {...register('dynamicParamDefaultValue.required')} />
                     </Box>

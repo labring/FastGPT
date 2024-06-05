@@ -46,6 +46,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { useI18n } from '@/web/context/I18n';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -397,14 +398,7 @@ const DataCard = () => {
               <Pagination />
             </Flex>
           )}
-          {total === 0 && (
-            <Flex flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                {t('core.dataset.data.Empty Tip')}
-              </Box>
-            </Flex>
-          )}
+          {total === 0 && <EmptyTip text={t('core.dataset.data.Empty Tip')}></EmptyTip>}
         </Box>
       </Flex>
 

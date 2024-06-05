@@ -405,11 +405,11 @@ const RenderList = React.memo(function RenderList({
                     >
                       <Avatar
                         src={template.avatar}
-                        w={'30px'}
+                        w={'1.7rem'}
                         objectFit={'contain'}
                         borderRadius={'0'}
                       />
-                      <Box color={'black'} ml={5} flex={'1 0 0'}>
+                      <Box color={'black'} fontSize={'sm'} ml={5} flex={'1 0 0'}>
                         {t(template.name)}
                       </Box>
                     </Flex>
@@ -421,7 +421,7 @@ const RenderList = React.memo(function RenderList({
         </Box>
       </Box>
     );
-  }, [formatTemplates, isPc, onAddNode, onClose, setCurrentParent, t, templates.length]);
+  }, [appT, formatTemplates, isPc, onAddNode, onClose, setCurrentParent, t, templates.length]);
 
   return Render;
 });
