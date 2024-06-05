@@ -388,7 +388,7 @@ function EditLinkModal({
               label={t('support.outlink.share.Response Quote tips' || '')}
             ></QuestionTip>
           </Flex>
-          <Switch {...register('responseDetail')} size={'lg'} />
+          <Switch {...register('responseDetail')} />
         </Flex>
       </ModalBody>
 

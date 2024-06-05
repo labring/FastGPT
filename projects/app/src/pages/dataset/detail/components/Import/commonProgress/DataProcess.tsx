@@ -24,7 +24,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
 import Preview from '../components/Preview';
-import Tag from '@fastgpt/web/components/common/Tag/index';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -267,9 +267,9 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
         <Flex mt={5} alignItems={'center'} pl={'100px'} gap={3}>
           {feConfigs?.show_pay && (
             <MyTooltip label={priceTip}>
-              <Tag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
+              <MyTag colorSchema={'gray'} py={'6px'} borderRadius={'md'} px={3}>
                 {priceTip}
-              </Tag>
+              </MyTag>
             </MyTooltip>
           )}
         </Flex>

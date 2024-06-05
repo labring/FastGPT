@@ -281,7 +281,6 @@ const ScheduledTriggerConfig = ({
             <Flex justifyContent={'space-between'} alignItems={'center'}>
               <FormLabel flex={'0 0 80px'}> {t('core.app.schedule.Open schedule')}</FormLabel>
               <Switch
-                size={'lg'}
                 isChecked={isOpenSchedule}
                 onChange={(e) => {
                   if (e.target.checked) {

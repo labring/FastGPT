@@ -34,7 +34,6 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { readCsvRawText } from '@fastgpt/web/common/file/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useRequest } from 'ahooks';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
@@ -113,7 +112,6 @@ const InputGuideConfig = ({
             <FormLabel>{t('Is open')}</FormLabel>
             <Switch
               isChecked={isOpenQuestionGuide}
-              size={'lg'}
               onChange={(e) => {
                 onChange({
                   ...value,
@@ -204,7 +202,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
     refreshDeps: [searchKey],
     debounceWait: 300,
 
-    itemHeight: 46,
+    itemHeight: 48,
     overscan: 20,
 
     pageSize: 20,
@@ -382,6 +380,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
       <ScrollList
         px={8}
         flex={'1 0 0'}
+        fontSize={'sm'}
         EmptyChildren={<EmptyTip text={chatT('Chat input guide lexicon is empty')} />}
       >
         {list.map((data, index) => {
@@ -395,7 +394,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
               key={index}
               alignItems={'center'}
               h={10}
-              mt={3}
+              mt={2}
               _hover={{
                 '& .icon-list': {
                   display: 'flex'
@@ -403,7 +402,6 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
               }}
             >
               <Checkbox
-                size={'lg'}
                 mr={2}
                 isChecked={selected}
                 onChange={(e) => {

@@ -58,7 +58,6 @@ const WhisperConfig = ({
             <FormLabel>{t('core.app.whisper.Switch')}</FormLabel>
             <Switch
               isChecked={isOpenWhisper}
-              size={'lg'}
               onChange={(e) => {
                 onChange({
                   ...value,
@@ -74,7 +73,6 @@ const WhisperConfig = ({
               <Box flex={'1 0 0'} />
               <Switch
                 isChecked={value.autoSend}
-                size={'lg'}
                 onChange={(e) => {
                   onChange({
                     ...value,
@@ -92,7 +90,6 @@ const WhisperConfig = ({
                 <Box flex={'1 0 0'} />
                 <Switch
                   isChecked={value.autoTTSResponse}
-                  size={'lg'}
                   onChange={(e) => {
                     onChange({
                       ...value,

@@ -440,7 +440,6 @@ const EditForm = ({
           <Box {...BoxStyles}>
             <QGSwitch
               isChecked={postQuestionGuide}
-              size={'lg'}
               onChange={(e) => {
                 setValue('chatConfig.questionGuide', e.target.checked);
               }}

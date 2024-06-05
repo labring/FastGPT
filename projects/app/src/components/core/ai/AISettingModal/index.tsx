@@ -216,7 +216,6 @@ const AIChatSettingsModal = ({
             <Box flex={1} ml={'10px'}>
               <Switch
                 isChecked={getValues(NodeInputKeyEnum.aiChatIsResponseText)}
-                size={'lg'}
                 onChange={(e) => {
                   const value = e.target.checked;
                   setValue(NodeInputKeyEnum.aiChatIsResponseText, value);

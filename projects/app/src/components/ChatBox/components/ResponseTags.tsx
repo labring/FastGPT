@@ -149,7 +149,7 @@ const ResponseTags = ({
             <MyTooltip label="查看引用">
               <MyTag
                 colorSchema="blue"
-                type="solid"
+                type="borderSolid"
                 cursor={'pointer'}
                 onClick={() => setQuoteModalData({ rawSearch: quoteList })}
               >
@@ -164,7 +164,7 @@ const ResponseTags = ({
                   <MyTag
                     colorSchema="green"
                     cursor={'pointer'}
-                    type="solid"
+                    type="borderSolid"
                     onClick={() => setContextModalData(historyPreview)}
                   >
                     {historyPreview.length}条上下文
@@ -174,20 +174,25 @@ const ResponseTags = ({
             </>
           )}
           {llmModuleAccount > 1 && (
-            <MyTag type="solid" colorSchema="blue">
+            <MyTag type="borderSolid" colorSchema="blue">
               多组 AI 对话
             </MyTag>
           )}
 
           {isPc && runningTime > 0 && (
             <MyTooltip label={'模块运行时间和'}>
-              <MyTag colorSchema="purple" type="solid" cursor={'default'}>
+              <MyTag colorSchema="purple" type="borderSolid" cursor={'default'}>
                 {runningTime}s
               </MyTag>
             </MyTooltip>
           )}
           <MyTooltip label={t('core.chat.response.Read complete response tips')}>
-            <MyTag colorSchema="gray" type="solid" cursor={'pointer'} onClick={onOpenWholeModal}>
+            <MyTag
+              colorSchema="gray"
+              type="borderSolid"
+              cursor={'pointer'}
+              onClick={onOpenWholeModal}
+            >
               {t('core.chat.response.Read complete response')}
             </MyTag>
           </MyTooltip>
