@@ -21,7 +21,9 @@ function MemberTable() {
   const { t } = useTranslation();
   const { members, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
 
-  const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({});
+  const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
+    type: 'delete'
+  });
 
   const { mutate: onRemoveMember, isLoading: isRemovingMember } = useRequest({
     mutationFn: delRemoveMember,
@@ -34,14 +36,14 @@ function MemberTable() {
 
   return (
     <MyBox isLoading={isRemovingMember}>
-      <TableContainer overflow={'unset'}>
+      <TableContainer overflow={'unset'} fontSize={'sm'}>
         <Table overflow={'unset'}>
           <Thead bg={'myWhite.400'}>
             <Tr>
-              <Th>{t('common.Username')}</Th>
+              <Th borderRadius={'none !important'}>{t('common.Username')}</Th>
               <Th>{t('user.team.Role')}</Th>
               <Th>{t('common.Status')}</Th>
-              <Th>{t('common.Action')}</Th>
+              <Th borderRadius={'none !important'}>{t('common.Action')}</Th>
             </Tr>
           </Thead>
           <Tbody>
@@ -67,19 +69,14 @@ function MemberTable() {
                         Button={
                           <MenuButton
                             _hover={{
-                              bg: 'myWhite.600'
+                              color: 'primary.600'
                             }}
                             borderRadius={'md'}
                             px={2}
                             py={1}
                             lineHeight={1}
                           >
-                            <MyIcon
-                              name={'edit'}
-                              cursor={'pointer'}
-                              w="14px"
-                              _hover={{ color: 'primary.500' }}
-                            />
+                            <MyIcon name={'edit'} cursor={'pointer'} w="1rem" />
                           </MenuButton>
                         }
                         menuList={[

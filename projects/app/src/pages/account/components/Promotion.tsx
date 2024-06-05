@@ -19,14 +19,14 @@ import { useQuery } from '@tanstack/react-query';
 import { getPromotionInitData, getPromotionRecords } from '@/web/support/activity/promotion/api';
 import { useUserStore } from '@/web/support/user/useUserStore';
 
-import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import type { PromotionRecordType } from '@/global/support/api/userRes.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import dayjs from 'dayjs';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const Promotion = () => {
   const { t } = useTranslation();
@@ -55,7 +55,7 @@ const Promotion = () => {
     p: [4, 5],
     border: theme.borders.base,
     textAlign: 'center',
-    fontSize: ['md', 'xl'],
+    fontSize: ['md', 'lg'],
     borderRadius: 'md'
   };
   const titleStyles: BoxProps = {
@@ -78,18 +78,14 @@ const Promotion = () => {
         <Box {...statisticsStyles}>
           <Flex alignItems={'center'} justifyContent={'center'}>
             <Box>{t('user.Promotion Rate')}</Box>
-            <MyTooltip label={t('user.Promotion rate tip')}>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
+            <QuestionTip ml={1} label={t('user.Promotion rate tip')}></QuestionTip>
           </Flex>
           <Box {...titleStyles}>{userInfo?.promotionRate || 15}%</Box>
         </Box>
         <Box {...statisticsStyles}>
           <Flex alignItems={'center'} justifyContent={'center'}>
             <Box>{t('user.Invite Url')}</Box>
-            <MyTooltip label={t('user.Invite url tip')}>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
+            <QuestionTip ml={1} label={t('user.Invite url tip')}></QuestionTip>
           </Flex>
           <Button
             mt={4}

@@ -4,7 +4,7 @@ import 'katex/dist/katex.min.css';
 import ChatBoxDivider from '@/components/core/chat/Divider';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const QuestionGuide = ({ text }: { text: string }) => {
@@ -31,7 +31,7 @@ const QuestionGuide = ({ text }: { text: string }) => {
             key={text}
             alignItems={'center'}
             flexWrap={'wrap'}
-            fontSize={'sm'}
+            fontSize={'xs'}
             border={theme.borders.sm}
             py={'1px'}
             px={3}

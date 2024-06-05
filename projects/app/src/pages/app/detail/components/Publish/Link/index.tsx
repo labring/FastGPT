@@ -15,9 +15,9 @@ import {
   Input,
   Switch,
   Link,
-  IconButton
+  IconButton,
+  HStack
 } from '@chakra-ui/react';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useQuery } from '@tanstack/react-query';
@@ -37,7 +37,6 @@ import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
-import MyTooltip from '@/components/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import dayjs from 'dayjs';
 import { getDocPath } from '@/web/common/system/doc';
@@ -45,6 +44,9 @@ import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -72,12 +74,12 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
-        <Box fontWeight={'bold'} fontSize={['md', 'xl']}>
-          {t('core.app.Share link')}
-          <MyTooltip forceShow label={t('core.app.Share link desc detail')}>
-            <QuestionOutlineIcon ml={1} />
-          </MyTooltip>
-        </Box>
+        <HStack>
+          <Box color={'myGray.900'} fontSize={'lg'}>
+            {t('core.app.Share link')}
+          </Box>
+          <QuestionTip label={t('core.app.Share link desc detail')} />
+        </HStack>
         <Button
           variant={'whitePrimary'}
           colorScheme={'blue'}
@@ -204,12 +206,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
       </TableContainer>
 
       {shareChatList.length === 0 && !isFetching && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            {t('core.app.share.Not share link')}
-          </Box>
-        </Flex>
+        <EmptyTip text={t('core.app.share.Not share link')} />
       )}
       {!!editLinkData && (
         <EditLinkModal
@@ -300,7 +297,7 @@ function EditLinkModal({
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 90px'}>{t('Name')}</Box>
+          <FormLabel flex={'0 0 90px'}>{t('Name')}</FormLabel>
           <Input
             placeholder={publishT('Link Name')}
             maxLength={20}
@@ -312,9 +309,9 @@ function EditLinkModal({
         {feConfigs?.isPlus && (
           <>
             <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'} alignItems={'center'}>
+              <FormLabel flex={'0 0 90px'} alignItems={'center'}>
                 {t('common.Expired Time')}
-              </Flex>
+              </FormLabel>
               <Input
                 type="datetime-local"
                 defaultValue={
@@ -329,10 +326,8 @@ function EditLinkModal({
             </Flex>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                QPM
-                <MyTooltip label={publishT('QPM Tips' || '')}>
-                  <QuestionOutlineIcon ml={1} />
-                </MyTooltip>
+                <FormLabel>QPM</FormLabel>
+                <QuestionTip ml={1} label={publishT('QPM Tips' || '')}></QuestionTip>
               </Flex>
               <Input
                 max={1000}
@@ -346,10 +341,8 @@ function EditLinkModal({
             </Flex>
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('support.outlink.Max usage points')}
-                <MyTooltip label={t('support.outlink.Max usage points tip')}>
-                  <QuestionOutlineIcon ml={1} />
-                </MyTooltip>
+                <FormLabel>{t('support.outlink.Max usage points')}</FormLabel>
+                <QuestionTip ml={1} label={t('support.outlink.Max usage points tip')}></QuestionTip>
               </Flex>
               <Input
                 {...register('limit.maxUsagePoints', {
@@ -363,10 +356,8 @@ function EditLinkModal({
 
             <Flex alignItems={'center'} mt={4}>
               <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {publishT('token auth')}
-                <MyTooltip label={publishT('token auth Tips') || ''}>
-                  <QuestionOutlineIcon ml={1} />
-                </MyTooltip>
+                <FormLabel>{publishT('token auth')}</FormLabel>
+                <QuestionTip ml={1} label={publishT('token auth Tips') || ''}></QuestionTip>
               </Flex>
               <Input
                 placeholder={publishT('token auth Tips') || ''}
@@ -377,7 +368,7 @@ function EditLinkModal({
             <Link
               href={getDocPath('/docs/development/openapi/share')}
               target={'_blank'}
-              fontSize={'sm'}
+              fontSize={'xs'}
               color={'myGray.500'}
             >
               {publishT('token auth use cases')}
@@ -387,10 +378,11 @@ function EditLinkModal({
 
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
-            {t('support.outlink.share.Response Quote')}
-            <MyTooltip label={t('support.outlink.share.Response Quote tips' || '')}>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
+            <FormLabel>{t('support.outlink.share.Response Quote')}</FormLabel>
+            <QuestionTip
+              ml={1}
+              label={t('support.outlink.share.Response Quote tips' || '')}
+            ></QuestionTip>
           </Flex>
           <Switch {...register('responseDetail')} size={'lg'} />
         </Flex>

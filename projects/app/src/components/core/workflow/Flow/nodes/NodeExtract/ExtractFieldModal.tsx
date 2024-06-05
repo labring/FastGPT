@@ -13,10 +13,10 @@ import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 export const defaultField: ContextExtractAgentItemType = {
   valueType: 'string',
@@ -55,9 +55,7 @@ const ExtractFieldModal = ({
         <Flex mt={2} alignItems={'center'}>
           <Flex alignItems={'center'} flex={['0 0 80px', '0 0 100px']}>
             {t('core.module.extract.Required')}
-            <MyTooltip label={t('core.module.extract.Required Description')} forceShow>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
+            <QuestionTip ml={1} label={t('core.module.extract.Required Description')}></QuestionTip>
           </Flex>
           <Switch {...register('required')} />
         </Flex>
@@ -105,9 +103,7 @@ const ExtractFieldModal = ({
           <Box mt={5}>
             <Flex alignItems={'center'}>
               {t('core.module.extract.Enum Value')}({t('common.choosable')})
-              <MyTooltip label={t('core.module.extract.Enum Description')} forceShow>
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
+              <QuestionTip ml={1} label={t('core.module.extract.Enum Description')}></QuestionTip>
             </Flex>
 
             <Textarea

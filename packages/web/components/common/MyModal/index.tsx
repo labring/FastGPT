@@ -64,6 +64,7 @@ const MyModal = ({
             borderBottom={'1px solid #F4F6F8'}
             roundedTop={'lg'}
             py={'10px'}
+            fontSize={'md'}
           >
             {iconSrc && (
               <>

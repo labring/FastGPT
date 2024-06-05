@@ -12,7 +12,7 @@ import { SmallCloseIcon } from '@chakra-ui/icons';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { streamFetch } from '@/web/common/api/fetch';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import ChatBox from '@/components/ChatBox';
 import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
@@ -107,7 +107,7 @@ const ChatTest = (
         transition={'.2s ease'}
       >
         <Flex py={4} px={5} whiteSpace={'nowrap'}>
-          <Box fontSize={'xl'} fontWeight={'bold'} flex={1}>
+          <Box fontSize={'lg'} fontWeight={'bold'} flex={1}>
             {t('core.chat.Debug test')}
           </Box>
           <MyTooltip label={t('core.chat.Restart')}>

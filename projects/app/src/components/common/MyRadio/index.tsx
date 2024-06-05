@@ -36,7 +36,7 @@ const MyRadio = ({
   const { toast } = useToast();
 
   return (
-    <Grid gridGap={[3, 5]} fontSize={['sm', 'md']} {...props}>
+    <Grid gridGap={[3, 5]} {...props}>
       {list.map((item) => (
         <Flex
           key={item.value}
@@ -103,10 +103,12 @@ const MyRadio = ({
               )}
             </>
           )}
-          <Box pr={hiddenCircle ? 0 : 2} color={'myGray.800'}>
-            <Box>{typeof item.title === 'string' ? t(item.title) : item.title}</Box>
+          <Box pr={hiddenCircle ? 0 : 2}>
+            <Box fontSize={'sm'} color={'myGray.800'}>
+              {typeof item.title === 'string' ? t(item.title) : item.title}
+            </Box>
             {!!item.desc && (
-              <Box fontSize={'xs'} color={'myGray.500'} lineHeight={1.2}>
+              <Box fontSize={'mini'} color={'myGray.500'} lineHeight={1.2}>
                 {t(item.desc)}
               </Box>
             )}

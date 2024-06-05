@@ -12,9 +12,8 @@ import {
   useTheme
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MySlider from '@/components/Slider';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { DatasetSearchModeEnum } from '@fastgpt/global/core/dataset/constants';
 import { useTranslation } from 'next-i18next';
@@ -29,6 +28,7 @@ import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import SelectAiModel from '@/components/Select/AIModelSelector';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 export type DatasetParamsProps = {
   searchMode: `${DatasetSearchModeEnum}`;
@@ -210,9 +210,11 @@ const DatasetParamsModal = ({
               <Box display={['block', 'flex']}>
                 <Box flex={'0 0 120px'} mb={[8, 0]}>
                   {t('core.dataset.search.Max Tokens')}
-                  <MyTooltip label={t('core.dataset.search.Max Tokens Tips')} forceShow>
-                    <QuestionOutlineIcon ml={1} />
-                  </MyTooltip>
+                  <QuestionTip
+                    ml={1}
+                    label={t('core.dataset.search.Max Tokens Tips')}
+                    forceShow
+                  ></QuestionTip>
                 </Box>
                 <Box flex={1} mx={4}>
                   <MySlider
@@ -235,9 +237,11 @@ const DatasetParamsModal = ({
             <Box display={['block', 'flex']} mt={10}>
               <Box flex={'0 0 120px'} mb={[8, 0]}>
                 {t('core.dataset.search.Min Similarity')}
-                <MyTooltip label={t('core.dataset.search.Min Similarity Tips')} forceShow>
-                  <QuestionOutlineIcon ml={1} />
-                </MyTooltip>
+                <QuestionTip
+                  ml={1}
+                  label={t('core.dataset.search.Min Similarity Tips')}
+                  forceShow
+                ></QuestionTip>
               </Box>
               <Box flex={1} mx={4}>
                 {showSimilarity ? (
@@ -289,9 +293,10 @@ const DatasetParamsModal = ({
                 <Box mt={3}>
                   <Flex alignItems={'center'}>
                     {t('core.app.edit.Query extension background prompt')}
-                    <MyTooltip label={t('core.app.edit.Query extension background tip')} forceShow>
-                      <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-                    </MyTooltip>
+                    <QuestionTip
+                      ml={1}
+                      label={t('core.app.edit.Query extension background tip')}
+                    ></QuestionTip>
                   </Flex>
                   <Box mt={1}>
                     <PromptEditor

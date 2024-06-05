@@ -130,7 +130,14 @@ const UsageTable = () => {
           <Pagination />
         </Flex>
       </Flex>
-      <TableContainer px={[3, 8]} position={'relative'} flex={'1 0 0'} h={0} overflowY={'auto'}>
+      <TableContainer
+        mt={2}
+        px={[3, 8]}
+        position={'relative'}
+        flex={'1 0 0'}
+        h={0}
+        overflowY={'auto'}
+      >
         <Table>
           <Thead>
             <Tr>

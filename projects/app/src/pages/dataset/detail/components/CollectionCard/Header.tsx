@@ -122,7 +122,7 @@ const Header = ({}: {}) => {
           }))}
           FirstPathDom={
             <>
-              <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
+              <Box fontWeight={'bold'} fontSize={['sm', 'md']}>
                 {t(DatasetTypeMap[datasetDetail?.type]?.collectionLabel)}({total})
               </Box>
               {datasetDetail?.websiteConfig?.url && (

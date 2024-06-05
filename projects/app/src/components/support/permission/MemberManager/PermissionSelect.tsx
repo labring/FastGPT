@@ -143,6 +143,7 @@ function PermissionSelect({
           }
           zIndex={99}
           overflowY={'auto'}
+          whiteSpace={'pre-wrap'}
         >
           {/* The list of single select permissions */}
           {permissionSelectList.singleCheckBoxList.map((item) => {
@@ -166,10 +167,12 @@ function PermissionSelect({
                 onClick={change}
                 maxW={['70vw', '300px']}
               >
-                <Radio size="lg" isChecked={selectedSingleValue === item.value} />
+                <Radio isChecked={selectedSingleValue === item.value} />
                 <Box ml={4}>
                   <Box>{item.name}</Box>
-                  <Box color={'myGray.500'}>{item.description}</Box>
+                  <Box color={'myGray.500'} fontSize={'xs'}>
+                    {item.description}
+                  </Box>
                 </Box>
               </Flex>
             );

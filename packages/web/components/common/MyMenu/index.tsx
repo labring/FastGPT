@@ -49,9 +49,11 @@ const MyMenu = ({
   };
   const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
-    py: 3,
+    py: 2,
+    px: 3,
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    fontSize: 'sm'
   };
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
@@ -121,9 +123,10 @@ const MyMenu = ({
               }}
               color={item.isActive ? 'primary.700' : 'myGray.600'}
               whiteSpace={'pre-wrap'}
+              _notLast={{ mb: 0.5 }}
             >
               {!!item.icon && <MyIcon name={item.icon as any} w={'16px'} mr={2} />}
-              {item.label}
+              <Box>{item.label}</Box>
             </MenuItem>
           ))}
         </MenuList>

@@ -532,6 +532,7 @@
       "Go Dataset": "前往知识库",
       "Intro Placeholder": "这个知识库还没有介绍~",
       "Manual collection": "手动数据集",
+      "externalFile": "外部文件库",
       "My Dataset": "我的知识库",
       "Name": "知识库名称",
       "Query extension intro": "开启问题优化功能，可以提高提高连续对话时，知识库搜索的精度。开启该功能后，在进行知识库搜索时，会根据对话记录，利用 AI 补全问题缺失的信息。",
@@ -585,8 +586,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",

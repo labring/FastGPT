@@ -117,7 +117,7 @@ const SelectCollections = ({
             }))}
             FirstPathDom={
               <>
-                <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
+                <Box fontWeight={'bold'} fontSize={['sm', 'md']}>
                   {title
                     ? title
                     : type === 'folder'

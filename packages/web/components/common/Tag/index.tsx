@@ -58,7 +58,7 @@ const MyTag = ({ children, colorSchema = 'blue', type = 'fill', ...props }: Prop
       lineHeight={1}
       py={1}
       borderRadius={'sm'}
-      fontSize={'sm'}
+      fontSize={'xs'}
       alignItems={'center'}
       whiteSpace={'nowrap'}
       borderWidth={'1px'}

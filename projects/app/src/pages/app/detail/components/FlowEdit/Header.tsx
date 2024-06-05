@@ -224,13 +224,13 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
             onClick={saveAndBack}
           />
           <Box ml={[2, 4]}>
-            <Box fontSize={['md', 'lg']} fontWeight={'bold'}>
+            <Box fontSize={'md'} fontWeight={'bold'}>
               {appDetail.name}
             </Box>
             {!isShowVersionHistories && isV2Workflow && (
               <MyTooltip label={t('core.app.Onclick to save')}>
                 <Box
-                  fontSize={'sm'}
+                  fontSize={'xs'}
                   mt={1}
                   display={'inline-block'}
                   borderRadius={'xs'}

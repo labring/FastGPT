@@ -22,7 +22,7 @@ const Preview = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
     <Box h={'100%'} display={['block', 'flex']} flexDirection={'column'}>
       <Flex alignItems={'center'}>
         <MyIcon name={'core/dataset/fileCollection'} w={'20px'} />
-        <Box fontSize={'lg'}>{t('core.dataset.import.Sources list')}</Box>
+        <Box fontSize={'md'}>{t('core.dataset.import.Sources list')}</Box>
       </Flex>
       <Box mt={3} flex={'1 0 0'} width={'100%'} overflow={'auto'}>
         {sources.map((source) => (

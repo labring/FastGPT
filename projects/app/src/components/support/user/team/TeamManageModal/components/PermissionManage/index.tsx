@@ -47,7 +47,7 @@ function PermissionManage() {
         justifyContent={'space-between'}
       >
         <Flex>
-          <Box fontSize={['md', 'lg']} fontWeight={'bold'} alignItems={'center'}>
+          <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'}>
             {t('user.team.role.Admin')}
           </Box>
           <Box

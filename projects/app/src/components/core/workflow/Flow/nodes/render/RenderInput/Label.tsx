@@ -2,8 +2,7 @@ import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import React, { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { Box, Flex } from '@chakra-ui/react';
-import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 import NodeInputSelect from '@fastgpt/web/components/core/workflow/NodeInputSelect';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -14,6 +13,7 @@ import { FlowNodeInputTypeEnum } from '@fastgpt/global/core/workflow/node/consta
 import ValueTypeLabel from '../ValueTypeLabel';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 const FieldEditModal = dynamic(() => import('../FieldEditModal'));
 
 type Props = {
@@ -62,19 +62,20 @@ const InputLabel = ({ nodeId, input }: Props) => {
 
     return (
       <Flex className="nodrag" cursor={'default'} alignItems={'center'} position={'relative'}>
-        <Box position={'relative'} fontWeight={'medium'} color={'myGray.600'}>
+        <Flex
+          alignItems={'center'}
+          position={'relative'}
+          fontWeight={'medium'}
+          color={'myGray.600'}
+        >
           {required && (
             <Box position={'absolute'} left={-2} top={-1} color={'red.600'}>
               *
             </Box>
           )}
           {t(label)}
-          {description && (
-            <MyTooltip label={t(description)} forceShow>
-              <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-            </MyTooltip>
-          )}
-        </Box>
+          {description && <QuestionTip ml={1} label={t(description)}></QuestionTip>}
+        </Flex>
         {/* value type */}
         {renderType === FlowNodeInputTypeEnum.reference && <ValueTypeLabel valueType={valueType} />}
         {/* edit config */}

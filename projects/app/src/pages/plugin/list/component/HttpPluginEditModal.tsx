@@ -22,7 +22,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { CreateOnePluginParams } from '@fastgpt/global/core/plugin/controller';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
@@ -300,13 +300,23 @@ const HttpPluginEditModal = ({
             <Box color={'myGray.800'} fontWeight={'bold'} mt={3}>
               {t('core.plugin.Custom headers')}
             </Box>
-            <Box mt={1}>
+            <Box
+              mt={1}
+              borderRadius={'md'}
+              overflow={'hidden'}
+              borderWidth={'1px'}
+              borderBottom={'none'}
+            >
               <TableContainer overflowY={'visible'} overflowX={'unset'}>
                 <Table>
                   <Thead>
                     <Tr>
-                      <Th px={2}>{t('core.module.http.Props name')}</Th>
-                      <Th px={2}>{t('core.module.http.Props value')}</Th>
+                      <Th px={2} borderRadius="none !important">
+                        {t('core.module.http.Props name')}
+                      </Th>
+                      <Th px={2} borderRadius="none !important">
+                        {t('core.module.http.Props value')}
+                      </Th>
                     </Tr>
                   </Thead>
                   <Tbody>
@@ -464,7 +474,7 @@ const HttpPluginEditModal = ({
               borderRadius={'md'}
               overflow={'hidden'}
               borderWidth={'1px'}
-              borderBottom="none"
+              borderBottom={'none'}
             >
               <TableContainer maxH={400} overflowY={'auto'}>
                 <Table bg={'white'}>

@@ -6,13 +6,13 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 
 import Tabs from '../../Tabs';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTooltip from '../../MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Markdown from '../../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatNumber } from '@fastgpt/global/common/math/tools';
 import { useI18n } from '@/web/context/I18n';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 function RowRender({
   children,
@@ -22,10 +22,10 @@ function RowRender({
 }: { children: React.ReactNode; label: string } & BoxProps) {
   return (
     <Box mb={3}>
-      <Box fontSize={['sm', 'md']} mb={mb} flex={'0 0 90px'}>
+      <Box fontSize={'sm'} mb={mb} flex={'0 0 90px'}>
         {label}:
       </Box>
-      <Box borderRadius={'sm'} fontSize={'sm'} bg={'myGray.50'} {...props}>
+      <Box borderRadius={'sm'} fontSize={['xs', 'sm']} bg={'myGray.50'} {...props}>
         {children}
       </Box>
     </Box>
@@ -98,9 +98,7 @@ const WholeResponseModal = ({
       title={
         <Flex alignItems={'center'}>
           {t('core.chat.response.Complete Response')}
-          <MyTooltip label={'从左往右，为各个模块的响应顺序'}>
-            <QuestionOutlineIcon ml={2} />
-          </MyTooltip>
+          <QuestionTip ml={2} label={'从左往右，为各个模块的响应顺序'}></QuestionTip>
         </Flex>
       }
     >

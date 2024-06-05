@@ -1,5 +1,5 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   Box,
   Button,
@@ -38,6 +38,7 @@ import { useRequest } from 'ahooks';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const csvTemplate = `"第一列内容"
 "只会将第一列内容导入，其余列会被忽略"
@@ -85,10 +86,10 @@ const InputGuideConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
-      <HStack>
-        <Box>{chatT('Input guide')}</Box>
+      <Flex alignItems={'center'}>
+        <Box color={'myGray.900'}>{chatT('Input guide')}</Box>
         <ChatFunctionTip type={'inputGuide'} />
-      </HStack>
+      </Flex>
       <Box flex={1} />
       <MyTooltip label={chatT('Config input guide')}>
         <Button
@@ -109,7 +110,7 @@ const InputGuideConfig = ({
       >
         <ModalBody px={[5, 16]} py={[4, 8]} w={'500px'}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            {t('Is open')}
+            <FormLabel>{t('Is open')}</FormLabel>
             <Switch
               isChecked={isOpenQuestionGuide}
               size={'lg'}
@@ -124,7 +125,7 @@ const InputGuideConfig = ({
           {isOpenQuestionGuide && (
             <>
               <Flex mt={8} alignItems={'center'}>
-                {chatT('Input guide lexicon')}
+                <FormLabel>{chatT('Input guide lexicon')}</FormLabel>
                 <Box fontSize={'xs'} px={2} bg={'myGray.100'} ml={1} rounded={'full'}>
                   {total}
                 </Box>
@@ -142,7 +143,7 @@ const InputGuideConfig = ({
               </Flex>
               <>
                 <Flex mt={8} alignItems={'center'}>
-                  {chatT('Custom input guide url')}
+                  <FormLabel>{chatT('Custom input guide url')}</FormLabel>
                   <Flex
                     onClick={() => window.open(getDocPath('/docs/course/chat_input_guide'))}
                     color={'primary.700'}

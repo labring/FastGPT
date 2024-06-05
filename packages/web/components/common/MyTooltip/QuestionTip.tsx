@@ -9,7 +9,7 @@ type Props = IconProps & {
 const QuestionTip = ({ label, maxW, ...props }: Props) => {
   return (
     <MyTooltip label={label} maxW={maxW}>
-      <QuestionOutlineIcon {...props} />
+      <QuestionOutlineIcon w={'0.9rem'} {...props} />
     </MyTooltip>
   );
 };

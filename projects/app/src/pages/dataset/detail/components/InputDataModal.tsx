@@ -11,7 +11,7 @@ import {
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useQuery } from '@tanstack/react-query';
 import { useTranslation } from 'next-i18next';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -258,7 +258,7 @@ const InputDataModal = ({
           />
         </Box>
         <Flex flexDirection={'column'} pb={8} flex={1} h={'100%'}>
-          <Box fontSize={'lg'} px={5} py={3} fontWeight={'medium'}>
+          <Box fontSize={'md'} px={5} py={3} fontWeight={'medium'}>
             {currentTab === TabEnum.content && (
               <>{dataId ? t('dataset.data.Update Data') : t('dataset.data.Input Data')}</>
             )}
@@ -311,7 +311,6 @@ const InputDataModal = ({
                     ) : (
                       <Textarea
                         maxLength={maxToken}
-                        fontSize={'sm'}
                         rows={10}
                         borderColor={'transparent'}
                         px={0}

@@ -44,6 +44,7 @@ const ChatHeader = ({
       h={['46px', '60px']}
       borderBottom={theme.borders.sm}
       color={'myGray.900'}
+      fontSize={'sm'}
     >
       {isPc ? (
         <>

@@ -416,7 +416,7 @@ const Dataset = () => {
               className={'textEllipsis3'}
               py={1}
               wordBreak={'break-all'}
-              fontSize={'sm'}
+              fontSize={'xs'}
               color={'myGray.500'}
             >
               {dataset.intro ||

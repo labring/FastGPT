@@ -11,7 +11,9 @@ const WelcomeTextConfig = (props: TextareaProps) => {
     <>
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/chat'} w={'20px'} />
-        <Box ml={2}>{t('core.app.Welcome Text')}</Box>
+        <Box ml={2} color={'myGray.900'}>
+          {t('core.app.Welcome Text')}
+        </Box>
         <ChatFunctionTip type={'welcome'} />
       </Flex>
       <MyTextarea

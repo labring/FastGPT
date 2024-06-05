@@ -47,7 +47,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
-        <Box fontWeight={'bold'} fontSize={['md', 'xl']}>
+        <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
           {t('core.app.publish.Fei shu bot publish')}
         </Box>
         <Button

@@ -10,7 +10,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CreateModal from './component/CreateModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
@@ -141,7 +141,7 @@ const MyApps = () => {
                 className={'textEllipsis3'}
                 py={2}
                 wordBreak={'break-all'}
-                fontSize={'sm'}
+                fontSize={'xs'}
                 color={'myGray.600'}
               >
                 {app.intro || '这个应用还没写介绍~'}

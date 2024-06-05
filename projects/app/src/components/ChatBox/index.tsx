@@ -32,7 +32,7 @@ import {
 } from '@/web/core/chat/api';
 import type { AdminMarkType } from './components/SelectMarkCollection';
 
-import MyTooltip from '../MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 import { postQuestionGuide } from '@/web/core/ai/api';
 import type {

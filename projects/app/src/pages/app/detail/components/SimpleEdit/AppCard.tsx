@@ -63,8 +63,8 @@ const AppCard = () => {
     <>
       <Box px={4}>
         <Flex alignItems={'center'} justifyContent={'space-between'}>
-          <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
-            <PermissionIconText defaultPermission={appDetail.defaultPermission} />
+          <Box fontWeight={'bold'}>
+            <PermissionIconText defaultPermission={appDetail.defaultPermission} fontSize={'md'} />
           </Box>
           <Box color={'myGray.500'} fontSize={'sm'}>
             AppId:{' '}
@@ -86,7 +86,7 @@ const AppCard = () => {
         >
           <Flex alignItems={'center'} py={2}>
             <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
-            <Box ml={3} fontWeight={'bold'} fontSize={'lg'}>
+            <Box ml={3} fontWeight={'bold'} fontSize={'md'}>
               {appDetail.name}
             </Box>
             {appDetail.permission.isOwner && (

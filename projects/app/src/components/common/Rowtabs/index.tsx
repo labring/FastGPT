@@ -38,7 +38,7 @@ const RowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: P
               })}
         >
           {item.icon && <MyIcon name={item.icon as any} mr={1} w={'14px'} />}
-          <Box>{item.label}</Box>
+          <Box fontSize={'sm'}>{item.label}</Box>
         </Flex>
       ))}
     </Box>

@@ -20,7 +20,6 @@ import { getDocPath } from '@/web/common/system/doc';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { LLMModelItemType } from '@fastgpt/global/core/ai/model.d';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const AIChatSettingsModal = ({
@@ -209,9 +208,10 @@ const AIChatSettingsModal = ({
           <Flex mt={8} alignItems={'center'}>
             <Box {...LabelStyles}>
               {t('core.app.Ai response')}
-              <MyTooltip label={t('core.module.template.AI response switch tip')}>
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
+              <QuestionTip
+                ml={1}
+                label={t('core.module.template.AI response switch tip')}
+              ></QuestionTip>
             </Box>
             <Box flex={1} ml={'10px'}>
               <Switch

@@ -100,7 +100,7 @@ const Standard = ({
       <Box fontWeight={'bold'} fontSize={['24px', '36px']}>
         {t('support.wallet.subscription.Sub plan')}
       </Box>
-      <Box mt={8} mb={10} color={'myGray.500'} fontSize={'lg'}>
+      <Box mt={8} mb={10} color={'myGray.500'} fontSize={'md'}>
         {t('support.wallet.subscription.Sub plan tip', {
           title: feConfigs?.systemTitle
         })}
@@ -156,7 +156,7 @@ const Standard = ({
                     borderColor: 'myGray.150'
                   })}
             >
-              <Box fontSize={'lg'} fontWeight={'500'}>
+              <Box fontSize={'md'} fontWeight={'500'}>
                 {t(item.label)}
               </Box>
               <Box fontSize={['32px', '42px']} fontWeight={'bold'}>

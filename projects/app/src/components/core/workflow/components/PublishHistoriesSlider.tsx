@@ -105,7 +105,7 @@ const PublishHistoriesSlider = () => {
         <Button
           mx={'20px'}
           variant={'whitePrimary'}
-          mb={1}
+          mb={2}
           isDisabled={!selectedHistoryId}
           onClick={() => {
             setSelectedHistoryId(undefined);
@@ -125,7 +125,7 @@ const PublishHistoriesSlider = () => {
               <Flex
                 key={data.index}
                 alignItems={'center'}
-                py={4}
+                py={3}
                 px={3}
                 borderRadius={'md'}
                 cursor={'pointer'}

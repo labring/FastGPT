@@ -7,7 +7,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { SearchDataResponseItemType } from '@fastgpt/global/core/dataset/type';
 import dynamic from 'next/dynamic';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
-import MyTooltip from '../../MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getSourceNameIcon } from '@fastgpt/global/core/dataset/utils';
 import ChatBoxDivider from '@/components/core/chat/Divider';
@@ -108,9 +108,9 @@ const ResponseTags = ({
               <MyTooltip key={item.collectionId} label={t('core.chat.quote.Read Quote')}>
                 <Flex
                   alignItems={'center'}
-                  fontSize={'sm'}
+                  fontSize={'xs'}
                   border={theme.borders.sm}
-                  py={1}
+                  py={1.5}
                   px={2}
                   borderRadius={'sm'}
                   _hover={{

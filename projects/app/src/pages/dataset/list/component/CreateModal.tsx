@@ -9,7 +9,7 @@ import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { postCreateDataset } from '@/web/core/dataset/api';
 import type { CreateDatasetParams } from '@/global/core/dataset/api.d';
@@ -17,9 +17,9 @@ import { useTranslation } from 'next-i18next';
 import MyRadio from '@/components/common/MyRadio';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useI18n } from '@/web/context/I18n';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -111,9 +111,9 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       isCentered={!isPc}
       w={'450px'}
     >
-      <ModalBody>
+      <ModalBody py={2}>
         <>
-          <Box mb={1} color={'myGray.800'} fontWeight={'bold'}>
+          <Box mb={1} color={'myGray.900'}>
             {t('core.dataset.Dataset Type')}
           </Box>
           <MyRadio
@@ -144,9 +144,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
           />
         </>
         <Box mt={5}>
-          <Box color={'myGray.800'} fontWeight={'bold'}>
-            {t('common.Set Name')}
-          </Box>
+          <Box color={'myGray.900'}>{t('common.Set Name')}</Box>
           <Flex mt={1} alignItems={'center'}>
             <MyTooltip label={t('common.avatar.Select Avatar')}>
               <Avatar
@@ -174,11 +172,9 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         </Box>
         {filterNotHiddenVectorModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
-            <Flex alignItems={'center'} flex={'0 0 100px'}>
+            <Flex alignItems={'center'} flex={'0 0 100px'} fontSize={'sm'}>
               {t('core.ai.model.Vector Model')}
-              <MyTooltip label={t('core.dataset.embedding model tip')}>
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
+              <QuestionTip label={t('core.dataset.embedding model tip')} />
             </Flex>
             <Box flex={1}>
               <AIModelSelector
@@ -197,7 +193,9 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
         )}
         {datasetModelList.length > 1 && (
           <Flex mt={6} alignItems={'center'}>
-            <Box flex={'0 0 100px'}>{t('core.ai.model.Dataset Agent Model')}</Box>
+            <Box flex={'0 0 100px'} fontSize={'sm'}>
+              {t('core.ai.model.Dataset Agent Model')}
+            </Box>
             <Box flex={1}>
               <AIModelSelector
                 w={'100%'}

@@ -2,7 +2,6 @@ import React from 'react';
 import { Box, Flex, useTheme, Grid, type GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyTooltip from '../MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import QuestionTip from '../MyTooltip/QuestionTip';
 
 // @ts-ignore
@@ -95,6 +94,7 @@ const LeftRadio = ({
                 color={'myGray.900'}
                 fontWeight={item.desc ? '500' : 'normal'}
                 whiteSpace={'nowrap'}
+                fontSize={'sm'}
               >
                 {typeof item.title === 'string' ? t(item.title) : item.title}
               </Box>

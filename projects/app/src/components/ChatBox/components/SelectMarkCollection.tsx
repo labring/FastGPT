@@ -76,7 +76,7 @@ const SelectMarkCollection = ({
                     >
                       <Flex alignItems={'center'} h={'38px'}>
                         <Avatar src={item.avatar} w={['24px', '28px', '32px']}></Avatar>
-                        <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg', 'xl']}>
+                        <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg']}>
                           {item.name}
                         </Box>
                       </Flex>

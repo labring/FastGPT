@@ -68,6 +68,7 @@ function ManageModal({ onClose }: ManageModalProps) {
               </Tr>
             </Thead>
             <Tbody>
+              <Tr h={'10px'} />
               {collaboratorList?.map((item) => {
                 return (
                   <Tr

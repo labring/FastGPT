@@ -19,7 +19,7 @@ import { useTranslation } from 'next-i18next';
 import LeftRadio from '@fastgpt/web/components/common/Radio/LeftRadio';
 import { TrainingModeEnum, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { ImportProcessWayEnum } from '@/web/core/dataset/constants';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { Prompt_AgentQA } from '@fastgpt/global/core/ai/prompt/agent';
@@ -28,6 +28,7 @@ import Tag from '@fastgpt/web/components/common/Tag/index';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { useToast } from '@fastgpt/web/hooks/useToast';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean }) {
   const { t } = useTranslation();
@@ -73,17 +74,15 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
   );
 
   return (
-    <Box h={'100%'} display={['block', 'flex']} gap={5}>
+    <Box h={'100%'} display={['block', 'flex']} gap={5} fontSize={'sm'}>
       <Box flex={'1 0 0'} minW={['auto', '540px']} maxW={'600px'}>
         <Flex alignItems={'center'}>
           <MyIcon name={'common/settingLight'} w={'20px'} />
-          <Box fontSize={'lg'}>{t('core.dataset.import.Data process params')}</Box>
+          <Box fontSize={'md'}>{t('core.dataset.import.Data process params')}</Box>
         </Flex>
 
         <Flex mt={4} alignItems={'center'}>
-          <Box color={'myGray.600'} flex={'0 0 100px'}>
-            {t('core.dataset.import.Training mode')}
-          </Box>
+          <FormLabel flex={'0 0 100px'}>{t('core.dataset.import.Training mode')}</FormLabel>
           <LeftRadio
             list={trainingModeList.map(([key, value]) => ({
               title: t(value.label),
@@ -94,15 +93,14 @@ function DataProcess({ showPreviewChunks = true }: { showPreviewChunks: boolean 
             py={2}
             value={mode}
             onChange={onSelectTrainWay}
-            gridTemplateColumns={'repeat(3,1fr)'}
             defaultBg="white"
             activeBg="white"
+            display={'flex'}
+            flexWrap={'wrap'}
           />
         </Flex>
         <Flex mt={5}>
-          <Box color={'myGray.600'} flex={'0 0 100px'}>
-            {t('core.dataset.import.Process way')}
-          </Box>
+          <FormLabel flex={'0 0 100px'}>{t('core.dataset.import.Process way')}</FormLabel>
           <LeftRadio
             list={[
               {

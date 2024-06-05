@@ -6,12 +6,11 @@ import { useForm } from 'react-hook-form';
 import { PromptTemplateItem } from '@fastgpt/global/core/ai/type';
 import { useTranslation } from 'next-i18next';
 import { ModalBody } from '@chakra-ui/react';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   Prompt_QuotePromptList,
   Prompt_QuoteTemplateList
 } from '@fastgpt/global/core/ai/prompt/AIChat';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import PromptTemplate from '@/components/PromptTemplate';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
@@ -23,6 +22,7 @@ import { WorkflowContext } from '@/components/core/workflow/context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { AppContext } from '@/web/core/app/context/appContext';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const LabelStyles: BoxProps = {
   fontSize: ['sm', 'md']
@@ -179,14 +179,12 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
             <Box>
               <Flex {...LabelStyles} mb={1}>
                 {t('core.app.Quote templates')}
-                <MyTooltip
+                <QuestionTip
+                  ml={1}
                   label={t('template.Quote Content Tip', {
                     default: Prompt_QuoteTemplateList[0].value
                   })}
-                  forceShow
-                >
-                  <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-                </MyTooltip>
+                ></QuestionTip>
                 <Box flex={1} />
                 <Box
                   {...selectTemplateBtn}
@@ -217,14 +215,12 @@ const SettingQuotePrompt = (props: RenderInputProps) => {
             <Box mt={4}>
               <Flex {...LabelStyles} mb={1}>
                 {t('core.app.Quote prompt')}
-                <MyTooltip
+                <QuestionTip
+                  ml={1}
                   label={t('template.Quote Prompt Tip', {
                     default: Prompt_QuotePromptList[0].value
                   })}
-                  forceShow
-                >
-                  <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-                </MyTooltip>
+                ></QuestionTip>
               </Flex>
               <PromptEditor
                 variables={quotePromptVariables}

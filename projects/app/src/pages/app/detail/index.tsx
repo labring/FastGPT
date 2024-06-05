@@ -100,7 +100,7 @@ const AppDetail = ({ appId, currentTab }: { appId: string; currentTab: TabEnum }
             >
               <Flex mb={4} alignItems={'center'}>
                 <Avatar src={appDetail.avatar} w={'34px'} borderRadius={'md'} />
-                <Box ml={2} fontWeight={'bold'}>
+                <Box ml={2} fontSize={'sm'} fontWeight={'bold'}>
                   {appDetail.name}
                 </Box>
               </Flex>
@@ -142,7 +142,7 @@ const AppDetail = ({ appId, currentTab }: { appId: string; currentTab: TabEnum }
             </Box>
             {/* phone tab */}
             <Box display={['block', 'none']} textAlign={'center'} py={3}>
-              <Box className="textlg" fontSize={'xl'} fontWeight={'bold'}>
+              <Box className="textlg" fontSize={'lg'} fontWeight={'bold'}>
                 {appDetail.name}
               </Box>
               <Tabs

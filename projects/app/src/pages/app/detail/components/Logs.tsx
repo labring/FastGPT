@@ -75,7 +75,7 @@ const Logs = ({ appId }: { appId: string }) => {
       <Box px={[4, 8]}>
         {isPc && (
           <>
-            <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2}>
+            <Box fontWeight={'bold'} fontSize={['md', 'lg']} mb={2}>
               {appT('Chat logs')}
             </Box>
             <Box color={'myGray.500'} fontSize={'sm'}>

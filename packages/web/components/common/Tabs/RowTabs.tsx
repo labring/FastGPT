@@ -23,6 +23,7 @@ const RowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: P
       borderColor={'borderColor.base'}
       bg={'myGray.50'}
       gap={'4px'}
+      fontSize={'sm'}
       {...props}
     >
       {list.map((item) => (

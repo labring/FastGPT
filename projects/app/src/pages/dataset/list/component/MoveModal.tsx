@@ -11,7 +11,7 @@ import {
   Grid
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -70,7 +70,7 @@ const MoveModal = ({
       title={
         <>
           {!!parentId ? (
-            <Flex flex={1} userSelect={'none'} fontSize={['sm', 'lg']} fontWeight={'normal'}>
+            <Flex flex={1} userSelect={'none'} fontSize={['sm', 'md']} fontWeight={'normal'}>
               {paths.map((item, i) => (
                 <Flex key={item.parentId} mr={2} alignItems={'center'}>
                   <Box
@@ -146,7 +146,7 @@ const MoveModal = ({
                           className="textEllipsis"
                           ml={3}
                           fontWeight={'bold'}
-                          fontSize={['md', 'lg', 'xl']}
+                          fontSize={['md', 'md']}
                         >
                           {item.name}
                         </Box>

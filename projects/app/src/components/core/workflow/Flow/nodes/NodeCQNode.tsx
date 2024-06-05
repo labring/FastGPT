@@ -9,7 +9,7 @@ import type { ClassifyQuestionAgentItemType } from '@fastgpt/global/core/workflo
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { SourceHandle } from './render/Handle';
