@@ -84,7 +84,7 @@ const AppCard = () => {
           bg={'primary.50'}
           position={'relative'}
         >
-          <Flex alignItems={'center'} py={2}>
+          <Flex alignItems={'center'}>
             <Avatar src={appDetail.avatar} borderRadius={'md'} w={'28px'} />
             <Box ml={3} fontWeight={'bold'} fontSize={'md'}>
               {appDetail.name}
@@ -107,10 +107,12 @@ const AppCard = () => {
           </Flex>
           <Box
             flex={1}
-            my={2}
+            mt={3}
+            mb={4}
             className={'textEllipsis3'}
             wordBreak={'break-all'}
             color={'myGray.600'}
+            fontSize={'xs'}
           >
             {appDetail.intro || t('core.app.tip.Add a intro to app')}
           </Box>

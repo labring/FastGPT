@@ -96,9 +96,9 @@ const VariableEdit = ({
     <Box>
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <Box ml={2} fontWeight={'medium'} color={'myGray.900'}>
+        <FormLabel ml={2} fontWeight={'medium'}>
           {t('core.module.Variable')}
-        </Box>
+        </FormLabel>
         <ChatFunctionTip type={'variable'} />
         <Box flex={1} />
         <Button

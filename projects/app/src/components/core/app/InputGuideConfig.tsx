@@ -86,7 +86,7 @@ const InputGuideConfig = ({
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
       <Flex alignItems={'center'}>
-        <Box color={'myGray.900'}>{chatT('Input guide')}</Box>
+        <FormLabel>{chatT('Input guide')}</FormLabel>
         <ChatFunctionTip type={'inputGuide'} />
       </Flex>
       <Box flex={1} />

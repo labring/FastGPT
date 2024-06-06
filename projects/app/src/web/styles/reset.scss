@@ -56,11 +56,9 @@ div {
   }
 }
 
+input::placeholder,
 textarea::placeholder {
-  font-size: 0.875em;
-}
-input::placeholder {
-  font-size: 0.8em;
+  font-size: var(--chakra-fontSizes-mini);
 }
 
 * {

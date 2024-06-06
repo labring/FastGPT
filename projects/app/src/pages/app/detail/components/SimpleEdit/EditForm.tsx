@@ -40,6 +40,7 @@ import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -62,7 +63,7 @@ const BoxStyles: BoxProps = {
 const LabelStyles: BoxProps = {
   w: ['60px', '100px'],
   flexShrink: 0,
-  fontSize: 'sm'
+  fontSize: 'xs'
 };
 
 const EditForm = ({
@@ -215,9 +216,9 @@ const EditForm = ({
           <Box {...BoxStyles}>
             <Flex alignItems={'center'}>
               <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
-              <Box ml={2} flex={1} color={'myGray.900'}>
+              <FormLabel ml={2} flex={1}>
                 {appT('AI Settings')}
-              </Box>
+              </FormLabel>
             </Flex>
             <Flex alignItems={'center'} mt={5}>
               <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
@@ -266,9 +267,7 @@ const EditForm = ({
             <Flex alignItems={'center'}>
               <Flex alignItems={'center'} flex={1}>
                 <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
-                <Box ml={2} color={'myGray.900'}>
-                  {t('core.dataset.Choose Dataset')}
-                </Box>
+                <FormLabel ml={2}>{t('core.dataset.Choose Dataset')}</FormLabel>
               </Flex>
               <Button
                 variant={'transparentBase'}
@@ -341,9 +340,7 @@ const EditForm = ({
             <Flex alignItems={'center'}>
               <Flex alignItems={'center'} flex={1}>
                 <MyIcon name={'core/app/toolCall'} w={'20px'} />
-                <Box ml={2} color={'myGray.900'}>
-                  {t('core.app.Tool call')}(实验功能)
-                </Box>
+                <FormLabel ml={2}>{t('core.app.Tool call')}(实验功能)</FormLabel>
                 <QuestionTip ml={1} label={t('core.app.Tool call tip')} />
               </Flex>
               <Button
