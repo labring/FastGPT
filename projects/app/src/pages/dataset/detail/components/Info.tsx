@@ -250,7 +250,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       )}
 
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
-        <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}></FormLabel>
+        <Box flex={['0 0 90px', '0 0 160px']} w={0}></Box>
         <Button
           isLoading={btnLoading}
           mr={4}
