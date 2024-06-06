@@ -145,7 +145,7 @@ const ScheduledTriggerConfig = ({
       defaultPrompt?: string;
     }) => {
       onChange({
-        cronString: cronString ?? value?.cronString ?? '0 0 * * *',
+        cronString: cronString ?? value?.cronString ?? '',
         timezone: timezone ?? value?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
         defaultPrompt: defaultPrompt ?? value?.defaultPrompt ?? ''
       });

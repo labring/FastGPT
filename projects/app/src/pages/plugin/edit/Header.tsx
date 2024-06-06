@@ -106,7 +106,7 @@ const Header = ({ plugin, onClose }: Props) => {
               }}
             />
           </MyTooltip>
-          <Box ml={[3, 5]} fontSize={['md', '2xl']} flex={1}>
+          <Box ml={[3, 5]} fontSize={['md', 'lg']} flex={1}>
             {plugin.name}
           </Box>
 

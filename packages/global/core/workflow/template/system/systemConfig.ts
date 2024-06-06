@@ -1,6 +1,6 @@
 import { FlowNodeTypeEnum } from '../../node/constant';
 import { FlowNodeTemplateType } from '../../type/index.d';
-import { FlowNodeTemplateTypeEnum, WorkflowIOValueTypeEnum } from '../../constants';
+import { FlowNodeTemplateTypeEnum } from '../../constants';
 import { getHandleConfig } from '../utils';
 
 export const SystemConfigNode: FlowNodeTemplateType = {
