@@ -66,7 +66,7 @@ const AppCard = () => {
           <Box fontWeight={'bold'}>
             <PermissionIconText defaultPermission={appDetail.defaultPermission} fontSize={'md'} />
           </Box>
-          <Box color={'myGray.500'} fontSize={'sm'}>
+          <Box color={'myGray.500'} fontSize={'xs'}>
             AppId:{' '}
             <Box as={'span'} userSelect={'all'}>
               {appId}

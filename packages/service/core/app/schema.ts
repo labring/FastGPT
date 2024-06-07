@@ -1,5 +1,5 @@
 import { AppTypeMap } from '@fastgpt/global/core/app/constants';
-import { connectionMongo, type Model, InferSchemaType } from '../../common/mongo';
+import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
 import { PermissionTypeEnum, PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
