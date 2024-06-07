@@ -4,13 +4,14 @@ import {
   switchAnatomy,
   selectAnatomy,
   numberInputAnatomy,
-  checkboxAnatomy
+  checkboxAnatomy,
+  tableAnatomy,
+  radioAnatomy
 } from '@chakra-ui/anatomy';
 import { createMultiStyleConfigHelpers, defineStyle } from '@chakra-ui/styled-system';
 
-const { definePartsStyle, defineMultiStyleConfig } = createMultiStyleConfigHelpers(
-  modalAnatomy.keys
-);
+const { definePartsStyle: modalPart, defineMultiStyleConfig: modalMultiStyle } =
+  createMultiStyleConfigHelpers(modalAnatomy.keys);
 const { definePartsStyle: switchPart, defineMultiStyleConfig: switchMultiStyle } =
   createMultiStyleConfigHelpers(switchAnatomy.keys);
 const { definePartsStyle: selectPart, defineMultiStyleConfig: selectMultiStyle } =
@@ -19,6 +20,10 @@ const { definePartsStyle: numInputPart, defineMultiStyleConfig: numInputMultiSty
   createMultiStyleConfigHelpers(numberInputAnatomy.keys);
 const { definePartsStyle: checkBoxPart, defineMultiStyleConfig: checkBoxMultiStyle } =
   createMultiStyleConfigHelpers(checkboxAnatomy.keys);
+const { definePartsStyle: tablePart, defineMultiStyleConfig: tableMultiStyle } =
+  createMultiStyleConfigHelpers(tableAnatomy.keys);
+const { definePartsStyle: radioParts, defineMultiStyleConfig: radioStyle } =
+  createMultiStyleConfigHelpers(radioAnatomy.keys);
 
 const shadowLight = '0px 0px 0px 2.4px rgba(51, 112, 255, 0.15)';
 
@@ -65,7 +70,7 @@ const Button = defineStyleConfig({
       borderRadius: '8px'
     },
     md: {
-      fontSize: 'md',
+      fontSize: 'sm',
       px: '20px',
       py: 0,
       h: '36px',
@@ -73,7 +78,7 @@ const Button = defineStyleConfig({
       borderRadius: '8px'
     },
     mdSquare: {
-      fontSize: 'md',
+      fontSize: 'sm',
       px: '0',
       py: 0,
       h: '36px',
@@ -267,9 +272,6 @@ const Button = defineStyleConfig({
 });
 
 const Input: ComponentStyleConfig = {
-  baseStyle: {
-    fontsize: '1rem'
-  },
   sizes: {
     sm: defineStyle({
       field: {
@@ -312,13 +314,15 @@ const NumberInput = numInputMultiStyle({
     sm: defineStyle({
       field: {
         h: '32px',
-        borderRadius: 'md'
+        borderRadius: 'md',
+        fontsize: 'sm'
       }
     }),
     md: defineStyle({
       field: {
         h: '40px',
-        borderRadius: 'md'
+        borderRadius: 'md',
+        fontsize: 'sm'
       }
     })
   },
@@ -359,6 +363,7 @@ const Textarea: ComponentStyleConfig = {
       border: '1px solid',
       borderRadius: 'md',
       borderColor: 'myGray.200',
+      fontSize: 'sm',
       _hover: {
         borderColor: ''
       },
@@ -406,12 +411,34 @@ const Select = selectMultiStyle({
   }
 });
 
+const Radio = radioStyle({
+  baseStyle: radioParts({
+    control: {
+      _hover: {
+        borderColor: 'primary.300',
+        bg: 'primary.50'
+      },
+      _checked: {
+        borderColor: 'primary.600',
+        bg: 'primary.50',
+        boxShadow: shadowLight,
+        _before: {
+          bg: 'primary.600'
+        },
+        _hover: {
+          bg: 'primary.50'
+        }
+      }
+    }
+  })
+});
 const Checkbox = checkBoxMultiStyle({
   baseStyle: checkBoxPart({
     label: {
       fontFamily: 'mono' // change the font family of the label
     },
     control: {
+      borderRadius: 'xs',
       bg: 'none',
       _checked: {
         bg: 'primary.50',
@@ -429,10 +456,10 @@ const Checkbox = checkBoxMultiStyle({
   })
 });
 
-const Modal = defineMultiStyleConfig({
-  baseStyle: definePartsStyle({
+const Modal = modalMultiStyle({
+  baseStyle: modalPart({
     body: {
-      py: [3, 5],
+      py: [2, 4],
       px: [5, 7]
     },
     footer: {
@@ -441,20 +468,62 @@ const Modal = defineMultiStyleConfig({
   })
 });
 
+const Table = tableMultiStyle({
+  sizes: {
+    md: defineStyle({
+      table: {
+        fontsize: 'sm'
+      },
+      thead: {
+        tr: {
+          bg: 'myGray.100',
+          fontSize: 'sm',
+          th: {
+            borderBottom: 'none',
+            overflow: 'hidden',
+            '&:first-of-type': {
+              borderLeftRadius: 'md'
+            },
+            '&:last-of-type': {
+              borderRightRadius: 'md'
+            }
+          }
+        }
+      },
+      tbody: {
+        tr: {
+          td: {
+            overflow: 'hidden',
+            '&:first-of-type': {
+              borderLeftRadius: 'md'
+            },
+            '&:last-of-type': {
+              borderRightRadius: 'md'
+            }
+          }
+        }
+      }
+    })
+  },
+  defaultProps: {
+    size: 'md'
+  }
+});
+
 // 全局主题
 export const theme = extendTheme({
   styles: {
     global: {
       'html, body': {
-        fontSize: '14px',
-        color: 'myGray.900',
-        fontWeight: 400,
+        color: 'myGray.600',
+        fontWeight: 'normal',
         height: '100%',
         overflow: 'hidden'
       },
       a: {
         color: 'primary.600'
       },
+
       '*': {
         _focusVisible: {
           boxShadow: 'none'
@@ -586,16 +655,17 @@ export const theme = extendTheme({
     body: 'PingFang,Noto Sans,-apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol"'
   },
   fontSizes: {
+    mini: '0.75rem',
     xs: '0.8rem',
-    sm: '0.93rem',
+    sm: '0.875rem',
     md: '1rem',
-    lg: '1.15rem',
-    xl: '1.3rem',
-    '2xl': '1.45rem',
-    '3xl': '1.6rem',
-    '4xl': '1.75rem',
-    '5xl': '1.9rem',
-    '6xl': '2.05rem'
+    lg: '1.25rem',
+    xl: '1.5rem',
+    '2xl': '1.75rem',
+    '3xl': '2rem',
+    '4xl': '2.25rem',
+    '5xl': '2.8rem',
+    '6xl': '3.6rem'
   },
   borders: {
     sm: '1px solid #E8EBF0',
@@ -644,6 +714,8 @@ export const theme = extendTheme({
     Select,
     NumberInput,
     Checkbox,
-    Modal
+    Modal,
+    Table,
+    Radio
   }
 });

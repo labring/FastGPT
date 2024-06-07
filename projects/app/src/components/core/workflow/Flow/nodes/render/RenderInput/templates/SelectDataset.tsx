@@ -85,7 +85,7 @@ const SelectDatasetRender = ({ inputs = [], item, nodeId }: RenderInputProps) =>
                 w={0}
                 className="textEllipsis"
                 fontWeight={'bold'}
-                fontSize={['md', 'lg', 'xl']}
+                fontSize={['md', 'lg']}
               >
                 {item.name}
               </Box>

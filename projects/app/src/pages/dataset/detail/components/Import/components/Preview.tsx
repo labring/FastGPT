@@ -22,7 +22,7 @@ const Preview = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
     <Box h={'100%'} display={['block', 'flex']} flexDirection={'column'}>
       <Flex alignItems={'center'}>
         <MyIcon name={'core/dataset/fileCollection'} w={'20px'} />
-        <Box fontSize={'lg'}>{t('core.dataset.import.Sources list')}</Box>
+        <Box fontSize={'md'}>{t('core.dataset.import.Sources list')}</Box>
       </Flex>
       <Box mt={3} flex={'1 0 0'} width={'100%'} overflow={'auto'}>
         {sources.map((source) => (
@@ -54,22 +54,26 @@ const Preview = ({ showPreviewChunks }: { showPreviewChunks: boolean }) => {
                   }
                   menuList={[
                     {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'core/dataset/fileCollection'} w={'14px'} mr={2} />
-                          {t('core.dataset.import.Preview raw text')}
-                        </Flex>
-                      ),
-                      onClick: () => setPreviewRawTextSource(source)
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'core/dataset/splitLight'} w={'14px'} mr={2} />
-                          {t('core.dataset.import.Preview chunks')}
-                        </Flex>
-                      ),
-                      onClick: () => setPreviewChunkSource(source)
+                      children: [
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'core/dataset/fileCollection'} w={'14px'} mr={2} />
+                              {t('core.dataset.import.Preview raw text')}
+                            </Flex>
+                          ),
+                          onClick: () => setPreviewRawTextSource(source)
+                        },
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'core/dataset/splitLight'} w={'14px'} mr={2} />
+                              {t('core.dataset.import.Preview chunks')}
+                            </Flex>
+                          ),
+                          onClick: () => setPreviewChunkSource(source)
+                        }
+                      ]
                     }
                   ]}
                 />

@@ -11,7 +11,7 @@ import {
   Grid
 } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
@@ -19,6 +19,7 @@ import { useTranslation } from 'next-i18next';
 import { useQuery } from '@tanstack/react-query';
 import { getDatasets, putDatasetById, getDatasetPaths } from '@/web/core/dataset/api';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const MoveModal = ({
   onClose,
@@ -70,7 +71,7 @@ const MoveModal = ({
       title={
         <>
           {!!parentId ? (
-            <Flex flex={1} userSelect={'none'} fontSize={['sm', 'lg']} fontWeight={'normal'}>
+            <Flex flex={1} userSelect={'none'} fontSize={['sm', 'md']} fontWeight={'normal'}>
               {paths.map((item, i) => (
                 <Flex key={item.parentId} mr={2} alignItems={'center'}>
                   <Box
@@ -146,7 +147,7 @@ const MoveModal = ({
                           className="textEllipsis"
                           ml={3}
                           fontWeight={'bold'}
-                          fontSize={['md', 'lg', 'xl']}
+                          fontSize={['md', 'md']}
                         >
                           {item.name}
                         </Box>
@@ -167,14 +168,7 @@ const MoveModal = ({
               })()
             )}
           </Grid>
-          {folderList.length === 0 && (
-            <Flex mt={5} flexDirection={'column'} alignItems={'center'}>
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                {t('common.folder.No Folder')}
-              </Box>
-            </Flex>
-          )}
+          {folderList.length === 0 && <EmptyTip text={t('common.folder.No Folder')}></EmptyTip>}
         </ModalBody>
 
         <ModalFooter>

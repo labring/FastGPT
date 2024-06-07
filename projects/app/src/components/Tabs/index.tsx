@@ -18,19 +18,19 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
     switch (size) {
       case 'sm':
         return {
-          fontSize: 'sm',
+          fontSize: 'xs',
           outP: '3px',
           inlineP: 1
         };
       case 'md':
         return {
-          fontSize: ['sm', 'md'],
+          fontSize: 'sm',
           outP: '4px',
           inlineP: 1
         };
       case 'lg':
         return {
-          fontSize: ['md', 'lg'],
+          fontSize: ['sm', 'md'],
           outP: '5px',
           inlineP: 2
         };

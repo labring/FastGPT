@@ -78,13 +78,13 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
           borderColor="myGray.200"
         >
           <Flex flexDirection="column" p="4">
-            <InputGroup alignItems="center" h="32px" my="2" py="1">
+            <InputGroup alignItems="center" size={'sm'}>
               <InputLeftElement>
                 <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
               </InputLeftElement>
               <Input
                 placeholder="搜索用户名"
-                fontSize="lg"
+                fontSize="sm"
                 bg={'myGray.50'}
                 onChange={(e) => {
                   setSearchKey(e.target.value);
@@ -98,7 +98,6 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                     py="2"
                     px={3}
                     borderRadius={'md'}
-                    fontSize="lg"
                     alignItems="center"
                     key={member.tmbId}
                     cursor={'pointer'}
@@ -112,8 +111,8 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                       }
                     }}
                   >
-                    <Checkbox isChecked={selected.includes(member)} size="lg" />
-                    <Avatar src={member.avatar} w="24px" />
+                    <Checkbox isChecked={selected.includes(member)} />
+                    <Avatar ml={2} src={member.avatar} w="1.5rem" />
                     {member.memberName}
                   </Flex>
                 );
@@ -135,11 +134,13 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
                     _hover={{ bg: 'myGray.50' }}
                     _notLast={{ mb: 2 }}
                   >
-                    <Avatar src={member.avatar} w="24px" />
-                    <Box w="full" fontSize="lg">
-                      {member.memberName}
-                    </Box>
-                    <CloseButton
+                    <Avatar src={member.avatar} w="1.5rem" />
+                    <Box w="full">{member.memberName}</Box>
+                    <MyIcon
+                      name={'common/closeLight'}
+                      w={'1rem'}
+                      cursor={'pointer'}
+                      _hover={{ color: 'red.600' }}
                       onClick={() =>
                         setSelected([...selected.filter((item) => item.tmbId != member.tmbId)])
                       }

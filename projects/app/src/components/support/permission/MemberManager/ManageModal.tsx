@@ -64,10 +64,13 @@ function ManageModal({ onClose }: ManageModalProps) {
               <Tr>
                 <Th border="none">名称</Th>
                 <Th border="none">权限</Th>
-                <Th border="none">操作</Th>
+                <Th border="none" w={'40px'}>
+                  操作
+                </Th>
               </Tr>
             </Thead>
             <Tbody>
+              <Tr h={'10px'} />
               {collaboratorList?.map((item) => {
                 return (
                   <Tr

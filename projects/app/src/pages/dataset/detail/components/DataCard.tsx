@@ -42,10 +42,11 @@ import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { formatFileSize } from '@fastgpt/global/common/file/tools';
 import { getCollectionSourceAndOpen } from '@/web/core/dataset/hooks/readCollectionSource';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { useI18n } from '@/web/context/I18n';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
@@ -181,7 +182,7 @@ const DataCard = () => {
           : [])
       }
     ];
-  }, [collection, t]);
+  }, [collection, datasetT, t]);
 
   return (
     <Box position={'relative'} py={[1, 5]} h={'100%'}>
@@ -210,7 +211,7 @@ const DataCard = () => {
                 <RawSourceBox
                   collectionId={collection._id}
                   {...getCollectionSourceData(collection)}
-                  fontSize={['md', 'lg']}
+                  fontSize={['sm', 'md']}
                   color={'black'}
                   textDecoration={'none'}
                 />
@@ -252,7 +253,7 @@ const DataCard = () => {
         </Flex>
         <Flex my={3} alignItems={'center'} px={5}>
           <Box>
-            <Box as={'span'} fontSize={['md', 'lg']}>
+            <Box as={'span'} fontSize={['sm', 'md']}>
               {t('core.dataset.data.Total Amount', { total })}
             </Box>
           </Box>
@@ -397,14 +398,7 @@ const DataCard = () => {
               <Pagination />
             </Flex>
           )}
-          {total === 0 && (
-            <Flex flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-              <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-              <Box mt={2} color={'myGray.500'}>
-                {t('core.dataset.data.Empty Tip')}
-              </Box>
-            </Flex>
-          )}
+          {total === 0 && <EmptyTip text={t('core.dataset.data.Empty Tip')}></EmptyTip>}
         </Box>
       </Flex>
 
@@ -412,11 +406,19 @@ const DataCard = () => {
       <Drawer isOpen={isOpen} placement="right" size={'md'} onClose={onClose}>
         <DrawerOverlay />
         <DrawerContent>
-          <DrawerHeader>{t('core.dataset.collection.metadata.metadata')}</DrawerHeader>
+          <DrawerHeader fontSize={'lg'}>
+            {t('core.dataset.collection.metadata.metadata')}
+          </DrawerHeader>
 
           <DrawerBody>
             {metadataList.map((item) => (
-              <Flex key={item.label} alignItems={'center'} mb={5} wordBreak={'break-all'}>
+              <Flex
+                key={item.label}
+                alignItems={'center'}
+                mb={5}
+                wordBreak={'break-all'}
+                fontSize={'sm'}
+              >
                 <Box color={'myGray.500'} flex={'0 0 100px'}>
                   {item.label}
                 </Box>

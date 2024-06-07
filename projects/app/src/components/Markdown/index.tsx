@@ -10,7 +10,7 @@ import styles from './index.module.scss';
 import dynamic from 'next/dynamic';
 
 import { Link, Button } from '@chakra-ui/react';
-import MyTooltip from '../MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import MyIcon from '@fastgpt/web/components/common/Icon';

@@ -1,4 +1,4 @@
-import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton, Text } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -28,7 +28,7 @@ function TeamList() {
         h={'40px'}
         borderBottom={'1.5px solid rgba(0, 0, 0, 0.05)'}
       >
-        <Box flex={['0 0 auto', 1]} fontWeight={'bold'} fontSize={['md', 'lg']}>
+        <Box flex={['0 0 auto', 1]} fontSize={['sm', 'md']}>
           {t('common.Team')}
         </Box>
         {/* if there is no team */}
@@ -73,6 +73,7 @@ function TeamList() {
             <Box
               flex={'1 0 0'}
               w={0}
+              fontSize={'sm'}
               {...(team.role === TeamMemberRoleEnum.owner
                 ? {
                     fontWeight: 'bold'

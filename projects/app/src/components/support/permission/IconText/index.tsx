@@ -9,6 +9,8 @@ import { Permission } from '@fastgpt/global/support/permission/controller';
 const PermissionIconText = ({
   permission,
   defaultPermission,
+  w = '1rem',
+  fontSize = 'mini',
   ...props
 }: {
   permission?: `${PermissionTypeEnum}`;
@@ -25,9 +27,9 @@ const PermissionIconText = ({
   }, [defaultPermission, permission]);
 
   return PermissionTypeMap[per] ? (
-    <Flex alignItems={'center'} {...props}>
-      <MyIcon name={PermissionTypeMap[per]?.iconLight as any} w={'14px'} />
-      <Box ml={'2px'} lineHeight={1}>
+    <Flex alignItems={'center'} fontSize={fontSize} {...props}>
+      <MyIcon name={PermissionTypeMap[per]?.iconLight as any} w={w} />
+      <Box ml={'2px'} lineHeight={1} fontSize={'xs'}>
         {t(PermissionTypeMap[per]?.label)}
       </Box>
     </Flex>

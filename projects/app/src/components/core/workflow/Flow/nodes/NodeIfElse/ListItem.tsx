@@ -65,11 +65,8 @@ const ListItem = ({
       >
         <Container w={snapshot.isDragging ? '' : 'full'} className="nodrag">
           <Flex mb={4} alignItems={'center'}>
-            <DragIcon
-              visibility={ifElseList.length > 1 ? 'visible' : 'hidden'}
-              provided={provided}
-            />
-            <Box color={'black'} fontSize={'lg'} ml={2}>
+            {ifElseList.length > 1 && <DragIcon provided={provided} />}
+            <Box color={'black'} fontSize={'md'} ml={2}>
               {getElseIFLabel(conditionIndex)}
             </Box>
             {conditionItem.list?.length > 1 && (

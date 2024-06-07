@@ -26,6 +26,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import dayjs from 'dayjs';
 import dynamic from 'next/dynamic';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const FeiShuEditModal = dynamic(() => import('./FeiShuEditModal'));
 
@@ -47,7 +48,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
   return (
     <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
       <Flex justifyContent={'space-between'}>
-        <Box fontWeight={'bold'} fontSize={['md', 'xl']}>
+        <Box fontWeight={'bold'} fontSize={['md', 'lg']}>
           {t('core.app.publish.Fei shu bot publish')}
         </Box>
         <Button
@@ -122,32 +123,36 @@ const FeiShu = ({ appId }: { appId: string }) => {
                     }
                     menuList={[
                       {
-                        label: t('common.Edit'),
-                        icon: 'edit',
-                        onClick: () =>
-                          setEditFeiShuLinkData({
-                            _id: item._id,
-                            name: item.name,
-                            limit: item.limit,
-                            app: item.app,
-                            responseDetail: item.responseDetail,
-                            defaultResponse: item.defaultResponse,
-                            immediateResponse: item.immediateResponse
-                          })
-                      },
-                      {
-                        label: t('common.Delete'),
-                        icon: 'delete',
-                        onClick: async () => {
-                          setIsLoading(true);
-                          try {
-                            await delShareChatById(item._id);
-                            refetchShareChatList();
-                          } catch (error) {
-                            console.log(error);
+                        children: [
+                          {
+                            label: t('common.Edit'),
+                            icon: 'edit',
+                            onClick: () =>
+                              setEditFeiShuLinkData({
+                                _id: item._id,
+                                name: item.name,
+                                limit: item.limit,
+                                app: item.app,
+                                responseDetail: item.responseDetail,
+                                defaultResponse: item.defaultResponse,
+                                immediateResponse: item.immediateResponse
+                              })
+                          },
+                          {
+                            label: t('common.Delete'),
+                            icon: 'delete',
+                            onClick: async () => {
+                              setIsLoading(true);
+                              try {
+                                await delShareChatById(item._id);
+                                refetchShareChatList();
+                              } catch (error) {
+                                console.log(error);
+                              }
+                              setIsLoading(false);
+                            }
                           }
-                          setIsLoading(false);
-                        }
+                        ]
                       }
                     ]}
                   />
@@ -178,12 +183,7 @@ const FeiShu = ({ appId }: { appId: string }) => {
         />
       )}
       {shareChatList.length === 0 && !isFetching && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            {t('core.app.share.Not share link')}
-          </Box>
-        </Flex>
+        <EmptyTip text={t('core.app.share.Not share link')}></EmptyTip>
       )}
       <Loading loading={isFetching} fixed={false} />
     </Box>

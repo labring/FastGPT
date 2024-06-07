@@ -34,7 +34,7 @@ function MemberManger() {
   return (
     <>
       <Flex alignItems="center" flexDirection="row" justifyContent="space-between" w="full">
-        <Box>协作者</Box>
+        <Box fontSize={'sm'}>协作者</Box>
         <Flex flexDirection="row" gap="2">
           <Button
             size="sm"

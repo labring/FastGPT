@@ -89,22 +89,32 @@ const TeamPlugins = () => {
             }
             menuList={[
               {
-                label: (
-                  <Flex>
-                    <Image src={'/imgs/workflow/plugin.svg'} alt={''} w={'18px'} mr={1} />
-                    {t('plugin.Custom Plugin')}
-                  </Flex>
-                ),
-                onClick: () => setEditModalData(defaultForm)
-              },
-              {
-                label: (
-                  <Flex display={'flex'} alignItems={'center'}>
-                    <Image src={'/imgs/workflow/http.png'} alt={''} w={'18px'} h={'14px'} mr={1} />
-                    {t('plugin.HTTP Plugin')}
-                  </Flex>
-                ),
-                onClick: () => setHttpPluginModalData(defaultHttpPlugin)
+                children: [
+                  {
+                    label: (
+                      <Flex>
+                        <Image src={'/imgs/workflow/plugin.svg'} alt={''} w={'18px'} mr={1} />
+                        {t('plugin.Custom Plugin')}
+                      </Flex>
+                    ),
+                    onClick: () => setEditModalData(defaultForm)
+                  },
+                  {
+                    label: (
+                      <Flex display={'flex'} alignItems={'center'}>
+                        <Image
+                          src={'/imgs/workflow/http.png'}
+                          alt={''}
+                          w={'18px'}
+                          h={'14px'}
+                          mr={1}
+                        />
+                        {t('plugin.HTTP Plugin')}
+                      </Flex>
+                    ),
+                    onClick: () => setHttpPluginModalData(defaultHttpPlugin)
+                  }
+                ]
               }
             ]}
           />

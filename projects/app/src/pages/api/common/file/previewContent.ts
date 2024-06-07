@@ -39,12 +39,10 @@ async function handler(req: ApiRequestProps<PreviewContextProps>, res: NextApiRe
     selector
   });
 
-  jsonRes(res, {
-    data: {
-      previewContent: rawText.slice(0, 3000),
-      totalLength: rawText.length
-    }
-  });
+  return {
+    previewContent: rawText.slice(0, 3000),
+    totalLength: rawText.length
+  };
 }
 
 export default NextAPI(handler);

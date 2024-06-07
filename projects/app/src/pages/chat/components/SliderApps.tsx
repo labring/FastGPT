@@ -55,6 +55,7 @@ const SliderApps = ({
             cursor={'pointer'}
             borderRadius={'md'}
             alignItems={'center'}
+            fontSize={'sm'}
             {...(item._id === activeAppId
               ? {
                   bg: 'white',

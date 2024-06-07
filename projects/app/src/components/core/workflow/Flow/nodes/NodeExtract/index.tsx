@@ -78,10 +78,12 @@ const NodeExtract = ({ data }: NodeProps<FlowNodeItemType>) => {
               <Table bg={'white'}>
                 <Thead>
                   <Tr>
-                    <Th bg={'myGray.50'}>字段名</Th>
+                    <Th bg={'myGray.50'} borderRadius={'none !important'}>
+                      字段名
+                    </Th>
                     <Th bg={'myGray.50'}>字段描述</Th>
                     <Th bg={'myGray.50'}>必须</Th>
-                    <Th bg={'myGray.50'}></Th>
+                    <Th bg={'myGray.50'} borderRadius={'none !important'}></Th>
                   </Tr>
                 </Thead>
                 <Tbody>

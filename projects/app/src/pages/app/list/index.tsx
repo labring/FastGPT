@@ -10,13 +10,14 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import PageContainer from '@/components/PageContainer';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import CreateModal from './component/CreateModal';
 import { useAppStore } from '@/web/core/app/store/useAppStore';
 import PermissionIconText from '@/components/support/permission/IconText';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'next-i18next';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const MyApps = () => {
   const { t } = useTranslation();
@@ -141,7 +142,7 @@ const MyApps = () => {
                 className={'textEllipsis3'}
                 py={2}
                 wordBreak={'break-all'}
-                fontSize={'sm'}
+                fontSize={'xs'}
                 color={'myGray.600'}
               >
                 {app.intro || '这个应用还没写介绍~'}
@@ -177,14 +178,7 @@ const MyApps = () => {
         ))}
       </Grid>
 
-      {myApps.length === 0 && (
-        <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            还没有应用，快去创建一个吧！
-          </Box>
-        </Flex>
-      )}
+      {myApps.length === 0 && <EmptyTip text={'还没有应用，快去创建一个吧！'} pt={'30vh'} />}
       <ConfirmModal />
       {isOpenCreateModal && (
         <CreateModal onClose={onCloseCreateModal} onSuccess={() => loadMyApps()} />

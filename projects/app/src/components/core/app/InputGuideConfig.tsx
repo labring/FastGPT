@@ -1,5 +1,5 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import {
   Box,
   Button,
@@ -34,10 +34,10 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { readCsvRawText } from '@fastgpt/web/common/file/utils';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { useRequest } from 'ahooks';
 import HighlightText from '@fastgpt/web/components/common/String/HighlightText';
 import { defaultChatInputGuideConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const csvTemplate = `"第一列内容"
 "只会将第一列内容导入，其余列会被忽略"
@@ -85,10 +85,10 @@ const InputGuideConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/inputGuides'} mr={2} w={'20px'} />
-      <HStack>
-        <Box>{chatT('Input guide')}</Box>
+      <Flex alignItems={'center'}>
+        <FormLabel>{chatT('Input guide')}</FormLabel>
         <ChatFunctionTip type={'inputGuide'} />
-      </HStack>
+      </Flex>
       <Box flex={1} />
       <MyTooltip label={chatT('Config input guide')}>
         <Button
@@ -109,10 +109,9 @@ const InputGuideConfig = ({
       >
         <ModalBody px={[5, 16]} py={[4, 8]} w={'500px'}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            {t('Is open')}
+            <FormLabel>{t('Is open')}</FormLabel>
             <Switch
               isChecked={isOpenQuestionGuide}
-              size={'lg'}
               onChange={(e) => {
                 onChange({
                   ...value,
@@ -124,7 +123,7 @@ const InputGuideConfig = ({
           {isOpenQuestionGuide && (
             <>
               <Flex mt={8} alignItems={'center'}>
-                {chatT('Input guide lexicon')}
+                <FormLabel>{chatT('Input guide lexicon')}</FormLabel>
                 <Box fontSize={'xs'} px={2} bg={'myGray.100'} ml={1} rounded={'full'}>
                   {total}
                 </Box>
@@ -142,7 +141,7 @@ const InputGuideConfig = ({
               </Flex>
               <>
                 <Flex mt={8} alignItems={'center'}>
-                  {chatT('Custom input guide url')}
+                  <FormLabel>{chatT('Custom input guide url')}</FormLabel>
                   <Flex
                     onClick={() => window.open(getDocPath('/docs/course/chat_input_guide'))}
                     color={'primary.700'}
@@ -203,7 +202,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
     refreshDeps: [searchKey],
     debounceWait: 300,
 
-    itemHeight: 46,
+    itemHeight: 48,
     overscan: 20,
 
     pageSize: 20,
@@ -381,6 +380,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
       <ScrollList
         px={8}
         flex={'1 0 0'}
+        fontSize={'sm'}
         EmptyChildren={<EmptyTip text={chatT('Chat input guide lexicon is empty')} />}
       >
         {list.map((data, index) => {
@@ -394,7 +394,7 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
               key={index}
               alignItems={'center'}
               h={10}
-              mt={3}
+              mt={2}
               _hover={{
                 '& .icon-list': {
                   display: 'flex'
@@ -402,7 +402,6 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
               }}
             >
               <Checkbox
-                size={'lg'}
                 mr={2}
                 isChecked={selected}
                 onChange={(e) => {

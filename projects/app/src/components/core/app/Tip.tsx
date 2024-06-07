@@ -65,7 +65,7 @@ const ChatFunctionTip = ({ type }: { type: `${FnTypeEnum}` }) => {
               </Box>
             </Box>
           </Flex>
-          <Image src={data.imgUrl} w={'100%'} minH={['auto', '200px']} mt={2} alt={''} />
+          <Image src={data.imgUrl} w={'100%'} minH={['auto', '250px']} mt={2} alt={''} />
         </Box>
       }
     />

@@ -3,7 +3,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { Box, Flex, Image, Spinner, Textarea } from '@chakra-ui/react';
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '../../MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';

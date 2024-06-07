@@ -1,0 +1,8 @@
+body input,
+body select {
+  --input-font-size: var(--chakra-fontSizes-sm) !important;
+}
+
+.chakra-tooltip {
+  font-size: var(--chakra-fontSizes-xs) !important;
+}

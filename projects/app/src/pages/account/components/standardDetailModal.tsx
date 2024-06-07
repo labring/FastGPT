@@ -45,7 +45,6 @@ const StandDetailModal = ({ onClose }: { onClose: () => void }) => {
                 <Th>{t('support.standard.AI Bonus Points')}</Th>
                 <Th>{t('support.standard.Start Time')}</Th>
                 <Th>{t('support.standard.Expired Time')}</Th>
-                <Th />
               </Tr>
             </Thead>
             <Tbody fontSize={'sm'}>

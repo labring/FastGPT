@@ -1,7 +1,7 @@
 import { Box, Flex, useDisclosure, useOutsideClick } from '@chakra-ui/react';
 import React, { useRef } from 'react';
 import { useTranslation } from 'next-i18next';
-import FillTag from '../Tag/index';
+import MyTag from '../Tag/index';
 import MyIcon from '../Icon';
 
 export type SelectProps = {
@@ -51,7 +51,7 @@ const MultipleSelect = ({
           if (!listItem) return null;
 
           return (
-            <FillTag colorSchema="blue" p={2} cursor={'default'}>
+            <MyTag colorSchema="blue" p={2} cursor={'default'}>
               {listItem.alias || listItem.label}
               <MyIcon
                 name={'common/closeLight'}
@@ -63,7 +63,7 @@ const MultipleSelect = ({
                   onSelect(value.filter((i) => i !== item));
                 }}
               />
-            </FillTag>
+            </MyTag>
           );
         })}
         {value.length === 0 && placeholder && (

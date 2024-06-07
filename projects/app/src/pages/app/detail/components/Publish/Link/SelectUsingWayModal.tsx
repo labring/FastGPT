@@ -139,7 +139,12 @@ console.log("Chat box loaded")
         />
 
         {/* config */}
-        <Grid gridTemplateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']} gridGap={4} my={5}>
+        <Grid
+          gridTemplateColumns={['repeat(2,1fr)', 'repeat(3,1fr)']}
+          gridGap={4}
+          my={5}
+          fontSize={'sm'}
+        >
           <Flex {...gridItemStyle}>
             <Box flex={1}>{t('core.app.outLink.Show History')}</Box>
             <Switch {...register('showHistory')} />
@@ -181,7 +186,7 @@ console.log("Chat box loaded")
         </Grid>
 
         {/* code */}
-        <Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'}>
+        <Box borderRadius={'md'} bg={'myGray.100'} overflow={'hidden'} fontSize={'sm'}>
           <Flex
             p={3}
             bg={'myWhite.500'}

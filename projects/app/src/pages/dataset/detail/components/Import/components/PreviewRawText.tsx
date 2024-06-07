@@ -63,8 +63,9 @@ const PreviewRawText = ({
       iconSrc={previewSource.icon}
       title={previewSource.sourceName}
       isLoading={isLoading}
+      px={0}
     >
-      <Box whiteSpace={'pre-wrap'} overflowY={'auto'} fontSize={'sm'}>
+      <Box whiteSpace={'pre-wrap'} overflowY={'auto'} px={5} fontSize={'sm'}>
         {rawText}
       </Box>
     </MyRightDrawer>

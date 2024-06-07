@@ -9,6 +9,7 @@ import {
   MenuItemProps
 } from '@chakra-ui/react';
 import MyIcon from '../Icon';
+import MyDivider from '../MyDivider';
 
 type MenuItemType = 'primary' | 'danger';
 
@@ -18,11 +19,14 @@ export type Props = {
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
   menuList: {
-    isActive?: boolean;
-    label: string | React.ReactNode;
-    icon?: string;
-    type?: MenuItemType;
-    onClick: () => any;
+    label?: string;
+    children: {
+      isActive?: boolean;
+      type?: MenuItemType;
+      icon?: string;
+      label: string | React.ReactNode;
+      onClick: () => any;
+    }[];
   }[];
 };
 
@@ -49,9 +53,11 @@ const MyMenu = ({
   };
   const menuItemStyles: MenuItemProps = {
     borderRadius: 'sm',
-    py: 3,
+    py: 2,
+    px: 3,
     display: 'flex',
-    alignItems: 'center'
+    alignItems: 'center',
+    fontSize: 'sm'
   };
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
@@ -109,23 +115,32 @@ const MyMenu = ({
             '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
           }
         >
-          {menuList.map((item, i) => (
-            <MenuItem
-              key={i}
-              {...menuItemStyles}
-              {...typeMapStyle[item.type || 'primary']}
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsOpen(false);
-                item.onClick && item.onClick();
-              }}
-              color={item.isActive ? 'primary.700' : 'myGray.600'}
-              whiteSpace={'pre-wrap'}
-            >
-              {!!item.icon && <MyIcon name={item.icon as any} w={'16px'} mr={2} />}
-              {item.label}
-            </MenuItem>
-          ))}
+          {menuList.map((item, i) => {
+            return (
+              <Box key={i}>
+                {item.label && <Box fontSize={'sm'}>{item.label}</Box>}
+                {i !== 0 && <MyDivider h={'1.5px'} my={1} />}
+                {item.children.map((child, index) => (
+                  <MenuItem
+                    key={index}
+                    {...menuItemStyles}
+                    {...typeMapStyle[child.type || 'primary']}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsOpen(false);
+                      child.onClick && child.onClick();
+                    }}
+                    color={child.isActive ? 'primary.700' : 'myGray.600'}
+                    whiteSpace={'pre-wrap'}
+                    _notLast={{ mb: 0.5 }}
+                  >
+                    {!!child.icon && <MyIcon name={child.icon as any} w={'16px'} mr={2} />}
+                    <Box>{child.label}</Box>
+                  </MenuItem>
+                ))}
+              </Box>
+            );
+          })}
         </MenuList>
       </Box>
     </Menu>

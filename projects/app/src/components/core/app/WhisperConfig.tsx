@@ -1,5 +1,5 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, ModalBody, useDisclosure, Switch } from '@chakra-ui/react';
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -7,6 +7,7 @@ import type { AppWhisperConfigType } from '@fastgpt/global/core/app/type.d';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import { defaultWhisperConfig } from '@fastgpt/global/core/app/constants';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const WhisperConfig = ({
   isOpenAudio,
@@ -33,7 +34,7 @@ const WhisperConfig = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/whisper'} mr={2} w={'20px'} />
-      <Box fontWeight={'medium'}>{t('core.app.Whisper')}</Box>
+      <FormLabel>{t('core.app.Whisper')}</FormLabel>
       <Box flex={1} />
       <MyTooltip label={t('core.app.Config whisper')}>
         <Button
@@ -54,10 +55,9 @@ const WhisperConfig = ({
       >
         <ModalBody px={[5, 16]} py={[4, 8]}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            {t('core.app.whisper.Switch')}
+            <FormLabel>{t('core.app.whisper.Switch')}</FormLabel>
             <Switch
               isChecked={isOpenWhisper}
-              size={'lg'}
               onChange={(e) => {
                 onChange({
                   ...value,
@@ -68,12 +68,11 @@ const WhisperConfig = ({
           </Flex>
           {isOpenWhisper && (
             <Flex mt={8} alignItems={'center'}>
-              {t('core.app.whisper.Auto send')}
+              <FormLabel>{t('core.app.whisper.Auto send')}</FormLabel>
               <QuestionTip label={t('core.app.whisper.Auto send tip')} />
               <Box flex={'1 0 0'} />
               <Switch
                 isChecked={value.autoSend}
-                size={'lg'}
                 onChange={(e) => {
                   onChange({
                     ...value,
@@ -86,12 +85,11 @@ const WhisperConfig = ({
           {isOpenWhisper && isAutoSend && (
             <>
               <Flex mt={8} alignItems={'center'}>
-                {t('core.app.whisper.Auto tts response')}
+                <FormLabel>{t('core.app.whisper.Auto tts response')}</FormLabel>
                 <QuestionTip label={t('core.app.whisper.Auto tts response tip')} />
                 <Box flex={'1 0 0'} />
                 <Switch
                   isChecked={value.autoTTSResponse}
-                  size={'lg'}
                   onChange={(e) => {
                     onChange({
                       ...value,

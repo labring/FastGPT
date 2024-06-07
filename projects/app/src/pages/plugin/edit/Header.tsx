@@ -6,7 +6,7 @@ import { useTranslation } from 'next-i18next';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { uiWorkflow2StoreWorkflow } from '@/components/core/workflow/utils';
 import { putUpdatePlugin } from '@/web/core/plugin/api';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -106,7 +106,7 @@ const Header = ({ plugin, onClose }: Props) => {
               }}
             />
           </MyTooltip>
-          <Box ml={[3, 5]} fontSize={['md', '2xl']} flex={1}>
+          <Box ml={[3, 5]} fontSize={['md', 'lg']} flex={1}>
             {plugin.name}
           </Box>
 
@@ -121,11 +121,19 @@ const Header = ({ plugin, onClose }: Props) => {
               />
             }
             menuList={[
-              { label: appT('Import Configs'), icon: 'common/importLight', onClick: onOpenImport },
               {
-                label: appT('Export Configs'),
-                icon: 'export',
-                onClick: onExportWorkflow
+                children: [
+                  {
+                    label: appT('Import Configs'),
+                    icon: 'common/importLight',
+                    onClick: onOpenImport
+                  },
+                  {
+                    label: appT('Export Configs'),
+                    icon: 'export',
+                    onClick: onExportWorkflow
+                  }
+                ]
               }
             ]}
           />

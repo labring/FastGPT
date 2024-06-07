@@ -145,7 +145,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       title={t('core.app.setting')}
     >
       <ModalBody>
-        <Box>{t('core.app.Name and avatar')}</Box>
+        <Box fontSize={'sm'}>{t('core.app.Name and avatar')}</Box>
         <Flex mt={2} alignItems={'center'}>
           <Avatar
             src={avatar}
@@ -167,7 +167,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
             ></Input>
           </FormControl>
         </Flex>
-        <Box mt={4} mb={1}>
+        <Box mt={4} mb={1} fontSize={'sm'}>
           {t('core.app.App intro')}
         </Box>
         <Textarea
@@ -183,7 +183,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
           <>
             {' '}
             <Box mt="4">
-              <Box>{t('permission.Default permission')}</Box>
+              <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>
               <DefaultPermissionList
                 mt="2"
                 per={defaultPermission}

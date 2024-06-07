@@ -38,12 +38,12 @@ const Individuation = () => {
 
   return (
     <Box py={[3, '28px']} px={['5vw', '64px']}>
-      <Flex alignItems={'center'} fontSize={'xl'} h={'30px'}>
+      <Flex alignItems={'center'} fontSize={'lg'} h={'30px'}>
         <MyIcon mr={2} name={'support/user/individuation'} w={'20px'} />
         {t('support.account.Individuation')}
       </Flex>
 
-      <Card mt={6} px={[3, 10]} py={[3, 7]}>
+      <Card mt={6} px={[3, 10]} py={[3, 7]} fontSize={'sm'}>
         <Flex alignItems={'center'} w={['85%', '350px']}>
           <Box flex={'0 0 80px'}>{t('user.Language')}:&nbsp;</Box>
           <Box flex={'1 0 0'}>

@@ -47,7 +47,7 @@ enum TemplateTypeEnum {
   'teamPlugin' = 'teamPlugin'
 }
 
-const sliderWidth = 380;
+const sliderWidth = 390;
 
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
@@ -138,6 +138,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         bottom={0}
         w={`${sliderWidth}px`}
         onClick={onClose}
+        fontSize={'sm'}
       />
       <Flex
         zIndex={3}
@@ -184,8 +185,6 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
             <IconButton
               size={'sm'}
               icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.700'} />}
-              w={'26px'}
-              h={'26px'}
               borderColor={'myGray.300'}
               variant={'grayBase'}
               aria-label={''}
@@ -212,6 +211,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
                 _hover={{
                   color: 'primary.600'
                 }}
+                fontSize={'sm'}
                 onClick={() => router.push('/plugin/list')}
               >
                 <Box>去创建</Box>
@@ -341,7 +341,7 @@ const RenderList = React.memo(function RenderList({
             >
               {item.label && (
                 <Flex>
-                  <Box fontWeight={'bold'} flex={1}>
+                  <Box fontSize={'sm'} fontWeight={'bold'} flex={1}>
                     {t(item.label)}
                   </Box>
                 </Flex>
@@ -405,11 +405,11 @@ const RenderList = React.memo(function RenderList({
                     >
                       <Avatar
                         src={template.avatar}
-                        w={'30px'}
+                        w={'1.7rem'}
                         objectFit={'contain'}
                         borderRadius={'0'}
                       />
-                      <Box color={'black'} ml={5} flex={'1 0 0'}>
+                      <Box color={'black'} fontSize={'sm'} ml={5} flex={'1 0 0'}>
                         {t(template.name)}
                       </Box>
                     </Flex>
@@ -421,7 +421,7 @@ const RenderList = React.memo(function RenderList({
         </Box>
       </Box>
     );
-  }, [formatTemplates, isPc, onAddNode, onClose, setCurrentParent, t, templates.length]);
+  }, [appT, formatTemplates, isPc, onAddNode, onClose, setCurrentParent, t, templates.length]);
 
   return Render;
 });

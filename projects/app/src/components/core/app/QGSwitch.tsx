@@ -3,6 +3,7 @@ import { Box, Flex, Switch, type SwitchProps } from '@chakra-ui/react';
 import React from 'react';
 import { useTranslation } from 'next-i18next';
 import ChatFunctionTip from './Tip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 // question generator switch
 const QGSwitch = (props: SwitchProps) => {
@@ -10,7 +11,7 @@ const QGSwitch = (props: SwitchProps) => {
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/chat/QGFill'} mr={2} w={'20px'} />
-      <Box fontWeight={'medium'}>{t('core.app.Question Guide')}</Box>
+      <FormLabel>{t('core.app.Question Guide')}</FormLabel>
       <ChatFunctionTip type={'nextQuestion'} />
       <Box flex={1} />
       <Switch {...props} />

@@ -5,9 +5,8 @@ import React, { useCallback, useEffect, useRef } from 'react';
 import ChatBox from '@/components/ChatBox';
 import type { ComponentRef, StartChatFnProps } from '@/components/ChatBox/type.d';
 import { streamFetch } from '@/web/common/api/fetch';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { getGuideModule } from '@fastgpt/global/core/workflow/utils';
 import { checkChatSupportSelectFileByModules } from '@/web/core/chat/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import {
@@ -104,7 +103,7 @@ const ChatTest = ({
       bg={'white'}
     >
       <Flex px={[2, 5]}>
-        <Box fontSize={['md', 'xl']} fontWeight={'bold'} flex={1}>
+        <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1}>
           {appT('Chat Debug')}
         </Box>
         <MyTooltip label={t('core.chat.Restart')}>
@@ -151,7 +150,7 @@ const ChatTest = ({
           whiteSpace={'pre-wrap'}
           textAlign={'center'}
         >
-          <Box>{appT('Advance App TestTip')}</Box>
+          <Box fontSize={'md'}>{appT('Advance App TestTip')}</Box>
         </Flex>
       )}
     </Flex>

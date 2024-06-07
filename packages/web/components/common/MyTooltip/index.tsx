@@ -17,7 +17,7 @@ const MyTooltip = ({ children, forceShow = false, shouldWrapChildren = true, ...
       })}
     >
       <Tooltip
-        className="tooltip"
+        className="chakra-tooltip"
         bg={'white'}
         arrowShadowColor={'rgba(0,0,0,0.05)'}
         hasArrow

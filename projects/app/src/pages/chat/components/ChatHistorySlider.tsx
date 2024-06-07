@@ -14,7 +14,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
 import Avatar from '@/components/Avatar';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -24,6 +24,7 @@ import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useQuery } from '@tanstack/react-query';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useI18n } from '@/web/context/I18n';
+import MyMenu from '@fastgpt/web/components/common/MyMenu';
 
 type HistoryItemType = {
   id: string;
@@ -126,6 +127,7 @@ const ChatHistorySlider = ({
             px={[2, 5]}
             alignItems={'center'}
             cursor={canRouteToDetail ? 'pointer' : 'default'}
+            fontSize={'sm'}
             onClick={() =>
               canRouteToDetail &&
               router.replace({
@@ -193,16 +195,17 @@ const ChatHistorySlider = ({
                 position={'relative'}
                 key={item.id || `${i}`}
                 alignItems={'center'}
-                py={3}
+                py={2.5}
                 px={4}
                 cursor={'pointer'}
                 userSelect={'none'}
                 borderRadius={'md'}
                 mb={2}
+                fontSize={'sm'}
                 _hover={{
-                  bg: 'myGray.100',
+                  bg: 'myGray.50',
                   '& .more': {
-                    display: 'block'
+                    visibility: 'visible'
                   }
                 }}
                 bg={item.top ? '#E6F6F6 !important' : ''}
@@ -225,63 +228,63 @@ const ChatHistorySlider = ({
                   {item.customTitle || item.title}
                 </Box>
                 {!!item.id && (
-                  <Box className="more" display={['block', 'none']}>
-                    <Menu autoSelect={false} isLazy offset={[0, 5]}>
-                      <MenuButton
-                        _hover={{ bg: 'white' }}
-                        cursor={'pointer'}
-                        borderRadius={'md'}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                        }}
-                      >
-                        <MyIcon name={'more'} w={'14px'} p={1} />
-                      </MenuButton>
-                      <MenuList color={'myGray.700'} minW={`90px !important`}>
-                        {onSetHistoryTop && (
-                          <MenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSetHistoryTop({ chatId: item.id, top: !item.top });
-                            }}
-                          >
-                            <MyIcon mr={2} name={'core/chat/setTopLight'} w={'16px'}></MyIcon>
-                            {item.top ? t('core.chat.Unpin') : t('core.chat.Pin')}
-                          </MenuItem>
-                        )}
-                        {onSetCustomTitle && (
-                          <MenuItem
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onOpenModal({
-                                defaultVal: item.customTitle || item.title,
-                                onSuccess: (e) =>
-                                  onSetCustomTitle({
-                                    chatId: item.id,
-                                    title: e
-                                  })
-                              });
-                            }}
-                          >
-                            <MyIcon mr={2} name={'common/customTitleLight'} w={'16px'}></MyIcon>
-                            {t('common.Custom Title')}
-                          </MenuItem>
-                        )}
-                        <MenuItem
-                          _hover={{ color: 'red.500' }}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onDelHistory({ chatId: item.id });
-                            if (item.id === activeChatId) {
-                              onChangeChat();
+                  <Box className="more" visibility={['visible', 'hidden']}>
+                    <MyMenu
+                      Button={
+                        <IconButton
+                          size={'xs'}
+                          variant={'whiteBase'}
+                          icon={<MyIcon name={'more'} w={'14px'} p={1} />}
+                          aria-label={''}
+                        />
+                      }
+                      menuList={[
+                        {
+                          children: [
+                            ...(onSetHistoryTop
+                              ? [
+                                  {
+                                    label: item.top ? t('core.chat.Unpin') : t('core.chat.Pin'),
+                                    icon: 'core/chat/setTopLight',
+                                    onClick: () => {
+                                      onSetHistoryTop({ chatId: item.id, top: !item.top });
+                                    }
+                                  }
+                                ]
+                              : []),
+                            ...(onSetCustomTitle
+                              ? [
+                                  {
+                                    label: t('common.Custom Title'),
+                                    icon: 'common/customTitleLight',
+                                    onClick: () => {
+                                      onOpenModal({
+                                        defaultVal: item.customTitle || item.title,
+                                        onSuccess: (e) =>
+                                          onSetCustomTitle({
+                                            chatId: item.id,
+                                            title: e
+                                          })
+                                      });
+                                    }
+                                  }
+                                ]
+                              : []),
+                            {
+                              label: t('common.Delete'),
+                              icon: 'delete',
+                              onClick: () => {
+                                onDelHistory({ chatId: item.id });
+                                if (item.id === activeChatId) {
+                                  onChangeChat();
+                                }
+                              },
+                              type: 'danger'
                             }
-                          }}
-                        >
-                          <MyIcon mr={2} name={'delete'} w={'16px'}></MyIcon>
-                          {t('common.Delete')}
-                        </MenuItem>
-                      </MenuList>
-                    </Menu>
+                          ]
+                        }
+                      ]}
+                    />
                   </Box>
                 )}
               </Flex>

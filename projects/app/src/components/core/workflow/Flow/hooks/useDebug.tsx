@@ -219,7 +219,7 @@ export const useDebug = () => {
               if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
                 return (
                   <Box>
-                    <Switch size={'lg'} {...register(input.key)} />
+                    <Switch {...register(input.key)} />
                   </Box>
                 );
               }

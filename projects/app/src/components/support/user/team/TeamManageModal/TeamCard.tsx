@@ -97,9 +97,9 @@ function TeamCard() {
         py={4}
         borderBottom={'1.5px solid'}
         borderBottomColor={'myGray.100'}
-        mb={3}
+        mb={2}
       >
-        <Box fontSize={['lg', 'xl']} fontWeight={'bold'} alignItems={'center'}>
+        <Box fontSize={['sm', 'md']} fontWeight={'bold'} alignItems={'center'}>
           {userInfo?.team.teamName}
         </Box>
         {userInfo?.team.role === TeamMemberRoleEnum.owner && (
