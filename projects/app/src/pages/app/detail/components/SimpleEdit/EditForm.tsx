@@ -271,7 +271,7 @@ const EditForm = ({
               </Flex>
               <Button
                 variant={'transparentBase'}
-                leftIcon={<AddIcon fontSize={'xs'} />}
+                leftIcon={<SmallAddIcon />}
                 iconSpacing={1}
                 size={'sm'}
                 fontSize={'sm'}
