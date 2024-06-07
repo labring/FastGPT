@@ -36,7 +36,7 @@ const Points = () => {
             borderRightColor={'myGray.150'}
             py={4}
             px={6}
-            fontSize={'lg'}
+            fontSize={'md'}
             fontWeight={'bold'}
           >
             AI语言模型
@@ -59,7 +59,7 @@ const Points = () => {
           overflow={'hidden'}
         >
           <Box flex={1} borderRightWidth={'1px'} borderRightColor={'myGray.150'} py={4} px={6}>
-            <Box fontSize={'lg'} fontWeight={'bold'}>
+            <Box fontSize={'md'} fontWeight={'bold'}>
               索引模型
             </Box>
             <Box fontSize={'sm'} mt={1} color={'myGray.500'}>
@@ -84,7 +84,7 @@ const Points = () => {
           overflow={'hidden'}
         >
           <Box flex={1} borderRightWidth={'1px'} borderRightColor={'myGray.150'} py={4} px={6}>
-            <Box fontSize={'lg'} fontWeight={'bold'}>
+            <Box fontSize={'md'} fontWeight={'bold'}>
               语音播放
             </Box>
           </Box>
@@ -106,7 +106,7 @@ const Points = () => {
           overflow={'hidden'}
         >
           <Box flex={1} borderRightWidth={'1px'} borderRightColor={'myGray.150'} py={4} px={6}>
-            <Box fontSize={'lg'} fontWeight={'bold'}>
+            <Box fontSize={'md'} fontWeight={'bold'}>
               语音输入
             </Box>
           </Box>

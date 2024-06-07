@@ -25,7 +25,7 @@ import ChatBox from '@/components/ChatBox';
 import type { ComponentRef } from '@/components/ChatBox/type.d';
 import { useQuery } from '@tanstack/react-query';
 import { getInitChatInfo } from '@/web/core/chat/api';
-import Tag from '@fastgpt/web/components/common/Tag/index';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { addDays } from 'date-fns';
 import MyBox from '@fastgpt/web/components/common/MyBox';
@@ -34,6 +34,7 @@ import DateRangePicker, { DateRangeType } from '@fastgpt/web/components/common/D
 import { formatChatValue2InputType } from '@/components/ChatBox/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useI18n } from '@/web/context/I18n';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const Logs = ({ appId }: { appId: string }) => {
   const { t } = useTranslation();
@@ -75,7 +76,7 @@ const Logs = ({ appId }: { appId: string }) => {
       <Box px={[4, 8]}>
         {isPc && (
           <>
-            <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2}>
+            <Box fontWeight={'bold'} fontSize={['md', 'lg']} mb={2}>
               {appT('Chat logs')}
             </Box>
             <Box color={'myGray.500'} fontSize={'sm'}>
@@ -175,14 +176,7 @@ const Logs = ({ appId }: { appId: string }) => {
           </Tbody>
         </Table>
       </TableContainer>
-      {logs.length === 0 && !isLoading && (
-        <Flex h={'100%'} flexDirection={'column'} alignItems={'center'} pt={'10vh'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            {appT('Logs Empty')}
-          </Box>
-        </Flex>
-      )}
+      {logs.length === 0 && !isLoading && <EmptyTip text={appT('Logs Empty')}></EmptyTip>}
       <Flex w={'100%'} p={4} alignItems={'center'} justifyContent={'flex-end'}>
         <DateRangePicker
           defaultDate={dateRange}
@@ -292,15 +286,15 @@ const DetailLogsModal = ({
               <Box mr={3} color={'myGray.1000'}>
                 {title}
               </Box>
-              <Tag>
+              <MyTag colorSchema="blue">
                 <MyIcon name={'history'} w={'14px'} />
                 <Box ml={1}>{`${history.length}条记录`}</Box>
-              </Tag>
+              </MyTag>
               {!!chatModels && chatModels.length > 0 && (
-                <Tag ml={2} colorSchema={'green'}>
+                <MyTag ml={2} colorSchema={'green'}>
                   <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
                   <Box ml={1}>{chatModels.join(',')}</Box>
-                </Tag>
+                </MyTag>
               )}
               <Box flex={1} />
             </>

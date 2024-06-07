@@ -37,7 +37,7 @@ const ParentPaths = (props: {
       {concatPaths.map((item, i) => (
         <Flex key={item.parentId || i} alignItems={'center'}>
           <Box
-            fontSize={['sm', fontSize || 'lg']}
+            fontSize={['sm', fontSize || 'md']}
             py={1}
             px={[1, 2]}
             borderRadius={'md'}

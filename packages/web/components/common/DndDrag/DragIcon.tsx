@@ -5,7 +5,7 @@ import { DraggableProvided } from 'react-beautiful-dnd';
 
 const DragIcon = ({ provided, ...props }: { provided: DraggableProvided } & BoxProps) => {
   return (
-    <Box {...provided.dragHandleProps} {...props}>
+    <Box {...provided.dragHandleProps} {...props} lineHeight={1}>
       <DragHandleIcon color={'myGray.500'} _hover={{ color: 'primary.600' }} />
     </Box>
   );

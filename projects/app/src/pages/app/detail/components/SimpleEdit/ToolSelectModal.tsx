@@ -341,7 +341,7 @@ const RenderList = React.memo(function RenderList({
                         );
                       }
                       if (input.valueType === WorkflowIOValueTypeEnum.boolean) {
-                        return <Switch size={'lg'} {...register(input.key, { required })} />;
+                        return <Switch {...register(input.key, { required })} />;
                       }
                       return (
                         <JsonEditor

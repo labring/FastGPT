@@ -8,7 +8,7 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
-import FillTag from '@fastgpt/web/components/common/Tag/index';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const ChatHeader = ({
   history,
@@ -27,7 +27,6 @@ const ChatHeader = ({
   onRoute2AppDetail?: () => void;
   onOpenSlider: () => void;
 }) => {
-  const router = useRouter();
   const theme = useTheme();
   const { t } = useTranslation();
   const { isPc } = useSystemStore();
@@ -44,25 +43,26 @@ const ChatHeader = ({
       h={['46px', '60px']}
       borderBottom={theme.borders.sm}
       color={'myGray.900'}
+      fontSize={'sm'}
     >
       {isPc ? (
         <>
           <Box mr={3} color={'myGray.1000'}>
             {title}
           </Box>
-          <FillTag>
+          <MyTag>
             <MyIcon name={'history'} w={'14px'} />
             <Box ml={1}>
               {history.length === 0
                 ? t('core.chat.New Chat')
                 : t('core.chat.History Amount', { amount: history.length })}
             </Box>
-          </FillTag>
+          </MyTag>
           {!!chatModels && chatModels.length > 0 && (
-            <FillTag ml={2} colorSchema={'green'}>
+            <MyTag ml={2} colorSchema={'green'}>
               <MyIcon name={'core/chat/chatModelTag'} w={'14px'} />
               <Box ml={1}>{chatModels.join(',')}</Box>
-            </FillTag>
+            </MyTag>
           )}
           <Box flex={1} />
         </>

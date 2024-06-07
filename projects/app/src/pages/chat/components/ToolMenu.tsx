@@ -55,7 +55,7 @@ const ToolMenu = ({ history }: { history: ChatItemType[] }) => {
           variant={'whitePrimary'}
         />
       }
-      menuList={menuList}
+      menuList={[{ children: menuList }]}
     />
   ) : (
     <Box w={'28px'} h={'28px'} />

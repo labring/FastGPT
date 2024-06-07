@@ -25,7 +25,7 @@ import {
   postCreateDatasetLinkCollection,
   postCreateDatasetTextCollection
 } from '@/web/core/dataset/api';
-import Tag from '@fastgpt/web/components/common/Tag/index';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
@@ -173,13 +173,13 @@ const Upload = () => {
                 <Td>
                   <Box display={'inline-block'}>
                     {item.createStatus === 'waiting' && (
-                      <Tag colorSchema={'gray'}>{t('common.Waiting')}</Tag>
+                      <MyTag colorSchema={'gray'}>{t('common.Waiting')}</MyTag>
                     )}
                     {item.createStatus === 'creating' && (
-                      <Tag colorSchema={'blue'}>{t('common.Creating')}</Tag>
+                      <MyTag colorSchema={'blue'}>{t('common.Creating')}</MyTag>
                     )}
                     {item.createStatus === 'finish' && (
-                      <Tag colorSchema={'green'}>{t('common.Finish')}</Tag>
+                      <MyTag colorSchema={'green'}>{t('common.Finish')}</MyTag>
                     )}
                   </Box>
                 </Td>

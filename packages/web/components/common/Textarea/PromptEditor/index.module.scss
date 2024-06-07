@@ -6,7 +6,7 @@
   border-radius: var(--chakra-radii-md);
   padding: 8px 12px;
   background: var(--chakra-colors-gray-50);
-  font-size: 14px;
+  font-size: var(--chakra-fontSizes-sm);
   overflow-y: auto;
 }
 
@@ -18,7 +18,7 @@
   border-radius: var(--chakra-radii-sm);
   padding: 6px 8px;
   background: #fff;
-  font-size: 14px;
+  font-size: var(--chakra-fontSizes-sm);
   overflow-y: auto;
 }
 

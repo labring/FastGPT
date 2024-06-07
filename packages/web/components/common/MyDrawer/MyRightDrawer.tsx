@@ -61,7 +61,7 @@ const MyRightDrawer = ({
               )}
             </>
           )}
-          <Box flex={'1'} fontSize={'lg'}>
+          <Box flex={'1'} fontSize={'md'}>
             {title}
           </Box>
           <DrawerCloseButton position={'relative'} fontSize={'sm'} top={0} right={0} />

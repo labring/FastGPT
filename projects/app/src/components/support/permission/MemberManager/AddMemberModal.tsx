@@ -93,13 +93,12 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
             p="4"
             minH="200px"
           >
-            <InputGroup alignItems="center" h="32px" my="2" py="1">
+            <InputGroup alignItems="center" size="sm">
               <InputLeftElement>
                 <MyIcon name="common/searchLight" w="16px" color={'myGray.500'} />
               </InputLeftElement>
               <Input
                 placeholder="搜索用户名"
-                fontSize="lg"
                 bgColor="myGray.50"
                 onChange={(e) => setSearchText(e.target.value)}
               />
@@ -128,7 +127,6 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                     }}
                   >
                     <Checkbox
-                      size="lg"
                       mr="3"
                       isChecked={selectedMemberIdList.includes(member.tmbId)}
                       onChange={onChange}
@@ -167,9 +165,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                     _notLast={{ mb: 2 }}
                   >
                     <Avatar src={member.avatar} w="24px" />
-                    <Box w="full" fontSize="lg">
-                      {member.memberName}
-                    </Box>
+                    <Box w="full">{member.memberName}</Box>
                     <MyIcon
                       name="common/closeLight"
                       w="16px"
@@ -202,7 +198,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
               h={'32px'}
             >
               {perLabel}
-              <ChevronDownIcon fontSize={'lg'} />
+              <ChevronDownIcon fontSize={'md'} />
             </Flex>
           }
           onChange={(v) => setSelectedPermission(v)}

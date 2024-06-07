@@ -224,7 +224,6 @@ const NodeVariableUpdate = ({ data, selected }: NodeProps<FlowNodeItemType>) => 
                   if (valueType === WorkflowIOValueTypeEnum.boolean) {
                     return (
                       <Switch
-                        size="lg"
                         defaultChecked={updateItem.value?.[1] === 'true'}
                         onChange={(e) => handleUpdate(String(e.target.checked))}
                       />

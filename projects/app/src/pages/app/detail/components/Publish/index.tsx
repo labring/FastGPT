@@ -39,12 +39,12 @@ const OutLink = ({ appId }: { appId: string }) => {
 
   return (
     <Box pt={[1, 5]}>
-      <Box fontWeight={'bold'} fontSize={['md', 'xl']} mb={2} px={[4, 8]}>
+      <Box color={'myGray.900'} fontSize={'lg'} mb={2} px={[4, 8]}>
         {t('core.app.navbar.Publish app')}
       </Box>
       <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
         <MyRadio
-          gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 300px))']}
+          gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 400px))']}
           iconSize={'20px'}
           list={publishList.current}
           value={linkType}

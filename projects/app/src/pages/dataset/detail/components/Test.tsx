@@ -9,8 +9,7 @@ import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { customAlphabet } from 'nanoid';
-import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { SearchTestResponse } from '@/global/core/dataset/api';
 import {
@@ -27,6 +26,8 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import SearchParamsTip from '@/components/core/dataset/SearchParamsTip';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 12);
 
@@ -321,7 +322,6 @@ const TestHistories = React.memo(function TestHistories({
   setDatasetTestItem: React.Dispatch<React.SetStateAction<SearchTestStoreItemType | undefined>>;
 }) {
   const { t } = useTranslation();
-  const theme = useTheme();
   const { datasetTestList, delDatasetTestItemById } = useSearchTestStore();
 
   const testHistories = useMemo(
@@ -332,7 +332,7 @@ const TestHistories = React.memo(function TestHistories({
     <>
       <Flex alignItems={'center'} color={'myGray.900'}>
         <MyIcon mr={2} name={'history'} w={'18px'} h={'18px'} color={'myGray.900'} />
-        <Box fontSize={'xl'}>{t('core.dataset.test.test history')}</Box>
+        <Box fontSize={'md'}>{t('core.dataset.test.test history')}</Box>
       </Flex>
       <Box mt={2}>
         {testHistories.map((item) => (
@@ -417,21 +417,10 @@ const TestResults = React.memo(function TestResults({
   return (
     <>
       {!datasetTestItem?.results || datasetTestItem.results.length === 0 ? (
-        <Flex
-          mt={[10, 0]}
-          h={'100%'}
-          flexDirection={'column'}
-          alignItems={'center'}
-          justifyContent={'center'}
-        >
-          <MyIcon name={'empty'} color={'transparent'} w={'54px'} />
-          <Box mt={3} color={'myGray.600'}>
-            {t('core.dataset.test.test result placeholder')}
-          </Box>
-        </Flex>
+        <EmptyTip text={t('core.dataset.test.test result placeholder')} mt={[10, '20vh']} />
       ) : (
         <>
-          <Flex fontSize={'xl'} color={'myGray.900'} alignItems={'center'}>
+          <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
             <MyIcon name={'common/paramsLight'} w={'18px'} mr={2} />
             {t('core.dataset.test.Test params')}
           </Flex>
@@ -446,14 +435,12 @@ const TestResults = React.memo(function TestResults({
           </Box>
 
           <Flex mt={5} mb={3} alignItems={'center'}>
-            <Flex fontSize={'xl'} color={'myGray.900'} alignItems={'center'}>
+            <Flex fontSize={'md'} color={'myGray.900'} alignItems={'center'}>
               <MyIcon name={'common/resultLight'} w={'18px'} mr={2} />
               {t('core.dataset.test.Test Result')}
             </Flex>
-            <MyTooltip label={t('core.dataset.test.test result tip')} forceShow>
-              <QuestionOutlineIcon mx={2} color={'myGray.600'} cursor={'pointer'} fontSize={'lg'} />
-            </MyTooltip>
-            <Box>({datasetTestItem.duration})</Box>
+            <QuestionTip ml={1} label={t('core.dataset.test.test result tip')} />
+            <Box ml={2}>({datasetTestItem.duration})</Box>
           </Flex>
           <Box mt={1} gap={4}>
             {datasetTestItem?.results.map((item, index) => (

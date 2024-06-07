@@ -1,5 +1,5 @@
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { Box, Button, Flex, ModalBody, useDisclosure, Image } from '@chakra-ui/react';
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
@@ -12,6 +12,7 @@ import MySlider from '@/components/Slider';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { defaultTTSConfig } from '@fastgpt/global/core/app/constants';
 import ChatFunctionTip from './Tip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const TTSSelect = ({
   value = defaultTTSConfig,
@@ -81,7 +82,7 @@ const TTSSelect = ({
   return (
     <Flex alignItems={'center'}>
       <MyIcon name={'core/app/simpleMode/tts'} mr={2} w={'20px'} />
-      <Box fontWeight={'medium'}>{t('core.app.TTS')}</Box>
+      <FormLabel>{t('core.app.TTS')}</FormLabel>
       <ChatFunctionTip type={'tts'} />
       <Box flex={1} />
       <MyTooltip label={t('core.app.Select TTS')}>
@@ -108,11 +109,11 @@ const TTSSelect = ({
       >
         <ModalBody px={[5, 16]} py={[4, 8]}>
           <Flex justifyContent={'space-between'} alignItems={'center'}>
-            {t('core.app.tts.Speech model')}
+            <FormLabel>{t('core.app.tts.Speech model')}</FormLabel>
             <MySelect w={'220px'} value={formatValue} list={list} onchange={onclickChange} />
           </Flex>
           <Flex mt={8} justifyContent={'space-between'}>
-            {t('core.app.tts.Speech speed')}
+            <FormLabel>{t('core.app.tts.Speech speed')}</FormLabel>
             <MySlider
               markList={[
                 { label: '0.3', value: 0.3 },

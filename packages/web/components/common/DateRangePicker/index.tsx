@@ -49,11 +49,13 @@ const DateRangePicker = ({
         py={1}
         borderRadius={'sm'}
         cursor={'pointer'}
-        bg={'myWhite.600'}
+        bg={'myGray.100'}
         fontSize={'sm'}
         onClick={() => setShowSelected(true)}
       >
-        <Box>{formatSelected}</Box>
+        <Box color={'myGray.600'} fontWeight={'400'}>
+          {formatSelected}
+        </Box>
         <MyIcon ml={2} name={'date'} w={'16px'} color={'myGray.600'} />
       </Flex>
       {showSelected && (

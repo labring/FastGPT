@@ -115,7 +115,7 @@ export function useScrollPagination<
           <MyBox isLoading={isLoading} ref={containerRef} overflow={'overlay'} {...props}>
             <Box ref={wrapperRef}>{children}</Box>
             {noMore.current && list.length > 0 && (
-              <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'sm'}>
+              <Box py={4} textAlign={'center'} color={'myGray.600'} fontSize={'xs'}>
                 {t('common.No more data')}
               </Box>
             )}

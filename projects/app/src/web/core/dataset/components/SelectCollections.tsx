@@ -13,6 +13,7 @@ import { useTranslation } from 'next-i18next';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetPageContext } from '../context/datasetPageContext';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const SelectCollections = ({
   datasetId,
@@ -117,7 +118,7 @@ const SelectCollections = ({
             }))}
             FirstPathDom={
               <>
-                <Box fontWeight={'bold'} fontSize={['sm', 'lg']}>
+                <Box fontWeight={'bold'} fontSize={['sm', 'md']}>
                   {title
                     ? title
                     : type === 'folder'
@@ -193,12 +194,7 @@ const SelectCollections = ({
           )}
         </Grid>
         {collections.length === 0 && (
-          <Flex mt={'20vh'} flexDirection={'column'} alignItems={'center'}>
-            <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-            <Box mt={2} color={'myGray.500'}>
-              {t('common.folder.No Folder')}
-            </Box>
-          </Flex>
+          <EmptyTip pt={'20vh'} text={t('common.folder.No Folder')}></EmptyTip>
         )}
         <Loading loading={isLoading} fixed={false} />
       </ModalBody>

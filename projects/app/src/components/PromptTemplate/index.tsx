@@ -37,9 +37,9 @@ const PromptTemplate = ({
                 : {})}
               onClick={() => setSelectTemplateTitle(item)}
             >
-              <Box>{item.title}</Box>
+              <Box color={'myGray.900'}>{item.title}</Box>
 
-              <Box color={'myGray.600'} fontSize={'sm'} whiteSpace={'pre-wrap'}>
+              <Box color={'myGray.500'} fontSize={'xs'} whiteSpace={'pre-wrap'}>
                 {item.desc}
               </Box>
             </Box>

@@ -23,7 +23,7 @@ import { WorkflowContext } from '../../../context';
 import { useI18n } from '@/web/context/I18n';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 type Props = FlowNodeItemType & {
@@ -140,7 +140,7 @@ const NodeCard = (props: Props) => {
           {/* avatar and name */}
           <Flex alignItems={'center'}>
             <Avatar src={avatar} borderRadius={'0'} objectFit={'contain'} w={'30px'} h={'30px'} />
-            <Box ml={3} fontSize={'lg'} fontWeight={'medium'}>
+            <Box ml={3} fontSize={'md'} fontWeight={'medium'}>
               {t(name)}
             </Box>
             {!menuForbid?.rename && (

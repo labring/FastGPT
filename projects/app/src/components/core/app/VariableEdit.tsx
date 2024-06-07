@@ -22,7 +22,7 @@ import {
   TableContainer,
   useDisclosure
 } from '@chakra-ui/react';
-import { QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
+import { SmallAddIcon } from '@chakra-ui/icons';
 import { VariableInputEnum, variableMap } from '@fastgpt/global/core/workflow/constants';
 import type { VariableItemType } from '@fastgpt/global/core/app/type.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -31,12 +31,12 @@ import { useFieldArray } from 'react-hook-form';
 import { customAlphabet } from 'nanoid';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 6);
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTooltip from '@/components/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyRadio from '@/components/common/MyRadio';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import ChatFunctionTip from './Tip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const VariableEdit = ({
   variables = [],
@@ -96,9 +96,9 @@ const VariableEdit = ({
     <Box>
       <Flex alignItems={'center'}>
         <MyIcon name={'core/app/simpleMode/variable'} w={'20px'} />
-        <Box ml={2} fontWeight={'medium'}>
+        <FormLabel ml={2} fontWeight={'medium'}>
           {t('core.module.Variable')}
-        </Box>
+        </FormLabel>
         <ChatFunctionTip type={'variable'} />
         <Box flex={1} />
         <Button
@@ -118,14 +118,19 @@ const VariableEdit = ({
       {formatVariables.length > 0 && (
         <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom="none">
           <TableContainer>
-            <Table bg={'white'}>
+            <Table>
               <Thead>
-                <Tr bg={'myGray.50'}>
-                  <Th w={'18px !important'} p={0} />
-                  <Th>{t('core.module.variable.variable name')}</Th>
-                  <Th>{t('core.module.variable.key')}</Th>
-                  <Th>{t('common.Require Input')}</Th>
-                  <Th></Th>
+                <Tr>
+                  <Th
+                    fontSize={'mini'}
+                    borderRadius={'none !important'}
+                    w={'18px !important'}
+                    p={0}
+                  />
+                  <Th fontSize={'mini'}>{t('core.module.variable.variable name')}</Th>
+                  <Th fontSize={'mini'}>{t('core.module.variable.key')}</Th>
+                  <Th fontSize={'mini'}>{t('common.Require Input')}</Th>
+                  <Th fontSize={'mini'} borderRadius={'none !important'}></Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -174,12 +179,12 @@ const VariableEdit = ({
         <ModalBody>
           {variableType !== VariableInputEnum.custom && (
             <Flex alignItems={'center'}>
-              <Box w={'70px'}>{t('common.Require Input')}</Box>
+              <FormLabel w={'70px'}>{t('common.Require Input')}</FormLabel>
               <Switch {...registerEdit('variable.required')} />
             </Flex>
           )}
           <Flex mt={5} alignItems={'center'}>
-            <Box w={'80px'}>{t('core.module.variable.variable name')}</Box>
+            <FormLabel w={'80px'}>{t('core.module.variable.variable name')}</FormLabel>
             <Input
               {...registerEdit('variable.label', {
                 required: t('core.module.variable.variable name is required')
@@ -187,7 +192,7 @@ const VariableEdit = ({
             />
           </Flex>
           <Flex mt={5} alignItems={'center'}>
-            <Box w={'80px'}>{t('core.module.variable.key')}</Box>
+            <FormLabel w={'80px'}>{t('core.module.variable.key')}</FormLabel>
             <Input
               {...registerEdit('variable.key', {
                 required: t('core.module.variable.key is required')
@@ -195,9 +200,9 @@ const VariableEdit = ({
             />
           </Flex>
 
-          <Box mt={5} mb={2}>
+          <FormLabel mt={5} mb={2}>
             {t('core.workflow.Variable.Variable type')}
-          </Box>
+          </FormLabel>
           <MyRadio
             gridGap={4}
             gridTemplateColumns={'repeat(2,1fr)'}
@@ -220,9 +225,9 @@ const VariableEdit = ({
 
           {variableType === VariableInputEnum.input && (
             <>
-              <Box mt={5} mb={2}>
+              <FormLabel mt={5} mb={2}>
                 {t('core.module.variable.text max length')}
-              </Box>
+              </FormLabel>
               <Box>
                 <NumberInput max={500} min={1} step={1} position={'relative'}>
                   <NumberInputField

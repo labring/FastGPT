@@ -13,10 +13,11 @@ import type { ContextExtractAgentItemType } from '@fastgpt/global/core/workflow/
 import { useForm } from 'react-hook-form';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
-import MyTooltip from '@/components/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import { fnValueTypeSelect } from '@/web/core/workflow/constants/dataType';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 export const defaultField: ContextExtractAgentItemType = {
   valueType: 'string',
@@ -53,17 +54,15 @@ const ExtractFieldModal = ({
     >
       <ModalBody>
         <Flex mt={2} alignItems={'center'}>
-          <Flex alignItems={'center'} flex={['0 0 80px', '0 0 100px']}>
-            {t('core.module.extract.Required')}
-            <MyTooltip label={t('core.module.extract.Required Description')} forceShow>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
+          <Flex alignItems={'center'} flex={['1 0 80px', '1 0 100px']}>
+            <FormLabel>{t('core.module.extract.Required')}</FormLabel>
+            <QuestionTip ml={1} label={t('core.module.extract.Required Description')}></QuestionTip>
           </Flex>
           <Switch {...register('required')} />
         </Flex>
         {required && (
           <Flex mt={5} alignItems={'center'}>
-            <Box flex={['0 0 80px', '0 0 100px']}>{t('core.module.Default value')}</Box>
+            <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('core.module.Default value')}</FormLabel>
             <Input
               bg={'myGray.50'}
               placeholder={t('core.module.Default value placeholder')}
@@ -73,7 +72,7 @@ const ExtractFieldModal = ({
         )}
 
         <Flex alignItems={'center'} mt={5}>
-          <Box flex={['0 0 80px', '0 0 100px']}>{t('core.module.Data Type')}</Box>
+          <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('core.module.Data Type')}</FormLabel>
           <Box flex={'1 0 0'}>
             <MySelect
               list={fnValueTypeSelect}
@@ -86,7 +85,7 @@ const ExtractFieldModal = ({
         </Flex>
 
         <Flex mt={5} alignItems={'center'}>
-          <Box flex={['0 0 80px', '0 0 100px']}>{t('Field name')}</Box>
+          <FormLabel flex={['0 0 80px', '0 0 100px']}>{t('Field name')}</FormLabel>
           <Input
             bg={'myGray.50'}
             placeholder="name/age/sql"
@@ -94,7 +93,9 @@ const ExtractFieldModal = ({
           />
         </Flex>
         <Flex mt={5} alignItems={'center'}>
-          <Box flex={['0 0 80px', '0 0 100px']}>{t('core.module.Field Description')}</Box>
+          <FormLabel flex={['0 0 80px', '0 0 100px']}>
+            {t('core.module.Field Description')}
+          </FormLabel>
           <Input
             bg={'myGray.50'}
             placeholder={t('core.module.extract.Field Description Placeholder')}
@@ -104,10 +105,10 @@ const ExtractFieldModal = ({
         {(valueType === 'string' || valueType === 'number') && (
           <Box mt={5}>
             <Flex alignItems={'center'}>
-              {t('core.module.extract.Enum Value')}({t('common.choosable')})
-              <MyTooltip label={t('core.module.extract.Enum Description')} forceShow>
-                <QuestionOutlineIcon ml={1} />
-              </MyTooltip>
+              <FormLabel>
+                {t('core.module.extract.Enum Value')}({t('common.choosable')})
+              </FormLabel>
+              <QuestionTip ml={1} label={t('core.module.extract.Enum Description')}></QuestionTip>
             </Flex>
 
             <Textarea

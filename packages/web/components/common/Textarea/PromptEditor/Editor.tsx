@@ -105,7 +105,7 @@ export default function Editor({
             >
               <Box
                 color={'myGray.400'}
-                fontSize={'11px'}
+                fontSize={'mini'}
                 userSelect={'none'}
                 whiteSpace={'pre-wrap'}
                 wordBreak={'break-all'}

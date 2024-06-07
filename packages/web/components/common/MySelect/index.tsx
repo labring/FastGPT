@@ -135,6 +135,7 @@ const MySelect = (
                 }
               }}
               whiteSpace={'pre-wrap'}
+              fontSize={'sm'}
             >
               {item.label}
             </MenuItem>

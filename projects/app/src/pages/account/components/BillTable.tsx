@@ -32,6 +32,7 @@ import { standardSubLevelMap, subModeMap } from '@fastgpt/global/support/wallet/
 import MySelect from '@fastgpt/web/components/common/MySelect';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const BillTable = () => {
   const { t } = useTranslation();
@@ -187,58 +188,68 @@ function BillDetailModal({ bill, onClose }: { bill: BillSchemaType; onClose: () 
     >
       <ModalBody>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>{t('support.wallet.bill.Number')}:</Box>
+          <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.Number')}:</FormLabel>
           <Box>{bill.orderId}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>{t('support.wallet.usage.Time')}:</Box>
+          <FormLabel flex={'0 0 120px'}>{t('support.wallet.usage.Time')}:</FormLabel>
           <Box>{dayjs(bill.createTime).format('YYYY/MM/DD HH:mm:ss')}</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>{t('support.wallet.bill.Status')}:</Box>
+          <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.Status')}:</FormLabel>
           <Box>{t(billStatusMap[bill.status]?.label)}</Box>
         </Flex>
         {!!bill.metadata?.payWay && (
           <Flex alignItems={'center'} pb={4}>
-            <Box flex={'0 0 120px'}>{t('support.wallet.bill.payWay.Way')}:</Box>
+            <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.payWay.Way')}:</FormLabel>
             <Box>{t(billPayWayMap[bill.metadata.payWay]?.label)}</Box>
           </Flex>
         )}
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>{t('support.wallet.Amount')}:</Box>
+          <FormLabel flex={'0 0 120px'}>{t('support.wallet.Amount')}:</FormLabel>
           <Box>{formatStorePrice2Read(bill.price)}元</Box>
         </Flex>
         <Flex alignItems={'center'} pb={4}>
-          <Box flex={'0 0 120px'}>{t('support.wallet.bill.Type')}:</Box>
+          <FormLabel flex={'0 0 120px'}>{t('support.wallet.bill.Type')}:</FormLabel>
           <Box>{t(billTypeMap[bill.type]?.label)}</Box>
         </Flex>
         {!!bill.metadata?.subMode && (
           <Flex alignItems={'center'} pb={4}>
-            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.mode.Period')}:</Box>
+            <FormLabel flex={'0 0 120px'}>
+              {t('support.wallet.subscription.mode.Period')}:
+            </FormLabel>
             <Box>{t(subModeMap[bill.metadata.subMode]?.label)}</Box>
           </Flex>
         )}
         {!!bill.metadata?.standSubLevel && (
           <Flex alignItems={'center'} pb={4}>
-            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Stand plan level')}:</Box>
+            <FormLabel flex={'0 0 120px'}>
+              {t('support.wallet.subscription.Stand plan level')}:
+            </FormLabel>
             <Box>{t(standardSubLevelMap[bill.metadata.standSubLevel]?.label)}</Box>
           </Flex>
         )}
         {bill.metadata?.month !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Month amount')}:</Box>
+            <FormLabel flex={'0 0 120px'}>
+              {t('support.wallet.subscription.Month amount')}:
+            </FormLabel>
             <Box>{bill.metadata?.month}</Box>
           </Flex>
         )}
         {bill.metadata?.datasetSize !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra dataset size')}:</Box>
+            <FormLabel flex={'0 0 120px'}>
+              {t('support.wallet.subscription.Extra dataset size')}:
+            </FormLabel>
             <Box>{bill.metadata?.datasetSize}</Box>
           </Flex>
         )}
         {bill.metadata?.extraPoints !== undefined && (
           <Flex alignItems={'center'} pb={4}>
-            <Box flex={'0 0 120px'}>{t('support.wallet.subscription.Extra ai points')}:</Box>
+            <FormLabel flex={'0 0 120px'}>
+              {t('support.wallet.subscription.Extra ai points')}:
+            </FormLabel>
             <Box>{bill.metadata.extraPoints}</Box>
           </Flex>
         )}

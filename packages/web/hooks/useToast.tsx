@@ -5,6 +5,9 @@ export const useToast = (props?: UseToastOptions) => {
   const toast = uToast({
     position: 'top',
     duration: 2000,
+    containerStyle: {
+      fontSize: 'sm'
+    },
     ...props
   });
 

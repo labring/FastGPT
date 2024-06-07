@@ -1,6 +1,15 @@
 import React, { useEffect, useMemo, useTransition } from 'react';
-import { Box, Flex, Grid, BoxProps, useTheme, useDisclosure, Button } from '@chakra-ui/react';
-import { AddIcon, QuestionOutlineIcon, SmallAddIcon } from '@chakra-ui/icons';
+import {
+  Box,
+  Flex,
+  Grid,
+  BoxProps,
+  useTheme,
+  useDisclosure,
+  Button,
+  HStack
+} from '@chakra-ui/react';
+import { AddIcon, SmallAddIcon } from '@chakra-ui/icons';
 import { useFieldArray, UseFormReturn } from 'react-hook-form';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { AppSimpleEditFormType } from '@fastgpt/global/core/app/type.d';
@@ -13,7 +22,7 @@ import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 
 import dynamic from 'next/dynamic';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import VariableEdit from '@/components/core/app/VariableEdit';
@@ -30,6 +39,8 @@ import { useUpdate } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const DatasetSelectModal = dynamic(() => import('@/components/core/app/DatasetSelectModal'));
 const DatasetParamsModal = dynamic(() => import('@/components/core/app/DatasetParamsModal'));
@@ -52,7 +63,7 @@ const BoxStyles: BoxProps = {
 const LabelStyles: BoxProps = {
   w: ['60px', '100px'],
   flexShrink: 0,
-  fontSize: ['sm', 'md']
+  fontSize: 'xs'
 };
 
 const EditForm = ({
@@ -172,14 +183,10 @@ const EditForm = ({
           boxShadow: '0 2px 10px rgba(0,0,0,0.12)'
         })}
       >
-        <Flex alignItems={'center'}>
-          <Box fontSize={['md', 'xl']} color={'myGray.800'}>
-            {t('core.app.App params config')}
-          </Box>
-          <MyTooltip label={t('core.app.Simple Config Tip')} forceShow>
-            <MyIcon name={'common/questionLight'} color={'myGray.500'} ml={2} />
-          </MyTooltip>
-        </Flex>
+        <HStack>
+          <Box color={'myGray.900'}>{t('core.app.App params config')}</Box>
+          <QuestionTip label={t('core.app.Simple Config Tip')} />
+        </HStack>
         <Button
           isLoading={isSaving}
           size={['sm', 'md']}
@@ -209,9 +216,9 @@ const EditForm = ({
           <Box {...BoxStyles}>
             <Flex alignItems={'center'}>
               <MyIcon name={'core/app/simpleMode/ai'} w={'20px'} />
-              <Box ml={2} flex={1}>
+              <FormLabel ml={2} flex={1}>
                 {appT('AI Settings')}
-              </Box>
+              </FormLabel>
             </Flex>
             <Flex alignItems={'center'} mt={5}>
               <Box {...LabelStyles}>{t('core.ai.Model')}</Box>
@@ -235,12 +242,10 @@ const EditForm = ({
             </Flex>
 
             <Box mt={3}>
-              <Box {...LabelStyles}>
-                {t('core.ai.Prompt')}
-                <MyTooltip label={t('core.app.tip.chatNodeSystemPromptTip')} forceShow>
-                  <QuestionOutlineIcon display={['none', 'inline']} ml={1} />
-                </MyTooltip>
-              </Box>
+              <HStack {...LabelStyles}>
+                <Box>{t('core.ai.Prompt')}</Box>
+                <QuestionTip label={t('core.app.tip.chatNodeSystemPromptTip')} />
+              </HStack>
               <Box mt={1}>
                 <PromptEditor
                   value={aiSystemPrompt}
@@ -262,14 +267,14 @@ const EditForm = ({
             <Flex alignItems={'center'}>
               <Flex alignItems={'center'} flex={1}>
                 <MyIcon name={'core/app/simpleMode/dataset'} w={'20px'} />
-                <Box ml={2}>{t('core.dataset.Choose Dataset')}</Box>
+                <FormLabel ml={2}>{t('core.dataset.Choose Dataset')}</FormLabel>
               </Flex>
               <Button
                 variant={'transparentBase'}
-                leftIcon={<AddIcon fontSize={'xs'} />}
+                leftIcon={<SmallAddIcon />}
                 iconSpacing={1}
                 size={'sm'}
-                fontSize={'md'}
+                fontSize={'sm'}
                 onClick={onOpenKbSelect}
               >
                 {t('common.Choose')}
@@ -279,7 +284,7 @@ const EditForm = ({
                 leftIcon={<MyIcon name={'edit'} w={'14px'} />}
                 iconSpacing={1}
                 size={'sm'}
-                fontSize={'md'}
+                fontSize={'sm'}
                 onClick={onOpenDatasetParams}
               >
                 {t('common.Params')}
@@ -335,10 +340,8 @@ const EditForm = ({
             <Flex alignItems={'center'}>
               <Flex alignItems={'center'} flex={1}>
                 <MyIcon name={'core/app/toolCall'} w={'20px'} />
-                <Box ml={2}>{t('core.app.Tool call')}(实验功能)</Box>
-                <MyTooltip label={t('core.app.Tool call tip')}>
-                  <QuestionOutlineIcon ml={1} />
-                </MyTooltip>
+                <FormLabel ml={2}>{t('core.app.Tool call')}(实验功能)</FormLabel>
+                <QuestionTip ml={1} label={t('core.app.Tool call tip')} />
               </Flex>
               <Button
                 variant={'transparentBase'}
@@ -346,7 +349,7 @@ const EditForm = ({
                 iconSpacing={1}
                 mr={'-5px'}
                 size={'sm'}
-                fontSize={'md'}
+                fontSize={'sm'}
                 onClick={onOpenToolsSelect}
               >
                 {t('common.Choose')}
@@ -434,7 +437,6 @@ const EditForm = ({
           <Box {...BoxStyles}>
             <QGSwitch
               isChecked={postQuestionGuide}
-              size={'lg'}
               onChange={(e) => {
                 setValue('chatConfig.questionGuide', e.target.checked);
               }}

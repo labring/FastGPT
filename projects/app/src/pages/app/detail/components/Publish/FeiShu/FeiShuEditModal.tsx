@@ -1,8 +1,7 @@
 import React, { useMemo } from 'react';
 import { Flex, Box, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import type { FeishuType, OutLinkEditType } from '@fastgpt/global/support/outLink/type';
 import { useTranslation } from 'next-i18next';
@@ -11,6 +10,7 @@ import { useRequest } from '@/web/common/hooks/useRequest';
 import dayjs from 'dayjs';
 import { createShareChat, updateShareChat } from '@/web/support/outLink/api';
 import { useI18n } from '@/web/context/I18n';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 const FeiShuEditModal = ({
   appId,
@@ -76,9 +76,7 @@ const FeiShuEditModal = ({
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
             QPM
-            <MyTooltip label={publishT('QPM Tips' || '')}>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
+            <QuestionTip ml={1} label={publishT('QPM Tips' || '')}></QuestionTip>
           </Flex>
           <Input
             max={1000}
@@ -93,9 +91,7 @@ const FeiShuEditModal = ({
         <Flex alignItems={'center'} mt={4}>
           <Flex flex={'0 0 90px'} alignItems={'center'}>
             {t('support.outlink.Max usage points')}
-            <MyTooltip label={t('support.outlink.Max usage points tip')}>
-              <QuestionOutlineIcon ml={1} />
-            </MyTooltip>
+            <QuestionTip ml={1} label={t('support.outlink.Max usage points tip')}></QuestionTip>
           </Flex>
           <Input
             {...register('limit.maxUsagePoints', {

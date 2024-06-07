@@ -26,7 +26,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
@@ -40,6 +39,7 @@ import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useMemoizedFn } from 'ahooks';
 import { AppContext } from '@/web/core/app/context/appContext';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 
 export const HttpHeaders = [
@@ -305,9 +305,10 @@ export function RenderHttpProps({
       <Box>
         <Flex alignItems={'center'} mb={2} fontWeight={'medium'} color={'myGray.600'}>
           {t('core.module.Http request props')}
-          <MyTooltip label={t('core.module.http.Props tip', { variable: variableText })}>
-            <QuestionOutlineIcon ml={1} />
-          </MyTooltip>
+          <QuestionTip
+            ml={1}
+            label={t('core.module.http.Props tip', { variable: variableText })}
+          ></QuestionTip>
         </Flex>
         <Tabs
           list={[
@@ -468,89 +469,97 @@ const RenderForm = ({
 
   const Render = useMemo(() => {
     return (
-      <TableContainer overflowY={'visible'} overflowX={'unset'}>
-        <Table>
-          <Thead>
-            <Tr>
-              <Th px={2}>{t('core.module.http.Props name')}</Th>
-              <Th px={2}>{t('core.module.http.Props value')}</Th>
-            </Tr>
-          </Thead>
-          <Tbody>
-            {list.map((item, index) => (
-              <Tr key={`${input.key}${index}`}>
+      <Box mt={2} borderRadius={'md'} overflow={'hidden'} borderWidth={'1px'} borderBottom={'none'}>
+        <TableContainer overflowY={'visible'} overflowX={'unset'}>
+          <Table>
+            <Thead>
+              <Tr>
+                <Th px={2} borderBottomLeftRadius={'none !important'}>
+                  {t('core.module.http.Props name')}
+                </Th>
+                <Th px={2} borderBottomRadius={'none !important'}>
+                  {t('core.module.http.Props value')}
+                </Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {list.map((item, index) => (
+                <Tr key={`${input.key}${index}`}>
+                  <Td p={0} w={'150px'}>
+                    <HttpInput
+                      hasVariablePlugin={false}
+                      hasDropDownPlugin={tabType === TabEnum.headers}
+                      setDropdownValue={(value) => {
+                        handleKeyChange(index, value);
+                        setUpdateTrigger((prev) => !prev);
+                      }}
+                      placeholder={t('core.module.http.Props name')}
+                      value={item.key}
+                      variables={leftVariables}
+                      onBlur={(val) => {
+                        handleKeyChange(index, val);
+                      }}
+                      updateTrigger={updateTrigger}
+                    />
+                  </Td>
+                  <Td p={0}>
+                    <Box display={'flex'} alignItems={'center'}>
+                      <HttpInput
+                        placeholder={t('core.module.http.Props value')}
+                        value={item.value}
+                        variables={variables}
+                        onBlur={(val) => {
+                          setList((prevList) =>
+                            prevList.map((item, i) =>
+                              i === index ? { ...item, value: val } : item
+                            )
+                          );
+                          setShouldUpdateNode(true);
+                        }}
+                      />
+                      <MyIcon
+                        name={'delete'}
+                        cursor={'pointer'}
+                        _hover={{ color: 'red.600' }}
+                        w={'14px'}
+                        onClick={() => {
+                          setList((prevlist) => prevlist.filter((val) => val.key !== item.key));
+                          setShouldUpdateNode(true);
+                        }}
+                      />
+                    </Box>
+                  </Td>
+                </Tr>
+              ))}
+              <Tr>
                 <Td p={0} w={'150px'}>
                   <HttpInput
                     hasVariablePlugin={false}
                     hasDropDownPlugin={tabType === TabEnum.headers}
-                    setDropdownValue={(value) => {
-                      handleKeyChange(index, value);
+                    setDropdownValue={(val) => {
+                      handleAddNewProps(val);
                       setUpdateTrigger((prev) => !prev);
                     }}
-                    placeholder={t('core.module.http.Props name')}
-                    value={item.key}
+                    placeholder={t('core.module.http.Add props')}
+                    value={''}
                     variables={leftVariables}
-                    onBlur={(val) => {
-                      handleKeyChange(index, val);
-                    }}
                     updateTrigger={updateTrigger}
+                    onBlur={(val) => {
+                      handleAddNewProps(val);
+                      setUpdateTrigger((prev) => !prev);
+                    }}
                   />
                 </Td>
                 <Td p={0}>
                   <Box display={'flex'} alignItems={'center'}>
-                    <HttpInput
-                      placeholder={t('core.module.http.Props value')}
-                      value={item.value}
-                      variables={variables}
-                      onBlur={(val) => {
-                        setList((prevList) =>
-                          prevList.map((item, i) => (i === index ? { ...item, value: val } : item))
-                        );
-                        setShouldUpdateNode(true);
-                      }}
-                    />
-                    <MyIcon
-                      name={'delete'}
-                      cursor={'pointer'}
-                      _hover={{ color: 'red.600' }}
-                      w={'14px'}
-                      onClick={() => {
-                        setList((prevlist) => prevlist.filter((val) => val.key !== item.key));
-                        setShouldUpdateNode(true);
-                      }}
-                    />
+                    <HttpInput />
                   </Box>
                 </Td>
               </Tr>
-            ))}
-            <Tr>
-              <Td p={0} w={'150px'}>
-                <HttpInput
-                  hasVariablePlugin={false}
-                  hasDropDownPlugin={tabType === TabEnum.headers}
-                  setDropdownValue={(val) => {
-                    handleAddNewProps(val);
-                    setUpdateTrigger((prev) => !prev);
-                  }}
-                  placeholder={t('core.module.http.Add props')}
-                  value={''}
-                  variables={leftVariables}
-                  updateTrigger={updateTrigger}
-                  onBlur={(val) => {
-                    handleAddNewProps(val);
-                    setUpdateTrigger((prev) => !prev);
-                  }}
-                />
-              </Td>
-              <Td p={0}>
-                <Box display={'flex'} alignItems={'center'}>
-                  <HttpInput />
-                </Box>
-              </Td>
-            </Tr>
-          </Tbody>
-        </Table>
-      </TableContainer>
+            </Tbody>
+          </Table>
+        </TableContainer>
+      </Box>
     );
   }, [
     handleAddNewProps,

@@ -105,16 +105,16 @@
   font-size: inherit;
 }
 .markdown h1 {
-  font-size: 28px;
+  font-size: var(--chakra-fontSizes-2xl);
 }
 .markdown h2 {
-  font-size: 24px;
+  font-size: var(--chakra-fontSizes-xl);
 }
 .markdown h3 {
-  font-size: 18px;
+  font-size: var(--chakra-fontSizes-lg);
 }
 .markdown h4 {
-  font-size: 16px;
+  font-size: var(--chakra-fontSizes-md);
 }
 .markdown h5 {
   font-size: 14px;
@@ -346,6 +346,7 @@
   tab-size: 4;
   word-spacing: normal;
   width: 100%;
+  font-size: var(--chakra-fontSizes-sm);
 
   * {
     word-break: break-word;

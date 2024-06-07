@@ -39,13 +39,15 @@ const SearchParamsTip = ({
     >
       <Table fontSize={'xs'} overflow={'overlay'}>
         <Thead>
-          <Tr color={'myGray.600'}>
-            <Th>{t('core.dataset.search.search mode')}</Th>
-            <Th>{t('core.dataset.search.Max Tokens')}</Th>
-            <Th>{t('core.dataset.search.Min Similarity')}</Th>
-            {hasReRankModel && <Th>{t('core.dataset.search.ReRank')}</Th>}
-            <Th>{t('core.module.template.Query extension')}</Th>
-            {hasEmptyResponseMode && <Th>{t('core.dataset.search.Empty result response')}</Th>}
+          <Tr bg={'transparent !important'}>
+            <Th fontSize={'mini'}>{t('core.dataset.search.search mode')}</Th>
+            <Th fontSize={'mini'}>{t('core.dataset.search.Max Tokens')}</Th>
+            <Th fontSize={'mini'}>{t('core.dataset.search.Min Similarity')}</Th>
+            {hasReRankModel && <Th fontSize={'mini'}>{t('core.dataset.search.ReRank')}</Th>}
+            <Th fontSize={'mini'}>{t('core.module.template.Query extension')}</Th>
+            {hasEmptyResponseMode && (
+              <Th fontSize={'mini'}>{t('core.dataset.search.Empty result response')}</Th>
+            )}
           </Tr>
         </Thead>
         <Tbody>

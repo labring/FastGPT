@@ -129,7 +129,6 @@ function QuestionGuide({ chatConfig: { questionGuide = false }, setAppDetail }: 
   return (
     <QGSwitch
       isChecked={questionGuide}
-      size={'md'}
       onChange={(e) => {
         const value = e.target.checked;
         setAppDetail((state) => ({

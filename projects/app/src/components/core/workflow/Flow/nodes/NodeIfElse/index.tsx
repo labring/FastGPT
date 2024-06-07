@@ -91,7 +91,7 @@ const NodeIfElse = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
 
         <Container position={'relative'}>
           <Flex alignItems={'center'}>
-            <Box color={'black'} fontSize={'lg'} ml={2}>
+            <Box color={'black'} fontSize={'md'} ml={2}>
               {IfElseResultEnum.ELSE}
             </Box>
             <SourceHandle

@@ -15,10 +15,6 @@ import {
   useTheme,
   Link,
   Input,
-  MenuList,
-  MenuItem,
-  MenuButton,
-  Menu,
   IconButton
 } from '@chakra-ui/react';
 import {
@@ -31,7 +27,7 @@ import type { EditApiKeyProps } from '@/global/support/openapi/api.d';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import dayjs from 'dayjs';
-import { AddIcon, QuestionOutlineIcon } from '@chakra-ui/icons';
+import { AddIcon } from '@chakra-ui/icons';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'next-i18next';
@@ -39,11 +35,12 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useForm } from 'react-hook-form';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import MyTooltip from '@/components/MyTooltip';
 import { getDocPath } from '@/web/common/system/doc';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -91,7 +88,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
       <Box display={['block', 'flex']} py={[0, 3]} px={5} alignItems={'center'}>
         <Box flex={1}>
           <Flex alignItems={'flex-end'}>
-            <Box fontSize={['md', 'xl']} fontWeight={'bold'}>
+            <Box color={'myGray.900'} fontSize={'lg'}>
               {t('support.openapi.Api manager')}
             </Box>
             {feConfigs?.docUrl && (
@@ -100,18 +97,19 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                 target={'_blank'}
                 ml={1}
                 color={'primary.500'}
+                fontSize={'sm'}
               >
                 {t('common.Read document')}
               </Link>
             )}
           </Flex>
-          <Box fontSize={'sm'} color={'myGray.600'}>
+          <Box fontSize={'xs'} color={'myGray.600'}>
             {tips}
           </Box>
         </Box>
         <Flex
           mt={[2, 0]}
-          bg={'myWhite.600'}
+          bg={'myGray.100'}
           py={2}
           px={4}
           borderRadius={'md'}
@@ -119,10 +117,10 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           userSelect={'none'}
           onClick={() => copyData(baseUrl, t('support.openapi.Copy success'))}
         >
-          <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'sm'}>
+          <Box border={theme.borders.md} px={2} borderRadius={'md'} fontSize={'xs'}>
             {t('support.openapi.Api baseurl')}
           </Box>
-          <Box ml={2} color={'myGray.900'} fontSize={['sm', 'md']}>
+          <Box ml={2} fontSize={'sm'}>
             {baseUrl}
           </Box>
         </Flex>
@@ -200,21 +198,25 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
                     }
                     menuList={[
                       {
-                        label: t('common.Edit'),
-                        icon: 'edit',
-                        onClick: () =>
-                          setEditData({
-                            _id,
-                            name,
-                            limit,
-                            appId
-                          })
-                      },
-                      {
-                        label: t('common.Delete'),
-                        icon: 'delete',
-                        type: 'danger',
-                        onClick: () => openConfirm(() => onclickRemove(_id))()
+                        children: [
+                          {
+                            label: t('common.Edit'),
+                            icon: 'edit',
+                            onClick: () =>
+                              setEditData({
+                                _id,
+                                name,
+                                limit,
+                                appId
+                              })
+                          },
+                          {
+                            label: t('common.Delete'),
+                            icon: 'delete',
+                            type: 'danger',
+                            onClick: () => openConfirm(() => onclickRemove(_id))()
+                          }
+                        ]
                       }
                     ]}
                   />
@@ -248,10 +250,8 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
         iconSrc="/imgs/modal/key.svg"
         title={
           <Box>
-            <Box fontWeight={'bold'} fontSize={'xl'}>
-              {t('support.openapi.New api key')}
-            </Box>
-            <Box fontSize={'sm'} color={'myGray.600'}>
+            <Box fontWeight={'bold'}>{t('support.openapi.New api key')}</Box>
+            <Box fontSize={'xs'} color={'myGray.600'}>
               {t('support.openapi.New api key tip')}
             </Box>
           </Box>
@@ -332,7 +332,7 @@ function EditKeyModal({
     >
       <ModalBody>
         <Flex alignItems={'center'}>
-          <Box flex={'0 0 90px'}>{t('Name')}:</Box>
+          <FormLabel flex={'0 0 90px'}>{t('Name')}</FormLabel>
           <Input
             placeholder={publishT('key alias') || 'key alias'}
             maxLength={20}
@@ -344,12 +344,10 @@ function EditKeyModal({
         {feConfigs?.isPlus && (
           <>
             <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('support.outlink.Max usage points')}:
-                <MyTooltip label={t('support.outlink.Max usage points tip')}>
-                  <QuestionOutlineIcon ml={1} />
-                </MyTooltip>
-              </Flex>
+              <FormLabel display={'flex'} flex={'0 0 90px'} alignItems={'center'}>
+                {t('support.outlink.Max usage points')}
+                <QuestionTip ml={1} label={t('support.outlink.Max usage points tip')}></QuestionTip>
+              </FormLabel>
               <Input
                 {...register('limit.maxUsagePoints', {
                   min: -1,
@@ -360,9 +358,7 @@ function EditKeyModal({
               />
             </Flex>
             <Flex alignItems={'center'} mt={4}>
-              <Flex flex={'0 0 90px'} alignItems={'center'}>
-                {t('common.Expired Time')}:
-              </Flex>
+              <FormLabel flex={'0 0 90px'}>{t('common.Expired Time')}</FormLabel>
               <Input
                 type="datetime-local"
                 defaultValue={

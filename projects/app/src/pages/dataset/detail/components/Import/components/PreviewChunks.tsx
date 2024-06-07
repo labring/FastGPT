@@ -82,27 +82,30 @@ const PreviewChunks = ({
       title={previewSource.sourceName}
       isLoading={isLoading}
       maxW={['90vw', '40vw']}
+      px={0}
     >
-      {data.map((item, index) => (
-        <Box
-          key={index}
-          whiteSpace={'pre-wrap'}
-          fontSize={'sm'}
-          p={4}
-          bg={index % 2 === 0 ? 'white' : 'myWhite.600'}
-          mb={3}
-          borderRadius={'md'}
-          borderWidth={'1px'}
-          borderColor={'borderColor.low'}
-          boxShadow={'2'}
-          _notLast={{
-            mb: 2
-          }}
-        >
-          <Box color={'myGray.900'}>{item.q}</Box>
-          <Box color={'myGray.500'}>{item.a}</Box>
-        </Box>
-      ))}
+      <Box overflowY={'auto'} px={5} fontSize={'sm'}>
+        {data.map((item, index) => (
+          <Box
+            key={index}
+            whiteSpace={'pre-wrap'}
+            fontSize={'sm'}
+            p={4}
+            bg={index % 2 === 0 ? 'white' : 'myWhite.600'}
+            mb={3}
+            borderRadius={'md'}
+            borderWidth={'1px'}
+            borderColor={'borderColor.low'}
+            boxShadow={'2'}
+            _notLast={{
+              mb: 2
+            }}
+          >
+            <Box color={'myGray.900'}>{item.q}</Box>
+            <Box color={'myGray.500'}>{item.a}</Box>
+          </Box>
+        ))}
+      </Box>
     </MyRightDrawer>
   );
 };

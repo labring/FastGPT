@@ -51,15 +51,17 @@ const VariableTable = ({
         borderRadius={'md'}
         overflow={'hidden'}
         borderWidth={'1px'}
-        borderBottom="none"
+        borderBottom={'none'}
       >
         <TableContainer>
           <Table bg={'white'}>
             <Thead>
               <Tr>
-                <Th>{t('core.module.variable.variable name')}</Th>
+                <Th borderBottomLeftRadius={'none !important'}>
+                  {t('core.module.variable.variable name')}
+                </Th>
                 <Th>{t('core.workflow.Value type')}</Th>
-                <Th></Th>
+                <Th borderBottomRightRadius={'none !important'}></Th>
               </Tr>
             </Thead>
             <Tbody>

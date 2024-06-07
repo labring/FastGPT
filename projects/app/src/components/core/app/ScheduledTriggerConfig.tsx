@@ -1,4 +1,13 @@
-import { Box, Button, Flex, ModalBody, useDisclosure, Switch, Textarea } from '@chakra-ui/react';
+import {
+  Box,
+  Button,
+  Flex,
+  ModalBody,
+  useDisclosure,
+  Switch,
+  Textarea,
+  HStack
+} from '@chakra-ui/react';
 import React, { useCallback, useEffect, useMemo, useRef } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
@@ -10,6 +19,7 @@ import dynamic from 'next/dynamic';
 import type { MultipleSelectProps } from '@fastgpt/web/components/common/MySelect/type.d';
 import { cronParser2Fields } from '@fastgpt/global/common/string/time';
 import TimezoneSelect from '@fastgpt/web/components/common/MySelect/TimezoneSelect';
+import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const MultipleRowSelect = dynamic(
   () => import('@fastgpt/web/components/common/MySelect/MultipleRowSelect')
@@ -135,7 +145,7 @@ const ScheduledTriggerConfig = ({
       defaultPrompt?: string;
     }) => {
       onChange({
-        cronString: cronString ?? value?.cronString ?? '0 0 * * *',
+        cronString: cronString ?? value?.cronString ?? '',
         timezone: timezone ?? value?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone,
         defaultPrompt: defaultPrompt ?? value?.defaultPrompt ?? ''
       });
@@ -243,10 +253,10 @@ const ScheduledTriggerConfig = ({
       <>
         <Flex alignItems={'center'}>
           <MyIcon name={'core/app/schedulePlan'} w={'20px'} />
-          <Flex alignItems={'center'} ml={2} flex={1}>
-            {t('core.app.Interval timer run')}
-            <QuestionTip ml={1} label={t('core.app.Interval timer tip')} />
-          </Flex>
+          <HStack ml={2} flex={1} spacing={1}>
+            <FormLabel>{t('core.app.Interval timer run')}</FormLabel>
+            <QuestionTip label={t('core.app.Interval timer tip')} />
+          </HStack>
           <MyTooltip label={t('core.app.Config schedule plan')}>
             <Button
               variant={'transparentBase'}
@@ -269,9 +279,8 @@ const ScheduledTriggerConfig = ({
         >
           <ModalBody>
             <Flex justifyContent={'space-between'} alignItems={'center'}>
-              <Box flex={'0 0 80px'}> {t('core.app.schedule.Open schedule')}</Box>
+              <FormLabel flex={'0 0 80px'}> {t('core.app.schedule.Open schedule')}</FormLabel>
               <Switch
-                size={'lg'}
                 isChecked={isOpenSchedule}
                 onChange={(e) => {
                   if (e.target.checked) {
@@ -285,7 +294,7 @@ const ScheduledTriggerConfig = ({
             {isOpenSchedule && (
               <>
                 <Flex alignItems={'center'} mt={5}>
-                  <Box flex={'0 0 80px'}>执行时机</Box>
+                  <FormLabel flex={'0 0 80px'}>执行时间</FormLabel>
                   <Box flex={'1 0 0'}>
                     <MultipleRowSelect
                       label={formatLabel}
@@ -298,7 +307,7 @@ const ScheduledTriggerConfig = ({
                   </Box>
                 </Flex>
                 <Flex alignItems={'center'} mt={5}>
-                  <Box flex={'0 0 80px'}>时区</Box>
+                  <FormLabel flex={'0 0 80px'}>时区</FormLabel>
                   <Box flex={'1 0 0'}>
                     <TimezoneSelect
                       value={timezone}
@@ -309,7 +318,7 @@ const ScheduledTriggerConfig = ({
                   </Box>
                 </Flex>
                 <Box mt={5}>
-                  <Box mb={1}>{t('core.app.schedule.Default prompt')}</Box>
+                  <FormLabel mb={1}>{t('core.app.schedule.Default prompt')}</FormLabel>
                   <Textarea
                     value={defaultPrompt}
                     rows={8}

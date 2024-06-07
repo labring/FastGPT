@@ -142,7 +142,7 @@ const NodeInputSelect = ({
 
   return (
     <MyMenu
-      offset={[0, -1]}
+      offset={[-0.5, -0.5]}
       Button={
         <Button
           size={'xs'}
@@ -154,7 +154,7 @@ const NodeInputSelect = ({
           <Box fontWeight={'medium'}>{renderTypeData.title}</Box>
         </Button>
       }
-      menuList={filterMenuList}
+      menuList={[{ children: filterMenuList }]}
     />
   );
 };

@@ -35,6 +35,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import { downloadFetch } from '@/web/common/system/utils';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
 const MoveModal = dynamic(() => import('./component/MoveModal'), { ssr: false });
@@ -182,22 +183,26 @@ const Dataset = () => {
             }
             menuList={[
               {
-                label: (
-                  <Flex>
-                    <MyIcon name={FolderIcon} w={'20px'} mr={1} />
-                    {t('Folder')}
-                  </Flex>
-                ),
-                onClick: () => setEditFolderData({})
-              },
-              {
-                label: (
-                  <Flex>
-                    <Image src={'/imgs/workflow/db.png'} alt={''} w={'20px'} mr={1} />
-                    {t('core.dataset.Dataset')}
-                  </Flex>
-                ),
-                onClick: onOpenCreateModal
+                children: [
+                  {
+                    label: (
+                      <Flex>
+                        <MyIcon name={FolderIcon} w={'20px'} mr={1} />
+                        {t('Folder')}
+                      </Flex>
+                    ),
+                    onClick: () => setEditFolderData({})
+                  },
+                  {
+                    label: (
+                      <Flex>
+                        <Image src={'/imgs/workflow/db.png'} alt={''} w={'20px'} mr={1} />
+                        {t('core.dataset.Dataset')}
+                      </Flex>
+                    ),
+                    onClick: onOpenCreateModal
+                  }
+                ]
               }
             ]}
           />
@@ -310,96 +315,108 @@ const Dataset = () => {
                   }
                   menuList={[
                     {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'edit'} w={'14px'} mr={2} />
-                          {t('Rename')}
-                        </Flex>
-                      ),
-                      onClick: () =>
-                        onOpenTitleModal({
-                          defaultVal: dataset.name,
-                          onSuccess: (val) => {
-                            if (val === dataset.name || !val) return;
-                            putDatasetById({
-                              id: dataset._id,
-                              name: val
-                            });
+                      children: [
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'edit'} w={'14px'} mr={2} />
+                              {t('Rename')}
+                            </Flex>
+                          ),
+                          onClick: () =>
+                            onOpenTitleModal({
+                              defaultVal: dataset.name,
+                              onSuccess: (val) => {
+                                if (val === dataset.name || !val) return;
+                                putDatasetById({
+                                  id: dataset._id,
+                                  name: val
+                                });
+                              }
+                            })
+                        },
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
+                              {t('Move')}
+                            </Flex>
+                          ),
+                          onClick: () => setMoveDataId(dataset._id)
+                        },
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'export'} w={'14px'} mr={2} />
+                              {t('Export')}
+                            </Flex>
+                          ),
+                          onClick: () => {
+                            exportDataset(dataset);
                           }
-                        })
+                        },
+                        ...(dataset.permission === PermissionTypeEnum.private
+                          ? [
+                              {
+                                label: (
+                                  <Flex alignItems={'center'}>
+                                    <MyIcon
+                                      name={'support/permission/publicLight'}
+                                      w={'14px'}
+                                      mr={2}
+                                    />
+                                    {t('permission.Set Public')}
+                                  </Flex>
+                                ),
+                                onClick: () => {
+                                  putDatasetById({
+                                    id: dataset._id,
+                                    permission: PermissionTypeEnum.public
+                                  });
+                                }
+                              }
+                            ]
+                          : [
+                              {
+                                label: (
+                                  <Flex alignItems={'center'}>
+                                    <MyIcon
+                                      name={'support/permission/privateLight'}
+                                      w={'14px'}
+                                      mr={2}
+                                    />
+                                    {t('permission.Set Private')}
+                                  </Flex>
+                                ),
+                                onClick: () => {
+                                  putDatasetById({
+                                    id: dataset._id,
+                                    permission: PermissionTypeEnum.private
+                                  });
+                                }
+                              }
+                            ])
+                      ]
                     },
                     {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'common/file/move'} w={'14px'} mr={2} />
-                          {t('Move')}
-                        </Flex>
-                      ),
-                      onClick: () => setMoveDataId(dataset._id)
-                    },
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'export'} w={'14px'} mr={2} />
-                          {t('Export')}
-                        </Flex>
-                      ),
-                      onClick: () => {
-                        exportDataset(dataset);
-                      }
-                    },
-                    ...(dataset.permission === PermissionTypeEnum.private
-                      ? [
-                          {
-                            label: (
-                              <Flex alignItems={'center'}>
-                                <MyIcon name={'support/permission/publicLight'} w={'14px'} mr={2} />
-                                {t('permission.Set Public')}
-                              </Flex>
-                            ),
-                            onClick: () => {
-                              putDatasetById({
-                                id: dataset._id,
-                                permission: PermissionTypeEnum.public
-                              });
-                            }
+                      children: [
+                        {
+                          label: (
+                            <Flex alignItems={'center'}>
+                              <MyIcon name={'delete'} w={'14px'} mr={2} />
+                              {t('common.Delete')}
+                            </Flex>
+                          ),
+                          type: 'danger',
+                          onClick: () => {
+                            openConfirm(
+                              () => onclickDelDataset(dataset._id),
+                              undefined,
+                              DeleteTipsMap.current[dataset.type]
+                            )();
                           }
-                        ]
-                      : [
-                          {
-                            label: (
-                              <Flex alignItems={'center'}>
-                                <MyIcon
-                                  name={'support/permission/privateLight'}
-                                  w={'14px'}
-                                  mr={2}
-                                />
-                                {t('permission.Set Private')}
-                              </Flex>
-                            ),
-                            onClick: () => {
-                              putDatasetById({
-                                id: dataset._id,
-                                permission: PermissionTypeEnum.private
-                              });
-                            }
-                          }
-                        ]),
-                    {
-                      label: (
-                        <Flex alignItems={'center'}>
-                          <MyIcon name={'delete'} w={'14px'} mr={2} />
-                          {t('common.Delete')}
-                        </Flex>
-                      ),
-                      type: 'danger',
-                      onClick: () => {
-                        openConfirm(
-                          () => onclickDelDataset(dataset._id),
-                          undefined,
-                          DeleteTipsMap.current[dataset.type]
-                        )();
-                      }
+                        }
+                      ]
                     }
                   ]}
                 />
@@ -416,7 +433,7 @@ const Dataset = () => {
               className={'textEllipsis3'}
               py={1}
               wordBreak={'break-all'}
-              fontSize={'sm'}
+              fontSize={'xs'}
               color={'myGray.500'}
             >
               {dataset.intro ||
@@ -436,12 +453,7 @@ const Dataset = () => {
         ))}
       </Grid>
       {myDatasets.length === 0 && (
-        <Flex mt={'35vh'} flexDirection={'column'} alignItems={'center'}>
-          <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-          <Box mt={2} color={'myGray.500'}>
-            {t('core.dataset.Empty Dataset Tips')}
-          </Box>
-        </Flex>
+        <EmptyTip pt={'35vh'} text={t('core.dataset.Empty Dataset Tips')}></EmptyTip>
       )}
       <ConfirmModal />
       <EditTitleModal />

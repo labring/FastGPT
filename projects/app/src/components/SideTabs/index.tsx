@@ -17,17 +17,17 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
     switch (size) {
       case 'sm':
         return {
-          fontSize: 'sm',
+          fontSize: 'xs',
           inlineP: 1
         };
       case 'md':
         return {
-          fontSize: 'md',
+          fontSize: 'sm',
           inlineP: 2
         };
       case 'lg':
         return {
-          fontSize: 'lg',
+          fontSize: 'md',
           inlineP: 3
         };
     }
@@ -55,7 +55,8 @@ const SideTabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) =>
                 color: 'myGray.600'
               })}
           _hover={{
-            bg: 'myGray.05'
+            color: 'primary.600',
+            bg: 'myGray.100'
           }}
           onClick={() => {
             if (activeId === item.id) return;

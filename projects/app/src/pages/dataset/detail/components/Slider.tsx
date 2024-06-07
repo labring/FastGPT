@@ -135,11 +135,12 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
             px={3}
             borderRadius={'md'}
             _hover={{ bg: 'myGray.100' }}
+            fontSize={'sm'}
             onClick={() => router.replace('/dataset/list')}
           >
             <IconButton
               mr={3}
-              icon={<MyIcon name={'common/backFill'} w={'18px'} color={'primary.500'} />}
+              icon={<MyIcon name={'common/backFill'} w={'1rem'} color={'primary.500'} />}
               bg={'white'}
               boxShadow={'1px 1px 9px rgba(0,0,0,0.15)'}
               size={'smSquare'}

@@ -28,7 +28,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useTranslation } from 'next-i18next';
 import { FlowNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import MyTooltip from '@/components/MyTooltip';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { connectionLineStyle, defaultEdgeOptions } from '../constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useKeyboard } from './hooks/useKeyboard';

@@ -8,6 +8,7 @@ import DatasetSelectModal, { useDatasetSelect } from '@/components/core/dataset/
 import dynamic from 'next/dynamic';
 import { AdminFbkType } from '@fastgpt/global/core/chat/type.d';
 import SelectCollections from '@/web/core/dataset/components/SelectCollections';
+import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 
 const InputDataModal = dynamic(() => import('@/pages/dataset/detail/components/InputDataModal'));
 
@@ -76,7 +77,7 @@ const SelectMarkCollection = ({
                     >
                       <Flex alignItems={'center'} h={'38px'}>
                         <Avatar src={item.avatar} w={['24px', '28px', '32px']}></Avatar>
-                        <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg', 'xl']}>
+                        <Box ml={3} fontWeight={'bold'} fontSize={['md', 'lg']}>
                           {item.name}
                         </Box>
                       </Flex>
@@ -89,14 +90,7 @@ const SelectMarkCollection = ({
                 })()
               )}
             </Grid>
-            {datasets.length === 0 && (
-              <Flex mt={'10vh'} flexDirection={'column'} alignItems={'center'}>
-                <MyIcon name="empty" w={'48px'} h={'48px'} color={'transparent'} />
-                <Box mt={2} color={'myGray.500'}>
-                  这个目录已经没东西可选了~
-                </Box>
-              </Flex>
-            )}
+            {datasets.length === 0 && <EmptyTip text={'这个目录已经没东西可选了~'}></EmptyTip>}
           </ModalBody>
         </DatasetSelectModal>
       )}
