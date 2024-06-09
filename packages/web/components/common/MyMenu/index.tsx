@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Menu,
   MenuList,
@@ -36,7 +36,7 @@ export type Props = {
 const MyMenu = ({
   width = 'auto',
   trigger = 'hover',
-  offset = [0, 5],
+  offset,
   iconSize = '1rem',
   Button,
   menuList
@@ -74,8 +74,14 @@ const MyMenu = ({
     }
   });
 
+  const computeOffset = useMemo<[number, number]>(() => {
+    if (offset) return offset;
+    if (typeof width === 'number') return [-width / 2, 5];
+    return [0, 5];
+  }, [offset]);
+
   return (
-    <Menu offset={offset} isOpen={isOpen} autoSelect={false} direction={'ltr'} isLazy>
+    <Menu offset={computeOffset} isOpen={isOpen} autoSelect={false} direction={'ltr'} isLazy>
       <Box
         ref={ref}
         onMouseEnter={() => {

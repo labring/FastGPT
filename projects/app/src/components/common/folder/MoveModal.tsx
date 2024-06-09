@@ -7,7 +7,7 @@ import {
   GetResourceFolderListItemResponse,
   ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
-import { useMount } from 'ahooks';
+import { useMemoizedFn, useMount } from 'ahooks';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -21,25 +21,31 @@ type FolderItemType = {
 
 const rootId = 'root';
 
-const MoveModal = ({
-  moveResourceId,
-  title,
-  server,
-  onConfirm,
-  onClose
-}: {
+type Props = {
   moveResourceId: string;
   title: string;
   server: (e: GetResourceFolderListProps) => Promise<GetResourceFolderListItemResponse[]>;
   onConfirm: (id: ParentIdType) => Promise<any>;
   onClose: () => void;
-}) => {
+};
+
+const MoveModal = ({ moveResourceId, title, server, onConfirm, onClose }: Props) => {
   const { t } = useTranslation();
   const [selectedId, setSelectedId] = React.useState<string>();
+  const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
   const [folderList, setFolderList] = useState<FolderItemType[]>([]);
 
+  const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
+    if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
+
+    setRequestingIdList((state) => [...state, e.parentId]);
+    return server(e).finally(() =>
+      setRequestingIdList((state) => state.filter((id) => id !== e.parentId))
+    );
+  }, {});
+
   useMount(async () => {
-    const data = await server({ parentId: null });
+    const data = await requestServer({ parentId: null });
     setFolderList([
       {
         id: rootId,
@@ -54,12 +60,14 @@ const MoveModal = ({
     ]);
   });
 
-  const RenderItem = useCallback(
+  const RenderList = useMemoizedFn(
     ({ list, index = 0 }: { list: FolderItemType[]; index?: number }) => {
       return (
         <>
-          {list.map((item) =>
-            moveResourceId === item.id ? null : (
+          {list
+            // can not move to itself
+            .filter((item) => moveResourceId !== item.id)
+            .map((item) => (
               <Box key={item.id} _notLast={{ mb: 0.5 }} userSelect={'none'}>
                 <Flex
                   alignItems={'center'}
@@ -94,23 +102,27 @@ const MoveModal = ({
                       }}
                       onClick={async (e) => {
                         e.stopPropagation();
+                        if (requestingIdList.includes(item.id)) return;
 
                         if (!item.children) {
-                          const data = await server({ parentId: item.id });
+                          const data = await requestServer({ parentId: item.id });
                           item.children = data.map((item) => ({
                             id: item.id,
                             name: item.name,
                             open: false
                           }));
                         }
-
                         item.open = !item.open;
                         setFolderList([...folderList]);
                       }}
                     >
                       <MyIcon
-                        name={'common/rightArrowFill'}
-                        w={'14px'}
+                        name={
+                          requestingIdList.includes(item.id)
+                            ? 'common/loading'
+                            : 'common/rightArrowFill'
+                        }
+                        w={'1.25rem'}
                         color={'myGray.500'}
                         transform={item.open ? 'rotate(90deg)' : 'none'}
                       />
@@ -123,16 +135,14 @@ const MoveModal = ({
                 </Flex>
                 {item.children && item.open && (
                   <Box mt={0.5}>
-                    <RenderItem list={item.children} index={index + 1} />
+                    <RenderList list={item.children} index={index + 1} />
                   </Box>
                 )}
               </Box>
-            )
-          )}
+            ))}
         </>
       );
-    },
-    [folderList, moveResourceId, selectedId, server]
+    }
   );
 
   const { runAsync: onConfirmSelect, loading: confirming } = useRequest2(
@@ -160,7 +170,7 @@ const MoveModal = ({
       onClose={onClose}
     >
       <ModalBody flex={'1 0 0'} overflow={'auto'} minH={'400px'}>
-        <RenderItem list={folderList} />
+        <RenderList list={folderList} />
       </ModalBody>
       <ModalFooter>
         <Button isLoading={confirming} isDisabled={!selectedId} onClick={onConfirmSelect}>

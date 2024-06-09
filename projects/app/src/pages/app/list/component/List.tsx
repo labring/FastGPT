@@ -49,8 +49,7 @@ const ListItem = () => {
   });
 
   const { openConfirm, ConfirmModal } = useConfirm({
-    type: 'delete',
-    content: appT('Confirm Del App Tip')
+    type: 'delete'
   });
 
   const { run: onclickDelApp } = useRequest2(
@@ -171,7 +170,14 @@ const ListItem = () => {
                                   type: 'danger' as 'danger',
                                   icon: 'delete',
                                   label: t('common.Delete'),
-                                  onClick: () => openConfirm(() => onclickDelApp(app._id))()
+                                  onClick: () =>
+                                    openConfirm(
+                                      () => onclickDelApp(app._id),
+                                      undefined,
+                                      app.type === AppTypeEnum.folder
+                                        ? appT('Confirm delete folder tip')
+                                        : appT('Confirm Del App Tip')
+                                    )()
                                 }
                               ]
                             }

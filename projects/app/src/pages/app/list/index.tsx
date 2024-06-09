@@ -92,7 +92,6 @@ const MyApps = () => {
 
             {userInfo?.team.permission.hasWritePer && (
               <MyMenu
-                offset={[-60, 5]}
                 width={150}
                 iconSize="1.5rem"
                 Button={
@@ -106,7 +105,7 @@ const MyApps = () => {
                       {
                         icon: 'core/app/simpleBot',
                         label: appT('Create bot'),
-                        description: '创建一个AI应用',
+                        description: appT('Create one ai app'),
                         onClick: onOpenCreateModal
                       }
                     ]
@@ -139,7 +138,7 @@ const MyApps = () => {
                 });
               }}
               onMove={() => setMoveAppId(folderDetail._id)}
-              deleteTip="确认删除该文件夹及其内部所有应用？"
+              deleteTip={appT('Confirm delete folder tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
             />
           </Box>

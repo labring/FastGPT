@@ -86,7 +86,7 @@ export const useConfirm = (props?: {
       }, []);
 
       return (
-        <MyModal isOpen={isOpen} iconSrc={iconSrc} title={title} maxW={['90vw', '500px']}>
+        <MyModal isOpen={isOpen} iconSrc={iconSrc} title={title} maxW={['90vw', '400px']}>
           <ModalBody pt={5} whiteSpace={'pre-wrap'} fontSize={'sm'}>
             {customContent}
           </ModalBody>

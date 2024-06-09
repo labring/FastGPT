@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex } from '@chakra-ui/react';
 import {
   GetResourceFolderListProps,
@@ -6,10 +6,10 @@ import {
   ParentIdType
 } from '@fastgpt/global/common/parentFolder/type';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useQuery } from '@tanstack/react-query';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import Avatar from '@/components/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useMemoizedFn } from 'ahooks';
 
 type ResourceItemType = GetResourceListItemResponse & {
   open: boolean;
@@ -26,8 +26,18 @@ const SelectOneResource = ({
   onSelect: (e?: string) => any;
 }) => {
   const [dataList, setDataList] = useState<ResourceItemType[]>([]);
+  const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
 
-  const { loading } = useRequest2(() => server({ parentId: null }), {
+  const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
+    if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
+
+    setRequestingIdList((state) => [...state, e.parentId]);
+    return server(e).finally(() =>
+      setRequestingIdList((state) => state.filter((id) => id !== e.parentId))
+    );
+  }, {});
+
+  const { loading } = useRequest2(() => requestServer({ parentId: null }), {
     manual: false,
     onSuccess: (data) => {
       setDataList(
@@ -39,7 +49,7 @@ const SelectOneResource = ({
     }
   });
 
-  const RenderItem = useCallback(
+  const Render = useMemoizedFn(
     ({ list, index = 0 }: { list: ResourceItemType[]; index?: number }) => {
       return (
         <>
@@ -62,9 +72,10 @@ const SelectOneResource = ({
                     }
                   : {
                       onClick: async () => {
+                        // folder => open(request children) or close
                         if (item.isFolder) {
                           if (!item.children) {
-                            const data = await server({ parentId: item.id });
+                            const data = await requestServer({ parentId: item.id });
                             item.children = data.map((item) => ({
                               ...item,
                               open: false
@@ -96,7 +107,11 @@ const SelectOneResource = ({
                   }}
                 >
                   <MyIcon
-                    name={'common/rightArrowFill'}
+                    name={
+                      requestingIdList.includes(item.id)
+                        ? 'common/loading'
+                        : 'common/rightArrowFill'
+                    }
                     w={'14px'}
                     color={'myGray.500'}
                     transform={item.open ? 'rotate(90deg)' : 'none'}
@@ -109,18 +124,17 @@ const SelectOneResource = ({
               </Flex>
               {item.children && item.open && (
                 <Box mt={0.5}>
-                  <RenderItem list={item.children} index={index + 1} />
+                  <Render list={item.children} index={index + 1} />
                 </Box>
               )}
             </Box>
           ))}
         </>
       );
-    },
-    [value, onSelect, dataList, server]
+    }
   );
 
-  return loading ? <Loading fixed={false} /> : <RenderItem list={dataList} />;
+  return loading ? <Loading fixed={false} /> : <Render list={dataList} />;
 };
 
 export default SelectOneResource;
