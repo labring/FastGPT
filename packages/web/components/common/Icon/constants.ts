@@ -71,6 +71,7 @@ export const iconPaths = {
   'core/app/publish/lark': () => import('./icons/core/app/publish/lark.svg'),
   'core/app/questionGuide': () => import('./icons/core/app/questionGuide.svg'),
   'core/app/schedulePlan': () => import('./icons/core/app/schedulePlan.svg'),
+  'core/app/simpleBot': () => import('./icons/core/app/simpleBot.svg'),
   'core/app/simpleMode/ai': () => import('./icons/core/app/simpleMode/ai.svg'),
   'core/app/simpleMode/chat': () => import('./icons/core/app/simpleMode/chat.svg'),
   'core/app/simpleMode/dataset': () => import('./icons/core/app/simpleMode/dataset.svg'),

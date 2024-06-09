@@ -6,7 +6,7 @@ const Loading = ({
   text = '',
   bg = 'rgba(255,255,255,0.5)',
   zIndex = 1000,
-  size = 'xl'
+  size = 'lg'
 }: {
   fixed?: boolean;
   text?: string;

@@ -1,5 +1,4 @@
 import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type';
-
 import { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { VariableInputEnum } from '../workflow/constants';
@@ -12,11 +11,13 @@ import { AppPermission } from '../../support/permission/app/controller';
 
 export type AppSchema = {
   _id: string;
+  parentId: string;
   teamId: string;
   tmbId: string;
-  name: string;
-  type: `${AppTypeEnum}`;
+  type: AppTypeEnum;
   version?: 'v1' | 'v2';
+
+  name: string;
   avatar: string;
   intro: string;
   updateTime: number;
@@ -39,6 +40,7 @@ export type AppListItemType = {
   name: string;
   avatar: string;
   intro: string;
+  type: AppTypeEnum;
   defaultPermission: PermissionValueType;
   permission: AppPermission;
 };

@@ -11,6 +11,7 @@
   "Connection is invalid": "连接无效",
   "Connection type is different": "连接的类型不一致",
   "Copy Module Config": "复制配置",
+  "Create bot": "应用",
   "Dataset Quote Template": "知识库问答模式",
   "Export Config Successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
   "Export Configs": "导出配置",

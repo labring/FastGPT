@@ -59,6 +59,7 @@ export const useRequest2 = <TData, TParams extends any[]>(
   const res = ahooksUseRequest<TData, TParams>(
     server,
     {
+      manual: true,
       ...rest,
       onError: (err, params) => {
         rest?.onError?.(err, params);

@@ -3,21 +3,16 @@ import { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type
 import React, { useMemo } from 'react';
 import { useTranslation } from 'next-i18next';
 
-const ParentPaths = (props: {
-  paths?: ParentTreePathItemType[];
+const FolderPath = (props: {
+  paths: ParentTreePathItemType[];
   rootName?: string;
   FirstPathDom?: React.ReactNode;
   onClick: (parentId: string) => void;
   fontSize?: string;
 }) => {
   const { t } = useTranslation();
-  const {
-    paths = [],
-    rootName = t('common.folder.Root Path'),
-    FirstPathDom,
-    onClick,
-    fontSize
-  } = props;
+  const { paths, rootName = t('common.folder.Root Path'), FirstPathDom, onClick, fontSize } = props;
+
   const concatPaths = useMemo(
     () => [
       {
@@ -30,9 +25,9 @@ const ParentPaths = (props: {
   );
 
   return paths.length === 0 && !!FirstPathDom ? (
-    <>{FirstPathDom}</>
+    FirstPathDom
   ) : (
-    <Flex flex={1} ml={-2}>
+    <Flex flex={1} ml={-1.5}>
       {concatPaths.map((item, i) => (
         <Flex key={item.parentId || i} alignItems={'center'}>
           <Box
@@ -70,4 +65,4 @@ const ParentPaths = (props: {
   );
 };
 
-export default React.memo(ParentPaths);
+export default React.memo(FolderPath);

@@ -10,21 +10,24 @@ import {
 } from '@chakra-ui/react';
 import MyIcon from '../Icon';
 import MyDivider from '../MyDivider';
+import type { IconNameType } from '../Icon/type';
 
-type MenuItemType = 'primary' | 'danger';
+export type MenuItemType = 'primary' | 'danger';
 
 export type Props = {
   width?: number | string;
   offset?: [number, number];
   Button: React.ReactNode;
   trigger?: 'hover' | 'click';
+  iconSize?: string;
   menuList: {
     label?: string;
     children: {
       isActive?: boolean;
       type?: MenuItemType;
-      icon?: string;
+      icon?: IconNameType | string;
       label: string | React.ReactNode;
+      description?: string;
       onClick: () => any;
     }[];
   }[];
@@ -34,6 +37,7 @@ const MyMenu = ({
   width = 'auto',
   trigger = 'hover',
   offset = [0, 5],
+  iconSize = '1rem',
   Button,
   menuList
 }: Props) => {
@@ -45,8 +49,8 @@ const MyMenu = ({
       }
     },
     danger: {
+      color: 'red.600',
       _hover: {
-        color: 'red.600',
         background: 'red.1'
       }
     }
@@ -124,7 +128,6 @@ const MyMenu = ({
                   <MenuItem
                     key={index}
                     {...menuItemStyles}
-                    {...typeMapStyle[child.type || 'primary']}
                     onClick={(e) => {
                       e.stopPropagation();
                       setIsOpen(false);
@@ -133,9 +136,19 @@ const MyMenu = ({
                     color={child.isActive ? 'primary.700' : 'myGray.600'}
                     whiteSpace={'pre-wrap'}
                     _notLast={{ mb: 0.5 }}
+                    {...typeMapStyle[child.type || 'primary']}
                   >
-                    {!!child.icon && <MyIcon name={child.icon as any} w={'16px'} mr={2} />}
-                    <Box>{child.label}</Box>
+                    {!!child.icon && <MyIcon name={child.icon as any} w={iconSize} mr={3} />}
+                    <Box>
+                      <Box color={child.description ? 'myGray.900' : 'inherit'} fontSize={'sm'}>
+                        {child.label}
+                      </Box>
+                      {child.description && (
+                        <Box color={'myGray.500'} fontSize={'mini'}>
+                          {child.description}
+                        </Box>
+                      )}
+                    </Box>
                   </MenuItem>
                 ))}
               </Box>
