@@ -219,7 +219,14 @@ ${toolResponse}`}
         <ChatAvatar src={avatar} type={type} />
 
         {!!chatStatusMap && statusBoxData && isLastChild && (
-          <Flex alignItems={'center'} px={3} py={'1.5px'} borderRadius="md" bg={chatStatusMap.bg}>
+          <Flex
+            alignItems={'center'}
+            px={3}
+            py={'1.5px'}
+            borderRadius="md"
+            bg={chatStatusMap.bg}
+            fontSize={'sm'}
+          >
             <Box
               className={styles.statusAnimation}
               bg={chatStatusMap.color}

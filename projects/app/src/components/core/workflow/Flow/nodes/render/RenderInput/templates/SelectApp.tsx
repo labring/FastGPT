@@ -33,19 +33,14 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
               {t('core.module.Select app')}
             </Button>
           ) : (
-            <Flex
-              alignItems={'center'}
-              border={theme.borders.base}
-              borderRadius={'md'}
-              bg={'white'}
-              px={3}
-              py={2}
+            <Button
+              w={'100%'}
+              justifyContent={'flex-start'}
+              variant={'whiteFlow'}
+              leftIcon={<Avatar src={value?.logo} w={6} />}
             >
-              <Avatar src={value?.logo} w={6} />
-              <Box fontWeight={'medium'} ml={2}>
-                {value?.name}
-              </Box>
-            </Flex>
+              {value?.name}
+            </Button>
           )}
         </Box>
 
@@ -78,7 +73,6 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
     onCloseSelectApp,
     onOpenSelectApp,
     t,
-    theme.borders.base,
     value
   ]);
 
