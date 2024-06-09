@@ -1,5 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
+import type {
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type.d';
 import { NextAPI } from '@/service/middleware/entry';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
@@ -22,7 +25,7 @@ async function handler(
 
 export default NextAPI(handler);
 
-async function getParents(parentId?: string): Promise<ParentTreePathItemType[]> {
+async function getParents(parentId: ParentIdType): Promise<ParentTreePathItemType[]> {
   if (!parentId) {
     return [];
   }

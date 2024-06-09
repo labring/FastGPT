@@ -8,10 +8,11 @@ import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/use
 import { StoreEdgeItemType } from '../workflow/type/edge';
 import { PermissionValueType } from '../../support/permission/type';
 import { AppPermission } from '../../support/permission/app/controller';
+import { ParentIdType } from '../../common/parentFolder/type';
 
 export type AppSchema = {
   _id: string;
-  parentId: string;
+  parentId?: ParentIdType;
   teamId: string;
   tmbId: string;
   type: AppTypeEnum;

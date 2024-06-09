@@ -25,7 +25,7 @@ const FolderPath = (props: {
   );
 
   return paths.length === 0 && !!FirstPathDom ? (
-    FirstPathDom
+    <>{FirstPathDom}</>
   ) : (
     <Flex flex={1} ml={-1.5}>
       {concatPaths.map((item, i) => (
