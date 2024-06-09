@@ -50,7 +50,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
   });
   const filterMembers = useMemo(() => {
     return members.filter((item) => {
-      if (item.permission.isOwner) return false;
+      // if (item.permission.isOwner) return false;
       if (item.tmbId === userInfo?.team?.tmbId) return false;
       if (!searchText) return true;
       return item.memberName.includes(searchText);
@@ -85,6 +85,7 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
           borderColor="myGray.200"
           borderRadius="0.5rem"
           gridTemplateColumns="55% 45%"
+          fontSize={'sm'}
         >
           <Flex
             flexDirection="column"
