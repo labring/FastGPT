@@ -128,7 +128,7 @@ const MyMenu = ({
                   <MenuItem
                     key={index}
                     {...menuItemStyles}
-                    onClick={(e) => {
+                    onClickCapture={(e) => {
                       e.stopPropagation();
                       setIsOpen(false);
                       child.onClick && child.onClick();

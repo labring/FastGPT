@@ -3,3 +3,11 @@ export type ParentTreePathItemType = {
   parentName: string;
 };
 export type ParentIdType = string | null | undefined;
+
+export type GetResourceFolderListProps = {
+  parentId: ParentIdType;
+};
+export type GetResourceFolderListItemResponse = {
+  name: string;
+  id: string;
+};

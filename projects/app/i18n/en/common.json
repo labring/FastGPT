@@ -74,6 +74,7 @@
     "Load Failed": "Load Failed",
     "Loading": "Loading...",
     "More settings": "More settings",
+    "Move": "Move",
     "MultipleRowSelect": {
       "No data": "No data available"
     },
@@ -165,6 +166,7 @@
     "folder": {
       "Drag Tip": "Drag me",
       "Move Success": "Move successful",
+      "Move to": "Move to",
       "No Folder": "No subdirectories, place here",
       "Root Path": "Root directory",
       "empty": "This directory has nothing selectable~"

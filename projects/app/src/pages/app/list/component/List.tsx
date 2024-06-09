@@ -26,7 +26,10 @@ const ListItem = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
-  const { myApps, loadMyApps, onUpdateApp } = useContextSelector(AppListContext, (v) => v);
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId } = useContextSelector(
+    AppListContext,
+    (v) => v
+  );
   const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
@@ -152,6 +155,11 @@ const ListItem = () => {
                                 name: app.name,
                                 intro: app.intro
                               })
+                          },
+                          {
+                            icon: 'common/file/move',
+                            label: t('common.folder.Move to'),
+                            onClick: () => setMoveAppId(app._id)
                           }
                         ]
                       },

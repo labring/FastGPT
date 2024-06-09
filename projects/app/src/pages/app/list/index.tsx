@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -30,8 +30,16 @@ const MyApps = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
-  const { paths, parentId, myApps, loadMyApps, onUpdateApp, isFetchingApps, folderDetail } =
-    useContextSelector(AppListContext, (v) => v);
+  const {
+    paths,
+    parentId,
+    myApps,
+    loadMyApps,
+    onUpdateApp,
+    setMoveAppId,
+    isFetchingApps,
+    folderDetail
+  } = useContextSelector(AppListContext, (v) => v);
   const { userInfo } = useUserStore();
 
   const {
@@ -130,6 +138,7 @@ const MyApps = () => {
                   intro: folderDetail.intro
                 });
               }}
+              onMove={() => setMoveAppId(folderDetail._id)}
               deleteTip="确认删除该文件夹及其内部所有应用？"
               onDelete={() => onDeleFolder(folderDetail._id)}
             />

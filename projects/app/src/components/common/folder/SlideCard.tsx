@@ -11,12 +11,14 @@ const FolderSlideCard = ({
   name,
   intro,
   onEdit,
+  onMove,
   deleteTip,
   onDelete
 }: {
   name: string;
   intro?: string;
   onEdit: () => void;
+  onMove: () => void;
   deleteTip: string;
   onDelete: () => void;
 }) => {
@@ -52,6 +54,20 @@ const FolderSlideCard = ({
         <FormLabel>{t('common.Operation')}</FormLabel>
 
         <Button
+          variant={'transparentBase'}
+          pl={1}
+          leftIcon={<MyIcon name={'common/file/move'} w={'1rem'} />}
+          transform={'none !important'}
+          w={'100%'}
+          justifyContent={'flex-start'}
+          size={'sm'}
+          fontSize={'mini'}
+          mt={4}
+          onClick={onMove}
+        >
+          {t('common.Move')}
+        </Button>
+        <Button
           variant={'transparentDanger'}
           pl={1}
           leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
@@ -60,7 +76,7 @@ const FolderSlideCard = ({
           justifyContent={'flex-start'}
           size={'sm'}
           fontSize={'mini'}
-          mt={4}
+          mt={3}
           onClick={() => {
             openConfirm(onDelete)();
           }}

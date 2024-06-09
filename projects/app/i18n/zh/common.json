@@ -74,6 +74,7 @@
     "Load Failed": "加载失败",
     "Loading": "加载中...",
     "More settings": "更多设置",
+    "Move": "移动",
     "MultipleRowSelect": {
       "No data": "没有可选值"
     },
@@ -166,6 +167,7 @@
     "folder": {
       "Drag Tip": "点我可拖动",
       "Move Success": "移动成功",
+      "Move to": "移动到",
       "No Folder": "没有子目录了，就放这里吧",
       "Root Path": "根目录",
       "empty": "这个目录已经没东西可选了~"

@@ -46,6 +46,7 @@ export const iconPaths = {
   'common/refreshLight': () => import('./icons/common/refreshLight.svg'),
   'common/resultLight': () => import('./icons/common/resultLight.svg'),
   'common/retryLight': () => import('./icons/common/retryLight.svg'),
+  'common/rightArrowFill': () => import('./icons/common/rightArrowFill.svg'),
   'common/rightArrowLight': () => import('./icons/common/rightArrowLight.svg'),
   'common/routePushLight': () => import('./icons/common/routePushLight.svg'),
   'common/saveFill': () => import('./icons/common/saveFill.svg'),
