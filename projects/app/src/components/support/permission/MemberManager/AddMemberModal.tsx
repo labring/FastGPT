@@ -141,7 +141,9 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
                         <MyAvatar src={member.avatar} w="32px" />
                         <Box ml="2">{member.memberName}</Box>
                       </Flex>
-                      {!!collaborator && <PermissionTags permission={collaborator.permission} />}
+                      {!!collaborator && (
+                        <PermissionTags permission={collaborator.permission.value} />
+                      )}
                     </Flex>
                   </Flex>
                 );

@@ -195,6 +195,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
             </Box>
             <Box mt={6}>
               <MemberManager
+                permission={appDetail.permission}
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
                 permissionList={AppPermissionList}
                 onUpdateCollaborators={onUpdateCollaborators}

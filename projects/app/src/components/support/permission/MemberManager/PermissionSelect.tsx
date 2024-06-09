@@ -49,7 +49,7 @@ function PermissionSelect({
   ...props
 }: PermissionSelectProps) {
   const { t } = useTranslation();
-  const { permissionList } = useContextSelector(CollaboratorContext, (v) => v);
+  const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
 
@@ -66,10 +66,16 @@ function PermissionSelect({
     });
 
     return {
-      singleCheckBoxList: list.filter((item) => item.checkBoxType === 'single'),
+      singleCheckBoxList: list
+        .filter((item) => item.checkBoxType === 'single')
+        .filter((item) => {
+          if (permission.isOwner) return true;
+          if (item.value === permissionList['manage'].value) return false;
+          return true;
+        }),
       multipleCheckBoxList: list.filter((item) => item.checkBoxType === 'multiple')
     };
-  }, [permissionList]);
+  }, [permission.isOwner, permissionList]);
   const selectedSingleValue = useMemo(() => {
     const per = new Permission({ per: value });
 

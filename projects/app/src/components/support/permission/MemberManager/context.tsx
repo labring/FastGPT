@@ -7,6 +7,7 @@ import { ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
 
 export type MemberManagerInputPropsType = {
+  permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
   onUpdateCollaborators: (tmbIds: string[], permission: PermissionValueType) => any;
@@ -39,10 +40,12 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   onGetCollaboratorList: function (): Promise<CollaboratorItemType[]> {
     throw new Error('Function not implemented.');
   },
-  isFetchingCollaborator: false
+  isFetchingCollaborator: false,
+  permission: new Permission()
 });
 
 export const CollaboratorContextProvider = ({
+  permission,
   onGetCollaboratorList,
   permissionList,
   onUpdateCollaborators,
@@ -92,6 +95,7 @@ export const CollaboratorContextProvider = ({
   );
 
   const contextValue = {
+    permission,
     onGetCollaboratorList,
     collaboratorList,
     refetchCollaboratorList,
