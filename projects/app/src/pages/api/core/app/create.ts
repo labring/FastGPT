@@ -11,6 +11,7 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 import type { AppSchema } from '@fastgpt/global/core/app/type';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -39,7 +40,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>, res: NextApiResponse
     const [{ _id: appId }] = await MongoApp.create(
       [
         {
-          parentId,
+          ...parseParentIdInMongo(parentId),
           avatar,
           name,
           teamId,
