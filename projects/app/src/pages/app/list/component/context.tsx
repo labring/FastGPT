@@ -6,11 +6,15 @@ import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
 import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type';
 import { useQuery } from '@tanstack/react-query';
 import { getAppFolderPath } from '@/web/core/app/api/app';
-import { ParentIdType, ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type';
+import {
+  GetResourceFolderListProps,
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type';
 import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
-import { getAppFolderList } from '@/web/core/app/api/app';
 import { useI18n } from '@/web/context/I18n';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type AppListContextType = {
   parentId?: string | null;
@@ -84,6 +88,18 @@ export const AppListContextProvider = ({ children }: { children: ReactNode }) =>
     },
     [moveAppId, onUpdateApp]
   );
+
+  const getAppFolderList = useCallback(({ parentId }: GetResourceFolderListProps) => {
+    return getMyApps({
+      parentId,
+      type: AppTypeEnum.folder
+    }).then((res) =>
+      res.map((item) => ({
+        id: item._id,
+        name: item.name
+      }))
+    );
+  }, []);
 
   const contextValue: AppListContextType = {
     parentId,

@@ -4,7 +4,7 @@ import { SelectAppItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { dispatchWorkFlow } from '../index';
 import { MongoApp } from '../../../../core/app/schema';
 import { responseWrite } from '../../../../common/response';
-import { ChatItemValueTypeEnum, ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
+import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
 import {
   getDefaultEntryNodeIds,
@@ -38,7 +38,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     query,
     params: { userChatInput, history, app }
   } = props;
-  let start = Date.now();
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');

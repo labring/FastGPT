@@ -12,9 +12,11 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export type ListAppBody = {
   parentId: ParentIdType;
+  type?: AppTypeEnum;
 };
 
 async function handler(
@@ -32,12 +34,12 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  const { parentId } = req.body;
+  const { parentId, type } = req.body;
 
   /* temp: get all apps and per */
   const [myApps, rpList] = await Promise.all([
     MongoApp.find(
-      { teamId, ...parseParentIdInMongo(parentId) },
+      { teamId, ...(type && { type }), ...parseParentIdInMongo(parentId) },
       '_id avatar type name intro tmbId defaultPermission'
     )
       .sort({

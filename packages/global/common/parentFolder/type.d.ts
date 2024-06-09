@@ -11,3 +11,8 @@ export type GetResourceFolderListItemResponse = {
   name: string;
   id: string;
 };
+
+export type GetResourceListItemResponse = GetResourceFolderListItemResponse & {
+  avatar: string;
+  isFolder: boolean;
+};
