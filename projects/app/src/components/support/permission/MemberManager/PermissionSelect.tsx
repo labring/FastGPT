@@ -94,6 +94,12 @@ function PermissionSelect({
       .map((item) => item.value);
   }, [permissionSelectList.multipleCheckBoxList, value]);
 
+  const onSelectPer = (per: PermissionValueType) => {
+    if (per === value) return;
+    onChange(per);
+    setIsOpen(false);
+  };
+
   useOutsideClick({
     ref: ref,
     handler: () => {
@@ -157,8 +163,7 @@ function PermissionSelect({
               const per = new Permission({ per: value });
               per.removePer(selectedSingleValue);
               per.addPer(item.value);
-              onChange(per.value);
-              setIsOpen(false);
+              onSelectPer(per.value);
             };
 
             return (

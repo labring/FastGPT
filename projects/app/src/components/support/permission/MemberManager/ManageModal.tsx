@@ -22,6 +22,7 @@ import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 export type ManageModalProps = {
   onClose: () => void;
@@ -47,14 +48,7 @@ function ManageModal({ onClose }: ManageModalProps) {
   const loading = isDeleting || isUpdating;
 
   return (
-    <MyModal
-      isLoading={loading}
-      isOpen
-      onClose={onClose}
-      minW="600px"
-      title="管理协作者"
-      iconSrc="common/settingLight"
-    >
+    <MyModal isOpen onClose={onClose} minW="600px" title="管理协作者" iconSrc="common/settingLight">
       <ModalBody>
         <TableContainer borderRadius="md" minH="400px">
           <Table>
@@ -114,6 +108,7 @@ function ManageModal({ onClose }: ManageModalProps) {
           </Table>
           {collaboratorList?.length === 0 && <EmptyTip text={'暂无协作者'} />}
         </TableContainer>
+        {loading && <Loading fixed={false} />}
       </ModalBody>
     </MyModal>
   );
