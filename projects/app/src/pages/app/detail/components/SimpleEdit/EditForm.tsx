@@ -297,7 +297,7 @@ const EditForm = ({
                   similarity={getValues('dataset.similarity')}
                   limit={getValues('dataset.limit')}
                   usingReRank={getValues('dataset.usingReRank')}
-                  usingQueryExtension={getValues('dataset.datasetSearchUsingExtensionQuery')}
+                  queryExtensionModel={getValues('dataset.datasetSearchExtensionModel')}
                 />
               </Box>
             )}

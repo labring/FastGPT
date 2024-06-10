@@ -92,7 +92,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     data: {
       list: searchRes,
       duration: `${((Date.now() - start) / 1000).toFixed(3)}s`,
-      usingQueryExtension: !!aiExtensionResult,
+      queryExtensionModel: aiExtensionResult?.model,
       ...result
     }
   });

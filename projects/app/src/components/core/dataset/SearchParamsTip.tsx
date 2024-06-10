@@ -14,21 +14,30 @@ const SearchParamsTip = ({
   limit = 1500,
   responseEmptyText,
   usingReRank = false,
-  usingQueryExtension = false
+  queryExtensionModel
 }: {
   searchMode: `${DatasetSearchModeEnum}`;
   similarity?: number;
   limit?: number;
   responseEmptyText?: string;
   usingReRank?: boolean;
-  usingQueryExtension?: boolean;
+  queryExtensionModel?: string;
 }) => {
   const { t } = useTranslation();
-  const { reRankModelList } = useSystemStore();
+  const { reRankModelList, llmModelList } = useSystemStore();
 
   const hasReRankModel = reRankModelList.length > 0;
   const hasEmptyResponseMode = responseEmptyText !== undefined;
   const hasSimilarityMode = usingReRank || searchMode === DatasetSearchModeEnum.embedding;
+
+  const extensionModelName = useMemo(
+    () =>
+      queryExtensionModel
+        ? llmModelList.find((item) => item.model === queryExtensionModel)?.name ??
+          llmModelList[0]?.name
+        : undefined,
+    [llmModelList, queryExtensionModel]
+  );
 
   return (
     <TableContainer
@@ -73,8 +82,8 @@ const SearchParamsTip = ({
                 {usingReRank ? '✅' : '❌'}
               </Td>
             )}
-            <Td pt={0} pb={2}>
-              {usingQueryExtension ? '✅' : '❌'}
+            <Td pt={0} pb={2} fontSize={'mini'}>
+              {extensionModelName ? extensionModelName : '❌'}
             </Td>
             {hasEmptyResponseMode && <Th>{responseEmptyText !== '' ? '✅' : '❌'}</Th>}
           </Tr>

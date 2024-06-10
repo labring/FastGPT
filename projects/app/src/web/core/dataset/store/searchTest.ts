@@ -15,7 +15,7 @@ export type SearchTestStoreItemType = {
   limit: number;
   usingReRank: boolean;
   similarity: number;
-  usingQueryExtension: boolean;
+  queryExtensionModel?: string;
 };
 
 type State = {

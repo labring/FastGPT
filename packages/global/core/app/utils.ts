@@ -21,7 +21,7 @@ export const getDefaultAppForm = (): AppSimpleEditFormType => ({
     limit: 1500,
     searchMode: DatasetSearchModeEnum.embedding,
     usingReRank: false,
-    datasetSearchUsingExtensionQuery: true,
+    datasetSearchUsingExtensionQuery: false,
     datasetSearchExtensionBg: ''
   },
   selectedTools: [],

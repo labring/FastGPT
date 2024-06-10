@@ -108,7 +108,7 @@ const Test = ({ datasetId }: { datasetId: string }) => {
         usingReRank: res.usingReRank,
         limit: res.limit,
         similarity: res.similarity,
-        usingQueryExtension: res.usingQueryExtension
+        queryExtensionModel: res.queryExtensionModel
       };
       pushDatasetTestItem(testItem);
       setDatasetTestItem(testItem);
@@ -430,7 +430,7 @@ const TestResults = React.memo(function TestResults({
               similarity={datasetTestItem.similarity}
               limit={datasetTestItem.limit}
               usingReRank={datasetTestItem.usingReRank}
-              usingQueryExtension={datasetTestItem.usingQueryExtension}
+              queryExtensionModel={datasetTestItem.queryExtensionModel}
             />
           </Box>
 
