@@ -65,59 +65,65 @@ const FolderSlideCard = ({
         </Box>
       </Box>
 
-      <MyDivider my={6} />
+      {managePer.permission.hasManagePer && (
+        <>
+          <MyDivider my={6} />
 
-      <Box>
-        <FormLabel>{t('common.Operation')}</FormLabel>
+          <Box>
+            <FormLabel>{t('common.Operation')}</FormLabel>
 
-        <Button
-          variant={'transparentBase'}
-          pl={1}
-          leftIcon={<MyIcon name={'common/file/move'} w={'1rem'} />}
-          transform={'none !important'}
-          w={'100%'}
-          justifyContent={'flex-start'}
-          size={'sm'}
-          fontSize={'mini'}
-          mt={4}
-          onClick={onMove}
-        >
-          {t('common.Move')}
-        </Button>
-        <Button
-          variant={'transparentDanger'}
-          pl={1}
-          leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
-          transform={'none !important'}
-          w={'100%'}
-          justifyContent={'flex-start'}
-          size={'sm'}
-          fontSize={'mini'}
-          mt={3}
-          onClick={() => {
-            openConfirm(onDelete)();
-          }}
-        >
-          {t('common.Delete folder')}
-        </Button>
-      </Box>
+            <Button
+              variant={'transparentBase'}
+              pl={1}
+              leftIcon={<MyIcon name={'common/file/move'} w={'1rem'} />}
+              transform={'none !important'}
+              w={'100%'}
+              justifyContent={'flex-start'}
+              size={'sm'}
+              fontSize={'mini'}
+              mt={4}
+              onClick={onMove}
+            >
+              {t('common.Move')}
+            </Button>
+            <Button
+              variant={'transparentDanger'}
+              pl={1}
+              leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
+              transform={'none !important'}
+              w={'100%'}
+              justifyContent={'flex-start'}
+              size={'sm'}
+              fontSize={'mini'}
+              mt={3}
+              onClick={() => {
+                openConfirm(onDelete)();
+              }}
+            >
+              {t('common.Delete folder')}
+            </Button>
+          </Box>
+        </>
+      )}
 
       <MyDivider my={6} />
 
       <Box>
         <FormLabel>{t('support.permission.Permission')}</FormLabel>
 
-        <Box mt={5}>
-          <Box fontSize={'sm'} color={'myGray.500'}>
-            {t('permission.Default permission')}
+        {managePer.permission.hasManagePer && (
+          <Box mt={5}>
+            <Box fontSize={'sm'} color={'myGray.500'}>
+              {t('permission.Default permission')}
+            </Box>
+            <DefaultPermissionList
+              mt="1"
+              per={defaultPer.value}
+              defaultPer={defaultPer.defaultValue}
+              onChange={defaultPer.onChange}
+            />
           </Box>
-          <DefaultPermissionList
-            mt="1"
-            per={defaultPer.value}
-            defaultPer={defaultPer.defaultValue}
-            onChange={defaultPer.onChange}
-          />
-        </Box>
+        )}
         <Box mt={6}>
           <CollaboratorContextProvider {...managePer}>
             {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
@@ -127,26 +133,28 @@ const FolderSlideCard = ({
                     <Box fontSize={'sm'} color={'myGray.500'}>
                       {t('permission.Collaborator')}
                     </Box>
-                    <HStack spacing={3}>
-                      <MyTooltip label={t('permission.Manage')}>
-                        <MyIcon
-                          w="1rem"
-                          name="common/settingLight"
-                          cursor={'pointer'}
-                          _hover={{ color: 'primary.600' }}
-                          onClick={onOpenManageModal}
-                        />
-                      </MyTooltip>
-                      <MyTooltip label={t('common.Add')}>
-                        <MyIcon
-                          w="1rem"
-                          name="support/permission/collaborator"
-                          cursor={'pointer'}
-                          _hover={{ color: 'primary.600' }}
-                          onClick={onOpenAddMember}
-                        />
-                      </MyTooltip>
-                    </HStack>
+                    {managePer.permission.hasManagePer && (
+                      <HStack spacing={3}>
+                        <MyTooltip label={t('permission.Manage')}>
+                          <MyIcon
+                            w="1rem"
+                            name="common/settingLight"
+                            cursor={'pointer'}
+                            _hover={{ color: 'primary.600' }}
+                            onClick={onOpenManageModal}
+                          />
+                        </MyTooltip>
+                        <MyTooltip label={t('common.Add')}>
+                          <MyIcon
+                            w="1rem"
+                            name="support/permission/collaborator"
+                            cursor={'pointer'}
+                            _hover={{ color: 'primary.600' }}
+                            onClick={onOpenAddMember}
+                          />
+                        </MyTooltip>
+                      </HStack>
+                    )}
                   </Flex>
                   <MemberListCard
                     mt={2}

@@ -137,7 +137,7 @@ const MyApps = () => {
 
           <List />
         </Box>
-        {!!folderDetail && folderDetail.permission.hasManagePer && isPc && (
+        {!!folderDetail && isPc && (
           <Box pt={[4, 6]}>
             <FolderSlideCard
               name={folderDetail.name}
