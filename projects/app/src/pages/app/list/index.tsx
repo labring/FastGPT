@@ -16,7 +16,7 @@ import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { postCreateAppFolder } from '@/web/core/app/api/app';
 import type { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 import { useContextSelector } from 'use-context-selector';
-import { AppListContext, AppListContextProvider } from './component/context';
+import AppListContextProvider, { AppListContext } from './component/context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';

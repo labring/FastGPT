@@ -42,10 +42,12 @@
 			"",
 			"export const Context = createContext<ContextType>({});",
 			"",
-			"export const ContextProvider = ({ children }: { children: ReactNode }) => {",
+			"const ContextProvider = ({ children }: { children: ReactNode }) => {",
 			"  const contextValue: ContextType = {};",
 			"  return <Context.Provider value={contextValue}>{children}</Context.Provider>;",
 			"};",
+			"",
+			"export default ContextProvider"
 		],
 		"description": "FastGPT usecontext template"
 	}

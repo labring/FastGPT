@@ -17,7 +17,6 @@ import type { UsageItemType } from '@fastgpt/global/support/wallet/usage/type';
 import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { useLoading } from '@fastgpt/web/hooks/useLoading';
 import dayjs from 'dayjs';
-import MyIcon from '@fastgpt/web/components/common/Icon';
 import DateRangePicker, {
   type DateRangeType
 } from '@fastgpt/web/components/common/DateRangePicker';

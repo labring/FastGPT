@@ -47,7 +47,7 @@ export const AppListContext = createContext<AppListContextType>({
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
-export const AppListContextProvider = ({ children }: { children: ReactNode }) => {
+const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const { appT } = useI18n();
   const router = useRouter();
   const { parentId = null } = router.query as { parentId?: string | null };
@@ -134,3 +134,5 @@ export const AppListContextProvider = ({ children }: { children: ReactNode }) =>
     </AppListContext.Provider>
   );
 };
+
+export default AppListContextProvider;
