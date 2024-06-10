@@ -169,6 +169,7 @@
       "Move Success": "移动成功",
       "Move to": "移动到",
       "No Folder": "没有子目录了，就放这里吧",
+      "Open folder": "打开文件夹",
       "Root Path": "根目录",
       "empty": "这个目录已经没东西可选了~"
     },
@@ -1226,8 +1227,12 @@
     "Tools": "工具"
   },
   "permission": {
+    "Collaborator": "协作者",
     "Default permission": "默认权限",
     "Manage": "管理",
+    "Not collaborator": "暂无协作者",
+    "Permission": "权限",
+    "Permission config": "权限配置",
     "Private": "私有",
     "Private Tip": "仅自己可用",
     "Public": "团队",
@@ -1305,6 +1310,9 @@
         "Response Quote": "返回引用",
         "Response Quote tips": "在分享链接中返回引用内容，但不会允许用户下载原文档"
       }
+    },
+    "permission": {
+      "Permission": "权限"
     },
     "standard": {
       "AI Bonus Points": "AI 积分",

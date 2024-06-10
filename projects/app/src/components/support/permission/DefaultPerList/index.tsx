@@ -3,6 +3,8 @@ import MySelect from '@fastgpt/web/components/common/MySelect';
 import { useTranslation } from 'next-i18next';
 import React from 'react';
 import type { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 export enum defaultPermissionEnum {
   private = 'private',
@@ -13,16 +15,16 @@ export enum defaultPermissionEnum {
 type Props = Omit<BoxProps, 'onChange'> & {
   per: PermissionValueType;
   defaultPer: PermissionValueType;
-  readPer: PermissionValueType;
-  writePer: PermissionValueType;
-  onChange: (v: PermissionValueType) => void;
+  readPer?: PermissionValueType;
+  writePer?: PermissionValueType;
+  onChange: (v: PermissionValueType) => Promise<any> | any;
 };
 
 const DefaultPermissionList = ({
   per,
   defaultPer,
-  readPer,
-  writePer,
+  readPer = ReadPermissionVal,
+  writePer = WritePermissionVal,
   onChange,
   ...styles
 }: Props) => {
@@ -33,14 +35,17 @@ const DefaultPermissionList = ({
     { label: '团队可编辑', value: writePer }
   ];
 
+  const { runAsync: onRequestChange, loading } = useRequest2(async (v: PermissionValueType) =>
+    onChange(v)
+  );
+
   return (
     <Box {...styles}>
       <MySelect
+        isLoading={loading}
         list={defaultPermissionSelectList}
         value={per}
-        onchange={(v) => {
-          onChange(v);
-        }}
+        onchange={onRequestChange}
       />
     </Box>
   );

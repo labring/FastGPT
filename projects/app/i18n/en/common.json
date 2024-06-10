@@ -168,6 +168,7 @@
       "Move Success": "Move successful",
       "Move to": "Move to",
       "No Folder": "No subdirectories, place here",
+      "Open folder": "Open folder",
       "Root Path": "Root directory",
       "empty": "This directory has nothing selectable~"
     },
@@ -1218,8 +1219,12 @@
     "Tools": "Tools"
   },
   "permission": {
+    "Collaborator": "",
     "Default permission": "Default permission",
     "Manage": "Manage",
+    "Not collaborator": "Not collaborator",
+    "Permission": "Permission",
+    "Permission config": "Permission config",
     "Private": "Private",
     "Private Tip": "Only available to oneself",
     "Public": "Team",
@@ -1297,6 +1302,9 @@
         "Response Quote": "Return quote",
         "Response Quote tips": "Return quote content in the share link, but will not allow users to download the original document"
       }
+    },
+    "permission": {
+      "Permission": "Permission"
     },
     "standard": {
       "AI Bonus Points": "AI points",

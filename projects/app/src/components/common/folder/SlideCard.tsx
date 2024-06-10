@@ -1,4 +1,4 @@
-import { Box, Button, HStack } from '@chakra-ui/react';
+import { Box, Button, Flex, HStack } from '@chakra-ui/react';
 import React from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
@@ -6,6 +6,13 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
+import {
+  CollaboratorContextProvider,
+  MemberManagerInputPropsType
+} from '../../support/permission/MemberManager/context';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const FolderSlideCard = ({
   name,
@@ -13,7 +20,10 @@ const FolderSlideCard = ({
   onEdit,
   onMove,
   deleteTip,
-  onDelete
+  onDelete,
+
+  defaultPer,
+  managePer
 }: {
   name: string;
   intro?: string;
@@ -21,6 +31,13 @@ const FolderSlideCard = ({
   onMove: () => void;
   deleteTip: string;
   onDelete: () => void;
+
+  defaultPer: {
+    value: PermissionValueType;
+    defaultValue: PermissionValueType;
+    onChange: (v: PermissionValueType) => Promise<any>;
+  };
+  managePer: MemberManagerInputPropsType;
 }) => {
   const { t } = useTranslation();
 
@@ -83,6 +100,66 @@ const FolderSlideCard = ({
         >
           {t('common.Delete folder')}
         </Button>
+      </Box>
+
+      <MyDivider my={6} />
+
+      <Box>
+        <FormLabel>{t('support.permission.Permission')}</FormLabel>
+
+        <Box mt={5}>
+          <Box fontSize={'sm'} color={'myGray.500'}>
+            {t('permission.Default permission')}
+          </Box>
+          <DefaultPermissionList
+            mt="1"
+            per={defaultPer.value}
+            defaultPer={defaultPer.defaultValue}
+            onChange={defaultPer.onChange}
+          />
+        </Box>
+        <Box mt={6}>
+          <CollaboratorContextProvider {...managePer}>
+            {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+              return (
+                <>
+                  <Flex alignItems="center" justifyContent="space-between">
+                    <Box fontSize={'sm'} color={'myGray.500'}>
+                      {t('permission.Collaborator')}
+                    </Box>
+                    <HStack spacing={3}>
+                      <MyTooltip label={t('permission.Manage')}>
+                        <MyIcon
+                          w="1rem"
+                          name="common/settingLight"
+                          cursor={'pointer'}
+                          _hover={{ color: 'primary.600' }}
+                          onClick={onOpenManageModal}
+                        />
+                      </MyTooltip>
+                      <MyTooltip label={t('common.Add')}>
+                        <MyIcon
+                          w="1rem"
+                          name="support/permission/collaborator"
+                          cursor={'pointer'}
+                          _hover={{ color: 'primary.600' }}
+                          onClick={onOpenAddMember}
+                        />
+                      </MyTooltip>
+                    </HStack>
+                  </Flex>
+                  <MemberListCard
+                    mt={2}
+                    tagStyle={{
+                      type: 'borderSolid',
+                      colorSchema: 'gray'
+                    }}
+                  />
+                </>
+              );
+            }}
+          </CollaboratorContextProvider>
+        </Box>
       </Box>
 
       <ConfirmModal />

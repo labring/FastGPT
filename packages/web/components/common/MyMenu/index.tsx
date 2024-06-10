@@ -100,7 +100,8 @@ const MyMenu = ({
       >
         <Box
           position={'relative'}
-          onClickCapture={() => {
+          onClickCapture={(e) => {
+            e.stopPropagation();
             if (trigger === 'click') {
               setIsOpen(!isOpen);
             }

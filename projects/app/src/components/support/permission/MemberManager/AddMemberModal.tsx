@@ -23,7 +23,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
-import { Permission } from '@fastgpt/global/support/permission/controller';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import Avatar from '@/components/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
@@ -32,11 +31,10 @@ export type AddModalPropsType = {
   onClose: () => void;
 };
 
-export function AddMemberModal({ onClose }: AddModalPropsType) {
-  const toast = useToast();
+function AddMemberModal({ onClose }: AddModalPropsType) {
   const { userInfo } = useUserStore();
 
-  const { permissionList, collaboratorList, onUpdateCollaborators, getPreLabelList } =
+  const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
   const {
@@ -60,8 +58,8 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
   const [selectedMemberIdList, setSelectedMembers] = useState<string[]>([]);
   const [selectedPermission, setSelectedPermission] = useState(permissionList['read'].value);
   const perLabel = useMemo(() => {
-    return getPreLabelList(selectedPermission).join('、');
-  }, [getPreLabelList, selectedPermission]);
+    return getPerLabelList(selectedPermission).join('、');
+  }, [getPerLabelList, selectedPermission]);
 
   const { mutate: onConfirm, isLoading: isUpdating } = useRequest({
     mutationFn: () => {
@@ -213,3 +211,5 @@ export function AddMemberModal({ onClose }: AddModalPropsType) {
     </MyModal>
   );
 }
+
+export default AddMemberModal;

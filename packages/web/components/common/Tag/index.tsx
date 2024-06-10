@@ -1,13 +1,13 @@
 import React, { useMemo } from 'react';
 import { Flex, type FlexProps } from '@chakra-ui/react';
 
-type ColorSchemaType = 'blue' | 'green' | 'red' | 'yellow' | 'gray' | 'purple' | 'adora';
+type ColorSchemaType = 'white' | 'blue' | 'green' | 'red' | 'yellow' | 'gray' | 'purple' | 'adora';
 
-interface Props extends FlexProps {
+export type TagProps = FlexProps & {
   children: React.ReactNode | React.ReactNode[];
   colorSchema?: ColorSchemaType;
   type?: 'fill' | 'borderFill' | 'borderSolid';
-}
+};
 
 const colorMap: Record<
   ColorSchemaType,
@@ -17,6 +17,11 @@ const colorMap: Record<
     color: string;
   }
 > = {
+  white: {
+    borderColor: 'myGray.400',
+    bg: 'white',
+    color: 'myGray.700'
+  },
   yellow: {
     borderColor: 'yellow.200',
     bg: 'yellow.50',
@@ -54,7 +59,7 @@ const colorMap: Record<
   }
 };
 
-const MyTag = ({ children, colorSchema = 'blue', type = 'fill', ...props }: Props) => {
+const MyTag = ({ children, colorSchema = 'blue', type = 'fill', ...props }: TagProps) => {
   const theme = useMemo(() => {
     return colorMap[colorSchema];
   }, [colorSchema]);

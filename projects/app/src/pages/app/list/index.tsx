@@ -21,6 +21,16 @@ import FolderPath from '@/components/common/folder/Path';
 import { useRouter } from 'next/router';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import { delAppById } from '@/web/core/app/api';
+import {
+  AppDefaultPermissionVal,
+  AppPermissionList
+} from '@fastgpt/global/support/permission/app/constant';
+import {
+  deleteAppCollaborators,
+  getCollaboratorList,
+  postUpdateAppCollaborators
+} from '@/web/core/app/api/collaborator';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const EditFolderModal = dynamic(
   () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
@@ -30,6 +40,7 @@ const MyApps = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
+  const { isPc } = useSystemStore();
   const {
     paths,
     parentId,
@@ -69,7 +80,7 @@ const MyApps = () => {
   return (
     <PageContainer
       isLoading={myApps.length === 0 && isFetchingApps}
-      insertProps={{ px: folderDetail ? 6 : 10 }}
+      insertProps={{ px: folderDetail ? [4, 6] : [4, 10] }}
     >
       <Flex gap={5}>
         <Box flex={'1 0 0'}>
@@ -126,10 +137,11 @@ const MyApps = () => {
 
           <List />
         </Box>
-        {!!folderDetail && (
+        {!!folderDetail && folderDetail.permission.hasManagePer && isPc && (
           <Box pt={[4, 6]}>
             <FolderSlideCard
-              {...folderDetail}
+              name={folderDetail.name}
+              intro={folderDetail.intro}
               onEdit={() => {
                 setEditFolder({
                   id: folderDetail._id,
@@ -140,6 +152,30 @@ const MyApps = () => {
               onMove={() => setMoveAppId(folderDetail._id)}
               deleteTip={appT('Confirm delete folder tip')}
               onDelete={() => onDeleFolder(folderDetail._id)}
+              defaultPer={{
+                value: folderDetail.defaultPermission,
+                defaultValue: AppDefaultPermissionVal,
+                onChange: (e) => {
+                  return onUpdateApp(folderDetail._id, { defaultPermission: e });
+                }
+              }}
+              managePer={{
+                permission: folderDetail.permission,
+                onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
+                permissionList: AppPermissionList,
+                onUpdateCollaborators: (tmbIds: string[], permission: number) => {
+                  return postUpdateAppCollaborators({
+                    tmbIds,
+                    permission,
+                    appId: folderDetail._id
+                  });
+                },
+                onDelOneCollaborator: (tmbId: string) =>
+                  deleteAppCollaborators({
+                    appId: folderDetail._id,
+                    tmbId
+                  })
+              }}
             />
           </Box>
         )}

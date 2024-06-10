@@ -475,8 +475,8 @@ const Checkbox = checkBoxMultiStyle({
 const Modal = modalMultiStyle({
   baseStyle: modalPart({
     body: {
-      py: [2, 4],
-      px: [5, 7]
+      py: 4,
+      px: 7
     },
     footer: {
       pt: 2

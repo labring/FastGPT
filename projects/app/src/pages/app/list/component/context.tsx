@@ -15,6 +15,7 @@ import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
 import { useI18n } from '@/web/context/I18n';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { delay } from '@fastgpt/global/common/system/utils';
 
 type AppListContextType = {
   parentId?: string | null;
@@ -53,7 +54,7 @@ export const AppListContextProvider = ({ children }: { children: ReactNode }) =>
 
   const {
     data = [],
-    run: loadMyApps,
+    runAsync: loadMyApps,
     loading: isFetchingApps
   } = useRequest2(() => getMyApps({ parentId }), {
     manual: false,
@@ -61,24 +62,31 @@ export const AppListContextProvider = ({ children }: { children: ReactNode }) =>
     refreshDeps: [parentId]
   });
 
-  const { data: paths = [], refetch: refetchPaths } = useQuery(['getPaths', parentId], () =>
-    getAppFolderPath(parentId)
+  const { data: paths = [], runAsync: refetchPaths } = useRequest2(
+    () => getAppFolderPath(parentId),
+    {
+      manual: false,
+      refreshDeps: [parentId]
+    }
   );
 
-  const { data: folderDetail, refetch: refetchFolderDetail } = useQuery(
-    ['getFolderDetail', parentId],
+  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest2(
     () => {
       if (parentId) return getAppDetailById(parentId);
-      return null;
+      return Promise.resolve(null);
+    },
+    {
+      manual: false,
+      refreshDeps: [parentId]
     }
   );
-  const { runAsync: onUpdateApp } = useRequest2(putAppById, {
-    onSuccess() {
-      refetchFolderDetail();
-      refetchPaths();
-      loadMyApps();
-    }
-  });
+
+  const { runAsync: onUpdateApp } = useRequest2((id: string, data: AppUpdateParams) =>
+    putAppById(id, data).then(async (res) => {
+      await Promise.all([refetchFolderDetail(), refetchPaths(), loadMyApps()]);
+      return res;
+    })
+  );
 
   const [moveAppId, setMoveAppId] = useState<string>();
   const onMoveApp = useCallback(

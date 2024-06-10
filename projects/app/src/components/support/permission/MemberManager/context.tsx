@@ -1,3 +1,4 @@
+import { BoxProps, useDisclosure } from '@chakra-ui/react';
 import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
 import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
@@ -5,6 +6,11 @@ import { PermissionListType, PermissionValueType } from '@fastgpt/global/support
 import { useQuery } from '@tanstack/react-query';
 import { ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
+import dynamic from 'next/dynamic';
+
+import MemberListCard, { MemberListCardProps } from './MemberListCard';
+const AddMemberModal = dynamic(() => import('./AddMemberModal'));
+const ManageModal = dynamic(() => import('./ManageModal'));
 
 export type MemberManagerInputPropsType = {
   permission: Permission;
@@ -17,7 +23,12 @@ export type MemberManagerPropsType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemType[];
   refetchCollaboratorList: () => void;
   isFetchingCollaborator: boolean;
-  getPreLabelList: (per: PermissionValueType) => string[];
+  getPerLabelList: (per: PermissionValueType) => string[];
+};
+export type ChildrenProps = {
+  onOpenAddMember: () => void;
+  onOpenManageModal: () => void;
+  MemberListCard: (props: MemberListCardProps) => JSX.Element;
 };
 
 type CollaboratorContextType = MemberManagerPropsType & {};
@@ -31,7 +42,7 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   onDelOneCollaborator: function () {
     throw new Error('Function not implemented.');
   },
-  getPreLabelList: function (): string[] {
+  getPerLabelList: function (): string[] {
     throw new Error('Function not implemented.');
   },
   refetchCollaboratorList: function (): void {
@@ -52,23 +63,24 @@ export const CollaboratorContextProvider = ({
   onDelOneCollaborator,
   children
 }: MemberManagerInputPropsType & {
-  children: ReactNode;
+  children: (props: ChildrenProps) => ReactNode;
 }) => {
   const {
     data: collaboratorList = [],
     refetch: refetchCollaboratorList,
     isLoading: isFetchingCollaborator
   } = useQuery(['collaboratorList'], onGetCollaboratorList);
+
   const onUpdateCollaboratorsThen = async (tmbIds: string[], permission: PermissionValueType) => {
     await onUpdateCollaborators(tmbIds, permission);
     refetchCollaboratorList();
   };
-  const onDelOneCollaboratorThem = async (tmbId: string) => {
+  const onDelOneCollaboratorThen = async (tmbId: string) => {
     await onDelOneCollaborator(tmbId);
     refetchCollaboratorList();
   };
 
-  const getPreLabelList = useCallback(
+  const getPerLabelList = useCallback(
     (per: PermissionValueType) => {
       const Per = new Permission({ per });
       const labels: string[] = [];
@@ -94,6 +106,17 @@ export const CollaboratorContextProvider = ({
     [permissionList]
   );
 
+  const {
+    isOpen: isOpenAddMember,
+    onOpen: onOpenAddMember,
+    onClose: onCloseAddMember
+  } = useDisclosure();
+  const {
+    isOpen: isOpenManageModal,
+    onOpen: onOpenManageModal,
+    onClose: onCloseManageModal
+  } = useDisclosure();
+
   const contextValue = {
     permission,
     onGetCollaboratorList,
@@ -102,10 +125,14 @@ export const CollaboratorContextProvider = ({
     isFetchingCollaborator,
     permissionList,
     onUpdateCollaborators: onUpdateCollaboratorsThen,
-    onDelOneCollaborator: onDelOneCollaboratorThem,
-    getPreLabelList
+    onDelOneCollaborator: onDelOneCollaboratorThen,
+    getPerLabelList
   };
   return (
-    <CollaboratorContext.Provider value={contextValue}>{children}</CollaboratorContext.Provider>
+    <CollaboratorContext.Provider value={contextValue}>
+      {children({ onOpenAddMember, onOpenManageModal, MemberListCard })}
+      {isOpenAddMember && <AddMemberModal onClose={onCloseAddMember} />}
+      {isOpenManageModal && <ManageModal onClose={onCloseManageModal} />}
+    </CollaboratorContext.Provider>
   );
 };

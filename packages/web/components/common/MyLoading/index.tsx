@@ -17,7 +17,7 @@ const Loading = ({
   return (
     <Flex
       position={fixed ? 'fixed' : 'absolute'}
-      zIndex={zIndex}
+      zIndex={fixed ? zIndex : 10}
       bg={bg}
       borderRadius={'md'}
       top={0}
