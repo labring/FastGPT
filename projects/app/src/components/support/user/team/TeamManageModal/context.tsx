@@ -75,6 +75,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
       return getTeamMembers();
     },
     {
+      manual: false,
       refreshDeps: [userInfo?.team?.teamId]
     }
   );

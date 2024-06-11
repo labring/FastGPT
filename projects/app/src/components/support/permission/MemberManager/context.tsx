@@ -12,6 +12,7 @@ import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
 import MemberListCard, { MemberListCardProps } from './MemberListCard';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 const AddMemberModal = dynamic(() => import('./AddMemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
@@ -72,9 +73,12 @@ const CollaboratorContextProvider = ({
 }) => {
   const {
     data: collaboratorList = [],
-    refetch: refetchCollaboratorList,
-    isLoading: isFetchingCollaborator
-  } = useQuery(['collaboratorList', ...refreshDeps], onGetCollaboratorList);
+    runAsync: refetchCollaboratorList,
+    loading: isFetchingCollaborator
+  } = useRequest2(onGetCollaboratorList, {
+    manual: false,
+    refreshDeps
+  });
 
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);

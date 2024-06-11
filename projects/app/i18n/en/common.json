@@ -590,7 +590,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",
@@ -1222,6 +1223,7 @@
     "Default permission": "Default permission",
     "Manage": "Manage",
     "Not collaborator": "Not collaborator",
+    "Owner": "Owner",
     "Permission": "Permission",
     "Permission config": "Permission config",
     "Private": "Private",

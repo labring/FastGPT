@@ -592,7 +592,8 @@
             "success": "开始同步"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1230,6 +1231,7 @@
     "Default permission": "默认权限",
     "Manage": "管理",
     "Not collaborator": "暂无协作者",
+    "Owner": "创建者",
     "Permission": "权限",
     "Permission config": "权限配置",
     "Private": "私有",

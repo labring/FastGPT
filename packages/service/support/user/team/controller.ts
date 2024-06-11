@@ -9,10 +9,7 @@ import { MongoTeamMember } from './teamMemberSchema';
 import { MongoTeam } from './teamSchema';
 import { UpdateTeamProps } from '@fastgpt/global/support/user/team/controller';
 import { getResourcePermission } from '../../permission/controller';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { TeamPermission } from '@fastgpt/global/support/permission/user/controller';
 
 async function getTeamMember(match: Record<string, any>): Promise<TeamTmbItemType> {
