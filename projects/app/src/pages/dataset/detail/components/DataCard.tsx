@@ -374,7 +374,6 @@ const DataCard = () => {
                           e.stopPropagation();
                           openConfirm(async () => {
                             try {
-                              setIsLoading(true);
                               await delOneDatasetDataById(item._id);
                               getData(pageNum);
                             } catch (error) {
@@ -383,7 +382,6 @@ const DataCard = () => {
                                 status: 'error'
                               });
                             }
-                            setIsLoading(false);
                           })();
                         }}
                       />
@@ -411,14 +409,8 @@ const DataCard = () => {
           </DrawerHeader>
 
           <DrawerBody>
-            {metadataList.map((item) => (
-              <Flex
-                key={item.label}
-                alignItems={'center'}
-                mb={5}
-                wordBreak={'break-all'}
-                fontSize={'sm'}
-              >
+            {metadataList.map((item, i) => (
+              <Flex key={i} alignItems={'center'} mb={5} wordBreak={'break-all'} fontSize={'sm'}>
                 <Box color={'myGray.500'} flex={'0 0 100px'}>
                   {item.label}
                 </Box>
