@@ -53,12 +53,13 @@ export const useRequest2 = <TData, TParams extends any[]>(
   plugin?: UseRequestFunProps<TData, TParams>[2]
 ) => {
   const { t } = useTranslation();
-  const { errorToast, successToast, ...rest } = options || {};
+  const { errorToast = 'Error', successToast, ...rest } = options || {};
   const { toast } = useToast();
 
   const res = ahooksUseRequest<TData, TParams>(
     server,
     {
+      manual: true,
       ...rest,
       onError: (err, params) => {
         rest?.onError?.(err, params);

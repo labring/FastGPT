@@ -72,6 +72,7 @@ export const useConfirm = (props?: {
     }) => {
       const timer = useRef<any>();
       const [countDownAmount, setCountDownAmount] = useState(countDown);
+      const [requesting, setRequesting] = useState(false);
 
       useEffect(() => {
         timer.current = setInterval(() => {
@@ -85,14 +86,15 @@ export const useConfirm = (props?: {
       }, []);
 
       return (
-        <MyModal isOpen={isOpen} iconSrc={iconSrc} title={title} maxW={['90vw', '500px']}>
-          <ModalBody pt={5} whiteSpace={'pre-wrap'}>
+        <MyModal isOpen={isOpen} iconSrc={iconSrc} title={title} maxW={['90vw', '400px']}>
+          <ModalBody pt={5} whiteSpace={'pre-wrap'} fontSize={'sm'}>
             {customContent}
           </ModalBody>
           {!hideFooter && (
             <ModalFooter>
               {showCancel && (
                 <Button
+                  size={'sm'}
                   variant={'whiteBase'}
                   onClick={() => {
                     onClose();
@@ -104,13 +106,18 @@ export const useConfirm = (props?: {
               )}
 
               <Button
+                size={'sm'}
                 bg={bg ? bg : map.bg}
                 isDisabled={countDownAmount > 0}
                 ml={4}
-                isLoading={isLoading}
-                onClick={() => {
-                  onClose();
-                  typeof confirmCb.current === 'function' && confirmCb.current();
+                isLoading={isLoading || requesting}
+                onClick={async () => {
+                  setRequesting(true);
+                  try {
+                    typeof confirmCb.current === 'function' && (await confirmCb.current());
+                    onClose();
+                  } catch (error) {}
+                  setRequesting(false);
                 }}
               >
                 {countDownAmount > 0 ? `${countDownAmount}s` : confirmText}

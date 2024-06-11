@@ -78,7 +78,7 @@ const MyModal = ({
             {title}
             <Box flex={1} />
             {onClose && (
-              <ModalCloseButton position={'relative'} fontSize={'sm'} top={0} right={0} />
+              <ModalCloseButton position={'relative'} fontSize={'xs'} top={0} right={0} />
             )}
           </ModalHeader>
         )}

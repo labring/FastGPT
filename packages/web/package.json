@@ -16,6 +16,7 @@
     "@lexical/selection": "^0.14.5",
     "@lexical/text": "0.12.6",
     "@lexical/utils": "0.12.6",
+    "react-hook-form": "7.43.1",
     "@monaco-editor/react": "^4.6.0",
     "@tanstack/react-query": "^4.24.10",
     "ahooks": "^3.7.11",

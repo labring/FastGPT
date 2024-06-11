@@ -6,7 +6,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRouter } from 'next/router';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { AppSchema } from '@fastgpt/global/core/app/type.d';
-import { delModelById } from '@/web/core/app/api';
+import { delAppById } from '@/web/core/app/api';
 import { useTranslation } from 'next-i18next';
 import PermissionIconText from '@/components/support/permission/IconText';
 import dynamic from 'next/dynamic';
@@ -45,7 +45,7 @@ const AppCard = () => {
   const { mutate: handleDelModel, isLoading } = useRequest({
     mutationFn: async () => {
       if (!appDetail) return null;
-      await delModelById(appDetail._id);
+      await delAppById(appDetail._id);
       return 'success';
     },
     onSuccess(res) {

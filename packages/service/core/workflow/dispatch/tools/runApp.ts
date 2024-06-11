@@ -17,6 +17,8 @@ import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runti
 import { getHistories } from '../utils';
 import { chatValue2RuntimePrompt, runtimePrompt2ChatsValue } from '@fastgpt/global/core/chat/adapt';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
+import { authAppByTmbId } from '../../../../support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type Props = ModuleDispatchProps<{
   [NodeInputKeyEnum.userChatInput]: string;
@@ -32,26 +34,24 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     res,
     teamId,
+    tmbId,
     stream,
     detail,
     histories,
     query,
     params: { userChatInput, history, app }
   } = props;
-  let start = Date.now();
 
   if (!userChatInput) {
     return Promise.reject('Input is empty');
   }
 
-  const appData = await MongoApp.findOne({
-    _id: app.id,
-    teamId
+  const { app: appData } = await authAppByTmbId({
+    appId: app.id,
+    teamId,
+    tmbId,
+    per: ReadPermissionVal
   });
-
-  if (!appData) {
-    return Promise.reject('App not found');
-  }
 
   if (res && stream) {
     responseWrite({
@@ -64,6 +64,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   }
 
   const chatHistories = getHistories(history, histories);
+  const { files } = chatValue2RuntimePrompt(query);
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
@@ -71,11 +72,11 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     runtimeNodes: storeNodes2RuntimeNodes(appData.modules, getDefaultEntryNodeIds(appData.modules)),
     runtimeEdges: initWorkflowEdgeStatus(appData.edges),
     histories: chatHistories,
-    query,
-    variables: {
-      ...props.variables,
-      userChatInput
-    }
+    query: runtimePrompt2ChatsValue({
+      files,
+      text: userChatInput
+    }),
+    variables: props.variables
   });
 
   const completeMessages = chatHistories.concat([

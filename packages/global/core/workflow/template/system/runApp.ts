@@ -35,7 +35,10 @@ export const RunAppModule: FlowNodeTemplateType = {
       required: true
     },
     Input_Template_History,
-    Input_Template_UserChatInput
+    {
+      ...Input_Template_UserChatInput,
+      toolDescription: '用户问题'
+    }
   ],
   outputs: [
     {

@@ -155,12 +155,13 @@ ${JSON.stringify(questionGuides)}`;
                             borderColor={'myGray.200'}
                             boxShadow={'1'}
                             _hover={{
-                              bg: 'auto',
-                              color: 'primary.600'
+                              bg: 'auto'
                             }}
                           >
-                            <Avatar src={tool.toolAvatar} borderRadius={'md'} w={'14px'} mr={2} />
-                            <Box mr={1}>{tool.toolName}</Box>
+                            <Avatar src={tool.toolAvatar} borderRadius={'md'} w={'1rem'} mr={2} />
+                            <Box mr={1} fontSize={'sm'}>
+                              {tool.toolName}
+                            </Box>
                             {isChatting && !tool.response && (
                               <MyIcon name={'common/loading'} w={'14px'} />
                             )}
@@ -219,7 +220,14 @@ ${toolResponse}`}
         <ChatAvatar src={avatar} type={type} />
 
         {!!chatStatusMap && statusBoxData && isLastChild && (
-          <Flex alignItems={'center'} px={3} py={'1.5px'} borderRadius="md" bg={chatStatusMap.bg}>
+          <Flex
+            alignItems={'center'}
+            px={3}
+            py={'1.5px'}
+            borderRadius="md"
+            bg={chatStatusMap.bg}
+            fontSize={'sm'}
+          >
             <Box
               className={styles.statusAnimation}
               bg={chatStatusMap.color}

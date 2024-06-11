@@ -49,7 +49,7 @@ function PermissionSelect({
   ...props
 }: PermissionSelectProps) {
   const { t } = useTranslation();
-  const { permissionList } = useContextSelector(CollaboratorContext, (v) => v);
+  const { permission, permissionList } = useContextSelector(CollaboratorContext, (v) => v);
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
 
@@ -66,10 +66,16 @@ function PermissionSelect({
     });
 
     return {
-      singleCheckBoxList: list.filter((item) => item.checkBoxType === 'single'),
+      singleCheckBoxList: list
+        .filter((item) => item.checkBoxType === 'single')
+        .filter((item) => {
+          if (permission.isOwner) return true;
+          if (item.value === permissionList['manage'].value) return false;
+          return true;
+        }),
       multipleCheckBoxList: list.filter((item) => item.checkBoxType === 'multiple')
     };
-  }, [permissionList]);
+  }, [permission.isOwner, permissionList]);
   const selectedSingleValue = useMemo(() => {
     const per = new Permission({ per: value });
 
@@ -87,6 +93,12 @@ function PermissionSelect({
       })
       .map((item) => item.value);
   }, [permissionSelectList.multipleCheckBoxList, value]);
+
+  const onSelectPer = (per: PermissionValueType) => {
+    if (per === value) return;
+    onChange(per);
+    setIsOpen(false);
+  };
 
   useOutsideClick({
     ref: ref,
@@ -151,8 +163,7 @@ function PermissionSelect({
               const per = new Permission({ per: value });
               per.removePer(selectedSingleValue);
               per.addPer(item.value);
-              onChange(per.value);
-              setIsOpen(false);
+              onSelectPer(per.value);
             };
 
             return (

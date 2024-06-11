@@ -11,7 +11,7 @@ import {
 export const appTemplates: (AppItemType & {
   avatar: string;
   intro: string;
-  type: `${AppTypeEnum}`;
+  type: AppTypeEnum;
 })[] = [
   {
     id: 'simpleChat',

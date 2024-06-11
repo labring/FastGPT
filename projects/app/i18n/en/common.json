@@ -49,6 +49,7 @@
     "Delete Success": "Delete Success",
     "Delete Tip": "Delete Tip",
     "Delete Warning": "Delete Warning",
+    "Delete folder": "Delete",
     "Detail": "Detail",
     "Documents": "Documents",
     "Done": "Done",
@@ -64,6 +65,8 @@
     "Import failed": "Import failed",
     "Import success": "Import success",
     "Input": "Input",
+    "Input folder description": "Folder description",
+    "Input name": "Folder name",
     "Intro": "Intro",
     "Invalid Json": "Invalid JSON format, please check.",
     "Last Step": "Last Step",
@@ -71,6 +74,7 @@
     "Load Failed": "Load Failed",
     "Loading": "Loading...",
     "More settings": "More settings",
+    "Move": "Move",
     "MultipleRowSelect": {
       "No data": "No data available"
     },
@@ -84,6 +88,7 @@
     "OK": "OK",
     "Open": "Open",
     "Opened": "Opened",
+    "Operation": "Operation",
     "Other": "Other",
     "Output": "Output",
     "Params": "Params",
@@ -161,7 +166,9 @@
     "folder": {
       "Drag Tip": "Drag me",
       "Move Success": "Move successful",
+      "Move to": "Move to",
       "No Folder": "No subdirectories, place here",
+      "Open folder": "Open folder",
       "Root Path": "Root directory",
       "empty": "This directory has nothing selectable~"
     },
@@ -1212,8 +1219,12 @@
     "Tools": "Tools"
   },
   "permission": {
+    "Collaborator": "",
     "Default permission": "Default permission",
     "Manage": "Manage",
+    "Not collaborator": "Not collaborator",
+    "Permission": "Permission",
+    "Permission config": "Permission config",
     "Private": "Private",
     "Private Tip": "Only available to oneself",
     "Public": "Team",
@@ -1291,6 +1302,9 @@
         "Response Quote": "Return quote",
         "Response Quote tips": "Return quote content in the share link, but will not allow users to download the original document"
       }
+    },
+    "permission": {
+      "Permission": "Permission"
     },
     "standard": {
       "AI Bonus Points": "AI points",

@@ -10,9 +10,9 @@ export type PermissionTagsProp = {
 };
 
 function PermissionTags({ permission }: PermissionTagsProp) {
-  const { getPreLabelList } = useContextSelector(CollaboratorContext, (v) => v);
+  const { getPerLabelList } = useContextSelector(CollaboratorContext, (v) => v);
 
-  const perTagList = getPreLabelList(permission);
+  const perTagList = getPerLabelList(permission);
 
   return (
     <Flex gap="2" alignItems="center">

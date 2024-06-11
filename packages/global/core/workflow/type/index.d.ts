@@ -105,8 +105,8 @@ export type NodeSourceNodeItemType = {
 /* --------------- function type -------------------- */
 export type SelectAppItemType = {
   id: string;
-  name: string;
-  logo: string;
+  // name: string;
+  // logo?: string;
 };
 
 /* agent */

@@ -37,7 +37,7 @@ const Button = defineStyleConfig({
   sizes: {
     xs: {
       fontSize: 'xs',
-      px: '8px',
+      px: '2',
       py: '0',
       h: '24px',
       fontWeight: 'normal',
@@ -54,7 +54,7 @@ const Button = defineStyleConfig({
     },
     sm: {
       fontSize: 'sm',
-      px: '14px',
+      px: '3',
       py: 0,
       fontWeight: 'normal',
       h: '30px',
@@ -71,9 +71,9 @@ const Button = defineStyleConfig({
     },
     md: {
       fontSize: 'sm',
-      px: '20px',
+      px: '4',
       py: 0,
-      h: '36px',
+      h: '34px',
       fontWeight: 'normal',
       borderRadius: '8px'
     },
@@ -81,14 +81,14 @@ const Button = defineStyleConfig({
       fontSize: 'sm',
       px: '0',
       py: 0,
-      h: '36px',
-      w: '36px',
+      h: '34px',
+      w: '34px',
       fontWeight: 'normal',
       borderRadius: '6px'
     },
     lg: {
       fontSize: 'md',
-      px: '20px',
+      px: '4',
       py: 0,
       h: '40px',
       fontWeight: 'normal',
@@ -252,10 +252,26 @@ const Button = defineStyleConfig({
     transparentBase: {
       color: 'myGray.800',
       fontWeight: '500',
-      bg: 'white',
+      bg: 'transparent',
       transition: 'background 0.1s',
       _hover: {
         bg: 'myGray.150'
+      },
+      _active: {
+        bg: 'myGray.150'
+      },
+      _disabled: {
+        color: 'myGray.800 !important'
+      }
+    },
+    transparentDanger: {
+      color: 'myGray.800',
+      fontWeight: '500',
+      bg: 'transparent',
+      transition: 'background 0.1s',
+      _hover: {
+        bg: 'myGray.150',
+        color: 'red.600'
       },
       _active: {
         bg: 'myGray.150'
@@ -459,8 +475,8 @@ const Checkbox = checkBoxMultiStyle({
 const Modal = modalMultiStyle({
   baseStyle: modalPart({
     body: {
-      py: [2, 4],
-      px: [5, 7]
+      py: 4,
+      px: 7
     },
     footer: {
       pt: 2

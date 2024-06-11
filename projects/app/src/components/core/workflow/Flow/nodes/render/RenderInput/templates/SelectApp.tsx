@@ -1,16 +1,17 @@
 import React, { useMemo } from 'react';
 import type { RenderInputProps } from '../type';
-import { Box, Button, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
+import { Box, Button, useDisclosure } from '@chakra-ui/react';
 import { SelectAppItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import Avatar from '@/components/Avatar';
 import SelectAppModal from '../../../../SelectAppModal';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '@/components/core/workflow/context';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { getAppDetailById } from '@/web/core/app/api';
 
 const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();
-  const theme = useTheme();
   const filterAppIds = useContextSelector(WorkflowContext, (ctx) => ctx.filterAppIds);
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
 
@@ -21,8 +22,28 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
   } = useDisclosure();
 
   const value = item.value as SelectAppItemType | undefined;
-
-  const filterAppString = useMemo(() => filterAppIds?.join(',') || '', [filterAppIds]);
+  const { data: appDetail, loading } = useRequest2(
+    () => {
+      if (value?.id) return getAppDetailById(value.id);
+      return Promise.resolve(null);
+    },
+    {
+      manual: false,
+      refreshDeps: [value?.id],
+      errorToast: 'Error',
+      onError() {
+        onChangeNode({
+          nodeId,
+          type: 'updateInput',
+          key: 'app',
+          value: {
+            ...item,
+            value: undefined
+          }
+        });
+      }
+    }
+  );
 
   const Render = useMemo(() => {
     return (
@@ -33,26 +54,22 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
               {t('core.module.Select app')}
             </Button>
           ) : (
-            <Flex
-              alignItems={'center'}
-              border={theme.borders.base}
-              borderRadius={'md'}
-              bg={'white'}
-              px={3}
-              py={2}
+            <Button
+              isLoading={loading}
+              w={'100%'}
+              justifyContent={loading ? 'center' : 'flex-start'}
+              variant={'whiteFlow'}
+              leftIcon={<Avatar src={appDetail?.avatar} w={6} />}
             >
-              <Avatar src={value?.logo} w={6} />
-              <Box fontWeight={'medium'} ml={2}>
-                {value?.name}
-              </Box>
-            </Flex>
+              {appDetail?.name}
+            </Button>
           )}
         </Box>
 
         {isOpenSelectApp && (
           <SelectAppModal
-            defaultApps={item.value?.id ? [item.value.id] : []}
-            filterAppIds={filterAppString.split(',')}
+            value={item.value}
+            filterAppIds={filterAppIds}
             onClose={onCloseSelectApp}
             onSuccess={(e) => {
               onChangeNode({
@@ -61,7 +78,7 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
                 key: 'app',
                 value: {
                   ...item,
-                  value: e[0]
+                  value: e
                 }
               });
             }}
@@ -70,15 +87,17 @@ const SelectAppRender = ({ item, nodeId }: RenderInputProps) => {
       </>
     );
   }, [
-    filterAppString,
+    appDetail?.avatar,
+    appDetail?.name,
+    filterAppIds,
     isOpenSelectApp,
     item,
+    loading,
     nodeId,
     onChangeNode,
     onCloseSelectApp,
     onOpenSelectApp,
     t,
-    theme.borders.base,
     value
   ]);
 

@@ -1,5 +1,4 @@
 import type { FlowNodeTemplateType, StoreNodeItemType } from '../workflow/type';
-
 import { AppTypeEnum } from './constants';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { VariableInputEnum } from '../workflow/constants';
@@ -9,14 +8,17 @@ import { TeamTagSchema as TeamTagsSchemaType } from '@fastgpt/global/support/use
 import { StoreEdgeItemType } from '../workflow/type/edge';
 import { PermissionValueType } from '../../support/permission/type';
 import { AppPermission } from '../../support/permission/app/controller';
+import { ParentIdType } from '../../common/parentFolder/type';
 
 export type AppSchema = {
   _id: string;
+  parentId?: ParentIdType;
   teamId: string;
   tmbId: string;
-  name: string;
-  type: `${AppTypeEnum}`;
+  type: AppTypeEnum;
   version?: 'v1' | 'v2';
+
+  name: string;
   avatar: string;
   intro: string;
   updateTime: number;
@@ -39,6 +41,7 @@ export type AppListItemType = {
   name: string;
   avatar: string;
   intro: string;
+  type: AppTypeEnum;
   defaultPermission: PermissionValueType;
   permission: AppPermission;
 };

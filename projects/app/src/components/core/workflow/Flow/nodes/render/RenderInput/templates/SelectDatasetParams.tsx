@@ -82,7 +82,7 @@ const SelectDatasetParam = ({ inputs = [], nodeId }: RenderInputProps) => {
           similarity={data.similarity}
           limit={data.limit}
           usingReRank={data.usingReRank}
-          usingQueryExtension={data.datasetSearchUsingExtensionQuery}
+          queryExtensionModel={data.datasetSearchExtensionModel}
         />
       </>
     );

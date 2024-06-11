@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -9,8 +9,21 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<AppListItemType[]> {
+export type ListAppBody = {
+  parentId: ParentIdType;
+  type?: AppTypeEnum;
+};
+
+async function handler(
+  req: ApiRequestProps<ListAppBody>,
+  res: NextApiResponse<any>
+): Promise<AppListItemType[]> {
   // 凭证校验
   const {
     teamId,
@@ -22,9 +35,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     per: ReadPermissionVal
   });
 
+  const { parentId, type } = req.body;
+
   /* temp: get all apps and per */
   const [myApps, rpList] = await Promise.all([
-    MongoApp.find({ teamId }, '_id avatar name intro tmbId defaultPermission')
+    MongoApp.find(
+      { teamId, ...(type && { type }), ...parseParentIdInMongo(parentId) },
+      '_id avatar type name intro tmbId defaultPermission'
+    )
       .sort({
         updateTime: -1
       })
@@ -54,10 +72,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
   return filterApps.map((app) => ({
     _id: app._id,
     avatar: app.avatar,
+    type: app.type,
     name: app.name,
     intro: app.intro,
     permission: app.permission,
-    defaultPermission: app.defaultPermission
+    defaultPermission: app.defaultPermission || AppDefaultPermissionVal
   }));
 }
 

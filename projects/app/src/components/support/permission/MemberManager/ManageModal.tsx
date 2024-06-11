@@ -18,10 +18,11 @@ import PermissionTags from './PermissionTags';
 import Avatar from '@/components/Avatar';
 import { CollaboratorContext } from './context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import Loading from '@fastgpt/web/components/common/MyLoading';
 
 export type ManageModalProps = {
   onClose: () => void;
@@ -29,14 +30,12 @@ export type ManageModalProps = {
 
 function ManageModal({ onClose }: ManageModalProps) {
   const { userInfo } = useUserStore();
-  const { collaboratorList, onUpdateCollaborators, onDelOneCollaborator } = useContextSelector(
-    CollaboratorContext,
-    (v) => v
-  );
+  const { permission, collaboratorList, onUpdateCollaborators, onDelOneCollaborator } =
+    useContextSelector(CollaboratorContext, (v) => v);
 
-  const { mutate: onDelete, isLoading: isDeleting } = useRequest({
-    mutationFn: (tmbId: string) => onDelOneCollaborator(tmbId)
-  });
+  const { runAsync: onDelete, loading: isDeleting } = useRequest2((tmbId: string) =>
+    onDelOneCollaborator(tmbId)
+  );
 
   const { mutate: onUpdate, isLoading: isUpdating } = useRequest({
     mutationFn: ({ tmbId, per }: { tmbId: string; per: PermissionValueType }) => {
@@ -49,14 +48,7 @@ function ManageModal({ onClose }: ManageModalProps) {
   const loading = isDeleting || isUpdating;
 
   return (
-    <MyModal
-      isLoading={loading}
-      isOpen
-      onClose={onClose}
-      minW="600px"
-      title="管理协作者"
-      iconSrc="common/settingLight"
-    >
+    <MyModal isOpen onClose={onClose} minW="600px" title="管理协作者" iconSrc="common/settingLight">
       <ModalBody>
         <TableContainer borderRadius="md" minH="400px">
           <Table>
@@ -86,26 +78,28 @@ function ManageModal({ onClose }: ManageModalProps) {
                       </Flex>
                     </Td>
                     <Td border="none">
-                      <PermissionTags permission={item.permission} />
+                      <PermissionTags permission={item.permission.value} />
                     </Td>
                     <Td border="none">
-                      {item.tmbId !== userInfo?.team?.tmbId && (
-                        <PermissionSelect
-                          Button={
-                            <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
-                          }
-                          value={item.permission}
-                          onChange={(per) => {
-                            onUpdate({
-                              tmbId: item.tmbId,
-                              per
-                            });
-                          }}
-                          onDelete={() => {
-                            onDelete(item.tmbId);
-                          }}
-                        />
-                      )}
+                      {/* Not self; Not owner and other manager */}
+                      {item.tmbId !== userInfo?.team?.tmbId &&
+                        (permission.isOwner || !item.permission.hasManagePer) && (
+                          <PermissionSelect
+                            Button={
+                              <MyIcon name={'edit'} w={'16px'} _hover={{ color: 'primary.600' }} />
+                            }
+                            value={item.permission.value}
+                            onChange={(per) => {
+                              onUpdate({
+                                tmbId: item.tmbId,
+                                per
+                              });
+                            }}
+                            onDelete={() => {
+                              onDelete(item.tmbId);
+                            }}
+                          />
+                        )}
                     </Td>
                   </Tr>
                 );
@@ -114,6 +108,7 @@ function ManageModal({ onClose }: ManageModalProps) {
           </Table>
           {collaboratorList?.length === 0 && <EmptyTip text={'暂无协作者'} />}
         </TableContainer>
+        {loading && <Loading fixed={false} />}
       </ModalBody>
     </MyModal>
   );
