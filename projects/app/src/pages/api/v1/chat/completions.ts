@@ -191,7 +191,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
           user,
           teamId: String(teamId),
           tmbId: String(tmbId),
-          appId: String(app._id),
+          app,
           chatId,
           responseChatItemId,
           runtimeNodes: storeNodes2RuntimeNodes(nodes, getDefaultEntryNodeIds(nodes)),

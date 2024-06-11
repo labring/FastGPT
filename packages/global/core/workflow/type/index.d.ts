@@ -20,6 +20,7 @@ import { RuntimeNodeItemType } from '../runtime/type';
 import { PluginTypeEnum } from '../../plugin/constants';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
+import { AppDetailType, AppSchema } from '../../app/type';
 
 export type FlowNodeCommonType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
@@ -131,7 +132,7 @@ export type ChatDispatchProps = {
   teamId: string;
   tmbId: string;
   user: UserModelSchema;
-  appId?: string;
+  app: AppDetailType | AppSchema;
   chatId?: string;
   responseChatItemId?: string;
   histories: ChatItemType[];

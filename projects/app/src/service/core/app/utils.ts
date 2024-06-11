@@ -34,7 +34,7 @@ export const getScheduleTriggerApp = async () => {
           mode: 'chat',
           teamId: String(app.teamId),
           tmbId: String(app.tmbId),
-          appId: String(app._id),
+          app,
           runtimeNodes: storeNodes2RuntimeNodes(app.modules, getDefaultEntryNodeIds(app.modules)),
           runtimeEdges: initWorkflowEdgeStatus(app.edges),
           variables: {},

@@ -31,8 +31,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     fields: '_id'
   });
 
-  console.log(apps);
-
   await mongoSessionRun(async (session) => {
     for await (const app of apps) {
       const appId = app._id;
