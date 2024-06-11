@@ -142,9 +142,15 @@ function PermissionSelect({
             bottom={0}
             left={0}
           />
-          <Box position={'relative'} cursor={'pointer'} userSelect={'none'}>
+          <Flex
+            alignItems={'center'}
+            justifyContent={'center'}
+            position={'relative'}
+            cursor={'pointer'}
+            userSelect={'none'}
+          >
             {Button}
-          </Box>
+          </Flex>
         </Box>
         <MenuList
           minW={isOpen ? `${width}px !important` : 0}

@@ -8,8 +8,12 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { MongoChatInputGuide } from '@fastgpt/service/core/chat/inputGuide/schema';
-import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
+import {
+  OwnerPermissionVal,
+  PerResourceTypeEnum
+} from '@fastgpt/global/support/permission/constant';
 import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
+import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -62,6 +66,14 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       await MongoChatInputGuide.deleteMany(
         {
           appId
+        },
+        { session }
+      );
+      await MongoResourcePermission.deleteMany(
+        {
+          resourceType: PerResourceTypeEnum.app,
+          teamId,
+          resourceId: appId
         },
         { session }
       );

@@ -33,7 +33,7 @@ export type UpdateTeamMemberProps = {
 export type InviteMemberProps = {
   teamId: string;
   usernames: string[];
-  role: `${TeamMemberRoleEnum}`;
+  permission: PermissionValueType;
 };
 export type UpdateInviteProps = {
   tmbId: string;

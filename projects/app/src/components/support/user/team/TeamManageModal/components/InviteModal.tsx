@@ -3,12 +3,18 @@ import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { ModalCloseButton, ModalBody, Box, ModalFooter, Button } from '@chakra-ui/react';
 import TagTextarea from '@/components/common/Textarea/TagTextarea';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { postInviteTeamMember } from '@/web/support/user/team/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import type { InviteMemberResponse } from '@fastgpt/global/support/user/team/controller.d';
 import MySelect from '@fastgpt/web/components/common/MySelect';
+import {
+  ManagePermissionVal,
+  ReadPermissionVal,
+  WritePermissionVal
+} from '@fastgpt/global/support/permission/constant';
+import { useI18n } from '@/web/context/I18n';
+import { useUserStore } from '@/web/support/user/useUserStore';
 
 const InviteModal = ({
   teamId,
@@ -20,25 +26,37 @@ const InviteModal = ({
   onSuccess: () => void;
 }) => {
   const { t } = useTranslation();
+  const { userT } = useI18n();
   const { ConfirmModal, openConfirm } = useConfirm({
     title: t('user.team.Invite Member Result Tip'),
     showCancel: false
   });
+  const { userInfo } = useUserStore();
+
   const [inviteUsernames, setInviteUsernames] = useState<string[]>([]);
   const inviteTypes = useMemo(
     () => [
       {
-        alias: t('user.team.Invite Role Visitor Alias'),
-        label: t('user.team.Invite Role Visitor Tip'),
-        value: TeamMemberRoleEnum.visitor
+        label: userT('permission.Read'),
+        description: userT('permission.Read desc'),
+        value: ReadPermissionVal
       },
       {
-        alias: t('user.team.Invite Role Admin Alias'),
-        label: t('user.team.Invite Role Admin Tip'),
-        value: TeamMemberRoleEnum.admin
-      }
+        label: userT('permission.Write'),
+        description: userT('permission.Write tip'),
+        value: WritePermissionVal
+      },
+      ...(userInfo?.team?.permission.isOwner
+        ? [
+            {
+              label: userT('permission.Manage'),
+              description: userT('permission.Manage tip'),
+              value: ManagePermissionVal
+            }
+          ]
+        : [])
     ],
-    [t]
+    [userInfo?.team?.permission.isOwner, userT]
   );
   const [selectedInviteType, setSelectInviteType] = useState(inviteTypes[0].value);
 
@@ -47,7 +65,7 @@ const InviteModal = ({
       return postInviteTeamMember({
         teamId,
         usernames: inviteUsernames,
-        role: selectedInviteType
+        permission: selectedInviteType
       });
     },
     onSuccess(res: InviteMemberResponse) {

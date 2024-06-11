@@ -46,6 +46,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     return Promise.reject('Input is empty');
   }
 
+  // 检查该工作流的tmb是否有调用该app的权限（不是校验对话的人，是否有权限）
   const { app: appData } = await authAppByTmbId({
     appId: app.id,
     teamId,

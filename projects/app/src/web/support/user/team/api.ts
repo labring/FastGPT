@@ -6,7 +6,6 @@ import {
   InviteMemberResponse,
   UpdateInviteProps,
   UpdateTeamMemberPermissionProps,
-  UpdateTeamMemberProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
