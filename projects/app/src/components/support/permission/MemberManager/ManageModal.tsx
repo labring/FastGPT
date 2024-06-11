@@ -39,7 +39,10 @@ function ManageModal({ onClose }: ManageModalProps) {
 
   const { mutate: onUpdate, isLoading: isUpdating } = useRequest({
     mutationFn: ({ tmbId, per }: { tmbId: string; per: PermissionValueType }) => {
-      return onUpdateCollaborators([tmbId], per);
+      return onUpdateCollaborators({
+        tmbIds: [tmbId],
+        permission: per
+      });
     },
     successToast: '更新成功',
     errorToast: 'Error'

@@ -22,7 +22,7 @@ export type UpdateTeamProps = {
 
 /* ------------- member ----------- */
 export type DelMemberProps = {
-  memberId: string;
+  tmbId: string;
 };
 export type UpdateTeamMemberProps = {
   teamId: string;
@@ -43,8 +43,3 @@ export type InviteMemberResponse = Record<
   'invite' | 'inValid' | 'inTeam',
   { username: string; userId: string }[]
 >;
-
-export type UpdateTeamMemberPermissionProps = {
-  memberIds: string[];
-  permission: PermissionValueType;
-};

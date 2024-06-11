@@ -1,5 +1,8 @@
 import { BoxProps, useDisclosure } from '@chakra-ui/react';
-import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import {
+  CollaboratorItemType,
+  UpdateClbPermissionProps
+} from '@fastgpt/global/support/permission/collaborator';
 import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { PermissionListType, PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -16,7 +19,7 @@ export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
-  onUpdateCollaborators: (tmbIds: string[], permission: PermissionValueType) => any;
+  onUpdateCollaborators: (props: UpdateClbPermissionProps) => any;
   onDelOneCollaborator: (tmbId: string) => any;
 };
 export type MemberManagerPropsType = MemberManagerInputPropsType & {
@@ -71,8 +74,8 @@ export const CollaboratorContextProvider = ({
     isLoading: isFetchingCollaborator
   } = useQuery(['collaboratorList'], onGetCollaboratorList);
 
-  const onUpdateCollaboratorsThen = async (tmbIds: string[], permission: PermissionValueType) => {
-    await onUpdateCollaborators(tmbIds, permission);
+  const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
+    await onUpdateCollaborators(props);
     refetchCollaboratorList();
   };
   const onDelOneCollaboratorThen = async (tmbId: string) => {

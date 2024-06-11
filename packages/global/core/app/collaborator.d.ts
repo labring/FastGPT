@@ -1,9 +1,8 @@
+import { UpdateClbPermissionProps } from '../../support/permission/collaborator';
 import { PermissionValueType } from '../../support/permission/type';
 
-export type UpdateAppCollaboratorBody = {
+export type UpdateAppCollaboratorBody = UpdateClbPermissionProps & {
   appId: string;
-  tmbIds: string[];
-  permission: PermissionValueType;
 };
 
 export type AppCollaboratorDeleteParams = {

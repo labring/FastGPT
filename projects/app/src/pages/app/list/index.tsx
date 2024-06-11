@@ -163,7 +163,13 @@ const MyApps = () => {
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,
-                onUpdateCollaborators: (tmbIds: string[], permission: number) => {
+                onUpdateCollaborators: ({
+                  tmbIds,
+                  permission
+                }: {
+                  tmbIds: string[];
+                  permission: number;
+                }) => {
                   return postUpdateAppCollaborators({
                     tmbIds,
                     permission,
