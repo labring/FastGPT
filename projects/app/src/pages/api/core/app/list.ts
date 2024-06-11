@@ -13,6 +13,7 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 
 export type ListAppBody = {
   parentId: ParentIdType;
@@ -75,7 +76,7 @@ async function handler(
     name: app.name,
     intro: app.intro,
     permission: app.permission,
-    defaultPermission: app.defaultPermission
+    defaultPermission: app.defaultPermission || AppDefaultPermissionVal
   }));
 }
 
