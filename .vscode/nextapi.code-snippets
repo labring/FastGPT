@@ -35,17 +35,19 @@
 		"scope": "typescriptreact",
 		"prefix": "context",
 		"body": [
-			"import { ReactNode } from 'react';",
+			"import React, { ReactNode } from 'react';",
 			"import { createContext } from 'use-context-selector';",
 			"",
 			"type ContextType = {$1};",
 			"",
 			"export const Context = createContext<ContextType>({});",
 			"",
-			"export const ContextProvider = ({ children }: { children: ReactNode }) => {",
+			"const ContextProvider = ({ children }: { children: ReactNode }) => {",
 			"  const contextValue: ContextType = {};",
 			"  return <Context.Provider value={contextValue}>{children}</Context.Provider>;",
 			"};",
+			"",
+			"export default ContextProvider"
 		],
 		"description": "FastGPT usecontext template"
 	}

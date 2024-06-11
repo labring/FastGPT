@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Box,
   Button,
@@ -68,6 +68,14 @@ const DatasetParamsModal = ({
   const [refresh, setRefresh] = useState(false);
   const [currentTabType, setCurrentTabType] = useState(SearchSettingTabEnum.searchMode);
 
+  const chatModelSelectList = (() =>
+    llmModelList
+      .filter((model) => model.usedInQueryExtension)
+      .map((item) => ({
+        value: item.model,
+        label: item.name
+      })))();
+
   const { register, setValue, getValues, handleSubmit, watch } = useForm<DatasetParamsProps>({
     defaultValues: {
       limit,
@@ -75,7 +83,7 @@ const DatasetParamsModal = ({
       searchMode,
       usingReRank: !!usingReRank && teamPlanStatus?.standardConstants?.permissionReRank !== false,
       datasetSearchUsingExtensionQuery,
-      datasetSearchExtensionModel: datasetSearchExtensionModel ?? llmModelList[0]?.model,
+      datasetSearchExtensionModel: datasetSearchExtensionModel || chatModelSelectList[0]?.value,
       datasetSearchExtensionBg
     }
   });
@@ -84,14 +92,6 @@ const DatasetParamsModal = ({
   const cfbBgDesc = watch('datasetSearchExtensionBg');
   const usingReRankWatch = watch('usingReRank');
   const searchModeWatch = watch('searchMode');
-
-  const chatModelSelectList = (() =>
-    llmModelList
-      .filter((model) => model.usedInQueryExtension)
-      .map((item) => ({
-        value: item.model,
-        label: item.name
-      })))();
 
   const searchModeList = useMemo(() => {
     const list = Object.values(DatasetSearchModeMap);
@@ -108,6 +108,15 @@ const DatasetParamsModal = ({
   const showReRank = useMemo(() => {
     return usingReRank !== undefined && reRankModelList.length > 0;
   }, [reRankModelList.length, usingReRank]);
+
+  useEffect(() => {
+    if (datasetSearchUsingCfrForm) {
+      !queryExtensionModel &&
+        setValue('datasetSearchExtensionModel', chatModelSelectList[0]?.value);
+    } else {
+      setValue('datasetSearchExtensionModel', '');
+    }
+  }, [chatModelSelectList, datasetSearchUsingCfrForm, queryExtensionModel, setValue]);
 
   return (
     <MyModal
@@ -270,7 +279,7 @@ const DatasetParamsModal = ({
               {t('core.dataset.Query extension intro')}
             </Box>
             <Flex mt={3} alignItems={'center'}>
-              <Box flex={'1 0 0'}>{t('core.dataset.search.Using query extension')}</Box>
+              <FormLabel flex={'1 0 0'}>{t('core.dataset.search.Using query extension')}</FormLabel>
               <Switch {...register('datasetSearchUsingExtensionQuery')} />
             </Flex>
             {datasetSearchUsingCfrForm === true && (

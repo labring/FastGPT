@@ -16,6 +16,6 @@
     "incremental": true,
     "baseUrl": ".",
   },
-  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", "../**/*.d.ts"],
+  "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "**/*.d.ts", "../**/*.d.ts", "../../projects/app/src/components/common/Modal/EditResourceModal.tsx"],
   "exclude": ["node_modules","./components/common/Icon/constants.ts"]
 }

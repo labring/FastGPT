@@ -143,7 +143,7 @@ function request(
 ): any {
   /* 去空 */
   for (const key in data) {
-    if (data[key] === null || data[key] === undefined) {
+    if (data[key] === undefined) {
       delete data[key];
     }
   }

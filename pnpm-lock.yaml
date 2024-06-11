@@ -307,6 +307,9 @@ importers:
       react-dom:
         specifier: 18.3.1
         version: 18.3.1(react@18.3.1)
+      react-hook-form:
+        specifier: 7.43.1
+        version: 7.43.1(react@18.3.1)
       react-i18next:
         specifier: 13.5.0
         version: 13.5.0(i18next@23.10.0)(react-dom@18.3.1)(react@18.3.1)

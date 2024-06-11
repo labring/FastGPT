@@ -20,7 +20,7 @@ import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import MemberManager from '@/components/support/permission/MemberManager';
+import { CollaboratorContextProvider } from '@/components/support/permission/MemberManager/context';
 import {
   postUpdateAppCollaborators,
   deleteAppCollaborators,
@@ -29,12 +29,12 @@ import {
 import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '@/web/core/app/context/appContext';
 import {
-  AppDefaultPermission,
+  AppDefaultPermissionVal,
   AppPermissionList
 } from '@fastgpt/global/support/permission/app/constant';
-import { ReadPermissionVal, WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
+import MyIcon from '@fastgpt/web/components/common/Icon';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -181,25 +181,57 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         {/* role */}
         {appDetail.permission.hasManagePer && (
           <>
-            {' '}
             <Box mt="4">
               <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>
               <DefaultPermissionList
                 mt="2"
                 per={defaultPermission}
-                defaultPer={AppDefaultPermission}
-                readPer={ReadPermissionVal}
-                writePer={WritePermissionVal}
+                defaultPer={AppDefaultPermissionVal}
                 onChange={(v) => setValue('defaultPermission', v)}
               />
             </Box>
             <Box mt={6}>
-              <MemberManager
+              <CollaboratorContextProvider
+                permission={appDetail.permission}
                 onGetCollaboratorList={() => getCollaboratorList(appDetail._id)}
                 permissionList={AppPermissionList}
                 onUpdateCollaborators={onUpdateCollaborators}
                 onDelOneCollaborator={onDelCollaborator}
-              />
+              >
+                {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+                  return (
+                    <>
+                      <Flex
+                        alignItems="center"
+                        flexDirection="row"
+                        justifyContent="space-between"
+                        w="full"
+                      >
+                        <Box fontSize={'sm'}>协作者</Box>
+                        <Flex flexDirection="row" gap="2">
+                          <Button
+                            size="sm"
+                            variant="whitePrimary"
+                            leftIcon={<MyIcon w="4" name="common/settingLight" />}
+                            onClick={onOpenManageModal}
+                          >
+                            {t('permission.Manage')}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="whitePrimary"
+                            leftIcon={<MyIcon w="4" name="support/permission/collaborator" />}
+                            onClick={onOpenAddMember}
+                          >
+                            {t('common.Add')}
+                          </Button>
+                        </Flex>
+                      </Flex>
+                      <MemberListCard mt={2} p={1.5} bg="myGray.100" borderRadius="md" />
+                    </>
+                  );
+                }}
+              </CollaboratorContextProvider>
             </Box>
           </>
         )}

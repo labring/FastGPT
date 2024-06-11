@@ -1,14 +1,14 @@
 import { PerConstructPros, Permission } from '../controller';
-import { AppDefaultPermission } from './constant';
+import { AppDefaultPermissionVal } from './constant';
 
 export class AppPermission extends Permission {
   constructor(props?: PerConstructPros) {
     if (!props) {
       props = {
-        per: AppDefaultPermission
+        per: AppDefaultPermissionVal
       };
     } else if (!props?.per) {
-      props.per = AppDefaultPermission;
+      props.per = AppDefaultPermissionVal;
     }
     super(props);
   }

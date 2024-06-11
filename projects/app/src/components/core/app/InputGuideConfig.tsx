@@ -237,7 +237,6 @@ const LexiconConfigModal = ({ appId, onClose }: { appId: string; onClose: () => 
       });
     },
     {
-      manual: true,
       onSuccess() {
         setNewData(undefined);
       },

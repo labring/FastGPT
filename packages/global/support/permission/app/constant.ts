@@ -17,4 +17,4 @@ export const AppPermissionList: PermissionListType = {
   }
 };
 
-export const AppDefaultPermission = NullPermission;
+export const AppDefaultPermissionVal = NullPermission;

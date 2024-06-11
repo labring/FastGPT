@@ -6,7 +6,7 @@ const Loading = ({
   text = '',
   bg = 'rgba(255,255,255,0.5)',
   zIndex = 1000,
-  size = 'xl'
+  size = 'lg'
 }: {
   fixed?: boolean;
   text?: string;
@@ -17,7 +17,7 @@ const Loading = ({
   return (
     <Flex
       position={fixed ? 'fixed' : 'absolute'}
-      zIndex={zIndex}
+      zIndex={fixed ? zIndex : 10}
       bg={bg}
       borderRadius={'md'}
       top={0}

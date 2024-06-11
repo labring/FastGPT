@@ -1,10 +1,14 @@
 import { AppTTSConfigType, AppWhisperConfigType } from './type';
 
 export enum AppTypeEnum {
+  folder = 'folder',
   simple = 'simple',
   advanced = 'advanced'
 }
 export const AppTypeMap = {
+  [AppTypeEnum.folder]: {
+    label: 'folder'
+  },
   [AppTypeEnum.simple]: {
     label: 'simple'
   },

@@ -9,7 +9,7 @@ export const TeamPermissionList = {
   },
   [PermissionKeyEnum.manage]: {
     ...PermissionList[PermissionKeyEnum.manage],
-    description: '可邀请, 删除成员'
+    description: '可创建资源、邀请、删除成员'
   }
 };
 

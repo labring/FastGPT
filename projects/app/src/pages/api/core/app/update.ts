@@ -9,10 +9,12 @@ import {
   WritePermissionVal,
   OwnerPermissionVal
 } from '@fastgpt/global/support/permission/constant';
+import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 
 /* 获取我的模型 */
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const {
+    parentId,
     name,
     avatar,
     type,
@@ -49,6 +51,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       _id: appId
     },
     {
+      ...parseParentIdInMongo(parentId),
       name,
       type,
       avatar,

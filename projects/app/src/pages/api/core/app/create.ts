@@ -1,6 +1,5 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import type { CreateAppParams } from '@/global/core/app/api.d';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -9,17 +8,24 @@ import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import type { AppSchema } from '@fastgpt/global/core/app/type';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  const {
-    name = 'APP',
-    avatar,
-    type = AppTypeEnum.advanced,
-    modules,
-    edges
-  } = req.body as CreateAppParams;
+export type CreateAppBody = {
+  parentId?: ParentIdType;
+  name?: string;
+  avatar?: string;
+  type?: AppTypeEnum;
+  modules: AppSchema['modules'];
+  edges?: AppSchema['edges'];
+};
 
-  if (!name || !Array.isArray(modules)) {
+async function handler(req: ApiRequestProps<CreateAppBody>, res: NextApiResponse<any>) {
+  const { parentId, name, avatar, type, modules, edges } = req.body;
+
+  if (!name || !type || !Array.isArray(modules)) {
     throw new Error('缺少参数');
   }
 
@@ -34,6 +40,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     const [{ _id: appId }] = await MongoApp.create(
       [
         {
+          ...parseParentIdInMongo(parentId),
           avatar,
           name,
           teamId,

@@ -5,6 +5,7 @@ import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
 import { SystemErrEnum } from '@fastgpt/global/common/error/code/system';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export const checkDatasetLimit = async ({
   teamId,
@@ -66,7 +67,7 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
 export const checkTeamAppLimit = async (teamId: string) => {
   const [{ standardConstants }, appCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
-    MongoApp.count({ teamId })
+    MongoApp.count({ teamId, type: { $in: [AppTypeEnum.advanced, AppTypeEnum.simple] } })
   ]);
 
   if (standardConstants && appCount >= standardConstants.maxAppAmount) {
