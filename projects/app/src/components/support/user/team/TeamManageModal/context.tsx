@@ -15,7 +15,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
-import { CollaboratorContextProvider } from '@/components/support/permission/MemberManager/context';
+import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
 import {
   CollaboratorItemType,

@@ -21,6 +21,7 @@ export type MemberManagerInputPropsType = {
   permissionList: PermissionListType;
   onUpdateCollaborators: (props: UpdateClbPermissionProps) => any;
   onDelOneCollaborator: (tmbId: string) => any;
+  refreshDeps?: any[];
 };
 export type MemberManagerPropsType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemType[];
@@ -58,12 +59,13 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   permission: new Permission()
 });
 
-export const CollaboratorContextProvider = ({
+const CollaboratorContextProvider = ({
   permission,
   onGetCollaboratorList,
   permissionList,
   onUpdateCollaborators,
   onDelOneCollaborator,
+  refreshDeps = [],
   children
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
@@ -72,7 +74,7 @@ export const CollaboratorContextProvider = ({
     data: collaboratorList = [],
     refetch: refetchCollaboratorList,
     isLoading: isFetchingCollaborator
-  } = useQuery(['collaboratorList'], onGetCollaboratorList);
+  } = useQuery(['collaboratorList', ...refreshDeps], onGetCollaboratorList);
 
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);
@@ -139,3 +141,5 @@ export const CollaboratorContextProvider = ({
     </CollaboratorContext.Provider>
   );
 };
+
+export default CollaboratorContextProvider;

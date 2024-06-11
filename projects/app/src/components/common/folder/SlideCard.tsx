@@ -8,13 +8,13 @@ import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
-import {
-  CollaboratorContextProvider,
+import CollaboratorContextProvider, {
   MemberManagerInputPropsType
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const FolderSlideCard = ({
+  refreshDeps,
   name,
   intro,
   onEdit,
@@ -25,6 +25,7 @@ const FolderSlideCard = ({
   defaultPer,
   managePer
 }: {
+  refreshDeps?: any[];
   name: string;
   intro?: string;
   onEdit: () => void;
@@ -125,7 +126,7 @@ const FolderSlideCard = ({
           </Box>
         )}
         <Box mt={6}>
-          <CollaboratorContextProvider {...managePer}>
+          <CollaboratorContextProvider {...managePer} refreshDeps={refreshDeps}>
             {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
               return (
                 <>
