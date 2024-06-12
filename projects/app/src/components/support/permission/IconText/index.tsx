@@ -20,8 +20,11 @@ const PermissionIconText = ({
 
   const per = useMemo(() => {
     if (permission) return permission;
-    if (defaultPermission) {
-      return new Permission({ per: defaultPermission }).hasReadPer ? 'public' : 'private';
+    if (defaultPermission !== undefined) {
+      const Per = new Permission({ per: defaultPermission });
+      if (Per.hasWritePer) return PermissionTypeEnum.publicWrite;
+      if (Per.hasReadPer) return PermissionTypeEnum.publicRead;
+      return PermissionTypeEnum.clbPrivate;
     }
     return 'private';
   }, [defaultPermission, permission]);

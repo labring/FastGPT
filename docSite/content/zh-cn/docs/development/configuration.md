@@ -11,7 +11,7 @@ weight: 708
 
 **开发环境下**，你需要将示例配置文件 `config.json` 复制成 `config.local.json` 文件才会生效。
 
-这个配置文件中包含了系统参数和各个模型配置，`使用时务必去掉注释!!!!!!!!!!!!!!`
+这个配置文件中包含了系统参数和各个模型配置：
 
 ## 4.6.8+ 版本新配置文件
 
@@ -158,7 +158,7 @@ llm模型全部合并
 
 1. [部署 ReRank 模型](/docs/development/custom-models/bge-rerank/)
 1. 找到 FastGPT 的配置文件中的 `reRankModels`， 4.6.6 以前是 `ReRankModels`。
-2. 修改对应的值：（记得去掉注释）
+2. 修改对应的值：
 
 ```json
 {

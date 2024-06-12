@@ -11,7 +11,10 @@ export enum AuthUserTypeEnum {
 
 export enum PermissionTypeEnum {
   'private' = 'private',
-  'public' = 'public'
+  'public' = 'public',
+  clbPrivate = 'clbPrivate',
+  publicRead = 'publicRead',
+  publicWrite = 'publicWrite'
 }
 export const PermissionTypeMap = {
   [PermissionTypeEnum.private]: {
@@ -21,6 +24,18 @@ export const PermissionTypeMap = {
   [PermissionTypeEnum.public]: {
     iconLight: 'support/permission/publicLight',
     label: 'permission.Public'
+  },
+  [PermissionTypeEnum.publicRead]: {
+    iconLight: 'support/permission/publicLight',
+    label: '团队可访问'
+  },
+  [PermissionTypeEnum.publicWrite]: {
+    iconLight: 'support/permission/publicLight',
+    label: '团队可编辑'
+  },
+  [PermissionTypeEnum.clbPrivate]: {
+    iconLight: 'support/permission/privateLight',
+    label: '仅协作者'
   }
 };
 

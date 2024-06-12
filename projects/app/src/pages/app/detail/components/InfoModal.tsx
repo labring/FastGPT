@@ -20,7 +20,7 @@ import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { CollaboratorContextProvider } from '@/components/support/permission/MemberManager/context';
+import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
 import {
   postUpdateAppCollaborators,
   deleteAppCollaborators,
@@ -35,6 +35,7 @@ import {
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -123,7 +124,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     [setValue, t, toast]
   );
 
-  const onUpdateCollaborators = async (tmbIds: string[], permission: PermissionValueType) => {
+  const onUpdateCollaborators = async ({ tmbIds, permission }: UpdateClbPermissionProps) => {
     await postUpdateAppCollaborators({
       tmbIds,
       permission,

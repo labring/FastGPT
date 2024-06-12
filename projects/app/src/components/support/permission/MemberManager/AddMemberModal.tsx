@@ -26,12 +26,14 @@ import MyBox from '@fastgpt/web/components/common/MyBox';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import Avatar from '@/components/Avatar';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useTranslation } from 'next-i18next';
 
 export type AddModalPropsType = {
   onClose: () => void;
 };
 
 function AddMemberModal({ onClose }: AddModalPropsType) {
+  const { t } = useTranslation();
   const { userInfo } = useUserStore();
 
   const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList } =
@@ -63,9 +65,12 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
 
   const { mutate: onConfirm, isLoading: isUpdating } = useRequest({
     mutationFn: () => {
-      return onUpdateCollaborators(selectedMemberIdList, selectedPermission);
+      return onUpdateCollaborators({
+        tmbIds: selectedMemberIdList,
+        permission: selectedPermission
+      });
     },
-    successToast: '添加成功',
+    successToast: t('common.Add Success'),
     errorToast: 'Error',
     onSuccess() {
       onClose();

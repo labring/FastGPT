@@ -38,7 +38,7 @@ function AddManagerModal({ onClose, onSuccess }: { onClose: () => void; onSucces
     mutationFn: async () => {
       return updateMemberPermission({
         permission: ManagePermissionVal,
-        memberIds: selected.map((item) => {
+        tmbIds: selected.map((item) => {
           return item.tmbId;
         })
       });

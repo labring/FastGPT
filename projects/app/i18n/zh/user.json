@@ -1,4 +1,14 @@
 {
+  "permission": {
+    "Manage": "管理员",
+    "Manage tip": "团队管理员，拥有全部权限",
+    "Read": "仅读",
+    "Read desc": "成员仅可阅读相关资源，无法新建资源",
+    "Set read permission": "设为仅读",
+    "Set write permission": "设为可写",
+    "Write": "可写",
+    "Write tip": "除了可读资源外，还可以新建新的资源"
+  },
   "team": {
     "Add manager": "添加管理员"
   }

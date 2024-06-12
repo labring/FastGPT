@@ -9,6 +9,7 @@ import { PostWorkflowDebugProps, PostWorkflowDebugResponse } from '@/global/core
 import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { defaultApp } from '@/web/core/app/constants';
 
 async function handler(
   req: NextApiRequest,
@@ -45,6 +46,12 @@ async function handler(
   // auth balance
   const { user } = await getUserChatInfoAndAuthTeamPoints(tmbId);
 
+  const app = {
+    ...defaultApp,
+    teamId,
+    tmbId
+  };
+
   /* start process */
   const { flowUsages, flowResponses, debugResponse } = await dispatchWorkFlow({
     res,
@@ -52,7 +59,7 @@ async function handler(
     teamId,
     tmbId,
     user,
-    appId,
+    app,
     runtimeNodes: nodes,
     runtimeEdges: edges,
     variables,

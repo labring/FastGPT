@@ -271,7 +271,13 @@ const ListItem = () => {
             permission: editPerApp.permission,
             onGetCollaboratorList: () => getCollaboratorList(editPerApp._id),
             permissionList: AppPermissionList,
-            onUpdateCollaborators: (tmbIds: string[], permission: number) => {
+            onUpdateCollaborators: ({
+              tmbIds,
+              permission
+            }: {
+              tmbIds: string[];
+              permission: number;
+            }) => {
               return postUpdateAppCollaborators({
                 tmbIds,
                 permission,

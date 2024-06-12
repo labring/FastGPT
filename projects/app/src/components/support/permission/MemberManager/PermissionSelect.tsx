@@ -6,7 +6,8 @@ import {
   MenuList,
   Box,
   Radio,
-  useOutsideClick
+  useOutsideClick,
+  HStack
 } from '@chakra-ui/react';
 import React, { useMemo, useRef, useState } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
@@ -142,9 +143,15 @@ function PermissionSelect({
             bottom={0}
             left={0}
           />
-          <Box position={'relative'} cursor={'pointer'} userSelect={'none'}>
+          <Flex
+            alignItems={'center'}
+            justifyContent={'center'}
+            position={'relative'}
+            cursor={'pointer'}
+            userSelect={'none'}
+          >
             {Button}
-          </Box>
+          </Flex>
         </Box>
         <MenuList
           minW={isOpen ? `${width}px !important` : 0}
@@ -182,7 +189,7 @@ function PermissionSelect({
                 <Box ml={4}>
                   <Box>{item.name}</Box>
                   <Box color={'myGray.500'} fontSize={'mini'}>
-                    {item.description}
+                    {t(item.description)}
                   </Box>
                 </Box>
               </Flex>
@@ -236,7 +243,7 @@ function PermissionSelect({
           {onDelete && (
             <>
               <MyDivider my={2} h={'2px'} borderColor={'myGray.200'} />
-              <Flex
+              <HStack
                 {...MenuStyle}
                 onClick={() => {
                   onDelete();
@@ -244,8 +251,8 @@ function PermissionSelect({
                 }}
               >
                 <MyIcon name="delete" w="20px" color="red.600" />
-                <Box color="red.600">{t('common.Delete')}</Box>
-              </Flex>
+                <Box color="red.600">{t('common.Remove')}</Box>
+              </HStack>
             </>
           )}
         </MenuList>

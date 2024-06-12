@@ -8,3 +8,8 @@ export type CollaboratorItemType = {
   name: string;
   avatar: string;
 };
+
+export type UpdateClbPermissionProps = {
+  tmbIds: string[];
+  permission: PermissionValueType;
+};

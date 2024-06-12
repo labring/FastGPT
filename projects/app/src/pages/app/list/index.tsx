@@ -140,6 +140,7 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]}>
             <FolderSlideCard
+              refreshDeps={[folderDetail._id]}
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {
@@ -163,7 +164,13 @@ const MyApps = () => {
                 permission: folderDetail.permission,
                 onGetCollaboratorList: () => getCollaboratorList(folderDetail._id),
                 permissionList: AppPermissionList,
-                onUpdateCollaborators: (tmbIds: string[], permission: number) => {
+                onUpdateCollaborators: ({
+                  tmbIds,
+                  permission
+                }: {
+                  tmbIds: string[];
+                  permission: number;
+                }) => {
                   return postUpdateAppCollaborators({
                     tmbIds,
                     permission,

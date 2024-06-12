@@ -1,14 +1,26 @@
-import React, { ReactNode, useState } from 'react';
+import React, { ReactNode, useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import type { EditTeamFormDataType } from './components/EditInfoModal';
 import dynamic from 'next/dynamic';
 import { useQuery } from '@tanstack/react-query';
-import { getTeamList, getTeamMembers, putSwitchTeam } from '@/web/support/user/team/api';
+import {
+  delMemberPermission,
+  getTeamList,
+  getTeamMembers,
+  putSwitchTeam,
+  updateMemberPermission
+} from '@/web/support/user/team/api';
 import { TeamMemberStatusEnum } from '@fastgpt/global/support/user/team/constant';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import type { TeamTmbItemType, TeamMemberItemType } from '@fastgpt/global/support/user/team/type';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
+import CollaboratorContextProvider from '@/components/support/permission/MemberManager/context';
+import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
+import {
+  CollaboratorItemType,
+  UpdateClbPermissionProps
+} from '@fastgpt/global/support/permission/collaborator';
 
 const EditInfoModal = dynamic(() => import('./components/EditInfoModal'));
 
@@ -55,12 +67,35 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
   // member action
   const {
     data: members = [],
-    refetch: refetchMembers,
-    isLoading: loadingMembers
-  } = useQuery(['getMembers', userInfo?.team?.teamId], () => {
-    if (!userInfo?.team?.teamId) return [];
-    return getTeamMembers();
-  });
+    runAsync: refetchMembers,
+    loading: loadingMembers
+  } = useRequest2(
+    () => {
+      if (!userInfo?.team?.teamId) return Promise.resolve([]);
+      return getTeamMembers();
+    },
+    {
+      manual: false,
+      refreshDeps: [userInfo?.team?.teamId]
+    }
+  );
+
+  const onGetClbList = useCallback(() => {
+    return refetchMembers().then((res) =>
+      res.map<CollaboratorItemType>((member) => ({
+        teamId: member.teamId,
+        tmbId: member.tmbId,
+        permission: member.permission,
+        name: member.memberName,
+        avatar: member.avatar
+      }))
+    );
+  }, [refetchMembers]);
+  const { runAsync: onUpdatePer, loading: isUpdatingPer } = useRequest2(
+    (props: UpdateClbPermissionProps) => {
+      return updateMemberPermission(props);
+    }
+  );
 
   const { mutate: onSwitchTeam, isLoading: isSwitchingTeam } = useRequest({
     mutationFn: async (teamId: string) => {
@@ -70,7 +105,7 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
     errorToast: t('user.team.Switch Team Failed')
   });
 
-  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers;
+  const isLoading = isLoadingTeams || isSwitchingTeam || loadingMembers || isUpdatingPer;
 
   const contextValue = {
     myTeams,
@@ -86,16 +121,30 @@ export const TeamModalContextProvider = ({ children }: { children: ReactNode }) 
 
   return (
     <TeamModalContext.Provider value={contextValue}>
-      {children}
-      {!!editTeamData && (
-        <EditInfoModal
-          defaultData={editTeamData}
-          onClose={() => setEditTeamData(undefined)}
-          onSuccess={() => {
-            refetchTeams();
-            initUserInfo();
-          }}
-        />
+      {userInfo?.team?.permission && (
+        <CollaboratorContextProvider
+          permission={userInfo?.team?.permission}
+          permissionList={TeamPermissionList}
+          onGetCollaboratorList={onGetClbList}
+          onUpdateCollaborators={onUpdatePer}
+          onDelOneCollaborator={delMemberPermission}
+        >
+          {() => (
+            <>
+              {children}
+              {!!editTeamData && (
+                <EditInfoModal
+                  defaultData={editTeamData}
+                  onClose={() => setEditTeamData(undefined)}
+                  onSuccess={() => {
+                    refetchTeams();
+                    initUserInfo();
+                  }}
+                />
+              )}
+            </>
+          )}
+        </CollaboratorContextProvider>
       )}
     </TeamModalContext.Provider>
   );

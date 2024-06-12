@@ -1,6 +1,6 @@
 {
   "name": "app",
-  "version": "4.8.3",
+  "version": "4.8.4",
   "private": false,
   "scripts": {
     "dev": "next dev",
@@ -43,6 +43,7 @@
     "mermaid": "^10.2.3",
     "nanoid": "^4.0.1",
     "next": "14.2.3",
+    "json5": "^2.2.3",
     "next-i18next": "15.2.0",
     "nextjs-node-loader": "^1.1.5",
     "nprogress": "^0.2.0",

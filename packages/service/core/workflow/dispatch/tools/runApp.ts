@@ -33,8 +33,7 @@ type Response = DispatchNodeResultType<{
 export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   const {
     res,
-    teamId,
-    tmbId,
+    app: workflowApp,
     stream,
     detail,
     histories,
@@ -46,10 +45,11 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
     return Promise.reject('Input is empty');
   }
 
+  // 检查该工作流的tmb是否有调用该app的权限（不是校验对话的人，是否有权限）
   const { app: appData } = await authAppByTmbId({
     appId: app.id,
-    teamId,
-    tmbId,
+    teamId: workflowApp.teamId,
+    tmbId: workflowApp.tmbId,
     per: ReadPermissionVal
   });
 
@@ -68,7 +68,7 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
 
   const { flowResponses, flowUsages, assistantResponses } = await dispatchWorkFlow({
     ...props,
-    appId: app.id,
+    app: appData,
     runtimeNodes: storeNodes2RuntimeNodes(appData.modules, getDefaultEntryNodeIds(appData.modules)),
     runtimeEdges: initWorkflowEdgeStatus(appData.edges),
     histories: chatHistories,

@@ -1,11 +1,12 @@
 import dayjs from 'dayjs';
 import chalk from 'chalk';
+import { isProduction } from './constants';
 
 enum LogLevelEnum {
-  debug = 'debug',
-  info = 'info',
-  warn = 'warn',
-  error = 'error'
+  debug = 0,
+  info = 1,
+  warn = 2,
+  error = 3
 }
 const logMap = {
   [LogLevelEnum.debug]: {
@@ -21,20 +22,35 @@ const logMap = {
     levelLog: chalk.red('[Error]')
   }
 };
+const envLogLevelMap: Record<string, number> = {
+  debug: 0,
+  info: 1,
+  warn: 2,
+  error: 3
+};
+
+const logLevel = (() => {
+  if (!isProduction) return LogLevelEnum.debug;
+  const envLogLevel = (process.env.LOG_LEVEL || 'info').toLocaleLowerCase();
+  if (!envLogLevel || envLogLevelMap[envLogLevel] === undefined) return LogLevelEnum.info;
+  return envLogLevelMap[envLogLevel];
+})();
 
 /* add logger */
 export const addLog = {
   log(level: LogLevelEnum, msg: string, obj: Record<string, any> = {}) {
+    if (level < logLevel) return;
+
     const stringifyObj = JSON.stringify(obj);
     const isEmpty = Object.keys(obj).length === 0;
 
     console.log(
       `${logMap[level].levelLog} ${dayjs().format('YYYY-MM-DD HH:mm:ss')} ${msg} ${
-        level !== 'error' && !isEmpty ? stringifyObj : ''
+        level !== LogLevelEnum.error && !isEmpty ? stringifyObj : ''
       }`
     );
 
-    level === 'error' && console.error(obj);
+    level === LogLevelEnum.error && console.error(obj);
 
     const lokiUrl = process.env.LOKI_LOG_URL as string;
     if (!lokiUrl) return;
