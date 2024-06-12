@@ -12,6 +12,7 @@ import { readConfigData } from '@/service/common/system';
 import { exit } from 'process';
 import { FastGPTProUrl } from '@fastgpt/service/common/system/constants';
 import { initFastGPTConfig } from '@fastgpt/service/common/system/tools';
+import json5 from 'json5';
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   await getInitConfig();
@@ -88,7 +89,7 @@ export async function initSystemConfig() {
     getFastGPTConfigFromDB(),
     readConfigData('config.json')
   ]);
-  const fileRes = JSON.parse(fileConfig) as FastGPTConfigFileType;
+  const fileRes = json5.parse(fileConfig) as FastGPTConfigFileType;
 
   // get config from database
   const config: FastGPTConfigFileType = {
@@ -131,7 +132,7 @@ export function getSystemVersion() {
     if (process.env.NODE_ENV === 'development') {
       global.systemVersion = process.env.npm_package_version || '0.0.0';
     } else {
-      const packageJson = JSON.parse(readFileSync('/app/package.json', 'utf-8'));
+      const packageJson = json5.parse(readFileSync('/app/package.json', 'utf-8'));
 
       global.systemVersion = packageJson?.version;
     }
@@ -157,7 +158,7 @@ function getSystemPlugin() {
   const fileTemplates: (PluginTemplateType & { weight: number })[] = filterFiles.map((filename) => {
     const content = readFileSync(`${basePath}/${filename}`, 'utf-8');
     return {
-      ...JSON.parse(content),
+      ...json5.parse(content),
       id: `${PluginSourceEnum.community}-${filename.replace('.json', '')}`,
       source: PluginSourceEnum.community
     };
