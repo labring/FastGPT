@@ -87,22 +87,24 @@ const FolderSlideCard = ({
             >
               {t('common.Move')}
             </Button>
-            <Button
-              variant={'transparentDanger'}
-              pl={1}
-              leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
-              transform={'none !important'}
-              w={'100%'}
-              justifyContent={'flex-start'}
-              size={'sm'}
-              fontSize={'mini'}
-              mt={3}
-              onClick={() => {
-                openConfirm(onDelete)();
-              }}
-            >
-              {t('common.Delete folder')}
-            </Button>
+            {managePer.permission.isOwner && (
+              <Button
+                variant={'transparentDanger'}
+                pl={1}
+                leftIcon={<MyIcon name={'delete'} w={'1rem'} />}
+                transform={'none !important'}
+                w={'100%'}
+                justifyContent={'flex-start'}
+                size={'sm'}
+                fontSize={'mini'}
+                mt={3}
+                onClick={() => {
+                  openConfirm(onDelete)();
+                }}
+              >
+                {t('common.Delete folder')}
+              </Button>
+            )}
           </Box>
         </>
       )}

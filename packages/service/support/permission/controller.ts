@@ -7,9 +7,6 @@ import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/p
 import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { ClientSession } from '../../common/mongo';
 
 export const getResourcePermission = async ({
   resourceType,
@@ -36,48 +33,6 @@ export const getResourcePermission = async ({
 };
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndRemove(id);
-};
-
-export const updateResourcePermission = async ({
-  resourceId,
-  resourceType,
-  teamId,
-  tmbIdList,
-  permission,
-  session
-}: {
-  resourceId?: string;
-  resourceType: PerResourceTypeEnum;
-  teamId: string;
-  tmbIdList: string[];
-  permission: PermissionValueType;
-  session?: ClientSession;
-}) => {
-  const fn = (session: ClientSession) =>
-    Promise.all(
-      tmbIdList.map((tmbId) =>
-        MongoResourcePermission.findOneAndUpdate(
-          {
-            resourceType,
-            teamId,
-            tmbId,
-            resourceId
-          },
-          {
-            permission
-          },
-          {
-            session,
-            upsert: true
-          }
-        )
-      )
-    );
-
-  if (session) {
-    return fn(session);
-  }
-  return mongoSessionRun(fn);
 };
 
 /* 下面代码等迁移 */

@@ -140,7 +140,7 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]}>
             <FolderSlideCard
-              refreshDeps={[folderDetail]}
+              refreshDeps={[folderDetail._id]}
               name={folderDetail.name}
               intro={folderDetail.intro}
               onEdit={() => {

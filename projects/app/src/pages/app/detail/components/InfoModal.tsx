@@ -35,6 +35,7 @@ import {
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
@@ -123,7 +124,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     [setValue, t, toast]
   );
 
-  const onUpdateCollaborators = async (tmbIds: string[], permission: PermissionValueType) => {
+  const onUpdateCollaborators = async ({ tmbIds, permission }: UpdateClbPermissionProps) => {
     await postUpdateAppCollaborators({
       tmbIds,
       permission,

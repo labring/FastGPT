@@ -108,7 +108,7 @@ const Logs = ({ appId }: { appId: string }) => {
               <Th>{appT('Mark Count')}</Th>
             </Tr>
           </Thead>
-          <Tbody>
+          <Tbody fontSize={'xs'}>
             {logs.map((item) => (
               <Tr
                 key={item._id}

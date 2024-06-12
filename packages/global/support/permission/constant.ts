@@ -27,15 +27,15 @@ export const PermissionTypeMap = {
   },
   [PermissionTypeEnum.publicRead]: {
     iconLight: 'support/permission/publicLight',
-    label: '团队可读'
+    label: '团队可访问'
   },
   [PermissionTypeEnum.publicWrite]: {
     iconLight: 'support/permission/publicLight',
-    label: '团队可写'
+    label: '团队可编辑'
   },
   [PermissionTypeEnum.clbPrivate]: {
     iconLight: 'support/permission/privateLight',
-    label: '私有'
+    label: '仅协作者'
   }
 };
 
