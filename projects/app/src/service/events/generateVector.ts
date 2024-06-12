@@ -158,27 +158,69 @@ const rebuildData = async ({
 
   const deleteVectorIdList = mongoData.indexes.map((index) => index.dataId);
 
-  const { tokens } = await mongoSessionRun(async (session) => {
-    // update vector, update dataset.data rebuilding status, delete data from training
-    const updateResult = await Promise.all(
-      mongoData.indexes.map(async (index, i) => {
-        const result = await insertDatasetDataVector({
-          query: index.text,
-          model: getVectorModel(trainingData.model),
-          teamId: mongoData.teamId,
-          datasetId: mongoData.datasetId,
-          collectionId: mongoData.collectionId
-        });
-        mongoData.indexes[i].dataId = result.insertId;
-        return result;
-      })
-    );
+  // Find next rebuilding data to insert training queue
+  await mongoSessionRun(async (session) => {
+    // get new mongoData insert to training
+    const newRebuildingData = await MongoDatasetData.findOneAndUpdate(
+      {
+        teamId: mongoData.teamId,
+        datasetId: mongoData.datasetId,
+        rebuilding: true
+      },
+      {
+        $unset: {
+          rebuilding: null
+        },
+        updateTime: new Date()
+      },
+      { session }
+    ).select({
+      _id: 1,
+      collectionId: 1
+    });
 
-    // Ensure that the training data is deleted after the Mongo update is successful
+    if (newRebuildingData) {
+      await MongoDatasetTraining.create(
+        [
+          {
+            teamId: mongoData.teamId,
+            tmbId: trainingData.tmbId,
+            datasetId: mongoData.datasetId,
+            collectionId: newRebuildingData.collectionId,
+            billId: trainingData.billId,
+            mode: TrainingModeEnum.chunk,
+            model: trainingData.model,
+            q: '1',
+            dataId: newRebuildingData._id
+          }
+        ],
+        { session }
+      );
+    }
+  });
+
+  // update vector, update dataset_data rebuilding status, delete data from training
+  // 1. Insert new vector to dataset_data
+  const updateResult = await Promise.all(
+    mongoData.indexes.map(async (index, i) => {
+      const result = await insertDatasetDataVector({
+        query: index.text,
+        model: getVectorModel(trainingData.model),
+        teamId: mongoData.teamId,
+        datasetId: mongoData.datasetId,
+        collectionId: mongoData.collectionId
+      });
+      mongoData.indexes[i].dataId = result.insertId;
+      return result;
+    })
+  );
+  const { tokens } = await mongoSessionRun(async (session) => {
+    // 2. Ensure that the training data is deleted after the Mongo update is successful
     await mongoData.save({ session });
+    // 3. Delete the training data
     await trainingData.deleteOne({ session });
 
-    // delete old vector
+    // 4. Delete old vector
     await deleteDatasetDataVector({
       teamId: mongoData.teamId,
       idList: deleteVectorIdList
@@ -188,59 +230,6 @@ const rebuildData = async ({
       tokens: updateResult.reduce((acc, cur) => acc + cur.tokens, 0)
     };
   });
-
-  // find next data insert to training queue
-  const arr = new Array(5).fill(0);
-
-  for await (const _ of arr) {
-    try {
-      const hasNextData = await mongoSessionRun(async (session) => {
-        // get new mongoData insert to training
-        const newRebuildingData = await MongoDatasetData.findOneAndUpdate(
-          {
-            teamId: mongoData.teamId,
-            datasetId: mongoData.datasetId,
-            rebuilding: true
-          },
-          {
-            $unset: {
-              rebuilding: null
-            },
-            updateTime: new Date()
-          },
-          { session }
-        ).select({
-          _id: 1,
-          collectionId: 1
-        });
-
-        if (newRebuildingData) {
-          await MongoDatasetTraining.create(
-            [
-              {
-                teamId: mongoData.teamId,
-                tmbId: trainingData.tmbId,
-                datasetId: mongoData.datasetId,
-                collectionId: newRebuildingData.collectionId,
-                billId: trainingData.billId,
-                mode: TrainingModeEnum.chunk,
-                model: trainingData.model,
-                q: '1',
-                dataId: newRebuildingData._id
-              }
-            ],
-            { session }
-          );
-        }
-
-        return !!newRebuildingData;
-      });
-
-      if (!hasNextData) {
-        break;
-      }
-    } catch (error) {}
-  }
 
   return { tokens };
 };
