@@ -12,6 +12,7 @@ import { TeamModalContext } from '../../context';
 import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
 import dynamic from 'next/dynamic';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import MyTag from '@fastgpt/web/components/common/Tag/index';
 
 const AddManagerModal = dynamic(() => import('./AddManager'));
 
@@ -56,8 +57,8 @@ function PermissionManage() {
             bgColor={'myGray.100'}
             alignItems={'center'}
             alignContent={'center'}
-            mx={'6'}
             px={'3'}
+            ml={3}
             borderRadius={'sm'}
           >
             {TeamPermissionList['manage'].description}
@@ -78,19 +79,20 @@ function PermissionManage() {
           </Button>
         )}
       </Flex>
-      <Flex mt="4" mx="4">
+      <Flex mt="4" mx="4" flexWrap={'wrap'} gap={3}>
         {members.map((member) => {
           if (member.permission.hasManagePer && !member.permission.isOwner) {
             return (
-              <Tag key={member.memberName} mx={'2'} px="4" py="2" bg="myGray.100">
-                <Avatar src={member.avatar} w="20px" />
-                <TagLabel fontSize={'md'} alignItems="center" mr="6" ml="2">
+              <MyTag key={member.tmbId} px="4" py="2" type="fill" colorSchema="gray">
+                <Avatar src={member.avatar} w="1.25rem" />
+                <Box fontSize={'sm'} ml={1}>
                   {member.memberName}
-                </TagLabel>
+                </Box>
                 {userInfo?.team.role === 'owner' && (
                   <MyIcon
+                    ml={4}
                     name="common/trash"
-                    w="16px"
+                    w="1rem"
                     color="myGray.500"
                     cursor="pointer"
                     _hover={{ color: 'red.600' }}
@@ -99,7 +101,7 @@ function PermissionManage() {
                     }}
                   />
                 )}
-              </Tag>
+              </MyTag>
             );
           }
         })}

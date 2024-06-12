@@ -81,7 +81,7 @@ const EditFolderModal = ({
         </Box>
       </ModalBody>
       <ModalFooter>
-        <Button isLoading={loading} onClick={handleSubmit(onSave)}>
+        <Button isLoading={loading} onClick={handleSubmit(onSave)} px={6}>
           {t('common.Confirm')}
         </Button>
       </ModalFooter>

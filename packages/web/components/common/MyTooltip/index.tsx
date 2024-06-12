@@ -10,9 +10,11 @@ const MyTooltip = ({ children, forceShow = false, shouldWrapChildren = true, ...
 
   return isPc || forceShow ? (
     <Box
+      h={props.h || 'auto'}
       css={css({
         '& span': {
-          display: 'block'
+          display: 'block',
+          height: '100%'
         }
       })}
     >
