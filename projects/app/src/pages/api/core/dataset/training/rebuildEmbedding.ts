@@ -81,50 +81,61 @@ async function handler(
   });
 
   // get 10 init dataset.data
-  const arr = new Array(10).fill(0);
-  for await (const _ of arr) {
-    await mongoSessionRun(async (session) => {
-      const data = await MongoDatasetData.findOneAndUpdate(
-        {
-          teamId,
-          datasetId,
-          rebuilding: true
-        },
-        {
-          $unset: {
-            rebuilding: null
-          },
-          updateTime: new Date()
-        },
-        {
-          session
-        }
-      ).select({
-        _id: 1,
-        collectionId: 1
-      });
+  const max = global.systemEnv?.vectorMaxProcess || 10;
+  const arr = new Array(max * 2).fill(0);
 
-      if (data) {
-        await MongoDatasetTraining.create(
-          [
-            {
-              teamId,
-              tmbId,
-              datasetId,
-              collectionId: data.collectionId,
-              billId,
-              mode: TrainingModeEnum.chunk,
-              model: vectorModel,
-              q: '1',
-              dataId: data._id
-            }
-          ],
+  for await (const _ of arr) {
+    try {
+      const hasNext = await mongoSessionRun(async (session) => {
+        // get next dataset.data
+        const data = await MongoDatasetData.findOneAndUpdate(
+          {
+            rebuilding: true,
+            teamId,
+            datasetId
+          },
+          {
+            $unset: {
+              rebuilding: null
+            },
+            updateTime: new Date()
+          },
           {
             session
           }
-        );
+        ).select({
+          _id: 1,
+          collectionId: 1
+        });
+
+        if (data) {
+          await MongoDatasetTraining.create(
+            [
+              {
+                teamId,
+                tmbId,
+                datasetId,
+                collectionId: data.collectionId,
+                billId,
+                mode: TrainingModeEnum.chunk,
+                model: vectorModel,
+                q: '1',
+                dataId: data._id
+              }
+            ],
+            {
+              session
+            }
+          );
+        }
+
+        return !!data;
+      });
+
+      if (!hasNext) {
+        break;
       }
-    });
+    } catch (error) {}
   }
 
   return {};
