@@ -1,47 +1,51 @@
 import Avatar from '@/components/Avatar';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { Box, MenuButton, Table, TableContainer, Tbody, Td, Th, Thead, Tr } from '@chakra-ui/react';
+import {
+  Box,
+  HStack,
+  MenuButton,
+  Table,
+  TableContainer,
+  Tbody,
+  Td,
+  Th,
+  Thead,
+  Tr
+} from '@chakra-ui/react';
 import {
   TeamMemberRoleEnum,
-  TeamMemberRoleMap,
   TeamMemberStatusMap
 } from '@fastgpt/global/support/user/team/constant';
-import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import { useTranslation } from 'next-i18next';
 import { useContextSelector } from 'use-context-selector';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { TeamModalContext } from '../context';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import { delRemoveMember } from '@/web/support/user/team/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import PermissionTags from '@/components/support/permission/PermissionTags';
+import { TeamPermissionList } from '@fastgpt/global/support/permission/user/constant';
+import PermissionSelect from '@/components/support/permission/MemberManager/PermissionSelect';
+import { CollaboratorContext } from '@/components/support/permission/MemberManager/context';
+import { delRemoveMember } from '@/web/support/user/team/api';
 
 function MemberTable() {
   const { userInfo } = useUserStore();
   const { t } = useTranslation();
   const { members, refetchMembers } = useContextSelector(TeamModalContext, (v) => v);
+  const { onUpdateCollaborators } = useContextSelector(CollaboratorContext, (v) => v);
 
   const { ConfirmModal: ConfirmRemoveMemberModal, openConfirm: openRemoveMember } = useConfirm({
     type: 'delete'
   });
 
-  const { mutate: onRemoveMember, isLoading: isRemovingMember } = useRequest({
-    mutationFn: delRemoveMember,
-    onSuccess() {
-      refetchMembers();
-    },
-    successToast: t('user.team.Remove Member Success'),
-    errorToast: t('user.team.Remove Member Failed')
-  });
-
   return (
-    <MyBox isLoading={isRemovingMember}>
+    <MyBox>
       <TableContainer overflow={'unset'} fontSize={'sm'}>
         <Table overflow={'unset'}>
           <Thead bg={'myWhite.400'}>
             <Tr>
               <Th borderRadius={'none !important'}>{t('common.Username')}</Th>
-              <Th>{t('user.team.Role')}</Th>
+              <Th>{t('common.Permission')}</Th>
               <Th>{t('common.Status')}</Th>
               <Th borderRadius={'none !important'}>{t('common.Action')}</Th>
             </Tr>
@@ -49,13 +53,20 @@ function MemberTable() {
           <Tbody>
             {members.map((item) => (
               <Tr key={item.userId} overflow={'unset'}>
-                <Td display={'flex'} alignItems={'center'}>
-                  <Avatar src={item.avatar} w={['18px', '22px']} />
-                  <Box flex={'1 0 0'} w={0} ml={1} className={'textEllipsis'}>
-                    {item.memberName}
-                  </Box>
+                <Td>
+                  <HStack>
+                    <Avatar src={item.avatar} w={['18px', '22px']} />
+                    <Box maxW={'150px'} className={'textEllipsis'}>
+                      {item.memberName}
+                    </Box>
+                  </HStack>
                 </Td>
-                <Td>{t(TeamMemberRoleMap[item.role]?.label || '')}</Td>
+                <Td>
+                  <PermissionTags
+                    permission={item.permission}
+                    permissionList={TeamPermissionList}
+                  />
+                </Td>
                 <Td color={TeamMemberStatusMap[item.status].color}>
                   {t(TeamMemberStatusMap[item.status]?.label || '')}
                 </Td>
@@ -63,9 +74,8 @@ function MemberTable() {
                   {userInfo?.team.permission.hasManagePer &&
                     item.role !== TeamMemberRoleEnum.owner &&
                     item.tmbId !== userInfo?.team.tmbId && (
-                      <MyMenu
-                        width={20}
-                        trigger="hover"
+                      <PermissionSelect
+                        value={item.permission.value}
                         Button={
                           <MenuButton
                             _hover={{
@@ -79,27 +89,21 @@ function MemberTable() {
                             <MyIcon name={'edit'} cursor={'pointer'} w="1rem" />
                           </MenuButton>
                         }
-                        menuList={[
-                          {
-                            children: [
-                              {
-                                label: t('user.team.Remove Member Tip'),
-                                onClick: () =>
-                                  openRemoveMember(
-                                    () =>
-                                      onRemoveMember({
-                                        teamId: item.teamId,
-                                        memberId: item.tmbId
-                                      }),
-                                    undefined,
-                                    t('user.team.Remove Member Confirm Tip', {
-                                      username: item.memberName
-                                    })
-                                  )()
-                              }
-                            ]
-                          }
-                        ]}
+                        onChange={(permission) => {
+                          onUpdateCollaborators({
+                            tmbIds: [item.tmbId],
+                            permission
+                          });
+                        }}
+                        onDelete={() => {
+                          openRemoveMember(
+                            () => delRemoveMember(item.tmbId).then(refetchMembers),
+                            undefined,
+                            t('user.team.Remove Member Confirm Tip', {
+                              username: item.memberName
+                            })
+                          )();
+                        }}
                       />
                     )}
                 </Td>

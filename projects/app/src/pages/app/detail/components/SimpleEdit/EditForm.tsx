@@ -89,10 +89,23 @@ const EditForm = ({
 
   const { setValue, getValues, handleSubmit, control, watch } = editForm;
 
-  const { fields: datasets, replace: replaceKbList } = useFieldArray({
+  const { fields: datasets, replace: replaceDatasetList } = useFieldArray({
     control,
     name: 'dataset.datasets'
   });
+  const selectDatasets = useMemo(
+    () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
+    [allDatasets, datasets]
+  );
+  useEffect(() => {
+    if (selectDatasets.length !== datasets.length) {
+      replaceDatasetList(
+        selectDatasets.map((item) => ({
+          datasetId: item._id
+        }))
+      );
+    }
+  }, [datasets, replaceDatasetList, selectDatasets]);
 
   const {
     isOpen: isOpenDatasetSelect,
@@ -130,11 +143,6 @@ const EditForm = ({
   const inputGuideConfig = watch('chatConfig.chatInputGuide');
   const scheduledTriggerConfig = watch('chatConfig.scheduledTriggerConfig');
   const searchMode = watch('dataset.searchMode');
-
-  const selectDatasets = useMemo(
-    () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
-    [allDatasets, datasets]
-  );
 
   const tokenLimit = useMemo(() => {
     return llmModelList.find((item) => item.model === selectLLMModel)?.quoteMaxToken || 3000;
@@ -475,7 +483,7 @@ const EditForm = ({
             vectorModel: item.vectorModel
           }))}
           onClose={onCloseKbSelect}
-          onChange={replaceKbList}
+          onChange={replaceDatasetList}
         />
       )}
       {isOpenDatasetParams && (

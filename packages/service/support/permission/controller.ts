@@ -7,8 +7,6 @@ import { AuthUserTypeEnum, PerResourceTypeEnum } from '@fastgpt/global/support/p
 import { authOpenApiKey } from '../openapi/auth';
 import { FileTokenQuery } from '@fastgpt/global/common/file/type';
 import { MongoResourcePermission } from './schema';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { mongoSessionRun } from '../../common/mongo/sessionRun';
 
 export const getResourcePermission = async ({
   resourceType,
@@ -35,41 +33,6 @@ export const getResourcePermission = async ({
 };
 export const delResourcePermissionById = (id: string) => {
   return MongoResourcePermission.findByIdAndRemove(id);
-};
-export const updateResourcePermission = async ({
-  resourceId,
-  resourceType,
-  teamId,
-  tmbIdList,
-  permission
-}: {
-  resourceId?: string;
-  resourceType: PerResourceTypeEnum;
-  teamId: string;
-  tmbIdList: string[];
-  permission: PermissionValueType;
-}) => {
-  await mongoSessionRun((session) => {
-    return Promise.all(
-      tmbIdList.map((tmbId) =>
-        MongoResourcePermission.findOneAndUpdate(
-          {
-            resourceType,
-            teamId,
-            tmbId,
-            resourceId
-          },
-          {
-            permission
-          },
-          {
-            session,
-            upsert: true
-          }
-        )
-      )
-    );
-  });
 };
 
 /* 下面代码等迁移 */

@@ -42,7 +42,7 @@ export async function findCollectionAndChild({
     return collections;
   }
   const [collection, childCollections] = await Promise.all([
-    MongoDatasetCollection.findById(collectionId, fields),
+    MongoDatasetCollection.findById(collectionId, fields).lean(),
     find(collectionId)
   ]);
 

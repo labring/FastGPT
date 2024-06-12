@@ -70,7 +70,7 @@ export const countGptMessagesTokens = (
 
       callbackMap[id] = (data) => {
         // 检测是否有内存泄漏
-        addLog.info(`Count token time: ${Date.now() - start}, token: ${data}`);
+        addLog.debug(`Count token time: ${Date.now() - start}, token: ${data}`);
         // console.log(process.memoryUsage());
 
         resolve(data);

@@ -21,6 +21,7 @@ export type SelectProps = ButtonProps & {
   list: {
     alias?: string;
     label: string | React.ReactNode;
+    description?: string;
     value: string | number;
   }[];
   isLoading?: boolean;
@@ -125,10 +126,12 @@ const MySelect = (
               {...menuItemStyles}
               {...(value === item.value
                 ? {
-                    color: 'primary.500',
-                    bg: 'myWhite.300'
+                    color: 'primary.600',
+                    bg: 'myGray.100'
                   }
-                : {})}
+                : {
+                    color: 'myGray.900'
+                  })}
               onClick={() => {
                 if (onchange && value !== item.value) {
                   onchange(item.value);
@@ -136,8 +139,14 @@ const MySelect = (
               }}
               whiteSpace={'pre-wrap'}
               fontSize={'sm'}
+              display={'block'}
             >
-              {item.label}
+              <Box>{item.label}</Box>
+              {item.description && (
+                <Box color={'myGray.500'} fontSize={'xs'}>
+                  {item.description}
+                </Box>
+              )}
             </MenuItem>
           ))}
         </MenuList>

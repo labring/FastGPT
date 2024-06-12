@@ -407,13 +407,13 @@ export function responseStatus({
 /* get system variable */
 export function getSystemVariable({
   user,
-  appId,
+  app,
   chatId,
   responseChatItemId,
   histories = []
 }: Props) {
   return {
-    appId,
+    appId: String(app._id),
     chatId,
     responseChatItemId,
     histories,

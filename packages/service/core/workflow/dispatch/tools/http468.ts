@@ -43,7 +43,7 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
   let {
     res,
     detail,
-    appId,
+    app: { _id: appId },
     chatId,
     stream,
     responseChatItemId,

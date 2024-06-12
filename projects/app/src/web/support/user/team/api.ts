@@ -1,12 +1,10 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
+import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 import {
   CreateTeamProps,
-  DelMemberProps,
   InviteMemberProps,
   InviteMemberResponse,
   UpdateInviteProps,
-  UpdateTeamMemberPermissionProps,
-  UpdateTeamMemberProps,
   UpdateTeamProps
 } from '@fastgpt/global/support/user/team/controller.d';
 import type { TeamTagItemType, TeamTagSchema } from '@fastgpt/global/support/user/team/type';
@@ -33,15 +31,15 @@ export const postInviteTeamMember = (data: InviteMemberProps) =>
   POST<InviteMemberResponse>(`/proApi/support/user/team/member/invite`, data);
 export const putUpdateMemberName = (name: string) =>
   PUT(`/proApi/support/user/team/member/updateName`, { name });
-export const delRemoveMember = (props: DelMemberProps) =>
-  DELETE(`/proApi/support/user/team/member/delete`, props);
+export const delRemoveMember = (tmbId: string) =>
+  DELETE(`/proApi/support/user/team/member/delete`, { tmbId });
 export const updateInviteResult = (data: UpdateInviteProps) =>
   PUT('/proApi/support/user/team/member/updateInvite', data);
 export const delLeaveTeam = (teamId: string) =>
   DELETE('/proApi/support/user/team/member/leave', { teamId });
 
 /* -------------- team collaborator -------------------- */
-export const updateMemberPermission = (data: UpdateTeamMemberPermissionProps) =>
+export const updateMemberPermission = (data: UpdateClbPermissionProps) =>
   PUT('/proApi/support/user/team/collaborator/update', data);
 export const delMemberPermission = (tmbId: string) =>
   DELETE('/proApi/support/user/team/collaborator/delete', { tmbId });

@@ -45,6 +45,11 @@ try {
       unique: true
     }
   );
+  ResourcePermissionSchema.index({
+    resourceType: 1,
+    teamId: 1,
+    resourceId: 1
+  });
 } catch (error) {
   console.log(error);
 }

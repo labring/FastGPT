@@ -21,7 +21,7 @@ const UNDEFINED_SIGN = 'UNDEFINED_SIGN';
 
 export const dispatchLafRequest = async (props: LafRequestProps): Promise<LafResponse> => {
   let {
-    appId,
+    app: { _id: appId },
     chatId,
     responseChatItemId,
     variables,

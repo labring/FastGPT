@@ -2,7 +2,7 @@ import React from 'react';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { MemberManagerInputPropsType, CollaboratorContextProvider } from '../MemberManager/context';
+import CollaboratorContextProvider, { MemberManagerInputPropsType } from '../MemberManager/context';
 import { Box, Button, Flex, HStack, ModalBody } from '@chakra-ui/react';
 import Avatar from '@/components/Avatar';
 import DefaultPermissionList from '../DefaultPerList';

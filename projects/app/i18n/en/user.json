@@ -1,5 +1,21 @@
 {
+  "permission": {
+    "Set read permission": "Read permission",
+    "Set write permission": "Write permission"
+  },
   "team": {
     "Add manager": "Add manager"
+  },
+  "user": {
+    "team": {
+      "permission": {
+        "Manage": "Admin",
+        "Manage tip": "Team administrator with full permissions",
+        "Read": "Read",
+        "Read desc": "Members can only read related resources and cannot create new resources",
+        "Write": "Write",
+        "Write tip": "In addition to readable resources, you can create new resources"
+      }
+    }
   }
 }

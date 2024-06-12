@@ -422,6 +422,9 @@ importers:
       js-yaml:
         specifier: ^4.1.0
         version: 4.1.0
+      json5:
+        specifier: ^2.2.3
+        version: 2.2.3
       jsonwebtoken:
         specifier: ^9.0.2
         version: 9.0.2

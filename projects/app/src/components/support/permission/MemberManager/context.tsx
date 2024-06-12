@@ -1,5 +1,8 @@
 import { BoxProps, useDisclosure } from '@chakra-ui/react';
-import { CollaboratorItemType } from '@fastgpt/global/support/permission/collaborator';
+import {
+  CollaboratorItemType,
+  UpdateClbPermissionProps
+} from '@fastgpt/global/support/permission/collaborator';
 import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { PermissionListType, PermissionValueType } from '@fastgpt/global/support/permission/type';
@@ -9,6 +12,7 @@ import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
 import MemberListCard, { MemberListCardProps } from './MemberListCard';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 const AddMemberModal = dynamic(() => import('./AddMemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
@@ -16,8 +20,9 @@ export type MemberManagerInputPropsType = {
   permission: Permission;
   onGetCollaboratorList: () => Promise<CollaboratorItemType[]>;
   permissionList: PermissionListType;
-  onUpdateCollaborators: (tmbIds: string[], permission: PermissionValueType) => any;
+  onUpdateCollaborators: (props: UpdateClbPermissionProps) => any;
   onDelOneCollaborator: (tmbId: string) => any;
+  refreshDeps?: any[];
 };
 export type MemberManagerPropsType = MemberManagerInputPropsType & {
   collaboratorList: CollaboratorItemType[];
@@ -55,24 +60,28 @@ export const CollaboratorContext = createContext<CollaboratorContextType>({
   permission: new Permission()
 });
 
-export const CollaboratorContextProvider = ({
+const CollaboratorContextProvider = ({
   permission,
   onGetCollaboratorList,
   permissionList,
   onUpdateCollaborators,
   onDelOneCollaborator,
+  refreshDeps = [],
   children
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
 }) => {
   const {
     data: collaboratorList = [],
-    refetch: refetchCollaboratorList,
-    isLoading: isFetchingCollaborator
-  } = useQuery(['collaboratorList'], onGetCollaboratorList);
+    runAsync: refetchCollaboratorList,
+    loading: isFetchingCollaborator
+  } = useRequest2(onGetCollaboratorList, {
+    manual: false,
+    refreshDeps
+  });
 
-  const onUpdateCollaboratorsThen = async (tmbIds: string[], permission: PermissionValueType) => {
-    await onUpdateCollaborators(tmbIds, permission);
+  const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
+    await onUpdateCollaborators(props);
     refetchCollaboratorList();
   };
   const onDelOneCollaboratorThen = async (tmbId: string) => {
@@ -136,3 +145,5 @@ export const CollaboratorContextProvider = ({
     </CollaboratorContext.Provider>
   );
 };
+
+export default CollaboratorContextProvider;
