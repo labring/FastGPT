@@ -7,6 +7,7 @@ import type { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core
 import { FlowNodeTemplateTypeEnum } from '@fastgpt/global/core/workflow/constants';
 import { getHandleConfig } from '../../../global/core/workflow/template/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
+import { cloneDeep } from 'lodash';
 
 /* 
   plugin id rule:
@@ -36,7 +37,7 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
     const item = global.communityPlugins?.find((plugin) => plugin.id === pluginId);
     if (!item) return Promise.reject('plugin not found');
 
-    return item;
+    return cloneDeep(item);
   }
   if (source === PluginSourceEnum.personal) {
     const item = await MongoPlugin.findById(id).lean();
