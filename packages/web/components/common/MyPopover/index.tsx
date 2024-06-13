@@ -36,6 +36,8 @@ const MyPopover = ({
       trigger={trigger}
       openDelay={100}
       closeDelay={100}
+      isLazy
+      lazyBehavior="keepMounted"
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
       <PopoverContent p={4}>{children({ onClose })}</PopoverContent>
