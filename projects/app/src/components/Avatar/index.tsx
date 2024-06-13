@@ -13,7 +13,6 @@ const Avatar = ({ w = '30px', src, ...props }: ImageProps) => {
       alt=""
       w={w}
       h={w}
-      p={'1px'}
       src={src || LOGO_ICON}
       {...props}
     />

@@ -81,7 +81,14 @@ const MyMenu = ({
   }, [offset]);
 
   return (
-    <Menu offset={computeOffset} isOpen={isOpen} autoSelect={false} direction={'ltr'} isLazy>
+    <Menu
+      offset={computeOffset}
+      isOpen={isOpen}
+      autoSelect={false}
+      direction={'ltr'}
+      isLazy
+      lazyBehavior={'keepMounted'}
+    >
       <Box
         ref={ref}
         onMouseEnter={() => {

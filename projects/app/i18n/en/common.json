@@ -73,6 +73,7 @@
     "Last use time": "Last use time",
     "Load Failed": "Load Failed",
     "Loading": "Loading...",
+    "More": "More",
     "More settings": "More settings",
     "Move": "Move",
     "MultipleRowSelect": {
@@ -430,6 +431,7 @@
       "Quote": "Quote",
       "Quote Amount": "Dataset quotes ({{amount}} items)",
       "Read Mark Description": "View introduction to marking function",
+      "Recent use": "Recent use",
       "Record": "Voice input",
       "Restart": "Restart conversation",
       "Select File": "Select file",

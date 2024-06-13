@@ -72,15 +72,15 @@ services:
   # fastgpt
   sandbox:
     container_name: sandbox
-    image: ghcr.io/labring/fastgpt-sandbox:v4.8.3 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.8.3 # 阿里云
+    image: ghcr.io/labring/fastgpt-sandbox:v4.8.4 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt-sandbox:v4.8.4 # 阿里云
     networks:
       - fastgpt
     restart: always
   fastgpt:
     container_name: fastgpt
-    image: ghcr.io/labring/fastgpt:v4.8.3 # git
-    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.3 # 阿里云
+    image: ghcr.io/labring/fastgpt:v4.8.4 # git
+    # image: registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.4 # 阿里云
     ports:
       - 3000:3000
     networks:

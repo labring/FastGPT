@@ -1,15 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import {
-  Box,
-  Button,
-  Flex,
-  useTheme,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  IconButton
-} from '@chakra-ui/react';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Box, Button, Flex, useTheme, IconButton } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useEditTitle } from '@/web/common/hooks/useEditTitle';
 import { useRouter } from 'next/router';
@@ -21,10 +11,15 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import Tabs from '@/components/Tabs';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
-import { useQuery } from '@tanstack/react-query';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useI18n } from '@/web/context/I18n';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
+import SelectOneResource from '@/components/common/folder/SelectOneResource';
+import {
+  GetResourceFolderListProps,
+  GetResourceListItemResponse
+} from '@fastgpt/global/common/parentFolder/type';
+import { getMyApps } from '@/web/core/app/api';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type HistoryItemType = {
   id: string;
@@ -34,6 +29,7 @@ type HistoryItemType = {
 };
 
 enum TabEnum {
+  recently = 'recently',
   'app' = 'app',
   'history' = 'history'
 }
@@ -69,6 +65,8 @@ const ChatHistorySlider = ({
 }) => {
   const theme = useTheme();
   const router = useRouter();
+  const isTeamChat = router.pathname === '/chat/team';
+
   const { t } = useTranslation();
   const { appT } = useI18n();
 
@@ -78,6 +76,7 @@ const ChatHistorySlider = ({
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
 
   const showApps = apps?.length > 0;
+
   // custom title edit
   const { onOpenModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('core.chat.Custom History Title'),
@@ -96,17 +95,33 @@ const ChatHistorySlider = ({
     [activeChatId, history, t]
   );
 
-  useQuery(['init'], () => {
-    if (!showApps) {
-      setCurrentTab(TabEnum.history);
-      return null;
-    }
-    return;
-  });
-
   const canRouteToDetail = useMemo(
-    () => appId && userInfo?.team.role !== TeamMemberRoleEnum.visitor,
-    [appId, userInfo?.team.role]
+    () => appId && userInfo?.team.permission.hasWritePer,
+    [appId, userInfo?.team.permission.hasWritePer]
+  );
+
+  const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
+    return getMyApps({ parentId }).then((res) =>
+      res.map<GetResourceListItemResponse>((item) => ({
+        id: item._id,
+        name: item.name,
+        avatar: item.avatar,
+        isFolder: item.type === AppTypeEnum.folder
+      }))
+    );
+  }, []);
+
+  const onChangeApp = useCallback(
+    (appId: string) => {
+      router.replace({
+        query: {
+          ...router.query,
+          chatId: '',
+          appId
+        }
+      });
+    },
+    [router]
   );
 
   return (
@@ -148,10 +163,11 @@ const ChatHistorySlider = ({
       <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5} alignItems={'center'}>
         {!isPc && appId && (
           <Tabs
-            w={'120px'}
+            w={'180px'}
             mr={2}
             list={[
-              { label: 'App', id: TabEnum.app },
+              { label: t('core.chat.Recent use'), id: TabEnum.recently },
+              { label: t('App'), id: TabEnum.app },
               { label: t('core.chat.History'), id: TabEnum.history }
             ]}
             activeId={currentTab}
@@ -291,7 +307,7 @@ const ChatHistorySlider = ({
             ))}
           </>
         )}
-        {currentTab === TabEnum.app && !isPc && (
+        {currentTab === TabEnum.recently && !isPc && (
           <>
             {Array.isArray(apps) &&
               apps.map((item) => (
@@ -309,12 +325,7 @@ const ChatHistorySlider = ({
                       }
                     : {
                         onClick: () => {
-                          router.replace({
-                            query: {
-                              ...router.query,
-                              appId: item._id
-                            }
-                          });
+                          onChangeApp(item._id);
                           onClose();
                         }
                       })}
@@ -327,9 +338,23 @@ const ChatHistorySlider = ({
               ))}
           </>
         )}
+        {currentTab === TabEnum.app && !isPc && (
+          <>
+            <SelectOneResource
+              value={appId}
+              onSelect={(id) => {
+                if (!id) return;
+                onChangeApp(id);
+                onClose();
+              }}
+              server={getAppList}
+            />
+          </>
+        )}
       </Box>
 
-      {!isPc && appId && (
+      {/* exec */}
+      {!isPc && appId && !isTeamChat && (
         <Flex
           mt={2}
           borderTop={theme.borders.base}

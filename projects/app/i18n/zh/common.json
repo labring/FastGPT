@@ -73,6 +73,7 @@
     "Last use time": "最后使用时间",
     "Load Failed": "加载失败",
     "Loading": "加载中...",
+    "More": "更多",
     "More settings": "更多设置",
     "Move": "移动",
     "MultipleRowSelect": {
@@ -431,6 +432,7 @@
       "Quote": "引用",
       "Quote Amount": "知识库引用({{amount}}条)",
       "Read Mark Description": "查看标注功能介绍",
+      "Recent use": "最近使用",
       "Record": "语音输入",
       "Restart": "重开对话",
       "Select File": "选择文件",

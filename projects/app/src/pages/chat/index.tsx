@@ -32,11 +32,12 @@ import ChatHeader from './components/ChatHeader';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import { useAppStore } from '@/web/core/app/store/useAppStore';
 import { checkChatSupportSelectFileByChatModels } from '@/web/core/chat/utils';
 import { getChatTitleFromChatMessage } from '@fastgpt/global/core/chat/utils';
 import { ChatStatusEnum } from '@fastgpt/global/core/chat/constants';
 import { GPTMessages2Chats } from '@fastgpt/global/core/chat/adapt';
+import { getMyApps } from '@/web/core/app/api';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
   const router = useRouter();
@@ -62,7 +63,6 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     setChatData,
     delOneHistoryItem
   } = useChatStore();
-  const { myApps, loadMyApps } = useAppStore();
   const { userInfo } = useUserStore();
 
   const { isPc } = useSystemStore();
@@ -128,7 +128,12 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
     [appId, chatId, histories, pushHistory, router, setChatData, updateHistory]
   );
 
-  useQuery(['loadModels'], () => loadMyApps());
+  const { data: myApps = [], runAsync: loadMyApps } = useRequest2(
+    () => getMyApps({ getRecentlyChat: true }),
+    {
+      manual: false
+    }
+  );
 
   // get chat app info
   const loadChatInfo = useCallback(
@@ -272,7 +277,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
                 onClose={onCloseSlider}
               >
                 <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-                <DrawerContent maxWidth={'250px'}>{children}</DrawerContent>
+                <DrawerContent maxWidth={'75vw'}>{children}</DrawerContent>
               </Drawer>
             );
           })(
