@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Box, Flex } from '@chakra-ui/react';
+import React, { useMemo, useState } from 'react';
+import { Box, BoxProps, Flex } from '@chakra-ui/react';
 import {
   GetResourceFolderListProps,
   GetResourceListItemResponse,
@@ -10,23 +10,42 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import Avatar from '@/components/Avatar';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useMemoizedFn } from 'ahooks';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import { useTranslation } from 'next-i18next';
 
 type ResourceItemType = GetResourceListItemResponse & {
   open: boolean;
   children?: ResourceItemType[];
 };
 
+const rootId = 'root';
+
 const SelectOneResource = ({
   server,
   value,
-  onSelect
+  onSelect,
+  maxH = ['80vh', '600px']
 }: {
   server: (e: GetResourceFolderListProps) => Promise<GetResourceListItemResponse[]>;
   value?: ParentIdType;
   onSelect: (e?: string) => any;
+  maxH?: BoxProps['maxH'];
 }) => {
+  const { t } = useTranslation();
   const [dataList, setDataList] = useState<ResourceItemType[]>([]);
   const [requestingIdList, setRequestingIdList] = useState<ParentIdType[]>([]);
+
+  const concatRoot = useMemo(() => {
+    const root: ResourceItemType = {
+      id: rootId,
+      open: true,
+      avatar: FolderImgUrl,
+      name: t('common.folder.Root Path'),
+      isFolder: true,
+      children: dataList
+    };
+    return [root];
+  }, [dataList, t]);
 
   const { runAsync: requestServer } = useRequest2((e: GetResourceFolderListProps) => {
     if (requestingIdList.includes(e.parentId)) return Promise.reject(null);
@@ -59,7 +78,7 @@ const SelectOneResource = ({
                 alignItems={'center'}
                 cursor={'pointer'}
                 py={1}
-                pl={`${1.25 * index + 0.5}rem`}
+                pl={index === 0 ? '0.5rem' : `${1.75 * (index - 1) + 0.5}rem`}
                 pr={2}
                 borderRadius={'md'}
                 _hover={{
@@ -72,6 +91,7 @@ const SelectOneResource = ({
                     }
                   : {
                       onClick: async () => {
+                        if (item.id === rootId) return;
                         // folder => open(request children) or close
                         if (item.isFolder) {
                           if (!item.children) {
@@ -90,33 +110,31 @@ const SelectOneResource = ({
                       }
                     })}
               >
-                <Flex
-                  alignItems={'center'}
-                  justifyContent={'center'}
-                  visibility={
-                    item.isFolder && (!item.children || item.children.length > 0)
-                      ? 'visible'
-                      : 'hidden'
-                  }
-                  w={'1.25rem'}
-                  h={'1.25rem'}
-                  cursor={'pointer'}
-                  borderRadius={'xs'}
-                  _hover={{
-                    bg: 'rgba(31, 35, 41, 0.08)'
-                  }}
-                >
-                  <MyIcon
-                    name={
-                      requestingIdList.includes(item.id)
-                        ? 'common/loading'
-                        : 'common/rightArrowFill'
-                    }
-                    w={'14px'}
-                    color={'myGray.500'}
-                    transform={item.open ? 'rotate(90deg)' : 'none'}
-                  />
-                </Flex>
+                {index !== 0 && (
+                  <Flex
+                    alignItems={'center'}
+                    justifyContent={'center'}
+                    visibility={item.isFolder ? 'visible' : 'hidden'}
+                    w={'1.25rem'}
+                    h={'1.25rem'}
+                    cursor={'pointer'}
+                    borderRadius={'xs'}
+                    _hover={{
+                      bg: 'rgba(31, 35, 41, 0.08)'
+                    }}
+                  >
+                    <MyIcon
+                      name={
+                        requestingIdList.includes(item.id)
+                          ? 'common/loading'
+                          : 'common/rightArrowFill'
+                      }
+                      w={'14px'}
+                      color={'myGray.500'}
+                      transform={item.open ? 'rotate(90deg)' : 'none'}
+                    />
+                  </Flex>
+                )}
                 <Avatar ml={index !== 0 ? '0.5rem' : 0} src={item.avatar} w={'1.25rem'} />
                 <Box fontSize={'sm'} ml={2}>
                   {item.name}
@@ -134,7 +152,13 @@ const SelectOneResource = ({
     }
   );
 
-  return loading ? <Loading fixed={false} /> : <Render list={dataList} />;
+  return loading ? (
+    <Loading fixed={false} />
+  ) : (
+    <Box maxH={maxH} overflow={'auto'}>
+      <Render list={concatRoot} />
+    </Box>
+  );
 };
 
 export default SelectOneResource;
