@@ -9,6 +9,7 @@ import {
   updateExportDatasetLimit
 } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let { datasetId } = req.query as {
@@ -16,7 +17,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   };
 
   if (!datasetId || !global.pgClient) {
-    throw new Error('缺少参数');
+    return Promise.reject(DatasetErrEnum.missingParams);
   }
 
   // 凭证校验

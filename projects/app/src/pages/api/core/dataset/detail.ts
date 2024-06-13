@@ -3,6 +3,7 @@ import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
+import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { id: datasetId } = req.query as {
@@ -10,7 +11,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   };
 
   if (!datasetId) {
-    throw new Error('缺少参数');
+    return Promise.reject(DatasetErrEnum.missingParams);
   }
 
   // 凭证校验

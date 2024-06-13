@@ -1,19 +1,15 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+import type { NextApiRequest } from 'next';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   const { parentId } = req.query as { parentId: string };
 
   if (!parentId) {
-    return jsonRes(res, {
-      data: []
-    });
+    return [];
   }
 
   await authDataset({ req, authToken: true, datasetId: parentId, per: ReadPermissionVal });
