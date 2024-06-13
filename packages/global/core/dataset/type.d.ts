@@ -10,6 +10,7 @@ import {
   TrainingModeEnum
 } from './constants';
 import { DatasetPermission } from 'support/permission/dataset/controller';
+import { Permission } from 'support/permission/controller';
 
 /* schema */
 export type DatasetSchemaType = {
@@ -26,7 +27,7 @@ export type DatasetSchemaType = {
   intro: string;
   type: DatasetTypeEnum;
   status: `${DatasetStatusEnum}`;
-  permission: `${PermissionTypeEnum}`;
+  permission: DatasetPermission;
 
   // metadata
   websiteConfig?: {
