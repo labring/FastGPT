@@ -57,7 +57,7 @@ export async function authDatasetByTmbId({
 }
 
 // Auth Dataset
-export async function AuthDataset({
+export async function authDataset({
   datasetId,
   per,
   ...props

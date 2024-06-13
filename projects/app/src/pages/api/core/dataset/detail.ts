@@ -1,43 +1,34 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
-import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
-    const { id: datasetId } = req.query as {
-      id: string;
-    };
+async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+  const { id: datasetId } = req.query as {
+    id: string;
+  };
 
-    if (!datasetId) {
-      throw new Error('缺少参数');
-    }
-
-    // 凭证校验
-    const { dataset, canWrite, isOwner } = await authDataset({
-      req,
-      authToken: true,
-      authApiKey: true,
-      datasetId,
-      per: 'r'
-    });
-
-    jsonRes<DatasetItemType>(res, {
-      data: {
-        ...dataset,
-        vectorModel: getVectorModel(dataset.vectorModel),
-        agentModel: getLLMModel(dataset.agentModel),
-        canWrite,
-        isOwner
-      }
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+  if (!datasetId) {
+    throw new Error('缺少参数');
   }
+
+  // 凭证校验
+  const { dataset, permission } = await authDataset({
+    req,
+    authToken: true,
+    authApiKey: true,
+    datasetId,
+    per: ReadPermissionVal
+  });
+
+  return {
+    ...dataset,
+    vectorModel: getVectorModel(dataset.vectorModel),
+    agentModel: getLLMModel(dataset.agentModel),
+    canWrite: permission.hasWritePer,
+    isOwner: permission.isOwner
+  };
 }
+
+export default NextAPI(handler);

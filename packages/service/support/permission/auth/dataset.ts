@@ -64,6 +64,8 @@ export async function authDatasetByTmbId({
     canWrite
   };
 }
+
+// WARN: Deprecated
 export async function authDataset({
   datasetId,
   per = 'owner',
@@ -83,6 +85,8 @@ export async function authDataset({
     datasetId,
     per
   });
+
+  console.warn('Deprecated: authDataset, use the new authDataset method instead.');
 
   return {
     ...result,
