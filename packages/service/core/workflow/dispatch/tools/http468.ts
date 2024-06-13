@@ -50,7 +50,6 @@ export const dispatchHttp468Request = async (props: HttpRequestProps): Promise<H
     variables,
     node: { outputs },
     histories,
-    isToolCall,
     params: {
       system_httpMethod: httpMethod = 'POST',
       system_httpReqUrl: httpReqUrl,

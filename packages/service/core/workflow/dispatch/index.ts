@@ -270,8 +270,6 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
         nodes: runtimeNodes,
         variables
       });
-      // console.log(JSON.stringify(input, null, 2), '=====================');
-
       // format valueType
       params[input.key] = valueTypeFormat(value, input.valueType);
     });
