@@ -9,7 +9,8 @@ export enum DatasetErrEnum {
   unAuthDatasetData = 'unAuthDatasetData',
   unAuthDatasetFile = 'unAuthDatasetFile',
 
-  unLinkCollection = 'unLinkCollection'
+  unLinkCollection = 'unLinkCollection',
+  missingParams = 'missingParams'
 }
 const datasetErr = [
   {
@@ -39,6 +40,10 @@ const datasetErr = [
   {
     statusText: DatasetErrEnum.unLinkCollection,
     message: 'core.dataset.error.unLinkCollection'
+  },
+  {
+    statusText: DatasetErrEnum.missingParams,
+    message: 'core.dataset.error.missingParams'
   }
 ];
 export default datasetErr.reduce((acc, cur, index) => {

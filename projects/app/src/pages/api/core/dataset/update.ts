@@ -33,8 +33,6 @@ async function handler(req: NextApiRequest) {
     await authDataset({ req, authToken: true, datasetId: id, per: WritePermissionVal });
   }
 
-  console.log('update dataset', req.body);
-
   await MongoDataset.findOneAndUpdate(
     {
       _id: id
