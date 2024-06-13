@@ -48,19 +48,22 @@ export const useKeyboard = () => {
       // filter workflow data
       const newNodes = parseData
         .filter((item) => !!item.type && item.data?.unique !== true)
-        .map((item) => ({
-          // reset id
-          ...item,
-          id: getNanoid(),
-          data: {
-            ...item.data,
-            nodeId: getNanoid()
-          },
-          position: {
-            x: item.position.x + 100,
-            y: item.position.y + 100
-          }
-        }));
+        .map((item) => {
+          const nodeId = getNanoid();
+          return {
+            // reset id
+            ...item,
+            id: nodeId,
+            data: {
+              ...item.data,
+              nodeId
+            },
+            position: {
+              x: item.position.x + 100,
+              y: item.position.y + 100
+            }
+          };
+        });
 
       setNodes((prev) =>
         prev

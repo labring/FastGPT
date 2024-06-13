@@ -79,6 +79,7 @@ Mongo 数据库需要注意，需要注意在连接地址中增加 `directConnec
 # 给自动化脚本代码执行权限(非 linux 系统, 可以手动执行里面的 postinstall.sh 文件内容)
 chmod -R +x ./scripts/
 # 代码根目录下执行，会安装根 package、projects 和 packages 内所有依赖
+# 如果提示 isolate-vm 安装失败，可以参考：https://github.com/laverdet/isolated-vm?tab=readme-ov-file#requirements
 pnpm i
 
 # 非 Make 运行
@@ -102,6 +103,8 @@ docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/f
 # Make cmd: Build image with proxy
 make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 proxy=taobao
 ```
+
+如果不使用 `docker` 打包，需要手动把 `Dockerfile` 里 run 阶段的内容全部手动执行一遍（非常不推荐）。
 
 ## 提交代码至开源仓库
 

@@ -100,6 +100,7 @@ export const useConfirm = (props?: {
                     onClose();
                     typeof cancelCb.current === 'function' && cancelCb.current();
                   }}
+                  px={5}
                 >
                   {closeText}
                 </Button>
@@ -109,8 +110,9 @@ export const useConfirm = (props?: {
                 size={'sm'}
                 bg={bg ? bg : map.bg}
                 isDisabled={countDownAmount > 0}
-                ml={4}
+                ml={3}
                 isLoading={isLoading || requesting}
+                px={5}
                 onClick={async () => {
                   setRequesting(true);
                   try {

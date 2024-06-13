@@ -24,7 +24,7 @@ const CodeEditor = (props: Props) => {
           <MyEditor {...props} bg={'myGray.50'} defaultHeight={600} />
         </ModalBody>
         <ModalFooter>
-          <Button mr={2} onClick={onClose}>
+          <Button mr={2} onClick={onClose} px={6}>
             {t('common.Confirm')}
           </Button>
         </ModalFooter>

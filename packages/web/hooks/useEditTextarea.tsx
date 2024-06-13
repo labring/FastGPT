@@ -115,7 +115,9 @@ export const useEditTextarea = ({
               {closeBtnText}
             </Button>
           )}
-          <Button onClick={onclickConfirm}>{t('common.Confirm')}</Button>
+          <Button onClick={onclickConfirm} px={6}>
+            {t('common.Confirm')}
+          </Button>
         </ModalFooter>
       </MyModal>
     ),

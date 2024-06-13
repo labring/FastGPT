@@ -144,7 +144,7 @@ export const useReference = ({
       .filter((item) => item.children.length > 0);
 
     return list;
-  }, [edges, nodeId, nodeList, t, valueType]);
+  }, [appDetail.chatConfig, edges, nodeId, nodeList, t, valueType]);
 
   const formatValue = useMemo(() => {
     if (

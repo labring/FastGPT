@@ -28,6 +28,7 @@ import {
   postUpdateAppCollaborators
 } from '@/web/core/app/api/collaborator';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import AppTypeTag from '@/components/core/app/TypeTag';
 
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
@@ -90,10 +91,12 @@ const ListItem = () => {
         py={[4, 6]}
         gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
         gridGap={5}
+        alignItems={'stretch'}
       >
         {myApps.map((app, index) => (
           <MyTooltip
             key={app._id}
+            h="100%"
             label={
               app.type === AppTypeEnum.folder
                 ? t('common.folder.Open folder')
@@ -105,7 +108,7 @@ const ListItem = () => {
             <MyBox
               isLoading={loadingAppId === app._id}
               lineHeight={1.5}
-              h={'100%'}
+              h="100%"
               py={3}
               px={5}
               cursor={'pointer'}
@@ -238,6 +241,7 @@ const ListItem = () => {
                     color={'myGray.600'}
                   />
                 </Box>
+                <AppTypeTag type={app.type} />
               </Flex>
             </MyBox>
           </MyTooltip>
