@@ -9,32 +9,24 @@ const MyTooltip = ({ children, forceShow = false, shouldWrapChildren = true, ...
   const [isPc] = useMediaQuery('(min-width: 900px)');
 
   return isPc || forceShow ? (
-    <Box
-      css={css({
-        '& span': {
-          display: 'block'
-        }
-      })}
+    <Tooltip
+      className="chakra-tooltip"
+      bg={'white'}
+      arrowShadowColor={'rgba(0,0,0,0.05)'}
+      hasArrow
+      arrowSize={12}
+      offset={[-15, 15]}
+      color={'myGray.800'}
+      px={4}
+      py={2}
+      borderRadius={'8px'}
+      whiteSpace={'pre-wrap'}
+      boxShadow={'1px 1px 10px rgba(0,0,0,0.2)'}
+      shouldWrapChildren={shouldWrapChildren}
+      {...props}
     >
-      <Tooltip
-        className="chakra-tooltip"
-        bg={'white'}
-        arrowShadowColor={'rgba(0,0,0,0.05)'}
-        hasArrow
-        arrowSize={12}
-        offset={[-15, 15]}
-        color={'myGray.800'}
-        px={4}
-        py={2}
-        borderRadius={'8px'}
-        whiteSpace={'pre-wrap'}
-        boxShadow={'1px 1px 10px rgba(0,0,0,0.2)'}
-        shouldWrapChildren={shouldWrapChildren}
-        {...props}
-      >
-        {children}
-      </Tooltip>
-    </Box>
+      {children}
+    </Tooltip>
   ) : (
     <>{children}</>
   );

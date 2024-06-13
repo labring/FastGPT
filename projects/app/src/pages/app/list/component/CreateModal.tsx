@@ -186,7 +186,7 @@ const CreateModal = ({ onClose }: { onClose: () => void }) => {
         <Button variant={'whiteBase'} mr={3} onClick={onClose}>
           {t('common.Close')}
         </Button>
-        <Button isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
+        <Button px={6} isLoading={creating} onClick={handleSubmit((data) => onclickCreate(data))}>
           {t('common.Confirm Create')}
         </Button>
       </ModalFooter>

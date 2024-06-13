@@ -217,16 +217,16 @@ export async function dispatchWorkFlow(data: Props): Promise<DispatchFlowRespons
 
         if (res?.closed || props.maxRunTimes <= 0) return;
         props.maxRunTimes--;
-        console.log(props.maxRunTimes, user._id);
+        addLog.debug(`Run node`, { maxRunTimes: props.maxRunTimes, uid: user._id });
 
         await surrenderProcess();
 
         if (status === 'run') {
-          addLog.info(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
+          addLog.debug(`[dispatchWorkFlow] nodeRunWithActive: ${node.name}`);
           return nodeRunWithActive(node);
         }
         if (status === 'skip') {
-          addLog.info(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
+          addLog.debug(`[dispatchWorkFlow] nodeRunWithSkip: ${node.name}`);
           return nodeRunWithSkip(node);
         }
 

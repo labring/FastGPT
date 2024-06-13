@@ -29,7 +29,9 @@ const MemberListCard = ({ tagStyle, ...props }: MemberListCardProps) => {
             return (
               <Tag key={member.tmbId} type={'fill'} colorSchema="white" {...tagStyle}>
                 <Avatar src={member.avatar} w="1.25rem" />
-                <Box fontSize={'sm'}>{member.name}</Box>
+                <Box fontSize={'sm'} ml={1}>
+                  {member.name}
+                </Box>
               </Tag>
             );
           })}
