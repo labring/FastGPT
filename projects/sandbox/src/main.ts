@@ -6,7 +6,12 @@ import { HttpExceptionFilter } from './http-exception.filter';
 import { ResponseInterceptor } from './response';
 
 async function bootstrap(port: number) {
-  const app = await NestFactory.create<NestFastifyApplication>(AppModule, new FastifyAdapter());
+  const app = await NestFactory.create<NestFastifyApplication>(
+    AppModule,
+    new FastifyAdapter({
+      bodyLimit: 50 * 1048576 // 50MB
+    })
+  );
 
   // 使用全局异常过滤器
   app.useGlobalFilters(new HttpExceptionFilter());
