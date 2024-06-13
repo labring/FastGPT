@@ -4,7 +4,6 @@ import { useRouter } from 'next/router';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppDetailById, getMyApps, putAppById } from '@/web/core/app/api';
 import { AppDetailType, AppListItemType } from '@fastgpt/global/core/app/type';
-import { useQuery } from '@tanstack/react-query';
 import { getAppFolderPath } from '@/web/core/app/api/app';
 import {
   GetResourceFolderListProps,
@@ -15,7 +14,6 @@ import { AppUpdateParams } from '@/global/core/app/api';
 import dynamic from 'next/dynamic';
 import { useI18n } from '@/web/context/I18n';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { delay } from '@fastgpt/global/common/system/utils';
 
 type AppListContextType = {
   parentId?: string | null;

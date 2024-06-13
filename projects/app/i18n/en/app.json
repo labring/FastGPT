@@ -56,6 +56,15 @@
     "Title is required": "Module name cannot be empty"
   },
   "type": {
+    "Create http plugin tip": "Create plug-ins in batches using OpenAPI schema, compatible with GPTs format.",
+    "Create one plugin tip": "The input and output workflows can be customized",
+    "Create plugin bot": "Create plugin bot",
+    "Create simple bot": "Create simple bot",
+    "Create simple bot tip": "Create simple AI applications in form form",
+    "Create workflow bot": "Create workflow bot",
+    "Create workflow tip": "Build logically complex AI applications with low code",
+    "Http plugin": "Http plugin",
+    "Plugin": "Plugin",
     "Simple bot": "Simple bot",
     "Workflow bot": "Workflow"
   }

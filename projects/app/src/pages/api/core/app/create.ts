@@ -35,7 +35,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>, res: NextApiResponse
   // 上限校验
   await checkTeamAppLimit(teamId);
 
-  // 创建模型
+  // 创建app
   const appId = await mongoSessionRun(async (session) => {
     const [{ _id: appId }] = await MongoApp.create(
       [

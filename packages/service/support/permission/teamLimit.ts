@@ -64,13 +64,13 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
     return Promise.reject(SystemErrEnum.communityVersionNumLimit);
   }
 };
-export const checkTeamAppLimit = async (teamId: string) => {
+export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   const [{ standardConstants }, appCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
-    MongoApp.count({ teamId, type: { $in: [AppTypeEnum.advanced, AppTypeEnum.simple] } })
+    MongoApp.count({ teamId, type: { $ne: [AppTypeEnum.folder, AppTypeEnum.httpPlugin] } })
   ]);
 
-  if (standardConstants && appCount >= standardConstants.maxAppAmount) {
+  if (standardConstants && appCount + amount >= standardConstants.maxAppAmount) {
     return Promise.reject(TeamErrEnum.appAmountNotEnough);
   }
 };

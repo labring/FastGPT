@@ -14,13 +14,10 @@ import { getPluginPaths, getUserPlugins } from '@/web/core/plugin/api';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import { defaultHttpPlugin } from './component/HttpPluginEditModal';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import ParentPaths from '@/components/common/ParentPaths';
 import { EditFormType } from './component/type';
 import dynamic from 'next/dynamic';
-
-const HttpPluginEditModal = dynamic(() => import('./component/HttpPluginEditModal'));
 
 const TeamPlugins = () => {
   const { t } = useTranslation();
@@ -214,14 +211,6 @@ const TeamPlugins = () => {
         <EditModal
           defaultValue={editModalData}
           onClose={() => setEditModalData(undefined)}
-          onSuccess={refetch}
-          onDelete={refetch}
-        />
-      )}
-      {!!httpPluginEditModalData && (
-        <HttpPluginEditModal
-          defaultPlugin={httpPluginEditModalData}
-          onClose={() => setHttpPluginModalData(undefined)}
           onSuccess={refetch}
           onDelete={refetch}
         />

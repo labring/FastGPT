@@ -25,6 +25,11 @@ export type AppSchema = {
 
   modules: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
+  pluginData?: {
+    pluginUniId?: string; // plugin unique id(plugin name)
+    apiSchemaStr?: string; // api schema string
+    customHeaders?: string;
+  };
 
   // App system config
   chatConfig: AppChatConfigType;
@@ -44,6 +49,7 @@ export type AppListItemType = {
   type: AppTypeEnum;
   defaultPermission: PermissionValueType;
   permission: AppPermission;
+  pluginData?: AppSchema['pluginData'];
 };
 
 export type AppDetailType = AppSchema & {

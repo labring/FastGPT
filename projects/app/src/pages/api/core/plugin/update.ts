@@ -6,7 +6,7 @@ import { authPluginCrud } from '@fastgpt/service/support/permission/auth/plugin'
 import { MongoPlugin } from '@fastgpt/service/core/plugin/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { ClientSession } from '@fastgpt/service/common/mongo';
-import { httpApiSchema2Plugins } from '@fastgpt/global/core/plugin/httpPlugin/utils';
+import { httpApiSchema2Plugins } from '@fastgpt/global/core/app/httpPlugin/utils';
 import { isEqual } from 'lodash';
 import { nanoid } from 'nanoid';
 

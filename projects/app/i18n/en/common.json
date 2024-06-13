@@ -285,7 +285,6 @@
       "Whisper": "Voice input",
       "Whisper Tip": "Configure voice input related parameters",
       "Whisper config": "Voice input configuration",
-      "create app": "Create your own AI app",
       "deterministic": "Rigorous",
       "edit": {
         "Confirm Save App Tip": "This app may be in advanced arrangement mode, saving will overwrite the advanced arrangement configuration, please confirm!",
@@ -592,8 +591,7 @@
             "success": "Start syncing"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",

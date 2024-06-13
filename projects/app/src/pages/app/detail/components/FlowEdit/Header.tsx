@@ -114,7 +114,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       try {
         await updateAppDetail({
           ...storeWorkflow,
-          type: AppTypeEnum.advanced,
+          type: AppTypeEnum.workflow,
           chatConfig: appDetail.chatConfig,
           //@ts-ignore
           version: 'v2'
@@ -142,7 +142,7 @@ const RenderHeaderContainer = React.memo(function RenderHeaderContainer({
       try {
         await publishApp({
           ...data,
-          type: AppTypeEnum.advanced,
+          type: AppTypeEnum.workflow,
           chatConfig: appDetail.chatConfig,
           //@ts-ignore
           version: 'v2'

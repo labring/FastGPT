@@ -22,7 +22,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     nodes,
     edges,
     chatConfig,
-    permission,
     teamTags,
     defaultPermission
   } = req.body as AppUpdateParams;
@@ -33,9 +32,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // 凭证校验
-  if (permission) {
-    await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
-  } else if (defaultPermission) {
+  if (defaultPermission) {
     await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
   } else {
     await authApp({ req, authToken: true, appId, per: WritePermissionVal });
@@ -56,7 +53,6 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
       type,
       avatar,
       intro,
-      permission,
       defaultPermission,
       ...(teamTags && teamTags),
       ...(formatNodes && {

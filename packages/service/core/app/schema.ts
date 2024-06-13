@@ -1,4 +1,4 @@
-import { AppTypeEnum, AppTypeMap } from '@fastgpt/global/core/app/constants';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { connectionMongo, type Model } from '../../common/mongo';
 const { Schema, model, models } = connectionMongo;
 import type { AppSchema as AppType } from '@fastgpt/global/core/app/type.d';
@@ -43,7 +43,7 @@ const AppSchema = new Schema({
   },
   type: {
     type: String,
-    default: AppTypeEnum.advanced,
+    default: AppTypeEnum.workflow,
     enum: Object.values(AppTypeEnum)
   },
   version: {
@@ -64,16 +64,11 @@ const AppSchema = new Schema({
   },
 
   // role and auth
-  permission: {
-    type: String,
-    enum: Object.keys(PermissionTypeMap),
-    default: PermissionTypeEnum.private
-  },
   teamTags: {
     type: [String]
   },
 
-  // tmp store
+  // save app(Not publish)
   modules: {
     type: Array,
     default: []
@@ -85,6 +80,14 @@ const AppSchema = new Schema({
   chatConfig: {
     type: chatConfigType,
     default: {}
+  },
+  // plugin config
+  pluginData: {
+    type: {
+      pluginUniId: String,
+      apiSchemaStr: String, // http plugin
+      customHeaders: String // http plugin
+    }
   },
 
   scheduledTriggerConfig: {

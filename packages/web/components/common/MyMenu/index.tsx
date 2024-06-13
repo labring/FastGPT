@@ -126,12 +126,12 @@ const MyMenu = ({
           <Box position={'relative'}>{Button}</Box>
         </Box>
         <MenuList
-          minW={isOpen ? `${width}px !important` : 0}
+          minW={isOpen ? `${width}px !important` : '80px'}
+          w={width ?? 'auto'}
+          maxW={'300px'}
           p={'6px'}
           border={'1px solid #fff'}
-          boxShadow={
-            '0px 2px 4px rgba(161, 167, 179, 0.25), 0px 0px 1px rgba(121, 141, 159, 0.25);'
-          }
+          boxShadow={'3'}
         >
           {menuList.map((item, i) => {
             return (

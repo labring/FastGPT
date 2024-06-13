@@ -42,7 +42,7 @@ async function handler(
     ? {
         // get all chat app
         teamId,
-        type: { $in: [AppTypeEnum.advanced, AppTypeEnum.simple] }
+        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple] }
       }
     : {
         teamId,
@@ -88,7 +88,8 @@ async function handler(
     name: app.name,
     intro: app.intro,
     permission: app.permission,
-    defaultPermission: app.defaultPermission || AppDefaultPermissionVal
+    defaultPermission: app.defaultPermission || AppDefaultPermissionVal,
+    pluginData: app.pluginData
   }));
 }
 

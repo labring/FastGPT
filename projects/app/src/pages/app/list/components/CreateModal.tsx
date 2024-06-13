@@ -1,4 +1,4 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useRef } from 'react';
 import {
   Box,
   Flex,
@@ -17,7 +17,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { postCreateApp } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
-import { appTemplates } from '@/web/core/app/templates';
+import { simpleBotTemplates, workflowTemplates, pluginTemplates } from '@/web/core/app/templates';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
@@ -27,6 +27,8 @@ import { useTranslation } from 'next-i18next';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useI18n } from '@/web/context/I18n';
 
 type FormType = {
   avatar: string;
@@ -34,20 +36,40 @@ type FormType = {
   templateId: string;
 };
 
-const CreateModal = ({ onClose }: { onClose: () => void }) => {
+export type CreateAppType = AppTypeEnum.simple | AppTypeEnum.workflow | AppTypeEnum.plugin;
+
+const CreateModal = ({ onClose, type }: { type: CreateAppType; onClose: () => void }) => {
   const { t } = useTranslation();
+  const { appT } = useI18n();
   const { toast } = useToast();
   const router = useRouter();
   const { parentId, loadMyApps } = useContextSelector(AppListContext, (v) => v);
-
-  const theme = useTheme();
   const { isPc } = useSystemStore();
+
+  const typeMap = useRef({
+    [AppTypeEnum.simple]: {
+      icon: 'core/app/simpleBot',
+      title: appT('type.Create simple bot'),
+      templates: simpleBotTemplates
+    },
+    [AppTypeEnum.workflow]: {
+      icon: 'core/app/type/workflowFill',
+      title: appT('type.Create workflow bot'),
+      templates: workflowTemplates
+    },
+    [AppTypeEnum.plugin]: {
+      icon: 'core/app/type/pluginFill',
+      title: appT('type.Create plugin bot'),
+      templates: pluginTemplates
+    }
+  });
+  const typeData = typeMap.current[type];
 
   const { register, setValue, watch, handleSubmit } = useForm<FormType>({
     defaultValues: {
       avatar: '',
       name: '',
-      templateId: appTemplates[0].id
+      templateId: typeData.templates[0].id
     }
   });
   const avatar = watch('avatar');
@@ -82,7 +104,7 @@ const CreateModal = ({ onClose }: { onClose: () => void }) => {
 
   const { mutate: onclickCreate, isLoading: creating } = useRequest({
     mutationFn: async (data: FormType) => {
-      const template = appTemplates.find((item) => item.id === data.templateId);
+      const template = typeData.templates.find((item) => item.id === data.templateId);
       if (!template) {
         return Promise.reject(t('core.dataset.error.Template does not exist'));
       }
@@ -106,8 +128,8 @@ const CreateModal = ({ onClose }: { onClose: () => void }) => {
 
   return (
     <MyModal
-      iconSrc="/imgs/workflow/ai.svg"
-      title={t('core.app.create app')}
+      iconSrc={typeData.icon}
+      title={typeData.title}
       isOpen
       onClose={onClose}
       isCentered={!isPc}
@@ -146,10 +168,10 @@ const CreateModal = ({ onClose }: { onClose: () => void }) => {
           gridTemplateColumns={['repeat(1,1fr)', 'repeat(2,1fr)']}
           gridGap={[2, 4]}
         >
-          {appTemplates.map((item) => (
+          {typeData.templates.map((item) => (
             <Card
               key={item.id}
-              border={theme.borders.base}
+              border={'base'}
               p={3}
               borderRadius={'md'}
               cursor={'pointer'}

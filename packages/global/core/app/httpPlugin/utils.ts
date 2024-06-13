@@ -2,19 +2,20 @@ import { getNanoid } from '../../../common/string/tools';
 import { OpenApiJsonSchema } from './type';
 import yaml from 'js-yaml';
 import { OpenAPIV3 } from 'openapi-types';
-import { PluginTypeEnum } from '../constants';
-import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io.d';
+import { FlowNodeInputItemType, FlowNodeOutputItemType } from '../../workflow/type/io';
 import { FlowNodeInputTypeEnum, FlowNodeOutputTypeEnum } from '../../workflow/node/constant';
 import { NodeInputKeyEnum, WorkflowIOValueTypeEnum } from '../../workflow/constants';
 import { PluginInputModule } from '../../workflow/template/system/pluginInput';
 import { PluginOutputModule } from '../../workflow/template/system/pluginOutput';
 import { HttpModule468 } from '../../workflow/template/system/http468';
 import { HttpParamAndHeaderItemType } from '../../workflow/api';
-import { CreateOnePluginParams } from '../controller';
 import { StoreNodeItemType } from '../../workflow/type';
 import { HttpImgUrl } from '../../../common/file/image/constants';
 import SwaggerParser from '@apidevtools/swagger-parser';
-import { getHandleId } from '../../../core/workflow/utils';
+import { getHandleId } from '../../workflow/utils';
+import { CreateHttpPluginChildrenPros } from '../controller';
+import { AppTypeEnum } from '../constants';
+import { StoreEdgeItemType } from 'core/workflow/type/edge';
 
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
@@ -89,7 +90,7 @@ export const httpApiSchema2Plugins = async ({
   parentId: string;
   apiSchemaStr?: string;
   customHeader?: string;
-}): Promise<CreateOnePluginParams[]> => {
+}): Promise<CreateHttpPluginChildrenPros[]> => {
   const jsonSchema = await str2OpenApiSchema(apiSchemaStr);
 
   const baseUrl = jsonSchema.serverPath;
@@ -400,7 +401,7 @@ export const httpApiSchema2Plugins = async ({
       }
     ];
 
-    const edges = [
+    const edges: StoreEdgeItemType[] = [
       {
         source: pluginInputId,
         target: httpId,
@@ -420,9 +421,12 @@ export const httpApiSchema2Plugins = async ({
       avatar: HttpImgUrl,
       intro: item.description,
       parentId,
-      type: PluginTypeEnum.http,
+      type: AppTypeEnum.plugin,
       modules,
-      edges
+      edges,
+      pluginData: {
+        pluginUniId: item.name
+      }
     };
   });
 };

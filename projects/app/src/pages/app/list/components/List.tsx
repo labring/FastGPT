@@ -33,17 +33,21 @@ import AppTypeTag from '@/components/core/app/TypeTag';
 const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditResourceModal'));
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
+import type { EditHttpPluginProps } from './HttpPluginEditModal';
+const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
+
 const ListItem = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId } = useContextSelector(
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
     AppListContext,
     (v) => v
   );
   const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
+  const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
   const [editPerAppIndex, setEditPerAppIndex] = useState<number>();
   const editPerApp = useMemo(
     () => (editPerAppIndex !== undefined ? myApps[editPerAppIndex] : undefined),
@@ -131,7 +135,7 @@ const ListItem = () => {
                 }
               }}
               onClick={() => {
-                if (app.type === AppTypeEnum.folder) {
+                if (app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin) {
                   router.push({
                     query: {
                       parentId: app._id
@@ -174,19 +178,34 @@ const ListItem = () => {
                             {
                               icon: 'edit',
                               label: '编辑信息',
-                              onClick: () =>
-                                setEditedApp({
-                                  id: app._id,
-                                  avatar: app.avatar,
-                                  name: app.name,
-                                  intro: app.intro
-                                })
+                              onClick: () => {
+                                if (app.type === AppTypeEnum.httpPlugin) {
+                                  setEditHttpPlugin({
+                                    id: app._id,
+                                    name: app.name,
+                                    avatar: app.avatar,
+                                    intro: app.intro,
+                                    pluginData: app.pluginData
+                                  });
+                                } else {
+                                  setEditedApp({
+                                    id: app._id,
+                                    avatar: app.avatar,
+                                    name: app.name,
+                                    intro: app.intro
+                                  });
+                                }
+                              }
                             },
-                            {
-                              icon: 'common/file/move',
-                              label: t('common.folder.Move to'),
-                              onClick: () => setMoveAppId(app._id)
-                            },
+                            ...(folderDetail?.type === AppTypeEnum.httpPlugin
+                              ? []
+                              : [
+                                  {
+                                    icon: 'common/file/move',
+                                    label: t('common.folder.Move to'),
+                                    onClick: () => setMoveAppId(app._id)
+                                  }
+                                ]),
                             ...(app.permission.hasManagePer
                               ? [
                                   {
@@ -295,6 +314,12 @@ const ListItem = () => {
               })
           }}
           onClose={() => setEditPerAppIndex(undefined)}
+        />
+      )}
+      {!!editHttpPlugin && (
+        <HttpEditModal
+          defaultPlugin={editHttpPlugin}
+          onClose={() => setEditHttpPlugin(undefined)}
         />
       )}
     </>

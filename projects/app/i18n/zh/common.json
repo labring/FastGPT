@@ -286,7 +286,6 @@
       "Whisper": "语音输入",
       "Whisper Tip": "配置语音输入相关参数",
       "Whisper config": "语音输入配置",
-      "create app": "创建属于你的 AI 应用",
       "deterministic": "严谨",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",
@@ -594,8 +593,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
