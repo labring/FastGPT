@@ -1,24 +1,14 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
-import { authDatasetFile } from '@fastgpt/service/support/permission/auth/dataset';
-import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type.d';
+import type { NextApiRequest } from 'next';
+import { authDatasetFile } from '@fastgpt/service/support/permission/dataset/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
+async function handler(req: NextApiRequest) {
+  const { fileId } = req.query as { fileId: string };
+  // 凭证校验
+  const { file } = await authDatasetFile({ req, authToken: true, fileId, per: ReadPermissionVal });
 
-    const { fileId } = req.query as { fileId: string };
-    // 凭证校验
-    const { file } = await authDatasetFile({ req, authToken: true, fileId, per: 'r' });
-
-    jsonRes<DatasetFileSchema>(res, {
-      data: file
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  return file;
 }
+
+export default NextAPI(handler);

@@ -1,8 +1,7 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+import type { NextApiRequest } from 'next';
 import { authDatasetData } from '@/service/support/permission/auth/dataset';
 import { NextAPI } from '@/service/middleware/entry';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type Response = {
   id: string;
@@ -11,7 +10,7 @@ export type Response = {
   source: string;
 };
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   const { id: dataId } = req.query as {
     id: string;
   };
@@ -22,12 +21,10 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     authToken: true,
     authApiKey: true,
     dataId,
-    per: 'r'
+    per: ReadPermissionVal
   });
 
-  jsonRes(res, {
-    data: datasetData
-  });
+  return datasetData;
 }
 
 export default NextAPI(handler);

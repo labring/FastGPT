@@ -1,13 +1,13 @@
 import { DatasetDataItemType } from '@fastgpt/global/core/dataset/type';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
-import { AuthModeType } from '@fastgpt/service/support/permission/type';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { AuthPropsType } from '@fastgpt/service/support/permission/type/auth';
 
 /* data permission same of collection */
 export async function authDatasetData({
   dataId,
   ...props
-}: AuthModeType & {
+}: AuthPropsType & {
   dataId: string;
 }) {
   // get mongo dataset.data
@@ -34,7 +34,7 @@ export async function authDatasetData({
     sourceName: result.collection.name || '',
     sourceId: result.collection?.fileId || result.collection?.rawLink,
     isOwner: String(datasetData.tmbId) === result.tmbId,
-    canWrite: result.canWrite
+    canWrite: result.permission.hasWritePer
   };
 
   return {

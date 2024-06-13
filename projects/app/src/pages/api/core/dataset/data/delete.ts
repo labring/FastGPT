@@ -1,10 +1,10 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { authDatasetData } from '@/service/support/permission/auth/dataset';
 import { deleteDatasetData } from '@/service/core/dataset/data/controller';
 import { NextAPI } from '@/service/middleware/entry';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   const { id: dataId } = req.query as {
     id: string;
   };
@@ -19,14 +19,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     authToken: true,
     authApiKey: true,
     dataId,
-    per: 'w'
+    per: WritePermissionVal
   });
 
   await deleteDatasetData(datasetData);
 
-  jsonRes(res, {
-    data: 'success'
-  });
+  return 'success';
 }
 
 export default NextAPI(handler);
