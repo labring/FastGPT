@@ -104,7 +104,7 @@ docker build -f ./projects/app/Dockerfile -t registry.cn-hangzhou.aliyuncs.com/f
 make build name=app image=registry.cn-hangzhou.aliyuncs.com/fastgpt/fastgpt:v4.8.1 proxy=taobao
 ```
 
-如果不使用`docker`打包，需要手动把`Dockerfile`里 run 阶段的内容全部手动执行一遍（非常不推荐）。
+如果不使用 `docker` 打包，需要手动把 `Dockerfile` 里 run 阶段的内容全部手动执行一遍（非常不推荐）。
 
 ## 提交代码至开源仓库
 
