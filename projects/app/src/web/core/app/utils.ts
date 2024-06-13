@@ -1,9 +1,4 @@
-import {
-  AppDetailType,
-  ChatInputGuideConfigType,
-  AppSchema,
-  AppSimpleEditFormType
-} from '@fastgpt/global/core/app/type';
+import { AppDetailType, AppSchema, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import {
   FlowNodeInputTypeEnum,

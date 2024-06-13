@@ -15,16 +15,6 @@ export const putUpdatePlugin = (data: UpdatePluginParams) => PUT('/core/plugin/u
 export const getPluginPaths = (parentId?: string) =>
   GET<ParentTreePathItemType[]>('/core/plugin/paths', { parentId });
 
-// http plugin
-export const getApiSchemaByUrl = (url: string) =>
-  POST<Object>(
-    '/core/plugin/httpPlugin/getApiSchemaByUrl',
-    { url },
-    {
-      timeout: 30000
-    }
-  );
-
 /* work flow */
 export const getPlugTemplates = () => GET<FlowNodeTemplateType[]>('/core/plugin/templates');
 export const getUserPlugins = (data: { parentId?: string; type?: `${PluginTypeEnum}` }) =>

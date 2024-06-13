@@ -7,3 +7,13 @@ export const postCreateHttpPlugin = (data: createHttpPluginBody) =>
 
 export const putUpdateHttpPlugin = (body: UpdateHttpPluginBody) =>
   POST('/core/app/httpPlugin/update', body);
+
+// http plugin
+export const getApiSchemaByUrl = (url: string) =>
+  POST<Object>(
+    '/core/app/httpPlugin/getApiSchemaByUrl',
+    { url },
+    {
+      timeout: 30000
+    }
+  );

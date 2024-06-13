@@ -25,10 +25,13 @@ import Avatar from '@/components/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
 import { HttpPluginImgUrl, MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
-import { postCreateHttpPlugin, putUpdateHttpPlugin } from '@/web/core/app/api/httpPlugin';
+import {
+  postCreateHttpPlugin,
+  putUpdateHttpPlugin,
+  getApiSchemaByUrl
+} from '@/web/core/app/api/httpPlugin';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
 import { HttpHeaders } from '@/components/core/workflow/Flow/nodes/NodeHttp';
@@ -36,7 +39,6 @@ import { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpPlugin/type';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';
 import { AppListContext } from './context';
-import { getApiSchemaByUrl } from '@/web/core/plugin/api';
 
 export type EditHttpPluginProps = {
   id?: string;
@@ -75,7 +77,7 @@ const HttpPluginEditModal = ({
   });
   const [updateTrigger, setUpdateTrigger] = useState(false);
 
-  const { register, setValue, getValues, handleSubmit, watch } = useForm<EditHttpPluginProps>({
+  const { register, setValue, handleSubmit, watch } = useForm<EditHttpPluginProps>({
     defaultValues: defaultPlugin
   });
   const avatar = watch('avatar');
