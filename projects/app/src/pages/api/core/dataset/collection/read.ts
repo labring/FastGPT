@@ -1,9 +1,10 @@
-import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import type { ApiRequestProps } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetCollectionTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { createFileToken } from '@fastgpt/service/support/permission/controller';
 import { BucketNameEnum, ReadFileBaseUrl } from '@fastgpt/global/common/file/constants';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type readCollectionSourceQuery = {
   collectionId: string;
@@ -17,15 +18,14 @@ export type readCollectionSourceResponse = {
 };
 
 async function handler(
-  req: ApiRequestProps<readCollectionSourceBody, readCollectionSourceQuery>,
-  res: ApiResponseType<any>
+  req: ApiRequestProps<readCollectionSourceBody, readCollectionSourceQuery>
 ): Promise<readCollectionSourceResponse> {
   const { collection, teamId, tmbId } = await authDatasetCollection({
     req,
     authToken: true,
     authApiKey: true,
     collectionId: req.query.collectionId,
-    per: 'r'
+    per: ReadPermissionVal
   });
 
   const sourceUrl = await (async () => {

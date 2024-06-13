@@ -17,6 +17,7 @@ import { getTmbInfoByTmbId } from '../../user/team/controller';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
 
+// WARN: Deprecated
 export async function authDatasetByTmbId({
   teamId,
   tmbId,
