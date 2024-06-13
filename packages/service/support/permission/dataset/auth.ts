@@ -6,14 +6,14 @@ import {
   DatasetFileSchema,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
-import { getTmbInfoByTmbId } from 'support/user/team/controller';
-import { MongoDataset } from 'core/dataset/schema';
+import { getTmbInfoByTmbId } from '../../user/team/controller';
+import { MongoDataset } from '../../../core/dataset/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
-import { getCollectionWithDataset } from 'core/dataset/controller';
-import { MongoDatasetCollection } from 'core/dataset/collection/schema';
-import { getFileById } from 'common/file/gridfs/controller';
+import { getCollectionWithDataset } from '../../../core/dataset/controller';
+import { MongoDatasetCollection } from '../../../core/dataset/collection/schema';
+import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
