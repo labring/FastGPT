@@ -1,3 +1,4 @@
+import { PermissionValueType } from 'support/permission/type';
 import type { LLMModelItemType, VectorModelItemType } from '../../core/ai/model.d';
 import { PermissionTypeEnum } from '../../support/permission/constant';
 import { PushDatasetDataChunkProps } from './api';
@@ -8,6 +9,7 @@ import {
   SearchScoreTypeEnum,
   TrainingModeEnum
 } from './constants';
+import { DatasetPermission } from 'support/permission/dataset/controller';
 
 /* schema */
 export type DatasetSchemaType = {
@@ -32,6 +34,7 @@ export type DatasetSchemaType = {
     selector: string;
   };
   externalReadUrl?: string;
+  defaultPermission: PermissionValueType;
 };
 
 export type DatasetCollectionSchemaType = {
@@ -132,9 +135,7 @@ export type DatasetListItemType = {
   name: string;
   intro: string;
   type: DatasetTypeEnum;
-  isOwner: boolean;
-  canWrite: boolean;
-  permission: `${PermissionTypeEnum}`;
+  permission: DatasetPermission;
   vectorModel: VectorModelItemType;
 };
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
