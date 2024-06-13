@@ -51,6 +51,7 @@ export const iconPaths = {
   'common/routePushLight': () => import('./icons/common/routePushLight.svg'),
   'common/saveFill': () => import('./icons/common/saveFill.svg'),
   'common/searchLight': () => import('./icons/common/searchLight.svg'),
+  'common/select': () => import('./icons/common/select.svg'),
   'common/selectLight': () => import('./icons/common/selectLight.svg'),
   'common/settingLight': () => import('./icons/common/settingLight.svg'),
   'common/text/t': () => import('./icons/common/text/t.svg'),

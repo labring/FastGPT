@@ -274,7 +274,7 @@ const OutLink = () => {
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
-          <SliderApps showExist={false} apps={myApps} activeAppId={appId} />
+          <SliderApps apps={myApps} activeAppId={appId} />
         </Box>
       )}
 

@@ -16,8 +16,9 @@ import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 
 export type ListAppBody = {
-  parentId: ParentIdType;
+  parentId?: ParentIdType;
   type?: AppTypeEnum;
+  getRecentlyChat?: boolean;
 };
 
 async function handler(
@@ -35,14 +36,23 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  const { parentId, type } = req.body;
+  const { parentId, type, getRecentlyChat } = req.body;
+
+  const findAppsQuery = getRecentlyChat
+    ? {
+        // get all chat app
+        teamId,
+        type: { $in: [AppTypeEnum.advanced, AppTypeEnum.simple] }
+      }
+    : {
+        teamId,
+        ...(type && { type }),
+        ...parseParentIdInMongo(parentId)
+      };
 
   /* temp: get all apps and per */
   const [myApps, rpList] = await Promise.all([
-    MongoApp.find(
-      { teamId, ...(type && { type }), ...parseParentIdInMongo(parentId) },
-      '_id avatar type name intro tmbId defaultPermission'
-    )
+    MongoApp.find(findAppsQuery, '_id avatar type name intro tmbId defaultPermission')
       .sort({
         updateTime: -1
       })
@@ -69,7 +79,9 @@ async function handler(
     })
     .filter((app) => app.permission.hasReadPer);
 
-  return filterApps.map((app) => ({
+  const sliceApps = getRecentlyChat ? filterApps.slice(0, 15) : filterApps;
+
+  return sliceApps.map((app) => ({
     _id: app._id,
     avatar: app.avatar,
     type: app.type,
