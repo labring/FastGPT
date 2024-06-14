@@ -1,7 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { responseWriteController } from '@fastgpt/service/common/response';
 import { addLog } from '@fastgpt/service/common/system/log';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
 import { findDatasetAndAllChildren } from '@fastgpt/service/core/dataset/controller';
 import {
@@ -10,6 +10,7 @@ import {
 } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
 import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let { datasetId } = req.query as {
@@ -21,7 +22,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   }
 
   // 凭证校验
-  const { teamId } = await authDataset({ req, authToken: true, datasetId, per: 'w' });
+  const { teamId } = await authDataset({
+    req,
+    authToken: true,
+    datasetId,
+    per: WritePermissionVal
+  });
 
   await checkExportDatasetLimit({
     teamId,

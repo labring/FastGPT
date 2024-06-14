@@ -28,7 +28,7 @@ async function handler(req: NextApiRequest) {
     return Promise.reject(DatasetErrEnum.missingParams);
   }
 
-  if (permission) {
+  if (permission || defaultPermission) {
     await authDataset({ req, authToken: true, datasetId: id, per: OwnerPermissionVal });
   } else {
     await authDataset({ req, authToken: true, datasetId: id, per: WritePermissionVal });
@@ -48,7 +48,7 @@ async function handler(req: NextApiRequest) {
       ...(status && { status }),
       ...(intro && { intro }),
       ...(externalReadUrl && { externalReadUrl }),
-      ...(defaultPermission && { defaultPermission })
+      defaultPermission
     }
   );
 }

@@ -138,7 +138,9 @@ export type DatasetListItemType = {
   type: DatasetTypeEnum;
   permission: DatasetPermission;
   vectorModel: VectorModelItemType;
+  defaultPermission: PermissionValueType;
 };
+
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;

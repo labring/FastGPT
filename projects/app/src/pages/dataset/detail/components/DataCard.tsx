@@ -101,7 +101,7 @@ const DataCard = () => {
       getData(1);
       lastSearch.current = searchText;
     }, 300),
-    []
+    [searchText]
   );
 
   // get file info
@@ -291,7 +291,7 @@ const DataCard = () => {
             gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
             gridGap={4}
           >
-            {datasetDataList.map((item, index) => (
+            {datasetDataList.map((item) => (
               <Card
                 key={item._id}
                 cursor={'pointer'}

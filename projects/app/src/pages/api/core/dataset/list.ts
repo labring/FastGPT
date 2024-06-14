@@ -69,7 +69,8 @@ async function handler(req: NextApiRequest) {
       intro: item.intro,
       type: item.type,
       permission: item.permission,
-      vectorModel: getVectorModel(item.vectorModel)
+      vectorModel: getVectorModel(item.vectorModel),
+      defaultPermission: item.defaultPermission
     }))
   );
 
