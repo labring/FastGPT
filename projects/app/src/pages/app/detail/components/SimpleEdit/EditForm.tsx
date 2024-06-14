@@ -97,15 +97,15 @@ const EditForm = ({
     () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
     [allDatasets, datasets]
   );
-  useEffect(() => {
-    if (selectDatasets.length !== datasets.length) {
-      replaceDatasetList(
-        selectDatasets.map((item) => ({
-          datasetId: item._id
-        }))
-      );
-    }
-  }, [datasets, replaceDatasetList, selectDatasets]);
+  // useEffect(() => {
+  //   if (selectDatasets.length !== datasets.length) {
+  //     replaceDatasetList(
+  //       selectDatasets.map((item) => ({
+  //         datasetId: item._id
+  //       }))
+  //     );
+  //   }
+  // }, [datasets, replaceDatasetList, selectDatasets]);
 
   const {
     isOpen: isOpenDatasetSelect,
