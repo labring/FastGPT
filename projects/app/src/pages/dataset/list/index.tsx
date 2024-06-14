@@ -298,7 +298,6 @@ const Dataset = () => {
                 }}
               >
                 <MyMenu
-                  width={120}
                   Button={
                     <Box w={'22px'} h={'22px'}>
                       <MyIcon
