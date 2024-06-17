@@ -31,7 +31,6 @@ export async function authOutLinkCrud({
     }
 
     const { app } = await authAppByTmbId({
-      teamId,
       tmbId,
       appId: outLink.appId,
       per: ManagePermissionVal

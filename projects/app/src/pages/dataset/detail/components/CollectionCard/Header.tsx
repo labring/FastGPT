@@ -33,6 +33,7 @@ import { ImportDataSourceEnum } from '@fastgpt/global/core/dataset/constants';
 import { useContextSelector } from 'use-context-selector';
 import { CollectionPageContext } from './Context';
 import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import dataset from '@fastgpt/global/common/error/code/dataset';
 
 const FileSourceSelector = dynamic(() => import('../Import/components/FileSourceSelector'));
 
@@ -189,7 +190,7 @@ const Header = ({}: {}) => {
       )}
 
       {/* diff collection button */}
-      {userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
+      {datasetDetail.canWrite && (
         <>
           {datasetDetail?.type === DatasetTypeEnum.dataset && (
             <MyMenu

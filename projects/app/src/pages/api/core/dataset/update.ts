@@ -16,7 +16,6 @@ async function handler(req: NextApiRequest) {
     name,
     avatar,
     intro,
-    permission,
     agentModel,
     websiteConfig,
     externalReadUrl,
@@ -28,11 +27,13 @@ async function handler(req: NextApiRequest) {
     return Promise.reject(DatasetErrEnum.missingParams);
   }
 
-  if (permission || defaultPermission) {
+  if (defaultPermission) {
     await authDataset({ req, authToken: true, datasetId: id, per: OwnerPermissionVal });
   } else {
     await authDataset({ req, authToken: true, datasetId: id, per: WritePermissionVal });
   }
+
+  console.log('update dataset', req.body);
 
   await MongoDataset.findOneAndUpdate(
     {
@@ -42,7 +43,6 @@ async function handler(req: NextApiRequest) {
       ...(parentId !== undefined && { parentId: parentId || null }),
       ...(name && { name }),
       ...(avatar && { avatar }),
-      ...(permission && { permission }),
       ...(agentModel && { agentModel: agentModel.model }),
       ...(websiteConfig && { websiteConfig }),
       ...(status && { status }),

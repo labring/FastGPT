@@ -344,7 +344,7 @@ function List() {
                   <Flex alignItems={'center'} fontSize={'sm'}>
                     <Box flex={1}>
                       <PermissionIconText
-                        permission={dataset.defaultPermission}
+                        defaultPermission={dataset.defaultPermission}
                         color={'myGray.600'}
                       />
                     </Box>
@@ -362,7 +362,7 @@ function List() {
         )}
 
         {!!folderDetail && isPc && (
-          <Box pt={[4, 6]}>
+          <Box pt={[4, 6]} ml={[4, 6]}>
             <FolderSlideCard
               refreshDeps={[folderDetail._id]}
               name={folderDetail.name}

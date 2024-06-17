@@ -1,6 +1,8 @@
 import { Box, Button, Flex } from '@chakra-ui/react';
 import React from 'react';
-import CollaboratorContextProvider, { MemberManagerInputPropsType } from './context';
+import CollaboratorContextProvider, {
+  MemberManagerInputPropsType
+} from '@/components/support/permission/MemberManager/context';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 

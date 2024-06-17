@@ -35,8 +35,6 @@ import InputDataModal from '../components/InputDataModal';
 import RawSourceBox from '@/components/core/dataset/RawSourceBox';
 import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
 import { TabEnum } from '..';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { DatasetCollectionTypeMap, TrainingTypeMap } from '@fastgpt/global/core/dataset/constants';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
@@ -47,18 +45,21 @@ import { usePagination } from '@fastgpt/web/hooks/usePagination';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { useI18n } from '@/web/context/I18n';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { DatasetPageContext } from '@/web/core/dataset/context/datasetPageContext';
+import { useContextSelector } from 'use-context-selector';
 
 const DataCard = () => {
   const BoxRef = useRef<HTMLDivElement>(null);
   const theme = useTheme();
   const lastSearch = useRef('');
   const router = useRouter();
-  const { userInfo } = useUserStore();
   const { isPc } = useSystemStore();
   const { collectionId = '', datasetId } = router.query as {
     collectionId: string;
     datasetId: string;
   };
+  const datasetDetail = useContextSelector(DatasetPageContext, (v) => v.datasetDetail);
+
   const { Loading, setIsLoading } = useLoading({ defaultLoading: true });
   const { t } = useTranslation();
   const { datasetT } = useI18n();
@@ -119,10 +120,7 @@ const DataCard = () => {
     }
   );
 
-  const canWrite = useMemo(
-    () => userInfo?.team?.role !== TeamMemberRoleEnum.visitor && !!collection?.canWrite,
-    [collection?.canWrite, userInfo?.team?.role]
-  );
+  const canWrite = useMemo(() => datasetDetail.canWrite, [datasetDetail.canWrite]);
 
   const metadataList = useMemo(() => {
     if (!collection) return [];

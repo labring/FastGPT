@@ -296,7 +296,7 @@ const CollectionCard = () => {
                     </Box>
                   </Td>
                   <Td onClick={(e) => e.stopPropagation()}>
-                    {collection.canWrite && userInfo?.team?.role !== TeamMemberRoleEnum.visitor && (
+                    {collection.canWrite && (
                       <MyMenu
                         width={100}
                         offset={[-70, 5]}

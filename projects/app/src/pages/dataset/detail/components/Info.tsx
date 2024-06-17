@@ -29,7 +29,7 @@ import {
   DatasetDefaultPermission,
   DatasetPermissionList
 } from '@fastgpt/global/support/permission/dataset/constant';
-import MemberManager from '@/components/support/permission/MemberManager';
+import MemberManager from '../../component/MemberManager';
 import {
   getCollaboratorList,
   postUpdateDatasetCollaborators,
@@ -55,7 +55,6 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
   const defaultPermission = watch('defaultPermission');
-  const permission = watch('permission');
 
   const { datasetModelList, vectorModelList } = useSystemStore();
 
@@ -266,7 +265,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <Box flex={1}>
               <MemberManager
                 managePer={{
-                  permission,
+                  permission: datasetDetail.permission,
                   onGetCollaboratorList: () => getCollaboratorList(datasetId),
                   permissionList: DatasetPermissionList,
                   onUpdateCollaborators: (body) =>
