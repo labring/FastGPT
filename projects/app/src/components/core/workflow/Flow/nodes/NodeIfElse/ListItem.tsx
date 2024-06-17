@@ -30,7 +30,7 @@ import { SourceHandle } from '../render/Handle';
 import { Position, useReactFlow } from 'reactflow';
 import { getRefData } from '@/web/core/workflow/utils';
 import DragIcon from '@fastgpt/web/components/common/DndDrag/DragIcon';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
 import { useI18n } from '@/web/context/I18n';
 
 const ListItem = ({

@@ -1,6 +1,6 @@
 import React, { useMemo } from 'react';
 import { Box, Flex, Grid, Image } from '@chakra-ui/react';
-import type { GridProps } from '@chakra-ui/react';
+import type { FlexProps, GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
@@ -9,10 +9,11 @@ interface Props extends GridProps {
   list: { id: string; icon?: string; label: string | React.ReactNode }[];
   activeId: string;
   size?: 'sm' | 'md' | 'lg';
+  inlineStyles?: FlexProps;
   onChange: (id: string) => void;
 }
 
-const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
+const Tabs = ({ list, size = 'md', activeId, onChange, inlineStyles, ...props }: Props) => {
   const { t } = useTranslation();
   const sizeMap = useMemo(() => {
     switch (size) {
@@ -55,6 +56,7 @@ const Tabs = ({ list, size = 'md', activeId, onChange, ...props }: Props) => {
           borderBottom={'2px solid transparent'}
           px={3}
           whiteSpace={'nowrap'}
+          {...inlineStyles}
           {...(activeId === item.id
             ? {
                 color: 'primary.600',

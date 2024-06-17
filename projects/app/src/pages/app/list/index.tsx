@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure, HStack } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import PageContainer from '@/components/PageContainer';
@@ -32,6 +32,8 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { CreateAppType } from './components/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import Tabs from '@/components/Tabs';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -48,6 +50,7 @@ const MyApps = () => {
     paths,
     parentId,
     myApps,
+    appType,
     loadMyApps,
     onUpdateApp,
     setMoveAppId,
@@ -82,27 +85,71 @@ const MyApps = () => {
   });
 
   return (
-    <PageContainer isLoading={myApps.length === 0 && isFetchingApps} insertProps={{ px: 0 }}>
-      <Flex gap={5} h={'100%'}>
+    <MyBox
+      display={'flex'}
+      flexDirection={'column'}
+      isLoading={myApps.length === 0 && isFetchingApps}
+      h={'100%'}
+    >
+      {paths.length > 0 && (
+        <Box pt={[4, 6]} pl={3}>
+          <FolderPath
+            paths={paths}
+            hoverStyle={{ bg: 'myGray.200' }}
+            onClick={(parentId) => {
+              router.push({
+                query: {
+                  ...router.query,
+                  parentId
+                }
+              });
+            }}
+          />
+        </Box>
+      )}
+      <Flex gap={5} flex={'1 0 0'} h={0}>
         <Box
           flex={'1 0 0'}
           h={'100%'}
-          px={folderDetail ? [4, 6] : [4, 10]}
+          pr={folderDetail ? [4, 6] : [4, 10]}
+          pl={3}
           overflowY={'auto'}
           overflowX={'hidden'}
         >
-          <Flex pt={[4, 6]} alignItems={'center'} justifyContent={'space-between'}>
-            <FolderPath
-              paths={paths}
-              FirstPathDom={
-                <Box letterSpacing={1} fontSize={['md', 'lg']} color={'myGray.900'}>
-                  {appT('My Apps')}
-                </Box>
-              }
-              onClick={(parentId) => {
+          <Flex
+            pt={paths.length > 0 ? 4 : [4, 6]}
+            alignItems={'center'}
+            justifyContent={'space-between'}
+          >
+            <Tabs
+              list={[
+                {
+                  label: appT('type.All'),
+                  id: 'ALL'
+                },
+                {
+                  label: appT('type.Simple bot'),
+                  id: AppTypeEnum.simple
+                },
+                {
+                  label: appT('type.Workflow bot'),
+                  id: AppTypeEnum.workflow
+                },
+                {
+                  label: appT('type.Plugin'),
+                  id: AppTypeEnum.plugin
+                }
+              ]}
+              activeId={appType}
+              inlineStyles={{ px: 0.5 }}
+              gap={5}
+              display={'flex'}
+              alignItems={'center'}
+              onChange={(e) => {
                 router.push({
                   query: {
-                    parentId
+                    ...router.query,
+                    type: e
                   }
                 });
               }}
@@ -225,7 +272,7 @@ const MyApps = () => {
         <CreateModal type={createAppType} onClose={() => setCreateAppType(undefined)} />
       )}
       {isOpenCreateHttpPlugin && <HttpEditModal onClose={onCloseCreateHttpPlugin} />}
-    </PageContainer>
+    </MyBox>
   );
 };
 

@@ -256,6 +256,7 @@
       "Quote templates": "Quote content templates",
       "Random": "Diverge",
       "Save and preview": "Save and preview",
+      "Saved time": "Saved: {{time}}",
       "Search team tags": "Search tags",
       "Select TTS": "Select voice playback mode",
       "Select app from template": "Select from template",
@@ -591,7 +592,8 @@
             "success": "Start syncing"
           }
         },
-        "training": {}
+        "training": {
+        }
       },
       "data": {
         "Auxiliary Data": "Auxiliary data",

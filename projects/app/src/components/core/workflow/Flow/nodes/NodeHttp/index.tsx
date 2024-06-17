@@ -38,7 +38,7 @@ import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../../../context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useMemoizedFn } from 'ahooks';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 const CurlImportModal = dynamic(() => import('./CurlImportModal'));
 

@@ -15,8 +15,11 @@ import dynamic from 'next/dynamic';
 import { useI18n } from '@/web/context/I18n';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
+const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
+
 type AppListContextType = {
   parentId?: string | null;
+  appType: AppTypeEnum | 'ALL';
   myApps: AppListItemType[];
   loadMyApps: () => void;
   isFetchingApps: boolean;
@@ -40,25 +43,40 @@ export const AppListContext = createContext<AppListContextType>({
   },
   setMoveAppId: function (value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  appType: 'ALL'
 });
-
-const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 const AppListContextProvider = ({ children }: { children: ReactNode }) => {
   const { appT } = useI18n();
   const router = useRouter();
-  const { parentId = null } = router.query as { parentId?: string | null };
+  const { parentId = null, type = 'ALL' } = router.query as {
+    parentId?: string | null;
+    type: AppTypeEnum;
+  };
 
   const {
     data = [],
     runAsync: loadMyApps,
     loading: isFetchingApps
-  } = useRequest2(() => getMyApps({ parentId }), {
-    manual: false,
-    refreshOnWindowFocus: true,
-    refreshDeps: [parentId]
-  });
+  } = useRequest2(
+    () => {
+      const formatType = (() => {
+        if (!type || type === 'ALL') return undefined;
+        if (type === AppTypeEnum.plugin)
+          return [AppTypeEnum.folder, AppTypeEnum.plugin, AppTypeEnum.httpPlugin];
+
+        return [AppTypeEnum.folder, type];
+      })();
+
+      return getMyApps({ parentId, type: formatType });
+    },
+    {
+      manual: false,
+      refreshOnWindowFocus: true,
+      refreshDeps: [parentId, type]
+    }
+  );
 
   const { data: paths = [], runAsync: refetchPaths } = useRequest2(
     () => getAppFolderPath(parentId),
@@ -109,6 +127,7 @@ const AppListContextProvider = ({ children }: { children: ReactNode }) => {
 
   const contextValue: AppListContextType = {
     parentId,
+    appType: type,
     myApps: data,
     loadMyApps,
     isFetchingApps,

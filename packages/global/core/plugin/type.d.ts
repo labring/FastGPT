@@ -24,6 +24,7 @@ export type PluginItemSchema = {
   };
   version?: 'v1' | 'v2';
   nodeVersion?: string;
+  inited?: boolean;
 };
 
 /* plugin template */

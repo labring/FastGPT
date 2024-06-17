@@ -13,7 +13,7 @@ import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { FlowNodeOutputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { FlowNodeOutputTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
 
 const NodeStart = ({ data, selected }: NodeProps<FlowNodeItemType>) => {
   const { t } = useTranslation();

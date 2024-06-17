@@ -85,7 +85,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
 
   return (
     <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
-      <Box display={['block', 'flex']} py={[0, 3]} px={5} alignItems={'center'}>
+      <Box display={['block', 'flex']} alignItems={'center'}>
         <Box flex={1}>
           <Flex alignItems={'flex-end'}>
             <Box color={'myGray.900'} fontSize={'lg'}>
@@ -103,7 +103,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
               </Link>
             )}
           </Flex>
-          <Box fontSize={'xs'} color={'myGray.600'}>
+          <Box fontSize={'mini'} color={'myGray.600'}>
             {tips}
           </Box>
         </Box>
@@ -140,7 +140,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           </Button>
         </Box>
       </Box>
-      <TableContainer mt={2} position={'relative'} minH={'300px'}>
+      <TableContainer mt={3} position={'relative'} minH={'300px'}>
         <Table>
           <Thead>
             <Tr>

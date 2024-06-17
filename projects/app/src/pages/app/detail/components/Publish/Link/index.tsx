@@ -72,7 +72,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   );
 
   return (
-    <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
+    <Box position={'relative'}>
       <Flex justifyContent={'space-between'}>
         <HStack>
           <Box color={'myGray.900'} fontSize={'lg'}>

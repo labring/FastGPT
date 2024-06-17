@@ -279,6 +279,18 @@ const Button = defineStyleConfig({
       _disabled: {
         color: 'myGray.800 !important'
       }
+    },
+    dangerFill: {
+      bg: 'red.600',
+      color: 'white',
+      border: 'none',
+      boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
+      _hover: {
+        filter: 'brightness(120%)'
+      },
+      _disabled: {
+        bg: 'res.50 !important'
+      }
     }
   },
   defaultProps: {
@@ -697,15 +709,15 @@ export const theme = extendTheme({
     xl: '16px'
   },
   shadows: {
-    1: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
-    1.5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 1px 2px 0px rgba(19, 51, 107, 0.10)',
-    2: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)',
-    3: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 10px 0px rgba(19, 51, 107, 0.08)',
-    3.5: '0px 0px 1px 0px rgba(19, 51, 107, 0.10), 0px 4px 10px 0px rgba(19, 51, 107, 0.10)',
-    4: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)',
-    5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 20px 24px -8px rgba(19, 51, 107, 0.15)',
-    6: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 24px 48px -12px rgba(19, 51, 107, 0.20)',
-    7: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)',
+    1: '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    1.5: '0px 1px 2px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.15)',
+    2: '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    3: '0px 4px 10px 0px rgba(19, 51, 107, 0.08), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    3.5: '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)',
+    4: '0px 12px 16px -4px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)',
+    5: '0px 20px 24px -8px rgba(19, 51, 107, 0.15), 0px 0px 1px 0px rgba(19, 51, 107, 0.15)',
+    6: '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)',
+    7: '0px 32px 64px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)',
     focus: shadowLight,
     outline: 'none'
   },

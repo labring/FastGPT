@@ -7,7 +7,7 @@ import { WorkflowContext } from '@/components/core/workflow/context';
 import { getWorkflowGlobalVariables } from '@/web/core/workflow/utils';
 import { useCreation } from 'ahooks';
 import { useTranslation } from 'next-i18next';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
 
 const JsonEditor = ({ inputs = [], item, nodeId }: RenderInputProps) => {
   const { t } = useTranslation();

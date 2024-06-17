@@ -17,7 +17,7 @@ import { WorkflowContext } from '../../context';
 import { AppChatConfigType, AppDetailType, VariableItemType } from '@fastgpt/global/core/app/type';
 import { useMemoizedFn } from 'ahooks';
 import VariableEdit from '@/components/core/app/VariableEdit';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
 import WelcomeTextConfig from '@/components/core/app/WelcomeTextConfig';
 
 type ComponentProps = {

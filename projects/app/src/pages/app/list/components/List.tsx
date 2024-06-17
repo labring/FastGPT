@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Grid, Flex, IconButton } from '@chakra-ui/react';
+import { Box, Grid, Flex, IconButton, border } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { delAppById, putAppById } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -116,8 +116,8 @@ const ListItem = () => {
               py={3}
               px={5}
               cursor={'pointer'}
-              borderWidth={'1.5px'}
-              borderColor={'borderColor.low'}
+              border={'base'}
+              boxShadow={'2'}
               bg={'white'}
               borderRadius={'md'}
               userSelect={'none'}
@@ -138,6 +138,7 @@ const ListItem = () => {
                 if (app.type === AppTypeEnum.folder || app.type === AppTypeEnum.httpPlugin) {
                   router.push({
                     query: {
+                      ...router.query,
                       parentId: app._id
                     }
                   });
@@ -215,6 +216,17 @@ const ListItem = () => {
                                   }
                                 ]
                               : [])
+                          ]
+                        },
+                        {
+                          children: [
+                            {
+                              icon: 'core/chat/chatLight',
+                              label: appT('Go to chat'),
+                              onClick: () => {
+                                router.push(`/chat?appId=${app._id}`);
+                              }
+                            }
                           ]
                         },
                         ...(app.permission.isOwner

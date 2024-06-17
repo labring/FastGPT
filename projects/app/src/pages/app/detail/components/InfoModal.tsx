@@ -27,7 +27,7 @@ import {
   getCollaboratorList
 } from '@/web/core/app/api/collaborator';
 import { useContextSelector } from 'use-context-selector';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
 import {
   AppDefaultPermissionVal,
   AppPermissionList

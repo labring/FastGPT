@@ -9,7 +9,7 @@ import { WorkflowContext, getWorkflowStore } from '../../context';
 
 export const useKeyboard = () => {
   const { t } = useTranslation();
-  const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
+  const { setNodes, onSaveWorkflow } = useContextSelector(WorkflowContext, (v) => v);
   const { copyData } = useCopyData();
 
   const [isDowningCtrl, setIsDowningCtrl] = useState(false);
@@ -81,6 +81,7 @@ export const useKeyboard = () => {
     (event: KeyboardEvent) => {
       if (event.ctrlKey || event.metaKey) {
         setIsDowningCtrl(true);
+
         switch (event.key) {
           case 'c':
             onCopy();
@@ -88,12 +89,17 @@ export const useKeyboard = () => {
           case 'v':
             onParse();
             break;
+          case 's':
+            event.preventDefault();
+
+            onSaveWorkflow();
+            break;
           default:
             break;
         }
       }
     },
-    [onCopy, onParse]
+    [onCopy, onParse, onSaveWorkflow]
   );
 
   const handleKeyUp = useCallback((event: KeyboardEvent) => {

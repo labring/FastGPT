@@ -1,5 +1,9 @@
 import { postWorkflowDebug } from '@/web/core/workflow/api';
-import { storeEdgesRenderEdge, storeNode2FlowNode } from '@/web/core/workflow/utils';
+import {
+  checkWorkflowNodeAndConnection,
+  storeEdgesRenderEdge,
+  storeNode2FlowNode
+} from '@/web/core/workflow/utils';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { NodeOutputKeyEnum, RuntimeEdgeStatusEnum } from '@fastgpt/global/core/workflow/constants';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
@@ -13,7 +17,7 @@ import { RuntimeEdgeItemType, StoreEdgeItemType } from '@fastgpt/global/core/wor
 import { FlowNodeChangeProps } from '@fastgpt/global/core/workflow/type/fe';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import { useMemoizedFn } from 'ahooks';
+import { useMemoizedFn, useUpdateEffect } from 'ahooks';
 import React, {
   Dispatch,
   SetStateAction,
@@ -38,13 +42,19 @@ import { checkNodeRunStatus } from '@fastgpt/global/core/workflow/runtime/utils'
 import { EventNameEnum, eventBus } from '@/web/common/utils/eventbus';
 import { getHandleId } from '@fastgpt/global/core/workflow/utils';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
+import ChatTest, { type ChatTestComponentRef } from './Flow/ChatTest';
+import { useDisclosure } from '@chakra-ui/react';
+import { uiWorkflow2StoreWorkflow } from './utils';
+import { useTranslation } from 'next-i18next';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { formatTime2HM } from '@fastgpt/global/common/string/time';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
 type WorkflowContextType = {
   appId?: string;
-  mode: 'app' | 'plugin';
   basicNodeTemplates: FlowNodeTemplateType[];
   filterAppIds?: string[];
   reactFlowWrapper: React.RefObject<HTMLDivElement> | null;
@@ -92,6 +102,15 @@ type WorkflowContextType = {
     edges: StoreEdgeItemType[];
     chatConfig?: AppChatConfigType;
   }) => Promise<void>;
+  flowData2StoreDataAndCheck: (hideTip?: boolean) =>
+    | {
+        nodes: StoreNodeItemType[];
+        edges: StoreEdgeItemType[];
+      }
+    | undefined;
+  onSaveWorkflow: () => Promise<null | undefined>;
+  saveLabel: string;
+  isSaving: boolean;
 
   // debug
   workflowDebugData:
@@ -116,14 +135,17 @@ type WorkflowContextType = {
   // version history
   isShowVersionHistories: boolean;
   setIsShowVersionHistories: React.Dispatch<React.SetStateAction<boolean>>;
-};
 
-type ContextValueProps = Pick<
-  WorkflowContextType,
-  'mode' | 'basicNodeTemplates' | 'filterAppIds'
-> & {
-  appId?: string;
-  pluginId?: string;
+  // chat test
+  setWorkflowTestData: React.Dispatch<
+    React.SetStateAction<
+      | {
+          nodes: StoreNodeItemType[];
+          edges: StoreEdgeItemType[];
+        }
+      | undefined
+    >
+  >;
 };
 
 type DebugDataType = {
@@ -133,7 +155,7 @@ type DebugDataType = {
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({
-  mode: 'app',
+  isSaving: false,
   setConnectingEdge: function (
     value: React.SetStateAction<OnConnectStartParams | undefined>
   ): void {
@@ -221,20 +243,38 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   },
   setHoverEdgeId: function (value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  setWorkflowTestData: function (
+    value: React.SetStateAction<
+      { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] } | undefined
+    >
+  ): void {
+    throw new Error('Function not implemented.');
+  },
+  flowData2StoreDataAndCheck: function ():
+    | { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }
+    | undefined {
+    throw new Error('Function not implemented.');
+  },
+  onSaveWorkflow: function (): Promise<null | undefined> {
+    throw new Error('Function not implemented.');
+  },
+  saveLabel: ''
 });
 
 const WorkflowContextProvider = ({
   children,
-  value
+  basicNodeTemplates
 }: {
   children: React.ReactNode;
-  value: ContextValueProps;
+  basicNodeTemplates: FlowNodeTemplateType[];
 }) => {
-  const { appId, pluginId } = value;
+  const { t } = useTranslation();
   const { toast } = useToast();
   const reactFlowWrapper = useRef<HTMLDivElement>(null);
-  const setAppDetail = useContextSelector(AppContext, (v) => v.setAppDetail);
+
+  const { appDetail, setAppDetail, updateAppDetail } = useContextSelector(AppContext, (v) => v);
+  const appId = appDetail._id;
 
   /* edge */
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -452,6 +492,57 @@ const WorkflowContextProvider = ({
     }
   });
 
+  /* ui flow to store data */
+  const flowData2StoreDataAndCheck = useMemoizedFn((hideTip = false) => {
+    const checkResults = checkWorkflowNodeAndConnection({ nodes, edges });
+
+    if (!checkResults) {
+      const storeNodes = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+      return storeNodes;
+    } else if (!hideTip) {
+      checkResults.forEach((nodeId) => onUpdateNodeError(nodeId, true));
+      toast({
+        status: 'warning',
+        title: t('core.workflow.Check Failed')
+      });
+    }
+  });
+
+  /* save workflow */
+  const [saveLabel, setSaveLabel] = useState(t('core.app.Onclick to save'));
+  const { runAsync: onSaveWorkflow, loading: isSaving } = useRequest2(async () => {
+    const { nodes } = await getWorkflowStore();
+
+    // version preview / debug mode, not save
+    if (
+      appDetail.version !== 'v2' ||
+      isShowVersionHistories ||
+      isSaving ||
+      nodes.length === 0 ||
+      !!workflowDebugData
+    )
+      return;
+
+    const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+    try {
+      await updateAppDetail({
+        ...storeWorkflow,
+        chatConfig: appDetail.chatConfig,
+        //@ts-ignore
+        version: 'v2'
+      });
+      setSaveLabel(
+        t('core.app.Saved time', {
+          time: formatTime2HM()
+        })
+      );
+    } catch (error) {}
+
+    return null;
+  });
+
   /* debug */
   const [workflowDebugData, setWorkflowDebugData] = useState<DebugDataType>();
   const onNextNodeDebug = useCallback(
@@ -521,8 +612,7 @@ const WorkflowContextProvider = ({
             nodes: runtimeNodes,
             edges: debugData.runtimeEdges,
             variables: {},
-            appId,
-            pluginId
+            appId
           });
         // console.log({ finishedEdges, finishedNodes, nextStepRunNodes, flowResponses });
         // 5. Store debug result
@@ -605,7 +695,7 @@ const WorkflowContextProvider = ({
         console.log(error);
       }
     },
-    [appId, onChangeNode, pluginId, setNodes, workflowDebugData]
+    [appId, onChangeNode, setNodes, workflowDebugData]
   );
   const onStopNodeDebug = useCallback(() => {
     setWorkflowDebugData(undefined);
@@ -658,51 +748,70 @@ const WorkflowContextProvider = ({
     };
   }, [nodes]);
 
+  /* chat test */
+  const ChatTestRef = useRef<ChatTestComponentRef>(null);
+  const { isOpen: isOpenTest, onOpen: onOpenTest, onClose: onCloseTest } = useDisclosure();
+  const [workflowTestData, setWorkflowTestData] = useState<{
+    nodes: StoreNodeItemType[];
+    edges: StoreEdgeItemType[];
+  }>();
+  useUpdateEffect(() => {
+    onOpenTest();
+  }, [workflowTestData]);
+
+  const value = {
+    appId,
+    reactFlowWrapper,
+    basicNodeTemplates,
+    // node
+    nodes,
+    setNodes,
+    onNodesChange,
+    nodeList,
+    hasToolNode,
+    hoverNodeId,
+    setHoverNodeId,
+    onUpdateNodeError,
+    onResetNode,
+    onChangeNode,
+
+    // edge
+    edges,
+    setEdges,
+    hoverEdgeId,
+    setHoverEdgeId,
+    onEdgesChange,
+    connectingEdge,
+    setConnectingEdge,
+    onDelEdge,
+
+    // function
+    onFixView,
+    splitToolInputs,
+    initData,
+    flowData2StoreDataAndCheck,
+    onSaveWorkflow,
+    isSaving,
+    saveLabel,
+
+    // debug
+    workflowDebugData,
+    onNextNodeDebug,
+    onStartNodeDebug,
+    onStopNodeDebug,
+
+    // version history
+    isShowVersionHistories,
+    setIsShowVersionHistories,
+
+    // chat test
+    setWorkflowTestData
+  };
+
   return (
-    <WorkflowContext.Provider
-      value={{
-        appId,
-        reactFlowWrapper,
-        ...value,
-        // node
-        nodes,
-        setNodes,
-        onNodesChange,
-        nodeList,
-        hasToolNode,
-        hoverNodeId,
-        setHoverNodeId,
-        onUpdateNodeError,
-        onResetNode,
-        onChangeNode,
-
-        // edge
-        edges,
-        setEdges,
-        hoverEdgeId,
-        setHoverEdgeId,
-        onEdgesChange,
-        connectingEdge,
-        setConnectingEdge,
-        onDelEdge,
-
-        // function
-        onFixView,
-        splitToolInputs,
-        initData,
-
-        // debug
-        workflowDebugData,
-        onNextNodeDebug,
-        onStartNodeDebug,
-        onStopNodeDebug,
-
-        // version history
-        isShowVersionHistories,
-        setIsShowVersionHistories
-      }}
-    >
+    <WorkflowContext.Provider value={value}>
       {children}
+      <ChatTest ref={ChatTestRef} isOpen={isOpenTest} {...workflowTestData} onClose={onCloseTest} />
     </WorkflowContext.Provider>
   );
 };

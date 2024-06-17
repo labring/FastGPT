@@ -11,24 +11,24 @@ import { nodeTemplate2FlowNode } from '@/web/core/workflow/utils';
 import { useTranslation } from 'next-i18next';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
-import { getPreviewPluginModule } from '@/web/core/plugin/api';
+import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api/plugin';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
 import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
-import { useWorkflowStore } from '@/web/core/workflow/store/workflow';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
-import ParentPaths from '@/components/common/ParentPaths';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
-import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
-import { useQuery } from '@tanstack/react-query';
-import { debounce } from 'lodash';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useContextSelector } from 'use-context-selector';
 import { WorkflowContext } from '../context';
-import { useCreation } from 'ahooks';
 import { useI18n } from '@/web/context/I18n';
+import { getTeamPlugTemplates } from '@/web/core/app/api/plugin';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import FolderPath from '@/components/common/folder/Path';
+import { getAppFolderPath } from '@/web/core/app/api/app';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -37,8 +37,8 @@ type ModuleTemplateListProps = {
 type RenderListProps = {
   templates: FlowNodeTemplateType[];
   onClose: () => void;
-  currentParent?: { parentId: string; parentName: string };
-  setCurrentParent: (e: { parentId: string; parentName: string }) => void;
+  parentId: ParentIdType;
+  setParentId: React.Dispatch<React.SetStateAction<ParentIdType>>;
 };
 
 enum TemplateTypeEnum {
@@ -52,195 +52,175 @@ const sliderWidth = 390;
 const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
   const { t } = useTranslation();
   const router = useRouter();
-  const [currentParent, setCurrentParent] = useState<RenderListProps['currentParent']>();
+  const [parentId, setParentId] = useState<ParentIdType>('');
   const [searchKey, setSearchKey] = useState('');
   const { feConfigs } = useSystemStore();
-  const basicNodeTemplates = useContextSelector(WorkflowContext, (v) => v.basicNodeTemplates);
-  const hasToolNode = useContextSelector(WorkflowContext, (v) => v.hasToolNode);
-  const nodeList = useContextSelector(WorkflowContext, (v) => v.nodeList);
+  const { basicNodeTemplates, hasToolNode, nodeList } = useContextSelector(
+    WorkflowContext,
+    (v) => v
+  );
 
-  const {
-    systemNodeTemplates,
-    loadSystemNodeTemplates,
-    teamPluginNodeTemplates,
-    loadTeamPluginNodeTemplates
-  } = useWorkflowStore();
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
-  const templates = useCreation(() => {
-    const map = {
-      [TemplateTypeEnum.basic]: basicNodeTemplates.filter((item) => {
-        // unique node filter
-        if (item.unique) {
-          const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
-          if (nodeExist) {
+  const { data: templates = [], loading } = useRequest2(
+    async () => {
+      if (templateType === TemplateTypeEnum.basic) {
+        return basicNodeTemplates.filter((item) => {
+          // unique node filter
+          if (item.unique) {
+            const nodeExist = nodeList.some((node) => node.flowNodeType === item.flowNodeType);
+            if (nodeExist) {
+              return false;
+            }
+          }
+          // special node filter
+          if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
             return false;
           }
-        }
-        // special node filter
-        if (item.flowNodeType === FlowNodeTypeEnum.lafModule && !feConfigs.lafEnv) {
-          return false;
-        }
-        // tool stop
-        if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
-          return false;
-        }
-        return true;
-      }),
-      [TemplateTypeEnum.systemPlugin]: systemNodeTemplates,
-      [TemplateTypeEnum.teamPlugin]: teamPluginNodeTemplates.filter((item) =>
-        searchKey ? item.pluginType !== PluginTypeEnum.folder : true
-      )
-    };
-    return map[templateType];
-  }, [
-    basicNodeTemplates,
-    feConfigs.lafEnv,
-    hasToolNode,
-    nodeList,
-    searchKey,
-    systemNodeTemplates,
-    teamPluginNodeTemplates,
-    templateType
-  ]);
-
-  const { mutate: onChangeTab } = useRequest({
-    mutationFn: async (e: any) => {
-      const val = e as TemplateTypeEnum;
-      if (val === TemplateTypeEnum.systemPlugin) {
-        await loadSystemNodeTemplates();
-      } else if (val === TemplateTypeEnum.teamPlugin) {
-        await loadTeamPluginNodeTemplates({
-          parentId: currentParent?.parentId
+          // tool stop
+          if (!hasToolNode && item.flowNodeType === FlowNodeTypeEnum.stopTool) {
+            return false;
+          }
+          return true;
         });
       }
-      setTemplateType(val);
+      if (templateType === TemplateTypeEnum.systemPlugin) {
+        return getSystemPlugTemplates();
+      }
+      if (templateType === TemplateTypeEnum.teamPlugin) {
+        return getTeamPlugTemplates({
+          parentId,
+          searchKey,
+          type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
+        });
+      }
+      return [];
     },
-    errorToast: t('core.module.templates.Load plugin error')
+    {
+      manual: false,
+      throttleWait: 300,
+      refreshDeps: [templateType, searchKey, parentId]
+    }
+  );
+
+  const { data: paths = [] } = useRequest2(() => getAppFolderPath(parentId), {
+    manual: false,
+    refreshDeps: [parentId]
   });
 
-  useQuery(['teamNodeTemplate', currentParent?.parentId, searchKey], () =>
-    loadTeamPluginNodeTemplates({
-      parentId: currentParent?.parentId,
-      searchKey,
-      init: true
-    })
-  );
-
-  return (
-    <>
-      <Box
-        zIndex={2}
-        display={isOpen ? 'block' : 'none'}
-        position={'absolute'}
-        top={0}
-        left={0}
-        bottom={0}
-        w={`${sliderWidth}px`}
-        onClick={onClose}
-        fontSize={'sm'}
-      />
-      <Flex
-        zIndex={3}
-        flexDirection={'column'}
-        position={'absolute'}
-        top={'10px'}
-        left={0}
-        pt={'20px'}
-        pb={4}
-        h={isOpen ? 'calc(100% - 20px)' : '0'}
-        w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
-        bg={'white'}
-        boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
-        borderRadius={'0 20px 20px 0'}
-        transition={'.2s ease'}
-        userSelect={'none'}
-        overflow={isOpen ? 'none' : 'hidden'}
-      >
-        <Box mb={2} pl={'20px'} pr={'10px'} whiteSpace={'nowrap'} overflow={'hidden'}>
-          <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
-            <RowTabs
-              list={[
-                {
-                  icon: 'core/modules/basicNode',
-                  label: t('core.module.template.Basic Node'),
-                  value: TemplateTypeEnum.basic
-                },
-                {
-                  icon: 'core/modules/systemPlugin',
-                  label: t('core.module.template.System Plugin'),
-                  value: TemplateTypeEnum.systemPlugin
-                },
-                {
-                  icon: 'core/modules/teamPlugin',
-                  label: t('core.module.template.Team Plugin'),
-                  value: TemplateTypeEnum.teamPlugin
-                }
-              ]}
-              py={'5px'}
-              value={templateType}
-              onChange={onChangeTab}
-            />
-            {/* close icon */}
-            <IconButton
-              size={'sm'}
-              icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.700'} />}
-              borderColor={'myGray.300'}
-              variant={'grayBase'}
-              aria-label={''}
-              onClick={onClose}
-            />
-          </Flex>
-          {templateType === TemplateTypeEnum.teamPlugin && (
-            <Flex mt={2} alignItems={'center'} h={10}>
-              <InputGroup mr={4} h={'full'}>
-                <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
-                  <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} ml={3} />
-                </InputLeftElement>
-                <Input
-                  h={'full'}
-                  bg={'myGray.50'}
-                  placeholder={t('plugin.Search plugin')}
-                  onChange={debounce((e) => setSearchKey(e.target.value), 200)}
-                />
-              </InputGroup>
-              <Box flex={1} />
-              <Flex
-                alignItems={'center'}
-                cursor={'pointer'}
-                _hover={{
-                  color: 'primary.600'
-                }}
-                fontSize={'sm'}
-                onClick={() => router.push('/plugin/list')}
-              >
-                <Box>去创建</Box>
-                <MyIcon name={'common/rightArrowLight'} w={'14px'} />
-              </Flex>
-            </Flex>
-          )}
-          {templateType === TemplateTypeEnum.teamPlugin && !searchKey && currentParent && (
-            <Flex alignItems={'center'} mt={2}>
-              <ParentPaths
-                paths={[currentParent]}
-                FirstPathDom={null}
-                onClick={() => {
-                  setCurrentParent(undefined);
-                }}
-                fontSize="md"
+  const Render = useMemo(() => {
+    return (
+      <>
+        <Box
+          zIndex={2}
+          display={isOpen ? 'block' : 'none'}
+          position={'absolute'}
+          top={0}
+          left={0}
+          bottom={0}
+          w={`${sliderWidth}px`}
+          onClick={onClose}
+          fontSize={'sm'}
+        />
+        <MyBox
+          isLoading={loading}
+          display={'flex'}
+          zIndex={3}
+          flexDirection={'column'}
+          position={'absolute'}
+          top={'10px'}
+          left={0}
+          pt={'20px'}
+          pb={4}
+          h={isOpen ? 'calc(100% - 20px)' : '0'}
+          w={isOpen ? ['100%', `${sliderWidth}px`] : '0'}
+          bg={'white'}
+          boxShadow={'3px 0 20px rgba(0,0,0,0.2)'}
+          borderRadius={'0 20px 20px 0'}
+          transition={'.2s ease'}
+          userSelect={'none'}
+          overflow={isOpen ? 'none' : 'hidden'}
+        >
+          <Box pl={'20px'} mb={3} pr={'10px'} whiteSpace={'nowrap'} overflow={'hidden'}>
+            <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
+              <RowTabs
+                list={[
+                  {
+                    icon: 'core/modules/basicNode',
+                    label: t('core.module.template.Basic Node'),
+                    value: TemplateTypeEnum.basic
+                  },
+                  {
+                    icon: 'core/modules/systemPlugin',
+                    label: t('core.module.template.System Plugin'),
+                    value: TemplateTypeEnum.systemPlugin
+                  },
+                  {
+                    icon: 'core/modules/teamPlugin',
+                    label: t('core.module.template.Team Plugin'),
+                    value: TemplateTypeEnum.teamPlugin
+                  }
+                ]}
+                py={'5px'}
+                value={templateType}
+                onChange={(e) => setTemplateType(e as TemplateTypeEnum)}
+              />
+              {/* close icon */}
+              <IconButton
+                size={'sm'}
+                icon={<MyIcon name={'common/backFill'} w={'14px'} color={'myGray.700'} />}
+                borderColor={'myGray.300'}
+                variant={'grayBase'}
+                aria-label={''}
+                onClick={onClose}
               />
             </Flex>
-          )}
-        </Box>
-        <RenderList
-          templates={templates}
-          onClose={onClose}
-          currentParent={currentParent}
-          setCurrentParent={setCurrentParent}
-        />
-      </Flex>
-    </>
-  );
+            {templateType === TemplateTypeEnum.teamPlugin && (
+              <Flex mt={2} alignItems={'center'} h={10}>
+                <InputGroup mr={4} h={'full'}>
+                  <InputLeftElement h={'full'} alignItems={'center'} display={'flex'}>
+                    <MyIcon name={'common/searchLight'} w={'16px'} color={'myGray.500'} ml={3} />
+                  </InputLeftElement>
+                  <Input
+                    h={'full'}
+                    bg={'myGray.50'}
+                    placeholder={t('plugin.Search plugin')}
+                    onChange={(e) => setSearchKey(e.target.value)}
+                  />
+                </InputGroup>
+                <Box flex={1} />
+                <Flex
+                  alignItems={'center'}
+                  cursor={'pointer'}
+                  _hover={{
+                    color: 'primary.600'
+                  }}
+                  fontSize={'sm'}
+                  onClick={() => router.push('/app/list')}
+                >
+                  <Box>去创建</Box>
+                  <MyIcon name={'common/rightArrowLight'} w={'14px'} />
+                </Flex>
+              </Flex>
+            )}
+            {templateType === TemplateTypeEnum.teamPlugin && !searchKey && parentId && (
+              <Flex alignItems={'center'} mt={2}>
+                <FolderPath paths={paths} FirstPathDom={null} onClick={setParentId} />
+              </Flex>
+            )}
+          </Box>
+          <RenderList
+            templates={templates}
+            onClose={onClose}
+            parentId={parentId}
+            setParentId={setParentId}
+          />
+        </MyBox>
+      </>
+    );
+  }, [isOpen, onClose, loading, t, templateType, searchKey, parentId, paths, templates, router]);
+
+  return Render;
 };
 
 export default React.memo(NodeTemplatesModal);
@@ -248,8 +228,8 @@ export default React.memo(NodeTemplatesModal);
 const RenderList = React.memo(function RenderList({
   templates,
   onClose,
-  currentParent,
-  setCurrentParent
+  parentId,
+  setParentId
 }: RenderListProps) {
   const { t } = useTranslation();
   const { appT } = useI18n();
@@ -270,7 +250,7 @@ const RenderList = React.memo(function RenderList({
     });
     return copy.filter((item) => item.list.length > 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templates, currentParent]);
+  }, [templates, parentId]);
 
   const onAddNode = useCallback(
     async ({ template, position }: { template: FlowNodeTemplateType; position: XYPosition }) => {
@@ -281,7 +261,7 @@ const RenderList = React.memo(function RenderList({
           // get plugin preview module
           if (template.flowNodeType === FlowNodeTypeEnum.pluginModule) {
             setLoading(true);
-            const res = await getPreviewPluginModule(template.id);
+            const res = await getPreviewPluginNode({ appId: template.id });
 
             setLoading(false);
             return res;
@@ -375,7 +355,7 @@ const RenderList = React.memo(function RenderList({
                       cursor={'pointer'}
                       _hover={{ bg: 'myWhite.600' }}
                       borderRadius={'sm'}
-                      draggable={template.pluginType !== PluginTypeEnum.folder}
+                      draggable={template.pluginType !== AppTypeEnum.folder}
                       onDragEnd={(e) => {
                         if (e.clientX < sliderWidth) return;
                         onAddNode({
@@ -384,11 +364,11 @@ const RenderList = React.memo(function RenderList({
                         });
                       }}
                       onClick={(e) => {
-                        if (template.pluginType === PluginTypeEnum.folder) {
-                          return setCurrentParent({
-                            parentId: template.id,
-                            parentName: template.name
-                          });
+                        if (
+                          template.pluginType === AppTypeEnum.folder ||
+                          template.pluginType === AppTypeEnum.httpPlugin
+                        ) {
+                          return setParentId(template.id);
                         }
                         if (isPc) {
                           return onAddNode({
@@ -421,7 +401,7 @@ const RenderList = React.memo(function RenderList({
         </Box>
       </Box>
     );
-  }, [appT, formatTemplates, isPc, onAddNode, onClose, setCurrentParent, t, templates.length]);
+  }, [appT, formatTemplates, isPc, onAddNode, onClose, setParentId, t, templates.length]);
 
   return Render;
 });

@@ -15,7 +15,7 @@ import { ConnectionSourceHandle, ConnectionTargetHandle } from './Handle/Connect
 import { useDebug } from '../../hooks/useDebug';
 import { ResponseBox } from '@/components/ChatBox/components/WholeResponseModal';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
-import { getPreviewPluginModule } from '@/web/core/plugin/api';
+import { getPreviewPluginNode } from '@/web/core/app/api/plugin';
 import { storeNode2FlowNode, updateFlowNodeVersion } from '@/web/core/workflow/utils';
 import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { useContextSelector } from 'use-context-selector';
@@ -91,7 +91,7 @@ const NodeCard = (props: Props) => {
     const fetchPluginModule = async () => {
       if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
         if (!node?.pluginId) return;
-        const template = await getPreviewPluginModule(node.pluginId);
+        const template = await getPreviewPluginNode({ appId: node.pluginId });
         setHasNewVersion(!!template.nodeVersion && node.nodeVersion !== template.nodeVersion);
       } else {
         const template = moduleTemplatesFlat.find(
@@ -114,7 +114,7 @@ const NodeCard = (props: Props) => {
         if (!node.pluginId) return;
         onResetNode({
           id: nodeId,
-          node: await getPreviewPluginModule(node.pluginId)
+          node: await getPreviewPluginNode({ appId: node.pluginId })
         });
       } else {
         onResetNode({

@@ -21,6 +21,8 @@ import { PluginTypeEnum } from '../../plugin/constants';
 import { RuntimeEdgeItemType, StoreEdgeItemType } from './edge';
 import { NextApiResponse } from 'next';
 import { AppDetailType, AppSchema } from '../../app/type';
+import { ParentIdType } from 'common/parentFolder/type';
+import { AppTypeEnum } from 'core/app/constants';
 
 export type FlowNodeCommonType = {
   flowNodeType: FlowNodeTypeEnum; // render node card
@@ -37,8 +39,8 @@ export type FlowNodeCommonType = {
 
   // plugin data
   pluginId?: string;
-  pluginType?: `${PluginTypeEnum}`;
-  parentId?: string;
+  pluginType?: AppTypeEnum;
+  // parentId: ParentIdType;
 };
 
 export type FlowNodeTemplateType = FlowNodeCommonType & {

@@ -32,6 +32,7 @@ import {
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { cloneDeep, isEqual } from 'lodash';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -376,4 +377,23 @@ export const updateFlowNodeVersion = (
   }
 
   return updatedNode;
+};
+
+type WorkflowType = {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+};
+export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType) => {
+  const clone1 = cloneDeep(workflow1);
+  const clone2 = cloneDeep(workflow2);
+
+  // 把 nodes 中 position全删除
+  // clone1.nodes.forEach((node) => {
+  //   delete node.position;
+  // });
+  // clone2.nodes.forEach((node) => {
+  //   delete node.position;
+  // });
+
+  return JSON.stringify(clone1) === JSON.stringify(clone2);
 };

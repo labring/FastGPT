@@ -3,8 +3,7 @@ import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getPluginRuntimeById } from '../../../plugin/controller';
-import { authPluginCanUse } from '../../../../support/permission/auth/plugin';
+import { getPluginRuntimeById } from '../../../app/plugin/controller';
 import {
   getDefaultEntryNodeIds,
   initWorkflowEdgeStatus,
@@ -13,6 +12,8 @@ import {
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { updateToolInputValue } from '../agent/runTool/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
+import { authAppByTmbId } from '../../../../support/permission/app/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -22,9 +23,9 @@ type RunPluginResponse = DispatchNodeResultType<{}>;
 export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPluginResponse> => {
   const {
     node: { pluginId },
+    app: workflowApp,
     mode,
     teamId,
-    tmbId,
     params: data
   } = props;
 
@@ -32,7 +33,12 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('pluginId can not find');
   }
 
-  await authPluginCanUse({ id: pluginId, teamId, tmbId });
+  await authAppByTmbId({
+    appId: pluginId,
+    teamId: workflowApp.teamId,
+    tmbId: workflowApp.tmbId,
+    per: ReadPermissionVal
+  });
   const plugin = await getPluginRuntimeById(pluginId);
 
   // concat dynamic inputs

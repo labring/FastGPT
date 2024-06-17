@@ -93,7 +93,7 @@ const ButtonEdge = (props: EdgeProps) => {
       if (highlightEdge) return '#3370ff';
       return '#94B5FF';
     }
-    console.log(targetEdge);
+
     // debug mode
     const colorMap = {
       [RuntimeEdgeStatusEnum.active]: '#39CC83',

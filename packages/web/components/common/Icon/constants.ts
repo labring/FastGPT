@@ -32,6 +32,7 @@ export const iconPaths = {
   'common/inviteLight': () => import('./icons/common/inviteLight.svg'),
   'common/language/en': () => import('./icons/common/language/en.svg'),
   'common/language/zh': () => import('./icons/common/language/zh.svg'),
+  'common/leftArrowLight': () => import('./icons/common/leftArrowLight.svg'),
   'common/linkBlue': () => import('./icons/common/linkBlue.svg'),
   'common/loading': () => import('./icons/common/loading.svg'),
   'common/navbar/pluginFill': () => import('./icons/common/navbar/pluginFill.svg'),

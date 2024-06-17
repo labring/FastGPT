@@ -8,7 +8,7 @@ import { WorkflowIOValueTypeEnum, NodeInputKeyEnum } from '@fastgpt/global/core/
 import { useTranslation } from 'next-i18next';
 import { getLafAppDetail } from '@/web/support/laf/api';
 import MySelect from '@fastgpt/web/components/common/MySelect';
-import { getApiSchemaByUrl } from '@/web/core/app/api/httpPlugin';
+import { getApiSchemaByUrl } from '@/web/core/app/api/plugin';
 import { getType, str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

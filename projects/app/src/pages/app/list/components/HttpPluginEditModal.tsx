@@ -29,7 +29,7 @@ import {
   postCreateHttpPlugin,
   putUpdateHttpPlugin,
   getApiSchemaByUrl
-} from '@/web/core/app/api/httpPlugin';
+} from '@/web/core/app/api/plugin';
 import { str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';

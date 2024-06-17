@@ -1,6 +1,5 @@
 import { getTeamPlanStatus, getTeamStandPlan } from '../../support/wallet/sub/utils';
 import { MongoApp } from '../../core/app/schema';
-import { MongoPlugin } from '../../core/plugin/schema';
 import { MongoDataset } from '../../core/dataset/schema';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { TeamErrEnum } from '@fastgpt/global/common/error/code/team';
@@ -67,21 +66,14 @@ export const checkTeamDatasetLimit = async (teamId: string) => {
 export const checkTeamAppLimit = async (teamId: string, amount = 1) => {
   const [{ standardConstants }, appCount] = await Promise.all([
     getTeamStandPlan({ teamId }),
-    MongoApp.count({ teamId, type: { $ne: [AppTypeEnum.folder, AppTypeEnum.httpPlugin] } })
+    MongoApp.count({
+      teamId,
+      type: { $in: [AppTypeEnum.simple, AppTypeEnum.workflow, AppTypeEnum.plugin] }
+    })
   ]);
 
   if (standardConstants && appCount + amount >= standardConstants.maxAppAmount) {
     return Promise.reject(TeamErrEnum.appAmountNotEnough);
-  }
-};
-export const checkTeamPluginLimit = async (teamId: string) => {
-  const [{ standardConstants }, pluginCount] = await Promise.all([
-    getTeamStandPlan({ teamId }),
-    MongoPlugin.count({ teamId })
-  ]);
-
-  if (standardConstants && pluginCount >= standardConstants.maxAppAmount) {
-    return Promise.reject(TeamErrEnum.pluginAmountNotEnough);
   }
 };
 

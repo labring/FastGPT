@@ -1,5 +1,5 @@
 import React, { useCallback, useState } from 'react';
-import { getPublishList, postRevertVersion } from '@/web/core/app/versionApi';
+import { getPublishList, postRevertVersion } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
@@ -15,7 +15,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
-import { AppContext } from '@/web/core/app/context/appContext';
+import { AppContext } from '@/pages/app/detail/components/context';
 
 const PublishHistoriesSlider = () => {
   const { t } = useTranslation();
@@ -47,21 +47,24 @@ const PublishHistoriesSlider = () => {
     setIsShowVersionHistories(false);
   });
 
-  const onPreview = useCallback((data: AppVersionSchemaType) => {
-    setSelectedHistoryId(data._id);
+  const onPreview = useCallback(
+    (data: AppVersionSchemaType) => {
+      setSelectedHistoryId(data._id);
 
-    initData({
-      nodes: data.nodes,
-      edges: data.edges
-    });
-  }, []);
+      initData({
+        nodes: data.nodes,
+        edges: data.edges
+      });
+    },
+    [initData]
+  );
   const onCloseSlider = useCallback(
     (data: { nodes: StoreNodeItemType[]; edges: StoreEdgeItemType[] }) => {
       setSelectedHistoryId(undefined);
       initData(data);
       onClose();
     },
-    [appDetail]
+    [initData, onClose]
   );
 
   const { mutate: onRevert, isLoading: isReverting } = useRequest({

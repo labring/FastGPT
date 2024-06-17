@@ -26,6 +26,7 @@ export type AppSchema = {
   modules: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
   pluginData?: {
+    nodeVersion?: string;
     pluginUniId?: string; // plugin unique id(plugin name)
     apiSchemaStr?: string; // api schema string
     customHeaders?: string;
