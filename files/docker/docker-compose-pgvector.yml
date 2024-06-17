@@ -94,7 +94,7 @@ services:
       # root 密码，用户名为: root。如果需要修改 root 密码，直接修改这个环境变量，并重启即可。
       - DEFAULT_ROOT_PSW=1234
       # AI模型的API地址哦。务必加 /v1。这里默认填写了OneApi的访问地址。
-      - OPENAI_BASE_URL=http://oneapi:3000/v1
+      - OPENAI_BASE_URL=http://oneapi:3001/v1
       # AI模型的API Key。（这里默认填写了OneAPI的快速默认key，测试通后，务必及时修改）
       - CHAT_API_KEY=sk-fastgpt
       # 数据库最大连接数
