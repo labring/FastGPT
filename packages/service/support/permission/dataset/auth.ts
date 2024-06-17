@@ -78,7 +78,6 @@ export async function authDataset({
   const { teamId, tmbId } = await parseHeaderCert(props);
 
   const { dataset } = await authDatasetByTmbId({
-    // teamId,
     tmbId,
     datasetId,
     per
@@ -111,7 +110,7 @@ export async function authDatasetCollection({
     return Promise.reject(DatasetErrEnum.unExist);
   }
 
-  await authDatasetByTmbId({
+  const { dataset } = await authDatasetByTmbId({
     tmbId,
     datasetId: collection.datasetId._id,
     per
@@ -121,7 +120,7 @@ export async function authDatasetCollection({
     teamId,
     tmbId,
     collection,
-    permission: collection.datasetId.permission
+    permission: dataset.permission
   };
 }
 

@@ -33,8 +33,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
   return {
     ...collection,
-    canWrite: permission.hasWritePer,
     ...getCollectionSourceData(collection),
+    canWrite: permission.hasWritePer,
     file
   };
 }

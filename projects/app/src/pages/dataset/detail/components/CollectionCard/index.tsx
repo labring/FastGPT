@@ -38,7 +38,6 @@ import SelectCollections from '@/web/core/dataset/components/SelectCollections';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
 import { DatasetCollectionSyncResultEnum } from '@fastgpt/global/core/dataset/constants';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useContextSelector } from 'use-context-selector';
@@ -53,7 +52,6 @@ const CollectionCard = () => {
   const router = useRouter();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { userInfo } = useUserStore();
   const { datasetDetail, loadDatasetDetail } = useContextSelector(DatasetPageContext, (v) => v);
 
   const { openConfirm: openDeleteConfirm, ConfirmModal: ConfirmDeleteModal } = useConfirm({
