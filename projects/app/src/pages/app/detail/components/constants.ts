@@ -2,7 +2,7 @@ import { BoxProps, FlexProps } from '@chakra-ui/react';
 
 export const cardStyles: BoxProps = {
   borderRadius: 'lg',
-  overflow: 'hidden',
+  // overflow: 'hidden',
   bg: 'white'
 };
 

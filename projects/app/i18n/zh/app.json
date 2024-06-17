@@ -39,6 +39,9 @@
   "Setting app": "应用配置",
   "To Chat": "前去对话",
   "To Settings": "查看详情",
+  "Transition to workflow": "转成工作流",
+  "Transition to workflow create new placeholder": "创建一个新的应用，而不是修改当前应用",
+  "Transition to workflow create new tip": "转化成工作流后，将无法转化回简易模式，请确认！",
   "Variable Key Repeat Tip": "变量 key 重复",
   "app": {
     "modules": {

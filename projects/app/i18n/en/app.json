@@ -40,6 +40,9 @@
   "Setting app": "Settings",
   "To Chat": "Go to Chat",
   "To Settings": "View Details",
+  "Transition to workflow": "Transition to workflow",
+  "Transition to workflow create new placeholder": "Create a new application instead of modifying the current one",
+  "Transition to workflow create new tip": "After converting to workflow, it will not be able to convert back to simple mode, please confirm!",
   "Variable Key Repeat Tip": "Variable key is duplicate",
   "app": {
     "modules": {

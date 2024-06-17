@@ -97,7 +97,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const [appDetail, setAppDetail] = useState<AppDetailType>(defaultApp);
-  const { loading: loadingApp, runAsync: loadApp } = useRequest2(
+  const { loading: loadingApp, runAsync: reLoadApp } = useRequest2(
     () => {
       if (appId) {
         return getAppDetailById(appId);
