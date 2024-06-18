@@ -42,11 +42,11 @@ async function handler(
   const findAppsQuery = (() => {
     const searchMatch = searchKey
       ? {
-          $or: [
-            { name: { $regex: searchKey, $options: 'i' } },
-            { intro: { $regex: searchKey, $options: 'i' } }
-          ]
-        }
+        $or: [
+          { name: { $regex: searchKey, $options: 'i' } },
+          { intro: { $regex: searchKey, $options: 'i' } }
+        ]
+      }
       : {};
 
     if (getRecentlyChat) {
@@ -112,7 +112,8 @@ async function handler(
     updateTime: app.updateTime,
     permission: app.permission,
     defaultPermission: app.defaultPermission || AppDefaultPermissionVal,
-    pluginData: app.pluginData
+    pluginData: app.pluginData,
+    inheritPermission: app.inheritPermission || true
   }));
 }
 

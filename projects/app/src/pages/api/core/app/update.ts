@@ -24,7 +24,8 @@ async function handler(req: NextApiRequest) {
     edges,
     chatConfig,
     teamTags,
-    defaultPermission
+    defaultPermission,
+    inheritPermission
   } = req.body as AppUpdateParams;
   const { appId } = req.query as { appId: string };
 
@@ -43,6 +44,15 @@ async function handler(req: NextApiRequest) {
   // format nodes data
   // 1. dataset search limit, less than model quoteMaxToken
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
+  const isDefaultPermissionChanged =
+    defaultPermission && defaultPermission !== app.defaultPermission;
+  const isInheritPermissionChanged =
+    defaultPermission && inheritPermission !== app.inheritPermission;
+
+  if (inheritPermission && isDefaultPermissionChanged) {
+    // you can not resume inherit permission and change default permission at the same time
+    Promise.reject(AppErrEnum.inheritPermissionError);
+  }
 
   // 更新模型
   await MongoApp.findByIdAndUpdate(appId, {
