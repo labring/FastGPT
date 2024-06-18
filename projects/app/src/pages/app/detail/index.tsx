@@ -3,7 +3,7 @@ import { Box, Flex } from '@chakra-ui/react';
 import dynamic from 'next/dynamic';
 import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import Head from 'next/head';
+import NextHead from '@/components/common/NextHead';
 import { useContextSelector } from 'use-context-selector';
 import AppContextProvider, { AppContext, TabEnum } from './components/context';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
@@ -23,9 +23,7 @@ const AppDetail = () => {
 
   return (
     <>
-      <Head>
-        <title>{appDetail.name}</title>
-      </Head>
+      <NextHead title={appDetail.name} icon={appDetail.avatar}></NextHead>
       <Box h={'100%'} position={'relative'}>
         {!appDetail._id ? (
           <Loading fixed={false} />

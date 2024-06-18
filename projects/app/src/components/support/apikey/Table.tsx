@@ -41,6 +41,7 @@ import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 type EditProps = EditApiKeyProps & { _id?: string };
 const defaultEditData: EditProps = {
@@ -84,7 +85,13 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
   }, []);
 
   return (
-    <Flex flexDirection={'column'} h={'100%'} position={'relative'}>
+    <MyBox
+      isLoading={isGetting || isDeleting}
+      display={'flex'}
+      flexDirection={'column'}
+      h={'100%'}
+      position={'relative'}
+    >
       <Box display={['block', 'flex']} alignItems={'center'}>
         <Box flex={1}>
           <Flex alignItems={'flex-end'}>
@@ -225,7 +232,6 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
             ))}
           </Tbody>
         </Table>
-        <Loading loading={isGetting || isDeleting} fixed={false} />
       </TableContainer>
 
       {!!editData && (
@@ -279,7 +285,7 @@ const ApiKeyTable = ({ tips, appId }: { tips: string; appId?: string }) => {
           </Button>
         </ModalFooter>
       </MyModal>
-    </Flex>
+    </MyBox>
   );
 };
 

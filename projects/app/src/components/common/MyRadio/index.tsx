@@ -91,7 +91,7 @@ const MyRadio = ({
               </Box>
             )}
           </Box>
-          <Radio isChecked={value === item.value} />
+          {!hiddenCircle && <Radio isChecked={value === item.value} />}
         </Flex>
       ))}
     </Grid>

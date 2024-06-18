@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import Head from 'next/head';
+import NextHead from '@/components/common/NextHead';
 import { getTeamChatInfo } from '@/web/core/chat/api';
 import { useRouter } from 'next/router';
 import {
@@ -268,9 +268,7 @@ const OutLink = () => {
 
   return (
     <MyBox display={'flex'} h={'100%'} isLoading={isLoadingApps || isFetching}>
-      <Head>
-        <title>{chatData.app.name}</title>
-      </Head>
+      <NextHead title={chatData.app.name}></NextHead>
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>

@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import Head from 'next/head';
+import NextHead from '@/components/common/NextHead';
 import { useRouter } from 'next/router';
 import { getInitChatInfo } from '@/web/core/chat/api';
 import {
@@ -252,9 +252,7 @@ const Chat = ({ appId, chatId }: { appId: string; chatId: string }) => {
 
   return (
     <Flex h={'100%'}>
-      <Head>
-        <title>{chatData.app.name}</title>
-      </Head>
+      <NextHead title={chatData.app.name}></NextHead>
       {/* pc show myself apps */}
       {isPc && (
         <Box borderRight={theme.borders.base} w={'220px'} flexShrink={0}>
