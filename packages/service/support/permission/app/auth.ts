@@ -25,7 +25,7 @@ export const authAppByTmbId = async ({
   const app = await (async () => {
     // get app and per
     const [app, rp] = await Promise.all([
-      MongoApp.findOne({ _id: appId, teamId }).lean(),
+      MongoApp.findOne({ _id: appId }).lean(),
       getResourcePermission({
         teamId,
         tmbId,
