@@ -4,6 +4,7 @@ import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { onCreateApp } from './create';
 
 export type transitionWorkflowQuery = {};
 
@@ -30,19 +31,18 @@ async function handler(
   });
 
   if (createNew) {
-    const { _id } = await MongoApp.create({
+    const appId = await onCreateApp({
       parentId: app.parentId,
-      avatar: app.avatar,
       name: app.name + ' Copy',
-      teamId: app.teamId,
-      tmbId,
+      avatar: app.avatar,
+      type: AppTypeEnum.workflow,
       modules: app.modules,
       edges: app.edges,
-      type: AppTypeEnum.workflow,
-      version: 'v2'
+      teamId: app.teamId,
+      tmbId
     });
 
-    return { id: _id };
+    return { id: appId };
   } else {
     await MongoApp.findByIdAndUpdate(appId, { type: AppTypeEnum.workflow });
   }

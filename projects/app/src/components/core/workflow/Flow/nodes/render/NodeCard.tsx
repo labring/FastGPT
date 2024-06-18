@@ -92,7 +92,7 @@ const NodeCard = (props: Props) => {
       if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
         if (!node?.pluginId) return;
         const template = await getPreviewPluginNode({ appId: node.pluginId });
-        setHasNewVersion(!!template.nodeVersion && node.nodeVersion !== template.nodeVersion);
+        setHasNewVersion(!!template.version && node.version !== template.version);
       } else {
         const template = moduleTemplatesFlat.find(
           (item) => item.flowNodeType === node?.flowNodeType

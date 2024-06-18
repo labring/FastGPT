@@ -7,28 +7,6 @@ import { MongoApp } from './schema';
 import { CreateHttpPluginChildrenPros } from '@fastgpt/global/core/app/controller.d';
 import { ClientSession } from '../../common/mongo';
 
-// create http plugin children
-export const createHttpPluginChildren = async ({
-  session,
-  ...props
-}: CreateHttpPluginChildrenPros & {
-  teamId: string;
-  tmbId: string;
-  session?: ClientSession;
-}) => {
-  return MongoApp.create(
-    [
-      {
-        ...props,
-        version: 'v2'
-      }
-    ],
-    {
-      session
-    }
-  );
-};
-
 export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined>({
   nodes
 }: {

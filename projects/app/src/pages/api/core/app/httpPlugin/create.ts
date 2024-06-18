@@ -5,12 +5,9 @@ import { WritePermissionVal } from '@fastgpt/global/support/permission/constant'
 
 import type { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
 import { NextAPI } from '@/service/middleware/entry';
-import type { CreateAppBody } from '../create';
+import { onCreateApp, type CreateAppBody } from '../create';
 import { AppSchema } from '@fastgpt/global/core/app/type';
-import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
-import { createHttpPluginChildren } from '@fastgpt/service/core/app/controller';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { MongoApp } from '@fastgpt/service/core/app/schema';
 
 export type createHttpPluginQuery = {};
 
@@ -35,22 +32,17 @@ async function handler(
 
   await mongoSessionRun(async (session) => {
     // create http plugin folder
-    const [{ _id: httpPluginIid }] = await MongoApp.create(
-      [
-        {
-          ...parseParentIdInMongo(parentId),
-          avatar,
-          name,
-          intro,
-          teamId,
-          tmbId,
-          type: AppTypeEnum.httpPlugin,
-          version: 'v2',
-          pluginData
-        }
-      ],
-      { session }
-    );
+    const httpPluginIid = await onCreateApp({
+      parentId,
+      name,
+      avatar,
+      intro,
+      teamId,
+      tmbId,
+      type: AppTypeEnum.httpPlugin,
+      pluginData,
+      session
+    });
 
     // compute children plugins
     const childrenPlugins = await httpApiSchema2Plugins({
@@ -60,16 +52,14 @@ async function handler(
     });
 
     // create children plugins
-    await Promise.all(
-      childrenPlugins.map((item) =>
-        createHttpPluginChildren({
-          ...item,
-          teamId,
-          tmbId,
-          session
-        })
-      )
-    );
+    for await (const item of childrenPlugins) {
+      await onCreateApp({
+        ...item,
+        teamId,
+        tmbId,
+        session
+      });
+    }
   });
 
   return {};

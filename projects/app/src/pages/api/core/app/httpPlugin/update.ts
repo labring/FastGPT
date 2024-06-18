@@ -8,8 +8,9 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { ManagePermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
-import { createHttpPluginChildren } from '@fastgpt/service/core/app/controller';
 import { isEqual } from 'lodash';
+import { onCreateApp } from '../create';
+import { onDelOneApp } from '../del';
 
 export type UpdateHttpPluginBody = {
   appId: string;
@@ -91,13 +92,17 @@ const updateHttpChildrenPlugin = async ({
   // 数据库中存在，schema不存在，删除
   for await (const plugin of dbPlugins) {
     if (!schemaPlugins.find((p) => p.name === plugin.pluginData?.pluginUniId)) {
-      await plugin.deleteOne({ session });
+      await onDelOneApp({
+        teamId,
+        appId: plugin._id,
+        session
+      });
     }
   }
   // 数据库中不存在，schema存在，新增
   for await (const plugin of schemaPlugins) {
     if (!dbPlugins.find((p) => p.pluginData?.pluginUniId === plugin.name)) {
-      await createHttpPluginChildren({
+      await onCreateApp({
         ...plugin,
         teamId,
         tmbId,

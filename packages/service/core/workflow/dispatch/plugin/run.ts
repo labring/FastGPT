@@ -3,7 +3,7 @@ import { dispatchWorkFlow } from '../index';
 import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { getPluginRuntimeById } from '../../../app/plugin/controller';
+import { getPluginRuntimeById, splitCombinePluginId } from '../../../app/plugin/controller';
 import {
   getDefaultEntryNodeIds,
   initWorkflowEdgeStatus,
@@ -14,6 +14,7 @@ import { updateToolInputValue } from '../agent/runTool/utils';
 import { replaceVariable } from '@fastgpt/global/common/string/tools';
 import { authAppByTmbId } from '../../../../support/permission/app/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { PluginSourceEnum } from '@fastgpt/global/core/plugin/constants';
 
 type RunPluginProps = ModuleDispatchProps<{
   [key: string]: any;
@@ -33,12 +34,16 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('pluginId can not find');
   }
 
-  await authAppByTmbId({
-    appId: pluginId,
-    teamId: workflowApp.teamId,
-    tmbId: workflowApp.tmbId,
-    per: ReadPermissionVal
-  });
+  // auth plugin
+  const { source } = await splitCombinePluginId(pluginId);
+  if (source === PluginSourceEnum.personal) {
+    await authAppByTmbId({
+      appId: pluginId,
+      teamId: workflowApp.teamId,
+      tmbId: workflowApp.tmbId,
+      per: ReadPermissionVal
+    });
+  }
   const plugin = await getPluginRuntimeById(pluginId);
 
   // concat dynamic inputs

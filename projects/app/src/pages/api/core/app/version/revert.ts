@@ -8,6 +8,7 @@ import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { PostRevertAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type Response = {};
 
@@ -20,7 +21,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     versionId
   } = req.body as PostRevertAppProps;
 
-  await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { app } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const version = await MongoAppVersion.findOne({
     _id: versionId,
@@ -50,7 +51,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     );
 
     // 为历史版本再创建一个版本
-    await MongoAppVersion.create(
+    const [{ _id }] = await MongoAppVersion.create(
       [
         {
           appId,
@@ -71,7 +72,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
       scheduledTriggerConfig,
       scheduledTriggerNextTime: scheduledTriggerConfig
         ? getNextTimeByCronStringAndTimezone(scheduledTriggerConfig)
-        : null
+        : null,
+      ...(app.type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': _id })
     });
   });
 

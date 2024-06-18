@@ -4,7 +4,7 @@ import { AppContext } from '../context';
 import FolderPath from '@/components/common/folder/Path';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { getAppFolderPath } from '@/web/core/app/api/app';
-import { Box, Button, Flex, IconButton, useDisclosure } from '@chakra-ui/react';
+import { Box, Button, Flex, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import RouteTab from '../RouteTab';
 import { useTranslation } from 'next-i18next';

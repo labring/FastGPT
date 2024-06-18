@@ -34,7 +34,7 @@ export async function splitCombinePluginId(id: string) {
 
 const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> => {
   const { source, pluginId } = await splitCombinePluginId(id);
-  console.log(source, '==');
+
   if (source === PluginSourceEnum.community) {
     const item = global.communityPlugins?.find((plugin) => plugin.id === pluginId);
     if (!item) return Promise.reject('plugin not found');
@@ -57,7 +57,7 @@ const getPluginTemplateById = async (id: string): Promise<PluginTemplateType> =>
       edges: item.edges,
       templateType: FlowNodeTemplateTypeEnum.personalPlugin,
       isTool: true,
-      nodeVersion: item?.pluginData?.nodeVersion || defaultNodeVersion
+      version: item?.pluginData?.nodeVersion || defaultNodeVersion
     };
   }
   return Promise.reject('plugin not found');
@@ -77,8 +77,7 @@ export async function getPluginPreviewNode({ id }: { id: string }): Promise<Flow
     intro: plugin.intro,
     showStatus: plugin.showStatus,
     isTool: plugin.isTool,
-    nodeVersion: plugin.nodeVersion,
-    version: plugin.nodeVersion,
+    version: plugin.version,
     sourceHandle: getHandleConfig(true, true, true, true),
     targetHandle: getHandleConfig(true, true, true, true),
     ...pluginData2FlowNodeIO(plugin.nodes)

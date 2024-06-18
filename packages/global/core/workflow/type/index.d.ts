@@ -67,7 +67,6 @@ export type FlowNodeTemplateType = FlowNodeCommonType & {
   // action
   forbidDelete?: boolean; // forbid delete
   unique?: boolean;
-  nodeVersion?: string;
 };
 export type FlowNodeItemType = FlowNodeTemplateType & {
   nodeId: string;

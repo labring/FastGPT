@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo } from 'react';
 import { Box, Flex, Button, IconButton } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import dynamic from 'next/dynamic';
 
 import MyIcon from '@fastgpt/web/components/common/Icon';

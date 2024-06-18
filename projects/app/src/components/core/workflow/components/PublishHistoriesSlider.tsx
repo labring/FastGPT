@@ -73,7 +73,8 @@ const PublishHistoriesSlider = () => {
       await postRevertVersion(appId, {
         versionId: data._id,
         editNodes: appDetail.modules, // old workflow
-        editEdges: appDetail.edges
+        editEdges: appDetail.edges,
+        editChatConfig: appDetail.chatConfig
       });
 
       setAppDetail((state) => ({

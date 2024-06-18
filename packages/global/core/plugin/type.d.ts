@@ -34,7 +34,7 @@ export type PluginTemplateType = PluginRuntimeType & {
   source: `${PluginSourceEnum}`;
   templateType: FlowNodeTemplateType['templateType'];
   intro: string;
-  nodeVersion: string;
+  version: string;
 };
 
 export type PluginRuntimeType = {

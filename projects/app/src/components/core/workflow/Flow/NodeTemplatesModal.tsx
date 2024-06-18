@@ -99,7 +99,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     {
       manual: false,
       throttleWait: 300,
-      refreshDeps: [templateType, searchKey, parentId]
+      refreshDeps: [basicNodeTemplates, nodeList, hasToolNode, templateType, searchKey, parentId]
     }
   );
 

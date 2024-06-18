@@ -1,5 +1,6 @@
 {
   "author": "FastGPT Team",
+  "version": "481",
   "templateType": "tools",
   "name": "文本加工",
   "avatar": "/imgs/workflow/textEditor.svg",
