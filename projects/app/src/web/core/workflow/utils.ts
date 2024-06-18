@@ -389,31 +389,35 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
   const clone2 = cloneDeep(workflow2);
 
   if (!isEqual(clone1.edges, clone2.edges)) {
+    console.log('Edge not equal');
     return false;
   }
 
   if (
+    clone1.chatConfig &&
+    clone2.chatConfig &&
     !isEqual(
       {
-        welcomeText: clone1.chatConfig.welcomeText,
-        variables: clone1.chatConfig.variables,
-        questionGuide: clone1.chatConfig.questionGuide,
-        ttsConfig: clone1.chatConfig.ttsConfig,
-        whisperConfig: clone1.chatConfig.whisperConfig,
-        scheduledTriggerConfig: clone1.chatConfig.scheduledTriggerConfig,
-        chatInputGuide: clone1.chatConfig.chatInputGuide
+        welcomeText: clone1.chatConfig?.welcomeText || '',
+        variables: clone1.chatConfig?.variables || [],
+        questionGuide: clone1.chatConfig?.questionGuide || false,
+        ttsConfig: clone1.chatConfig?.ttsConfig || undefined,
+        whisperConfig: clone1.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: clone1.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined
       },
       {
-        welcomeText: clone2.chatConfig.welcomeText,
-        variables: clone2.chatConfig.variables,
-        questionGuide: clone2.chatConfig.questionGuide,
-        ttsConfig: clone2.chatConfig.ttsConfig,
-        whisperConfig: clone2.chatConfig.whisperConfig,
-        scheduledTriggerConfig: clone2.chatConfig.scheduledTriggerConfig,
-        chatInputGuide: clone2.chatConfig.chatInputGuide
+        welcomeText: clone2.chatConfig?.welcomeText || '',
+        variables: clone2.chatConfig?.variables || [],
+        questionGuide: clone2.chatConfig?.questionGuide || false,
+        ttsConfig: clone2.chatConfig?.ttsConfig || undefined,
+        whisperConfig: clone2.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: clone2.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined
       }
     )
   ) {
+    console.log('chatConfig not equal');
     return false;
   }
 
@@ -450,5 +454,8 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
     position: node.position
   }));
 
-  return isEqual(node1, node2);
+  // console.log(node1);
+  // console.log(node2);
+
+  return isEqual(node1[0], node2[0]);
 };

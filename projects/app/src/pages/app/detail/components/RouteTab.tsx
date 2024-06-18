@@ -5,6 +5,7 @@ import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import { useI18n } from '@/web/context/I18n';
 import { useContextSelector } from 'use-context-selector';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 const RouteTab = () => {
   const { t } = useTranslation();
@@ -27,7 +28,7 @@ const RouteTab = () => {
   const tabList = useMemo(
     () => [
       {
-        label: appT('Setting app'),
+        label: appDetail.type === AppTypeEnum.plugin ? appT('Setting plugin') : appT('Setting app'),
         id: TabEnum.appEdit
       },
       ...(appDetail.permission.hasManagePer

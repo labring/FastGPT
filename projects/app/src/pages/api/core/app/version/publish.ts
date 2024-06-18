@@ -19,7 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
   const { app } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
-  console.log(chatConfig?.scheduledTriggerConfig, '---');
+
   await mongoSessionRun(async (session) => {
     // create version histories
     const [{ _id }] = await MongoAppVersion.create(

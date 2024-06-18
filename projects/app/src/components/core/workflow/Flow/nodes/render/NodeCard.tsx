@@ -26,6 +26,7 @@ import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMount } from 'ahooks';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -69,9 +70,6 @@ const NodeCard = (props: Props) => {
   const onChangeNode = useContextSelector(WorkflowContext, (v) => v.onChangeNode);
   const onResetNode = useContextSelector(WorkflowContext, (v) => v.onResetNode);
 
-  const [hasNewVersion, setHasNewVersion] = useState(false);
-  const { setLoading } = useSystemStore();
-
   // custom title edit
   const { onOpenModal: onOpenCustomTitleModal, EditModal: EditTitleModal } = useEditTitle({
     title: t('common.Custom Title'),
@@ -88,22 +86,29 @@ const NodeCard = (props: Props) => {
     content: appT('module.Confirm Sync')
   });
 
-  useMount(async () => {
-    if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
-      if (!node?.pluginId) return;
-      const template = await getPreviewPluginNode({ appId: node.pluginId });
-      setHasNewVersion(!!template.version && node.version !== template.version);
-    } else {
-      const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
-      setHasNewVersion(node?.version !== template?.version);
+  const { data: newNodeVersion, runAsync: getNodeVersion } = useRequest2(
+    async () => {
+      if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+        if (!node?.pluginId) return;
+        const template = await getPreviewPluginNode({ appId: node.pluginId });
+        return template.version;
+      } else {
+        const template = moduleTemplatesFlat.find(
+          (item) => item.flowNodeType === node?.flowNodeType
+        );
+        return template?.version;
+      }
+    },
+    {
+      manual: false
     }
-  });
+  );
+  const hasNewVersion = newNodeVersion && newNodeVersion !== node?.version;
 
   const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
 
   const onClickSyncVersion = useCallback(async () => {
     try {
-      setLoading(true);
       if (!node || !template) return;
       if (node?.flowNodeType === 'pluginModule') {
         if (!node.pluginId) return;
@@ -117,11 +122,11 @@ const NodeCard = (props: Props) => {
           node: updateFlowNodeVersion(node, template)
         });
       }
+      await getNodeVersion();
     } catch (error) {
       console.error('Error fetching plugin module:', error);
     }
-    setLoading(false);
-  }, [node, nodeId, onResetNode, setLoading, template]);
+  }, [getNodeVersion, node, nodeId, onResetNode, template]);
 
   /* Node header */
   const Header = useMemo(() => {
