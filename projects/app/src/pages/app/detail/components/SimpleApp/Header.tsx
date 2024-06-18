@@ -55,12 +55,16 @@ const Header = ({
     return compareWorkflow(
       {
         nodes: appDetail.modules,
-        edges: appDetail.edges,
+        edges: [],
         chatConfig: appDetail.chatConfig
       },
-      data
+      {
+        nodes: data.nodes,
+        edges: [],
+        chatConfig: data.chatConfig
+      }
     );
-  }, [appDetail.chatConfig, appDetail.edges, appDetail.modules, appForm]);
+  }, [appDetail.chatConfig, appDetail.modules, appForm]);
 
   const onSubmitPublish = useCallback(
     async (data: AppSimpleEditFormType) => {

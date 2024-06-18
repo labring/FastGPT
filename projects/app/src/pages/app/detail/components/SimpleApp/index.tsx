@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
-import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 
 import Header from './Header';
 import Edit from './Edit';
@@ -8,7 +7,6 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import dynamic from 'next/dynamic';
 import { Flex } from '@chakra-ui/react';
-import { useReactive } from 'ahooks';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));

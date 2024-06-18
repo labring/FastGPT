@@ -279,33 +279,34 @@ const EditForm = ({
             gridGap={[2, 4]}
           >
             {appForm.selectedTools.map((item) => (
-              <Flex
-                key={item.id}
-                overflow={'hidden'}
-                alignItems={'center'}
-                p={2}
-                bg={'white'}
-                boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
-                borderRadius={'md'}
-                border={theme.borders.base}
-                _hover={{
-                  ...hoverDeleteStyles,
-                  borderColor: 'primary.300'
-                }}
-              >
-                <Avatar src={item.avatar} w={'1rem'} mr={1} />
-                <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
-                  {item.name}
-                </Box>
-                <DeleteIcon
-                  onClick={() => {
-                    setAppForm((state) => ({
-                      ...state,
-                      selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
-                    }));
+              <MyTooltip key={item.id} label={item.intro}>
+                <Flex
+                  overflow={'hidden'}
+                  alignItems={'center'}
+                  p={2.5}
+                  bg={'white'}
+                  boxShadow={'0 4px 8px -2px rgba(16,24,40,.1),0 2px 4px -2px rgba(16,24,40,.06)'}
+                  borderRadius={'md'}
+                  border={theme.borders.base}
+                  _hover={{
+                    ...hoverDeleteStyles,
+                    borderColor: 'primary.300'
                   }}
-                />
-              </Flex>
+                >
+                  <Avatar src={item.avatar} w={'1rem'} mr={1} />
+                  <Box flex={'1 0 0'} w={0} className={'textEllipsis'} fontSize={'sm'}>
+                    {item.name}
+                  </Box>
+                  <DeleteIcon
+                    onClick={() => {
+                      setAppForm((state) => ({
+                        ...state,
+                        selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
+                      }));
+                    }}
+                  />
+                </Flex>
+              </MyTooltip>
             ))}
           </Grid>
         </Box>

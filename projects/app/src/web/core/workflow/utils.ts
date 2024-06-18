@@ -388,13 +388,39 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
   const clone1 = cloneDeep(workflow1);
   const clone2 = cloneDeep(workflow2);
 
-  // 把 nodes 中 position全删除
-  // clone1.nodes.forEach((node) => {
-  //   delete node.position;
-  // });
-  // clone2.nodes.forEach((node) => {
-  //   delete node.position;
-  // });
+  if (!isEqual(clone1.edges, clone2.edges)) {
+    console.log('edge');
+    return false;
+  }
+  if (!isEqual(clone1.chatConfig, clone2.chatConfig)) {
+    console.log('chatConfig');
+    return false;
+  }
 
-  return JSON.stringify(clone1) === JSON.stringify(clone2);
+  const node1 = clone1.nodes.filter(Boolean).map((node) => ({
+    flowNodeType: node.flowNodeType,
+    inputs: node.inputs.map((input) => ({
+      ...input,
+      value: input.value ?? undefined
+    })),
+    outputs: node.outputs,
+    name: node.name,
+    intro: node.intro,
+    avatar: node.avatar,
+    version: node.version
+  }));
+  const node2 = clone2.nodes.filter(Boolean).map((node) => ({
+    flowNodeType: node.flowNodeType,
+    inputs: node.inputs.map((input) => ({
+      ...input,
+      value: input.value ?? undefined
+    })),
+    outputs: node.outputs,
+    name: node.name,
+    intro: node.intro,
+    avatar: node.avatar,
+    version: node.version
+  }));
+
+  return isEqual(node1, node2);
 };

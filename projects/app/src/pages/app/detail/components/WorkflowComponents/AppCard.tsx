@@ -59,9 +59,14 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
       return compareWorkflow(
         {
           nodes: appDetail.modules,
-          edges: appDetail.edges
+          edges: appDetail.edges,
+          chatConfig: appDetail.chatConfig
         },
-        data
+        {
+          nodes: data.nodes,
+          edges: data.edges,
+          chatConfig: appDetail.chatConfig
+        }
       );
     }
     return false;
