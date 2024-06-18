@@ -1,0 +1,251 @@
+{
+  "feConfigs": {
+    "lafEnv": "https://laf.dev"
+  },
+  "systemEnv": {
+    "openapiPrefix": "fastgpt",
+    "vectorMaxProcess": 15,
+    "qaMaxProcess": 15,
+    "pgHNSWEfSearch": 100,
+    "tokenWorkers": 20
+  },
+  "llmModels": [
+    {
+      "model": "deepseek-chat",
+      "name": "deepseek-chat",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 16000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": false,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    },
+    {
+      "model": "moonshot-v1-8k",
+      "name": "moonshot-v1-8k",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 8000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    },
+    {
+      "model": "moonshot-v1-32k",
+      "name": "moonshot-v1-32k",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 32000,
+      "maxResponse": 16000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    },
+    {
+      "model": "moonshot-v1-128k",
+      "name": "moonshot-v1-128k",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 128000,
+      "maxResponse": 60000,
+      "quoteMaxToken": 13000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    },
+    {
+      "model": "qwen-max",
+      "name": "qwen-max",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 8000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 12000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    },
+    {
+      "model": "qwen-turbo",
+      "name": "qwen-turbo",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 8000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 12000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    },
+    {
+      "model": "qwen-plus",
+      "name": "qwen-plus",
+      "avatar": "/imgs/model/openai.svg",
+      "maxContext": 8000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 12000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": true,
+      "functionCall": true,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {}
+    }
+  ],
+  "vectorModels": [
+    {
+      "model": "text-embedding-v1",
+      "name": "text-embedding-v1",
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 3000,
+      "weight": 100,
+      "dbConfig": {},
+      "queryConfig": {},
+      "defaultConfig": {
+        "dimensions": 1024
+      }
+    },
+    {
+      "model": "bge-m3",
+      "name": "bge-m3",
+      "avatar": "/imgs/model/openai.svg",
+      "charsPointsPrice": 0,
+      "defaultToken": 512,
+      "maxToken": 8192,
+      "weight": 100
+    }
+  ],
+  "reRankModels": [
+    {
+      "model": "bge-reranker-v2-m3",
+      "name": "bge-reranker-v2-m3",
+      "charsPointsPrice": 0
+    }
+  ],
+  "audioSpeechModels": [
+    {
+      "model": "tts-1",
+      "name": "OpenAI TTS1",
+      "charsPointsPrice": 0,
+      "voices": [
+        {
+          "label": "Alloy",
+          "value": "alloy",
+          "bufferId": "openai-Alloy"
+        },
+        {
+          "label": "Echo",
+          "value": "echo",
+          "bufferId": "openai-Echo"
+        },
+        {
+          "label": "Fable",
+          "value": "fable",
+          "bufferId": "openai-Fable"
+        },
+        {
+          "label": "Onyx",
+          "value": "onyx",
+          "bufferId": "openai-Onyx"
+        },
+        {
+          "label": "Nova",
+          "value": "nova",
+          "bufferId": "openai-Nova"
+        },
+        {
+          "label": "Shimmer",
+          "value": "shimmer",
+          "bufferId": "openai-Shimmer"
+        }
+      ]
+    }
+  ],
+  "whisperModel": {
+    "model": "whisper-1",
+    "name": "Whisper1",
+    "charsPointsPrice": 0
+  }
+}

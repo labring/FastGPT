@@ -17,6 +17,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 *.tar
+*.zip
 
 # local env files
 .env*.local
