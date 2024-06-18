@@ -32,6 +32,11 @@ const Button = defineStyleConfig({
   baseStyle: {
     _active: {
       transform: 'scale(0.98)'
+    },
+    _disabled: {
+      _hover: {
+        filter: 'none'
+      }
     }
   },
   sizes: {
@@ -289,7 +294,7 @@ const Button = defineStyleConfig({
         filter: 'brightness(120%)'
       },
       _disabled: {
-        bg: 'res.50 !important'
+        bg: 'red.200 !important'
       }
     }
   },
