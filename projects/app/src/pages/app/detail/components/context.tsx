@@ -4,7 +4,7 @@ import { defaultApp } from '@/web/core/app/constants';
 import { delAppById, getAppDetailById, putAppById } from '@/web/core/app/api';
 import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
-import { AppDetailType } from '@fastgpt/global/core/app/type';
+import { AppChatConfigType, AppDetailType } from '@fastgpt/global/core/app/type';
 import { AppUpdateParams, PostPublishAppProps } from '@/global/core/app/api';
 import { postPublishApp } from '@/web/core/app/api/version';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
@@ -12,6 +12,9 @@ import dynamic from 'next/dynamic';
 import { useDisclosure } from '@chakra-ui/react';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { useI18n } from '@/web/context/I18n';
+import { getAppLatestVersion } from '@/web/core/app/api/version';
+import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type';
+import type { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
 const InfoModal = dynamic(() => import('./InfoModal'));
 const TagsEditModal = dynamic(() => import('./TagsEditModal'));
@@ -34,6 +37,13 @@ type AppContextType = {
   onOpenTeamTagModal: () => void;
   onDelApp: () => void;
   onPublish: (data: PostPublishAppProps) => Promise<void>;
+  appLatestVersion:
+    | {
+        nodes: StoreNodeItemType[];
+        edges: StoreEdgeItemType[];
+        chatConfig: AppChatConfigType;
+      }
+    | undefined;
 };
 
 export const AppContext = createContext<AppContextType>({
@@ -61,7 +71,8 @@ export const AppContext = createContext<AppContextType>({
   },
   onPublish: function (data: PostPublishAppProps): Promise<void> {
     throw new Error('Function not implemented.');
-  }
+  },
+  appLatestVersion: undefined
 });
 
 const AppContextProvider = ({ children }: { children: ReactNode }) => {
@@ -117,6 +128,13 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     }
   );
 
+  const { data: appLatestVersion, run: reloadAppLatestVersion } = useRequest2(
+    () => getAppLatestVersion({ appId }),
+    {
+      manual: false
+    }
+  );
+
   const { runAsync: updateAppDetail } = useRequest2(async (data: AppUpdateParams) => {
     await putAppById(appId, data);
     setAppDetail((state) => ({
@@ -134,6 +152,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
         ...data,
         modules: data.nodes || state.modules
       }));
+      reloadAppLatestVersion();
     },
     {
       successToast: appT('Publish success')
@@ -170,7 +189,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onOpenInfoEdit,
     onOpenTeamTagModal,
     onDelApp,
-    onPublish
+    onPublish,
+    appLatestVersion
   };
 
   return (

@@ -4,8 +4,6 @@ import { FlowNodeTypeEnum } from '@fastgpt/global/core/workflow/node/constant';
 import { getLLMModel } from '../ai/model';
 import { MongoAppVersion } from './version/schema';
 import { MongoApp } from './schema';
-import { CreateHttpPluginChildrenPros } from '@fastgpt/global/core/app/controller.d';
-import { ClientSession } from '../../common/mongo';
 
 export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined>({
   nodes

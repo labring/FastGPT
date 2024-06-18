@@ -24,7 +24,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
   const { copyData } = useCopyData();
   const { feConfigs } = useSystemStore();
 
-  const { appDetail, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
+  const { appDetail, appLatestVersion, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
   const {
     isShowVersionHistories,
@@ -55,12 +55,14 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
 
   const isPublished = (() => {
     const data = flowData2StoreDataAndCheck(true);
+    if (!appLatestVersion) return true;
+
     if (data) {
       return compareWorkflow(
         {
-          nodes: appDetail.modules,
-          edges: appDetail.edges,
-          chatConfig: appDetail.chatConfig
+          nodes: appLatestVersion.nodes,
+          edges: appLatestVersion.edges,
+          chatConfig: appLatestVersion.chatConfig
         },
         {
           nodes: data.nodes,

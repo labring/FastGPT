@@ -25,6 +25,7 @@ import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/cons
 import { QuestionOutlineIcon } from '@chakra-ui/icons';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useMount } from 'ahooks';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -87,22 +88,16 @@ const NodeCard = (props: Props) => {
     content: appT('module.Confirm Sync')
   });
 
-  useEffect(() => {
-    const fetchPluginModule = async () => {
-      if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
-        if (!node?.pluginId) return;
-        const template = await getPreviewPluginNode({ appId: node.pluginId });
-        setHasNewVersion(!!template.version && node.version !== template.version);
-      } else {
-        const template = moduleTemplatesFlat.find(
-          (item) => item.flowNodeType === node?.flowNodeType
-        );
-        setHasNewVersion(node?.version !== template?.version);
-      }
-    };
-
-    fetchPluginModule();
-  }, [node]);
+  useMount(async () => {
+    if (node?.flowNodeType === FlowNodeTypeEnum.pluginModule) {
+      if (!node?.pluginId) return;
+      const template = await getPreviewPluginNode({ appId: node.pluginId });
+      setHasNewVersion(!!template.version && node.version !== template.version);
+    } else {
+      const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
+      setHasNewVersion(node?.version !== template?.version);
+    }
+  });
 
   const template = moduleTemplatesFlat.find((item) => item.flowNodeType === node?.flowNodeType);
 
