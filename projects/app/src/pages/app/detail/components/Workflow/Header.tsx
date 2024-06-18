@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext } from '@/components/core/workflow/context';
+import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
 import { useInterval } from 'ahooks';
 import { AppContext, TabEnum } from '../context';
 import RouteTab from '../RouteTab';
@@ -15,9 +15,8 @@ import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConf
 import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
-const PublishHistories = dynamic(
-  () => import('@/components/core/workflow/components/PublishHistoriesSlider')
-);
+import { uiWorkflow2StoreWorkflow } from '@/components/core/workflow/utils';
+const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = () => {
   const { t } = useTranslation();
@@ -31,8 +30,9 @@ const Header = () => {
     flowData2StoreDataAndCheck,
     setWorkflowTestData,
     onSaveWorkflow,
-    setIsShowVersionHistories,
-    isShowVersionHistories
+    setHistoriesDefaultData,
+    historiesDefaultData,
+    initData
   } = useContextSelector(WorkflowContext, (v) => v);
 
   const onclickPublish = useCallback(async () => {
@@ -100,7 +100,7 @@ const Header = () => {
           <Box ml={1}>
             <AppCard
               showSaveStatus={
-                !isShowVersionHistories && isV2Workflow && currentTab === TabEnum.appEdit
+                !historiesDefaultData && isV2Workflow && currentTab === TabEnum.appEdit
               }
             />
           </Box>
@@ -114,7 +114,7 @@ const Header = () => {
 
           {currentTab === TabEnum.appEdit && (
             <>
-              {!isShowVersionHistories && (
+              {!historiesDefaultData && (
                 <IconButton
                   mr={[2, 4]}
                   icon={<MyIcon name={'history'} w={'18px'} />}
@@ -122,7 +122,15 @@ const Header = () => {
                   size={'sm'}
                   w={'30px'}
                   variant={'whitePrimary'}
-                  onClick={() => setIsShowVersionHistories(true)}
+                  onClick={async () => {
+                    const { nodes, edges } = uiWorkflow2StoreWorkflow(await getWorkflowStore());
+
+                    setHistoriesDefaultData({
+                      nodes,
+                      edges,
+                      chatConfig: appDetail.chatConfig
+                    });
+                  }}
                 />
               )}
               <Button
@@ -139,7 +147,7 @@ const Header = () => {
                 {t('core.workflow.Debug')}
               </Button>
 
-              {!isShowVersionHistories && (
+              {!historiesDefaultData && (
                 <PopoverConfirm
                   showCancel
                   content={t('core.app.Publish Confirm')}
@@ -158,20 +166,30 @@ const Header = () => {
             </>
           )}
         </Flex>
-        {isShowVersionHistories && <PublishHistories />}
+        {historiesDefaultData && (
+          <PublishHistories
+            initData={initData}
+            onClose={() => {
+              setHistoriesDefaultData(undefined);
+            }}
+            defaultData={historiesDefaultData}
+          />
+        )}
       </>
     );
   }, [
-    currentTab,
-    flowData2StoreDataAndCheck,
     isPc,
-    isShowVersionHistories,
-    isV2Workflow,
-    onclickPublish,
+    currentTab,
     saveAndBack,
-    setIsShowVersionHistories,
+    historiesDefaultData,
+    isV2Workflow,
+    t,
+    initData,
+    setHistoriesDefaultData,
+    appDetail.chatConfig,
+    flowData2StoreDataAndCheck,
     setWorkflowTestData,
-    t
+    onclickPublish
   ]);
 
   return Render;

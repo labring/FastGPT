@@ -23,11 +23,11 @@ export type InitProps = {
 };
 
 const PublishHistoriesSlider = ({
-  setIsShowVersionHistories,
+  onClose,
   initData,
   defaultData
 }: {
-  setIsShowVersionHistories: (v: boolean) => void;
+  onClose: () => void;
   initData: (data: InitProps) => void;
   defaultData: InitProps;
 }) => {
@@ -50,10 +50,6 @@ const PublishHistoriesSlider = ({
     defaultParams: {
       appId
     }
-  });
-
-  const onClose = useMemoizedFn(() => {
-    setIsShowVersionHistories(false);
   });
 
   const onPreview = useCallback(

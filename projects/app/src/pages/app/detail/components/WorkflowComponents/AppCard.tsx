@@ -26,13 +26,8 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
 
   const { appDetail, appLatestVersion, onOpenInfoEdit, onOpenTeamTagModal, onDelApp, currentTab } =
     useContextSelector(AppContext, (v) => v);
-  const {
-    isShowVersionHistories,
-    flowData2StoreDataAndCheck,
-    onSaveWorkflow,
-    isSaving,
-    saveLabel
-  } = useContextSelector(WorkflowContext, (v) => v);
+  const { historiesDefaultData, flowData2StoreDataAndCheck, onSaveWorkflow, isSaving, saveLabel } =
+    useContextSelector(WorkflowContext, (v) => v);
 
   const { isOpen: isOpenImport, onOpen: onOpenImport, onClose: onCloseImport } = useDisclosure();
   const onExportWorkflow = useCallback(async () => {
@@ -95,7 +90,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
                 }
               ]
             },
-            ...(!isShowVersionHistories && currentTab === TabEnum.appEdit
+            ...(!historiesDefaultData && currentTab === TabEnum.appEdit
               ? [
                   {
                     children: [
@@ -150,7 +145,7 @@ const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
       appT,
       currentTab,
       feConfigs?.show_team_chat,
-      isShowVersionHistories,
+      historiesDefaultData,
       onDelApp,
       onExportWorkflow,
       onOpenImport,

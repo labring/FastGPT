@@ -153,7 +153,7 @@ const Header = ({
               })
             );
           }}
-          setIsShowVersionHistories={() => setHistoriesDefaultData(undefined)}
+          onClose={() => setHistoriesDefaultData(undefined)}
           defaultData={historiesDefaultData}
         />
       )}

@@ -48,8 +48,8 @@ import { useDisclosure } from '@chakra-ui/react';
 import { uiWorkflow2StoreWorkflow } from './utils';
 import { useTranslation } from 'next-i18next';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
-import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { formatTime2HM } from '@fastgpt/global/common/string/time';
+import type { InitProps } from '@/pages/app/detail/components/PublishHistoriesSlider';
 
 type OnChange<ChangesType> = (changes: ChangesType[]) => void;
 
@@ -133,8 +133,8 @@ type WorkflowContextType = {
   onStopNodeDebug: () => void;
 
   // version history
-  isShowVersionHistories: boolean;
-  setIsShowVersionHistories: React.Dispatch<React.SetStateAction<boolean>>;
+  historiesDefaultData?: InitProps;
+  setHistoriesDefaultData: React.Dispatch<React.SetStateAction<undefined | InitProps>>;
 
   // chat test
   setWorkflowTestData: React.Dispatch<
@@ -237,10 +237,6 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   onChangeNode: function (e: FlowNodeChangeProps): void {
     throw new Error('Function not implemented.');
   },
-  isShowVersionHistories: false,
-  setIsShowVersionHistories: function (value: React.SetStateAction<boolean>): void {
-    throw new Error('Function not implemented.');
-  },
   setHoverEdgeId: function (value: React.SetStateAction<string | undefined>): void {
     throw new Error('Function not implemented.');
   },
@@ -259,7 +255,11 @@ export const WorkflowContext = createContext<WorkflowContextType>({
   onSaveWorkflow: function (): Promise<null | undefined> {
     throw new Error('Function not implemented.');
   },
-  saveLabel: ''
+  saveLabel: '',
+  historiesDefaultData: undefined,
+  setHistoriesDefaultData: function (value: React.SetStateAction<InitProps | undefined>): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const WorkflowContextProvider = ({
@@ -517,7 +517,7 @@ const WorkflowContextProvider = ({
     // version preview / debug mode, not save
     if (
       appDetail.version !== 'v2' ||
-      isShowVersionHistories ||
+      historiesDefaultData ||
       isSaving ||
       nodes.length === 0 ||
       !!workflowDebugData
@@ -734,19 +734,20 @@ const WorkflowContextProvider = ({
   );
 
   /* Version histories */
-  const [isShowVersionHistories, setIsShowVersionHistories] = useState(false);
+  const [historiesDefaultData, setHistoriesDefaultData] = useState<InitProps>();
 
   /* event bus */
   useEffect(() => {
     eventBus.on(EventNameEnum.requestWorkflowStore, () => {
       eventBus.emit(EventNameEnum.receiveWorkflowStore, {
-        nodes
+        nodes,
+        edges
       });
     });
     return () => {
       eventBus.off(EventNameEnum.requestWorkflowStore);
     };
-  }, [nodes]);
+  }, [edges, nodes]);
 
   /* chat test */
   const ChatTestRef = useRef<ChatTestComponentRef>(null);
@@ -801,8 +802,8 @@ const WorkflowContextProvider = ({
     onStopNodeDebug,
 
     // version history
-    isShowVersionHistories,
-    setIsShowVersionHistories,
+    historiesDefaultData,
+    setHistoriesDefaultData,
 
     // chat test
     setWorkflowTestData
@@ -820,6 +821,7 @@ export default WorkflowContextProvider;
 
 type GetWorkflowStoreResponse = {
   nodes: Node<FlowNodeItemType>[];
+  edges: Edge<any>[];
 };
 export const getWorkflowStore = () =>
   new Promise<GetWorkflowStoreResponse>((resolve) => {
