@@ -3,7 +3,8 @@ import { ErrType } from '../errorCode';
 /* dataset: 502000 */
 export enum AppErrEnum {
   unExist = 'appUnExist',
-  unAuthApp = 'unAuthApp'
+  unAuthApp = 'unAuthApp',
+  missingParams = 'missingParams'
 }
 const appErrList = [
   {
@@ -13,6 +14,10 @@ const appErrList = [
   {
     statusText: AppErrEnum.unAuthApp,
     message: '无权操作该应用'
+  },
+  {
+    statusText: AppErrEnum.missingParams,
+    message: '缺少参数'
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {

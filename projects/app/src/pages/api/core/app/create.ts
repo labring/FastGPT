@@ -1,5 +1,3 @@
-import type { NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -14,6 +12,8 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import { ClientSession } from '@fastgpt/service/common/mongo';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { authApp } from '@fastgpt/service/support/permission/app/auth';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -24,15 +24,19 @@ export type CreateAppBody = {
   edges?: AppSchema['edges'];
 };
 
-async function handler(req: ApiRequestProps<CreateAppBody>, res: NextApiResponse<any>) {
+async function handler(req: ApiRequestProps<CreateAppBody>) {
   const { parentId, name, avatar, type, modules, edges } = req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
-    throw new Error('缺少参数');
+    return Promise.reject(AppErrEnum.missingParams);
   }
 
   // 凭证校验
   const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
+  if (parentId) {
+    // if it is not a root app
+    authApp({ req, appId: parentId, per: WritePermissionVal }); // check the parent folder permission
+  }
 
   // 上限校验
   await checkTeamAppLimit(teamId);
@@ -49,9 +53,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>, res: NextApiResponse
     tmbId
   });
 
-  jsonRes(res, {
-    data: appId
-  });
+  return appId;
 }
 
 export default NextAPI(handler);

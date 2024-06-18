@@ -1,4 +1,4 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest } from 'next';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import type { AppUpdateParams } from '@/global/core/app/api';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
@@ -9,9 +9,11 @@ import {
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
+import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { AppDetailType } from '@fastgpt/global/core/app/type';
 
 /* 获取我的模型 */
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   const {
     parentId,
     name,
@@ -27,14 +29,15 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
 
   if (!appId) {
-    throw new Error('appId is empty');
+    Promise.reject(AppErrEnum.missingParams);
   }
 
+  let app: AppDetailType;
   // 凭证校验
   if (defaultPermission) {
     await authApp({ req, authToken: true, appId, per: ManagePermissionVal });
   } else {
-    await authApp({ req, authToken: true, appId, per: WritePermissionVal });
+    app = (await authApp({ req, authToken: true, appId, per: WritePermissionVal })).app;
   }
 
   // format nodes data
