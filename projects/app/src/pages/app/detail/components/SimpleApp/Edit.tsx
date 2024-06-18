@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, BoxProps } from '@chakra-ui/react';
+import { Box } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMount } from 'ahooks';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
@@ -12,12 +12,17 @@ import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
 import { AppContext } from '@/pages/app/detail/components/context';
 import { useContextSelector } from 'use-context-selector';
-import { UseFormReturn } from 'react-hook-form';
 import { cardStyles } from '../constants';
 
 import styles from './styles.module.scss';
 
-const Edit = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType, any> }) => {
+const Edit = ({
+  appForm,
+  setAppForm
+}: {
+  appForm: AppSimpleEditFormType;
+  setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+}) => {
   const { isPc } = useSystemStore();
   const { loadAllDatasets } = useDatasetStore();
   const { appDetail } = useContextSelector(AppContext, (v) => v);
@@ -26,7 +31,7 @@ const Edit = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType, any
   useMount(() => {
     loadAllDatasets();
 
-    editForm.reset(
+    setAppForm(
       appWorkflow2Form({
         nodes: appDetail.modules,
         chatConfig: appDetail.chatConfig
@@ -34,7 +39,7 @@ const Edit = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType, any
     );
 
     if (appDetail.version !== 'v2') {
-      editForm.reset(
+      setAppForm(
         appWorkflow2Form({
           nodes: v1Workflow2V2((appDetail.modules || []) as any)?.nodes,
           chatConfig: appDetail.chatConfig
@@ -61,12 +66,12 @@ const Edit = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType, any
         </Box>
 
         <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
-          <EditForm editForm={editForm} />
+          <EditForm appForm={appForm} setAppForm={setAppForm} />
         </Box>
       </Box>
       {isPc && (
         <Box {...cardStyles} boxShadow={'3'}>
-          <ChatTest editForm={editForm} />
+          <ChatTest appForm={appForm} />
         </Box>
       )}
     </Box>

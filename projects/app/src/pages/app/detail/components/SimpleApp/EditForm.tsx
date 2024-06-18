@@ -61,7 +61,13 @@ const LabelStyles: BoxProps = {
   fontSize: 'xs'
 };
 
-const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType, any> }) => {
+const EditForm = ({
+  appForm,
+  setAppForm
+}: {
+  appForm: AppSimpleEditFormType;
+  setAppForm: React.Dispatch<React.SetStateAction<AppSimpleEditFormType>>;
+}) => {
   const theme = useTheme();
   const router = useRouter();
   const { t } = useTranslation();
@@ -72,17 +78,13 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
   const { allDatasets } = useDatasetStore();
   const { llmModelList } = useSystemStore();
   const [, startTst] = useTransition();
-  const refresh = useUpdate();
 
-  const { setValue, getValues, control, watch } = editForm;
-
-  const { fields: datasets, replace: replaceDatasetList } = useFieldArray({
-    control,
-    name: 'dataset.datasets'
-  });
   const selectDatasets = useMemo(
-    () => allDatasets.filter((item) => datasets.find((dataset) => dataset.datasetId === item._id)),
-    [allDatasets, datasets]
+    () =>
+      allDatasets.filter((item) =>
+        appForm.dataset?.datasets.find((dataset) => dataset.datasetId === item._id)
+      ),
+    [allDatasets, appForm?.dataset?.datasets]
   );
 
   const {
@@ -101,36 +103,20 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
     onClose: onCloseToolsSelect
   } = useDisclosure();
 
-  const aiSystemPrompt = watch('aiSettings.systemPrompt');
-  const selectLLMModel = watch('aiSettings.model');
-  const datasetSearchSetting = watch('dataset');
-  const variables = watch('chatConfig.variables');
-
   const formatVariables: any = useMemo(
-    () => formatEditorVariablePickerIcon([...getSystemVariables(t), ...(variables || [])]),
-    [t, variables]
+    () =>
+      formatEditorVariablePickerIcon([
+        ...getSystemVariables(t),
+        ...(appForm.chatConfig.variables || [])
+      ]),
+    [appForm.chatConfig.variables, t]
   );
-  const tts = getValues('chatConfig.ttsConfig');
-  const whisperConfig = getValues('chatConfig.whisperConfig');
-  const postQuestionGuide = getValues('chatConfig.questionGuide');
-  const selectedTools = watch('selectedTools');
-  const inputGuideConfig = watch('chatConfig.chatInputGuide');
-  const scheduledTriggerConfig = watch('chatConfig.scheduledTriggerConfig');
-  const searchMode = watch('dataset.searchMode');
 
   const tokenLimit = useMemo(() => {
-    return llmModelList.find((item) => item.model === selectLLMModel)?.quoteMaxToken || 3000;
-  }, [selectLLMModel, llmModelList]);
-
-  useEffect(() => {
-    const wat = watch((data) => {
-      refresh();
-    });
-
-    return () => {
-      wat.unsubscribe();
-    };
-  }, []);
+    return (
+      llmModelList.find((item) => item.model === appForm.aiSettings.model)?.quoteMaxToken || 3000
+    );
+  }, [llmModelList, appForm.aiSettings.model]);
 
   return (
     <>
@@ -149,16 +135,22 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
               <SettingLLMModel
                 llmModelType={'all'}
                 defaultData={{
-                  model: getValues('aiSettings.model'),
-                  temperature: getValues('aiSettings.temperature'),
-                  maxToken: getValues('aiSettings.maxToken'),
-                  maxHistories: getValues('aiSettings.maxHistories')
+                  model: appForm.aiSettings.model,
+                  temperature: appForm.aiSettings.temperature,
+                  maxToken: appForm.aiSettings.maxToken,
+                  maxHistories: appForm.aiSettings.maxHistories
                 }}
                 onChange={({ model, temperature, maxToken, maxHistories }: SettingAIDataType) => {
-                  setValue('aiSettings.model', model);
-                  setValue('aiSettings.maxToken', maxToken);
-                  setValue('aiSettings.temperature', temperature);
-                  setValue('aiSettings.maxHistories', maxHistories ?? 6);
+                  setAppForm((state) => ({
+                    ...state,
+                    aiSettings: {
+                      ...state.aiSettings,
+                      model,
+                      temperature,
+                      maxToken,
+                      maxHistories: maxHistories ?? 6
+                    }
+                  }));
                 }}
               />
             </Box>
@@ -171,10 +163,16 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
             </HStack>
             <Box mt={1}>
               <PromptEditor
-                value={aiSystemPrompt}
+                value={appForm.aiSettings.systemPrompt}
                 onChange={(text) => {
                   startTst(() => {
-                    setValue('aiSettings.systemPrompt', text);
+                    setAppForm((state) => ({
+                      ...state,
+                      aiSettings: {
+                        ...state.aiSettings,
+                        systemPrompt: text
+                      }
+                    }));
                   });
                 }}
                 variables={formatVariables}
@@ -213,14 +211,14 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
               {t('common.Params')}
             </Button>
           </Flex>
-          {datasetSearchSetting.datasets?.length > 0 && (
+          {appForm.dataset.datasets?.length > 0 && (
             <Box my={3}>
               <SearchParamsTip
-                searchMode={searchMode}
-                similarity={getValues('dataset.similarity')}
-                limit={getValues('dataset.limit')}
-                usingReRank={getValues('dataset.usingReRank')}
-                queryExtensionModel={getValues('dataset.datasetSearchExtensionModel')}
+                searchMode={appForm.dataset.searchMode}
+                similarity={appForm.dataset.similarity}
+                limit={appForm.dataset.limit}
+                usingReRank={appForm.dataset.usingReRank}
+                queryExtensionModel={appForm.dataset.datasetSearchExtensionModel}
               />
             </Box>
           )}
@@ -276,11 +274,11 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
             </Button>
           </Flex>
           <Grid
-            mt={selectedTools.length > 0 ? 2 : 0}
+            mt={appForm.selectedTools.length > 0 ? 2 : 0}
             gridTemplateColumns={'repeat(2, minmax(0, 1fr))'}
             gridGap={[2, 4]}
           >
-            {selectedTools.map((item) => (
+            {appForm.selectedTools.map((item) => (
               <Flex
                 key={item.id}
                 overflow={'hidden'}
@@ -301,10 +299,10 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
                 </Box>
                 <DeleteIcon
                   onClick={() => {
-                    setValue(
-                      'selectedTools',
-                      selectedTools.filter((tool) => tool.id !== item.id)
-                    );
+                    setAppForm((state) => ({
+                      ...state,
+                      selectedTools: state.selectedTools.filter((tool) => tool.id !== item.id)
+                    }));
                   }}
                 />
               </Flex>
@@ -315,9 +313,9 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
         {/* variable */}
         <Box {...BoxStyles}>
           <VariableEdit
-            variables={variables}
+            variables={appForm.chatConfig.variables}
             onChange={(e) => {
-              setValue('chatConfig.variables', e);
+              appForm.chatConfig.variables = e;
             }}
           />
         </Box>
@@ -325,9 +323,15 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
         {/* welcome */}
         <Box {...BoxStyles}>
           <WelcomeTextConfig
-            defaultValue={getValues('chatConfig.welcomeText')}
-            onBlur={(e) => {
-              setValue('chatConfig.welcomeText', e.target.value || '');
+            value={appForm.chatConfig.welcomeText}
+            onChange={(e) => {
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  welcomeText: e.target.value
+                }
+              }));
             }}
           />
         </Box>
@@ -335,9 +339,15 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
         {/* tts */}
         <Box {...BoxStyles}>
           <TTSSelect
-            value={tts}
+            value={appForm.chatConfig.ttsConfig}
             onChange={(e) => {
-              setValue('chatConfig.ttsConfig', e);
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  ttsConfig: e
+                }
+              }));
             }}
           />
         </Box>
@@ -345,10 +355,16 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
         {/* whisper */}
         <Box {...BoxStyles}>
           <WhisperConfig
-            isOpenAudio={tts?.type !== TTSTypeEnum.none}
-            value={whisperConfig}
+            isOpenAudio={appForm.chatConfig.ttsConfig?.type !== TTSTypeEnum.none}
+            value={appForm.chatConfig.whisperConfig}
             onChange={(e) => {
-              setValue('chatConfig.whisperConfig', e);
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  whisperConfig: e
+                }
+              }));
             }}
           />
         </Box>
@@ -356,9 +372,15 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
         {/* question guide */}
         <Box {...BoxStyles}>
           <QGSwitch
-            isChecked={postQuestionGuide}
+            isChecked={appForm.chatConfig.questionGuide}
             onChange={(e) => {
-              setValue('chatConfig.questionGuide', e.target.checked);
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  questionGuide: e.target.checked
+                }
+              }));
             }}
           />
         </Box>
@@ -367,9 +389,15 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
         <Box {...BoxStyles}>
           <InputGuideConfig
             appId={appDetail._id}
-            value={inputGuideConfig}
+            value={appForm.chatConfig.chatInputGuide}
             onChange={(e) => {
-              setValue('chatConfig.chatInputGuide', e);
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  chatInputGuide: e
+                }
+              }));
             }}
           />
         </Box>
@@ -377,9 +405,15 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
         {/* timer trigger */}
         <Box {...BoxStyles} borderBottom={'none'}>
           <ScheduledTriggerConfig
-            value={scheduledTriggerConfig}
+            value={appForm.chatConfig.scheduledTriggerConfig}
             onChange={(e) => {
-              setValue('chatConfig.scheduledTriggerConfig', e);
+              setAppForm((state) => ({
+                ...state,
+                chatConfig: {
+                  ...state.chatConfig,
+                  scheduledTriggerConfig: e
+                }
+              }));
             }}
           />
         </Box>
@@ -393,33 +427,47 @@ const EditForm = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType,
             vectorModel: item.vectorModel
           }))}
           onClose={onCloseKbSelect}
-          onChange={replaceDatasetList}
+          onChange={(e) => {
+            setAppForm((state) => ({
+              ...state,
+              dataset: {
+                ...state.dataset,
+                datasets: e
+              }
+            }));
+          }}
         />
       )}
       {isOpenDatasetParams && (
         <DatasetParamsModal
-          {...datasetSearchSetting}
+          {...appForm.dataset}
           maxTokens={tokenLimit}
           onClose={onCloseDatasetParams}
           onSuccess={(e) => {
-            setValue('dataset', {
-              ...getValues('dataset'),
-              ...e
-            });
+            setAppForm((state) => ({
+              ...state,
+              dataset: {
+                ...state.dataset,
+                ...e
+              }
+            }));
           }}
         />
       )}
       {isOpenToolsSelect && (
         <ToolSelectModal
-          selectedTools={selectedTools}
+          selectedTools={appForm.selectedTools}
           onAddTool={(e) => {
-            setValue('selectedTools', [...selectedTools, e]);
+            setAppForm((state) => ({
+              ...state,
+              selectedTools: [...state.selectedTools, e]
+            }));
           }}
           onRemoveTool={(e) => {
-            setValue(
-              'selectedTools',
-              selectedTools.filter((item) => item.pluginId !== e.pluginId)
-            );
+            setAppForm((state) => ({
+              ...state,
+              selectedTools: state.selectedTools.filter((item) => item.id !== e.id)
+            }));
           }}
           onClose={onCloseToolsSelect}
         />

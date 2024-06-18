@@ -4,7 +4,6 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import { formatTime2HM } from '@fastgpt/global/common/string/time';
 import Avatar from '@/components/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';

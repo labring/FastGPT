@@ -121,7 +121,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     await putAppById(appId, data);
     setAppDetail((state) => ({
       ...state,
-      ...data
+      ...data,
+      modules: data.nodes || state.modules
     }));
   });
 
@@ -130,7 +131,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
       await postPublishApp(appId, data);
       setAppDetail((state) => ({
         ...state,
-        ...data
+        ...data,
+        modules: data.nodes || state.modules
       }));
     },
     {

@@ -1,12 +1,12 @@
 import { StoreNodeItemType } from '../workflow/type';
 import { StoreEdgeItemType } from '../workflow/type/edge';
-import { AppChatConfigType } from './type';
+import { AppChatConfigType, AppSchema } from './type';
 
 export type AppVersionSchemaType = {
   _id: string;
   appId: string;
   time: Date;
-  nodes: StoreNodeItemType[];
-  edges: StoreEdgeItemType[];
-  chatConfig: AppChatConfigType;
+  nodes: AppSchema['modules'];
+  edges: AppSchema['edges'];
+  chatConfig: AppSchema['chatConfig'];
 };

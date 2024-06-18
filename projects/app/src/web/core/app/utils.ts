@@ -1,4 +1,9 @@
-import { AppDetailType, AppSchema, AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
+import {
+  AppChatConfigType,
+  AppDetailType,
+  AppSchema,
+  AppSimpleEditFormType
+} from '@fastgpt/global/core/app/type';
 import { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import {
   FlowNodeInputTypeEnum,
@@ -16,7 +21,9 @@ type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 };
-export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
+export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
+  chatConfig: AppChatConfigType;
+} {
   const workflowStartNodeId = 'workflowStartNodeId';
   function systemConfigTemplate(formData: AppSimpleEditFormType): StoreNodeItemType {
     return {
@@ -688,7 +695,8 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
 
   return {
     nodes: [systemConfigTemplate(data), workflowStartTemplate(), ...workflow.nodes],
-    edges: workflow.edges
+    edges: workflow.edges,
+    chatConfig: data.chatConfig
   };
 }
 

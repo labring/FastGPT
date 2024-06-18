@@ -27,4 +27,5 @@ export type PostRevertAppProps = {
   // edit workflow
   editNodes: AppSchema['modules'];
   editEdges: AppSchema['edges'];
+  editChatConfig: AppSchema['chatConfig'];
 };

@@ -5,7 +5,6 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 
 import { useSafeState } from 'ahooks';
-import { UseFormReturn } from 'react-hook-form';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 import { form2AppWorkflow } from '@/web/core/app/utils';
 import { useI18n } from '@/web/context/I18n';
@@ -13,33 +12,24 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext } from '../context';
 import { useChatTest } from '../useChatTest';
 
-const ChatTest = ({ editForm }: { editForm: UseFormReturn<AppSimpleEditFormType, any> }) => {
+const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
 
   const { appDetail } = useContextSelector(AppContext, (v) => v);
-
-  const { watch } = editForm;
-  const chatConfig = watch('chatConfig');
 
   const [workflowData, setWorkflowData] = useSafeState({
     nodes: appDetail.modules || [],
     edges: appDetail.edges || []
   });
   useEffect(() => {
-    const wat = watch((data) => {
-      const { nodes, edges } = form2AppWorkflow(data as AppSimpleEditFormType);
-      setWorkflowData({ nodes, edges });
-    });
-
-    return () => {
-      wat.unsubscribe();
-    };
-  }, [setWorkflowData, watch]);
+    const { nodes, edges } = form2AppWorkflow(appForm);
+    setWorkflowData({ nodes, edges });
+  }, [appForm, setWorkflowData]);
 
   const { resetChatBox, ChatBox } = useChatTest({
     ...workflowData,
-    chatConfig
+    chatConfig: appForm.chatConfig
   });
 
   return (

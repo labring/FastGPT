@@ -382,6 +382,7 @@ export const updateFlowNodeVersion = (
 type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
+  chatConfig: AppChatConfigType;
 };
 export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType) => {
   const clone1 = cloneDeep(workflow1);

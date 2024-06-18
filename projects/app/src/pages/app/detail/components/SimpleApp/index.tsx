@@ -1,5 +1,4 @@
-import React from 'react';
-import { useForm } from 'react-hook-form';
+import React, { useState } from 'react';
 import { getDefaultAppForm } from '@fastgpt/global/core/app/utils';
 import { AppSimpleEditFormType } from '@fastgpt/global/core/app/type';
 
@@ -9,6 +8,7 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import dynamic from 'next/dynamic';
 import { Flex } from '@chakra-ui/react';
+import { useReactive } from 'ahooks';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
@@ -16,15 +16,13 @@ const PublishChannel = dynamic(() => import('../Publish'));
 const SimpleEdit = () => {
   const { currentTab } = useContextSelector(AppContext, (v) => v);
 
-  const editForm = useForm<AppSimpleEditFormType>({
-    defaultValues: getDefaultAppForm()
-  });
+  const [appForm, setAppForm] = useState(getDefaultAppForm());
 
   return (
     <Flex h={'100%'} flexDirection={'column'} pr={3} pb={3}>
-      <Header editForm={editForm} />
+      <Header appForm={appForm} setAppForm={setAppForm} />
       {currentTab === TabEnum.appEdit ? (
-        <Edit editForm={editForm} />
+        <Edit appForm={appForm} setAppForm={setAppForm} />
       ) : (
         <Flex h={'100%'} flexDirection={'column'} mt={4}>
           {currentTab === TabEnum.publish && <PublishChannel />}

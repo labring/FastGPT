@@ -13,7 +13,12 @@ type Response = {};
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<{}> {
   const { appId } = req.query as { appId: string };
-  const { editNodes = [], editEdges = [], versionId } = req.body as PostRevertAppProps;
+  const {
+    editNodes = [],
+    editEdges = [],
+    editChatConfig,
+    versionId
+  } = req.body as PostRevertAppProps;
 
   await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
@@ -37,7 +42,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
         {
           appId,
           nodes: formatEditNodes,
-          edges: editEdges
+          edges: editEdges,
+          chatConfig: editChatConfig
         }
       ],
       { session }
@@ -49,7 +55,8 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
         {
           appId,
           nodes: version.nodes,
-          edges: version.edges
+          edges: version.edges,
+          chatConfig: version.chatConfig
         }
       ],
       { session }
@@ -59,6 +66,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     await MongoApp.findByIdAndUpdate(appId, {
       modules: version.nodes,
       edges: version.edges,
+      chatConfig: version.chatConfig,
       updateTime: new Date(),
       scheduledTriggerConfig,
       scheduledTriggerNextTime: scheduledTriggerConfig
