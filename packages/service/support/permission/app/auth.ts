@@ -10,6 +10,7 @@ import { getResourcePermission } from '../controller';
 import { AppPermission } from '@fastgpt/global/support/permission/app/controller';
 import { AuthResponseType } from '../type/auth.d';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 export const authAppByTmbId = async ({
   tmbId,
@@ -23,26 +24,45 @@ export const authAppByTmbId = async ({
   const { teamId, permission: tmbPer } = await getTmbInfoByTmbId({ tmbId });
 
   const app = await (async () => {
-    // get app and per
-    const [app, rp] = await Promise.all([
-      MongoApp.findOne({ _id: appId }).lean(),
-      getResourcePermission({
-        teamId,
-        tmbId,
-        resourceId: appId,
-        resourceType: PerResourceTypeEnum.app
-      }) // this could be null
-    ]);
+    let rp = null;
+    let Per = new AppPermission();
+    const app = await MongoApp.findOne({ _id: appId }).lean();
 
     if (!app) {
       return Promise.reject(AppErrEnum.unExist);
     }
+    const isOwner = tmbPer.isOwner || String(app.tmbId) === tmbId;
 
-    const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
-    const Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
+    if (app.type === AppTypeEnum.folder || app.inheritPermission === false || !app.parentId) {
+      // 1. is a folder
+      // 2. inheritPermission is false
+      // 3. is not a root folder
+      rp = await getResourcePermission({
+        teamId,
+        tmbId,
+        resourceId: appId,
+        resourceType: PerResourceTypeEnum.app
+      });
+      Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
+      if (!Per.checkPer(per)) {
+        return Promise.reject(AppErrEnum.unAuthApp);
+      }
+    } else {
+      // is not folder and inheritPermission is true
+      const { app: parent } = await authAppByTmbId({
+        tmbId,
+        appId: app.parentId.toString(),
+        per
+      });
 
-    if (!Per.checkPer(per)) {
-      return Promise.reject(AppErrEnum.unAuthApp);
+      Per = new AppPermission({
+        per: parent.permission.value,
+        isOwner
+      });
+
+      if (!Per.checkPer(per)) {
+        return Promise.reject(AppErrEnum.unAuthApp);
+      }
     }
 
     return {
