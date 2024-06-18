@@ -70,7 +70,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
       chatConfig: version.chatConfig,
       updateTime: new Date(),
       scheduledTriggerConfig,
-      scheduledTriggerNextTime: scheduledTriggerConfig
+      scheduledTriggerNextTime: scheduledTriggerConfig?.cronString
         ? getNextTimeByCronStringAndTimezone(scheduledTriggerConfig)
         : null,
       ...(app.type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': _id })

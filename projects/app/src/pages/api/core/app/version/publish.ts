@@ -19,7 +19,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
   const { app } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
-
+  console.log(chatConfig?.scheduledTriggerConfig, '---');
   await mongoSessionRun(async (session) => {
     // create version histories
     const [{ _id }] = await MongoAppVersion.create(
@@ -45,7 +45,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
         version: 'v2',
         type,
         scheduledTriggerConfig: chatConfig?.scheduledTriggerConfig,
-        scheduledTriggerNextTime: chatConfig?.scheduledTriggerConfig
+        scheduledTriggerNextTime: chatConfig?.scheduledTriggerConfig?.cronString
           ? getNextTimeByCronStringAndTimezone(chatConfig.scheduledTriggerConfig)
           : null,
         ...(app.type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': _id })
