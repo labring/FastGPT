@@ -8,7 +8,7 @@ import { customAlphabet } from 'nanoid';
 import { useRouter } from 'next/router';
 import { Dispatch, useRef } from 'react';
 import { useTranslation } from 'next-i18next';
-import Divider from '@/components/core/workflow/Flow/components/Divider';
+import Divider from '@/pages/app/detail/components/WorkflowComponents/Flow/components/Divider';
 const nanoid = customAlphabet('abcdefghijklmnopqrstuvwxyz1234567890', 8);
 
 interface Props {

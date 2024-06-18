@@ -2,7 +2,7 @@ import React from 'react';
 import { pluginSystemModuleTemplates } from '@fastgpt/global/core/workflow/template/constants';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { v1Workflow2V2 } from '@/web/core/workflow/adapt';
-import WorkflowContextProvider, { WorkflowContext } from '@/components/core/workflow/context';
+import WorkflowContextProvider, { WorkflowContext } from '../WorkflowComponents/context';
 import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import { useMount } from 'ahooks';
@@ -12,7 +12,7 @@ import { workflowBoxStyles } from '../constants';
 import dynamic from 'next/dynamic';
 import { cloneDeep } from 'lodash';
 
-import Flow from '@/components/core/workflow/Flow';
+import Flow from '../WorkflowComponents/Flow';
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 

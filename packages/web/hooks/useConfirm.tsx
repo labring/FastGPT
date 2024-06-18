@@ -129,7 +129,7 @@ export const useConfirm = (props?: {
         </MyModal>
       );
     },
-    [customContent, hideFooter, iconSrc, isOpen, map.bg, onClose, showCancel, t, title]
+    [customContent, hideFooter, iconSrc, isOpen, map.variant, onClose, showCancel, t, title]
   );
 
   return {

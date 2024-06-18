@@ -26,7 +26,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   await initPlugin();
 }
 
-async function initHttp() {
+async function initHttp(): Promise<any> {
   /* 读取http插件和他的children */
   const plugin = await MongoPlugin.findOne({
     type: PluginTypeEnum.folder,
@@ -115,7 +115,7 @@ async function initHttp() {
   return initHttp();
 }
 
-async function initPlugin() {
+async function initPlugin(): Promise<any> {
   const plugin = await MongoPlugin.findOne({
     type: PluginTypeEnum.custom,
     inited: { $ne: true }

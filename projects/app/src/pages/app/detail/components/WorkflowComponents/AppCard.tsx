@@ -8,7 +8,7 @@ import Avatar from '@/components/Avatar';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useI18n } from '@/web/context/I18n';
-import { WorkflowContext } from '@/components/core/workflow/context';
+import { WorkflowContext } from './context';
 import { compareWorkflow, filterSensitiveNodesData } from '@/web/core/workflow/utils';
 import dynamic from 'next/dynamic';
 import { useCopyData } from '@/web/common/hooks/useCopyData';
@@ -16,7 +16,7 @@ import { useSystemStore } from '@/web/common/system/useSystemStore';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
 
-const ImportSettings = dynamic(() => import('@/components/core/workflow/Flow/ImportSettings'));
+const ImportSettings = dynamic(() => import('./Flow/ImportSettings'));
 
 const AppCard = ({ showSaveStatus }: { showSaveStatus: boolean }) => {
   const { t } = useTranslation();

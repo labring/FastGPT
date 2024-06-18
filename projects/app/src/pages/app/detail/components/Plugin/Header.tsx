@@ -6,14 +6,14 @@ import dynamic from 'next/dynamic';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
 import { useContextSelector } from 'use-context-selector';
-import { WorkflowContext, getWorkflowStore } from '@/components/core/workflow/context';
+import { WorkflowContext, getWorkflowStore } from '../WorkflowComponents/context';
 import { useInterval } from 'ahooks';
 import { AppContext, TabEnum } from '../context';
 import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
-import { uiWorkflow2StoreWorkflow } from '@/components/core/workflow/utils';
+import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = () => {

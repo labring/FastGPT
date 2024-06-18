@@ -34,7 +34,7 @@ import { str2OpenApiSchema } from '@fastgpt/global/core/app/httpPlugin/utils';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import HttpInput from '@fastgpt/web/components/common/Input/HttpInput';
-import { HttpHeaders } from '@/components/core/workflow/Flow/nodes/NodeHttp';
+import { HttpHeaders } from '../../detail/components/WorkflowComponents/Flow/nodes/NodeHttp';
 import { OpenApiJsonSchema } from '@fastgpt/global/core/app/httpPlugin/type';
 import { AppSchema } from '@fastgpt/global/core/app/type';
 import { useContextSelector } from 'use-context-selector';

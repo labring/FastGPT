@@ -15,7 +15,7 @@ import SwaggerParser from '@apidevtools/swagger-parser';
 import { getHandleId } from '../../workflow/utils';
 import { CreateHttpPluginChildrenPros } from '../controller';
 import { AppTypeEnum } from '../constants';
-import { StoreEdgeItemType } from 'core/workflow/type/edge';
+import type { StoreEdgeItemType } from '../../workflow/type/edge';
 
 export const str2OpenApiSchema = async (yamlStr = ''): Promise<OpenApiJsonSchema> => {
   try {
