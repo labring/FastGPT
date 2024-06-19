@@ -8,7 +8,7 @@ import { detectFileEncoding } from '@fastgpt/global/common/file/tools';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readRawContentByFileBuffer } from '../read/utils';
-import { gridFsStream2Buffer } from './utils';
+import { gridFsStream2Buffer, stream2Encoding } from './utils';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -44,8 +44,11 @@ export async function uploadFile({
   const stats = await fsp.stat(path);
   if (!stats.isFile()) return Promise.reject(`${path} is not a file`);
 
+  const { stream: readStream, encoding } = await stream2Encoding(fs.createReadStream(path));
+
   metadata.teamId = teamId;
   metadata.tmbId = tmbId;
+  metadata.encoding = encoding;
 
   // create a gridfs bucket
   const bucket = getGridBucket(bucketName);
@@ -57,7 +60,7 @@ export async function uploadFile({
 
   // save to gridfs
   await new Promise((resolve, reject) => {
-    fs.createReadStream(path)
+    readStream
       .pipe(stream as any)
       .on('finish', resolve)
       .on('error', reject);
@@ -113,19 +116,8 @@ export async function getDownloadStream({
   fileId: string;
 }) {
   const bucket = getGridBucket(bucketName);
-  const encodeStream = bucket.openDownloadStream(new Types.ObjectId(fileId), { end: 100 });
-  const rawStream = bucket.openDownloadStream(new Types.ObjectId(fileId));
 
-  /* get encoding */
-  const buffer = await gridFsStream2Buffer(encodeStream);
-
-  const encoding = detectFileEncoding(buffer);
-
-  return {
-    fileStream: rawStream,
-    encoding
-    // encoding: 'utf-8'
-  };
+  return bucket.openDownloadStream(new Types.ObjectId(fileId));
 }
 
 export const readFileContentFromMongo = async ({
@@ -152,7 +144,7 @@ export const readFileContentFromMongo = async ({
   }
   const start = Date.now();
 
-  const [file, { encoding, fileStream }] = await Promise.all([
+  const [file, fileStream] = await Promise.all([
     getFileById({ bucketName, fileId }),
     getDownloadStream({ bucketName, fileId })
   ]);
@@ -164,6 +156,7 @@ export const readFileContentFromMongo = async ({
   const extension = file?.filename?.split('.')?.pop()?.toLowerCase() || '';
 
   const fileBuffers = await gridFsStream2Buffer(fileStream);
+  const encoding = file?.metadata?.encoding || detectFileEncoding(fileBuffers);
   // console.log('get file buffer', Date.now() - start);
 
   const { rawText } = await readRawContentByFileBuffer({
