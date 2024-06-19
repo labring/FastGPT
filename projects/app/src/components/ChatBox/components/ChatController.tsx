@@ -69,7 +69,7 @@ const ChatController = ({
 
   return (
     <Flex h={'26px'}>
-      {chat.obj === ChatRoleEnum.AI && (
+      {/* {chat.obj === ChatRoleEnum.AI && (
         <Tag
           colorScheme="twitter"
           variant="outline"
@@ -79,7 +79,7 @@ const ChatController = ({
         >
           编辑纠错
         </Tag>
-      )}
+      )} */}
       <Flex
         {...controlContainerStyle}
         borderRadius={'sm'}
