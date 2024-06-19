@@ -5,7 +5,7 @@ The FastGPT is licensed under the Apache License 2.0, with the following additio
 1. FastGPT is permitted to be used for commercialization. You can use FastGPT as a "backend-as-a-service" for your other applications, or delivering it to enterprises as an application development platform. However, when the following conditions are met, you must contact the producer to obtain a commercial license:
 
 a. Multi-tenant SaaS service: Unless explicitly authorized by FastGPT in writing, you may not use the FastGPT.AI source code to operate a multi-tenant SaaS service that is similar to the FastGPT.
-b. LOGO and copyright information: In the process of using FastGPT, you may not remove or moFastGPT the LOGO or copyright information in the FastGPT console.
+b. LOGO and copyright information: In the process of using FastGPT, you may not remove or modify the LOGO or copyright information in the FastGPT console.
 
 Please contact yujinlong@sealos.io by email to inquire about licensing matters.
 
