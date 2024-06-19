@@ -3,7 +3,7 @@ export enum LoginPageTypeEnum {
   register = 'register',
   forgetPassword = 'forgetPassword',
   wechat = 'wechat',
-  phoneLogin = 'phoneLogin',
+  phoneLogin = 'phoneLogin'
 }
 
 export enum PromotionEnum {
