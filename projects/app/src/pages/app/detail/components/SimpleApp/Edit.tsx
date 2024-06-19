@@ -50,27 +50,26 @@ const Edit = ({
 
   return (
     <Box
-      display={['block', 'grid']}
+      display={['block', 'flex']}
       flex={'1 0 0'}
       h={0}
       pt={[2, 1.5]}
       pl={[2, 1]}
-      gridTemplateColumns={['1fr', 'minmax(580px, 1fr) 2fr']}
       gap={1}
       borderRadius={'lg'}
       overflowY={['auto', 'unset']}
     >
-      <Box className={styles.EditAppBox} pr={[0, 1]} overflowY={'auto'}>
+      <Box className={styles.EditAppBox} pr={[0, 1]} overflowY={'auto'} minW={'580px'} flex={'1'}>
         <Box {...cardStyles} boxShadow={'2'}>
           <AppCard />
         </Box>
 
-        <Box mt={4} {...cardStyles} boxShadow={'3.5'}>
+        <Box mt={4} {...cardStyles} boxShadow={'3.5'} w={'auto'}>
           <EditForm appForm={appForm} setAppForm={setAppForm} />
         </Box>
       </Box>
       {isPc && (
-        <Box {...cardStyles} boxShadow={'3'}>
+        <Box {...cardStyles} boxShadow={'3'} flex={'2 0 0'} w={0}>
           <ChatTest appForm={appForm} />
         </Box>
       )}

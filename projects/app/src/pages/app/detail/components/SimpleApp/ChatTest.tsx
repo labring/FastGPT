@@ -33,7 +33,7 @@ const ChatTest = ({ appForm }: { appForm: AppSimpleEditFormType }) => {
   });
 
   return (
-    <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4} overflowX={'auto'}>
+    <Flex position={'relative'} flexDirection={'column'} h={'100%'} py={4}>
       <Flex px={[2, 5]}>
         <Box fontSize={['md', 'lg']} fontWeight={'bold'} flex={1}>
           {appT('Chat Debug')}
