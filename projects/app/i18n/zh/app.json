@@ -14,8 +14,10 @@
   "Copy Module Config": "复制配置",
   "Create bot": "应用",
   "Create one ai app": "创建一个AI应用",
+  "Current settings": "当前配置",
   "Dataset Quote Template": "知识库问答模式",
   "Edit app": "编辑应用",
+  "Edit info": "编辑信息",
   "Export Config Successful": "已复制配置，自动过滤部分敏感信息，请注意检查是否仍有敏感数据",
   "Export Configs": "导出配置",
   "Feedback Count": "用户反馈",
@@ -33,8 +35,15 @@
   "My Apps": "我的应用",
   "Output Field Settings": "输出字段编辑",
   "Paste Config": "粘贴配置",
+  "Publish channel": "发布渠道",
+  "Publish success": "发布成功",
+  "Setting app": "应用配置",
+  "Setting plugin": "插件配置",
   "To Chat": "前去对话",
   "To Settings": "查看详情",
+  "Transition to workflow": "转成工作流",
+  "Transition to workflow create new placeholder": "创建一个新的应用，而不是修改当前应用",
+  "Transition to workflow create new tip": "转化成工作流后，将无法转化回简易模式，请确认！",
   "Variable Key Repeat Tip": "变量 key 重复",
   "app": {
     "modules": {
@@ -47,7 +56,7 @@
     "Confirm Sync": "将会使用最新模板进行覆盖，可能会丢失一些旧的配置信息，请确认",
     "Custom Title Tip": "该标题名字会展示在对话过程中",
     "My Modules": "",
-    "No Modules": "还没有模块~",
+    "No Modules": "没找到插件",
     "System Module": "系统模块",
     "type": "\"{{type}}\"类型\n{{description}}"
   },
@@ -55,6 +64,16 @@
     "Title is required": "模块名不能为空"
   },
   "type": {
+    "All": "全部",
+    "Create http plugin tip": "通过 OpenAPI schema 批量创建插件，兼容 GPTs 格式。",
+    "Create one plugin tip": "可以自定义输入和输出的工作流，通常用于封装重复使用的工作流",
+    "Create plugin bot": "创建插件",
+    "Create simple bot": "创建简易应用",
+    "Create simple bot tip": "通过填表单形式，创建简单的AI应用，适合新手",
+    "Create workflow bot": "创建工作流",
+    "Create workflow tip": "通过低代码的方式，构建逻辑复杂的多轮对话AI应用，推荐高级玩家使用",
+    "Http plugin": "HTTP 插件",
+    "Plugin": "插件",
     "Simple bot": "简易应用",
     "Workflow bot": "工作流"
   }

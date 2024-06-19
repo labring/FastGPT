@@ -17,12 +17,12 @@ export const useConfirm = (props?: {
     const map = {
       common: {
         title: t('common.confirm.Common Tip'),
-        bg: undefined,
+        variant: 'primary',
         iconSrc: 'common/confirm/commonTip'
       },
       delete: {
         title: t('common.Delete Warning'),
-        bg: 'red.600',
+        variant: 'dangerFill',
         iconSrc: 'common/confirm/deleteTip'
       }
     };
@@ -108,7 +108,7 @@ export const useConfirm = (props?: {
 
               <Button
                 size={'sm'}
-                bg={bg ? bg : map.bg}
+                variant={map.variant}
                 isDisabled={countDownAmount > 0}
                 ml={3}
                 isLoading={isLoading || requesting}
@@ -129,7 +129,7 @@ export const useConfirm = (props?: {
         </MyModal>
       );
     },
-    [customContent, hideFooter, iconSrc, isOpen, map.bg, onClose, showCancel, t, title]
+    [customContent, hideFooter, iconSrc, isOpen, map.variant, onClose, showCancel, t, title]
   );
 
   return {

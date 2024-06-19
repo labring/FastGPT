@@ -1,6 +1,6 @@
 import {
+  AppChatConfigType,
   AppDetailType,
-  ChatInputGuideConfigType,
   AppSchema,
   AppSimpleEditFormType
 } from '@fastgpt/global/core/app/type';
@@ -16,12 +16,15 @@ import { getNanoid } from '@fastgpt/global/common/string/tools';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
 import { TFunction } from 'next-i18next';
+import { ToolModule } from '@fastgpt/global/core/workflow/template/system/tools';
 
 type WorkflowType = {
   nodes: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
 };
-export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
+export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType & {
+  chatConfig: AppChatConfigType;
+} {
   const workflowStartNodeId = 'workflowStartNodeId';
   function systemConfigTemplate(formData: AppSimpleEditFormType): StoreNodeItemType {
     return {
@@ -663,7 +666,7 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
               value: [workflowStartNodeId, 'userChatInput']
             }
           ],
-          outputs: []
+          outputs: ToolModule.outputs
         },
         // tool nodes
         ...(datasetTool ? datasetTool.nodes : []),
@@ -693,7 +696,8 @@ export function form2AppWorkflow(data: AppSimpleEditFormType): WorkflowType {
 
   return {
     nodes: [systemConfigTemplate(data), workflowStartTemplate(), ...workflow.nodes],
-    edges: workflow.edges
+    edges: workflow.edges,
+    chatConfig: data.chatConfig
   };
 }
 

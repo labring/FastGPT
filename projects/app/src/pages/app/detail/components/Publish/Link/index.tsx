@@ -47,6 +47,7 @@ import { useI18n } from '@/web/context/I18n';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 const SelectUsingWayModal = dynamic(() => import('./SelectUsingWayModal'));
 
@@ -72,7 +73,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
   );
 
   return (
-    <Box position={'relative'} pt={3} px={5} minH={'50vh'}>
+    <MyBox h={'100%'} isLoading={isFetching} position={'relative'}>
       <Flex justifyContent={'space-between'}>
         <HStack>
           <Box color={'myGray.900'} fontSize={'lg'}>
@@ -241,8 +242,7 @@ const Share = ({ appId }: { appId: string; type: PublishChannelEnum }) => {
         />
       )}
       <ConfirmModal />
-      <Loading loading={isFetching} fixed={false} />
-    </Box>
+    </MyBox>
   );
 };
 

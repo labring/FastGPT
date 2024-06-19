@@ -8,6 +8,7 @@ import { beforeUpdateAppFormat } from '@fastgpt/service/core/app/controller';
 import { getNextTimeByCronStringAndTimezone } from '@fastgpt/global/common/string/time';
 import { PostPublishAppProps } from '@/global/core/app/api';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
 type Response = {};
 
@@ -15,13 +16,13 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
   const { appId } = req.query as { appId: string };
   const { nodes = [], edges = [], chatConfig, type } = req.body as PostPublishAppProps;
 
-  await authApp({ appId, req, per: WritePermissionVal, authToken: true });
+  const { app } = await authApp({ appId, req, per: WritePermissionVal, authToken: true });
 
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
 
   await mongoSessionRun(async (session) => {
     // create version histories
-    await MongoAppVersion.create(
+    const [{ _id }] = await MongoAppVersion.create(
       [
         {
           appId,
@@ -34,18 +35,25 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>): Promise<
     );
 
     // update app
-    await MongoApp.findByIdAndUpdate(appId, {
-      modules: formatNodes,
-      edges,
-      chatConfig,
-      updateTime: new Date(),
-      version: 'v2',
-      type,
-      scheduledTriggerConfig: chatConfig?.scheduledTriggerConfig,
-      scheduledTriggerNextTime: chatConfig?.scheduledTriggerConfig
-        ? getNextTimeByCronStringAndTimezone(chatConfig.scheduledTriggerConfig)
-        : null
-    });
+    await MongoApp.findByIdAndUpdate(
+      appId,
+      {
+        modules: formatNodes,
+        edges,
+        chatConfig,
+        updateTime: new Date(),
+        version: 'v2',
+        type,
+        scheduledTriggerConfig: chatConfig?.scheduledTriggerConfig,
+        scheduledTriggerNextTime: chatConfig?.scheduledTriggerConfig?.cronString
+          ? getNextTimeByCronStringAndTimezone(chatConfig.scheduledTriggerConfig)
+          : null,
+        ...(app.type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': _id })
+      },
+      {
+        session
+      }
+    );
   });
 
   return {};

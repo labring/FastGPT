@@ -122,6 +122,7 @@
     "Status": "Status",
     "Submit failed": "Submit failed",
     "Submit success": "Submit success",
+    "Success": "Success",
     "Sync success": "Sync success",
     "System Output": "System Output",
     "System version": "System version",
@@ -256,6 +257,7 @@
       "Quote templates": "Quote content templates",
       "Random": "Diverge",
       "Save and preview": "Save and preview",
+      "Saved time": "Saved: {{time}}",
       "Search team tags": "Search tags",
       "Select TTS": "Select voice playback mode",
       "Select app from template": "Select from template",
@@ -285,7 +287,6 @@
       "Whisper": "Voice input",
       "Whisper Tip": "Configure voice input related parameters",
       "Whisper config": "Voice input configuration",
-      "create app": "Create your own AI app",
       "deterministic": "Rigorous",
       "edit": {
         "Confirm Save App Tip": "This app may be in advanced arrangement mode, saving will overwrite the advanced arrangement configuration, please confirm!",

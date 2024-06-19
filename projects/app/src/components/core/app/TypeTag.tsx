@@ -13,9 +13,17 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       label: appT('type.Simple bot'),
       icon: 'core/app/type/simple'
     },
-    [AppTypeEnum.advanced]: {
+    [AppTypeEnum.workflow]: {
       label: appT('type.Workflow bot'),
       icon: 'core/app/type/workflow'
+    },
+    [AppTypeEnum.plugin]: {
+      label: appT('type.Plugin'),
+      icon: 'core/app/type/plugin'
+    },
+    [AppTypeEnum.httpPlugin]: {
+      label: appT('type.Http plugin'),
+      icon: 'core/app/type/httpPlugin'
     },
     [AppTypeEnum.folder]: undefined
   });

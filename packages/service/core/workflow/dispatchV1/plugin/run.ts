@@ -8,8 +8,7 @@ import {
   NodeInputKeyEnum
 } from '@fastgpt/global/core/workflow/constants';
 import { DispatchNodeResponseKeyEnum } from '@fastgpt/global/core/workflow/runtime/constants';
-import { splitCombinePluginId } from '../../../plugin/controller';
-import { authPluginCanUse } from '../../../../support/permission/auth/plugin';
+import { splitCombinePluginId } from '../../../app/plugin/controller';
 import { setEntryEntries, DYNAMIC_INPUT_KEY } from '../utils';
 import { DispatchNodeResultType } from '@fastgpt/global/core/workflow/runtime/type';
 import { PluginRuntimeType, PluginTemplateType } from '@fastgpt/global/core/plugin/type';
@@ -73,8 +72,10 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
     return Promise.reject('pluginId can not find');
   }
 
-  await authPluginCanUse({ id: pluginId, teamId, tmbId });
   const plugin = await getPluginRuntimeById(pluginId);
+  if (plugin.teamId && plugin.teamId !== teamId) {
+    return Promise.reject('plugin not found');
+  }
 
   // concat dynamic inputs
   const inputModule = plugin.modules.find((item) => item.flowType === FlowNodeTypeEnum.pluginInput);

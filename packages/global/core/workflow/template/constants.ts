@@ -24,10 +24,7 @@ import { IfElseNode } from './system/ifElse/index';
 import { VariableUpdateNode } from './system/variableUpdate';
 import { CodeNode } from './system/sandbox';
 
-/* app flow module templates */
-export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
-  SystemConfigNode,
-  WorkflowStart,
+const systemNodes: FlowNodeTemplateType[] = [
   AiChatModule,
   AssignedAnswerModule,
   DatasetSearchModule,
@@ -43,50 +40,27 @@ export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
   IfElseNode,
   VariableUpdateNode,
   CodeNode
+];
+/* app flow module templates */
+export const appSystemModuleTemplates: FlowNodeTemplateType[] = [
+  SystemConfigNode,
+  WorkflowStart,
+  ...systemNodes
 ];
 /* plugin flow module templates */
 export const pluginSystemModuleTemplates: FlowNodeTemplateType[] = [
   PluginInputModule,
   PluginOutputModule,
-  AiChatModule,
-  AssignedAnswerModule,
-  DatasetSearchModule,
-  DatasetConcatModule,
-  RunAppModule,
-  ToolModule,
-  StopToolNode,
-  ClassifyQuestionModule,
-  ContextExtractModule,
-  HttpModule468,
-  AiQueryExtension,
-  LafModule,
-  IfElseNode,
-  VariableUpdateNode,
-  CodeNode
+  ...systemNodes
 ];
 
 /* all module */
 export const moduleTemplatesFlat: FlowNodeTemplateType[] = [
+  ...systemNodes,
   EmptyNode,
   SystemConfigNode,
   WorkflowStart,
-  AiChatModule,
-  DatasetSearchModule,
-  DatasetConcatModule,
-  AssignedAnswerModule,
-  ClassifyQuestionModule,
-  ContextExtractModule,
-  HttpModule468,
-  ToolModule,
-  StopToolNode,
-  AiChatModule,
-  RunAppModule,
   PluginInputModule,
   PluginOutputModule,
-  RunPluginModule,
-  AiQueryExtension,
-  LafModule,
-  IfElseNode,
-  VariableUpdateNode,
-  CodeNode
+  RunPluginModule
 ];

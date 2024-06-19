@@ -3,7 +3,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import RowTabs from '../../../../common/Rowtabs';
+import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';

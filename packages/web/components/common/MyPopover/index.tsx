@@ -4,7 +4,8 @@ import {
   PopoverTrigger,
   PopoverContent,
   useDisclosure,
-  PlacementWithLogical
+  PlacementWithLogical,
+  PopoverArrow
 } from '@chakra-ui/react';
 
 const MyPopover = ({
@@ -40,7 +41,10 @@ const MyPopover = ({
       lazyBehavior="keepMounted"
     >
       <PopoverTrigger>{Trigger}</PopoverTrigger>
-      <PopoverContent p={4}>{children({ onClose })}</PopoverContent>
+      <PopoverContent p={4}>
+        <PopoverArrow />
+        {children({ onClose })}
+      </PopoverContent>
     </Popover>
   );
 };

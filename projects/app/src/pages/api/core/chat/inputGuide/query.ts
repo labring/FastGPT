@@ -6,6 +6,7 @@ import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
 import { authChatCert } from '@/service/support/permission/auth/chat';
 import { MongoApp } from '@fastgpt/service/core/app/schema';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 
 export type QueryChatInputGuideBody = OutLinkChatAuthProps & {
   appId: string;
@@ -28,7 +29,7 @@ async function handler(
 
   const params = {
     appId,
-    ...(searchKey && { text: { $regex: new RegExp(searchKey, 'i') } })
+    ...(searchKey && { text: { $regex: new RegExp(`${replaceRegChars(searchKey)}`, 'i') } })
   };
 
   const result = await MongoChatInputGuide.find(params).sort({ _id: -1 }).limit(6);

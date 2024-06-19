@@ -1,5 +1,5 @@
 import { Box, Flex, TextareaProps } from '@chakra-ui/react';
-import React from 'react';
+import React, { useTransition } from 'react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import ChatFunctionTip from './Tip';
 import MyTextarea from '@/components/common/Textarea/MyTextarea';
@@ -8,6 +8,7 @@ import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 
 const WelcomeTextConfig = (props: TextareaProps) => {
   const { t } = useTranslation();
+
   return (
     <>
       <Flex alignItems={'center'}>
@@ -27,4 +28,4 @@ const WelcomeTextConfig = (props: TextareaProps) => {
   );
 };
 
-export default WelcomeTextConfig;
+export default React.memo(WelcomeTextConfig);
