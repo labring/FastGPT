@@ -85,7 +85,14 @@ export const countGptMessagesTokens = (
         functionCall
       });
     } catch (error) {
-      resolve(0);
+      addLog.error('Count token error', error);
+      const total = messages.reduce((sum, item) => {
+        if (item.content) {
+          return sum + item.content.length;
+        }
+        return sum;
+      }, 0);
+      resolve(total);
     }
   });
 };

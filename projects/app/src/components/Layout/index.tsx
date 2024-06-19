@@ -79,7 +79,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
-        {isPc === true && (
+        {isPc ? (
           <>
             {isHideNavbar ? (
               <Auth>{children}</Auth>
@@ -94,8 +94,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               </>
             )}
           </>
-        )}
-        {isPc === false && (
+        ) : (
           <>
             <Box h={'100%'} display={['block', 'none']}>
               {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (

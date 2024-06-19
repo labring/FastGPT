@@ -32,6 +32,11 @@ const Button = defineStyleConfig({
   baseStyle: {
     _active: {
       transform: 'scale(0.98)'
+    },
+    _disabled: {
+      _hover: {
+        filter: 'none'
+      }
     }
   },
   sizes: {
@@ -41,7 +46,7 @@ const Button = defineStyleConfig({
       py: '0',
       h: '24px',
       fontWeight: 'normal',
-      borderRadius: '8px'
+      borderRadius: 'sm'
     },
     xsSquare: {
       fontSize: 'xs',
@@ -50,7 +55,7 @@ const Button = defineStyleConfig({
       h: '24px',
       w: '24px',
       fontWeight: 'normal',
-      borderRadius: '4px'
+      borderRadius: 'sm'
     },
     sm: {
       fontSize: 'sm',
@@ -58,7 +63,7 @@ const Button = defineStyleConfig({
       py: 0,
       fontWeight: 'normal',
       h: '30px',
-      borderRadius: '8px'
+      borderRadius: 'sm'
     },
     smSquare: {
       fontSize: 'sm',
@@ -67,7 +72,7 @@ const Button = defineStyleConfig({
       fontWeight: 'normal',
       h: '30px',
       w: '30px',
-      borderRadius: '8px'
+      borderRadius: 'sm'
     },
     md: {
       fontSize: 'sm',
@@ -75,7 +80,7 @@ const Button = defineStyleConfig({
       py: 0,
       h: '34px',
       fontWeight: 'normal',
-      borderRadius: '8px'
+      borderRadius: 'md'
     },
     mdSquare: {
       fontSize: 'sm',
@@ -84,7 +89,7 @@ const Button = defineStyleConfig({
       h: '34px',
       w: '34px',
       fontWeight: 'normal',
-      borderRadius: '6px'
+      borderRadius: 'md'
     },
     lg: {
       fontSize: 'md',
@@ -92,7 +97,7 @@ const Button = defineStyleConfig({
       py: 0,
       h: '40px',
       fontWeight: 'normal',
-      borderRadius: '8px'
+      borderRadius: 'lg'
     },
     lgSquare: {
       fontSize: 'md',
@@ -101,7 +106,7 @@ const Button = defineStyleConfig({
       h: '40px',
       w: '40px',
       fontWeight: 'normal',
-      borderRadius: '6px'
+      borderRadius: 'lg'
     }
   },
   variants: {
@@ -278,6 +283,18 @@ const Button = defineStyleConfig({
       },
       _disabled: {
         color: 'myGray.800 !important'
+      }
+    },
+    dangerFill: {
+      bg: 'red.600',
+      color: 'white',
+      border: 'none',
+      boxShadow: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
+      _hover: {
+        filter: 'brightness(120%)'
+      },
+      _disabled: {
+        bg: 'red.200 !important'
       }
     }
   },
@@ -697,15 +714,15 @@ export const theme = extendTheme({
     xl: '16px'
   },
   shadows: {
-    1: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 1px 2px 0px rgba(19, 51, 107, 0.05)',
-    1.5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 1px 2px 0px rgba(19, 51, 107, 0.10)',
-    2: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 4px 0px rgba(19, 51, 107, 0.05)',
-    3: '0px 0px 1px 0px rgba(19, 51, 107, 0.08), 0px 4px 10px 0px rgba(19, 51, 107, 0.08)',
-    3.5: '0px 0px 1px 0px rgba(19, 51, 107, 0.10), 0px 4px 10px 0px rgba(19, 51, 107, 0.10)',
-    4: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 12px 16px -4px rgba(19, 51, 107, 0.20)',
-    5: '0px 0px 1px 0px rgba(19, 51, 107, 0.15), 0px 20px 24px -8px rgba(19, 51, 107, 0.15)',
-    6: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 24px 48px -12px rgba(19, 51, 107, 0.20)',
-    7: '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)',
+    1: '0px 1px 2px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    1.5: '0px 1px 2px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.15)',
+    2: '0px 4px 4px 0px rgba(19, 51, 107, 0.05), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    3: '0px 4px 10px 0px rgba(19, 51, 107, 0.08), 0px 0px 1px 0px rgba(19, 51, 107, 0.08)',
+    3.5: '0px 4px 10px 0px rgba(19, 51, 107, 0.10), 0px 0px 1px 0px rgba(19, 51, 107, 0.10)',
+    4: '0px 12px 16px -4px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)',
+    5: '0px 20px 24px -8px rgba(19, 51, 107, 0.15), 0px 0px 1px 0px rgba(19, 51, 107, 0.15)',
+    6: '0px 24px 48px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)',
+    7: '0px 32px 64px -12px rgba(19, 51, 107, 0.20), 0px 0px 1px 0px rgba(19, 51, 107, 0.20)',
     focus: shadowLight,
     outline: 'none'
   },

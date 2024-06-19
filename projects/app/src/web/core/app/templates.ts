@@ -7,12 +7,14 @@ import {
   FlowNodeTypeEnum
 } from '@fastgpt/global/core/workflow/node/constant';
 
-// template
-export const appTemplates: (AppItemType & {
+type TemplateType = (AppItemType & {
   avatar: string;
   intro: string;
   type: AppTypeEnum;
-})[] = [
+})[];
+
+// template
+export const simpleBotTemplates: TemplateType = [
   {
     id: 'simpleChat',
     avatar: '/imgs/workflow/AI.png',
@@ -817,13 +819,16 @@ export const appTemplates: (AppItemType & {
         targetHandle: '7BdojPlukIQw-target-left'
       }
     ]
-  },
+  }
+];
+
+export const workflowTemplates: TemplateType = [
   {
     id: 'CQ',
     avatar: '/imgs/workflow/cq.png',
     name: '问题分类 + 知识库',
     intro: '先对用户的问题进行分类，再根据不同类型问题，执行不同的操作',
-    type: AppTypeEnum.advanced,
+    type: AppTypeEnum.workflow,
     modules: [
       {
         nodeId: 'userGuide',
@@ -1273,3 +1278,46 @@ export const appTemplates: (AppItemType & {
     ]
   }
 ];
+
+export const pluginTemplates: TemplateType = [
+  {
+    id: 'plugin-simple',
+    avatar: '/imgs/workflow/AI.png',
+    name: '默认模板',
+    intro: '标准的插件初始模板',
+    type: AppTypeEnum.plugin,
+    modules: [
+      {
+        nodeId: 'pluginInput',
+        name: '自定义插件输入',
+        avatar: '/imgs/workflow/input.png',
+        flowNodeType: FlowNodeTypeEnum.pluginInput,
+        showStatus: false,
+        position: {
+          x: 616.4226348688949,
+          y: -165.05298493910115
+        },
+        version: '481',
+        inputs: [],
+        outputs: []
+      },
+      {
+        nodeId: 'pluginOutput',
+        name: '自定义插件输出',
+        avatar: '/imgs/workflow/output.png',
+        flowNodeType: FlowNodeTypeEnum.pluginOutput,
+        showStatus: false,
+        position: {
+          x: 1607.7142331269126,
+          y: -151.8669210746189
+        },
+        version: '481',
+        inputs: [],
+        outputs: []
+      }
+    ],
+    edges: []
+  }
+];
+
+export const defaultAppTemplates = simpleBotTemplates.concat(workflowTemplates[0]);

@@ -1,5 +1,4 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Box, Flex, useDisclosure, Drawer, DrawerOverlay, DrawerContent } from '@chakra-ui/react';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -31,15 +30,17 @@ import { MongoOutLink } from '@fastgpt/service/support/outLink/schema';
 import { OutLinkWithAppType } from '@fastgpt/global/support/outLink/type';
 import { addLog } from '@fastgpt/service/common/system/log';
 import { connectToDatabase } from '@/service/mongo';
+import NextHead from '@/components/common/NextHead';
+import Head from 'next/head';
 
 const OutLink = ({
   appName,
   appIntro,
   appAvatar
 }: {
-  appName?: string;
-  appIntro?: string;
-  appAvatar?: string;
+  appName: string;
+  appIntro: string;
+  appAvatar: string;
 }) => {
   const { t } = useTranslation();
   const router = useRouter();
@@ -270,11 +271,8 @@ const OutLink = ({
 
   return (
     <>
-      <Head>
-        <title>{appName || chatData.app?.name}</title>
-        <meta name="description" content={appIntro} />
-        <link rel="icon" href={appAvatar || chatData.app?.avatar} />
-      </Head>
+      <NextHead title={appName} desc={appIntro} icon={appAvatar} />
+
       <PageContainer
         {...(isEmbed
           ? { p: '0 !important', insertProps: { borderRadius: '0', boxShadow: 'none' } }
@@ -407,6 +405,8 @@ const OutLink = ({
   );
 };
 
+export default OutLink;
+
 export async function getServerSideProps(context: any) {
   const shareId = context?.query?.shareId || '';
 
@@ -430,12 +430,10 @@ export async function getServerSideProps(context: any) {
 
   return {
     props: {
-      appName: app?.appId?.name || '',
-      appAvatar: app?.appId?.avatar || '',
-      appIntro: app?.appId?.intro || '',
+      appName: app?.appId?.name ?? 'name',
+      appAvatar: app?.appId?.avatar ?? '',
+      appIntro: app?.appId?.intro ?? 'intro',
       ...(await serviceSideProps(context, ['file']))
     }
   };
 }
-
-export default OutLink;

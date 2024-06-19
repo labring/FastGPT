@@ -25,7 +25,7 @@ WORKDIR /app
 ARG proxy
 
 # copy common node_modules and one project node_modules
-COPY package.json pnpm-workspace.yaml .npmrc ./
+COPY package.json pnpm-workspace.yaml .npmrc tsconfig.json ./
 COPY --from=mainDeps /app/node_modules ./node_modules
 COPY --from=mainDeps /app/packages ./packages
 COPY ./projects/app ./projects/app

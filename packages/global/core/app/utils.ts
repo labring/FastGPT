@@ -99,7 +99,7 @@ export const appWorkflow2Form = ({
       if (!node.pluginId) return;
 
       defaultAppForm.selectedTools.push({
-        id: node.pluginId,
+        id: node.nodeId,
         pluginId: node.pluginId,
         name: node.name,
         avatar: node.avatar,

@@ -68,10 +68,13 @@ const PluginSchema = new Schema({
   nodeVersion: {
     type: String,
     default: ''
-  }
+  },
+
+  inited: Boolean
 });
 
 try {
+  PluginSchema.index({ type: 1, init: 1 });
   PluginSchema.index({ teamId: 1, parentId: 1 });
   PluginSchema.index({ teamId: 1, name: 1, intro: 1 });
 } catch (error) {

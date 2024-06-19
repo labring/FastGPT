@@ -123,6 +123,7 @@
     "Status": "状态",
     "Submit failed": "提交失败",
     "Submit success": "提交成功",
+    "Success": "成功",
     "Sync success": "同步成功",
     "System Output": "系统输出",
     "System version": "系统版本",
@@ -257,6 +258,7 @@
       "Quote templates": "引用内容模板",
       "Random": "发散",
       "Save and preview": "保存并预览",
+      "Saved time": "已保存: {{time}}",
       "Search team tags": "搜索标签",
       "Select TTS": "选择语音播放模式",
       "Select app from template": "从模板中选择",
@@ -286,7 +288,6 @@
       "Whisper": "语音输入",
       "Whisper Tip": "配置语音输入相关参数",
       "Whisper config": "语音输入配置",
-      "create app": "创建属于你的 AI 应用",
       "deterministic": "严谨",
       "edit": {
         "Confirm Save App Tip": "该应用可能为高级编排模式，保存后将会覆盖高级编排配置，请确认！",

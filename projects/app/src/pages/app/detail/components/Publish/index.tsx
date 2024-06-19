@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Box, useTheme } from '@chakra-ui/react';
+import { Box, Flex, useTheme } from '@chakra-ui/react';
 
 import { PublishChannelEnum } from '@fastgpt/global/support/outLink/constant';
 import dynamic from 'next/dynamic';
@@ -7,13 +7,20 @@ import dynamic from 'next/dynamic';
 import MyRadio from '@/components/common/MyRadio';
 import { useTranslation } from 'next-i18next';
 
+import { useContextSelector } from 'use-context-selector';
+import { AppContext } from '../context';
+import { cardStyles } from '../constants';
+
 import Link from './Link';
 const API = dynamic(() => import('./API'));
 const FeiShu = dynamic(() => import('./FeiShu'));
 
-const OutLink = ({ appId }: { appId: string }) => {
+const OutLink = () => {
   const { t } = useTranslation();
   const theme = useTheme();
+
+  const appId = useContextSelector(AppContext, (v) => v.appId);
+
   const publishList = useRef([
     {
       icon: '/imgs/modal/shareFill.svg',
@@ -38,11 +45,8 @@ const OutLink = ({ appId }: { appId: string }) => {
   const [linkType, setLinkType] = useState<PublishChannelEnum>(PublishChannelEnum.share);
 
   return (
-    <Box pt={[1, 5]}>
-      <Box color={'myGray.900'} fontSize={'lg'} mb={2} px={[4, 8]}>
-        {t('core.app.navbar.Publish app')}
-      </Box>
-      <Box pb={[5, 7]} px={[4, 8]} borderBottom={theme.borders.base}>
+    <>
+      <Box {...cardStyles} boxShadow={2} px={[4, 8]} py={[4, 6]}>
         <MyRadio
           gridTemplateColumns={['repeat(1,1fr)', 'repeat(auto-fill, minmax(0, 400px))']}
           iconSize={'20px'}
@@ -52,12 +56,22 @@ const OutLink = ({ appId }: { appId: string }) => {
         />
       </Box>
 
-      {linkType === PublishChannelEnum.share && (
-        <Link appId={appId} type={PublishChannelEnum.share} />
-      )}
-      {linkType === PublishChannelEnum.apikey && <API appId={appId} />}
-      {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
-    </Box>
+      <Flex
+        flexDirection={'column'}
+        {...cardStyles}
+        boxShadow={3.5}
+        mt={4}
+        px={[4, 8]}
+        py={[4, 6]}
+        flex={'1 0 0'}
+      >
+        {linkType === PublishChannelEnum.share && (
+          <Link appId={appId} type={PublishChannelEnum.share} />
+        )}
+        {linkType === PublishChannelEnum.apikey && <API appId={appId} />}
+        {linkType === PublishChannelEnum.feishu && <FeiShu appId={appId} />}
+      </Flex>
+    </>
   );
 };
 

@@ -30,22 +30,50 @@ jobs:
           key: ${{ runner.os }}-buildx-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-buildx-
+
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
           registry: ghcr.io
           username: ${{ github.repository_owner }}
           password: ${{ secrets.GH_PAT }}
-      - name: Set DOCKER_REPO_TAGGED based on branch or tag
+      - name: Login to Ali Hub
+        uses: docker/login-action@v2
+        with:
+          registry: registry.cn-hangzhou.aliyuncs.com
+          username: ${{ secrets.ALI_HUB_USERNAME }}
+          password: ${{ secrets.ALI_HUB_PASSWORD }}
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_NAME }}
+          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
+
+      - name: Set image name and tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
           else
-            echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Tag=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Git_Latest=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Ali_Tag=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Ali_Latest=${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
           fi
       - name: Build and publish image for main branch or tag push event
         env:
-          DOCKER_REPO_TAGGED: ${{ env.DOCKER_REPO_TAGGED }}
+          Git_Tag: ${{ env.Git_Tag }}
+          Git_Latest: ${{ env.Git_Latest }}
+          Ali_Tag: ${{ env.Ali_Tag }}
+          Ali_Latest: ${{ env.Ali_Latest }}
+          Docker_Hub_Tag: ${{ env.Docker_Hub_Tag }}
+          Docker_Hub_Latest: ${{ env.Docker_Hub_Latest }}
         run: |
           docker buildx build \
           -f projects/sandbox/Dockerfile \
@@ -55,54 +83,10 @@ jobs:
           --push \
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \
-          -t ${DOCKER_REPO_TAGGED} \
+          -t ${Git_Tag} \
+          -t ${Git_Latest} \
+          -t ${Ali_Tag} \
+          -t ${Ali_Latest} \
+          -t ${Docker_Hub_Tag} \
+          -t ${Docker_Hub_Latest} \
           .
-  push-to-ali-hub:
-    needs: build-fastgpt-sandbox-images
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Login to Ali Hub
-        uses: docker/login-action@v2
-        with:
-          registry: registry.cn-hangzhou.aliyuncs.com
-          username: ${{ secrets.ALI_HUB_USERNAME }}
-          password: ${{ secrets.ALI_HUB_PASSWORD }}
-      - name: Set DOCKER_REPO_TAGGED based on branch or tag
-        run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
-          else
-            echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-          fi
-      - name: Pull image from GitHub Container Registry
-        run: docker pull ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{env.IMAGE_TAG}}
-      - name: Tag image with Docker Hub repository name and version tag
-        run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{env.IMAGE_TAG}} ${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:${{env.IMAGE_TAG}}
-      - name: Push image to Docker Hub
-        run: docker push ${{ secrets.ALI_IMAGE_NAME }}/fastgpt-sandbox:${{env.IMAGE_TAG}}
-  push-to-docker-hub:
-    needs: build-fastgpt-sandbox-images
-    runs-on: ubuntu-20.04
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-      - name: Login to Docker Hub
-        uses: docker/login-action@v2
-        with:
-          username: ${{ secrets.DOCKER_HUB_NAME }}
-          password: ${{ secrets.DOCKER_HUB_PASSWORD }}
-      - name: Set DOCKER_REPO_TAGGED based on branch or tag
-        run: |
-          if [[ "${{ github.ref_name }}" == "main" ]]; then
-            echo "IMAGE_TAG=latest" >> $GITHUB_ENV
-          else
-            echo "IMAGE_TAG=${{ github.ref_name }}" >> $GITHUB_ENV
-          fi
-      - name: Pull image from GitHub Container Registry
-        run: docker pull ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{env.IMAGE_TAG}}
-      - name: Tag image with Docker Hub repository name and version tag
-        run: docker tag ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{env.IMAGE_TAG}} ${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:${{env.IMAGE_TAG}}
-      - name: Push image to Docker Hub
-        run: docker push ${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:${{env.IMAGE_TAG}}

@@ -3,19 +3,10 @@ import { AppTTSConfigType, AppWhisperConfigType } from './type';
 export enum AppTypeEnum {
   folder = 'folder',
   simple = 'simple',
-  advanced = 'advanced'
+  workflow = 'advanced',
+  plugin = 'plugin',
+  httpPlugin = 'httpPlugin'
 }
-export const AppTypeMap = {
-  [AppTypeEnum.folder]: {
-    label: 'folder'
-  },
-  [AppTypeEnum.simple]: {
-    label: 'simple'
-  },
-  [AppTypeEnum.advanced]: {
-    label: 'advanced'
-  }
-};
 
 export const defaultTTSConfig: AppTTSConfigType = { type: 'web' };
 

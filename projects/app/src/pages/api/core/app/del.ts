@@ -14,6 +14,7 @@ import {
 } from '@fastgpt/global/support/permission/constant';
 import { findAppAndAllChildren } from '@fastgpt/service/core/app/controller';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
+import { ClientSession } from '@fastgpt/service/common/mongo';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { appId } = req.query as { appId: string };
@@ -25,13 +26,30 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   // Auth owner (folder owner, can delete all apps in the folder)
   const { teamId } = await authApp({ req, authToken: true, appId, per: OwnerPermissionVal });
 
+  await onDelOneApp({
+    teamId,
+    appId
+  });
+}
+
+export default NextAPI(handler);
+
+export const onDelOneApp = async ({
+  teamId,
+  appId,
+  session
+}: {
+  teamId: string;
+  appId: string;
+  session?: ClientSession;
+}) => {
   const apps = await findAppAndAllChildren({
     teamId,
     appId,
     fields: '_id'
   });
 
-  await mongoSessionRun(async (session) => {
+  const del = async (session: ClientSession) => {
     for await (const app of apps) {
       const appId = app._id;
       // Chats
@@ -83,7 +101,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
         { session }
       );
     }
-  });
-}
+  };
 
-export default NextAPI(handler);
+  if (session) {
+    return del(session);
+  }
+
+  return mongoSessionRun(del);
+};

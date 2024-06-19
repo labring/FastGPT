@@ -32,6 +32,7 @@ import {
 import { IfElseListItemType } from '@fastgpt/global/core/workflow/template/system/ifElse/type';
 import { VariableConditionEnum } from '@fastgpt/global/core/workflow/template/system/ifElse/constant';
 import { AppChatConfigType } from '@fastgpt/global/core/app/type';
+import { cloneDeep, isEqual } from 'lodash';
 
 export const nodeTemplate2FlowNode = ({
   template,
@@ -376,4 +377,85 @@ export const updateFlowNodeVersion = (
   }
 
   return updatedNode;
+};
+
+type WorkflowType = {
+  nodes: StoreNodeItemType[];
+  edges: StoreEdgeItemType[];
+  chatConfig: AppChatConfigType;
+};
+export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType) => {
+  const clone1 = cloneDeep(workflow1);
+  const clone2 = cloneDeep(workflow2);
+
+  if (!isEqual(clone1.edges, clone2.edges)) {
+    console.log('Edge not equal');
+    return false;
+  }
+
+  if (
+    clone1.chatConfig &&
+    clone2.chatConfig &&
+    !isEqual(
+      {
+        welcomeText: clone1.chatConfig?.welcomeText || '',
+        variables: clone1.chatConfig?.variables || [],
+        questionGuide: clone1.chatConfig?.questionGuide || false,
+        ttsConfig: clone1.chatConfig?.ttsConfig || undefined,
+        whisperConfig: clone1.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: clone1.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone1.chatConfig?.chatInputGuide || undefined
+      },
+      {
+        welcomeText: clone2.chatConfig?.welcomeText || '',
+        variables: clone2.chatConfig?.variables || [],
+        questionGuide: clone2.chatConfig?.questionGuide || false,
+        ttsConfig: clone2.chatConfig?.ttsConfig || undefined,
+        whisperConfig: clone2.chatConfig?.whisperConfig || undefined,
+        scheduledTriggerConfig: clone2.chatConfig?.scheduledTriggerConfig || undefined,
+        chatInputGuide: clone2.chatConfig?.chatInputGuide || undefined
+      }
+    )
+  ) {
+    console.log('chatConfig not equal');
+    return false;
+  }
+
+  const node1 = clone1.nodes.filter(Boolean).map((node) => ({
+    flowNodeType: node.flowNodeType,
+    inputs: node.inputs.map((input) => ({
+      ...input,
+      value: input.value ?? undefined
+    })),
+    outputs: node.outputs.map((input) => ({
+      ...input,
+      value: input.value ?? undefined
+    })),
+    name: node.name,
+    intro: node.intro,
+    avatar: node.avatar,
+    version: node.version,
+    position: node.position
+  }));
+  const node2 = clone2.nodes.filter(Boolean).map((node) => ({
+    flowNodeType: node.flowNodeType,
+    inputs: node.inputs.map((input) => ({
+      ...input,
+      value: input.value ?? undefined
+    })),
+    outputs: node.outputs.map((input) => ({
+      ...input,
+      value: input.value ?? undefined
+    })),
+    name: node.name,
+    intro: node.intro,
+    avatar: node.avatar,
+    version: node.version,
+    position: node.position
+  }));
+
+  // console.log(node1);
+  // console.log(node2);
+
+  return isEqual(node1, node2);
 };

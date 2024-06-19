@@ -17,8 +17,9 @@ import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/
 
 export type ListAppBody = {
   parentId?: ParentIdType;
-  type?: AppTypeEnum;
+  type?: AppTypeEnum | AppTypeEnum[];
   getRecentlyChat?: boolean;
+  searchKey?: string;
 };
 
 async function handler(
@@ -36,26 +37,43 @@ async function handler(
     per: ReadPermissionVal
   });
 
-  const { parentId, type, getRecentlyChat } = req.body;
+  const { parentId, type, getRecentlyChat, searchKey } = req.body;
 
-  const findAppsQuery = getRecentlyChat
-    ? {
+  const findAppsQuery = (() => {
+    const searchMatch = searchKey
+      ? {
+          $or: [
+            { name: { $regex: searchKey, $options: 'i' } },
+            { intro: { $regex: searchKey, $options: 'i' } }
+          ]
+        }
+      : {};
+
+    if (getRecentlyChat) {
+      return {
         // get all chat app
         teamId,
-        type: { $in: [AppTypeEnum.advanced, AppTypeEnum.simple] }
-      }
-    : {
-        teamId,
-        ...(type && { type }),
-        ...parseParentIdInMongo(parentId)
+        type: { $in: [AppTypeEnum.workflow, AppTypeEnum.simple] },
+        ...searchMatch
       };
+    }
+
+    return {
+      teamId,
+      ...(type && Array.isArray(type) && { type: { $in: type } }),
+      ...(type && { type }),
+      ...parseParentIdInMongo(parentId),
+      ...searchMatch
+    };
+  })();
 
   /* temp: get all apps and per */
   const [myApps, rpList] = await Promise.all([
-    MongoApp.find(findAppsQuery, '_id avatar type name intro tmbId defaultPermission')
+    MongoApp.find(findAppsQuery, '_id avatar type name intro tmbId pluginData defaultPermission')
       .sort({
         updateTime: -1
       })
+      .limit(searchKey ? 20 : 1000)
       .lean(),
     MongoResourcePermission.find({
       resourceType: PerResourceTypeEnum.app,
@@ -88,7 +106,8 @@ async function handler(
     name: app.name,
     intro: app.intro,
     permission: app.permission,
-    defaultPermission: app.defaultPermission || AppDefaultPermissionVal
+    defaultPermission: app.defaultPermission || AppDefaultPermissionVal,
+    pluginData: app.pluginData
   }));
 }
 

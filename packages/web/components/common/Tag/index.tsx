@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Flex, type FlexProps } from '@chakra-ui/react';
+import { Box, Flex, type FlexProps } from '@chakra-ui/react';
 
 type ColorSchemaType = 'white' | 'blue' | 'green' | 'red' | 'yellow' | 'gray' | 'purple' | 'adora';
 
@@ -7,6 +7,7 @@ export type TagProps = FlexProps & {
   children: React.ReactNode | React.ReactNode[];
   colorSchema?: ColorSchemaType;
   type?: 'fill' | 'borderFill' | 'borderSolid';
+  showDot?: boolean;
 };
 
 const colorMap: Record<
@@ -59,7 +60,7 @@ const colorMap: Record<
   }
 };
 
-const MyTag = ({ children, colorSchema = 'blue', type = 'fill', ...props }: TagProps) => {
+const MyTag = ({ children, colorSchema = 'blue', type = 'fill', showDot, ...props }: TagProps) => {
   const theme = useMemo(() => {
     return colorMap[colorSchema];
   }, [colorSchema]);
@@ -75,10 +76,11 @@ const MyTag = ({ children, colorSchema = 'blue', type = 'fill', ...props }: TagP
       whiteSpace={'nowrap'}
       borderWidth={'1px'}
       {...theme}
-      {...props}
       borderColor={type !== 'fill' ? theme.borderColor : 'transparent'}
       bg={type !== 'borderSolid' ? theme.bg : 'transparent'}
+      {...props}
     >
+      {showDot && <Box w={1.5} h={1.5} borderRadius={'md'} bg={theme.color} mr={1.5}></Box>}
       {children}
     </Flex>
   );
