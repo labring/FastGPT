@@ -457,5 +457,5 @@ export const compareWorkflow = (workflow1: WorkflowType, workflow2: WorkflowType
   // console.log(node1);
   // console.log(node2);
 
-  return isEqual(node1[0], node2[0]);
+  return isEqual(node1, node2);
 };
