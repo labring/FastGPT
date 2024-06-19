@@ -40,8 +40,10 @@ jobs:
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
+            echo "DOCKER_REPO_LATEST=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV          
           else
             echo "DOCKER_REPO_TAGGED=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
+            echo "DOCKER_REPO_LATEST=ghcr.io/${{ github.repository_owner }}/fastgpt-sandbox:latest" >> $GITHUB_ENV          
           fi
       - name: Build and publish image for main branch or tag push event
         env:
@@ -56,6 +58,7 @@ jobs:
           --cache-from=type=local,src=/tmp/.buildx-cache \
           --cache-to=type=local,dest=/tmp/.buildx-cache \
           -t ${DOCKER_REPO_TAGGED} \
+          -t ${DOCKER_REPO_LATEST} \
           .
   push-to-ali-hub:
     needs: build-fastgpt-sandbox-images

@@ -21,3 +21,7 @@ export const defaultSkippedStatus: FlowNodeItemType['debugResult'] = {
   message: '',
   showResult: false
 };
+
+export default function Dom() {
+  return <></>;
+}

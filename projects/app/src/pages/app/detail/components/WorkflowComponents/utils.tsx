@@ -66,3 +66,7 @@ export const filterExportModules = (modules: StoreNodeItemType[]) => {
 
   return JSON.stringify(modules, null, 2);
 };
+
+export default function Dom() {
+  return <></>;
+}

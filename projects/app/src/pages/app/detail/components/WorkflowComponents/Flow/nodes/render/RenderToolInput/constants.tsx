@@ -15,3 +15,7 @@ export const defaultEditFormData: FlowNodeInputItemType = {
     description: true
   }
 };
+
+export default function Dom() {
+  return <></>;
+}

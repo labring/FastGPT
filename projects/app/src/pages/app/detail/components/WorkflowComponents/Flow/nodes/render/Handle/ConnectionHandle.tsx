@@ -183,4 +183,6 @@ export const ConnectionTargetHandle = ({ nodeId }: { nodeId: string }) => {
   ) : null;
 };
 
-export default <></>;
+export default function Dom() {
+  return <></>;
+}

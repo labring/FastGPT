@@ -272,3 +272,7 @@ export const useDebug = () => {
     openDebugNode
   };
 };
+
+export default function Dom() {
+  return <></>;
+}

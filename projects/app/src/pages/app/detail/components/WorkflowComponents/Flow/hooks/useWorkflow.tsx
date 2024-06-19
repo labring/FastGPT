@@ -121,3 +121,7 @@ export const useWorkflow = () => {
     onEdgeMouseLeave
   };
 };
+
+export default function Dom() {
+  return <></>;
+}

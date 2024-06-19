@@ -81,3 +81,7 @@ export const useChatTest = ({
     ChatBox: CustomChatBox
   };
 };
+
+export default function Dom() {
+  return <></>;
+}

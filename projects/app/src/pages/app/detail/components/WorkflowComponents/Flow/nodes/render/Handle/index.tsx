@@ -247,4 +247,6 @@ export const TargetHandle = (props: Props) => {
   );
 };
 
-export default <></>;
+export default function Dom() {
+  return <></>;
+}

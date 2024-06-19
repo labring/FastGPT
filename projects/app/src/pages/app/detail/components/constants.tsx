@@ -27,3 +27,7 @@ export const publishStatusStyle = {
     text: '已发布'
   }
 };
+
+export default function Dom() {
+  return <></>;
+}

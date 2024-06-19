@@ -23,3 +23,7 @@ export const handleHighLightStyle = {
   width: '18px',
   height: '18px'
 };
+
+export default function Dom() {
+  return <></>;
+}

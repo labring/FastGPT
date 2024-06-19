@@ -107,3 +107,7 @@ export const ToolSourceHandle = ({ nodeId }: ToolHandleProps) => {
 
   return Render;
 };
+
+export default function Dom() {
+  return <></>;
+}

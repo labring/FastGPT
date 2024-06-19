@@ -124,3 +124,7 @@ export const useKeyboard = () => {
     isDowningCtrl
   };
 };
+
+export default function Dom() {
+  return <></>;
+}
