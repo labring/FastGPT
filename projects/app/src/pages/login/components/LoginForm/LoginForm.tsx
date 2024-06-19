@@ -73,6 +73,7 @@ const LoginForm = ({ setPageType, loginSuccess }: Props) => {
     <FormLayout setPageType={setPageType} pageType={LoginPageTypeEnum.passwordLogin}>
       <Box
         mt={'42px'}
+        px={['5vw', '88px']}
         onKeyDown={(e) => {
           if (e.keyCode === 13 && !e.shiftKey && !requesting) {
             handleSubmit(onclickLogin)();

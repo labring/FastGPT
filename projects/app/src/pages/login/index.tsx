@@ -16,6 +16,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 const RegisterForm = dynamic(() => import('./components/RegisterForm'));
 const ForgetPasswordForm = dynamic(() => import('./components/ForgetPasswordForm'));
 const WechatForm = dynamic(() => import('./components/LoginForm/WechatForm'));
+const PhoneLoginForm = dynamic(() => import('./components/LoginForm/PhoneLoginForm'));
 const CommunityModal = dynamic(() => import('@/components/CommunityModal'));
 
 const Login = () => {
@@ -44,6 +45,7 @@ const Login = () => {
 
   function DynamicComponent({ type }: { type: `${LoginPageTypeEnum}` }) {
     const TypeMap = {
+      [LoginPageTypeEnum.phoneLogin]: PhoneLoginForm,
       [LoginPageTypeEnum.passwordLogin]: LoginForm,
       [LoginPageTypeEnum.register]: RegisterForm,
       [LoginPageTypeEnum.forgetPassword]: ForgetPasswordForm,
@@ -60,6 +62,9 @@ const Login = () => {
     setPageType(
       feConfigs?.oauth?.wechat ? LoginPageTypeEnum.wechat : LoginPageTypeEnum.passwordLogin
     );
+
+    // note: 通过手机号工号登录
+    // setPageType(LoginPageTypeEnum.phoneLogin);
   }, [feConfigs.oauth]);
   useEffect(() => {
     clearToken();
@@ -88,15 +93,13 @@ const Login = () => {
           h={['100%', '700px']}
           maxH={['100%', '90vh']}
           bg={'white'}
-          px={['5vw', '88px']}
-          py={'5vh'}
           borderRadius={[0, '24px']}
           boxShadow={[
             '',
             '0px 0px 1px 0px rgba(19, 51, 107, 0.20), 0px 32px 64px -12px rgba(19, 51, 107, 0.20)'
           ]}
         >
-          <Box w={['100%', '380px']} flex={'1 0 0'}>
+          <Box w={['100%', '556px']} flex={'1 0 0'}>
             {pageType ? (
               <DynamicComponent type={pageType} />
             ) : (
@@ -105,7 +108,7 @@ const Login = () => {
               </Center>
             )}
           </Box>
-          {feConfigs?.concatMd && (
+          {/* {feConfigs?.concatMd && (
             <Box
               mt={8}
               color={'primary.700'}
@@ -115,7 +118,7 @@ const Login = () => {
             >
               无法登录，点击联系
             </Box>
-          )}
+          )} */}
         </Flex>
 
         {isOpen && <CommunityModal onClose={onClose} />}

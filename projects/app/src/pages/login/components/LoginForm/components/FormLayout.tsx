@@ -1,7 +1,7 @@
 import { LoginPageTypeEnum } from '@/constants/user';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { AbsoluteCenter, Box, Button, Flex, Image } from '@chakra-ui/react';
-import { LOGO_ICON } from '@fastgpt/global/common/system/constants';
+import { LOGO_ICON_PNG } from '@fastgpt/global/common/system/constants';
 import { OAuthEnum } from '@fastgpt/global/support/user/constant';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { customAlphabet } from 'nanoid';
@@ -68,68 +68,72 @@ const FormLayout = ({ children, setPageType, pageType }: Props) => {
       : [])
   ];
   return (
-    <Flex flexDirection={'column'} h={'100%'}>
-      <Flex alignItems={'center'}>
+    <>
+      <Flex flexDirection={'column'} h={'100%'}>
         <Flex
-          w={['48px', '56px']}
-          h={['48px', '56px']}
-          bg={'myGray.25'}
-          borderRadius={'xl'}
-          borderWidth={'1.5px'}
-          borderColor={'borderColor.base'}
+          direction={'column'}
           alignItems={'center'}
-          justifyContent={'center'}
+          w={'100%'}
+          borderRadius={[0, '24px']}
+          overflow={'hidden'}
         >
-          <Image src={LOGO_ICON} w={['24px', '28px']} alt={'icon'} />
+          <Flex
+            w={'100%'}
+            h={['12.8vw', '56px']}
+            fontSize={['4.4vw', '26px']}
+            bgColor={'#E3EEFF'}
+            align={'center'}
+            justify={'center'}
+          >
+            登录
+          </Flex>
+          <Image src="/icon/login.png" w={['100%', '100%']} alt={'icon'} />
         </Flex>
-        <Box ml={3} fontSize={['2xl', '3xl']} fontWeight={'bold'}>
-          {feConfigs?.systemTitle}
-        </Box>
+        {children}
+        <Box flex={1} />
+        {feConfigs?.show_register && oAuthList.length > 0 && (
+          <>
+            <Box position={'relative'}>
+              <Divider />
+              <AbsoluteCenter bg="white" px="4" color={'myGray.500'}>
+                or
+              </AbsoluteCenter>
+            </Box>
+            <Box mt={8}>
+              {oAuthList.map((item) => (
+                <Box key={item.provider} _notFirst={{ mt: 4 }}>
+                  <Button
+                    variant={'whitePrimary'}
+                    w={'100%'}
+                    h={'42px'}
+                    leftIcon={
+                      <MyIcon
+                        name={item.icon as any}
+                        w={'20px'}
+                        cursor={'pointer'}
+                        color={'myGray.800'}
+                      />
+                    }
+                    onClick={() => {
+                      item.redirectUrl &&
+                        setLoginStore({
+                          provider: item.provider,
+                          lastRoute,
+                          state: state.current
+                        });
+                      item.redirectUrl && router.replace(item.redirectUrl, '_self');
+                      item.pageType && setPageType(item.pageType);
+                    }}
+                  >
+                    {item.label}
+                  </Button>
+                </Box>
+              ))}
+            </Box>
+          </>
+        )}
       </Flex>
-      {children}
-      <Box flex={1} />
-      {feConfigs?.show_register && oAuthList.length > 0 && (
-        <>
-          <Box position={'relative'}>
-            <Divider />
-            <AbsoluteCenter bg="white" px="4" color={'myGray.500'}>
-              or
-            </AbsoluteCenter>
-          </Box>
-          <Box mt={8}>
-            {oAuthList.map((item) => (
-              <Box key={item.provider} _notFirst={{ mt: 4 }}>
-                <Button
-                  variant={'whitePrimary'}
-                  w={'100%'}
-                  h={'42px'}
-                  leftIcon={
-                    <MyIcon
-                      name={item.icon as any}
-                      w={'20px'}
-                      cursor={'pointer'}
-                      color={'myGray.800'}
-                    />
-                  }
-                  onClick={() => {
-                    item.redirectUrl &&
-                      setLoginStore({
-                        provider: item.provider,
-                        lastRoute,
-                        state: state.current
-                      });
-                    item.redirectUrl && router.replace(item.redirectUrl, '_self');
-                    item.pageType && setPageType(item.pageType);
-                  }}
-                >
-                  {item.label}
-                </Button>
-              </Box>
-            ))}
-          </Box>
-        </>
-      )}
-    </Flex>
+    </>
   );
 };
 
