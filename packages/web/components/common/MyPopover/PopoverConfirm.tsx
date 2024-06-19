@@ -76,7 +76,7 @@ const PopoverConfirm = ({
       <PopoverContent p={4}>
         <PopoverArrow />
 
-        <HStack alignItems={'flex-start'}>
+        <HStack alignItems={'flex-start'} color={'myGray.700'}>
           <MyIcon name={map.icon as any} w={'1.5rem'} />
           <Box fontSize={'sm'}>{content}</Box>
         </HStack>

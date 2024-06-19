@@ -77,5 +77,8 @@
     "Plugin": "Plugin",
     "Simple bot": "Simple bot",
     "Workflow bot": "Workflow"
+  },
+  "version": {
+    "Revert success": "Revert success"
   }
 }

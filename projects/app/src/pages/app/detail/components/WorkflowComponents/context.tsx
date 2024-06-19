@@ -520,6 +520,7 @@ const WorkflowContextProvider = ({
       historiesDefaultData ||
       isSaving ||
       nodes.length === 0 ||
+      edges.length === 0 ||
       !!workflowDebugData
     )
       return;

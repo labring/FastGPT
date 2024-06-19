@@ -3,18 +3,17 @@ import { getPublishList, postRevertVersion } from '@/web/core/app/api/version';
 import { useScrollPagination } from '@fastgpt/web/hooks/useScrollPagination';
 import CustomRightDrawer from '@fastgpt/web/components/common/MyDrawer/CustomRightDrawer';
 import { useTranslation } from 'next-i18next';
-import { useMemoizedFn } from 'ahooks';
 import { Box, Button, Flex } from '@chakra-ui/react';
 import { formatTime2YMDHM } from '@fastgpt/global/common/string/time';
 import { useContextSelector } from 'use-context-selector';
 import { AppVersionSchemaType } from '@fastgpt/global/core/app/version';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { AppContext } from './context';
 import { useI18n } from '@/web/context/I18n';
 import { AppSchema } from '@fastgpt/global/core/app/type';
+import PopoverConfirm from '@fastgpt/web/components/common/MyPopover/PopoverConfirm';
 
 export type InitProps = {
   nodes: AppSchema['modules'];
@@ -33,11 +32,11 @@ const PublishHistoriesSlider = ({
 }) => {
   const { t } = useTranslation();
   const { appT } = useI18n();
-  const { openConfirm, ConfirmModal } = useConfirm({
-    content: t('core.workflow.publish.OnRevert version confirm')
-  });
 
-  const { appDetail, setAppDetail } = useContextSelector(AppContext, (v) => v);
+  const { appDetail, setAppDetail, reloadAppLatestVersion } = useContextSelector(
+    AppContext,
+    (v) => v
+  );
   const appId = appDetail._id;
 
   const [selectedHistoryId, setSelectedHistoryId] = useState<string>();
@@ -73,8 +72,8 @@ const PublishHistoriesSlider = ({
     [initData, onClose]
   );
 
-  const { mutate: onRevert, isLoading: isReverting } = useRequest({
-    mutationFn: async (data: AppVersionSchemaType) => {
+  const { runAsync: onRevert } = useRequest2(
+    async (data: AppVersionSchemaType) => {
       if (!appId) return;
       await postRevertVersion(appId, {
         versionId: data._id,
@@ -90,10 +89,14 @@ const PublishHistoriesSlider = ({
       }));
 
       onCloseSlider(data);
+      reloadAppLatestVersion();
+    },
+    {
+      successToast: appT('version.Revert success')
     }
-  });
+  );
 
-  const showLoading = isLoading || isReverting;
+  const showLoading = isLoading;
 
   return (
     <>
@@ -173,24 +176,28 @@ const PublishHistoriesSlider = ({
                   {formatTime2YMDHM(item.time)}
                 </Box>
                 {item._id === selectedHistoryId && (
-                  <MyTooltip label={t('core.workflow.publish.OnRevert version')}>
-                    <MyIcon
-                      name={'core/workflow/revertVersion'}
-                      w={'20px'}
-                      color={'primary.600'}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        openConfirm(() => onRevert(item))();
-                      }}
-                    />
-                  </MyTooltip>
+                  <PopoverConfirm
+                    showCancel
+                    content={t('core.workflow.publish.OnRevert version confirm')}
+                    onConfirm={() => onRevert(item)}
+                    Trigger={
+                      <Box>
+                        <MyTooltip label={t('core.workflow.publish.OnRevert version')}>
+                          <MyIcon
+                            name={'core/workflow/revertVersion'}
+                            w={'20px'}
+                            color={'primary.600'}
+                          />
+                        </MyTooltip>
+                      </Box>
+                    }
+                  />
                 )}
               </Flex>
             );
           })}
         </ScrollList>
       </CustomRightDrawer>
-      <ConfirmModal />
     </>
   );
 };

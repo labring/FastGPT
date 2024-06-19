@@ -44,6 +44,7 @@ type AppContextType = {
         chatConfig: AppChatConfigType;
       }
     | undefined;
+  reloadAppLatestVersion: () => void;
 };
 
 export const AppContext = createContext<AppContextType>({
@@ -72,7 +73,10 @@ export const AppContext = createContext<AppContextType>({
   onPublish: function (data: PostPublishAppProps): Promise<void> {
     throw new Error('Function not implemented.');
   },
-  appLatestVersion: undefined
+  appLatestVersion: undefined,
+  reloadAppLatestVersion: function (): void {
+    throw new Error('Function not implemented.');
+  }
 });
 
 const AppContextProvider = ({ children }: { children: ReactNode }) => {
@@ -190,7 +194,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onOpenTeamTagModal,
     onDelApp,
     onPublish,
-    appLatestVersion
+    appLatestVersion,
+    reloadAppLatestVersion
   };
 
   return (
