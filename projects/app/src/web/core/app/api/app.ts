@@ -6,6 +6,7 @@ import type {
   transitionWorkflowBody,
   transitionWorkflowResponse
 } from '@/pages/api/core/app/transitionWorkflow';
+import type { copyAppQuery, copyAppResponse } from '@/pages/api/core/app/copy';
 
 /* folder */
 export const postCreateAppFolder = (data: CreateAppFolderBody) =>
@@ -15,6 +16,7 @@ export const getAppFolderPath = (parentId: ParentIdType) =>
   GET<ParentTreePathItemType[]>(`/core/app/folder/path`, { parentId });
 
 /* detail */
-
 export const postTransition2Workflow = (data: transitionWorkflowBody) =>
   POST<transitionWorkflowResponse>('/core/app/transitionWorkflow', data);
+
+export const postCopyApp = (data: copyAppQuery) => POST<copyAppResponse>('/core/app/copy', data);
