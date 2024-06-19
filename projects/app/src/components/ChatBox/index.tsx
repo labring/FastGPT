@@ -15,6 +15,13 @@ import type {
   ChatSiteItemType,
   UserChatItemValueItemType
 } from '@fastgpt/global/core/chat/type.d';
+import {
+  getAllDataset,
+  getDatasets,
+  getDatasetById,
+  putDatasetById,
+  postWebsiteSync
+} from '@/web/core/dataset/api';
 import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
@@ -751,56 +758,56 @@ const ChatBox = (
         return () => setFeedbackId(chat.dataId);
       }
     },
-    [appId, chatId, feedbackType, outLinkUid, shareId, teamId, teamToken]
+    [appId, chatId, feedbackType, outLinkUid, setChatHistories, shareId, teamId, teamToken]
   );
-  const onEdit = useCallback(
-    (chat: ChatSiteItemType, q = '', questionGuides: any) => {
-      if (chat.obj !== ChatRoleEnum.AI) return;
+  const onEdit = useCallback((chat: ChatSiteItemType, q = '', questionGuides: any) => {
+    if (chat.obj !== ChatRoleEnum.AI) return;
 
-      return () => {
-        if (!chat.dataId) return;
-        console.log(chat);
-        console.log(chat.responseData && chat.responseData[0].quoteList);
-        // chat.adminFeedback = {
-        //   datasetId: '1',
-        //   collectionId: '1',
-        //   dataId: '1',
-        //   q: '1',
-        //   a: '1',
-        // }
-        // if (chat.adminFeedback) {
-        // setAdminMarkData({
-        //   chatItemId: chat.dataId,
-        //   datasetId: chat.adminFeedback.datasetId ,
-        //   collectionId: chat.adminFeedback.collectionId ,
-        //   dataId: chat.adminFeedback.dataId ,
-        //   q: chat.adminFeedback.q || q || '',
-        //   a: chat.adminFeedback.a
-        // });
-
-        if (chat.responseData && chat.responseData[0].quoteList) {
-          const oquoteList = chat.responseData && chat.responseData[0].quoteList;
-          setAdminMarkData({
-            chatItemId: chat.dataId,
-            datasetId: oquoteList[0].datasetId,
-            collectionId: oquoteList[0].collectionId,
-            // dataId: chat.dataId || '',
-            q: (chat.responseData && chat.responseData[0].query?.toString()) || '',
-            a: formatChatValue2InputType(chat.value).text
-          });
-        }
-
-        // } else {
-        //   setAdminMarkData({
-        //     chatItemId: chat.dataId,
-        //     q,
-        //     a: formatChatValue2InputType(chat.value).text
-        //   });
-        // }
-      };
-    },
-    [showMarkIcon]
-  );
+    return () => {
+      if (!chat.dataId) return;
+      console.log(chat);
+      console.log(chat.responseData && chat.responseData[0].quoteList);
+      const res = getDatasets({});
+      // set((state) => {
+      //   state.myDatasets = res;
+      // });
+      return res;
+      // chat.adminFeedback = {
+      //   datasetId: '1',
+      //   collectionId: '1',
+      //   dataId: '1',
+      //   q: '1',
+      //   a: '1',
+      // }
+      // if (chat.adminFeedback) {
+      //   setAdminMarkData({
+      //     chatItemId: chat.dataId,
+      //     datasetId: chat.adminFeedback.datasetId,
+      //     collectionId: chat.adminFeedback.collectionId,
+      //     dataId: chat.adminFeedback.dataId,
+      //     q: chat.adminFeedback.q || q || '',
+      //     a: chat.adminFeedback.a
+      //   });
+      // } else {
+      //   setAdminMarkData({
+      //     chatItemId: chat.dataId,
+      //     q,
+      //     a: formatChatValue2InputType(chat.value).text
+      //   });
+      // }
+      // if (chat.responseData && chat.responseData[0].quoteList) {
+      //   const oquoteList = chat.responseData && chat.responseData[0].quoteList;
+      //   setAdminMarkData({
+      //     chatItemId: chat.dataId,
+      //     datasetId: oquoteList[0].datasetId,
+      //     collectionId: oquoteList[0].collectionId,
+      //     // dataId: chat.dataId || '',
+      //     q: (chat.responseData && chat.responseData[0].query?.toString()) || '',
+      //     a: formatChatValue2InputType(chat.value).text
+      //   });
+      // }
+    };
+  }, []);
   const onReadUserDislike = useCallback(
     (chat: ChatSiteItemType) => {
       if (feedbackType !== FeedbackTypeEnum.admin || chat.obj !== ChatRoleEnum.AI) return;
