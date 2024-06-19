@@ -9,6 +9,7 @@ import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoRawTextBuffer } from '../../buffer/rawText/schema';
 import { readRawContentByFileBuffer } from '../read/utils';
 import { gridFsStream2Buffer, stream2Encoding } from './utils';
+import { addLog } from '../../system/log';
 
 export function getGFSCollection(bucket: `${BucketNameEnum}`) {
   MongoFileSchema;
@@ -142,7 +143,6 @@ export const readFileContentFromMongo = async ({
       filename: fileBuffer.metadata?.filename || ''
     };
   }
-  const start = Date.now();
 
   const [file, fileStream] = await Promise.all([
     getFileById({ bucketName, fileId }),
@@ -155,9 +155,11 @@ export const readFileContentFromMongo = async ({
 
   const extension = file?.filename?.split('.')?.pop()?.toLowerCase() || '';
 
+  const start = Date.now();
   const fileBuffers = await gridFsStream2Buffer(fileStream);
+  addLog.debug('get file buffer', { time: Date.now() - start });
+
   const encoding = file?.metadata?.encoding || detectFileEncoding(fileBuffers);
-  // console.log('get file buffer', Date.now() - start);
 
   const { rawText } = await readRawContentByFileBuffer({
     extension,
@@ -170,7 +172,8 @@ export const readFileContentFromMongo = async ({
     }
   });
 
-  if (rawText.trim()) {
+  // < 14M
+  if (fileBuffers.length < 14 * 1024 * 1024 && rawText.trim()) {
     MongoRawTextBuffer.create({
       sourceId: fileId,
       rawText,
