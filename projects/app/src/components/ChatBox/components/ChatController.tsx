@@ -67,19 +67,20 @@ const ChatController = ({
 
   const chatText = useMemo(() => formatChatValue2InputType(chat.value).text || '', [chat.value]);
 
+  // {chat.obj === ChatRoleEnum.AI && (
+  //   <Tag
+  //     colorScheme="twitter"
+  //     variant="outline"
+  //     cursor={'pointer'}
+  //     mr={['6px', 2]}
+  //     onClick={onEdit}
+  //   >
+  //     编辑纠错
+  //   </Tag>
+  // )}
+
   return (
     <Flex h={'26px'}>
-      {/* {chat.obj === ChatRoleEnum.AI && (
-        <Tag
-          colorScheme="twitter"
-          variant="outline"
-          cursor={'pointer'}
-          mr={['6px', 2]}
-          onClick={onEdit}
-        >
-          编辑纠错
-        </Tag>
-      )} */}
       <Flex
         {...controlContainerStyle}
         borderRadius={'sm'}
