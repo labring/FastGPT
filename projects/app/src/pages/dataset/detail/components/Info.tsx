@@ -248,7 +248,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <>
           <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'} maxW="500px">
             <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-              {commonT('permission.Default Permission')}
+              {commonT('permission.Default permission')}
             </FormLabel>
             <DefaultPermissionList
               w="320px"
