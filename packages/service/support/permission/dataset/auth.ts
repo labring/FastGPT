@@ -3,6 +3,7 @@ import { getResourcePermission, parseHeaderCert } from '../controller';
 import { AuthPropsType, AuthResponseType } from '../type/auth';
 import {
   CollectionWithDatasetType,
+  DatasetDataItemType,
   DatasetFileSchema,
   DatasetSchemaType
 } from '@fastgpt/global/core/dataset/type';
@@ -16,6 +17,7 @@ import { MongoDatasetCollection } from '../../../core/dataset/collection/schema'
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { MongoDatasetData } from '../../../core/dataset/data/schema';
 
 export async function authDatasetByTmbId({
   tmbId,

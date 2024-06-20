@@ -1,7 +1,7 @@
 import type { NextApiRequest } from 'next';
-import { authDatasetData } from '@/service/support/permission/auth/dataset';
 import { NextAPI } from '@/service/middleware/entry';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 
 export type Response = {
   id: string;

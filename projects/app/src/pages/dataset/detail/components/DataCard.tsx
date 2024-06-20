@@ -120,7 +120,7 @@ const DataCard = () => {
     }
   );
 
-  const canWrite = useMemo(() => datasetDetail.canWrite, [datasetDetail.canWrite]);
+  const canWrite = useMemo(() => datasetDetail.permission.hasWritePer, [datasetDetail]);
 
   const metadataList = useMemo(() => {
     if (!collection) return [];

@@ -9,8 +9,8 @@ import {
   updateExportDatasetLimit
 } from '@fastgpt/service/support/user/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   let { datasetId } = req.query as {
@@ -18,7 +18,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   };
 
   if (!datasetId || !global.pgClient) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验

@@ -4,14 +4,14 @@ import { delCollectionAndRelatedSources } from '@fastgpt/service/core/dataset/co
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest) {
   const { id: collectionId } = req.query as { id: string };
 
   if (!collectionId) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   const { teamId, collection } = await authDatasetCollection({

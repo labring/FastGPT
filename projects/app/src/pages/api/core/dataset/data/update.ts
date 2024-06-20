@@ -1,11 +1,11 @@
 import type { NextApiRequest } from 'next';
 import { updateData2Dataset } from '@/service/core/dataset/data/controller';
-import { authDatasetData } from '@/service/support/permission/auth/dataset';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { UpdateDatasetDataProps } from '@/global/core/dataset/api';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 
 async function handler(req: NextApiRequest) {
   const { id, q = '', a, indexes = [] } = req.body as UpdateDatasetDataProps;

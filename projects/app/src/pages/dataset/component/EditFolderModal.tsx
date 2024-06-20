@@ -36,7 +36,7 @@ const EditFolderModal = ({
       if (!val) return Promise.resolve('');
       return editCallback(val);
     },
-    onSuccess: (res) => {
+    onSuccess: () => {
       onClose();
     }
   });

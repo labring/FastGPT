@@ -14,18 +14,18 @@ import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest) {
   const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
 
   if (!q) {
-    Promise.reject(DatasetErrEnum.missingParams);
+    Promise.reject(CommonErrEnum.missingParams);
   }
 
   if (!collectionId) {
-    Promise.reject(DatasetErrEnum.missingParams);
+    Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验

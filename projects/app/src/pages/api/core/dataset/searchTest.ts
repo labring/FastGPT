@@ -12,8 +12,8 @@ import {
   checkTeamReRankPermission
 } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest) {
   const {
@@ -30,7 +30,7 @@ async function handler(req: NextApiRequest) {
   } = req.body as SearchTestProps;
 
   if (!datasetId || !text) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   const start = Date.now();

@@ -5,13 +5,13 @@ import { getCollectionUpdateTime } from '@fastgpt/service/core/dataset/collectio
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest) {
   const { id, parentId, name } = req.body as UpdateDatasetCollectionParams;
 
   if (!id) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验

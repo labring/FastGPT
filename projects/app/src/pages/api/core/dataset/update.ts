@@ -3,11 +3,11 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import type { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api.d';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import {
   OwnerPermissionVal,
   WritePermissionVal
 } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest) {
   const {
@@ -24,7 +24,7 @@ async function handler(req: NextApiRequest) {
   } = req.body as DatasetUpdateBody;
 
   if (!id) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   if (defaultPermission) {

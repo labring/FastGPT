@@ -6,7 +6,7 @@ import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest) {
   const { id: datasetId } = req.query as {
@@ -14,7 +14,7 @@ async function handler(req: NextApiRequest) {
   };
 
   if (!datasetId) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // auth owner

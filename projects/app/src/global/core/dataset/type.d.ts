@@ -3,6 +3,7 @@ import {
   DatasetCollectionSchemaType,
   DatasetDataSchemaType
 } from '@fastgpt/global/core/dataset/type.d';
+import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 /* ================= dataset ===================== */
 
@@ -18,6 +19,7 @@ export type DatasetCollectionsListItemType = {
   trainingAmount: number;
   fileId?: string;
   rawLink?: string;
+  permission: DatasetPermission;
 };
 
 /* ================= data ===================== */

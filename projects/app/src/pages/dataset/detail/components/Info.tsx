@@ -295,7 +295,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         >
           {t('common.Save')}
         </Button>
-        {datasetDetail.isOwner && (
+        {datasetDetail.permission.isOwner && (
           <IconButton
             isLoading={btnLoading}
             icon={<DeleteIcon />}
