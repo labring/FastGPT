@@ -4,10 +4,7 @@ import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
@@ -50,7 +47,7 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
       )?.permission;
       const Per = new DatasetPermission({
         per: perVal ?? dataset.defaultPermission,
-        isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
+        isOwner: String(dataset.tmbId) === tmbId
       });
 
       return {
