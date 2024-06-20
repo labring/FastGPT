@@ -2,30 +2,30 @@
   insert one data to dataset (immediately insert)
   manual input or mark data
 */
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
+import type { NextApiRequest } from 'next';
 import { countPromptTokens } from '@fastgpt/service/common/string/tiktoken/index';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import { hasSameValue } from '@/service/core/dataset/data/utils';
 import { insertData2Dataset } from '@/service/core/dataset/data/controller';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { getCollectionWithDataset } from '@fastgpt/service/core/dataset/controller';
 import { pushGenerateVectorUsage } from '@/service/support/wallet/usage/push';
 import { InsertOneDatasetDataProps } from '@/global/core/dataset/api';
 import { simpleText } from '@fastgpt/global/common/string/tools';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { NextAPI } from '@/service/middleware/entry';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   const { collectionId, q, a, indexes } = req.body as InsertOneDatasetDataProps;
 
   if (!q) {
-    throw new Error('q is required');
+    Promise.reject(CommonErrEnum.missingParams);
   }
 
   if (!collectionId) {
-    throw new Error('collectionId is required');
+    Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
@@ -34,7 +34,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     authToken: true,
     authApiKey: true,
     collectionId,
-    per: 'w'
+    per: WritePermissionVal
   });
 
   await checkDatasetLimit({
@@ -93,9 +93,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     model: vectorModelData.model
   });
 
-  jsonRes<string>(res, {
-    data: insertId
-  });
+  return insertId;
 }
 
 export default NextAPI(handler);

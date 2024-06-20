@@ -39,7 +39,6 @@ export const dispatchRunPlugin = async (props: RunPluginProps): Promise<RunPlugi
   if (source === PluginSourceEnum.personal) {
     await authAppByTmbId({
       appId: pluginId,
-      teamId: workflowApp.teamId,
       tmbId: workflowApp.tmbId,
       per: ReadPermissionVal
     });

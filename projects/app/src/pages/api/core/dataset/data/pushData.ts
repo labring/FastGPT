@@ -5,11 +5,12 @@ import type {
   PushDatasetDataProps,
   PushDatasetDataResponse
 } from '@fastgpt/global/core/dataset/api.d';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { checkDatasetLimit } from '@fastgpt/service/support/permission/teamLimit';
 import { predictDataLimitLength } from '@fastgpt/global/core/dataset/utils';
 import { pushDataListToTrainingQueue } from '@fastgpt/service/core/dataset/training/controller';
 import { NextAPI } from '@/service/middleware/entry';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
 async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const body = req.body as PushDatasetDataProps;
@@ -29,7 +30,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     authToken: true,
     authApiKey: true,
     collectionId,
-    per: 'w'
+    per: WritePermissionVal
   });
 
   // auth dataset limit

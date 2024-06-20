@@ -1,10 +1,10 @@
-import type { NextApiResponse } from 'next';
-import { authFile } from '@fastgpt/service/support/permission/auth/file';
+import { authDatasetFile } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type PostPreviewFilesChunksProps = {
   type: DatasetSourceReadTypeEnum;
@@ -21,8 +21,7 @@ export type PreviewChunksResponse = {
 }[];
 
 async function handler(
-  req: ApiRequestProps<PostPreviewFilesChunksProps>,
-  res: NextApiResponse<any>
+  req: ApiRequestProps<PostPreviewFilesChunksProps>
 ): Promise<PreviewChunksResponse> {
   const { type, sourceId, chunkSize, customSplitChar, overlapRatio, selector, isQAImport } =
     req.body;
@@ -36,7 +35,13 @@ async function handler(
 
   const { teamId } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
-      return authFile({ req, authToken: true, authApiKey: true, fileId: sourceId });
+      return authDatasetFile({
+        req,
+        authToken: true,
+        authApiKey: true,
+        fileId: sourceId,
+        per: ReadPermissionVal
+      });
     }
     return authCert({ req, authApiKey: true, authToken: true });
   })();

@@ -1,7 +1,5 @@
 import React, { useCallback } from 'react';
 import { useTranslation } from 'next-i18next';
-import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { useUserStore } from '@/web/support/user/useUserStore';
 import { Box, Flex, IconButton, useTheme, Progress } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import Avatar from '@/components/Avatar';
@@ -29,7 +27,6 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
   const { datasetT } = useI18n();
   const router = useRouter();
   const query = router.query;
-  const { userInfo } = useUserStore();
   const { isPc } = useSystemStore();
   const { datasetDetail, vectorTrainingMap, agentTrainingMap, rebuildingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
@@ -41,7 +38,7 @@ const Slider = ({ currentTab }: { currentTab: TabEnum }) => {
       icon: 'common/overviewLight'
     },
     { label: t('core.dataset.test.Search Test'), id: TabEnum.test, icon: 'kbTest' },
-    ...(userInfo?.team.permission.hasManagePer || datasetDetail.isOwner
+    ...(datasetDetail.permission.hasManagePer
       ? [{ label: t('common.Config'), id: TabEnum.info, icon: 'common/settingLight' }]
       : [])
   ];

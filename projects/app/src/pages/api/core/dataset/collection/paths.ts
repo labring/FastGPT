@@ -1,34 +1,24 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
-import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
+import type { NextApiRequest } from 'next';
 import { getDatasetCollectionPaths } from '@fastgpt/service/core/dataset/collection/utils';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
-  try {
-    await connectToDatabase();
+export default async function handler(req: NextApiRequest) {
+  const { parentId } = req.query as { parentId: string };
 
-    const { parentId } = req.query as { parentId: string };
-
-    if (!parentId) {
-      return jsonRes(res, {
-        data: []
-      });
-    }
-
-    await authDatasetCollection({ req, authToken: true, collectionId: parentId, per: 'r' });
-    const paths = await getDatasetCollectionPaths({
-      parentId
-    });
-
-    jsonRes<ParentTreePathItemType[]>(res, {
-      data: paths
-    });
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
+  if (!parentId) {
+    return [];
   }
+
+  await authDatasetCollection({
+    req,
+    authToken: true,
+    collectionId: parentId,
+    per: ReadPermissionVal
+  });
+  const paths = await getDatasetCollectionPaths({
+    parentId
+  });
+
+  return paths;
 }
