@@ -2,28 +2,17 @@ import type { NextApiRequest } from 'next';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { getVectorModel } from '@fastgpt/service/core/ai/model';
 import type { DatasetSimpleItemType } from '@fastgpt/global/core/dataset/type.d';
-import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { NextAPI } from '@/service/middleware/entry';
-import {
-  PerResourceTypeEnum,
-  ReadPermissionVal
-} from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
+import { parseHeaderCert } from '@fastgpt/service/support/permission/controller';
 
 /* get all dataset by teamId or tmbId */
 async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
   // 凭证校验
-  const {
-    teamId,
-    tmbId,
-    permission: tmbPer
-  } = await authUserPer({
-    req,
-    authToken: true,
-    per: ReadPermissionVal
-  });
+  const { teamId, tmbId } = await parseHeaderCert({ req });
 
   const [myDatasets, rpList] = await Promise.all([
     MongoDataset.find({
@@ -50,7 +39,7 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
       )?.permission;
       const Per = new DatasetPermission({
         per: perVal ?? dataset.defaultPermission,
-        isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
+        isOwner: String(dataset.tmbId) === tmbId
       });
 
       return {

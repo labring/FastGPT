@@ -25,7 +25,7 @@ async function handler(req: NextApiRequest) {
   pageSize = Math.min(pageSize, 30);
 
   // auth dataset and get my role
-  const { teamId, tmbId, permission } = await authDataset({
+  const { teamId, permission } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
@@ -60,8 +60,7 @@ async function handler(req: NextApiRequest) {
           ...item,
           dataAmount: 0,
           trainingAmount: 0,
-          canWrite: permission.hasWritePer
-          // admin or team owner can write
+          permission
         }))
       ),
       total: await MongoDatasetCollection.countDocuments(match)
@@ -148,7 +147,7 @@ async function handler(req: NextApiRequest) {
   const data = await Promise.all(
     collections.map(async (item) => ({
       ...item,
-      canWrite: String(item.tmbId) === tmbId || permission.hasWritePer
+      permission
     }))
   );
 

@@ -17,8 +17,9 @@ import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants'
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { NextAPI } from '@/service/middleware/entry';
 
-export default async function handler(req: NextApiRequest) {
+async function handler(req: NextApiRequest) {
   const { datasetId, parentId, fileId } = req.body as FileIdCreateDatasetCollectionParams;
   const trainingType = TrainingModeEnum.chunk;
   const { teamId, tmbId, dataset } = await authDataset({
@@ -99,3 +100,4 @@ export default async function handler(req: NextApiRequest) {
     return collectionId;
   });
 }
+export default NextAPI(handler);

@@ -1,17 +1,22 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
+import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+type Query = {
+  id: string;
+};
+
+async function handler(req: ApiRequestProps<Query>): Promise<DatasetItemType> {
   const { id: datasetId } = req.query as {
     id: string;
   };
 
   if (!datasetId) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
@@ -25,10 +30,9 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
 
   return {
     ...dataset,
+    permission,
     vectorModel: getVectorModel(dataset.vectorModel),
-    agentModel: getLLMModel(dataset.agentModel),
-    canWrite: permission.hasWritePer,
-    isOwner: permission.isOwner
+    agentModel: getLLMModel(dataset.agentModel)
   };
 }
 

@@ -1,20 +1,21 @@
 /* 
     Get one dataset collection detail
 */
-import type { NextApiRequest, NextApiResponse } from 'next';
+import type { NextApiRequest } from 'next';
 import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { getFileById } from '@fastgpt/service/common/file/gridfs/controller';
 import { getCollectionSourceData } from '@fastgpt/global/core/dataset/collection/utils';
 import { NextAPI } from '@/service/middleware/entry';
-import { DatasetErrEnum } from '@fastgpt/global/common/error/code/dataset';
 import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { DatasetCollectionItemType } from '@fastgpt/global/core/dataset/type';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest): Promise<DatasetCollectionItemType> {
   const { id } = req.query as { id: string };
 
   if (!id) {
-    return Promise.reject(DatasetErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
@@ -34,7 +35,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   return {
     ...collection,
     ...getCollectionSourceData(collection),
-    canWrite: permission.hasWritePer,
+    permission,
     file
   };
 }

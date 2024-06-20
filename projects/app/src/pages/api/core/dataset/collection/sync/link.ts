@@ -17,12 +17,13 @@ import { createOneCollection } from '@fastgpt/service/core/dataset/collection/co
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { NextAPI } from '@/service/middleware/entry';
 import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 async function handler(req: NextApiRequest) {
   const { collectionId } = req.body as { collectionId: string };
 
   if (!collectionId) {
-    throw new Error('CollectionIdId is required');
+    return Promise.reject(CommonErrEnum.missingParams);
   }
 
   const { collection, tmbId } = await authDatasetCollection({

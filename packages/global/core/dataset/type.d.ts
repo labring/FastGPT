@@ -9,8 +9,8 @@ import {
   SearchScoreTypeEnum,
   TrainingModeEnum
 } from './constants';
-import { DatasetPermission } from 'support/permission/dataset/controller';
-import { Permission } from 'support/permission/controller';
+import { DatasetPermission } from '../../support/permission/dataset/controller';
+import { Permission } from '../../support/permission/controller';
 
 /* schema */
 export type DatasetSchemaType = {
@@ -144,16 +144,14 @@ export type DatasetListItemType = {
 export type DatasetItemType = Omit<DatasetSchemaType, 'vectorModel' | 'agentModel'> & {
   vectorModel: VectorModelItemType;
   agentModel: LLMModelItemType;
-  isOwner: boolean;
-  canWrite: boolean;
 };
 
 /* ================= collection ===================== */
 export type DatasetCollectionItemType = CollectionWithDatasetType & {
-  canWrite: boolean;
   sourceName: string;
   sourceId?: string;
   file?: DatasetFileSchema;
+  permission: DatasetPermission;
 };
 
 /* ================= data ===================== */

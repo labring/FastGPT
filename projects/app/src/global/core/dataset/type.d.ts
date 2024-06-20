@@ -18,7 +18,6 @@ export type DatasetCollectionsListItemType = {
   trainingAmount: number;
   fileId?: string;
   rawLink?: string;
-  canWrite: boolean;
 };
 
 /* ================= data ===================== */
