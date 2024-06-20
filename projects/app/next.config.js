@@ -12,6 +12,7 @@ const nextConfig = {
       }
     ];
   },
+  assetPrefix:  'https://www.bjzgzp.com/ai-chat',
   headers() {
     return [
       {
