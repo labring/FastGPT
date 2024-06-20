@@ -38,7 +38,7 @@ import {
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const { datasetT } = useI18n();
+  const { datasetT, commonT } = useI18n();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
 
@@ -248,7 +248,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <>
           <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'} maxW="500px">
             <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-              默认权限
+              {commonT('permission.Default Permission')}
             </FormLabel>
             <DefaultPermissionList
               w="320px"
@@ -260,7 +260,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
           <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'} maxW="500px">
             <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-              协作者
+              {commonT('permission.Collaborator')}
             </FormLabel>
             <Box flex={1}>
               <MemberManager
