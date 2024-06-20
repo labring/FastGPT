@@ -1,5 +1,5 @@
 import { NextAPI } from '@/service/middleware/entry';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { MongoDataset } from '@fastgpt/service/core/dataset/schema';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
@@ -8,7 +8,8 @@ import { createTrainingUsage } from '@fastgpt/service/support/wallet/usage/contr
 import { UsageSourceEnum } from '@fastgpt/global/support/wallet/usage/constants';
 import { getLLMModel, getVectorModel } from '@fastgpt/service/core/ai/model';
 import { TrainingModeEnum } from '@fastgpt/global/core/dataset/constants';
-import { ApiRequestProps, ApiResponseType } from '@fastgpt/service/type/next';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { OwnerPermissionVal } from '@fastgpt/global/support/permission/constant';
 
 export type rebuildEmbeddingBody = {
   datasetId: string;
@@ -17,10 +18,7 @@ export type rebuildEmbeddingBody = {
 
 export type Response = {};
 
-async function handler(
-  req: ApiRequestProps<rebuildEmbeddingBody>,
-  res: ApiResponseType<any>
-): Promise<Response> {
+async function handler(req: ApiRequestProps<rebuildEmbeddingBody>): Promise<Response> {
   const { datasetId, vectorModel } = req.body;
 
   const { teamId, tmbId, dataset } = await authDataset({
@@ -28,7 +26,7 @@ async function handler(
     authToken: true,
     authApiKey: true,
     datasetId,
-    per: 'owner'
+    per: OwnerPermissionVal
   });
 
   // check vector model

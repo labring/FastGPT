@@ -1,15 +1,12 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
-import type { DatasetDataListItemType } from '@/global/core/dataset/type.d';
+import type { NextApiRequest } from 'next';
 import type { GetDatasetDataListProps } from '@/global/core/api/datasetReq';
-import { authDatasetCollection } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDatasetCollection } from '@fastgpt/service/support/permission/dataset/auth';
 import { MongoDatasetData } from '@fastgpt/service/core/dataset/data/schema';
-import { PagingData } from '@/types';
 import { replaceRegChars } from '@fastgpt/global/common/string/tools';
 import { NextAPI } from '@/service/middleware/entry';
+import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   let {
     pageNum = 1,
     pageSize = 10,
@@ -25,7 +22,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     authToken: true,
     authApiKey: true,
     collectionId,
-    per: 'r'
+    per: ReadPermissionVal
   });
 
   searchText = replaceRegChars(searchText).replace(/'/g, '');
@@ -50,14 +47,12 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     MongoDatasetData.countDocuments(match)
   ]);
 
-  jsonRes<PagingData<DatasetDataListItemType>>(res, {
-    data: {
-      pageNum,
-      pageSize,
-      data,
-      total
-    }
-  });
+  return {
+    pageNum,
+    pageSize,
+    data,
+    total
+  };
 }
 
 export default NextAPI(handler);

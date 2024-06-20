@@ -11,11 +11,11 @@ export type AuthPropsType = {
   per: PermissionValueType;
 };
 
-export type AuthResponseType = {
+export type AuthResponseType<T = Permission> = {
   teamId: string;
   tmbId: string;
   authType?: `${AuthUserTypeEnum}`;
   appId?: string;
   apikey?: string;
-  permission: Permission;
+  permission: T;
 };

@@ -1,8 +1,5 @@
-import type { NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { readFileContentFromMongo } from '@fastgpt/service/common/file/gridfs/controller';
-import { authDataset } from '@fastgpt/service/support/permission/auth/dataset';
+import { authDataset } from '@fastgpt/service/support/permission/dataset/auth';
 import { FileIdCreateDatasetCollectionParams } from '@fastgpt/global/core/dataset/api';
 import { createOneCollection } from '@fastgpt/service/core/dataset/collection/controller';
 import {
@@ -23,11 +20,9 @@ import { MongoRawTextBuffer } from '@fastgpt/service/common/buffer/rawText/schem
 import { rawText2Chunks } from '@fastgpt/service/core/dataset/read';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
 
-async function handler(
-  req: ApiRequestProps<FileIdCreateDatasetCollectionParams>,
-  res: NextApiResponse<any>
-) {
+async function handler(req: ApiRequestProps<FileIdCreateDatasetCollectionParams>) {
   const {
     fileId,
     trainingType = TrainingModeEnum.chunk,
@@ -37,13 +32,11 @@ async function handler(
     ...body
   } = req.body;
 
-  await connectToDatabase();
-
   const { teamId, tmbId, dataset } = await authDataset({
     req,
     authToken: true,
     authApiKey: true,
-    per: 'w',
+    per: WritePermissionVal,
     datasetId: body.datasetId
   });
 
@@ -137,13 +130,10 @@ async function handler(
       }
     );
 
+    // remove buffer
+    await MongoRawTextBuffer.deleteOne({ sourceId: fileId });
     return collectionId;
   });
-
-  // remove buffer
-  await MongoRawTextBuffer.deleteOne({ sourceId: fileId });
-
-  jsonRes(res);
 }
 
 export default NextAPI(handler);

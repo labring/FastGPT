@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import { Box, Flex, Button, ModalFooter, ModalBody, Input } from '@chakra-ui/react';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { useForm } from 'react-hook-form';
@@ -20,6 +20,7 @@ import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants'
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useI18n } from '@/web/context/I18n';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
+import { DatasetDefaultPermission } from '@fastgpt/global/support/permission/dataset/constant';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -38,7 +39,8 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       name: '',
       intro: '',
       vectorModel: filterNotHiddenVectorModelList[0].model,
-      agentModel: datasetModelList[0].model
+      agentModel: datasetModelList[0].model,
+      defaultPermission: DatasetDefaultPermission
     }
   });
   const avatar = watch('avatar');

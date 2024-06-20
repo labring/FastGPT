@@ -365,9 +365,11 @@ const InputDataModal = ({
             <Button variant={'whiteBase'} mr={3} onClick={onClose}>
               {t('common.Close')}
             </Button>
-            <MyTooltip label={collection.canWrite ? '' : t('dataset.data.Can not edit')}>
+            <MyTooltip
+              label={collection.permission.hasWritePer ? '' : t('dataset.data.Can not edit')}
+            >
               <Button
-                isDisabled={!collection.canWrite}
+                isDisabled={!collection.permission.hasWritePer}
                 // @ts-ignore
                 onClick={handleSubmit(dataId ? onUpdateData : sureImportData)}
               >

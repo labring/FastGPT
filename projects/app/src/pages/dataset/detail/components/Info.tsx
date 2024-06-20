@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React from 'react';
 import { useRouter } from 'next/router';
 import { Box, Flex, Button, IconButton, Input, Textarea, HStack } from '@chakra-ui/react';
 import { DeleteIcon } from '@chakra-ui/icons';
@@ -11,7 +11,6 @@ import type { DatasetItemType } from '@fastgpt/global/core/dataset/type.d';
 import Avatar from '@/components/Avatar';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useTranslation } from 'next-i18next';
-import PermissionRadio from '@/components/support/permission/Radio';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants';
@@ -25,10 +24,21 @@ import MyDivider from '@fastgpt/web/components/common/MyDivider/index';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
+import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
+import {
+  DatasetDefaultPermission,
+  DatasetPermissionList
+} from '@fastgpt/global/support/permission/dataset/constant';
+import MemberManager from '../../component/MemberManager';
+import {
+  getCollaboratorList,
+  postUpdateDatasetCollaborators,
+  deleteDatasetCollaborators
+} from '@/web/core/dataset/api/collaborator';
 
 const Info = ({ datasetId }: { datasetId: string }) => {
   const { t } = useTranslation();
-  const { datasetT } = useI18n();
+  const { datasetT, commonT } = useI18n();
   const { datasetDetail, loadDatasetDetail, updateDataset, rebuildingCount, trainingCount } =
     useContextSelector(DatasetPageContext, (v) => v);
 
@@ -44,7 +54,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
   const avatar = watch('avatar');
   const vectorModel = watch('vectorModel');
   const agentModel = watch('agentModel');
-  const permission = watch('permission');
+  const defaultPermission = watch('defaultPermission');
 
   const { datasetModelList, vectorModelList } = useSystemStore();
 
@@ -233,20 +243,46 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         <FormLabel flex={['0 0 90px', '0 0 160px']}>{t('common.Intro')}</FormLabel>
         <Textarea flex={[1, '0 0 320px']} {...register('intro')} placeholder={t('common.Intro')} />
       </Flex>
-      {datasetDetail.isOwner && (
-        <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'}>
-          <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
-            {t('user.Permission')}
-          </FormLabel>
-          <Box>
-            <PermissionRadio
-              value={permission}
-              onChange={(e) => {
-                setValue('permission', e);
-              }}
+
+      {datasetDetail.permission.hasManagePer && (
+        <>
+          <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'} maxW="500px">
+            <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
+              {commonT('permission.Default permission')}
+            </FormLabel>
+            <DefaultPermissionList
+              w="320px"
+              per={defaultPermission}
+              defaultPer={DatasetDefaultPermission}
+              onChange={(v) => setValue('defaultPermission', v)}
             />
-          </Box>
-        </Flex>
+          </Flex>
+
+          <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'} maxW="500px">
+            <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
+              {commonT('permission.Collaborator')}
+            </FormLabel>
+            <Box flex={1}>
+              <MemberManager
+                managePer={{
+                  permission: datasetDetail.permission,
+                  onGetCollaboratorList: () => getCollaboratorList(datasetId),
+                  permissionList: DatasetPermissionList,
+                  onUpdateCollaborators: (body) =>
+                    postUpdateDatasetCollaborators({
+                      ...body,
+                      datasetId
+                    }),
+                  onDelOneCollaborator: (tmbId) =>
+                    deleteDatasetCollaborators({
+                      datasetId,
+                      tmbId
+                    })
+                }}
+              />
+            </Box>
+          </Flex>
+        </>
       )}
 
       <Flex mt={5} w={'100%'} alignItems={'flex-end'}>
@@ -259,7 +295,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
         >
           {t('common.Save')}
         </Button>
-        {datasetDetail.isOwner && (
+        {datasetDetail.permission.isOwner && (
           <IconButton
             isLoading={btnLoading}
             icon={<DeleteIcon />}

@@ -1,32 +1,31 @@
-import type { NextApiRequest, NextApiResponse } from 'next';
-import { jsonRes } from '@fastgpt/service/common/response';
-import { authDatasetData } from '@/service/support/permission/auth/dataset';
+import type { NextApiRequest } from 'next';
+import { authDatasetData } from '@fastgpt/service/support/permission/dataset/auth';
 import { deleteDatasetData } from '@/service/core/dataset/data/controller';
 import { NextAPI } from '@/service/middleware/entry';
+import { WritePermissionVal } from '@fastgpt/global/support/permission/constant';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
-async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
+async function handler(req: NextApiRequest) {
   const { id: dataId } = req.query as {
     id: string;
   };
 
   if (!dataId) {
-    throw new Error('dataId is required');
+    Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
-  const { teamId, datasetData } = await authDatasetData({
+  const { datasetData } = await authDatasetData({
     req,
     authToken: true,
     authApiKey: true,
     dataId,
-    per: 'w'
+    per: WritePermissionVal
   });
 
   await deleteDatasetData(datasetData);
 
-  jsonRes(res, {
-    data: 'success'
-  });
+  return 'success';
 }
 
 export default NextAPI(handler);

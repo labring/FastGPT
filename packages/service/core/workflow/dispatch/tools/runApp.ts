@@ -2,7 +2,6 @@ import type { ChatItemType } from '@fastgpt/global/core/chat/type.d';
 import type { ModuleDispatchProps } from '@fastgpt/global/core/workflow/type/index.d';
 import { SelectAppItemType } from '@fastgpt/global/core/workflow/type/index.d';
 import { dispatchWorkFlow } from '../index';
-import { MongoApp } from '../../../../core/app/schema';
 import { responseWrite } from '../../../../common/response';
 import { ChatRoleEnum } from '@fastgpt/global/core/chat/constants';
 import { SseResponseEventEnum } from '@fastgpt/global/core/workflow/runtime/constants';
@@ -48,7 +47,6 @@ export const dispatchAppRequest = async (props: Props): Promise<Response> => {
   // 检查该工作流的tmb是否有调用该app的权限（不是校验对话的人，是否有权限）
   const { app: appData } = await authAppByTmbId({
     appId: app.id,
-    teamId: workflowApp.teamId,
     tmbId: workflowApp.tmbId,
     per: ReadPermissionVal
   });
