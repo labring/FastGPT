@@ -293,7 +293,7 @@ const CollectionCard = () => {
                     </Box>
                   </Td>
                   <Td onClick={(e) => e.stopPropagation()}>
-                    {collection && (
+                    {collection.permission.hasWritePer && (
                       <MyMenu
                         width={100}
                         offset={[-70, 5]}
