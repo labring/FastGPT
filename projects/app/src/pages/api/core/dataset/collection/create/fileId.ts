@@ -60,8 +60,6 @@ async function handler(req: ApiRequestProps<FileIdCreateDatasetCollectionParams>
     insertLen: predictDataLimitLength(trainingType, chunks)
   });
 
-  let ResultId = '';
-
   await mongoSessionRun(async (session) => {
     // 4. create collection
     const { _id: collectionId } = await createOneCollection({

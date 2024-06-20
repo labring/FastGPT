@@ -14,7 +14,7 @@ import { MongoResourcePermission } from '@fastgpt/service/support/permission/sch
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 
 async function handler(req: NextApiRequest) {
-  let { parentId, type } = req.query as { parentId?: string; type?: DatasetTypeEnum };
+  const { parentId, type } = req.query as { parentId?: string; type?: DatasetTypeEnum };
   // 凭证校验
   const {
     teamId,

@@ -47,7 +47,7 @@ async function handler(req: NextApiRequest): Promise<DatasetSimpleItemType[]> {
       )?.permission;
       const Per = new DatasetPermission({
         per: perVal ?? dataset.defaultPermission,
-        isOwner: String(dataset.tmbId) === tmbId
+        isOwner: String(dataset.tmbId) === tmbId || tmbPer.isOwner
       });
 
       return {
