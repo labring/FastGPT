@@ -7,8 +7,8 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        // destination: 'http://39.107.112.174:3000/api/:path*'
-        destination: 'https://www.bjzgzp.com/ai-chat/api/:path*'
+        destination: 'http://39.107.112.174:3000/api/:path*'
+        // destination: 'https://www.bjzgzp.com/ai-chat/api/:path*'
       }
     ];
   },
