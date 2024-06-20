@@ -153,7 +153,7 @@ function request(
   return instance
     .request({
       // baseURL: '/api',
-      baseURL: '/api',
+      baseURL: '/ai-chat/api',
       url,
       method,
       data: ['POST', 'PUT'].includes(method) ? data : null,
