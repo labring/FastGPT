@@ -6,7 +6,7 @@ const nextConfig = {
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
+        source: '/ai-chat/api/:path*',
         destination: 'http://39.107.112.174:3000/api/:path*'
         // destination: 'https://www.bjzgzp.com/ai-chat/api/:path*'
       }
@@ -16,7 +16,7 @@ const nextConfig = {
   headers() {
     return [
       {
-        source: '/:path*',
+        source: '/ai-chat/:path*',
         headers: [{ key: 'Access-Control-Allow-Origin', value: '*' }]
       }
     ];
