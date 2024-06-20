@@ -9,6 +9,7 @@ module.exports = {
     locales: ['en', 'zh'],
     localeDetection: false
   },
-  localePath: typeof window === 'undefined' ? require('path').resolve('./i18n') : '/i18n',
+  localePath:
+    typeof window === 'undefined' ? require('path').resolve('../../packages/web/i18n') : '/i18n',
   reloadOnPrerender: process.env.NODE_ENV === 'development'
 };

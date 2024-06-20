@@ -11,6 +11,7 @@ import { authOutLinkValid } from '@fastgpt/service/support/permission/publish/au
 import { AuthUserTypeEnum, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
 import { MongoTeamMember } from '@fastgpt/service/support/user/team/teamMemberSchema';
 import { OutLinkChatAuthProps } from '@fastgpt/global/support/permission/chat';
+import { addLog } from '@fastgpt/service/common/system/log';
 /* 
   outLink: Must be the owner
   token: team owner and chat owner have all permissions
@@ -55,6 +56,7 @@ export async function autChatCrud({
     // auth team space chat
     if (spaceTeamId && teamToken) {
       const { uid } = await authTeamSpaceToken({ teamId: spaceTeamId, teamToken });
+      addLog.debug('Auth team token', { uid, spaceTeamId, teamToken, chatUid: chat.outLinkUid });
       if (!chat || (String(chat.teamId) === String(spaceTeamId) && chat.outLinkUid === uid)) {
         return { uid };
       }
