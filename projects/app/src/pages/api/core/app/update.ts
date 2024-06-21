@@ -42,27 +42,22 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
 
   // 更新模型
-  await MongoApp.updateOne(
-    {
-      _id: appId
-    },
-    {
-      ...parseParentIdInMongo(parentId),
-      name,
-      type,
-      avatar,
-      intro,
-      defaultPermission,
-      ...(teamTags && teamTags),
-      ...(formatNodes && {
-        modules: formatNodes
-      }),
-      ...(edges && {
-        edges
-      }),
-      ...(chatConfig && { chatConfig })
-    }
-  );
+  await MongoApp.findByIdAndUpdate(appId, {
+    ...parseParentIdInMongo(parentId),
+    ...(name && { name }),
+    ...(type && { type }),
+    ...(avatar && { avatar }),
+    ...(intro !== undefined && { intro }),
+    ...(defaultPermission && { defaultPermission }),
+    ...(teamTags && { teamTags }),
+    ...(formatNodes && {
+      modules: formatNodes
+    }),
+    ...(edges && {
+      edges
+    }),
+    ...(chatConfig && { chatConfig })
+  });
 }
 
 export default NextAPI(handler);

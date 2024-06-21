@@ -46,11 +46,25 @@ const MyMenu = ({
       _hover: {
         backgroundColor: 'primary.50',
         color: 'primary.600'
+      },
+      _focus: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
+      },
+      _active: {
+        backgroundColor: 'primary.50',
+        color: 'primary.600'
       }
     },
     danger: {
       color: 'red.600',
       _hover: {
+        background: 'red.1'
+      },
+      _focus: {
+        background: 'red.1'
+      },
+      _active: {
         background: 'red.1'
       }
     }

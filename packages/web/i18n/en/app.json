@@ -9,11 +9,14 @@
   "Chat Logs Tips": "Logs will record online, shared and API (chatId required) conversation records for this app",
   "Chat logs": "Chat Logs",
   "Confirm Del App Tip": "Confirm to delete this app and all its chat records?",
+  "Confirm copy app tip": "The system will create an application with the same configuration for you, but the permission will not be copied, please confirm!",
   "Confirm delete folder tip": "Are you sure to delete this folder? All the following applications and corresponding chat records will be deleted, please confirm!",
   "Connection is invalid": "Connection is invalid",
   "Connection type is different": "Connection type is different",
   "Copy Module Config": "Copy Config",
+  "Copy one app": "Copy",
   "Create bot": "App",
+  "Create copy success": "Create copy success",
   "Create one ai app": "Create AI app",
   "Current settings": "Current settings",
   "Dataset Quote Template": "Knowledge Base QA Mode",
@@ -77,5 +80,8 @@
     "Plugin": "Plugin",
     "Simple bot": "Simple bot",
     "Workflow bot": "Workflow"
+  },
+  "version": {
+    "Revert success": "Revert success"
   }
 }

@@ -16,6 +16,7 @@ import { useRouter } from 'next/router';
 
 import AppCard from '../WorkflowComponents/AppCard';
 import { uiWorkflow2StoreWorkflow } from '../WorkflowComponents/utils';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 const PublishHistories = dynamic(() => import('../PublishHistoriesSlider'));
 
 const Header = () => {
@@ -53,6 +54,7 @@ const Header = () => {
       router.push('/app/list');
     } catch (error) {}
   }, [onSaveWorkflow, router]);
+
   // effect
   useBeforeunload({
     callback: onSaveWorkflow,
@@ -152,13 +154,17 @@ const Header = () => {
                   showCancel
                   content={t('core.app.Publish Confirm')}
                   Trigger={
-                    <Button
-                      ml={[2, 4]}
-                      size={'sm'}
-                      leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
-                    >
-                      {t('core.app.Publish')}
-                    </Button>
+                    <Box>
+                      <MyTooltip label={t('core.app.Publish app tip')}>
+                        <Button
+                          ml={[2, 4]}
+                          size={'sm'}
+                          leftIcon={<MyIcon name={'common/publishFill'} w={['14px', '16px']} />}
+                        >
+                          {t('core.app.Publish')}
+                        </Button>
+                      </MyTooltip>
+                    </Box>
                   }
                   onConfirm={() => onclickPublish()}
                 />

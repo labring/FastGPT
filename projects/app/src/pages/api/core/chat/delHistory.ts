@@ -1,50 +1,42 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { jsonRes } from '@fastgpt/service/common/response';
-import { connectToDatabase } from '@/service/mongo';
 import { MongoChat } from '@fastgpt/service/core/chat/chatSchema';
 import { MongoChatItem } from '@fastgpt/service/core/chat/chatItemSchema';
 import { DelHistoryProps } from '@/global/core/chat/api';
 import { autChatCrud } from '@/service/support/permission/auth/chat';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { NextAPI } from '@/service/middleware/entry';
+import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 /* clear chat history */
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  try {
-    await connectToDatabase();
-    const { appId, chatId, shareId, outLinkUid } = req.query as DelHistoryProps;
+async function handler(req: ApiRequestProps<{}, DelHistoryProps>, res: NextApiResponse) {
+  const { appId, chatId } = req.query;
 
-    await autChatCrud({
-      req,
-      authToken: true,
-      appId,
-      chatId,
-      shareId,
-      outLinkUid,
-      per: 'w'
-    });
+  await autChatCrud({
+    req,
+    authToken: true,
+    ...req.query,
+    per: 'w'
+  });
 
-    await mongoSessionRun(async (session) => {
-      await MongoChatItem.deleteMany(
-        {
-          appId,
-          chatId
-        },
-        { session }
-      );
-      await MongoChat.findOneAndRemove(
-        {
-          appId,
-          chatId
-        },
-        { session }
-      );
-    });
+  await mongoSessionRun(async (session) => {
+    await MongoChatItem.deleteMany(
+      {
+        appId,
+        chatId
+      },
+      { session }
+    );
+    await MongoChat.findOneAndRemove(
+      {
+        appId,
+        chatId
+      },
+      { session }
+    );
+  });
 
-    jsonRes(res);
-  } catch (err) {
-    jsonRes(res, {
-      code: 500,
-      error: err
-    });
-  }
+  jsonRes(res);
 }
+
+export default NextAPI(handler);

@@ -83,8 +83,8 @@ const OutLink = () => {
         data: {
           messages: prompts,
           variables: {
-            ...customVariables,
-            ...variables
+            ...variables,
+            ...customVariables
           },
           appId,
           teamId,
@@ -290,7 +290,7 @@ const OutLink = () => {
                 onClose={onCloseSlider}
               >
                 <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-                <DrawerContent maxWidth={'250px'}>{children}</DrawerContent>
+                <DrawerContent maxWidth={'75vw'}>{children}</DrawerContent>
               </Drawer>
             );
           })(
