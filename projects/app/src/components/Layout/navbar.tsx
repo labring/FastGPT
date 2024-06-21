@@ -2,7 +2,7 @@ import React, { useMemo } from 'react';
 import { Box, BoxProps, Flex, Link, LinkProps } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import { useChatStore } from '@/web/core/chat/storeChat';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { HUMAN_ICON } from '@fastgpt/global/common/system/constants';
 import NextLink from 'next/link';
 import Badge from '../Badge';

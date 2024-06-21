@@ -2,18 +2,24 @@ import React, { useMemo } from 'react';
 import { Box, Flex, Grid, Image } from '@chakra-ui/react';
 import type { FlexProps, GridProps } from '@chakra-ui/react';
 import { useTranslation } from 'next-i18next';
-import MyIcon from '@fastgpt/web/components/common/Icon';
+import MyIcon from '../Icon';
 
-// @ts-ignore
-interface Props extends GridProps {
-  list: { id: string; icon?: string; label: string | React.ReactNode }[];
-  activeId: string;
+type Props<ValueType = string> = Omit<GridProps, 'onChange'> & {
+  list: { icon?: string; label: string | React.ReactNode; value: ValueType }[];
+  value: ValueType;
   size?: 'sm' | 'md' | 'lg';
   inlineStyles?: FlexProps;
-  onChange: (id: string) => void;
-}
+  onChange: (value: ValueType) => void;
+};
 
-const Tabs = ({ list, size = 'md', activeId, onChange, inlineStyles, ...props }: Props) => {
+const LightRowTabs = <ValueType = string,>({
+  list,
+  size = 'md',
+  value,
+  onChange,
+  inlineStyles,
+  ...props
+}: Props<ValueType>) => {
   const { t } = useTranslation();
   const sizeMap = useMemo(() => {
     switch (size) {
@@ -49,7 +55,7 @@ const Tabs = ({ list, size = 'md', activeId, onChange, inlineStyles, ...props }:
     >
       {list.map((item) => (
         <Flex
-          key={item.id}
+          key={item.value as string}
           py={sizeMap.inlineP}
           alignItems={'center'}
           justifyContent={'center'}
@@ -57,7 +63,7 @@ const Tabs = ({ list, size = 'md', activeId, onChange, inlineStyles, ...props }:
           px={3}
           whiteSpace={'nowrap'}
           {...inlineStyles}
-          {...(activeId === item.id
+          {...(value === item.value
             ? {
                 color: 'primary.600',
                 cursor: 'default',
@@ -68,8 +74,8 @@ const Tabs = ({ list, size = 'md', activeId, onChange, inlineStyles, ...props }:
                 cursor: 'pointer'
               })}
           onClick={() => {
-            if (activeId === item.id) return;
-            onChange(item.id);
+            if (value === item.value) return;
+            onChange(item.value);
           }}
         >
           {item.icon && (
@@ -88,4 +94,4 @@ const Tabs = ({ list, size = 'md', activeId, onChange, inlineStyles, ...props }:
   );
 };
 
-export default Tabs;
+export default LightRowTabs;

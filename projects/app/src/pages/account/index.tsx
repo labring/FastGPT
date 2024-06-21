@@ -1,5 +1,5 @@
 import React, { useCallback } from 'react';
-import { Box, Flex, useDisclosure, useTheme } from '@chakra-ui/react';
+import { Box, Flex, useTheme } from '@chakra-ui/react';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useRouter } from 'next/router';
 import dynamic from 'next/dynamic';
@@ -7,7 +7,7 @@ import { useUserStore } from '@/web/support/user/useUserStore';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import PageContainer from '@/components/PageContainer';
 import SideTabs from '@/components/SideTabs';
-import Tabs from '@/components/Tabs';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import UserInfo from './components/Info';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { useTranslation } from 'next-i18next';
@@ -31,7 +31,7 @@ enum TabEnum {
   'loginout' = 'loginout'
 }
 
-const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
+const Account = ({ currentTab }: { currentTab: TabEnum }) => {
   const { t } = useTranslation();
   const { userInfo, setUserInfo } = useUserStore();
   const { feConfigs, isPc, systemVersion } = useSystemStore();
@@ -40,14 +40,14 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     {
       icon: 'support/user/userLight',
       label: t('user.Personal Information'),
-      id: TabEnum.info
+      value: TabEnum.info
     },
     ...(feConfigs?.isPlus
       ? [
           {
             icon: 'support/usage/usageRecordLight',
             label: t('user.Usage Record'),
-            id: TabEnum.usage
+            value: TabEnum.usage
           }
         ]
       : []),
@@ -56,7 +56,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           {
             icon: 'support/bill/payRecordLight',
             label: t('support.wallet.Bills'),
-            id: TabEnum.bill
+            value: TabEnum.bill
           }
         ]
       : []),
@@ -66,7 +66,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           {
             icon: 'support/account/promotionLight',
             label: t('user.Promotion Record'),
-            id: TabEnum.promotion
+            value: TabEnum.promotion
           }
         ]
       : []),
@@ -75,21 +75,21 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
           {
             icon: 'support/outlink/apikeyLight',
             label: t('user.apikey.key'),
-            id: TabEnum.apikey
+            value: TabEnum.apikey
           }
         ]
       : []),
     {
       icon: 'support/user/individuation',
       label: t('support.account.Individuation'),
-      id: TabEnum.individuation
+      value: TabEnum.individuation
     },
     ...(feConfigs.isPlus
       ? [
           {
             icon: 'support/user/informLight',
             label: t('user.Notice'),
-            id: TabEnum.inform
+            value: TabEnum.inform
           }
         ]
       : []),
@@ -97,7 +97,7 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
     {
       icon: 'support/account/loginoutLight',
       label: t('user.Sign Out'),
-      id: TabEnum.loginout
+      value: TabEnum.loginout
     }
   ];
 
@@ -139,13 +139,13 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
               flex={'0 0 200px'}
               borderRight={theme.borders.base}
             >
-              <SideTabs
+              <SideTabs<TabEnum>
                 flex={1}
                 mx={'auto'}
                 mt={2}
                 w={'100%'}
                 list={tabList}
-                activeId={currentTab}
+                value={currentTab}
                 onChange={setCurrentTab}
               />
               <Flex alignItems={'center'}>
@@ -157,14 +157,14 @@ const Account = ({ currentTab }: { currentTab: `${TabEnum}` }) => {
             </Flex>
           ) : (
             <Box mb={3}>
-              <Tabs
+              <LightRowTabs<TabEnum>
                 m={'auto'}
                 size={isPc ? 'md' : 'sm'}
                 list={tabList.map((item) => ({
-                  id: item.id,
+                  value: item.value,
                   label: item.label
                 }))}
-                activeId={currentTab}
+                value={currentTab}
                 onChange={setCurrentTab}
               />
             </Box>

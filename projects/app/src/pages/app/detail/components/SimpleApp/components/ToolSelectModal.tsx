@@ -19,7 +19,7 @@ import {
   Switch,
   Textarea
 } from '@chakra-ui/react';
-import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
 import { FlowNodeTemplateType } from '@fastgpt/global/core/workflow/type/index.d';
@@ -97,7 +97,7 @@ const ToolSelectModal = ({ onClose, ...props }: Props & { onClose: () => void })
     >
       {/* Header: row and search */}
       <Box px={[3, 6]} pt={4} display={'flex'} justifyContent={'space-between'} w={'full'}>
-        <RowTabs
+        <FillRowTabs
           list={[
             {
               icon: 'core/modules/teamPlugin',

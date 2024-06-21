@@ -2,7 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { ResLogin } from '@/global/support/api/userRes.d';
-import { useChatStore } from '@/web/core/chat/storeChat';
+import { useChatStore } from '@/web/core/chat/context/storeChat';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { clearToken, setToken } from '@/web/support/user/auth';
 import { oauthLogin } from '@/web/support/user/api';

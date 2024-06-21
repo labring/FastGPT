@@ -364,6 +364,7 @@ const ChatInput = ({
             color={'myGray.900'}
             isDisabled={isSpeaking}
             value={inputValue}
+            fontSize={['md', 'sm']}
             onChange={(e) => {
               const textarea = e.target;
               textarea.style.height = textareaMinH;

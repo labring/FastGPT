@@ -136,7 +136,7 @@ const SelectOneResource = ({
                   </Flex>
                 )}
                 <Avatar ml={index !== 0 ? '0.5rem' : 0} src={item.avatar} w={'1.25rem'} />
-                <Box fontSize={'sm'} ml={2}>
+                <Box fontSize={['md', 'sm']} ml={2}>
                   {item.name}
                 </Box>
               </Flex>
