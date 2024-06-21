@@ -1,8 +1,7 @@
 import React, { useCallback, useState } from 'react';
-import { Box, Flex, Button, useDisclosure, HStack } from '@chakra-ui/react';
+import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
-import PageContainer from '@/components/PageContainer';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'next-i18next';
@@ -32,8 +31,8 @@ import {
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import type { CreateAppType } from './components/CreateModal';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import Tabs from '@/components/Tabs';
 import MyBox from '@fastgpt/web/components/common/MyBox';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 
 const CreateModal = dynamic(() => import('./components/CreateModal'));
 const EditFolderModal = dynamic(
@@ -121,26 +120,26 @@ const MyApps = () => {
             alignItems={'center'}
             justifyContent={'space-between'}
           >
-            <Tabs
+            <LightRowTabs
               list={[
                 {
                   label: appT('type.All'),
-                  id: 'ALL'
+                  value: 'ALL'
                 },
                 {
                   label: appT('type.Simple bot'),
-                  id: AppTypeEnum.simple
+                  value: AppTypeEnum.simple
                 },
                 {
                   label: appT('type.Workflow bot'),
-                  id: AppTypeEnum.workflow
+                  value: AppTypeEnum.workflow
                 },
                 {
                   label: appT('type.Plugin'),
-                  id: AppTypeEnum.plugin
+                  value: AppTypeEnum.plugin
                 }
               ]}
-              activeId={appType}
+              value={appType}
               inlineStyles={{ px: 0.5 }}
               gap={5}
               display={'flex'}

@@ -10,6 +10,7 @@ jobs:
   build-fastgpt-sandbox-images:
     runs-on: ubuntu-20.04
     steps:
+      # install env
       - name: Checkout
         uses: actions/checkout@v3
         with:
@@ -31,6 +32,7 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-buildx-
 
+      # login docker
       - name: Login to GitHub Container Registry
         uses: docker/login-action@v2
         with:
@@ -49,6 +51,7 @@ jobs:
           username: ${{ secrets.DOCKER_HUB_NAME }}
           password: ${{ secrets.DOCKER_HUB_PASSWORD }}
 
+      # Set tag
       - name: Set image name and tag
         run: |
           if [[ "${{ github.ref_name }}" == "main" ]]; then
@@ -66,6 +69,7 @@ jobs:
             echo "Docker_Hub_Tag=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:${{ github.ref_name }}" >> $GITHUB_ENV
             echo "Docker_Hub_Latest=${{ secrets.DOCKER_IMAGE_NAME }}/fastgpt-sandbox:latest" >> $GITHUB_ENV
           fi
+
       - name: Build and publish image for main branch or tag push event
         env:
           Git_Tag: ${{ env.Git_Tag }}

@@ -8,7 +8,7 @@ import { ApiRequestProps } from '@fastgpt/service/type/next';
 
 /* update chat top, custom title */
 async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiResponse) {
-  const { appId, chatId, customTitle, top } = req.body;
+  const { appId, chatId, title, customTitle, top } = req.body;
   await autChatCrud({
     req,
     authToken: true,
@@ -20,6 +20,7 @@ async function handler(req: ApiRequestProps<UpdateHistoryProps>, res: NextApiRes
     { appId, chatId },
     {
       updateTime: new Date(),
+      ...(title !== undefined && { title }),
       ...(customTitle !== undefined && { customTitle }),
       ...(top !== undefined && { top })
     }

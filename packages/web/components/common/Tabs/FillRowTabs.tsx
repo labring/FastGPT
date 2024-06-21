@@ -12,7 +12,7 @@ type Props = Omit<BoxProps, 'onChange'> & {
   onChange: (e: string) => void;
 };
 
-const RowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
+const FillRowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: Props) => {
   return (
     <Box
       display={'inline-flex'}
@@ -55,4 +55,4 @@ const RowTabs = ({ list, value, onChange, py = '7px', px = '12px', ...props }: P
   );
 };
 
-export default RowTabs;
+export default FillRowTabs;

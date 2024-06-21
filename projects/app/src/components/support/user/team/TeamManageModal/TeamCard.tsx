@@ -3,7 +3,6 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useContextSelector } from 'use-context-selector';
 import { TeamMemberRoleEnum } from '@fastgpt/global/support/user/team/constant';
-import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'next-i18next';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
@@ -15,6 +14,7 @@ import { TeamModalContext } from './context';
 import { useRequest } from '@fastgpt/web/hooks/useRequest';
 import { delLeaveTeam } from '@/web/support/user/team/api';
 import dynamic from 'next/dynamic';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 
 enum TabListEnum {
   member = 'member',
@@ -124,14 +124,12 @@ function TeamCard() {
       </Flex>
 
       <Flex px={5} alignItems={'center'} justifyContent={'space-between'}>
-        <RowTabs
+        <LightRowTabs<TabListEnum>
           overflow={'auto'}
           list={Tablist}
           value={tab}
-          onChange={(v) => {
-            setTab(v as TabListEnum);
-          }}
-        ></RowTabs>
+          onChange={setTab}
+        ></LightRowTabs>
         {/* ctrl buttons */}
         <Flex alignItems={'center'}>
           {tab === TabListEnum.member && userInfo?.team.permission.hasManagePer && (

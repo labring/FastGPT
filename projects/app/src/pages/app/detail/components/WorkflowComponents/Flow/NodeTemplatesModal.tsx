@@ -15,7 +15,7 @@ import { getPreviewPluginNode, getSystemPlugTemplates } from '@/web/core/app/api
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { workflowNodeTemplateList } from '@fastgpt/web/core/workflow/constants';
-import RowTabs from '@fastgpt/web/components/common/Tabs/RowTabs';
+import FillRowTabs from '@fastgpt/web/components/common/Tabs/FillRowTabs';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useRouter } from 'next/router';
@@ -143,7 +143,7 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         >
           <Box pl={'20px'} mb={3} pr={'10px'} whiteSpace={'nowrap'} overflow={'hidden'}>
             <Flex flex={'1 0 0'} alignItems={'center'} gap={3}>
-              <RowTabs
+              <FillRowTabs
                 list={[
                   {
                     icon: 'core/modules/basicNode',

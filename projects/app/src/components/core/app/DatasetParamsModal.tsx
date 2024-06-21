@@ -23,7 +23,7 @@ import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
 import MyRadio from '@/components/common/MyRadio';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import Tabs from '@/components/Tabs';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import PromptEditor from '@fastgpt/web/components/common/Textarea/PromptEditor';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
@@ -127,27 +127,27 @@ const DatasetParamsModal = ({
       w={['90vw', '550px']}
     >
       <ModalBody flex={'auto'} overflow={'auto'}>
-        <Tabs
+        <LightRowTabs<SearchSettingTabEnum>
           mb={3}
           list={[
             {
               icon: 'modal/setting',
               label: t('core.dataset.search.search mode'),
-              id: SearchSettingTabEnum.searchMode
+              value: SearchSettingTabEnum.searchMode
             },
             {
               icon: 'support/outlink/apikeyFill',
               label: t('core.dataset.search.Filter'),
-              id: SearchSettingTabEnum.limit
+              value: SearchSettingTabEnum.limit
             },
             {
               label: t('core.module.template.Query extension'),
-              id: SearchSettingTabEnum.queryExtension,
+              value: SearchSettingTabEnum.queryExtension,
               icon: '/imgs/workflow/cfr.svg'
             }
           ]}
-          activeId={currentTabType}
-          onChange={(e) => setCurrentTabType(e as any)}
+          value={currentTabType}
+          onChange={setCurrentTabType}
         />
         {currentTabType === SearchSettingTabEnum.searchMode && (
           <>

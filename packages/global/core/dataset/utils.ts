@@ -24,13 +24,15 @@ export function getSourceNameIcon({
   sourceName: string;
   sourceId?: string;
 }) {
-  const fileIcon = getFileIcon(decodeURIComponent(sourceName), '');
-  if (fileIcon) {
-    return fileIcon;
-  }
-  if (strIsLink(sourceId)) {
-    return 'common/linkBlue';
-  }
+  try {
+    const fileIcon = getFileIcon(decodeURIComponent(sourceName.replace(/%/g, '%25')), '');
+    if (fileIcon) {
+      return fileIcon;
+    }
+    if (strIsLink(sourceId)) {
+      return 'common/linkBlue';
+    }
+  } catch (error) {}
 
   return 'file/fill/manual';
 }

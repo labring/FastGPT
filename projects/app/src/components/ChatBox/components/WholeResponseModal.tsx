@@ -4,9 +4,8 @@ import type { ChatHistoryItemResType } from '@fastgpt/global/core/chat/type.d';
 import { useTranslation } from 'next-i18next';
 import { moduleTemplatesFlat } from '@fastgpt/global/core/workflow/template/constants';
 
-import Tabs from '../../Tabs';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyModal from '@fastgpt/web/components/common/MyModal';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import Markdown from '../../Markdown';
 import { QuoteList } from './QuoteModal';
 import { DatasetSearchModeMap } from '@fastgpt/global/core/dataset/constants';
@@ -142,7 +141,7 @@ export const ResponseBox = React.memo(function ResponseBox({
             {t(item.moduleName)}
           </Flex>
         ),
-        id: `${i}`
+        value: `${i}`
       })),
     [response, t]
   );
@@ -155,7 +154,7 @@ export const ResponseBox = React.memo(function ResponseBox({
     <>
       {!hideTabs && (
         <Box>
-          <Tabs list={list} activeId={currentTab} onChange={setCurrentTab} />
+          <LightRowTabs list={list} value={currentTab} onChange={setCurrentTab} />
         </Box>
       )}
       <Box py={2} px={4} flex={'1 0 0'} overflow={'auto'}>
