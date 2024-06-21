@@ -8,7 +8,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useTranslation } from 'next-i18next';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import Tabs from '@/components/Tabs';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import { useI18n } from '@/web/context/I18n';
@@ -67,7 +67,7 @@ const ChatHistorySlider = ({
   const { isPc } = useSystemStore();
   const { userInfo } = useUserStore();
 
-  const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
+  const [currentTab, setCurrentTab] = useState<TabEnum>(TabEnum.history);
 
   const {
     histories,
@@ -154,16 +154,16 @@ const ChatHistorySlider = ({
       {/* menu */}
       <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5} alignItems={'center'}>
         {!isPc && appId && (
-          <Tabs
+          <LightRowTabs<TabEnum>
             flex={'1 0 0'}
             mr={2}
             list={[
-              { label: t('core.chat.Recent use'), id: TabEnum.recently },
-              { label: t('App'), id: TabEnum.app },
-              { label: t('core.chat.History'), id: TabEnum.history }
+              { label: t('core.chat.Recent use'), value: TabEnum.recently },
+              { label: t('App'), value: TabEnum.app },
+              { label: t('core.chat.History'), value: TabEnum.history }
             ]}
-            activeId={currentTab}
-            onChange={(e) => setCurrentTab(e as `${TabEnum}`)}
+            value={currentTab}
+            onChange={setCurrentTab}
           />
         )}
         <Button

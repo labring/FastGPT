@@ -21,11 +21,10 @@ import {
 } from '@chakra-ui/react';
 import { NodeInputKeyEnum } from '@fastgpt/global/core/workflow/constants';
 import { useTranslation } from 'next-i18next';
-import Tabs from '@/components/Tabs';
+import LightRowTabs from '@fastgpt/web/components/common/Tabs/LightRowTabs';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { FlowNodeInputItemType } from '@fastgpt/global/core/workflow/type/io.d';
 import { useToast } from '@fastgpt/web/hooks/useToast';
-import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import JSONEditor from '@fastgpt/web/components/common/Textarea/JsonEditor';
 import { formatEditorVariablePickerIcon } from '@fastgpt/global/core/workflow/utils';
 import { EditorVariablePickerType } from '@fastgpt/web/components/common/Textarea/PromptEditor/type';
@@ -310,9 +309,9 @@ export function RenderHttpProps({
             label={t('core.module.http.Props tip', { variable: variableText })}
           ></QuestionTip>
         </Flex>
-        <Tabs
+        <LightRowTabs<TabEnum>
           list={[
-            { label: <RenderPropsItem text="Params" num={paramsLength} />, id: TabEnum.params },
+            { label: <RenderPropsItem text="Params" num={paramsLength} />, value: TabEnum.params },
             ...(!['GET', 'DELETE'].includes(requestMethods)
               ? [
                   {
@@ -322,14 +321,17 @@ export function RenderHttpProps({
                         {jsonBody?.value && <Box ml={1}>✅</Box>}
                       </Flex>
                     ),
-                    id: TabEnum.body
+                    value: TabEnum.body
                   }
                 ]
               : []),
-            { label: <RenderPropsItem text="Headers" num={headersLength} />, id: TabEnum.headers }
+            {
+              label: <RenderPropsItem text="Headers" num={headersLength} />,
+              value: TabEnum.headers
+            }
           ]}
-          activeId={selectedTab}
-          onChange={(e) => setSelectedTab(e as any)}
+          value={selectedTab}
+          onChange={setSelectedTab}
         />
         <Box bg={'white'} borderRadius={'md'}>
           {params &&
