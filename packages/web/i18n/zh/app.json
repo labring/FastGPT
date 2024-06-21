@@ -68,7 +68,7 @@
   },
   "type": {
     "All": "全部",
-    "Create http plugin tip": "通过 OpenAPI schema 批量创建插件，兼容 GPTs 格式。",
+    "Create http plugin tip": "通过 OpenAPI Schema 批量创建插件，兼容 GPTs 格式。",
     "Create one plugin tip": "可以自定义输入和输出的工作流，通常用于封装重复使用的工作流",
     "Create plugin bot": "创建插件",
     "Create simple bot": "创建简易应用",
