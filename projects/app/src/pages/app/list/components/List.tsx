@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Box, Grid, Flex, IconButton, border } from '@chakra-ui/react';
+import { Box, Grid, Flex, IconButton } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import { delAppById, putAppById } from '@/web/core/app/api';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
@@ -34,16 +34,15 @@ const EditResourceModal = dynamic(() => import('@/components/common/Modal/EditRe
 const ConfigPerModal = dynamic(() => import('@/components/support/permission/ConfigPerModal'));
 
 import type { EditHttpPluginProps } from './HttpPluginEditModal';
+import { postCopyApp } from '@/web/core/app/api/app';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
-    AppListContext,
-    (v) => v
-  );
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, parentId } =
+    useContextSelector(AppListContext, (v) => v);
   const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
@@ -68,26 +67,32 @@ const ListItem = () => {
     }
   });
 
-  const { openConfirm, ConfirmModal } = useConfirm({
+  const { openConfirm: openConfirmDel, ConfirmModal: DelConfirmModal } = useConfirm({
     type: 'delete'
   });
-
-  const { run: onclickDelApp } = useRequest2(
+  const { runAsync: onclickDelApp } = useRequest2(
     (id: string) => {
-      setLoadingAppId(id);
       return delAppById(id);
     },
     {
       onSuccess() {
         loadMyApps();
       },
-      onFinally() {
-        setLoadingAppId(undefined);
-      },
       successToast: t('common.Delete Success'),
       errorToast: t('common.Delete Failed')
     }
   );
+
+  const { openConfirm: openConfirmCopy, ConfirmModal: ConfirmCopyModal } = useConfirm({
+    content: appT('Confirm copy app tip')
+  });
+  const { runAsync: onclickCopy } = useRequest2(postCopyApp, {
+    onSuccess({ appId }) {
+      router.push(`/app/detail?appId=${appId}`);
+      loadMyApps();
+    },
+    successToast: appT('Create copy success')
+  });
 
   return (
     <>
@@ -221,6 +226,16 @@ const ListItem = () => {
                         {
                           children: [
                             {
+                              icon: 'copy',
+                              label: appT('Copy one app'),
+                              onClick: () =>
+                                openConfirmCopy(() => onclickCopy({ appId: app._id }))()
+                            }
+                          ]
+                        },
+                        {
+                          children: [
+                            {
                               icon: 'core/chat/chatLight',
                               label: appT('Go to chat'),
                               onClick: () => {
@@ -238,7 +253,7 @@ const ListItem = () => {
                                     icon: 'delete',
                                     label: t('common.Delete'),
                                     onClick: () =>
-                                      openConfirm(
+                                      openConfirmDel(
                                         () => onclickDelApp(app._id),
                                         undefined,
                                         app.type === AppTypeEnum.folder
@@ -280,7 +295,9 @@ const ListItem = () => {
       </Grid>
 
       {myApps.length === 0 && <EmptyTip text={'还没有应用，快去创建一个吧！'} pt={'30vh'} />}
-      <ConfirmModal />
+
+      <DelConfirmModal />
+      <ConfirmCopyModal />
       {!!editedApp && (
         <EditResourceModal
           {...editedApp}

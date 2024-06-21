@@ -163,7 +163,7 @@ const ChatHistorySlider = ({
       <Flex w={'100%'} px={[2, 5]} h={'36px'} my={5} alignItems={'center'}>
         {!isPc && appId && (
           <Tabs
-            w={'180px'}
+            flex={'1 0 0'}
             mr={2}
             list={[
               { label: t('core.chat.Recent use'), id: TabEnum.recently },
@@ -176,7 +176,7 @@ const ChatHistorySlider = ({
         )}
         <Button
           variant={'whitePrimary'}
-          flex={1}
+          flex={['0', 1]}
           h={'100%'}
           color={'primary.600'}
           borderRadius={'xl'}

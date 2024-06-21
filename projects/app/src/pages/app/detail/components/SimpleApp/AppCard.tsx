@@ -98,7 +98,6 @@ const AppCard = () => {
           </Button>
           {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
             <Button
-              mr={3}
               size={['sm', 'md']}
               variant={'whitePrimary'}
               leftIcon={<DragHandleIcon w={'16px'} />}

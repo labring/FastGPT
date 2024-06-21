@@ -252,6 +252,7 @@
       "Publish Confirm": "确认发布应用？会立即更新所有发布渠道的应用状态。",
       "Publish Failed": "发布失败",
       "Publish Success": "发布成功",
+      "Publish app tip": "发布应用后，所有发布渠道将会立即使用该版本",
       "Question Guide": "猜你想问",
       "Question Guide Tip": "对话结束后，会为生成 3 个引导性问题。",
       "Quote prompt": "引用模板提示词",

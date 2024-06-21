@@ -7,14 +7,21 @@ import { useContextSelector } from 'use-context-selector';
 import { AppContext, TabEnum } from '../context';
 import dynamic from 'next/dynamic';
 import { Flex } from '@chakra-ui/react';
+import { useBeforeunload } from '@fastgpt/web/hooks/useBeforeunload';
+import { useTranslation } from 'next-i18next';
 
 const Logs = dynamic(() => import('../Logs/index'));
 const PublishChannel = dynamic(() => import('../Publish'));
 
 const SimpleEdit = () => {
+  const { t } = useTranslation();
   const { currentTab } = useContextSelector(AppContext, (v) => v);
 
   const [appForm, setAppForm] = useState(getDefaultAppForm());
+
+  useBeforeunload({
+    tip: t('core.common.tip.leave page')
+  });
 
   return (
     <Flex h={'100%'} flexDirection={'column'} pr={3} pb={3}>

@@ -20,6 +20,7 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { compareWorkflow } from '@/web/core/workflow/utils';
 import MyTag from '@fastgpt/web/components/common/Tag/index';
 import { publishStatusStyle } from '../constants';
+import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 
 const Header = ({
   appForm,
@@ -134,7 +135,13 @@ const Header = ({
                 <PopoverConfirm
                   showCancel
                   content={t('core.app.Publish Confirm')}
-                  Trigger={<Button isDisabled={isPublished}>{t('core.app.Publish')}</Button>}
+                  Trigger={
+                    <Box>
+                      <MyTooltip label={t('core.app.Publish app tip')}>
+                        <Button isDisabled={isPublished}>{t('core.app.Publish')}</Button>
+                      </MyTooltip>
+                    </Box>
+                  }
                   onConfirm={() => onSubmitPublish(appForm)}
                 />
               </>

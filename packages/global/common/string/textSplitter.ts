@@ -350,7 +350,7 @@ export const splitText2Chunks = (props: SplitProps): SplitResponse => {
 
     return commonSplit(props);
   });
-  console.log(Date.now() - start);
+
   return {
     chunks: splitResult.map((item) => item.chunks).flat(),
     chars: splitResult.reduce((sum, item) => sum + item.chars, 0)

@@ -170,12 +170,14 @@ const FileSelector = ({
     const items = e.dataTransfer.items;
     const fileList: SelectFileItemType[] = [];
 
-    if (e.dataTransfer.items.length <= 1) {
-      const traverseFileTree = async (item: any) => {
-        return new Promise<void>((resolve, reject) => {
-          if (item.isFile) {
-            item.file((file: File) => {
-              const folderPath = (item.fullPath || '').split('/').slice(2, -1).join('/');
+    const firstEntry = items[0].webkitGetAsEntry();
+
+    if (firstEntry?.isDirectory && items.length === 1) {
+      {
+        const readFile = (entry: any) => {
+          return new Promise((resolve) => {
+            entry.file((file: File) => {
+              const folderPath = (entry.fullPath || '').split('/').slice(2, -1).join('/');
 
               if (filterTypeReg.test(file.name)) {
                 fileList.push({
@@ -184,24 +186,45 @@ const FileSelector = ({
                   file
                 });
               }
-              resolve();
+              resolve(file);
             });
-          } else if (item.isDirectory) {
-            const dirReader = item.createReader();
+          });
+        };
+        const traverseFileTree = (dirReader: any) => {
+          return new Promise((resolve) => {
+            let fileNum = 0;
             dirReader.readEntries(async (entries: any[]) => {
-              for (let i = 0; i < entries.length; i++) {
-                await traverseFileTree(entries[i]);
+              for await (const entry of entries) {
+                if (entry.isFile) {
+                  await readFile(entry);
+                  fileNum++;
+                } else if (entry.isDirectory) {
+                  await traverseFileTree(entry.createReader());
+                }
               }
-              resolve();
-            });
-          }
-        });
-      };
 
-      for await (const item of items) {
-        await traverseFileTree(item.webkitGetAsEntry());
+              // chrome: readEntries will return 100 entries at most
+              if (fileNum === 100) {
+                await traverseFileTree(dirReader);
+              }
+              resolve('');
+            });
+          });
+        };
+
+        for await (const item of items) {
+          const entry = item.webkitGetAsEntry();
+          if (entry) {
+            if (entry.isFile) {
+              await readFile(entry);
+            } else if (entry.isDirectory) {
+              //@ts-ignore
+              await traverseFileTree(entry.createReader());
+            }
+          }
+        }
       }
-    } else {
+    } else if (firstEntry?.isFile) {
       const files = Array.from(e.dataTransfer.files);
       let isErr = files.some((item) => item.type === '');
       if (isErr) {
@@ -220,6 +243,11 @@ const FileSelector = ({
             file
           }))
       );
+    } else {
+      return toast({
+        title: fileT('upload error description'),
+        status: 'error'
+      });
     }
 
     selectFileCallback(fileList.slice(0, maxCount));

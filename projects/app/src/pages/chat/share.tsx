@@ -298,7 +298,7 @@ const OutLink = ({
                     onClose={onCloseSlider}
                   >
                     <DrawerOverlay backgroundColor={'rgba(255,255,255,0.5)'} />
-                    <DrawerContent maxWidth={'250px'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
+                    <DrawerContent maxWidth={'75vw'} boxShadow={'2px 0 10px rgba(0,0,0,0.15)'}>
                       {children}
                     </DrawerContent>
                   </Drawer>

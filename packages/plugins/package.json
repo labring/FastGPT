@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "dependencies": {},
   "devDependencies": {
-    "@types/node": "^20.8.5",
+    "@types/node": "^20.14.2",
     "@fastgpt/global": "workspace:*",
     "@fastgpt/service": "workspace:*"
   }
