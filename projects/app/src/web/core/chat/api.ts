@@ -43,7 +43,7 @@ export const delChatHistoryById = (data: DelHistoryProps) => DELETE(`/core/chat/
 /**
  * clear all history by appid
  */
-export const clearChatHistoryByAppId = (data: ClearHistoriesProps) =>
+export const delClearChatHistories = (data: ClearHistoriesProps) =>
   DELETE(`/core/chat/clearHistories`, data);
 
 /**

@@ -551,7 +551,8 @@ export const theme = extendTheme({
         color: 'myGray.600',
         fontWeight: 'normal',
         height: '100%',
-        overflow: 'hidden'
+        overflow: 'hidden',
+        fontSize: '16px'
       },
       a: {
         color: 'primary.600'

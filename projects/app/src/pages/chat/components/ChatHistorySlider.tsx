@@ -20,6 +20,8 @@ import {
 } from '@fastgpt/global/common/parentFolder/type';
 import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { useContextSelector } from 'use-context-selector';
+import { ChatContext } from '@/web/core/chat/context/chatContext';
 
 type HistoryItemType = {
   id: string;
@@ -38,30 +40,22 @@ const ChatHistorySlider = ({
   appId,
   appName,
   appAvatar,
-  history,
   apps = [],
   confirmClearText,
-  activeChatId,
-  onChangeChat,
   onDelHistory,
   onClearHistory,
   onSetHistoryTop,
-  onSetCustomTitle,
-  onClose
+  onSetCustomTitle
 }: {
   appId?: string;
   appName: string;
   appAvatar: string;
-  history: HistoryItemType[];
-  activeChatId: string;
   apps?: AppListItemType[];
   confirmClearText: string;
-  onChangeChat: (chatId?: string) => void;
   onDelHistory: (e: { chatId: string }) => void;
   onClearHistory: () => void;
   onSetHistoryTop?: (e: { chatId: string; top: boolean }) => void;
   onSetCustomTitle?: (e: { chatId: string; title: string }) => void;
-  onClose: () => void;
 }) => {
   const theme = useTheme();
   const router = useRouter();
@@ -75,6 +69,26 @@ const ChatHistorySlider = ({
 
   const [currentTab, setCurrentTab] = useState<`${TabEnum}`>(TabEnum.history);
 
+  const {
+    histories,
+    onChangeChatId,
+    onChangeAppId,
+    chatId: activeChatId
+  } = useContextSelector(ChatContext, (v) => v);
+
+  const concatHistory = useMemo(() => {
+    const formatHistories: HistoryItemType[] = histories.map((item) => ({
+      id: item.chatId,
+      title: item.title,
+      customTitle: item.customTitle,
+      top: item.top
+    }));
+    const newChat: HistoryItemType = { id: activeChatId, title: t('core.chat.New Chat') };
+    const activeChat = histories.find((item) => item.chatId === activeChatId);
+
+    return !activeChat ? [newChat].concat(formatHistories) : formatHistories;
+  }, [activeChatId, histories, t]);
+
   const showApps = apps?.length > 0;
 
   // custom title edit
@@ -85,15 +99,6 @@ const ChatHistorySlider = ({
   const { openConfirm, ConfirmModal } = useConfirm({
     content: confirmClearText
   });
-
-  const concatHistory = useMemo<HistoryItemType[]>(
-    () =>
-      !activeChatId
-        ? //@ts-ignore
-          [{ id: activeChatId, title: t('core.chat.New Chat') }].concat(history)
-        : history,
-    [activeChatId, history, t]
-  );
 
   const canRouteToDetail = useMemo(
     () => appId && userInfo?.team.permission.hasWritePer,
@@ -110,19 +115,6 @@ const ChatHistorySlider = ({
       }))
     );
   }, []);
-
-  const onChangeApp = useCallback(
-    (appId: string) => {
-      router.replace({
-        query: {
-          ...router.query,
-          chatId: '',
-          appId
-        }
-      });
-    },
-    [router]
-  );
 
   return (
     <Flex
@@ -176,13 +168,13 @@ const ChatHistorySlider = ({
         )}
         <Button
           variant={'whitePrimary'}
-          flex={['0', 1]}
+          flex={['0 0 auto', 1]}
           h={'100%'}
           color={'primary.600'}
           borderRadius={'xl'}
           leftIcon={<MyIcon name={'core/chat/chatLight'} w={'16px'} />}
           overflow={'hidden'}
-          onClick={() => onChangeChat()}
+          onClick={() => onChangeChatId()}
         >
           {t('core.chat.New Chat')}
         </Button>
@@ -195,7 +187,11 @@ const ChatHistorySlider = ({
             size={'mdSquare'}
             aria-label={''}
             borderRadius={'50%'}
-            onClick={openConfirm(onClearHistory)}
+            onClick={() =>
+              openConfirm(() => {
+                onClearHistory();
+              })()
+            }
           >
             <MyIcon name={'common/clearLight'} w={'16px'} />
           </IconButton>
@@ -232,7 +228,7 @@ const ChatHistorySlider = ({
                     }
                   : {
                       onClick: () => {
-                        onChangeChat(item.id);
+                        onChangeChatId(item.id);
                       }
                     })}
               >
@@ -292,7 +288,7 @@ const ChatHistorySlider = ({
                               onClick: () => {
                                 onDelHistory({ chatId: item.id });
                                 if (item.id === activeChatId) {
-                                  onChangeChat();
+                                  onChangeChatId();
                                 }
                               },
                               type: 'danger'
@@ -324,10 +320,7 @@ const ChatHistorySlider = ({
                         color: 'primary.600'
                       }
                     : {
-                        onClick: () => {
-                          onChangeApp(item._id);
-                          onClose();
-                        }
+                        onClick: () => onChangeAppId(item._id)
                       })}
                 >
                   <Avatar src={item.avatar} w={'24px'} />
@@ -344,8 +337,7 @@ const ChatHistorySlider = ({
               value={appId}
               onSelect={(id) => {
                 if (!id) return;
-                onChangeApp(id);
-                onClose();
+                onChangeAppId(id);
               }}
               server={getAppList}
             />

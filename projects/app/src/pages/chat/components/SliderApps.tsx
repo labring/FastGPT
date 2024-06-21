@@ -7,13 +7,15 @@ import Avatar from '@/components/Avatar';
 import { AppListItemType } from '@fastgpt/global/core/app/type';
 import MyDivider from '@fastgpt/web/components/common/MyDivider';
 import MyPopover from '@fastgpt/web/components/common/MyPopover/index';
-import SelectOneResource from '@/components/common/folder/SelectOneResource';
 import { getMyApps } from '@/web/core/app/api';
 import {
   GetResourceFolderListProps,
   GetResourceListItemResponse
 } from '@fastgpt/global/common/parentFolder/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import dynamic from 'next/dynamic';
+
+const SelectOneResource = dynamic(() => import('@/components/common/folder/SelectOneResource'));
 
 const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppId: string }) => {
   const { t } = useTranslation();
@@ -74,19 +76,19 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
       {!isTeamChat && (
         <>
           <MyDivider h={2} my={1} />
-          <MyPopover
-            placement="right-start"
-            offset={[30, -65]}
-            trigger="hover"
-            Trigger={
-              <HStack
-                px={4}
-                my={2}
-                color={'myGray.500'}
-                fontSize={'sm'}
-                justifyContent={'space-between'}
-              >
-                <Box>{t('core.chat.Recent use')}</Box>
+          <HStack
+            px={4}
+            my={2}
+            color={'myGray.500'}
+            fontSize={'sm'}
+            justifyContent={'space-between'}
+          >
+            <Box>{t('core.chat.Recent use')}</Box>
+            <MyPopover
+              placement="bottom-end"
+              offset={[20, 10]}
+              trigger="hover"
+              Trigger={
                 <HStack
                   spacing={0.5}
                   cursor={'pointer'}
@@ -102,23 +104,23 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
                   <Box>{t('common.More')}</Box>
                   <MyIcon name={'common/select'} w={'1rem'} />
                 </HStack>
-              </HStack>
-            }
-          >
-            {({ onClose }) => (
-              <Box minH={'200px'}>
-                <SelectOneResource
-                  value={activeAppId}
-                  onSelect={(id) => {
-                    if (!id) return;
-                    onChangeApp(id);
-                    onClose();
-                  }}
-                  server={getAppList}
-                />
-              </Box>
-            )}
-          </MyPopover>
+              }
+            >
+              {({ onClose }) => (
+                <Box minH={'200px'}>
+                  <SelectOneResource
+                    value={activeAppId}
+                    onSelect={(id) => {
+                      if (!id) return;
+                      onChangeApp(id);
+                      onClose();
+                    }}
+                    server={getAppList}
+                  />
+                </Box>
+              )}
+            </MyPopover>
+          </HStack>
         </>
       )}
 
