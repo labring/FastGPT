@@ -22,6 +22,7 @@ import { getMyApps } from '@/web/core/app/api';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { useContextSelector } from 'use-context-selector';
 import { ChatContext } from '@/web/core/chat/context/chatContext';
+import MyBox from '@fastgpt/web/components/common/MyBox';
 
 type HistoryItemType = {
   id: string;
@@ -73,7 +74,8 @@ const ChatHistorySlider = ({
     histories,
     onChangeChatId,
     onChangeAppId,
-    chatId: activeChatId
+    chatId: activeChatId,
+    isLoading
   } = useContextSelector(ChatContext, (v) => v);
 
   const concatHistory = useMemo(() => {
@@ -117,8 +119,9 @@ const ChatHistorySlider = ({
   }, []);
 
   return (
-    <Flex
-      position={'relative'}
+    <MyBox
+      isLoading={isLoading}
+      display={'flex'}
       flexDirection={'column'}
       w={'100%'}
       h={'100%'}
@@ -369,7 +372,7 @@ const ChatHistorySlider = ({
       )}
       <EditTitleModal />
       <ConfirmModal />
-    </Flex>
+    </MyBox>
   );
 };
 

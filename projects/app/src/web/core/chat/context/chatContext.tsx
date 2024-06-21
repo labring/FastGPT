@@ -23,6 +23,7 @@ type ChatContextType = ChatContextValueType & {
   forbidLoadChat: React.MutableRefObject<boolean>;
   onChangeChatId: (chatId?: string, forbid?: boolean) => void;
   onChangeAppId: (appId: string) => void;
+  isLoading: boolean;
 };
 
 export const ChatContext = createContext<ChatContextType>({
@@ -54,7 +55,8 @@ export const ChatContext = createContext<ChatContextType>({
   },
   onChangeAppId: function (appId: string): void {
     throw new Error('Function not implemented.');
-  }
+  },
+  isLoading: false
 });
 
 const ChatContextProvider = ({
@@ -105,24 +107,28 @@ const ChatContextProvider = ({
     [onCloseSlider, router]
   );
 
-  const { runAsync: onUpdateHistory } = useRequest2(putChatHistory, {
+  const { runAsync: onUpdateHistory, loading: isUpdatingHistory } = useRequest2(putChatHistory, {
     onSuccess() {
       loadHistories();
     }
   });
-  const { runAsync: onDelHistory } = useRequest2(delChatHistoryById, {
+  const { runAsync: onDelHistory, loading: isDeletingHistory } = useRequest2(delChatHistoryById, {
     onSuccess() {
       loadHistories();
     }
   });
-  const { runAsync: onClearHistories } = useRequest2(delClearChatHistories, {
-    onSuccess() {
-      loadHistories();
-    },
-    onFinally() {
-      onChangeChatId('');
+  const { runAsync: onClearHistories, loading: isClearingHistory } = useRequest2(
+    delClearChatHistories,
+    {
+      onSuccess() {
+        loadHistories();
+      },
+      onFinally() {
+        onChangeChatId('');
+      }
     }
-  });
+  );
+  const isLoading = isUpdatingHistory || isDeletingHistory || isClearingHistory;
 
   const contextValue = {
     chatId,
@@ -136,7 +142,8 @@ const ChatContextProvider = ({
     onOpenSlider,
     forbidLoadChat,
     onChangeChatId,
-    onChangeAppId
+    onChangeAppId,
+    isLoading
   };
   return <ChatContext.Provider value={contextValue}>{children}</ChatContext.Provider>;
 };

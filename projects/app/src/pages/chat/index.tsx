@@ -278,6 +278,7 @@ const Render = (props: Props) => {
       if (lastChatAppId) {
         return router.replace({
           query: {
+            ...router.query,
             appId: lastChatAppId,
             chatId: lastChatId
           }
@@ -294,6 +295,7 @@ const Render = (props: Props) => {
       } else {
         router.replace({
           query: {
+            ...router.query,
             appId: apps[0]._id,
             chatId: ''
           }

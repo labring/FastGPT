@@ -211,12 +211,7 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
           title: getErrText(e, t('core.shareChat.Init Error'))
         });
         if (chatId) {
-          router.replace({
-            query: {
-              ...router.query,
-              chatId: ''
-            }
-          });
+          onChangeChatId('');
         }
       },
       onFinally() {
@@ -309,7 +304,6 @@ const OutLink = ({ appName, appIntro, appAvatar }: Props) => {
             <Box flex={1}>
               <ChatBox
                 ref={ChatBoxRef}
-                active={!!chatData.app.name}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}
                 chatConfig={chatData.app?.chatConfig}

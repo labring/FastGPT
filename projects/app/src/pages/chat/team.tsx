@@ -60,7 +60,8 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     isOpenSlider,
     onCloseSlider,
     forbidLoadChat,
-    onChangeChatId
+    onChangeChatId,
+    onChangeAppId
   } = useContextSelector(ChatContext, (v) => v);
 
   const startChat = useCallback(
@@ -127,7 +128,7 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
     async () => {
       if (!appId || forbidLoadChat.current) return;
 
-      const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken: teamToken });
+      const res = await getTeamChatInfo({ teamId, appId, chatId, teamToken });
       const history = res.history.map((item) => ({
         ...item,
         dataId: item.dataId || nanoid(),
@@ -238,7 +239,6 @@ const Chat = ({ myApps }: { myApps: AppListItemType[] }) => {
             {/* chat box */}
             <Box flex={1}>
               <ChatBox
-                active={!!chatData.app.name}
                 ref={ChatBoxRef}
                 appAvatar={chatData.app.avatar}
                 userAvatar={chatData.userAvatar}
@@ -301,6 +301,7 @@ const Render = (props: Props) => {
 
       router.replace({
         query: {
+          ...router.query,
           appId: myApps[0]._id,
           chatId: ''
         }
