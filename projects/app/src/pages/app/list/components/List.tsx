@@ -126,7 +126,8 @@ const ListItem = () => {
                 isLoading={loadingAppId === app._id}
                 lineHeight={1.5}
                 h="100%"
-                py={3}
+                pt={4}
+                pb={3}
                 px={5}
                 cursor={'pointer'}
                 border={'base'}
@@ -166,18 +167,20 @@ const ListItem = () => {
                   isFolder: app.type === AppTypeEnum.folder
                 })}
               >
-                <Box position={'absolute'} top={3.5} right={0}>
+                {/* <Box position={'absolute'} top={3.5} right={0}>
                   <AppTypeTag type={app.type} />
-                </Box>
-                <Flex alignItems={'center'} h={'38px'}>
-                  <Avatar src={app.avatar} borderRadius={'md'} w={'28px'} />
-                  <Box ml={3}>{app.name}</Box>
-                </Flex>
+                </Box> */}
+                <HStack>
+                  <Avatar src={app.avatar} borderRadius={'md'} w={'1.3rem'} />
+                  <Box flex={'1 0 0'}>{app.name}</Box>
+                  <Box alignSelf={'flex-start'} mr={'-1.25rem'}>
+                    <AppTypeTag type={app.type} />
+                  </Box>
+                </HStack>
                 <Box
                   flex={'1'}
                   className={'textEllipsis3'}
-                  mb={2}
-                  mt={1}
+                  my={2}
                   wordBreak={'break-all'}
                   fontSize={'mini'}
                   color={'myGray.600'}
@@ -189,7 +192,8 @@ const ListItem = () => {
                   h={'24px'}
                   alignItems={'center'}
                   justifyContent={'space-between'}
-                  fontSize={'xs'}
+                  fontSize={'mini'}
+                  color={'myGray.500'}
                 >
                   <HStack spacing={3.5}>
                     {owner && (
@@ -201,14 +205,11 @@ const ListItem = () => {
                       </HStack>
                     )}
 
-                    <PermissionIconText
-                      defaultPermission={app.defaultPermission}
-                      color={'myGray.500'}
-                    />
+                    <PermissionIconText defaultPermission={app.defaultPermission} />
                   </HStack>
 
                   <HStack>
-                    <HStack spacing={0.5} color={'myGray.500'} className="time">
+                    <HStack spacing={0.5} className="time">
                       <MyIcon name={'history'} w={'0.85rem'} />
                       <Box>{formatTimeToChatTime(app.updateTime)}</Box>
                     </HStack>

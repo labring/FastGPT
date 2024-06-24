@@ -39,7 +39,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
   const data = map.current[type];
 
   return data ? (
-    <Flex bg={data.bg} color={data.color} py={1} pl={2} pr={3} borderLeftRadius={'md'}>
+    <Flex bg={data.bg} color={data.color} py={0.5} pl={2} pr={3} borderLeftRadius={'md'}>
       <MyIcon name={data.icon as any} w={'0.8rem'} />
       <Box ml={1} fontSize={'mini'}>
         {data.label}

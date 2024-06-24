@@ -52,13 +52,14 @@ function List() {
   } = useContextSelector(DatasetsContext, (v) => v);
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const { myDatasets, loadMyDatasets } = useDatasetStore();
+  const [loadingDatasetId, setLoadingDatasetId] = useState<string>();
 
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
     },
     onDrop: async (dragId: string, targetId: string) => {
-      setLoading(true);
+      setLoadingDatasetId(dragId);
       try {
         await putDatasetById({
           id: dragId,
@@ -66,7 +67,7 @@ function List() {
         });
         refetchDatasets();
       } catch (error) {}
-      setLoading(false);
+      setLoadingDatasetId(undefined);
     }
   });
 
@@ -160,6 +161,7 @@ function List() {
               }
             >
               <MyBox
+                isLoading={loadingDatasetId === dataset._id}
                 display={'flex'}
                 flexDirection={'column'}
                 py={3}
@@ -254,18 +256,6 @@ function List() {
                               label: t('Move'),
                               onClick: () => setMoveDatasetId(dataset._id)
                             },
-
-                            ...(dataset.type != DatasetTypeEnum.folder
-                              ? [
-                                  {
-                                    icon: 'export',
-                                    label: t('Export'),
-                                    onClick: () => {
-                                      exportDataset(dataset);
-                                    }
-                                  }
-                                ]
-                              : []),
                             ...(dataset.permission.hasManagePer
                               ? [
                                   {
@@ -277,6 +267,21 @@ function List() {
                               : [])
                           ]
                         },
+                        ...(dataset.type != DatasetTypeEnum.folder
+                          ? [
+                              {
+                                children: [
+                                  {
+                                    icon: 'export',
+                                    label: t('Export'),
+                                    onClick: () => {
+                                      exportDataset(dataset);
+                                    }
+                                  }
+                                ]
+                              }
+                            ]
+                          : []),
                         ...(dataset.permission.hasManagePer
                           ? [
                               {
