@@ -7,7 +7,7 @@ import { serviceSideProps } from '@/web/common/utils/i18n';
 import ParentPaths from '@/components/common/folder/Path';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import List from './component/List';
-import { DatasetContext } from './context';
+import { DatasetsContext } from './context';
 import DatasetContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
@@ -22,7 +22,7 @@ import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import {
-  DatasetDefaultPermission,
+  DatasetDefaultPermissionVal,
   DatasetPermissionList
 } from '@fastgpt/global/support/permission/dataset/constant';
 import {
@@ -54,7 +54,7 @@ const Dataset = () => {
     setEditedDataset,
     setMoveDatasetId,
     onDelDataset
-  } = useContextSelector(DatasetContext, (v) => v);
+  } = useContextSelector(DatasetsContext, (v) => v);
   const { userInfo } = useUserStore();
 
   const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
@@ -162,7 +162,7 @@ const Dataset = () => {
               }
               defaultPer={{
                 value: folderDetail.defaultPermission,
-                defaultValue: DatasetDefaultPermission,
+                defaultValue: DatasetDefaultPermissionVal,
                 onChange: (e) => {
                   return putDatasetById({
                     id: folderDetail._id,

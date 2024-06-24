@@ -19,9 +19,9 @@ import { downloadFetch } from '@/web/common/system/utils';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { useContextSelector } from 'use-context-selector';
-import { DatasetContext } from '../context';
+import { DatasetsContext } from '../context';
 import {
-  DatasetDefaultPermission,
+  DatasetDefaultPermissionVal,
   DatasetPermissionList
 } from '@fastgpt/global/support/permission/dataset/constant';
 import ConfigPerModal from '@/components/support/permission/ConfigPerModal';
@@ -49,7 +49,7 @@ function List() {
     editedDataset,
     setEditedDataset,
     onDelDataset
-  } = useContextSelector(DatasetContext, (v) => v);
+  } = useContextSelector(DatasetsContext, (v) => v);
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const { myDatasets, loadMyDatasets } = useDatasetStore();
 
@@ -361,7 +361,7 @@ function List() {
           name={editPerDataset.name}
           defaultPer={{
             value: editPerDataset.defaultPermission,
-            defaultValue: DatasetDefaultPermission,
+            defaultValue: DatasetDefaultPermissionVal,
             onChange: async (e) => {
               await putDatasetById({
                 id: editPerDataset._id,

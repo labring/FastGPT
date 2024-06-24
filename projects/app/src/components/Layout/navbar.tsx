@@ -34,7 +34,7 @@ const Navbar = ({ unread }: { unread: number }) => {
         activeLink: ['/chat']
       },
       {
-        label: t('navbar.Apps'),
+        label: t('navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,

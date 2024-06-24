@@ -11,7 +11,7 @@ import {
   ReadPermissionVal
 } from '@fastgpt/global/support/permission/constant';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
-import { DatasetDefaultPermission } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 
@@ -85,7 +85,7 @@ async function handler(req: NextApiRequest) {
       type: item.type,
       permission: item.permission,
       vectorModel: getVectorModel(item.vectorModel),
-      defaultPermission: item.defaultPermission ?? DatasetDefaultPermission
+      defaultPermission: item.defaultPermission ?? DatasetDefaultPermissionVal
     }))
   );
 

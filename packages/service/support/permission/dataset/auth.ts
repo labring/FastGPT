@@ -18,6 +18,7 @@ import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 
 export async function authDatasetByTmbId({
   tmbId,
@@ -58,11 +59,12 @@ export async function authDatasetByTmbId({
 
     return {
       ...dataset,
+      defaultPermission: dataset.defaultPermission ?? DatasetDefaultPermissionVal,
       permission: Per
     };
   })();
 
-  return { dataset: dataset };
+  return { dataset };
 }
 
 // Auth Dataset

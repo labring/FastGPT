@@ -26,7 +26,7 @@ import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
 import FormLabel from '@fastgpt/web/components/common/MyBox/FormLabel';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import {
-  DatasetDefaultPermission,
+  DatasetDefaultPermissionVal,
   DatasetPermissionList
 } from '@fastgpt/global/support/permission/dataset/constant';
 import MemberManager from '../../component/MemberManager';
@@ -202,10 +202,16 @@ const Info = ({ datasetId }: { datasetId: string }) => {
       {datasetDetail.type === DatasetTypeEnum.externalFile && (
         <>
           <Flex w={'100%'} alignItems={'center'}>
-            <HStack fontSize={['sm', 'md']} flex={['0 0 90px', '0 0 160px']} w={0}>
+            <FormLabel
+              display={'flex'}
+              flex={['0 0 90px', '0 0 160px']}
+              w={0}
+              gap={1}
+              alignItems={'center'}
+            >
               <Box>{datasetT('External read url')}</Box>
               <QuestionTip label={datasetT('External read url tip')} />
-            </HStack>
+            </FormLabel>
             <Input
               flex={[1, '0 0 320px']}
               placeholder="https://test.com/read?fileId={{fileId}}"
@@ -246,6 +252,8 @@ const Info = ({ datasetId }: { datasetId: string }) => {
 
       {datasetDetail.permission.hasManagePer && (
         <>
+          <MyDivider my={6} h={'2px'} maxW={'500px'} />
+
           <Flex mt={5} alignItems={'center'} w={'100%'} flexWrap={'wrap'} maxW="500px">
             <FormLabel flex={['0 0 90px', '0 0 160px']} w={0}>
               {commonT('permission.Default permission')}
@@ -253,7 +261,7 @@ const Info = ({ datasetId }: { datasetId: string }) => {
             <DefaultPermissionList
               w="320px"
               per={defaultPermission}
-              defaultPer={DatasetDefaultPermission}
+              defaultPer={DatasetDefaultPermissionVal}
               onChange={(v) => setValue('defaultPermission', v)}
             />
           </Flex>

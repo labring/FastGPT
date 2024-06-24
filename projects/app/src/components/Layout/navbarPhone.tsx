@@ -21,7 +21,7 @@ const NavbarPhone = ({ unread }: { unread: number }) => {
         unread: 0
       },
       {
-        label: t('navbar.Apps'),
+        label: t('navbar.Studio'),
         icon: 'core/app/aiLight',
         activeIcon: 'core/app/aiFill',
         link: `/app/list`,
