@@ -59,7 +59,7 @@ const Detail = ({ datasetId, currentTab }: Props) => {
           <Slider currentTab={currentTab} />
 
           {!!datasetDetail._id && (
-            <Box flex={'1 0 0'} pb={0}>
+            <Box flex={'1 0 0'} pb={0} overflow={'auto'}>
               {currentTab === TabEnum.collectionCard && (
                 <CollectionPageContextProvider>
                   <CollectionCard />

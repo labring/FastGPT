@@ -1,11 +1,12 @@
 import { DatasetDataIndexItemType, DatasetSchemaType } from './type';
 import { TrainingModeEnum, DatasetCollectionTypeEnum } from './constants';
 import type { LLMModelItemType } from '../ai/model.d';
+import { ParentIdType } from 'common/parentFolder/type';
 
 /* ================= dataset ===================== */
 export type DatasetUpdateBody = {
   id: string;
-  parentId?: string;
+  parentId?: ParentIdType;
   name?: string;
   avatar?: string;
   intro?: string;
