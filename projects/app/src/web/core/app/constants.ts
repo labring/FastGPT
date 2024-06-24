@@ -10,7 +10,7 @@ export const defaultApp: AppDetailType = {
   type: AppTypeEnum.simple,
   avatar: '/icon/logo.svg',
   intro: '',
-  updateTime: Date.now(),
+  updateTime: new Date(),
   modules: [],
   chatConfig: {},
   teamId: '',
