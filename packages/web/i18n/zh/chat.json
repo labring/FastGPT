@@ -8,6 +8,6 @@
   "Input guide": "输入引导",
   "Input guide lexicon": "词库",
   "Input guide tip": "可以配置一些预设的问题。在用户输入问题时，会从这些预设问题中获取相关问题进行提示。",
-  "Insert input guide, Some data already exists": "有重复数据,已自动过滤,共插入: {{len}} 条数据",
+  "Insert input guide, Some data already exists": "有重复数据，已自动过滤，共插入 {{len}} 条数据",
   "New input guide lexicon": "新词库"
 }
