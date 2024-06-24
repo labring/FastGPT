@@ -12,6 +12,7 @@ import CollaboratorContextProvider, {
   MemberManagerInputPropsType
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 
 const FolderSlideCard = ({
   refreshDeps,
@@ -41,6 +42,7 @@ const FolderSlideCard = ({
   managePer: MemberManagerInputPropsType;
 }) => {
   const { t } = useTranslation();
+  const { feConfigs } = useSystemStore();
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
@@ -109,69 +111,73 @@ const FolderSlideCard = ({
         </>
       )}
 
-      <MyDivider my={6} />
+      {feConfigs?.isPlus && (
+        <>
+          <MyDivider my={6} />
 
-      <Box>
-        <FormLabel>{t('support.permission.Permission')}</FormLabel>
+          <Box>
+            <FormLabel>{t('support.permission.Permission')}</FormLabel>
 
-        {managePer.permission.hasManagePer && (
-          <Box mt={5}>
-            <Box fontSize={'sm'} color={'myGray.500'}>
-              {t('permission.Default permission')}
+            {managePer.permission.hasManagePer && (
+              <Box mt={5}>
+                <Box fontSize={'sm'} color={'myGray.500'}>
+                  {t('permission.Default permission')}
+                </Box>
+                <DefaultPermissionList
+                  mt="1"
+                  per={defaultPer.value}
+                  defaultPer={defaultPer.defaultValue}
+                  onChange={defaultPer.onChange}
+                />
+              </Box>
+            )}
+            <Box mt={6}>
+              <CollaboratorContextProvider {...managePer} refreshDeps={refreshDeps}>
+                {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
+                  return (
+                    <>
+                      <Flex alignItems="center" justifyContent="space-between">
+                        <Box fontSize={'sm'} color={'myGray.500'}>
+                          {t('permission.Collaborator')}
+                        </Box>
+                        {managePer.permission.hasManagePer && (
+                          <HStack spacing={3}>
+                            <MyTooltip label={t('permission.Manage')}>
+                              <MyIcon
+                                w="1rem"
+                                name="common/settingLight"
+                                cursor={'pointer'}
+                                _hover={{ color: 'primary.600' }}
+                                onClick={onOpenManageModal}
+                              />
+                            </MyTooltip>
+                            <MyTooltip label={t('common.Add')}>
+                              <MyIcon
+                                w="1rem"
+                                name="support/permission/collaborator"
+                                cursor={'pointer'}
+                                _hover={{ color: 'primary.600' }}
+                                onClick={onOpenAddMember}
+                              />
+                            </MyTooltip>
+                          </HStack>
+                        )}
+                      </Flex>
+                      <MemberListCard
+                        mt={2}
+                        tagStyle={{
+                          type: 'borderSolid',
+                          colorSchema: 'gray'
+                        }}
+                      />
+                    </>
+                  );
+                }}
+              </CollaboratorContextProvider>
             </Box>
-            <DefaultPermissionList
-              mt="1"
-              per={defaultPer.value}
-              defaultPer={defaultPer.defaultValue}
-              onChange={defaultPer.onChange}
-            />
           </Box>
-        )}
-        <Box mt={6}>
-          <CollaboratorContextProvider {...managePer} refreshDeps={refreshDeps}>
-            {({ MemberListCard, onOpenManageModal, onOpenAddMember }) => {
-              return (
-                <>
-                  <Flex alignItems="center" justifyContent="space-between">
-                    <Box fontSize={'sm'} color={'myGray.500'}>
-                      {t('permission.Collaborator')}
-                    </Box>
-                    {managePer.permission.hasManagePer && (
-                      <HStack spacing={3}>
-                        <MyTooltip label={t('permission.Manage')}>
-                          <MyIcon
-                            w="1rem"
-                            name="common/settingLight"
-                            cursor={'pointer'}
-                            _hover={{ color: 'primary.600' }}
-                            onClick={onOpenManageModal}
-                          />
-                        </MyTooltip>
-                        <MyTooltip label={t('common.Add')}>
-                          <MyIcon
-                            w="1rem"
-                            name="support/permission/collaborator"
-                            cursor={'pointer'}
-                            _hover={{ color: 'primary.600' }}
-                            onClick={onOpenAddMember}
-                          />
-                        </MyTooltip>
-                      </HStack>
-                    )}
-                  </Flex>
-                  <MemberListCard
-                    mt={2}
-                    tagStyle={{
-                      type: 'borderSolid',
-                      colorSchema: 'gray'
-                    }}
-                  />
-                </>
-              );
-            }}
-          </CollaboratorContextProvider>
-        </Box>
-      </Box>
+        </>
+      )}
 
       <ConfirmModal />
     </Box>

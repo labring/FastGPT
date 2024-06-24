@@ -245,7 +245,6 @@ function List() {
                       }}
                     >
                       <MyMenu
-                        width={120}
                         Button={
                           <Box w={'22px'} h={'22px'}>
                             <MyIcon
@@ -279,13 +278,7 @@ function List() {
                                 label: t('Move'),
                                 onClick: () => setMoveDataId(dataset._id)
                               },
-                              {
-                                icon: 'export',
-                                label: t('Export'),
-                                onClick: () => {
-                                  exportDataset(dataset);
-                                }
-                              },
+
                               ...(dataset.permission.hasManagePer
                                 ? [
                                     {
@@ -295,6 +288,17 @@ function List() {
                                     }
                                   ]
                                 : [])
+                            ]
+                          },
+                          {
+                            children: [
+                              {
+                                icon: 'export',
+                                label: t('Export'),
+                                onClick: () => {
+                                  exportDataset(dataset);
+                                }
+                              }
                             ]
                           },
                           ...(dataset.permission.hasManagePer

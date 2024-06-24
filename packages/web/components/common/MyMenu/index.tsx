@@ -102,6 +102,7 @@ const MyMenu = ({
       direction={'ltr'}
       isLazy
       lazyBehavior={'keepMounted'}
+      placement="bottom-start"
     >
       <Box
         ref={ref}
@@ -141,7 +142,6 @@ const MyMenu = ({
         </Box>
         <MenuList
           minW={isOpen ? `${width}px !important` : '80px'}
-          w={width ?? 'auto'}
           maxW={'300px'}
           p={'6px'}
           border={'1px solid #fff'}
