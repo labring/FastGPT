@@ -51,8 +51,8 @@ import type {
 import type { readCollectionSourceResponse } from '@/pages/api/core/dataset/collection/read';
 
 /* ======================== dataset ======================= */
-export const getDatasets = (data: { parentId?: string; type?: DatasetTypeEnum }) =>
-  GET<DatasetListItemType[]>(`/core/dataset/list`, data);
+export const getDatasets = (data: { parentId?: ParentIdType; type?: DatasetTypeEnum }) =>
+  POST<DatasetListItemType[]>(`/core/dataset/list`, data);
 
 /**
  * get type=dataset list
