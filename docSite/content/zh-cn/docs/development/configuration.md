@@ -148,6 +148,9 @@ llm模型全部合并
 - /imgs/model/openai.svg - OpenAI GPT
 - /imgs/model/qwen.svg - 通义千问
 - /imgs/model/yi.svg - 零一万物
+- /imgs/model/gemini.svg - gemini
+- /imgs/model/deepseek.svg - deepseek
+- /imgs/model/minimax.svg - minimax
 - 
 
 ## 特殊模型

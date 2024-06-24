@@ -19,13 +19,12 @@ import { useMemo, useState } from 'react';
 import PermissionSelect from './PermissionSelect';
 import PermissionTags from './PermissionTags';
 import { CollaboratorContext } from './context';
-import { useQuery } from '@tanstack/react-query';
 import { useUserStore } from '@/web/support/user/useUserStore';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import Avatar from '@/components/Avatar';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { useTranslation } from 'next-i18next';
 
 export type AddModalPropsType = {
@@ -39,15 +38,17 @@ function AddMemberModal({ onClose }: AddModalPropsType) {
   const { permissionList, collaboratorList, onUpdateCollaborators, getPerLabelList } =
     useContextSelector(CollaboratorContext, (v) => v);
   const [searchText, setSearchText] = useState<string>('');
-  const {
-    data: members = [],
-    refetch: refetchMembers,
-    isLoading: loadingMembers
-  } = useQuery(['getMembers', userInfo?.team?.teamId], async () => {
-    if (!userInfo?.team?.teamId) return [];
-    const members = await getTeamMembers();
-    return members;
-  });
+  const { data: members = [], loading: loadingMembers } = useRequest2(
+    async () => {
+      if (!userInfo?.team?.teamId) return [];
+      const members = await getTeamMembers();
+      return members;
+    },
+    {
+      manual: false,
+      refreshDeps: [userInfo?.team?.teamId]
+    }
+  );
   const filterMembers = useMemo(() => {
     return members.filter((item) => {
       // if (item.permission.isOwner) return false;

@@ -6,13 +6,13 @@ import {
 import { PermissionList } from '@fastgpt/global/support/permission/constant';
 import { Permission } from '@fastgpt/global/support/permission/controller';
 import { PermissionListType, PermissionValueType } from '@fastgpt/global/support/permission/type';
-import { useQuery } from '@tanstack/react-query';
 import { ReactNode, useCallback } from 'react';
 import { createContext } from 'use-context-selector';
 import dynamic from 'next/dynamic';
 
 import MemberListCard, { MemberListCardProps } from './MemberListCard';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const AddMemberModal = dynamic(() => import('./AddMemberModal'));
 const ManageModal = dynamic(() => import('./ManageModal'));
 
@@ -71,14 +71,24 @@ const CollaboratorContextProvider = ({
 }: MemberManagerInputPropsType & {
   children: (props: ChildrenProps) => ReactNode;
 }) => {
+  const { feConfigs } = useSystemStore();
+
   const {
     data: collaboratorList = [],
     runAsync: refetchCollaboratorList,
     loading: isFetchingCollaborator
-  } = useRequest2(onGetCollaboratorList, {
-    manual: false,
-    refreshDeps
-  });
+  } = useRequest2(
+    async () => {
+      if (feConfigs.isPlus) {
+        return onGetCollaboratorList();
+      }
+      return [];
+    },
+    {
+      manual: false,
+      refreshDeps
+    }
+  );
 
   const onUpdateCollaboratorsThen = async (props: UpdateClbPermissionProps) => {
     await onUpdateCollaborators(props);
