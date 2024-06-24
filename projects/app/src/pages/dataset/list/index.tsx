@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, useDisclosure, Image, Button } from '@chakra-ui/react';
 import { useRouter } from 'next/router';
 import PageContainer from '@/components/PageContainer';
 import { AddIcon } from '@chakra-ui/icons';
-import { postCreateDataset } from '@/web/core/dataset/api';
+import { postCreateDataset, putDatasetById } from '@/web/core/dataset/api';
 import { useTranslation } from 'next-i18next';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -11,16 +11,20 @@ import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { FolderImgUrl, FolderIcon } from '@fastgpt/global/common/file/image/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
-import EditFolderModal, { useEditFolder } from '../component/EditFolderModal';
 import { useUserStore } from '@/web/support/user/useUserStore';
-import ParentPaths from '@/components/common/ParentPaths';
+import ParentPaths from '@/components/common/folder/Path';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
 import List from './component/List';
 import { DatasetContext } from './context';
 import DatasetContextProvider from './context';
 import { useContextSelector } from 'use-context-selector';
+import { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
 
-const CreateModal = dynamic(() => import('./component/CreateModal'), { ssr: false });
+const EditFolderModal = dynamic(
+  () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
+);
+
+const CreateModal = dynamic(() => import('./component/CreateModal'));
 
 const Dataset = () => {
   const { t } = useTranslation();
@@ -35,21 +39,20 @@ const Dataset = () => {
     onClose: onCloseCreateModal
   } = useDisclosure();
 
-  const { editFolderData, setEditFolderData } = useEditFolder();
-  const { paths, refetch, isFetching } = useContextSelector(DatasetContext, (v) => v);
-
+  const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
+  const { paths, refetchDatasets, isFetchingDatasets } = useContextSelector(
+    DatasetContext,
+    (v) => v
+  );
   return (
     <PageContainer
-      isLoading={myDatasets.length === 0 && isFetching}
+      isLoading={myDatasets.length === 0 && isFetchingDatasets}
       insertProps={{ px: [5, '48px'] }}
     >
       <Flex pt={[4, '30px']} alignItems={'center'} justifyContent={'space-between'}>
         {/* url path */}
         <ParentPaths
-          paths={paths.map((path) => ({
-            parentId: path.parentId,
-            parentName: path.parentName
-          }))}
+          paths={paths}
           FirstPathDom={
             <Flex flex={1} alignItems={'center'}>
               <Image src={'/imgs/workflow/db.png'} alt={''} mr={2} h={'24px'} />
@@ -111,7 +114,7 @@ const Dataset = () => {
       {!!editFolderData && (
         <EditFolderModal
           onClose={() => setEditFolderData(undefined)}
-          editCallback={async (name) => {
+          onCreate={async ({ name }) => {
             try {
               await postCreateDataset({
                 parentId,
@@ -120,12 +123,23 @@ const Dataset = () => {
                 avatar: FolderImgUrl,
                 intro: ''
               });
-              refetch();
+              refetchDatasets();
             } catch (error) {
               return Promise.reject(error);
             }
           }}
-          isEdit={false}
+          onEdit={async ({ name, intro }) => {
+            try {
+              await putDatasetById({
+                id: editFolderData.id,
+                name,
+                intro
+              });
+              refetchDatasets();
+            } catch (error) {
+              return Promise.reject(error);
+            }
+          }}
         />
       )}
     </PageContainer>
