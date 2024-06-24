@@ -12,8 +12,8 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
     [AppTypeEnum.simple]: {
       label: appT('type.Simple bot'),
       icon: 'core/app/type/simple',
-      bg: 'primary.100',
-      color: 'primary.600'
+      bg: '#DBF3FF',
+      color: '#0884DD'
     },
     [AppTypeEnum.workflow]: {
       label: appT('type.Workflow bot'),
@@ -39,7 +39,15 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
   const data = map.current[type];
 
   return data ? (
-    <Flex bg={data.bg} color={data.color} py={0.5} pl={2} pr={3} borderLeftRadius={'md'}>
+    <Flex
+      bg={data.bg}
+      color={data.color}
+      py={0.5}
+      pl={2}
+      pr={3}
+      borderLeftRadius={'md'}
+      whiteSpace={'nowrap'}
+    >
       <MyIcon name={data.icon as any} w={'0.8rem'} />
       <Box ml={1} fontSize={'mini'}>
         {data.label}

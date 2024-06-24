@@ -43,7 +43,7 @@ const ListItem = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, parentId } =
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, appType } =
     useContextSelector(AppListContext, (v) => v);
   const [loadingAppId, setLoadingAppId] = useState<string>();
 
@@ -172,7 +172,9 @@ const ListItem = () => {
                 </Box> */}
                 <HStack>
                   <Avatar src={app.avatar} borderRadius={'md'} w={'1.3rem'} />
-                  <Box flex={'1 0 0'}>{app.name}</Box>
+                  <Box flex={'1'} wordBreak={'break-all'}>
+                    {app.name}
+                  </Box>
                   <Box alignSelf={'flex-start'} mr={'-1.25rem'}>
                     <AppTypeTag type={app.type} />
                   </Box>
