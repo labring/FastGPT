@@ -48,7 +48,7 @@ async function handler(req: NextApiRequest) {
       ...(status && { status }),
       ...(intro && { intro }),
       ...(externalReadUrl && { externalReadUrl }),
-      defaultPermission
+      ...(defaultPermission !== undefined && { defaultPermission })
     }
   );
 }

@@ -47,7 +47,7 @@ export async function authDatasetByTmbId({
       return Promise.reject(DatasetErrEnum.unExist);
     }
 
-    const isOwner = tmbPer.isOwner || String(dataset.tmbId) === tmbId;
+    const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
     const Per = new DatasetPermission({
       per: rp?.permission ?? dataset.defaultPermission,
       isOwner
@@ -204,7 +204,7 @@ export async function authDatasetData({
     collectionId: String(datasetData.collectionId),
     sourceName: result.collection.name || '',
     sourceId: result.collection?.fileId || result.collection?.rawLink,
-    isOwner: String(datasetData.tmbId) === result.tmbId,
+    isOwner: String(datasetData.tmbId) === String(result.tmbId),
     canWrite: result.permission.hasWritePer
   };
 
