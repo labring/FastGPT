@@ -14,11 +14,11 @@
   "Select and drag file tip": "点击或拖动文件到此处上传",
   "Select failed": "选择文件异常",
   "Select file amount limit": "最多选择 {{max}} 个文件",
-  "Select file amount limit 100": "每次最多选择100个文件",
-  "Some file count exceeds limit": "超出{{maxCount}}个文件，已自动截取",
-  "Some file size exceeds limit": "部分文件超出: {{maxSize}}，已被过滤",
+  "Select file amount limit 100": "每次最多选择 100 个文件",
+  "Some file count exceeds limit": "超出 {{maxCount}} 个文件，已自动截取",
+  "Some file size exceeds limit": "部分文件超出 {{maxSize}}，已被过滤",
   "Support file type": "支持 {{fileType}} 类型文件",
-  "Support max count": "最多支持 {{maxCount}} 个文件。",
-  "Support max size": "单个文件最大 {{maxSize}}。",
+  "Support max count": "最多支持 {{maxCount}} 个文件",
+  "Support max size": "单个文件最大 {{maxSize}}",
   "Upload failed": "上传异常"
 }
