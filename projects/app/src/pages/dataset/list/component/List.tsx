@@ -1,10 +1,19 @@
-import { delDatasetById, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  delDatasetById,
+  getDatasetById,
+  putDatasetById,
+  postCreateDataset
+} from '@/web/core/dataset/api';
+import { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { Box, Flex, Grid } from '@chakra-ui/react';
+import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
+import { Box, Flex, Grid, Button, Image, useDisclosure } from '@chakra-ui/react';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import PermissionIconText from '@/components/support/permission/IconText';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
@@ -37,15 +46,32 @@ import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import { useI18n } from '@/web/context/I18n';
 import { useTranslation } from 'react-i18next';
+import { AddIcon } from '@chakra-ui/icons';
+
+const CreateModal = dynamic(() => import('./CreateModal'));
+
+const EditFolderModal = dynamic(
+  () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
+);
 
 function List() {
   const { setLoading, isPc } = useSystemStore();
   const { toast } = useToast();
   const { t } = useTranslation();
   const { commonT } = useI18n();
-  const { refetchDatasets, setMoveDatasetId } = useContextSelector(DatasetContext, (v) => v);
+  const { refetchDatasets, setMoveDatasetId, refetchPaths } = useContextSelector(
+    DatasetContext,
+    (v) => v
+  );
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const { myDatasets, loadMyDatasets, setMyDatasets } = useDatasetStore();
+  const { userInfo } = useUserStore();
+  const {
+    isOpen: isOpenCreateModal,
+    onOpen: onOpenCreateModal,
+    onClose: onCloseCreateModal
+  } = useDisclosure();
+
   const { getBoxProps } = useFolderDrag({
     activeStyles: {
       borderColor: 'primary.600'
@@ -102,7 +128,7 @@ function List() {
     errorToast: t('dataset.Export Dataset Limit Error')
   });
 
-  const { mutate: onclickDelDataset } = useRequest({
+  const { mutate: onDelDataset } = useRequest({
     mutationFn: async (id: string) => {
       setLoading(true);
       await delDatasetById(id);
@@ -110,6 +136,7 @@ function List() {
     },
     onSuccess(id: string) {
       setMyDatasets(myDatasets.filter((item) => item._id !== id));
+      router.push('/dataset/list');
     },
     onSettled() {
       setLoading(false);
@@ -144,17 +171,25 @@ function List() {
     type: 'delete'
   });
 
-  const onDeleteDataset = (id: string) => {
+  const onClickDeleteDataset = (id: string) => {
     openConfirm(
-      () => onclickDelDataset(id),
+      () => onDelDataset(id),
       undefined,
       DeleteTipsMap.current[DatasetTypeEnum.dataset]
     )();
   };
 
+  const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
+
   return (
     <>
-      <Flex>
+      <Flex
+        {...(parentId
+          ? {
+              px: '8'
+            }
+          : {})}
+      >
         {formatDatasets.length > 0 && (
           <Grid
             flexGrow={1}
@@ -181,7 +216,6 @@ function List() {
                   px={5}
                   cursor={'pointer'}
                   borderWidth={1.5}
-                  // borderColor={dragTargetId === dataset._id ? 'primary.600' : 'borderColor.low'}
                   bg={'white'}
                   borderRadius={'md'}
                   minH={'130px'}
@@ -312,13 +346,7 @@ function List() {
                                       icon: 'delete',
                                       label: t('common.Delete'),
                                       type: 'danger' as 'danger',
-                                      onClick: () => {
-                                        openConfirm(
-                                          () => onclickDelDataset(dataset._id),
-                                          undefined,
-                                          DeleteTipsMap.current[dataset.type]
-                                        )();
-                                      }
+                                      onClick: () => onClickDeleteDataset(dataset._id)
                                     }
                                   ]
                                 }
@@ -367,6 +395,44 @@ function List() {
         {myDatasets.length === 0 && (
           <EmptyTip pt={'35vh'} text={t('core.dataset.Empty Dataset Tips')} flexGrow="1"></EmptyTip>
         )}
+        {userInfo?.team?.permission.hasWritePer && (
+          <MyMenu
+            offset={[-30, 5]}
+            width={120}
+            Button={
+              <Button variant={'primaryOutline'} px={0}>
+                <Flex alignItems={'center'} px={'20px'}>
+                  <AddIcon mr={2} />
+                  <Box>{t('common.Create New')}</Box>
+                </Flex>
+              </Button>
+            }
+            menuList={[
+              {
+                children: [
+                  {
+                    label: (
+                      <Flex>
+                        <MyIcon name={FolderIcon} w={'20px'} mr={1} />
+                        {t('Folder')}
+                      </Flex>
+                    ),
+                    onClick: () => setEditFolderData({})
+                  },
+                  {
+                    label: (
+                      <Flex>
+                        <Image src={'/imgs/workflow/db.png'} alt={''} w={'20px'} mr={1} />
+                        {t('core.dataset.Dataset')}
+                      </Flex>
+                    ),
+                    onClick: onOpenCreateModal
+                  }
+                ]
+              }
+            ]}
+          />
+        )}
 
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} ml={[4, 6]}>
@@ -383,7 +449,7 @@ function List() {
               }}
               onMove={() => setMoveDatasetId(folderDetail._id)}
               deleteTip={t('dataset.deleteFolderTips')}
-              onDelete={() => onDeleteDataset(folderDetail._id)}
+              onDelete={() => onDelDataset(folderDetail._id)}
               defaultPer={{
                 value: folderDetail.defaultPermission,
                 defaultValue: DatasetDefaultPermission,
@@ -438,6 +504,7 @@ function List() {
             });
             loadMyDatasets(parentId ? parentId : undefined);
             refetchFolderDetail();
+            refetchPaths();
             setEditedDataset(undefined);
           }}
         />
@@ -483,6 +550,42 @@ function List() {
           }}
           onClose={() => setEditPerDatasetIndex(undefined)}
         />
+      )}
+      {!!editFolderData && (
+        <EditFolderModal
+          onClose={() => setEditFolderData(undefined)}
+          onCreate={async ({ name }) => {
+            try {
+              await postCreateDataset({
+                parentId: parentId || undefined,
+                name,
+                type: DatasetTypeEnum.folder,
+                avatar: FolderImgUrl,
+                intro: ''
+              });
+              refetchDatasets();
+              refetchPaths();
+            } catch (error) {
+              return Promise.reject(error);
+            }
+          }}
+          onEdit={async ({ name, intro, id }) => {
+            try {
+              await putDatasetById({
+                id,
+                name,
+                intro
+              });
+              refetchDatasets();
+              refetchPaths();
+            } catch (error) {
+              return Promise.reject(error);
+            }
+          }}
+        />
+      )}
+      {isOpenCreateModal && (
+        <CreateModal onClose={onCloseCreateModal} parentId={parentId || undefined} />
       )}
     </>
   );

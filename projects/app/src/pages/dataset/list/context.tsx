@@ -17,11 +17,9 @@ const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
 
 export type DatasetContextType = {
   refetchDatasets: () => void;
+  refetchPaths: () => void;
   isFetchingDatasets: boolean;
   setMoveDatasetId: (id: string) => void;
-  // getDatasetFolderList: (
-  //   props: GetResourceFolderListProps
-  // ) => Promise<{ id: string; name: string }[]>;
   paths: ParentTreePathItemType[];
 };
 
@@ -29,7 +27,7 @@ export const DatasetContext = createContext<DatasetContextType>({
   refetchDatasets: () => {},
   isFetchingDatasets: false,
   setMoveDatasetId: () => {},
-  // getDatasetFolderList: async () => [],
+  refetchPaths: () => {},
   paths: []
 });
 
@@ -88,8 +86,8 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
     refetchDatasets,
     isFetchingDatasets,
     setMoveDatasetId,
-    // getDatasetFolderList,
-    paths
+    paths,
+    refetchPaths
   };
 
   return (
