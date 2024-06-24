@@ -68,11 +68,11 @@ const Dataset = () => {
   return (
     <PageContainer
       isLoading={myDatasets.length === 0 && isFetchingDatasets}
-      insertProps={{ px: [5, '48px'] }}
+      insertProps={{ px: folderDetail ? [4, 6] : [5, '10'] }}
     >
-      <Flex pt={[8, 10]} pr={folderDetail ? [4, 6] : [4, 10]}>
+      <Flex pt={[4, 6]}>
         <Flex flexGrow={1} flexDirection="column">
-          <Flex alignItems={'center'} justifyContent={'space-between'}>
+          <Flex alignItems={'flex-start'} justifyContent={'space-between'}>
             <ParentPaths
               paths={paths}
               FirstPathDom={

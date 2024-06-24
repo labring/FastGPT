@@ -15,8 +15,10 @@ import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 
+export type GetDatasetListBody = { parentId: ParentIdType; type?: DatasetTypeEnum };
+
 async function handler(req: NextApiRequest) {
-  const { parentId, type } = req.body as { parentId: ParentIdType; type?: DatasetTypeEnum };
+  const { parentId, type } = req.body as GetDatasetListBody;
   // 凭证校验
   const {
     teamId,
@@ -28,18 +30,6 @@ async function handler(req: NextApiRequest) {
     authApiKey: true,
     per: ReadPermissionVal
   });
-  console.log(
-    'parentId',
-    parentId,
-    'type',
-    type,
-    'teamId',
-    teamId,
-    'tmbId',
-    tmbId,
-    'tmbPer',
-    tmbPer
-  );
 
   const [myDatasets, rpList] = await Promise.all([
     MongoDataset.find({
