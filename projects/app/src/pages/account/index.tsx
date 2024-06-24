@@ -170,7 +170,7 @@ const Account = ({ currentTab }: { currentTab: TabEnum }) => {
             </Box>
           )}
 
-          <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]}>
+          <Box flex={'1 0 0'} h={'100%'} pb={[4, 0]} overflow={'auto'}>
             {currentTab === TabEnum.info && <UserInfo />}
             {currentTab === TabEnum.promotion && <Promotion />}
             {currentTab === TabEnum.usage && <UsageTable />}
