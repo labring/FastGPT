@@ -198,23 +198,23 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <HStack spacing={3.5}>
-                    {owner && (
+                    {/* {owner && (
                       <HStack spacing={1}>
                         <Avatar src={owner.avatar} w={'0.9rem'} />
                         <Box maxW={'150px'} className="textEllipsis">
                           {owner.memberName}
                         </Box>
                       </HStack>
-                    )}
+                    )} */}
 
                     <PermissionIconText defaultPermission={app.defaultPermission} />
                   </HStack>
 
                   <HStack>
-                    <HStack spacing={0.5} className="time">
+                    {/* <HStack spacing={0.5} className="time">
                       <MyIcon name={'history'} w={'0.85rem'} />
                       <Box>{formatTimeToChatTime(app.updateTime)}</Box>
-                    </HStack>
+                    </HStack> */}
                     {app.permission.hasManagePer && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu

@@ -44,7 +44,7 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
       color={data.color}
       py={0.5}
       pl={2}
-      pr={3}
+      pr={2}
       borderLeftRadius={'md'}
       whiteSpace={'nowrap'}
     >
