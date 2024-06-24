@@ -515,17 +515,15 @@ const WorkflowContextProvider = ({
     const { nodes } = await getWorkflowStore();
 
     // version preview / debug mode, not save
-    if (
-      appDetail.version !== 'v2' ||
-      historiesDefaultData ||
-      isSaving ||
-      nodes.length === 0 ||
-      edges.length === 0 ||
-      !!workflowDebugData
-    )
+    if (appDetail.version !== 'v2' || historiesDefaultData || isSaving || !!workflowDebugData)
       return;
 
     const storeWorkflow = uiWorkflow2StoreWorkflow({ nodes, edges });
+
+    // check valid
+    if (storeWorkflow.nodes.length === 0 || storeWorkflow.edges.length === 0) {
+      return;
+    }
 
     try {
       await updateAppDetail({
