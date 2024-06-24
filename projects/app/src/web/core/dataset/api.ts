@@ -1,5 +1,8 @@
 import { GET, POST, PUT, DELETE } from '@/web/common/api/request';
-import type { ParentTreePathItemType } from '@fastgpt/global/common/parentFolder/type.d';
+import type {
+  ParentIdType,
+  ParentTreePathItemType
+} from '@fastgpt/global/common/parentFolder/type.d';
 import type {
   DatasetItemType,
   DatasetListItemType,
@@ -56,7 +59,7 @@ export const getDatasets = (data: { parentId?: string; type?: DatasetTypeEnum })
  */
 export const getAllDataset = () => GET<DatasetSimpleItemType[]>(`/core/dataset/allDataset`);
 
-export const getDatasetPaths = (parentId?: string) =>
+export const getDatasetPaths = (parentId: ParentIdType) =>
   GET<ParentTreePathItemType[]>('/core/dataset/paths', { parentId });
 
 export const getDatasetById = (id: string) => GET<DatasetItemType>(`/core/dataset/detail?id=${id}`);

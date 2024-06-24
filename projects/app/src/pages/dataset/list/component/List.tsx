@@ -1,23 +1,30 @@
-import { useDrag } from '@/web/common/hooks/useDrag';
-import { delDatasetById, getDatasetById, putDatasetById } from '@/web/core/dataset/api';
+import React, { useMemo, useRef, useState } from 'react';
+import {
+  delDatasetById,
+  getDatasetById,
+  putDatasetById,
+  postCreateDataset
+} from '@/web/core/dataset/api';
+import { EditFolderFormType } from '@fastgpt/web/components/common/MyModal/EditFolderModal';
+import { FolderImgUrl } from '@fastgpt/global/common/file/image/constants';
+import { useUserStore } from '@/web/support/user/useUserStore';
 import { useDatasetStore } from '@/web/core/dataset/store/dataset';
-import { Box, Flex, Grid } from '@chakra-ui/react';
+import { FolderIcon } from '@fastgpt/global/common/file/image/constants';
+import { Box, Flex, Grid, Button, Image, useDisclosure } from '@chakra-ui/react';
 import { DatasetTypeEnum, DatasetTypeMap } from '@fastgpt/global/core/dataset/constants';
 import MyMenu from '@fastgpt/web/components/common/MyMenu';
 import MyIcon from '@fastgpt/web/components/common/Icon';
-import React, { useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/router';
 import PermissionIconText from '@/components/support/permission/IconText';
 import DatasetTypeTag from '@/components/core/dataset/DatasetTypeTag';
 import Avatar from '@/components/Avatar';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useToast } from '@fastgpt/web/hooks/useToast';
 import { checkTeamExportDatasetLimit } from '@/web/support/user/team/api';
 import { downloadFetch } from '@/web/common/system/utils';
-import { useTranslation } from 'next-i18next';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import dynamic from 'next/dynamic';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
@@ -34,18 +41,53 @@ import {
   postUpdateDatasetCollaborators
 } from '@/web/core/dataset/api/collaborator';
 import FolderSlideCard from '@/components/common/folder/SlideCard';
-import { useQuery } from '@tanstack/react-query';
 import EmptyTip from '@fastgpt/web/components/common/EmptyTip';
+import { useFolderDrag } from '@/components/common/folder/useFolderDrag';
+import MyBox from '@fastgpt/web/components/common/MyBox';
+import { useI18n } from '@/web/context/I18n';
+import { useTranslation } from 'react-i18next';
+import { AddIcon } from '@chakra-ui/icons';
 
-const MoveModal = dynamic(() => import('./MoveModal'), { ssr: false });
+const CreateModal = dynamic(() => import('./CreateModal'));
+
+const EditFolderModal = dynamic(
+  () => import('@fastgpt/web/components/common/MyModal/EditFolderModal')
+);
 
 function List() {
   const { setLoading, isPc } = useSystemStore();
   const { toast } = useToast();
   const { t } = useTranslation();
-  const { refetch } = useContextSelector(DatasetContext, (v) => v);
+  const { commonT } = useI18n();
+  const { refetchDatasets, setMoveDatasetId, refetchPaths } = useContextSelector(
+    DatasetContext,
+    (v) => v
+  );
   const [editPerDatasetIndex, setEditPerDatasetIndex] = useState<number>();
   const { myDatasets, loadMyDatasets, setMyDatasets } = useDatasetStore();
+  const { userInfo } = useUserStore();
+  const {
+    isOpen: isOpenCreateModal,
+    onOpen: onOpenCreateModal,
+    onClose: onCloseCreateModal
+  } = useDisclosure();
+
+  const { getBoxProps } = useFolderDrag({
+    activeStyles: {
+      borderColor: 'primary.600'
+    },
+    onDrop: async (dragId: string, targetId: string) => {
+      setLoading(true);
+      try {
+        await putDatasetById({
+          id: dragId,
+          parentId: targetId
+        });
+        refetchDatasets();
+      } catch (error) {}
+      setLoading(false);
+    }
+  });
 
   const editPerDataset = useMemo(
     () => (editPerDatasetIndex !== undefined ? myDatasets[editPerDatasetIndex] : undefined),
@@ -54,11 +96,14 @@ function List() {
 
   const router = useRouter();
 
-  const { parentId } = router.query as { parentId: string };
+  const { parentId = null } = router.query as { parentId?: string | null };
 
-  const { data: folderDetail, refetch: refetchFolderDetail } = useQuery(
-    ['folderDetail', parentId, myDatasets],
-    () => (parentId ? getDatasetById(parentId) : undefined)
+  const { data: folderDetail, runAsync: refetchFolderDetail } = useRequest2(
+    () => (parentId ? getDatasetById(parentId) : Promise.resolve(undefined)),
+    {
+      manual: false,
+      refreshDeps: [parentId, myDatasets]
+    }
   );
 
   const { mutate: exportDataset } = useRequest({
@@ -83,7 +128,7 @@ function List() {
     errorToast: t('dataset.Export Dataset Limit Error')
   });
 
-  const { mutate: onclickDelDataset } = useRequest({
+  const { mutate: onDelDataset } = useRequest({
     mutationFn: async (id: string) => {
       setLoading(true);
       await delDatasetById(id);
@@ -91,6 +136,7 @@ function List() {
     },
     onSuccess(id: string) {
       setMyDatasets(myDatasets.filter((item) => item._id !== id));
+      router.push('/dataset/list');
     },
     onSettled() {
       setLoading(false);
@@ -109,9 +155,6 @@ function List() {
     [DatasetTypeEnum.externalFile]: t('core.dataset.Delete Confirm')
   });
 
-  const { moveDataId, setMoveDataId, dragStartId, setDragStartId, dragTargetId, setDragTargetId } =
-    useDrag();
-
   const formatDatasets = useMemo(
     () =>
       myDatasets.map((item) => {
@@ -128,17 +171,25 @@ function List() {
     type: 'delete'
   });
 
-  const onDeleteDataset = (id: string) => {
+  const onClickDeleteDataset = (id: string) => {
     openConfirm(
-      () => onclickDelDataset(id),
+      () => onDelDataset(id),
       undefined,
       DeleteTipsMap.current[DatasetTypeEnum.dataset]
     )();
   };
 
+  const [editFolderData, setEditFolderData] = useState<EditFolderFormType>();
+
   return (
     <>
-      <Flex>
+      <Flex
+        {...(parentId
+          ? {
+              px: '8'
+            }
+          : {})}
+      >
         {formatDatasets.length > 0 && (
           <Grid
             flexGrow={1}
@@ -158,46 +209,21 @@ function List() {
                   </Flex>
                 }
               >
-                <Box
+                <MyBox
                   display={'flex'}
                   flexDirection={'column'}
                   py={3}
                   px={5}
                   cursor={'pointer'}
                   borderWidth={1.5}
-                  borderColor={dragTargetId === dataset._id ? 'primary.600' : 'borderColor.low'}
                   bg={'white'}
                   borderRadius={'md'}
                   minH={'130px'}
                   position={'relative'}
-                  data-drag-id={dataset.type === DatasetTypeEnum.folder ? dataset._id : undefined}
-                  draggable
-                  onDragStart={() => {
-                    setDragStartId(dataset._id);
-                  }}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    const targetId = e.currentTarget.getAttribute('data-drag-id');
-                    if (!targetId) return;
-                    DatasetTypeEnum.folder && setDragTargetId(targetId);
-                  }}
-                  onDragLeave={(e) => {
-                    e.preventDefault();
-                    setDragTargetId(undefined);
-                  }}
-                  onDrop={async (e) => {
-                    e.preventDefault();
-                    if (!dragTargetId || !dragStartId || dragTargetId === dragStartId) return;
-                    // update parentId
-                    try {
-                      await putDatasetById({
-                        id: dragStartId,
-                        parentId: dragTargetId
-                      });
-                      refetch();
-                    } catch (error) {}
-                    setDragTargetId(undefined);
-                  }}
+                  {...getBoxProps({
+                    dataId: dataset._id,
+                    isFolder: dataset.type === DatasetTypeEnum.folder
+                  })}
                   _hover={{
                     borderColor: 'primary.300',
                     boxShadow: '1.5',
@@ -229,10 +255,10 @@ function List() {
                   {dataset.permission.hasWritePer && (
                     <Box
                       className="more"
-                      display="none"
+                      display={['', 'none']}
                       position={'absolute'}
-                      top={3}
-                      right={3}
+                      top={3.5}
+                      right={4}
                       borderRadius={'md'}
                       _hover={{
                         color: 'primary.500',
@@ -276,9 +302,20 @@ function List() {
                               {
                                 icon: 'common/file/move',
                                 label: t('Move'),
-                                onClick: () => setMoveDataId(dataset._id)
+                                onClick: () => setMoveDatasetId(dataset._id)
                               },
 
+                              ...(dataset.type !== DatasetTypeEnum.folder
+                                ? [
+                                    {
+                                      icon: 'export',
+                                      label: t('Export'),
+                                      onClick: () => {
+                                        exportDataset(dataset);
+                                      }
+                                    }
+                                  ]
+                                : []),
                               ...(dataset.permission.hasManagePer
                                 ? [
                                     {
@@ -309,13 +346,7 @@ function List() {
                                       icon: 'delete',
                                       label: t('common.Delete'),
                                       type: 'danger' as 'danger',
-                                      onClick: () => {
-                                        openConfirm(
-                                          () => onclickDelDataset(dataset._id),
-                                          undefined,
-                                          DeleteTipsMap.current[dataset.type]
-                                        )();
-                                      }
+                                      onClick: () => onClickDeleteDataset(dataset._id)
                                     }
                                   ]
                                 }
@@ -356,13 +387,51 @@ function List() {
                       <DatasetTypeTag type={dataset.type} py={1} px={2} />
                     )}
                   </Flex>
-                </Box>
+                </MyBox>
               </MyTooltip>
             ))}
           </Grid>
         )}
         {myDatasets.length === 0 && (
           <EmptyTip pt={'35vh'} text={t('core.dataset.Empty Dataset Tips')} flexGrow="1"></EmptyTip>
+        )}
+        {userInfo?.team?.permission.hasWritePer && (
+          <MyMenu
+            offset={[-30, 5]}
+            width={120}
+            Button={
+              <Button variant={'primaryOutline'} px={0}>
+                <Flex alignItems={'center'} px={'20px'}>
+                  <AddIcon mr={2} />
+                  <Box>{t('common.Create New')}</Box>
+                </Flex>
+              </Button>
+            }
+            menuList={[
+              {
+                children: [
+                  {
+                    label: (
+                      <Flex>
+                        <MyIcon name={FolderIcon} w={'20px'} mr={1} />
+                        {t('Folder')}
+                      </Flex>
+                    ),
+                    onClick: () => setEditFolderData({})
+                  },
+                  {
+                    label: (
+                      <Flex>
+                        <Image src={'/imgs/workflow/db.png'} alt={''} w={'20px'} mr={1} />
+                        {t('core.dataset.Dataset')}
+                      </Flex>
+                    ),
+                    onClick: onOpenCreateModal
+                  }
+                ]
+              }
+            ]}
+          />
         )}
 
         {!!folderDetail && isPc && (
@@ -378,9 +447,9 @@ function List() {
                   intro: folderDetail.intro
                 });
               }}
-              onMove={() => setMoveDataId(folderDetail._id)}
+              onMove={() => setMoveDatasetId(folderDetail._id)}
               deleteTip={t('dataset.deleteFolderTips')}
-              onDelete={() => onDeleteDataset(folderDetail._id)}
+              onDelete={() => onDelDataset(folderDetail._id)}
               defaultPer={{
                 value: folderDetail.defaultPermission,
                 defaultValue: DatasetDefaultPermission,
@@ -424,7 +493,7 @@ function List() {
       {editedDataset && (
         <EditResourceModal
           {...editedDataset}
-          title={''}
+          title={commonT('dataset.Edit Info')}
           onClose={() => setEditedDataset(undefined)}
           onEdit={async (data) => {
             await putDatasetById({
@@ -433,21 +502,10 @@ function List() {
               intro: data.intro,
               avatar: data.avatar
             });
-            loadMyDatasets(parentId);
+            loadMyDatasets(parentId ? parentId : undefined);
             refetchFolderDetail();
+            refetchPaths();
             setEditedDataset(undefined);
-          }}
-        />
-      )}
-
-      {!!moveDataId && (
-        <MoveModal
-          moveDataId={moveDataId}
-          onClose={() => setMoveDataId('')}
-          onSuccess={() => {
-            refetch();
-            refetchFolderDetail();
-            setMoveDataId('');
           }}
         />
       )}
@@ -464,7 +522,7 @@ function List() {
                 id: editPerDataset._id,
                 defaultPermission: e
               });
-              refetch();
+              refetchDatasets();
             }
           }}
           managePer={{
@@ -492,6 +550,42 @@ function List() {
           }}
           onClose={() => setEditPerDatasetIndex(undefined)}
         />
+      )}
+      {!!editFolderData && (
+        <EditFolderModal
+          onClose={() => setEditFolderData(undefined)}
+          onCreate={async ({ name }) => {
+            try {
+              await postCreateDataset({
+                parentId: parentId || undefined,
+                name,
+                type: DatasetTypeEnum.folder,
+                avatar: FolderImgUrl,
+                intro: ''
+              });
+              refetchDatasets();
+              refetchPaths();
+            } catch (error) {
+              return Promise.reject(error);
+            }
+          }}
+          onEdit={async ({ name, intro, id }) => {
+            try {
+              await putDatasetById({
+                id,
+                name,
+                intro
+              });
+              refetchDatasets();
+              refetchPaths();
+            } catch (error) {
+              return Promise.reject(error);
+            }
+          }}
+        />
+      )}
+      {isOpenCreateModal && (
+        <CreateModal onClose={onCloseCreateModal} parentId={parentId || undefined} />
       )}
     </>
   );
