@@ -1,11 +1,9 @@
 import type { StoreNodeItemType } from '@fastgpt/global/core/workflow/type/index.d';
-import React, { useRef, forwardRef, ForwardedRef, useImperativeHandle } from 'react';
+import React, { forwardRef, ForwardedRef } from 'react';
 import { SmallCloseIcon } from '@chakra-ui/icons';
 import { Box, Flex, IconButton } from '@chakra-ui/react';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
-import { useUserStore } from '@/web/support/user/useUserStore';
-import type { ComponentRef } from '@/components/ChatBox/type.d';
 import { useTranslation } from 'next-i18next';
 import { StoreEdgeItemType } from '@fastgpt/global/core/workflow/type/edge';
 
@@ -32,7 +30,6 @@ const ChatTest = (
   ref: ForwardedRef<ChatTestComponentRef>
 ) => {
   const { t } = useTranslation();
-  const ChatBoxRef = useRef<ComponentRef>(null);
   const { appDetail } = useContextSelector(AppContext, (v) => v);
 
   const { resetChatBox, ChatBox } = useChatTest({
@@ -40,10 +37,6 @@ const ChatTest = (
     edges,
     chatConfig: appDetail.chatConfig
   });
-
-  useImperativeHandle(ref, () => ({
-    resetChatTest: resetChatBox
-  }));
 
   return (
     <>
@@ -84,9 +77,7 @@ const ChatTest = (
               borderRadius={'md'}
               aria-label={'delete'}
               onClick={(e) => {
-                e.stopPropagation();
-                ChatBoxRef.current?.resetHistory([]);
-                ChatBoxRef.current?.resetVariables();
+                resetChatBox();
               }}
             />
           </MyTooltip>
