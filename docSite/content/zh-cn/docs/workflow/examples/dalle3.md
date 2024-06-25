@@ -272,7 +272,7 @@ Response:
             {
               "key": "Authorization",
               "type": "string",
-              "value": "Bearer sk-zsfBsxEU3ApSFGYxF4CdB97e9556412588421823371b9f7b"
+              "value": "Bearer "
             }
           ],
           "label": "",
