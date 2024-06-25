@@ -12,6 +12,16 @@ import {
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
+type resourceType = {
+  _id: string;
+  type: string;
+  teamId: string;
+  defaultPermission: PermissionValueType;
+  ancestorIds: string[];
+  parentId: ParentIdType;
+  inheritPermission: boolean;
+};
+
 // sync the permission to all children folder
 // Only folder save the permission.
 export const syncPermission = async ({
@@ -21,12 +31,7 @@ export const syncPermission = async ({
   resourceFind,
   resourceUpdateMany
 }: {
-  resource: {
-    _id: string;
-    type: string;
-    teamId: string;
-    defaultPermission: PermissionValueType;
-  };
+  resource: resourceType;
 
   // when the resource is a folder
   folderTypeList: string[];
@@ -37,9 +42,6 @@ export const syncPermission = async ({
   permissionType: PermissionTypeEnum;
 }) => {
   // only folder has permission
-  // if (app.type !== AppTypeEnum.folder) {
-  //   return;
-  // }
   const isFolder = folderTypeList.includes(resource.type);
 
   if (!isFolder) {
@@ -52,8 +54,9 @@ export const syncPermission = async ({
       resourceFind(
         {
           teamId: resource.teamId,
-          type: {},
-          inheritPermission: true
+          type: { $in: folderTypeList },
+          inheritPermission: true,
+          ancestorIds: resource.ancestorIds
         },
         null,
         { session }
@@ -126,14 +129,7 @@ export const resumeInheritPermission = async ({
   resourceFind,
   permissionType
 }: {
-  resource: {
-    _id: string;
-    type: string;
-    teamId: string;
-    defaultPermission: PermissionValueType;
-    parentId: ParentIdType;
-    inheritPermission: boolean;
-  };
+  resource: resourceType;
   folderTypeList: string[];
   resourceFindById: typeof Model.findById;
   resourceUpdateOne: typeof Model.updateOne;
@@ -197,14 +193,7 @@ export const removeInheritPermission = async ({
   resourceFind,
   resourceUpdateMany
 }: {
-  resource: {
-    _id: string;
-    type: string;
-    teamId: string;
-    defaultPermission: PermissionValueType;
-    parentId: ParentIdType;
-    inheritPermission: boolean;
-  };
+  resource: resourceType;
   updatePermissionCallback: (parent: typeof resource, rp: ResourcePermissionType[]) => void;
   resourceFindById: typeof Model.findById;
   permissionType: PermissionTypeEnum;

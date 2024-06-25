@@ -13,7 +13,7 @@ import { ParentIdType } from '../../common/parentFolder/type';
 export type AppSchema = {
   _id: string;
   parentId?: ParentIdType;
-  ancientId?: ParentIdType;
+  ancestorId?: ParentIdType;
   teamId: string;
   tmbId: string;
   type: AppTypeEnum;

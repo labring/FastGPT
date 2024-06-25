@@ -27,7 +27,7 @@ const AppSchema = new Schema({
     ref: AppCollectionName,
     default: null
   },
-  ancientId: {
+  ancestorId: {
     type: Schema.Types.ObjectId,
     ref: AppCollectionName,
     default: null
