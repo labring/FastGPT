@@ -20,7 +20,7 @@ import { MongoImageTypeEnum } from '@fastgpt/global/common/file/image/constants'
 import AIModelSelector from '@/components/Select/AIModelSelector';
 import { useI18n } from '@/web/context/I18n';
 import QuestionTip from '@fastgpt/web/components/common/MyTooltip/QuestionTip';
-import { DatasetDefaultPermission } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 
 const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: string }) => {
   const { t } = useTranslation();
@@ -40,7 +40,7 @@ const CreateModal = ({ onClose, parentId }: { onClose: () => void; parentId?: st
       intro: '',
       vectorModel: filterNotHiddenVectorModelList[0].model,
       agentModel: datasetModelList[0].model,
-      defaultPermission: DatasetDefaultPermission
+      defaultPermission: DatasetDefaultPermissionVal
     }
   });
   const avatar = watch('avatar');

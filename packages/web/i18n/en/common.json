@@ -1128,8 +1128,8 @@
     "Create Folder": "Create Folder",
     "Create manual collection": "Create manual collection",
     "Delete Dataset Error": "Delete Dataset Error",
-    "Edit Info": "Edit Information",
     "Edit Folder": "Edit Folder",
+    "Edit Info": "Edit Information",
     "Export": "Export",
     "Export Dataset Limit Error": "Export Dataset Error",
     "File Input": "File Input",
@@ -1220,6 +1220,7 @@
     "Module": "Module",
     "Plugin": "Plugin",
     "Store": "App Store",
+    "Studio": "Studio",
     "Tools": "Tools"
   },
   "permission": {

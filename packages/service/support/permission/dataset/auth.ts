@@ -18,6 +18,7 @@ import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { MongoDatasetData } from '../../../core/dataset/data/schema';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 
 export async function authDatasetByTmbId({
   tmbId,
@@ -46,7 +47,7 @@ export async function authDatasetByTmbId({
       return Promise.reject(DatasetErrEnum.unExist);
     }
 
-    const isOwner = tmbPer.isOwner || String(dataset.tmbId) === tmbId;
+    const isOwner = tmbPer.isOwner || String(dataset.tmbId) === String(tmbId);
     const Per = new DatasetPermission({
       per: rp?.permission ?? dataset.defaultPermission,
       isOwner
@@ -58,11 +59,12 @@ export async function authDatasetByTmbId({
 
     return {
       ...dataset,
+      defaultPermission: dataset.defaultPermission ?? DatasetDefaultPermissionVal,
       permission: Per
     };
   })();
 
-  return { dataset: dataset };
+  return { dataset };
 }
 
 // Auth Dataset
@@ -202,7 +204,7 @@ export async function authDatasetData({
     collectionId: String(datasetData.collectionId),
     sourceName: result.collection.name || '',
     sourceId: result.collection?.fileId || result.collection?.rawLink,
-    isOwner: String(datasetData.tmbId) === result.tmbId,
+    isOwner: String(datasetData.tmbId) === String(result.tmbId),
     canWrite: result.permission.hasWritePer
   };
 

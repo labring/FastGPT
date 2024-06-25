@@ -1137,8 +1137,8 @@
     "Create Folder": "创建文件夹",
     "Create manual collection": "创建手动数据集",
     "Delete Dataset Error": "删除知识库异常",
-    "Edit Info": "编辑信息",
     "Edit Folder": "编辑文件夹",
+    "Edit Info": "编辑信息",
     "Export": "导出",
     "Export Dataset Limit Error": "导出数据失败",
     "File Input": "文件导入",
@@ -1229,6 +1229,7 @@
     "Module": "模块",
     "Plugin": "插件",
     "Store": "应用市场",
+    "Studio": "工作台",
     "Tools": "工具"
   },
   "permission": {

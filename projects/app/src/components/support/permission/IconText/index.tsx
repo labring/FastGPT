@@ -32,7 +32,7 @@ const PermissionIconText = ({
   return PermissionTypeMap[per] ? (
     <Flex alignItems={'center'} fontSize={fontSize} {...props}>
       <MyIcon name={PermissionTypeMap[per]?.iconLight as any} w={w} />
-      <Box ml={'2px'} lineHeight={1} fontSize={'xs'}>
+      <Box ml={'2px'} lineHeight={1}>
         {t(PermissionTypeMap[per]?.label)}
       </Box>
     </Flex>

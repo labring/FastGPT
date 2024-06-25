@@ -12,7 +12,7 @@ import {
   TeamMemberCollectionName
 } from '@fastgpt/global/support/user/team/constant';
 import { PermissionTypeEnum, PermissionTypeMap } from '@fastgpt/global/support/permission/constant';
-import { DatasetDefaultPermission } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 
 export const DatasetCollectionName = 'datasets';
 
@@ -94,7 +94,7 @@ const DatasetSchema = new Schema({
   externalReadUrl: String,
   defaultPermission: {
     type: Number,
-    default: DatasetDefaultPermission
+    default: DatasetDefaultPermissionVal
   }
 });
 

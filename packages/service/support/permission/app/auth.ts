@@ -38,7 +38,7 @@ export const authAppByTmbId = async ({
       return Promise.reject(AppErrEnum.unExist);
     }
 
-    const isOwner = tmbPer.isOwner || String(app.tmbId) === tmbId;
+    const isOwner = tmbPer.isOwner || String(app.tmbId) === String(tmbId);
     const Per = new AppPermission({ per: rp?.permission ?? app.defaultPermission, isOwner });
 
     if (!Per.checkPer(per)) {

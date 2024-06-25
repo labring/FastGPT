@@ -48,7 +48,7 @@ async function handler(req: NextApiRequest, res: NextApiResponse<any>) {
     ...(type && { type }),
     ...(avatar && { avatar }),
     ...(intro !== undefined && { intro }),
-    ...(defaultPermission && { defaultPermission }),
+    ...(defaultPermission !== undefined && { defaultPermission }),
     ...(teamTags && { teamTags }),
     ...(formatNodes && {
       modules: formatNodes

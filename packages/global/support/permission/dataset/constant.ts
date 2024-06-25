@@ -17,4 +17,4 @@ export const DatasetPermissionList = {
   }
 };
 
-export const DatasetDefaultPermission = NullPermission;
+export const DatasetDefaultPermissionVal = NullPermission;

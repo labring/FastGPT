@@ -200,6 +200,7 @@ export const iconPaths = {
   'modal/setting': () => import('./icons/modal/setting.svg'),
   'modal/teamPlans': () => import('./icons/modal/teamPlans.svg'),
   more: () => import('./icons/more.svg'),
+  moreLine: () => import('./icons/moreLine.svg'),
   out: () => import('./icons/out.svg'),
   'phoneTabbar/me': () => import('./icons/phoneTabbar/me.svg'),
   'phoneTabbar/tool': () => import('./icons/phoneTabbar/tool.svg'),
