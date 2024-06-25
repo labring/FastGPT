@@ -1702,7 +1702,16 @@ export const workflowTemplates: TemplateType = [
             value: ['448745', 'userChatInput']
           }
         ],
-        outputs: []
+        outputs: [
+          {
+            id: NodeOutputKeyEnum.answerText,
+            key: NodeOutputKeyEnum.answerText,
+            label: 'core.module.output.label.Ai response content',
+            description: 'core.module.output.description.Ai response content',
+            valueType: WorkflowIOValueTypeEnum.string,
+            type: FlowNodeOutputTypeEnum.static
+          }
+        ]
       },
       {
         nodeId: 'GMELVPxHfpg5',
