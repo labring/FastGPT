@@ -6,6 +6,7 @@ import { NextAPI } from '@/service/middleware/entry';
 import { PluginTypeEnum } from '@fastgpt/global/core/plugin/constants';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { MongoAppVersion } from '@fastgpt/service/core/app/version/schema';
 
 /* 
   1. 先读取 HTTP plugin 内容,并找到所有的子plugin,然后事务批量创建,最后修改 inited
@@ -16,19 +17,22 @@ let success = 0;
 async function handler(req: NextApiRequest, res: NextApiResponse) {
   await authCert({ req, authRoot: true });
 
+  const { teamId } = req.body as { teamId?: string };
+
   const total = await MongoPlugin.countDocuments({
     inited: { $ne: true }
   });
 
   console.log('Total plugin', total);
 
-  await initHttp();
-  await initPlugin();
+  await initHttp(teamId);
+  await initPlugin(teamId);
 }
 
-async function initHttp(): Promise<any> {
+async function initHttp(teamId?: string): Promise<any> {
   /* 读取http插件和他的children */
   const plugin = await MongoPlugin.findOne({
+    ...(teamId && { teamId }),
     type: PluginTypeEnum.folder,
     inited: { $ne: true }
   }).lean();
@@ -52,7 +56,7 @@ async function initHttp(): Promise<any> {
           avatar: plugin.avatar,
           intro: plugin.intro,
           metadata: plugin.metadata,
-          version: 'v2',
+          version: plugin.version,
           pluginData: {
             apiSchemaStr: plugin.metadata?.apiSchemaStr,
             customHeaders: plugin.metadata?.customHeaders
@@ -64,9 +68,10 @@ async function initHttp(): Promise<any> {
 
     /* 批量创建子插件 */
     for await (const item of children) {
-      await MongoApp.create(
+      const [{ _id: newPluginId }] = await MongoApp.create(
         [
           {
+            _id: item._id,
             parentId: _id,
             teamId: item.teamId,
             tmbId: item.tmbId,
@@ -74,7 +79,7 @@ async function initHttp(): Promise<any> {
             name: item.name,
             avatar: item.avatar,
             intro: item.intro,
-            version: 'v2',
+            version: plugin.version,
             modules: item.modules,
             edges: item.edges,
             pluginData: {
@@ -85,6 +90,18 @@ async function initHttp(): Promise<any> {
         ],
         { session }
       );
+      if (item.version === 'v2') {
+        await MongoAppVersion.create(
+          [
+            {
+              appId: newPluginId,
+              nodes: item.modules,
+              edges: item.edges
+            }
+          ],
+          { session }
+        );
+      }
     }
 
     /* 更新插件信息 */
@@ -115,24 +132,26 @@ async function initHttp(): Promise<any> {
   return initHttp();
 }
 
-async function initPlugin(): Promise<any> {
+async function initPlugin(teamId?: string): Promise<any> {
   const plugin = await MongoPlugin.findOne({
+    ...(teamId && { teamId }),
     type: PluginTypeEnum.custom,
     inited: { $ne: true }
   }).lean();
   if (!plugin) return;
 
   await mongoSessionRun(async (session) => {
-    await MongoApp.create(
+    const [{ _id: newPluginId }] = await MongoApp.create(
       [
         {
+          _id: plugin._id,
           teamId: plugin.teamId,
           tmbId: plugin.tmbId,
           type: AppTypeEnum.plugin,
           name: plugin.name,
           avatar: plugin.avatar,
           intro: plugin.intro,
-          version: 'v2',
+          version: plugin.version,
           modules: plugin.modules,
           edges: plugin.edges,
           pluginData: {
@@ -142,6 +161,19 @@ async function initPlugin(): Promise<any> {
       ],
       { session }
     );
+
+    if (plugin.version === 'v2') {
+      await MongoAppVersion.create(
+        [
+          {
+            appId: newPluginId,
+            nodes: plugin.modules,
+            edges: plugin.edges
+          }
+        ],
+        { session }
+      );
+    }
 
     await MongoPlugin.findOneAndUpdate(
       {

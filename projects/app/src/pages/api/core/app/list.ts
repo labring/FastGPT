@@ -69,7 +69,10 @@ async function handler(
 
   /* temp: get all apps and per */
   const [myApps, rpList] = await Promise.all([
-    MongoApp.find(findAppsQuery, '_id avatar type name intro tmbId pluginData defaultPermission')
+    MongoApp.find(
+      findAppsQuery,
+      '_id avatar type name intro tmbId updateTime pluginData defaultPermission'
+    )
       .sort({
         updateTime: -1
       })
@@ -101,10 +104,12 @@ async function handler(
 
   return sliceApps.map((app) => ({
     _id: app._id,
+    tmbId: app.tmbId,
     avatar: app.avatar,
     type: app.type,
     name: app.name,
     intro: app.intro,
+    updateTime: app.updateTime,
     permission: app.permission,
     defaultPermission: app.defaultPermission || AppDefaultPermissionVal,
     pluginData: app.pluginData

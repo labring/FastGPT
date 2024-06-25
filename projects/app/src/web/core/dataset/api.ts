@@ -49,9 +49,10 @@ import type {
   PreviewChunksResponse
 } from '@/pages/api/core/dataset/file/getPreviewChunks';
 import type { readCollectionSourceResponse } from '@/pages/api/core/dataset/collection/read';
+import type { GetDatasetListBody } from '@/pages/api/core/dataset/list';
 
 /* ======================== dataset ======================= */
-export const getDatasets = (data: { parentId?: ParentIdType; type?: DatasetTypeEnum }) =>
+export const getDatasets = (data: GetDatasetListBody) =>
   POST<DatasetListItemType[]>(`/core/dataset/list`, data);
 
 /**

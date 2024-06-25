@@ -1,10 +1,10 @@
-import { authDatasetFile } from '@fastgpt/service/support/permission/dataset/auth';
 import { DatasetSourceReadTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { rawText2Chunks, readDatasetSourceRawText } from '@fastgpt/service/core/dataset/read';
 import { authCert } from '@fastgpt/service/support/permission/auth/common';
 import { NextAPI } from '@/service/middleware/entry';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
-import { ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { authFile } from '@fastgpt/service/support/permission/auth/file';
 
 export type PostPreviewFilesChunksProps = {
   type: DatasetSourceReadTypeEnum;
@@ -35,12 +35,12 @@ async function handler(
 
   const { teamId } = await (async () => {
     if (type === DatasetSourceReadTypeEnum.fileLocal) {
-      return authDatasetFile({
+      return authFile({
         req,
         authToken: true,
         authApiKey: true,
         fileId: sourceId,
-        per: ReadPermissionVal
+        per: OwnerPermissionVal
       });
     }
     return authCert({ req, authApiKey: true, authToken: true });

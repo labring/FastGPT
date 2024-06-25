@@ -11,6 +11,7 @@ import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useContextSelector } from 'use-context-selector';
 import { DatasetImportContext } from '../Context';
 import { importType2ReadType } from '@fastgpt/global/core/dataset/read';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 
 const PreviewChunks = ({
   previewSource,
@@ -25,9 +26,8 @@ const PreviewChunks = ({
     (v) => v
   );
 
-  const { data = [], isLoading } = useQuery(
-    ['previewSource'],
-    () => {
+  const { data = [], loading: isLoading } = useRequest2(
+    async () => {
       if (importSource === ImportDataSourceEnum.fileCustom) {
         const customSplitChar = processParamsForm.getValues('customSplitChar');
         const { chunks } = splitText2Chunks({
@@ -66,12 +66,7 @@ const PreviewChunks = ({
       });
     },
     {
-      onError(err) {
-        toast({
-          status: 'warning',
-          title: getErrText(err)
-        });
-      }
+      manual: false
     }
   );
 

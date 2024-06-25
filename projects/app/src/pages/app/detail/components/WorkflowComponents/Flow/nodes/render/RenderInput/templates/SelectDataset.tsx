@@ -34,10 +34,16 @@ const SelectDatasetRender = ({ inputs = [], item, nodeId }: RenderInputProps) =>
     onClose: onCloseDatasetSelect
   } = useDisclosure();
 
+  const selectedDatasetsValue = useMemo(() => {
+    if (Array.isArray(item.value)) return item.value as SelectedDatasetType;
+    return [] as SelectedDatasetType;
+  }, [item.value]);
+
   const selectedDatasets = useMemo(() => {
-    const value = item.value as SelectedDatasetType;
-    return allDatasets.filter((dataset) => value?.find((item) => item.datasetId === dataset._id));
-  }, [allDatasets, item.value]);
+    return allDatasets.filter((dataset) =>
+      selectedDatasetsValue?.find((item) => item.datasetId === dataset._id)
+    );
+  }, [allDatasets, selectedDatasetsValue]);
 
   useQuery(['loadAllDatasets'], loadAllDatasets);
 
@@ -95,7 +101,7 @@ const SelectDatasetRender = ({ inputs = [], item, nodeId }: RenderInputProps) =>
         {isOpenDatasetSelect && (
           <DatasetSelectModal
             isOpen={isOpenDatasetSelect}
-            defaultSelectedDatasets={item.value}
+            defaultSelectedDatasets={selectedDatasetsValue}
             onChange={(e) => {
               onChangeNode({
                 nodeId,
@@ -120,6 +126,7 @@ const SelectDatasetRender = ({ inputs = [], item, nodeId }: RenderInputProps) =>
     onCloseDatasetSelect,
     onOpenDatasetSelect,
     selectedDatasets,
+    selectedDatasetsValue,
     t,
     theme.borders.base
   ]);

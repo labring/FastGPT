@@ -8,7 +8,7 @@ import type {
   DatasetCollectionItemType,
   DatasetItemType
 } from '@fastgpt/global/core/dataset/type.d';
-import { DatasetDefaultPermission } from '@fastgpt/global/support/permission/dataset/constant';
+import { DatasetDefaultPermissionVal } from '@fastgpt/global/support/permission/dataset/constant';
 import { DatasetPermission } from '@fastgpt/global/support/permission/dataset/controller';
 
 export const defaultDatasetDetail: DatasetItemType = {
@@ -26,7 +26,7 @@ export const defaultDatasetDetail: DatasetItemType = {
   permission: new DatasetPermission(),
   vectorModel: defaultVectorModels[0],
   agentModel: defaultQAModels[0],
-  defaultPermission: DatasetDefaultPermission
+  defaultPermission: DatasetDefaultPermissionVal
 };
 
 export const defaultCollectionDetail: DatasetCollectionItemType = {
@@ -48,7 +48,7 @@ export const defaultCollectionDetail: DatasetCollectionItemType = {
     permission: new DatasetPermission(),
     vectorModel: defaultVectorModels[0].model,
     agentModel: defaultQAModels[0].model,
-    defaultPermission: DatasetDefaultPermission
+    defaultPermission: DatasetDefaultPermissionVal
   },
   parentId: '',
   name: '',

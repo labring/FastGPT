@@ -1,16 +1,18 @@
-import { AuthResponseType } from '@fastgpt/global/support/permission/type';
 import { AuthModeType } from '../type';
 import { DatasetFileSchema } from '@fastgpt/global/core/dataset/type';
 import { parseHeaderCert } from '../controller';
 import { getFileById } from '../../../common/file/gridfs/controller';
 import { BucketNameEnum } from '@fastgpt/global/common/file/constants';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { OwnerPermissionVal, ReadPermissionVal } from '@fastgpt/global/support/permission/constant';
+import { AuthPropsType, AuthResponseType } from '../type/auth';
+import { Permission } from '@fastgpt/global/support/permission/controller';
 
 export async function authFile({
   fileId,
-  per = 'owner',
+  per = OwnerPermissionVal,
   ...props
-}: AuthModeType & {
+}: AuthPropsType & {
   fileId: string;
 }): Promise<
   AuthResponseType & {
@@ -29,14 +31,19 @@ export async function authFile({
   if (file.metadata?.teamId !== teamId) {
     return Promise.reject(CommonErrEnum.unAuthFile);
   }
-  if (per === 'owner' && file.metadata?.tmbId !== tmbId) {
+
+  const permission = new Permission({
+    per: ReadPermissionVal,
+    isOwner: file.metadata?.tmbId === tmbId
+  });
+
+  if (!permission.checkPer(per)) {
     return Promise.reject(CommonErrEnum.unAuthFile);
   }
 
   return {
     ...authRes,
-    isOwner: per === 'owner',
-    canWrite: per === 'owner',
+    permission,
     file
   };
 }

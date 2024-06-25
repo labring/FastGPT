@@ -15,13 +15,12 @@ import { useRouter } from 'next/router';
 import React, { useCallback, useState } from 'react';
 import { createContext } from 'use-context-selector';
 import { useI18n } from '@/web/context/I18n';
-import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import { DatasetUpdateBody } from '@fastgpt/global/core/dataset/api';
 import dynamic from 'next/dynamic';
 import { DatasetTypeEnum } from '@fastgpt/global/core/dataset/constants';
 import { DatasetItemType } from '@fastgpt/global/core/dataset/type';
 import { EditResourceInfoFormType } from '@/components/common/Modal/EditResourceModal';
-import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useTranslation } from 'react-i18next';
 
 const MoveModal = dynamic(() => import('@/components/common/folder/MoveModal'));
@@ -39,7 +38,7 @@ export type DatasetContextType = {
   onDelDataset: (id: string) => Promise<void>;
 };
 
-export const DatasetContext = createContext<DatasetContextType>({
+export const DatasetsContext = createContext<DatasetContextType>({
   refetchDatasets: () => {},
   isFetchingDatasets: false,
   setMoveDatasetId: () => {},
@@ -136,7 +135,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <DatasetContext.Provider value={contextValue}>
+    <DatasetsContext.Provider value={contextValue}>
       {children}
       {!!moveDatasetId && (
         <MoveModal
@@ -147,7 +146,7 @@ function DatasetContextProvider({ children }: { children: React.ReactNode }) {
           onConfirm={onMoveDataset}
         />
       )}
-    </DatasetContext.Provider>
+    </DatasetsContext.Provider>
   );
 }
 

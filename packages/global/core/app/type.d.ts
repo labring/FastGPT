@@ -21,7 +21,7 @@ export type AppSchema = {
   name: string;
   avatar: string;
   intro: string;
-  updateTime: number;
+  updateTime: Date;
 
   modules: StoreNodeItemType[];
   edges: StoreEdgeItemType[];
@@ -44,10 +44,12 @@ export type AppSchema = {
 
 export type AppListItemType = {
   _id: string;
+  tmbId: string;
   name: string;
   avatar: string;
   intro: string;
   type: AppTypeEnum;
+  updateTime: Date;
   defaultPermission: PermissionValueType;
   permission: AppPermission;
   pluginData?: AppSchema['pluginData'];

@@ -118,7 +118,8 @@ services:
 
   # oneapi
   mysql:
-    image: mysql:8.0.36
+    image: registry.cn-hangzhou.aliyuncs.com/fastgpt/mysql:8.0.36 # 阿里云
+    # image: mysql:8.0.36
     container_name: mysql
     restart: always
     ports:

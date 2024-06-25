@@ -11,6 +11,7 @@ import {
 import MyIcon from '../Icon';
 import MyDivider from '../MyDivider';
 import type { IconNameType } from '../Icon/type';
+import { useSystem } from '../../../hooks/useSystem';
 
 export type MenuItemType = 'primary' | 'danger';
 
@@ -77,9 +78,13 @@ const MyMenu = ({
     alignItems: 'center',
     fontSize: 'sm'
   };
+
+  const { isPc } = useSystem();
   const ref = useRef<HTMLDivElement>(null);
   const closeTimer = useRef<any>();
   const [isOpen, setIsOpen] = useState(false);
+
+  const formatTrigger = !isPc ? 'click' : trigger;
 
   useOutsideClick({
     ref: ref,
@@ -103,17 +108,18 @@ const MyMenu = ({
       isLazy
       lazyBehavior={'keepMounted'}
       placement="bottom-start"
+      computePositionOnMount
     >
       <Box
         ref={ref}
         onMouseEnter={() => {
-          if (trigger === 'hover') {
+          if (formatTrigger === 'hover') {
             setIsOpen(true);
           }
           clearTimeout(closeTimer.current);
         }}
         onMouseLeave={() => {
-          if (trigger === 'hover') {
+          if (formatTrigger === 'hover') {
             closeTimer.current = setTimeout(() => {
               setIsOpen(false);
             }, 100);
@@ -124,7 +130,7 @@ const MyMenu = ({
           position={'relative'}
           onClickCapture={(e) => {
             e.stopPropagation();
-            if (trigger === 'click') {
+            if (formatTrigger === 'click') {
               setIsOpen(!isOpen);
             }
           }}
