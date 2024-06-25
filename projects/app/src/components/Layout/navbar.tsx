@@ -88,7 +88,7 @@ const Navbar = ({ unread }: { unread: number }) => {
       {/* logo */}
       <Box
         flex={'0 0 auto'}
-        mb={5}
+        mb={3}
         border={'2px solid #fff'}
         borderRadius={'50%'}
         overflow={'hidden'}

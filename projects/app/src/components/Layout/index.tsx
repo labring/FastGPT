@@ -10,7 +10,6 @@ import { getUnreadCount } from '@/web/support/user/inform/api';
 import dynamic from 'next/dynamic';
 
 import Auth from './auth';
-
 const Navbar = dynamic(() => import('./navbar'));
 const NavbarPhone = dynamic(() => import('./navbarPhone'));
 const UpdateInviteModal = dynamic(() => import('@/components/support/user/team/UpdateInviteModal'));
@@ -79,7 +78,7 @@ const Layout = ({ children }: { children: JSX.Element }) => {
   return (
     <>
       <Box h={'100%'} bg={'myGray.100'}>
-        {isPc ? (
+        {isPc === true && (
           <>
             {isHideNavbar ? (
               <Auth>{children}</Auth>
@@ -94,22 +93,21 @@ const Layout = ({ children }: { children: JSX.Element }) => {
               </>
             )}
           </>
-        ) : (
+        )}
+        {isPc === false && (
           <>
-            <Box h={'100%'} display={['block', 'none']}>
-              {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
-                <Auth>{children}</Auth>
-              ) : (
-                <Flex h={'100%'} flexDirection={'column'}>
-                  <Box flex={'1 0 0'} h={0}>
-                    <Auth>{children}</Auth>
-                  </Box>
-                  <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
-                    <NavbarPhone unread={unread} />
-                  </Box>
-                </Flex>
-              )}
-            </Box>
+            {phoneUnShowLayoutRoute[router.pathname] || isChatPage ? (
+              <Auth>{children}</Auth>
+            ) : (
+              <Flex h={'100%'} flexDirection={'column'}>
+                <Box flex={'1 0 0'} h={0}>
+                  <Auth>{children}</Auth>
+                </Box>
+                <Box h={'50px'} borderTop={'1px solid rgba(0,0,0,0.1)'}>
+                  <NavbarPhone unread={unread} />
+                </Box>
+              </Flex>
+            )}
           </>
         )}
       </Box>

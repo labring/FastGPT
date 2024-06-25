@@ -103,8 +103,14 @@ const ListItem = () => {
   return (
     <>
       <Grid
-        py={[4, 6]}
-        gridTemplateColumns={['1fr', 'repeat(2,1fr)', 'repeat(3,1fr)', 'repeat(4,1fr)']}
+        py={4}
+        gridTemplateColumns={[
+          '1fr',
+          'repeat(2,1fr)',
+          'repeat(3,1fr)',
+          'repeat(3,1fr)',
+          'repeat(4,1fr)'
+        ]}
         gridGap={5}
         alignItems={'stretch'}
       >
@@ -126,14 +132,14 @@ const ListItem = () => {
                 isLoading={loadingAppId === app._id}
                 lineHeight={1.5}
                 h="100%"
-                pt={4}
+                pt={5}
                 pb={3}
                 px={5}
                 cursor={'pointer'}
                 border={'base'}
                 boxShadow={'2'}
                 bg={'white'}
-                borderRadius={'md'}
+                borderRadius={'lg'}
                 userSelect={'none'}
                 position={'relative'}
                 display={'flex'}
@@ -171,24 +177,24 @@ const ListItem = () => {
                   <AppTypeTag type={app.type} />
                 </Box> */}
                 <HStack>
-                  <Avatar src={app.avatar} borderRadius={'md'} w={'1.3rem'} />
-                  <Box flex={'1'} wordBreak={'break-all'}>
+                  <Avatar src={app.avatar} borderRadius={'md'} w={'1.5rem'} />
+                  <Box flex={'1 0 0'} fontSize={'1.125rem'}>
                     {app.name}
                   </Box>
-                  <Box alignSelf={'flex-start'} mr={'-1.25rem'}>
+                  <Box mr={'-1.25rem'}>
                     <AppTypeTag type={app.type} />
                   </Box>
                 </HStack>
                 <Box
-                  flex={'1'}
-                  className={'textEllipsis3'}
-                  my={2}
+                  flex={'1 0 80px'}
+                  mt={3}
+                  pr={8}
+                  textAlign={'justify'}
                   wordBreak={'break-all'}
-                  fontSize={'mini'}
-                  color={'myGray.600'}
-                  minH={'32px'}
+                  fontSize={'xs'}
+                  color={'myGray.500'}
                 >
-                  {app.intro || '还没写介绍~'}
+                  <Box className={'textEllipsis2'}>{app.intro || '还没写介绍~'}</Box>
                 </Box>
                 <Flex
                   h={'24px'}
@@ -198,16 +204,16 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <HStack spacing={3.5}>
-                    {/* {owner && (
+                    {owner && (
                       <HStack spacing={1}>
-                        <Avatar src={owner.avatar} w={'0.9rem'} />
+                        <Avatar src={owner.avatar} w={'0.875rem'} />
                         <Box maxW={'150px'} className="textEllipsis">
                           {owner.memberName}
                         </Box>
                       </HStack>
-                    )} */}
+                    )}
 
-                    <PermissionIconText defaultPermission={app.defaultPermission} />
+                    <PermissionIconText defaultPermission={app.defaultPermission} w={'0.875rem'} />
                   </HStack>
 
                   <HStack>
@@ -222,7 +228,7 @@ const ListItem = () => {
                             <IconButton
                               size={'xsSquare'}
                               variant={'transparentBase'}
-                              icon={<MyIcon name={'more'} w={'0.8rem'} />}
+                              icon={<MyIcon name={'more'} w={'0.875rem'} color={'myGray.500'} />}
                               aria-label={''}
                             />
                           }

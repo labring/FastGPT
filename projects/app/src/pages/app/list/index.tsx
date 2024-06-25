@@ -144,6 +144,7 @@ const MyApps = () => {
               gap={5}
               display={'flex'}
               alignItems={'center'}
+              fontSize={'md'}
               onChange={(e) => {
                 router.push({
                   query: {
