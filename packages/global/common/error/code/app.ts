@@ -3,9 +3,7 @@ import { ErrType } from '../errorCode';
 /* dataset: 502000 */
 export enum AppErrEnum {
   unExist = 'appUnExist',
-  unAuthApp = 'unAuthApp',
-  missingParams = 'missingParams',
-  inheritPermissionError = 'inheritPermissionError'
+  unAuthApp = 'unAuthApp'
 }
 const appErrList = [
   {
@@ -15,14 +13,6 @@ const appErrList = [
   {
     statusText: AppErrEnum.unAuthApp,
     message: '无权操作该应用'
-  },
-  {
-    statusText: AppErrEnum.missingParams,
-    message: '缺少参数'
-  },
-  {
-    statusText: AppErrEnum.inheritPermissionError,
-    message: '继承权限错误'
   }
 ];
 export default appErrList.reduce((acc, cur, index) => {
