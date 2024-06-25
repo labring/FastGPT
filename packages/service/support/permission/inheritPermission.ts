@@ -1,4 +1,4 @@
-import { mongoSessionRun } from 'common/mongo/sessionRun';
+import { mongoSessionRun } from '../../common/mongo/sessionRun';
 import { MongoResourcePermission } from './schema';
 import { Model } from 'mongoose';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
@@ -21,23 +21,20 @@ type resourceType = {
 
 // sync the permission to all children folder
 // Only folder save the permission.
-export const syncPermission = async ({
+export async function syncPermission({
   resource,
   folderTypeList,
   permissionType,
-  resourceFind,
-  resourceUpdateMany
+  resourceModel
 }: {
   resource: resourceType;
 
   // when the resource is a folder
   folderTypeList: string[];
 
-  // example: MongoApp.find
-  resourceFind: typeof Model.find;
-  resourceUpdateMany: typeof Model.updateMany;
+  resourceModel: typeof Model;
   permissionType: PerResourceTypeEnum;
-}) => {
+}) {
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
 
@@ -48,7 +45,7 @@ export const syncPermission = async ({
   // get all folders and the resource permission of the app
   mongoSessionRun(async (session) => {
     const [allFolders, rp] = await Promise.all([
-      resourceFind(
+      resourceModel.find(
         {
           teamId: resource.teamId,
           type: { $in: folderTypeList },
@@ -81,7 +78,7 @@ export const syncPermission = async ({
     }
 
     // sync the defaultPermission
-    await resourceUpdateMany(
+    await resourceModel.updateMany(
       {
         _id: { $in: children }
       },
@@ -115,25 +112,19 @@ export const syncPermission = async ({
       })
     );
   });
-};
+}
 
-export const resumeInheritPermission = async ({
+export async function resumeInheritPermission({
   resource,
   folderTypeList,
-  resourceFindById,
-  resourceUpdateOne,
-  resourceUpdateMany,
-  resourceFind,
-  permissionType
+  permissionType,
+  resourceModel
 }: {
   resource: resourceType;
   folderTypeList: string[];
-  resourceFindById: typeof Model.findById;
-  resourceUpdateOne: typeof Model.updateOne;
-  resourceUpdateMany: typeof Model.updateMany;
-  resourceFind: typeof Model.find;
   permissionType: PerResourceTypeEnum;
-}) => {
+  resourceModel: typeof Model;
+}) {
   const isFolder = folderTypeList.includes(resource.type);
 
   if (!resource.parentId) {
@@ -142,13 +133,13 @@ export const resumeInheritPermission = async ({
   }
 
   mongoSessionRun(async (session) => {
-    const parent = await resourceFindById(resource.parentId).lean().session(session);
+    const parent = await resourceModel.findById(resource.parentId).lean().session(session);
 
     resource.inheritPermission = true;
     resource.defaultPermission = parent.defaultPermission;
 
     // update the app's defaultPermission and inheritPermission itself
-    await resourceUpdateOne(
+    await resourceModel.updateOne(
       {
         _id: resource._id
       },
@@ -167,12 +158,11 @@ export const resumeInheritPermission = async ({
 
   syncPermission({
     resource,
+    resourceModel,
     folderTypeList,
-    permissionType,
-    resourceFind,
-    resourceUpdateMany
+    permissionType
   });
-};
+}
 
 // usage:
 // resumeInheritPermission({
@@ -182,24 +172,20 @@ export const resumeInheritPermission = async ({
 //  }
 //  //...
 //  });
-export const removeInheritPermission = async ({
+export async function removeInheritPermission({
   resource,
+  resourceModel,
   updatePermissionCallback,
-  resourceFindById,
-  permissionType,
-  resourceFind,
-  resourceUpdateMany
+  permissionType
 }: {
+  resourceModel: typeof Model;
   resource: resourceType;
   updatePermissionCallback: (parent: typeof resource, rp: ResourcePermissionType[]) => void;
-  resourceFindById: typeof Model.findById;
   permissionType: PerResourceTypeEnum;
-  resourceFind: typeof Model.find;
-  resourceUpdateMany: typeof Model.updateMany;
-}) => {
+}) {
   resource.inheritPermission = false;
   const [parent, rp] = await Promise.all([
-    resourceFindById(resource._id).lean(),
+    resourceModel.findById(resource._id).lean(),
     MongoResourcePermission.find({
       resourceId: resource.parentId,
       resourceType: permissionType,
@@ -210,9 +196,8 @@ export const removeInheritPermission = async ({
   updatePermissionCallback(parent, rp);
   syncPermission({
     resource,
+    resourceModel,
     folderTypeList: [],
-    permissionType,
-    resourceFind,
-    resourceUpdateMany
+    permissionType
   });
-};
+}

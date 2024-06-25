@@ -12,8 +12,8 @@ import type { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils';
 import { defaultNodeVersion } from '@fastgpt/global/core/workflow/node/constant';
 import { ClientSession } from '@fastgpt/service/common/mongo';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 
 export type CreateAppBody = {
   parentId?: ParentIdType;
@@ -28,15 +28,20 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
   const { parentId, name, avatar, type, modules, edges } = req.body;
 
   if (!name || !type || !Array.isArray(modules)) {
-    return Promise.reject(AppErrEnum.missingParams);
+    return Promise.reject(CommonErrEnum.inheritPermissionError);
   }
 
   // 凭证校验
   const { teamId, tmbId } = await authUserPer({ req, authToken: true, per: WritePermissionVal });
+  let parentApp: AppSchema | null = null;
   if (parentId) {
     // if it is not a root app
-    authApp({ req, appId: parentId, per: WritePermissionVal }); // check the parent folder permission
+    parentApp = (await authApp({ req, appId: parentId, per: WritePermissionVal, authToken: true }))
+      .app;
+    // check the parent folder permission
   }
+
+  const ancestorId = parentApp ? parentApp.ancestorId : parentId;
 
   // 上限校验
   await checkTeamAppLimit(teamId);
@@ -44,6 +49,7 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
   // 创建app
   const appId = await onCreateApp({
     parentId,
+    ancestorId,
     name,
     avatar,
     type,
@@ -60,6 +66,7 @@ export default NextAPI(handler);
 
 export const onCreateApp = async ({
   parentId,
+  ancestorId,
   name,
   intro,
   avatar,
@@ -72,6 +79,7 @@ export const onCreateApp = async ({
   session
 }: {
   parentId?: ParentIdType;
+  ancestorId?: ParentIdType;
   name?: string;
   avatar?: string;
   type?: AppTypeEnum;
@@ -88,6 +96,7 @@ export const onCreateApp = async ({
       [
         {
           ...parseParentIdInMongo(parentId),
+          ...parseParentIdInMongo(ancestorId),
           avatar,
           name,
           intro,

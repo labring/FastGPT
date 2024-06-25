@@ -13,9 +13,10 @@ import { parseParentIdInMongo } from '@fastgpt/global/common/parentFolder/utils'
 import { authApp } from '@fastgpt/service/support/permission/app/auth';
 import { AppDefaultPermissionVal } from '@fastgpt/global/support/permission/app/constant';
 import { AppDetailType } from '@fastgpt/global/core/app/type';
-import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
+import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { syncPermission } from '@fastgpt/service/support/permission/inheritPermission';
 
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
@@ -27,7 +28,7 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
   const { name, intro, parentId } = req.body;
 
   if (!name) {
-    Promise.reject(AppErrEnum.missingParams);
+    Promise.reject(CommonErrEnum.missingParams);
   }
 
   // 凭证校验
@@ -35,7 +36,12 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
   let parentApp: AppDetailType | null = null;
   if (parentId) {
     // if it is not a root folder
-    const result = await authApp({ req, appId: parentId, per: WritePermissionVal }); // check the parent folder permission
+    const result = await authApp({
+      req,
+      appId: parentId,
+      per: WritePermissionVal,
+      authToken: true
+    }); // check the parent folder permission
     parentApp = result.app;
   }
 
@@ -53,7 +59,6 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
       defaultPermission: parentId ? parentApp!.defaultPermission : AppDefaultPermissionVal
     });
 
-    // Create resource permission
     if (parentId) {
       const rp = await MongoResourcePermission.find({
         resourceId: parentId,
