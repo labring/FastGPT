@@ -11,6 +11,7 @@ import Loading from '@fastgpt/web/components/common/MyLoading';
 import { serviceSideProps } from '@/web/common/utils/i18n';
 import { getErrText } from '@fastgpt/global/common/error/utils';
 import { useTranslation } from 'next-i18next';
+import { useMount } from 'ahooks';
 
 const provider = ({ code, state, error }: { code: string; state: string; error?: string }) => {
   const { t } = useTranslation();
@@ -51,6 +52,7 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
           callbackUrl: `${location.origin}/login/provider`,
           inviterId: localStorage.getItem('inviterId') || undefined
         });
+
         if (!res) {
           toast({
             status: 'warning',
@@ -74,7 +76,7 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
     [loginStore, loginSuccess, router, toast]
   );
 
-  useEffect(() => {
+  useMount(() => {
     clearToken();
     router.prefetch('/app/list');
     if (error) {
@@ -98,7 +100,7 @@ const provider = ({ code, state, error }: { code: string; state: string; error?:
       return;
     }
     authCode(code);
-  }, []);
+  });
 
   return <Loading />;
 };

@@ -40,8 +40,8 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
 
   return data ? (
     <Flex
-      bg={data.bg}
-      color={data.color}
+      bg={'myGray.100'}
+      color={'myGray.600'}
       py={0.5}
       pl={2}
       pr={2}

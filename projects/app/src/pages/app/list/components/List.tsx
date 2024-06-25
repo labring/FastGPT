@@ -182,11 +182,12 @@ const ListItem = () => {
                 <Box
                   flex={'1'}
                   className={'textEllipsis3'}
-                  my={2}
+                  mt={2}
+                  mb={4}
                   wordBreak={'break-all'}
                   fontSize={'mini'}
                   color={'myGray.600'}
-                  minH={'32px'}
+                  minH={'42px'}
                 >
                   {app.intro || '还没写介绍~'}
                 </Box>
@@ -198,16 +199,16 @@ const ListItem = () => {
                   color={'myGray.500'}
                 >
                   <HStack spacing={3.5}>
-                    {/* {owner && (
+                    {owner && (
                       <HStack spacing={1}>
                         <Avatar src={owner.avatar} w={'0.9rem'} />
                         <Box maxW={'150px'} className="textEllipsis">
                           {owner.memberName}
                         </Box>
                       </HStack>
-                    )} */}
+                    )}
 
-                    <PermissionIconText defaultPermission={app.defaultPermission} />
+                    <PermissionIconText defaultPermission={app.defaultPermission} w={'0.875rem'} />
                   </HStack>
 
                   <HStack>
