@@ -6,10 +6,10 @@ import { MongoAppVersion } from './version/schema';
 import { MongoApp } from './schema';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 import { mongoSessionRun } from '../../common/mongo/sessionRun';
-import { mongoRPermission } from '@fastgpt/global/support/permission/utils';
 import { MongoResourcePermission } from 'support/permission/schema';
 import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import { AppErrEnum } from '@fastgpt/global/common/error/code/app';
+import { ResourcePermissionType } from '@fastgpt/global/support/permission/type';
 
 export const beforeUpdateAppFormat = <T extends AppSchema['modules'] | undefined>({
   nodes
@@ -110,11 +110,14 @@ export async function findAppAndAllChildren({
   return [app, ...childDatasets];
 }
 
-// sync the permission of the app to all its children
-export const syncPermission = async (app: AppDetailType) => {
+// sync the permission of the folder to all its children
+export const syncPermission = async (app: AppSchema) => {
+  // only folder has permission
   if (app.type !== AppTypeEnum.folder) {
     return;
   }
+
+  // get all folders and the resource permission of the app
   mongoSessionRun(async (session) => {
     const [allFolders, rp] = await Promise.all([
       MongoApp.find(
@@ -139,7 +142,7 @@ export const syncPermission = async (app: AppDetailType) => {
 
     // bfs
     const queue = [app._id.toString()];
-    const children: (typeof app._id)[] = [];
+    const children: string[] = [];
 
     while (queue.length) {
       const parentId = queue.shift();
@@ -148,6 +151,7 @@ export const syncPermission = async (app: AppDetailType) => {
       queue.push(...folderChildren.map((folder) => folder._id));
     }
 
+    // sync the defaultPermission
     await MongoApp.updateMany(
       {
         _id: { $in: children }
@@ -157,6 +161,30 @@ export const syncPermission = async (app: AppDetailType) => {
       },
       { session }
     );
+
+    // sync the resource permission
+    return await Promise.all(
+      children.map(async (childId) => {
+        // delete first
+        await MongoResourcePermission.deleteMany({
+          teamId: app.teamId,
+          appId: childId,
+          resourceType: PerResourceTypeEnum.app
+        });
+        // then write in
+        return await MongoResourcePermission.updateMany(
+          {
+            teamId: app.teamId,
+            appId: childId,
+            resourceType: PerResourceTypeEnum.app
+          },
+          {
+            permission: rp[0].permission
+          },
+          { session, upsert: true }
+        );
+      })
+    );
   });
 };
 
@@ -165,6 +193,7 @@ export const resumeInheritPermission = async (app: AppDetailType) => {
   const isFolder = app.type === AppTypeEnum.folder;
 
   if (!app.parentId) {
+    // it is a root folder. which does not have a parent.
     return Promise.reject(AppErrEnum.inheritPermissionError);
   }
 
@@ -174,8 +203,8 @@ export const resumeInheritPermission = async (app: AppDetailType) => {
     app.inheritPermission = true;
     app.defaultPermission = parentApp.defaultPermission;
 
+    // update the app's defaultPermission and inheritPermission itself
     await MongoApp.updateOne(
-      // update the app's defaultPermission and inheritPermission itself
       {
         _id: app._id
       },
@@ -188,12 +217,28 @@ export const resumeInheritPermission = async (app: AppDetailType) => {
   });
 
   if (!isFolder) {
+    // app. Collaborator on it is unnessary anymore. delete them.
     await MongoResourcePermission.deleteMany({ appId: app._id });
   }
 
-  syncPermission(app);
+  syncPermission(app); // sync
 };
 
-export const removeInheritPermission = async (app: AppDetailType) => {
-  const isFolder = app.type === AppTypeEnum.folder;
+// should be called **before** a folder/app's permission changed.
+export const removeInheritPermission = async (
+  app: AppSchema,
+  updatePermissionCallback: (parent: AppSchema, rp: ResourcePermissionType[]) => void
+) => {
+  app.inheritPermission = false;
+  const [parent, rp] = await Promise.all([
+    MongoApp.findById(app._id).lean(),
+    MongoResourcePermission.find({
+      resourceId: app.parentId,
+      resourceType: PerResourceTypeEnum.app,
+      teamId: app.teamId
+    })
+  ]);
+  app.defaultPermission = parent.defaultPermission;
+  updatePermissionCallback(parent, rp);
+  syncPermission(app);
 };

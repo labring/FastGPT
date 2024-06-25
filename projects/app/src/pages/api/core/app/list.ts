@@ -42,11 +42,11 @@ async function handler(
   const findAppsQuery = (() => {
     const searchMatch = searchKey
       ? {
-        $or: [
-          { name: { $regex: searchKey, $options: 'i' } },
-          { intro: { $regex: searchKey, $options: 'i' } }
-        ]
-      }
+          $or: [
+            { name: { $regex: searchKey, $options: 'i' } },
+            { intro: { $regex: searchKey, $options: 'i' } }
+          ]
+        }
       : {};
 
     if (getRecentlyChat) {
