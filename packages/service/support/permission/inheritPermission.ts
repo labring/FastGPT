@@ -14,7 +14,6 @@ type resourceType = {
   type: string;
   teamId: string;
   defaultPermission: PermissionValueType;
-  ancestorId?: ParentIdType;
   parentId?: ParentIdType;
   inheritPermission: boolean;
 };
@@ -49,8 +48,7 @@ export async function syncPermission({
         {
           teamId: resource.teamId,
           type: { $in: folderTypeList },
-          inheritPermission: true,
-          ancestorId: resource.ancestorId
+          inheritPermission: true
         },
         null,
         { session }
@@ -72,24 +70,34 @@ export async function syncPermission({
 
     while (queue.length) {
       const parentId = queue.shift();
-      const folderChildren = allFolders.filter((folder) => folder.parentId === parentId);
+      const folderChildren = allFolders.filter(
+        (folder) => String(folder.parentId) === String(parentId)
+      );
       children.push(...folderChildren.map((folder) => folder._id));
       queue.push(...folderChildren.map((folder) => folder._id));
     }
 
     // sync the defaultPermission
-    await resourceModel.updateMany(
-      {
-        _id: { $in: children }
-      },
-      {
-        defaultPermission: resource.defaultPermission
-      },
-      { session }
+    await Promise.all(
+      children.map((childId) =>
+        resourceModel.updateOne(
+          {
+            _id: childId
+          },
+          {
+            defaultPermission: resource.defaultPermission
+          },
+          { session }
+        )
+      )
     );
 
     // sync the resource permission
-    return await Promise.all(
+    if (!rp.length) {
+      return;
+    }
+
+    await Promise.all(
       children.map(async (childId) => {
         // delete first
         await MongoResourcePermission.deleteMany({
@@ -156,7 +164,7 @@ export async function resumeInheritPermission({
     await MongoResourcePermission.deleteMany({ appId: resource._id });
   }
 
-  syncPermission({
+  await syncPermission({
     resource,
     resourceModel,
     folderTypeList,
@@ -172,32 +180,21 @@ export async function resumeInheritPermission({
 //  }
 //  //...
 //  });
-export async function removeInheritPermission({
-  resource,
-  resourceModel,
-  updatePermissionCallback,
-  permissionType
-}: {
-  resourceModel: typeof Model;
-  resource: resourceType;
-  updatePermissionCallback: (parent: typeof resource, rp: ResourcePermissionType[]) => void;
-  permissionType: PerResourceTypeEnum;
-}) {
-  resource.inheritPermission = false;
-  const [parent, rp] = await Promise.all([
-    resourceModel.findById(resource._id).lean(),
-    MongoResourcePermission.find({
-      resourceId: resource.parentId,
-      resourceType: permissionType,
-      teamId: resource.teamId
-    })
-  ]);
-  resource.defaultPermission = parent.defaultPermission;
-  updatePermissionCallback(parent, rp);
-  syncPermission({
-    resource,
-    resourceModel,
-    folderTypeList: [],
-    permissionType
-  });
-}
+// export async function removeInheritPermission({
+//   resource,
+//   resourceModel,
+//   permissionType,
+//   folderTypeList
+// }: {
+//   resourceModel: typeof Model;
+//   resource: resourceType;
+//   permissionType: PerResourceTypeEnum;
+//   folderTypeList: string[];
+// }) {
+//   await syncPermission({
+//     resource,
+//     resourceModel,
+//     folderTypeList,
+//     permissionType
+//   });
+// }

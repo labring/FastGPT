@@ -13,8 +13,8 @@ import { AppDetailType } from '@fastgpt/global/core/app/type';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
 import { ApiRequestProps } from '@fastgpt/service/type/next';
 import {
-  removeInheritPermission,
-  resumeInheritPermission
+  resumeInheritPermission,
+  syncPermission
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
 
@@ -51,17 +51,17 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
   // 1. dataset search limit, less than model quoteMaxToken
   const { nodes: formatNodes } = beforeUpdateAppFormat({ nodes });
   const isDefaultPermissionChanged =
-    defaultPermission && defaultPermission !== app.defaultPermission;
+    defaultPermission !== undefined && defaultPermission !== app.defaultPermission;
   const isInheritPermissionChanged =
-    defaultPermission && inheritPermission !== app.inheritPermission;
+    inheritPermission !== undefined && inheritPermission !== app.inheritPermission;
 
   if (isInheritPermissionChanged && isDefaultPermissionChanged) {
     // you can not resume inherit permission and change default permission at the same time
     Promise.reject(CommonErrEnum.inheritPermissionError);
   }
 
-  const updateCallback = async () => {
-    await MongoApp.findByIdAndUpdate(appId, {
+  const onUpdate = async () => {
+    return await MongoApp.findByIdAndUpdate(appId, {
       ...parseParentIdInMongo(parentId),
       ...(name && { name }),
       ...(type && { type }),
@@ -80,14 +80,15 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
   };
 
   if (isDefaultPermissionChanged) {
-    // change the defaultPermission, remove the inheritPermission
-    removeInheritPermission({
-      resource: app,
-      resourceFind: MongoApp.find,
+    onUpdate();
+    syncPermission({
+      resource: {
+        ...app,
+        defaultPermission
+      },
       permissionType: PerResourceTypeEnum.app,
-      resourceFindById: MongoApp.findById,
-      resourceUpdateMany: MongoApp.updateMany,
-      updatePermissionCallback: updateCallback
+      resourceModel: MongoApp,
+      folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin]
     });
     return;
   }
@@ -95,18 +96,15 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
   if (isInheritPermissionChanged) {
     // the only possiblity is to resume the permission
     resumeInheritPermission({
-      resourceUpdateMany: MongoApp.updateMany,
-      resourceFindById: MongoApp.findById,
       resource: app,
       folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin],
-      resourceFind: MongoApp.find,
       permissionType: PerResourceTypeEnum.app,
-      resourceUpdateOne: MongoApp.updateOne
+      resourceModel: MongoApp
     });
     return;
   }
 
-  return await updateCallback();
+  return await onUpdate();
 }
 
 export default NextAPI(handler);

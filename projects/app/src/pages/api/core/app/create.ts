@@ -41,15 +41,12 @@ async function handler(req: ApiRequestProps<CreateAppBody>) {
     // check the parent folder permission
   }
 
-  const ancestorId = parentApp ? parentApp.ancestorId : parentId;
-
   // 上限校验
   await checkTeamAppLimit(teamId);
 
   // 创建app
   const appId = await onCreateApp({
     parentId,
-    ancestorId,
     name,
     avatar,
     type,

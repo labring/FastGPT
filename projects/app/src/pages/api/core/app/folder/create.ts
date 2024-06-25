@@ -16,7 +16,6 @@ import { AppDetailType } from '@fastgpt/global/core/app/type';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
-import { syncPermission } from '@fastgpt/service/support/permission/inheritPermission';
 
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
