@@ -40,15 +40,15 @@ const AppTypeTag = ({ type }: { type: AppTypeEnum }) => {
 
   return data ? (
     <Flex
-      bg={data.bg}
-      color={data.color}
+      bg={'myGray.100'}
+      color={'myGray.600'}
       py={0.5}
       pl={2}
-      pr={2}
+      pr={3}
       borderLeftRadius={'md'}
       whiteSpace={'nowrap'}
     >
-      <MyIcon name={data.icon as any} w={'0.8rem'} />
+      <MyIcon name={data.icon as any} w={'0.8rem'} color={'myGray.500'} />
       <Box ml={1} fontSize={'mini'}>
         {data.label}
       </Box>
