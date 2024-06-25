@@ -2,7 +2,10 @@
 
 import { AppItemType } from '@/types/app';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
-import { WorkflowIOValueTypeEnum } from '@fastgpt/global/core/workflow/constants';
+import {
+  NodeOutputKeyEnum,
+  WorkflowIOValueTypeEnum
+} from '@fastgpt/global/core/workflow/constants';
 import {
   FlowNodeInputTypeEnum,
   FlowNodeOutputTypeEnum,
