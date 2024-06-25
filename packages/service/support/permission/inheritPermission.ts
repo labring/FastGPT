@@ -1,10 +1,7 @@
 import { mongoSessionRun } from 'common/mongo/sessionRun';
 import { MongoResourcePermission } from './schema';
 import { Model } from 'mongoose';
-import {
-  PermissionTypeEnum,
-  PerResourceTypeEnum
-} from '@fastgpt/global/support/permission/constant';
+import { PerResourceTypeEnum } from '@fastgpt/global/support/permission/constant';
 import {
   PermissionValueType,
   ResourcePermissionType
@@ -17,8 +14,8 @@ type resourceType = {
   type: string;
   teamId: string;
   defaultPermission: PermissionValueType;
-  ancestorIds: string[];
-  parentId: ParentIdType;
+  ancestorId?: ParentIdType;
+  parentId?: ParentIdType;
   inheritPermission: boolean;
 };
 
@@ -39,7 +36,7 @@ export const syncPermission = async ({
   // example: MongoApp.find
   resourceFind: typeof Model.find;
   resourceUpdateMany: typeof Model.updateMany;
-  permissionType: PermissionTypeEnum;
+  permissionType: PerResourceTypeEnum;
 }) => {
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
@@ -56,7 +53,7 @@ export const syncPermission = async ({
           teamId: resource.teamId,
           type: { $in: folderTypeList },
           inheritPermission: true,
-          ancestorIds: resource.ancestorIds
+          ancestorId: resource.ancestorId
         },
         null,
         { session }
@@ -135,7 +132,7 @@ export const resumeInheritPermission = async ({
   resourceUpdateOne: typeof Model.updateOne;
   resourceUpdateMany: typeof Model.updateMany;
   resourceFind: typeof Model.find;
-  permissionType: PermissionTypeEnum;
+  permissionType: PerResourceTypeEnum;
 }) => {
   const isFolder = folderTypeList.includes(resource.type);
 
@@ -196,7 +193,7 @@ export const removeInheritPermission = async ({
   resource: resourceType;
   updatePermissionCallback: (parent: typeof resource, rp: ResourcePermissionType[]) => void;
   resourceFindById: typeof Model.findById;
-  permissionType: PermissionTypeEnum;
+  permissionType: PerResourceTypeEnum;
   resourceFind: typeof Model.find;
   resourceUpdateMany: typeof Model.updateMany;
 }) => {
