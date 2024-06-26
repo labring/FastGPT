@@ -63,7 +63,6 @@ export default NextAPI(handler);
 
 export const onCreateApp = async ({
   parentId,
-  ancestorId,
   name,
   intro,
   avatar,
@@ -76,7 +75,6 @@ export const onCreateApp = async ({
   session
 }: {
   parentId?: ParentIdType;
-  ancestorId?: ParentIdType;
   name?: string;
   avatar?: string;
   type?: AppTypeEnum;
@@ -93,7 +91,6 @@ export const onCreateApp = async ({
       [
         {
           ...parseParentIdInMongo(parentId),
-          ...parseParentIdInMongo(ancestorId),
           avatar,
           name,
           intro,
@@ -104,7 +101,10 @@ export const onCreateApp = async ({
           type,
           version: 'v2',
           pluginData,
-          ...(type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': defaultNodeVersion })
+          ...(type === AppTypeEnum.plugin && { 'pluginData.nodeVersion': defaultNodeVersion }),
+          ...(parentId && {
+            inheritPermission: true
+          })
         }
       ],
       { session }
