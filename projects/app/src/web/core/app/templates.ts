@@ -3048,4 +3048,9 @@ export const pluginTemplates: TemplateType = [
   }
 ];
 
-export const defaultAppTemplates = simpleBotTemplates.concat(workflowTemplates[0]);
+export const defaultAppTemplates = [
+  simpleBotTemplates[0],
+  simpleBotTemplates[1],
+  workflowTemplates[0],
+  workflowTemplates[1]
+];
