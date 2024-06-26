@@ -58,9 +58,11 @@ export const nodeTemplate2FlowNode = ({
   };
 };
 export const storeNode2FlowNode = ({
-  item: storeNode
+  item: storeNode,
+  selected = false
 }: {
   item: StoreNodeItemType;
+  selected?: boolean;
 }): Node<FlowNodeItemType> => {
   // init some static data
   const template =
@@ -101,6 +103,7 @@ export const storeNode2FlowNode = ({
     id: storeNode.nodeId,
     type: storeNode.flowNodeType,
     data: moduleItem,
+    selected,
     position: storeNode.position || { x: 0, y: 0 }
   };
 };

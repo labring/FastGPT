@@ -29,6 +29,7 @@ import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 import MyBox from '@fastgpt/web/components/common/MyBox';
 import FolderPath from '@/components/common/folder/Path';
 import { getAppFolderPath } from '@/web/core/app/api/app';
+import { useWorkflowUtils } from './hooks/useUtils';
 
 type ModuleTemplateListProps = {
   isOpen: boolean;
@@ -59,6 +60,13 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
     WorkflowContext,
     (v) => v
   );
+  const [pluginBuffer, setPluginBuffer] = useState<{
+    systemPlugin: FlowNodeTemplateType[];
+    teamPlugin: FlowNodeTemplateType[];
+  }>({
+    [TemplateTypeEnum.systemPlugin]: [],
+    [TemplateTypeEnum.teamPlugin]: []
+  });
 
   const [templateType, setTemplateType] = useState(TemplateTypeEnum.basic);
 
@@ -85,14 +93,34 @@ const NodeTemplatesModal = ({ isOpen, onClose }: ModuleTemplateListProps) => {
         });
       }
       if (templateType === TemplateTypeEnum.systemPlugin) {
-        return getSystemPlugTemplates();
+        if (pluginBuffer.systemPlugin.length === 0) {
+          return getSystemPlugTemplates().then((res) => {
+            setPluginBuffer((state) => ({
+              ...state,
+              systemPlugin: res
+            }));
+            return res;
+          });
+        } else {
+          return pluginBuffer.systemPlugin;
+        }
       }
       if (templateType === TemplateTypeEnum.teamPlugin) {
-        return getTeamPlugTemplates({
-          parentId,
-          searchKey,
-          type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
-        });
+        if (pluginBuffer.teamPlugin.length === 0) {
+          return getTeamPlugTemplates({
+            parentId,
+            searchKey,
+            type: [AppTypeEnum.folder, AppTypeEnum.httpPlugin, AppTypeEnum.plugin]
+          }).then((res) => {
+            setPluginBuffer((state) => ({
+              ...state,
+              teamPlugin: res
+            }));
+            return res;
+          });
+        } else {
+          return pluginBuffer.teamPlugin;
+        }
       }
       return [];
     },
@@ -240,6 +268,7 @@ const RenderList = React.memo(function RenderList({
   const { toast } = useToast();
   const reactFlowWrapper = useContextSelector(WorkflowContext, (v) => v.reactFlowWrapper);
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
+  const { computedNewNodeName } = useWorkflowUtils();
 
   const formatTemplates = useMemo<nodeTemplateListType>(() => {
     const copy: nodeTemplateListType = JSON.parse(JSON.stringify(workflowNodeTemplateList(t)));
@@ -266,6 +295,8 @@ const RenderList = React.memo(function RenderList({
             setLoading(false);
             return res;
           }
+
+          // base node
           return { ...template };
         } catch (e) {
           toast({
@@ -284,7 +315,11 @@ const RenderList = React.memo(function RenderList({
       const node = nodeTemplate2FlowNode({
         template: {
           ...templateNode,
-          name: t(templateNode.name),
+          name: computedNewNodeName({
+            templateName: t(templateNode.name),
+            flowNodeType: templateNode.flowNodeType,
+            pluginId: templateNode.pluginId
+          }),
           intro: t(templateNode.intro || '')
         },
         position: { x: mouseX, y: mouseY - 20 },
@@ -301,7 +336,7 @@ const RenderList = React.memo(function RenderList({
           .concat(node)
       );
     },
-    [reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
+    [computedNewNodeName, reactFlowWrapper, setLoading, setNodes, t, toast, x, y, zoom]
   );
 
   const Render = useMemo(() => {

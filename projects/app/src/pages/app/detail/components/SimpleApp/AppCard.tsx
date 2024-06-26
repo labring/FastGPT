@@ -87,7 +87,7 @@ const AppCard = () => {
         >
           {appDetail.intro || t('core.app.tip.Add a intro to app')}
         </Box>
-        <HStack>
+        <HStack alignItems={'flex-end'}>
           <Button
             size={['sm', 'md']}
             variant={'whitePrimary'}
@@ -155,7 +155,7 @@ const AppCard = () => {
             colorSchema="gray"
             onClick={() => (appDetail.permission.hasManagePer ? onOpenInfoEdit() : undefined)}
           >
-            <PermissionIconText defaultPermission={appDetail.defaultPermission} fontSize={'md'} />
+            <PermissionIconText defaultPermission={appDetail.defaultPermission} />
           </MyTag>
         </HStack>
       </Box>
