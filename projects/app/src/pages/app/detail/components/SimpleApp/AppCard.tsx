@@ -106,16 +106,7 @@ const AppCard = () => {
               {t('common.Team Tags Set')}
             </Button>
           )}
-          {appDetail.permission.hasManagePer && (
-            <Button
-              size={['sm', 'md']}
-              variant={'whitePrimary'}
-              leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
-              onClick={onOpenInfoEdit}
-            >
-              {t('common.Setting')}
-            </Button>
-          )}
+
           {appDetail.permission.isOwner && (
             <MyMenu
               Button={
@@ -133,7 +124,16 @@ const AppCard = () => {
                       icon: 'core/app/type/workflow',
                       label: appT('Transition to workflow'),
                       onClick: () => setTransitionCreateNew(true)
-                    }
+                    },
+                    ...(appDetail.permission.hasWritePer && feConfigs?.show_team_chat
+                      ? [
+                          {
+                            icon: 'core/chat/fileSelect',
+                            label: t('common.Team Tags Set'),
+                            onClick: () => setTeamTagsSet(appDetail)
+                          }
+                        ]
+                      : [])
                   ]
                 },
                 {
