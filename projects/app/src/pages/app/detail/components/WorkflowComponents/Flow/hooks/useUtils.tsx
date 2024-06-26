@@ -36,3 +36,7 @@ export const useWorkflowUtils = () => {
     computedNewNodeName
   };
 };
+
+export default function Dom() {
+  return <></>;
+}
