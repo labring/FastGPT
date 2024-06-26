@@ -159,7 +159,10 @@ const ChatHistorySlider = ({
         {!isPc && appId && (
           <LightRowTabs<TabEnum>
             flex={'1 0 0'}
-            mr={2}
+            mr={1}
+            inlineStyles={{
+              px: 1
+            }}
             list={[
               { label: t('core.chat.Recent use'), value: TabEnum.recently },
               { label: t('App'), value: TabEnum.app },

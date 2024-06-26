@@ -27,6 +27,7 @@ import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 import { useMount } from 'ahooks';
 import { useRequest2 } from '@fastgpt/web/hooks/useRequest';
+import { useWorkflowUtils } from '../../hooks/useUtils';
 
 type Props = FlowNodeItemType & {
   children?: React.ReactNode | React.ReactNode[] | string;
@@ -292,6 +293,7 @@ const MenuRender = React.memo(function MenuRender({
 
   const setNodes = useContextSelector(WorkflowContext, (v) => v.setNodes);
   const setEdges = useContextSelector(WorkflowContext, (v) => v.setEdges);
+  const { computedNewNodeName } = useWorkflowUtils();
 
   const onCopyNode = useCallback(
     (nodeId: string) => {
@@ -300,7 +302,11 @@ const MenuRender = React.memo(function MenuRender({
         if (!node) return state;
         const template = {
           avatar: node.data.avatar,
-          name: node.data.name,
+          name: computedNewNodeName({
+            templateName: node.data.name,
+            flowNodeType: node.data.flowNodeType,
+            pluginId: node.data.pluginId
+          }),
           intro: node.data.intro,
           flowNodeType: node.data.flowNodeType,
           inputs: node.data.inputs,
@@ -323,12 +329,13 @@ const MenuRender = React.memo(function MenuRender({
               inputs: template.inputs,
               outputs: template.outputs,
               version: template.version
-            }
+            },
+            selected: true
           })
         );
       });
     },
-    [setNodes]
+    [computedNewNodeName, setNodes]
   );
   const onDelNode = useCallback(
     (nodeId: string) => {
