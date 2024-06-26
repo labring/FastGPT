@@ -25,6 +25,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await autChatCrud({
       req,
       authToken: true,
+      authApiKey: true,
       appId,
       teamId,
       teamToken,
