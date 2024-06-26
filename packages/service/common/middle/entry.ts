@@ -14,6 +14,7 @@ export const NextEntry = ({ beforeCallback = [] }: { beforeCallback?: Promise<an
     return async function api(req: ApiRequestProps, res: NextApiResponse) {
       const start = Date.now();
       addLog.debug(`Request start ${req.url}`);
+
       try {
         await Promise.all([withNextCors(req, res), ...beforeCallback]);
 
@@ -22,10 +23,15 @@ export const NextEntry = ({ beforeCallback = [] }: { beforeCallback?: Promise<an
           response = await handler(req, res);
         }
 
+        // Get request duration
+        const duration = Date.now() - start;
+        if (duration < 2000) {
+          addLog.debug(`Request finish ${req.url}, time: ${duration}ms`);
+        } else {
+          addLog.warn(`Request finish ${req.url}, time: ${duration}ms`);
+        }
+
         const contentType = res.getHeader('Content-Type');
-
-        addLog.debug(`Request finish ${req.url}, time: ${Date.now() - start}ms`);
-
         if ((!contentType || contentType === 'application/json') && !res.writableFinished) {
           return jsonRes(res, {
             code: 200,
