@@ -38,6 +38,7 @@ import { postCopyApp } from '@/web/core/app/api/app';
 import { getTeamMembers } from '@/web/support/user/team/api';
 import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
 import { useSystem } from '@fastgpt/web/hooks/useSystem';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
