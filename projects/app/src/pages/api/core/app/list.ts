@@ -71,7 +71,7 @@ async function handler(
   const [myApps, rpList] = await Promise.all([
     MongoApp.find(
       findAppsQuery,
-      '_id avatar type name intro tmbId updateTime pluginData defaultPermission'
+      '_id avatar type name intro tmbId updateTime pluginData defaultPermission inheritPermission'
     )
       .sort({
         updateTime: -1
@@ -113,7 +113,7 @@ async function handler(
     permission: app.permission,
     defaultPermission: app.defaultPermission || AppDefaultPermissionVal,
     pluginData: app.pluginData,
-    inheritPermission: app.inheritPermission || true
+    inheritPermission: app.inheritPermission ?? true
   }));
 }
 

@@ -24,7 +24,10 @@ const FolderSlideCard = ({
   onDelete,
 
   defaultPer,
-  managePer
+  managePer,
+  isInheritPermission,
+  resumeInheritPermission,
+  isParent
 }: {
   refreshDeps?: any[];
   name: string;
@@ -40,6 +43,10 @@ const FolderSlideCard = ({
     onChange: (v: PermissionValueType) => Promise<any>;
   };
   managePer: MemberManagerInputPropsType;
+
+  isInheritPermission?: boolean;
+  resumeInheritPermission?: () => void;
+  isParent?: boolean;
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
@@ -48,6 +55,7 @@ const FolderSlideCard = ({
     type: 'delete',
     content: deleteTip
   });
+  const { ConfirmModal: CommonConfirmModal, openConfirm: openCommonConfirm } = useConfirm({});
 
   return (
     <Box w={'13rem'}>
@@ -118,6 +126,28 @@ const FolderSlideCard = ({
           <Box>
             <FormLabel>{t('support.permission.Permission')}</FormLabel>
 
+            {!isInheritPermission && !isParent && (
+              <Flex mt={5} alignItems={'start'} flexDirection={'column'}>
+                <Box fontSize="sm">已限制权限，不再继承父级文件夹的权限</Box>
+                <Button
+                  mt={2}
+                  size="sm"
+                  variant="whitePrimary"
+                  onClick={() => {
+                    openCommonConfirm(
+                      () => {
+                        resumeInheritPermission?.();
+                      },
+                      undefined,
+                      '是否恢复为继承父级文件夹的权限？'
+                    )();
+                  }}
+                >
+                  恢复
+                </Button>
+              </Flex>
+            )}
+
             {managePer.permission.hasManagePer && (
               <Box mt={5}>
                 <Box fontSize={'sm'} color={'myGray.500'}>
@@ -180,6 +210,7 @@ const FolderSlideCard = ({
       )}
 
       <ConfirmModal />
+      <CommonConfirmModal />
     </Box>
   );
 };

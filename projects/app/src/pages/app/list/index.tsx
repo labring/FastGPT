@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 import { Box, Flex, Button, useDisclosure } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import { serviceSideProps } from '@/web/common/utils/i18n';
@@ -212,6 +212,11 @@ const MyApps = () => {
         {!!folderDetail && isPc && (
           <Box pt={[4, 6]} pr={[4, 6]}>
             <FolderSlideCard
+              resumeInheritPermission={() =>
+                onUpdateApp(folderDetail._id, { inheritPermission: true })
+              }
+              isInheritPermission={folderDetail.inheritPermission}
+              isParent={folderDetail.parentId !== undefined}
               refreshDeps={[folderDetail._id]}
               name={folderDetail.name}
               intro={folderDetail.intro}

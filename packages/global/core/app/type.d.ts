@@ -50,6 +50,7 @@ export type AppListItemType = {
   type: AppTypeEnum;
   updateTime: Date;
   pluginData?: AppSchema['pluginData'];
+  permission: AppPermission;
 } & PermissionSchemaType;
 
 export type AppDetailType = AppSchema & {

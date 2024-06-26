@@ -47,8 +47,10 @@ const ListItem = () => {
   const router = useRouter();
   const { isPc } = useSystem();
 
-  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, appType } =
-    useContextSelector(AppListContext, (v) => v);
+  const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
+    AppListContext,
+    (v) => v
+  );
   const [loadingAppId, setLoadingAppId] = useState<string>();
 
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
@@ -105,6 +107,20 @@ const ListItem = () => {
   const { data: members = [] } = useRequest2(getTeamMembers, {
     manual: !feConfigs.isPlus
   });
+
+  const { run: onResumeInheritPermission } = useRequest2(
+    () => {
+      return putAppById(editPerApp!._id, { inheritPermission: true });
+    },
+    {
+      manual: true,
+      successToast: t('permission.Resume inherit permission success'),
+      errorToast: t('permission.Resume inherit permission failed'),
+      onSuccess() {
+        loadMyApps();
+      }
+    }
+  );
 
   return (
     <>
@@ -361,6 +377,8 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
+          resumeInheritPermission={onResumeInheritPermission}
+          isInheritPermission={editPerApp.inheritPermission}
           avatar={editPerApp.avatar}
           name={editPerApp.name}
           defaultPer={{
