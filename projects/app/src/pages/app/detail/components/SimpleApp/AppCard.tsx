@@ -96,17 +96,16 @@ const AppCard = () => {
           >
             {t('core.Chat')}
           </Button>
-          {appDetail.permission.hasWritePer && feConfigs?.show_team_chat && (
+          {appDetail.permission.hasManagePer && (
             <Button
               size={['sm', 'md']}
               variant={'whitePrimary'}
-              leftIcon={<DragHandleIcon w={'16px'} />}
-              onClick={() => setTeamTagsSet(appDetail)}
+              leftIcon={<MyIcon name={'common/settingLight'} w={'16px'} />}
+              onClick={onOpenInfoEdit}
             >
-              {t('common.Team Tags Set')}
+              {t('common.Setting')}
             </Button>
           )}
-
           {appDetail.permission.isOwner && (
             <MyMenu
               Button={
