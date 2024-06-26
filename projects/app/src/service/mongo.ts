@@ -16,17 +16,16 @@ import { systemStartCb } from '@fastgpt/service/common/system/tools';
 /**
  * connect MongoDB and init data
  */
-export function connectToDatabase(): Promise<void> {
+export function connectToDatabase() {
   return connectMongo({
     beforeHook: () => {
       initGlobal();
     },
     afterHook: async () => {
       systemStartCb();
-      // init system config
-      getInitConfig();
-      //init vector database, init root user
-      await Promise.all([initVectorStore(), initRootUser()]);
+
+      //init system config；init vector database；init root user
+      await Promise.all([getInitConfig(), initVectorStore(), initRootUser()]);
 
       startMongoWatch();
       // cron

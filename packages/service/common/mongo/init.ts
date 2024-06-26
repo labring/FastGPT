@@ -1,4 +1,8 @@
-import mongoose from './index';
+import { addLog } from '../system/log';
+import { connectionMongo } from './index';
+import type { Mongoose } from 'mongoose';
+
+const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
 
 /**
  * connect MongoDB and init data
@@ -8,20 +12,27 @@ export async function connectMongo({
   afterHook
 }: {
   beforeHook?: () => any;
-  afterHook?: () => any;
-}): Promise<void> {
-  if (global.mongodb) {
-    return;
+  afterHook?: () => Promise<any>;
+}): Promise<Mongoose> {
+  if (connectionMongo.connection.readyState !== 0) {
+    return connectionMongo;
   }
-  global.mongodb = mongoose;
 
-  beforeHook && (await beforeHook());
+  beforeHook && beforeHook();
 
   console.log('mongo start connect');
   try {
-    mongoose.set('strictQuery', true);
-    const maxConnecting = Math.max(30, Number(process.env.DB_MAX_LINK || 20));
-    await mongoose.connect(process.env.MONGODB_URI as string, {
+    connectionMongo.set('strictQuery', true);
+
+    connectionMongo.connection.on('error', (error) => {
+      console.log('mongo error', error);
+      connectionMongo.disconnect();
+    });
+    connectionMongo.connection.on('disconnected', () => {
+      console.log('mongo disconnected');
+    });
+
+    await connectionMongo.connect(process.env.MONGODB_URI as string, {
       bufferCommands: true,
       maxConnecting: maxConnecting,
       maxPoolSize: maxConnecting,
@@ -34,22 +45,17 @@ export async function connectMongo({
       retryReads: true
     });
 
-    mongoose.connection.on('error', (error) => {
-      console.log('mongo error', error);
-      global.mongodb?.disconnect();
-      global.mongodb = undefined;
-    });
-    mongoose.connection.on('disconnected', () => {
-      console.log('mongo disconnected');
-      global.mongodb = undefined;
-    });
-
     console.log('mongo connected');
+  } catch (error) {
+    connectionMongo.disconnect();
+    addLog.error('mongo connect error', error);
+  }
 
+  try {
     afterHook && (await afterHook());
   } catch (error) {
-    global.mongodb.disconnect();
-    console.log('error->', 'mongo connect error', error);
-    global.mongodb = undefined;
+    addLog.error('mongo connect after hook error', error);
   }
+
+  return connectionMongo;
 }
