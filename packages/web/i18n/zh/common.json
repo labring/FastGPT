@@ -596,8 +596,7 @@
             "success": "开始同步"
           }
         },
-        "training": {
-        }
+        "training": {}
       },
       "data": {
         "Auxiliary Data": "辅助数据",
@@ -1461,7 +1460,7 @@
         "Upgrade plan": "升级套餐",
         "function": {
           "History store": "{{amount}} 天对话记录保留",
-          "Max app": "{{amount}} 个应用",
+          "Max app": "{{amount}} 个应用&插件",
           "Max dataset": "{{amount}} 个知识库",
           "Max dataset size": "{{amount}} 组知识库索引",
           "Max members": "{{amount}} 个团队成员",

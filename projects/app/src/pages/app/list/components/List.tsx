@@ -36,6 +36,8 @@ const ConfigPerModal = dynamic(() => import('@/components/support/permission/Con
 import type { EditHttpPluginProps } from './HttpPluginEditModal';
 import { postCopyApp } from '@/web/core/app/api/app';
 import { getTeamMembers } from '@/web/support/user/team/api';
+import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
+import { useSystem } from '@fastgpt/web/hooks/useSystem';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
@@ -43,6 +45,8 @@ const ListItem = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
+  const { isPc } = useSystem();
+
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail, appType } =
     useContextSelector(AppListContext, (v) => v);
   const [loadingAppId, setLoadingAppId] = useState<string>();
@@ -175,9 +179,6 @@ const ListItem = () => {
                   isFolder: app.type === AppTypeEnum.folder
                 })}
               >
-                {/* <Box position={'absolute'} top={3.5} right={0}>
-                  <AppTypeTag type={app.type} />
-                </Box> */}
                 <HStack>
                   <Avatar src={app.avatar} borderRadius={'md'} w={'1.5rem'} />
                   <Box flex={'1 0 0'} fontSize={'1.125rem'}>
@@ -188,7 +189,7 @@ const ListItem = () => {
                   </Box>
                 </HStack>
                 <Box
-                  flex={'1 0 80px'}
+                  flex={['1 0 60px', '1 0 80px']}
                   mt={3}
                   pr={8}
                   textAlign={'justify'}
@@ -219,10 +220,12 @@ const ListItem = () => {
                   </HStack>
 
                   <HStack>
-                    {/* <HStack spacing={0.5} className="time">
-                      <MyIcon name={'history'} w={'0.85rem'} />
-                      <Box>{formatTimeToChatTime(app.updateTime)}</Box>
-                    </HStack> */}
+                    {isPc && (
+                      <HStack spacing={0.5} className="time">
+                        <MyIcon name={'history'} w={'0.85rem'} />
+                        <Box>{formatTimeToChatTime(app.updateTime)}</Box>
+                      </HStack>
+                    )}
                     {app.permission.hasManagePer && (
                       <Box className="more" display={['', 'none']}>
                         <MyMenu
