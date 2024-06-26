@@ -165,7 +165,7 @@ const ChatHistorySlider = ({
             }}
             list={[
               { label: t('core.chat.Recent use'), value: TabEnum.recently },
-              { label: t('App'), value: TabEnum.app },
+              ...(!isTeamChat ? [{ label: t('App'), value: TabEnum.app }] : []),
               { label: t('core.chat.History'), value: TabEnum.history }
             ]}
             value={currentTab}
