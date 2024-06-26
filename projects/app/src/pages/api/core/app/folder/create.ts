@@ -16,6 +16,7 @@ import { AppDetailType } from '@fastgpt/global/core/app/type';
 import { MongoResourcePermission } from '@fastgpt/service/support/permission/schema';
 import { mongoSessionRun } from '@fastgpt/service/common/mongo/sessionRun';
 import { CommonErrEnum } from '@fastgpt/global/common/error/code/common';
+import { getParentCollaborators } from '@fastgpt/service/support/permission/inheritPermission';
 
 export type CreateAppFolderBody = {
   parentId?: ParentIdType;
@@ -59,11 +60,10 @@ async function handler(req: ApiRequestProps<CreateAppFolderBody>) {
     });
 
     if (parentId) {
-      const rp = await MongoResourcePermission.find({
-        resourceId: parentId,
-        teamId: teamId,
+      const rp = await getParentCollaborators({
+        resource: app,
         resourceType: PerResourceTypeEnum.app
-      }).lean();
+      });
 
       MongoResourcePermission.create(
         rp.map((item) => {

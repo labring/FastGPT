@@ -11,6 +11,7 @@ import { AppPermission } from '@fastgpt/global/support/permission/app/controller
 import { AuthResponseType } from '../type/auth.d';
 import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { ParentIdType } from '@fastgpt/global/common/parentFolder/type';
 
 export const authAppByTmbId = async ({
   tmbId,
@@ -79,7 +80,7 @@ export const authApp = async ({
   per,
   ...props
 }: AuthPropsType & {
-  appId: string;
+  appId: string | ParentIdType;
 }): Promise<
   AuthResponseType & {
     app: AppDetailType;
@@ -87,6 +88,10 @@ export const authApp = async ({
 > => {
   const result = await parseHeaderCert(props);
   const { tmbId } = result;
+
+  if (!appId) {
+    return Promise.reject(AppErrEnum.unExist);
+  }
 
   const { app } = await authAppByTmbId({
     tmbId,

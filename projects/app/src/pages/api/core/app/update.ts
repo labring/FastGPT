@@ -17,6 +17,7 @@ import {
   syncPermission
 } from '@fastgpt/service/support/permission/inheritPermission';
 import { AppTypeEnum } from '@fastgpt/global/core/app/constants';
+import { authUserPer } from '@fastgpt/service/support/permission/user/auth';
 
 async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>) {
   const {
@@ -39,8 +40,30 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     Promise.reject(CommonErrEnum.missingParams);
   }
 
+  const isMove = parentId !== undefined;
+  const isMoveToRoot = isMove && parentId === null;
+
+  let parentFolder;
+  if (isMove) {
+    // if move, auth the parent folder
+    if (isMoveToRoot) {
+      // if move to root, then no need to auth the parent folder. Auth the user instead
+      parentFolder = null;
+      await authUserPer({ req, authToken: true, per: ManagePermissionVal });
+    } else {
+      parentFolder = (
+        await authApp({
+          req,
+          authToken: true,
+          appId: parentId,
+          per: ManagePermissionVal
+        })
+      ).app;
+    }
+  }
+
   let app: AppDetailType;
-  if (defaultPermission && inheritPermission) {
+  if (defaultPermission || inheritPermission) {
     // if defaultPermission or inheritPermission is set, then need manage permission
     app = (await authApp({ req, authToken: true, appId, per: ManagePermissionVal })).app;
   } else {
@@ -55,6 +78,8 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
   const isInheritPermissionChanged =
     inheritPermission !== undefined && inheritPermission !== app.inheritPermission;
 
+  const isMoveFromRoot = isMove && app.parentId === null;
+
   if (isInheritPermissionChanged && isDefaultPermissionChanged) {
     // you can not resume inherit permission and change default permission at the same time
     Promise.reject(CommonErrEnum.inheritPermissionError);
@@ -68,6 +93,9 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
       ...(avatar && { avatar }),
       ...(intro !== undefined && { intro }),
       ...(defaultPermission !== undefined && { defaultPermission }),
+      ...((isDefaultPermissionChanged || isMoveToRoot) && { inheritPermission: false }),
+      ...(isMoveFromRoot && { inheritPermission: true }),
+      ...(inheritPermission !== undefined && { inheritPermission }),
       ...(teamTags && { teamTags }),
       ...(formatNodes && {
         modules: formatNodes
@@ -104,6 +132,21 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     return;
   }
 
+  if (isMove) {
+    syncPermission({
+      resource: {
+        ...app,
+        parentId,
+        inheritPermission: isMoveToRoot ? false : isMoveFromRoot ? true : app.inheritPermission
+      },
+      permissionType: PerResourceTypeEnum.app,
+      resourceModel: MongoApp,
+      folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin],
+      parentResource: isMoveToRoot ? undefined : parentFolder!
+    });
+  }
+
+  // otherwise
   return await onUpdate();
 }
 

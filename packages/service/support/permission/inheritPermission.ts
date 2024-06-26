@@ -24,7 +24,8 @@ export async function syncPermission({
   resource,
   folderTypeList,
   permissionType,
-  resourceModel
+  resourceModel,
+  parentResource
 }: {
   resource: resourceType;
 
@@ -33,9 +34,13 @@ export async function syncPermission({
 
   resourceModel: typeof Model;
   permissionType: PerResourceTypeEnum;
+
+  // should be provided when inheritPermission is true
+  parentResource?: resourceType;
 }) {
   // only folder has permission
   const isFolder = folderTypeList.includes(resource.type);
+  const isInherit = parentResource !== undefined;
 
   if (!isFolder) {
     return;
@@ -56,7 +61,7 @@ export async function syncPermission({
       MongoResourcePermission.find(
         {
           teamId: resource.teamId,
-          appId: resource._id,
+          appId: isInherit ? resource.parentId : resource._id, // get from parent if inherit is true
           resourceType: permissionType
         },
         null,
@@ -64,7 +69,7 @@ export async function syncPermission({
       )
     ]);
 
-    // bfs
+    // bfs to get all children
     const queue = [resource._id.toString()];
     const children: string[] = [];
 
@@ -77,48 +82,52 @@ export async function syncPermission({
       queue.push(...folderChildren.map((folder) => folder._id));
     }
 
+    if (isInherit) {
+      children.push(resource._id); // push the resource itself
+    }
+    if (!children.length) {
+      return;
+    }
+
     // sync the defaultPermission
-    await Promise.all(
-      children.map((childId) =>
-        resourceModel.updateOne(
-          {
-            _id: childId
-          },
-          {
-            defaultPermission: resource.defaultPermission
-          },
-          { session }
-        )
-      )
-    );
+    for (const childId of children) {
+      await resourceModel.updateOne(
+        {
+          _id: childId
+        },
+        {
+          defaultPermission: isInherit
+            ? parentResource!.defaultPermission
+            : resource.defaultPermission
+        },
+        { session }
+      );
+    }
 
     // sync the resource permission
     if (!rp.length) {
       return;
     }
 
-    await Promise.all(
-      children.map(async (childId) => {
-        // delete first
-        await MongoResourcePermission.deleteMany({
+    for (const childId of children) {
+      await MongoResourcePermission.deleteMany({
+        teamId: resource.teamId,
+        appId: childId,
+        resourceType: PerResourceTypeEnum.app
+      });
+      // then write in
+      await MongoResourcePermission.updateMany(
+        {
           teamId: resource.teamId,
           appId: childId,
           resourceType: PerResourceTypeEnum.app
-        });
-        // then write in
-        return await MongoResourcePermission.updateMany(
-          {
-            teamId: resource.teamId,
-            appId: childId,
-            resourceType: PerResourceTypeEnum.app
-          },
-          {
-            permission: rp[0].permission
-          },
-          { session, upsert: true }
-        );
-      })
-    );
+        },
+        {
+          permission: rp[0].permission
+        },
+        { session, upsert: true }
+      );
+    }
   });
 }
 
@@ -172,29 +181,16 @@ export async function resumeInheritPermission({
   });
 }
 
-// usage:
-// resumeInheritPermission({
-//  //...
-//  updatePermissionCallback: (parent, rp) => {
-//    // update the permission whatever you like
-//  }
-//  //...
-//  });
-// export async function removeInheritPermission({
-//   resource,
-//   resourceModel,
-//   permissionType,
-//   folderTypeList
-// }: {
-//   resourceModel: typeof Model;
-//   resource: resourceType;
-//   permissionType: PerResourceTypeEnum;
-//   folderTypeList: string[];
-// }) {
-//   await syncPermission({
-//     resource,
-//     resourceModel,
-//     folderTypeList,
-//     permissionType
-//   });
-// }
+export async function getParentCollaborators({
+  resource,
+  resourceType
+}: {
+  resource: resourceType;
+  resourceType: PerResourceTypeEnum;
+}): Promise<ResourcePermissionType[]> {
+  return await MongoResourcePermission.find({
+    resourceId: resource.parentId,
+    resourceType: resourceType,
+    teamId: resource.teamId
+  }).lean();
+}
