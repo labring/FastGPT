@@ -36,7 +36,7 @@ const ConfigPerModal = dynamic(() => import('@/components/support/permission/Con
 import type { EditHttpPluginProps } from './HttpPluginEditModal';
 import { postCopyApp } from '@/web/core/app/api/app';
 import { getTeamMembers } from '@/web/support/user/team/api';
-import { formatTimeToChatTime } from '@fastgpt/global/common/string/time';
+import { useSystemStore } from '@/web/common/system/useSystemStore';
 const HttpEditModal = dynamic(() => import('./HttpPluginEditModal'));
 
 const ListItem = () => {
@@ -50,6 +50,8 @@ const ListItem = () => {
   const [editedApp, setEditedApp] = useState<EditResourceInfoFormType>();
   const [editHttpPlugin, setEditHttpPlugin] = useState<EditHttpPluginProps>();
   const [editPerAppIndex, setEditPerAppIndex] = useState<number>();
+  const { feConfigs } = useSystemStore();
+
   const editPerApp = useMemo(
     () => (editPerAppIndex !== undefined ? myApps[editPerAppIndex] : undefined),
     [editPerAppIndex, myApps]
@@ -97,7 +99,7 @@ const ListItem = () => {
   });
 
   const { data: members = [] } = useRequest2(getTeamMembers, {
-    manual: false
+    manual: !feConfigs.isPlus
   });
 
   return (
