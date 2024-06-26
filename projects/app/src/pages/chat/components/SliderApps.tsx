@@ -23,7 +23,10 @@ const SliderApps = ({ apps, activeAppId }: { apps: AppListItemType[]; activeAppI
   const isTeamChat = router.pathname === '/chat/team';
 
   const getAppList = useCallback(async ({ parentId }: GetResourceFolderListProps) => {
-    return getMyApps({ parentId }).then((res) =>
+    return getMyApps({
+      parentId,
+      type: [AppTypeEnum.folder, AppTypeEnum.simple, AppTypeEnum.workflow]
+    }).then((res) =>
       res.map<GetResourceListItemResponse>((item) => ({
         id: item._id,
         name: item.name,
