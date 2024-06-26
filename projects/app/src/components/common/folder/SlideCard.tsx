@@ -157,7 +157,17 @@ const FolderSlideCard = ({
                   mt="1"
                   per={defaultPer.value}
                   defaultPer={defaultPer.defaultValue}
-                  onChange={defaultPer.onChange}
+                  onChange={(v) => {
+                    if (isInheritPermission) {
+                      openConfirm(
+                        () => defaultPer.onChange(v),
+                        undefined,
+                        '此操作会导致权限继承失效，是否进行？'
+                      )();
+                    } else {
+                      defaultPer.onChange(v);
+                    }
+                  }}
                 />
               </Box>
             )}

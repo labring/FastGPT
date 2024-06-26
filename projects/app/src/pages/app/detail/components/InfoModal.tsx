@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useCallback } from 'react';
 import {
   Box,
   Flex,
@@ -15,7 +15,7 @@ import { useToast } from '@fastgpt/web/hooks/useToast';
 import { useSelectFile } from '@/web/common/file/hooks/useSelectFile';
 import { compressImgFileAndUpload } from '@/web/common/file/controller';
 import { getErrText } from '@fastgpt/global/common/error/utils';
-import { useRequest } from '@fastgpt/web/hooks/useRequest';
+import { useRequest, useRequest2 } from '@fastgpt/web/hooks/useRequest';
 import Avatar from '@/components/Avatar';
 import MyModal from '@fastgpt/web/components/common/MyModal';
 import { useTranslation } from 'next-i18next';
@@ -32,15 +32,16 @@ import {
   AppDefaultPermissionVal,
   AppPermissionList
 } from '@fastgpt/global/support/permission/app/constant';
-import { PermissionValueType } from '@fastgpt/global/support/permission/type';
 import DefaultPermissionList from '@/components/support/permission/DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
+import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { putAppById } from '@/web/core/app/api';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
   const { toast } = useToast();
-  const { updateAppDetail, appDetail } = useContextSelector(AppContext, (v) => v);
+  const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
 
   const { File, onOpen: onOpenSelectFile } = useSelectFile({
     fileType: '.jpg,.png',
@@ -52,12 +53,10 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     setValue,
     getValues,
     formState: { errors },
-    handleSubmit,
-    watch
+    handleSubmit
   } = useForm({
     defaultValues: appDetail
   });
-  const defaultPermission = watch('defaultPermission');
   const avatar = getValues('avatar');
 
   // submit config
@@ -76,6 +75,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         title: t('common.Update Success'),
         status: 'success'
       });
+      reloadApp();
     },
     errorToast: t('common.Update Failed')
   });
@@ -138,6 +138,19 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
     });
   };
 
+  const { ConfirmModal, openConfirm } = useConfirm({});
+
+  const { run: resumeInheritPermission } = useRequest2(
+    () => putAppById(appDetail._id, { inheritPermission: true }),
+    {
+      successToast: '恢复成功',
+      errorToast: '恢复失败',
+      onSuccess: () => {
+        reloadApp();
+      }
+    }
+  );
+
   return (
     <MyModal
       isOpen={true}
@@ -182,13 +195,49 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
         {/* role */}
         {appDetail.permission.hasManagePer && (
           <>
+            {!appDetail.inheritPermission && appDetail.parentId && (
+              <Flex mt={5} alignItems={'center'} justifyContent={'space-between'}>
+                <Box fontSize="sm">已限制权限，不再继承父级文件夹的权限</Box>
+                <Button
+                  mt={2}
+                  size="sm"
+                  variant="whitePrimary"
+                  onClick={() => {
+                    openConfirm(
+                      () => {
+                        resumeInheritPermission?.();
+                      },
+                      undefined,
+                      '是否恢复为继承父级文件夹的权限？'
+                    )();
+                  }}
+                >
+                  恢复
+                </Button>
+              </Flex>
+            )}
+
             <Box mt="4">
               <Box fontSize={'sm'}>{t('permission.Default permission')}</Box>
               <DefaultPermissionList
                 mt="2"
-                per={defaultPermission}
+                per={appDetail.defaultPermission}
                 defaultPer={AppDefaultPermissionVal}
-                onChange={(v) => setValue('defaultPermission', v)}
+                onChange={(v) => {
+                  if (appDetail.inheritPermission) {
+                    openConfirm(
+                      () => {
+                        setValue('defaultPermission', v);
+                        handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
+                      },
+                      undefined,
+                      '此操作会导致权限继承失效，是否进行？'
+                    )();
+                  } else {
+                    setValue('defaultPermission', v);
+                    handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
+                  }
+                }}
               />
             </Box>
             <Box mt={6}>
@@ -248,6 +297,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
       </ModalFooter>
 
       <File onSelect={onSelectFile} />
+      <ConfirmModal />
     </MyModal>
   );
 };

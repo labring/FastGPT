@@ -45,6 +45,7 @@ type AppContextType = {
       }
     | undefined;
   reloadAppLatestVersion: () => void;
+  reloadApp: () => void;
 };
 
 export const AppContext = createContext<AppContextType>({
@@ -75,6 +76,9 @@ export const AppContext = createContext<AppContextType>({
   },
   appLatestVersion: undefined,
   reloadAppLatestVersion: function (): void {
+    throw new Error('Function not implemented.');
+  },
+  reloadApp: function (): void {
     throw new Error('Function not implemented.');
   }
 });
@@ -112,7 +116,7 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
   );
 
   const [appDetail, setAppDetail] = useState<AppDetailType>(defaultApp);
-  const { loading: loadingApp, runAsync: reLoadApp } = useRequest2(
+  const { loading: loadingApp, runAsync: reloadApp } = useRequest2(
     () => {
       if (appId) {
         return getAppDetailById(appId);
@@ -195,7 +199,8 @@ const AppContextProvider = ({ children }: { children: ReactNode }) => {
     onDelApp,
     onPublish,
     appLatestVersion,
-    reloadAppLatestVersion
+    reloadAppLatestVersion,
+    reloadApp
   };
 
   return (
