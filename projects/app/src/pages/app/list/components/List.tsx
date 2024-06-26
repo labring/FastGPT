@@ -45,6 +45,7 @@ const ListItem = () => {
   const { t } = useTranslation();
   const { appT } = useI18n();
   const router = useRouter();
+  const { parentId = null } = router.query;
   const { isPc } = useSystem();
 
   const { myApps, loadMyApps, onUpdateApp, setMoveAppId, folderDetail } = useContextSelector(
@@ -377,6 +378,7 @@ const ListItem = () => {
       )}
       {!!editPerApp && (
         <ConfigPerModal
+          hasParent={Boolean(parentId)}
           resumeInheritPermission={onResumeInheritPermission}
           isInheritPermission={editPerApp.inheritPermission}
           avatar={editPerApp.avatar}

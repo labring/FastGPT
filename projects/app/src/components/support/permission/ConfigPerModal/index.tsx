@@ -21,7 +21,7 @@ export type ConfigPerModalProps = {
   managePer: MemberManagerInputPropsType;
   isInheritPermission?: boolean;
   resumeInheritPermission?: () => void;
-  isParent?: boolean;
+  hasParent?: boolean;
 };
 
 const ConfigPerModal = ({
@@ -31,7 +31,7 @@ const ConfigPerModal = ({
   managePer,
   isInheritPermission,
   resumeInheritPermission,
-  isParent,
+  hasParent,
   onClose
 }: ConfigPerModalProps & {
   onClose: () => void;
@@ -52,7 +52,7 @@ const ConfigPerModal = ({
             <Avatar src={avatar} w={'1.75rem'} />
             <Box>{name}</Box>
           </HStack>
-          {!isInheritPermission && !isParent && (
+          {!isInheritPermission && hasParent && (
             <Flex mt={6} alignItems={'center'} justifyContent={'space-between'}>
               <Box fontSize="sm">已限制权限，不再继承父级文件夹的权限</Box>
               <Button
