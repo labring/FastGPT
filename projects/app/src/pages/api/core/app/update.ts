@@ -114,7 +114,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
         ...app,
         defaultPermission
       },
-      permissionType: PerResourceTypeEnum.app,
+      resourceType: PerResourceTypeEnum.app,
       resourceModel: MongoApp,
       folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin],
       parentResource: parentFolder
@@ -127,7 +127,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
     resumeInheritPermission({
       resource: app,
       folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin],
-      permissionType: PerResourceTypeEnum.app,
+      resourceType: PerResourceTypeEnum.app,
       resourceModel: MongoApp
     });
     return;
@@ -140,7 +140,7 @@ async function handler(req: ApiRequestProps<AppUpdateParams, { appId: string }>)
         parentId,
         inheritPermission: isMoveToRoot ? false : isMoveFromRoot ? true : app.inheritPermission
       },
-      permissionType: PerResourceTypeEnum.app,
+      resourceType: PerResourceTypeEnum.app,
       resourceModel: MongoApp,
       folderTypeList: [AppTypeEnum.folder, AppTypeEnum.httpPlugin],
       parentResource: isMoveToRoot ? undefined : parentFolder!

@@ -18,12 +18,25 @@ type resourceType = {
   inheritPermission: boolean;
 };
 
-// sync the permission to all children folder
-// Only folder save the permission.
+// sync the permission to all children folders, or sync from parent folder.
+// hint: Only folder save the permission.
+// @param resource: the resource (as the root of the tree). The children of it will be synced.
+// @param folderTypeList: the type of folder. To determine if the resource is a folder.
+// @param resourceType: the type of the resource in ResourcePermission Table.
+// @param parentResource(optional): the parent resource of the resource.
+//  If the [parentResource] is provided, the permission of the resource will be synced from the parent.
+//  Otherwise, the permission of the resource will be synced to all children folders.
+// @example:
+// await syncPermission({
+//  resource: app,
+//  folderTypeList: AppFolderTypeList,
+//  resourceType: PerResourceTypeEnum.App,
+//  resourceModel: AppModel
+//});
 export async function syncPermission({
   resource,
   folderTypeList,
-  permissionType,
+  resourceType,
   resourceModel,
   parentResource
 }: {
@@ -33,7 +46,7 @@ export async function syncPermission({
   folderTypeList: string[];
 
   resourceModel: typeof Model;
-  permissionType: PerResourceTypeEnum;
+  resourceType: PerResourceTypeEnum;
 
   // should be provided when inheritPermission is true
   parentResource?: resourceType;
@@ -62,7 +75,7 @@ export async function syncPermission({
     const rp = await MongoResourcePermission.find({
       teamId: resource.teamId,
       resourceId, // get from parent if inherit is true
-      resourceType: permissionType
+      resourceType: resourceType
     }).lean();
 
     // bfs to get all children
@@ -109,7 +122,7 @@ export async function syncPermission({
         {
           teamId: resource.teamId,
           resourceId: childId,
-          resourceType: permissionType
+          resourceType: resourceType
         },
         { session }
       );
@@ -119,7 +132,7 @@ export async function syncPermission({
           {
             teamId: resource.teamId,
             resourceId: childId,
-            resourceType: permissionType,
+            resourceType: resourceType,
             tmbId: item.tmbId
           },
           {
@@ -132,15 +145,27 @@ export async function syncPermission({
   });
 }
 
+// resume the inherit permission of the resource.
+// @param resource: the resource to resume the inherit permission.
+// @param folderTypeList: the type of folder. To determine if the resource is a folder.
+// @param resourceType: the type of the resource in ResourcePermission Table.
+// @param resourceModel: the model of the resource.
+// @example:
+// await resumeInheritPermission({
+//   resource: app,
+//   folderTypeList: AppFolderTypeList,
+//   resourceType: PerResourceTypeEnum.App,
+//   resourceModel: AppModel
+// });
 export async function resumeInheritPermission({
   resource,
   folderTypeList,
-  permissionType,
+  resourceType,
   resourceModel
 }: {
   resource: resourceType;
   folderTypeList: string[];
-  permissionType: PerResourceTypeEnum;
+  resourceType: PerResourceTypeEnum;
   resourceModel: typeof Model;
 }) {
   const isFolder = folderTypeList.includes(resource.type);
@@ -176,12 +201,15 @@ export async function resumeInheritPermission({
       resource,
       resourceModel,
       folderTypeList,
-      permissionType,
+      resourceType: resourceType,
       parentResource: parent
     });
   });
 }
 
+// get the parent collaborators of the resource.
+// @param resource: the resource to get the parent collaborators.
+// @param resourceType: the type of the resource in ResourcePermission Table.
 export async function getParentCollaborators({
   resource,
   resourceType

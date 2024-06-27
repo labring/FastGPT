@@ -30,7 +30,7 @@ export function mongoOwnerPermission({ teamId, tmbId }: { teamId: string; tmbId:
 }
 
 // return permission-related schema to define the schema of resources
-export function permissionSchema(defaultPermission: PermissionValueType = NullPermission) {
+export function getPermissionSchema(defaultPermission: PermissionValueType = NullPermission) {
   return {
     defaultPermission: {
       type: Number,
