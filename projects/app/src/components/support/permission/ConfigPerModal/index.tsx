@@ -8,6 +8,7 @@ import Avatar from '@/components/Avatar';
 import DefaultPermissionList from '../DefaultPerList';
 import MyIcon from '@fastgpt/web/components/common/Icon';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
+import { useI18n } from '@/web/context/I18n';
 
 export type ConfigPerModalProps = {
   avatar?: string;
@@ -40,6 +41,7 @@ const ConfigPerModal = ({
 }) => {
   const { t } = useTranslation();
   const { ConfirmModal, openConfirm } = useConfirm({});
+  const { commonT } = useI18n();
 
   return (
     <>
@@ -56,7 +58,7 @@ const ConfigPerModal = ({
           </HStack>
           {!isInheritPermission && hasParent && (
             <Flex mt={6} alignItems={'center'} justifyContent={'space-between'}>
-              <Box fontSize="sm">已限制权限，不再继承父级文件夹的权限</Box>
+              <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
               <Button
                 size="sm"
                 variant="whitePrimary"
@@ -66,11 +68,11 @@ const ConfigPerModal = ({
                       resumeInheritPermission?.();
                     },
                     undefined,
-                    '是否恢复为继承父级文件夹的权限？'
+                    commonT('permission.Resume InheritPermission Confirm')
                   )();
                 }}
               >
-                恢复
+                {commonT('Resume')}
               </Button>
             </Flex>
           )}
@@ -85,7 +87,7 @@ const ConfigPerModal = ({
                   openConfirm(
                     () => defaultPer.onChange(v),
                     undefined,
-                    '此操作会导致权限继承失效，是否进行？'
+                    commonT('permission.Remove InheritPermission Confirm')
                   )();
                 } else {
                   defaultPer.onChange(v);
@@ -115,7 +117,7 @@ const ConfigPerModal = ({
                               openConfirm(
                                 onOpenManageModal,
                                 undefined,
-                                '此操作会导致权限继承失效，是否进行？'
+                                commonT('permission.Remove InheritPermission Confirm')
                               )();
                             } else {
                               onOpenManageModal();
@@ -133,7 +135,7 @@ const ConfigPerModal = ({
                               openConfirm(
                                 onOpenAddMember,
                                 undefined,
-                                '此操作会导致权限继承失效，是否进行？'
+                                commonT('permission.Remove InheritPermission Confirm')
                               )();
                             } else {
                               onOpenAddMember();

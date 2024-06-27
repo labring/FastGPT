@@ -37,9 +37,11 @@ import MyIcon from '@fastgpt/web/components/common/Icon';
 import { UpdateClbPermissionProps } from '@fastgpt/global/support/permission/collaborator';
 import { useConfirm } from '@fastgpt/web/hooks/useConfirm';
 import { putAppById } from '@/web/core/app/api';
+import { useI18n } from '@/web/context/I18n';
 
 const InfoModal = ({ onClose }: { onClose: () => void }) => {
   const { t } = useTranslation();
+  const { commonT } = useI18n();
   const { toast } = useToast();
   const { updateAppDetail, appDetail, reloadApp } = useContextSelector(AppContext, (v) => v);
 
@@ -197,7 +199,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
           <>
             {!appDetail.inheritPermission && appDetail.parentId && (
               <Flex mt={5} alignItems={'center'} justifyContent={'space-between'}>
-                <Box fontSize="sm">已限制权限，不再继承父级文件夹的权限</Box>
+                <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
                 <Button
                   mt={2}
                   size="sm"
@@ -208,11 +210,11 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                         resumeInheritPermission?.();
                       },
                       undefined,
-                      '是否恢复为继承父级文件夹的权限？'
+                      commonT('permission.Resume InheritPermission Confirm')
                     )();
                   }}
                 >
-                  恢复
+                  {commonT('Resume')}
                 </Button>
               </Flex>
             )}
@@ -231,7 +233,7 @@ const InfoModal = ({ onClose }: { onClose: () => void }) => {
                         handleSubmit((data) => saveSubmitSuccess(data), saveSubmitError)();
                       },
                       undefined,
-                      '此操作会导致权限继承失效，是否进行？'
+                      commonT('permission.Remove InheritPermission Confirm')
                     )();
                   } else {
                     setValue('defaultPermission', v);

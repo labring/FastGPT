@@ -13,6 +13,7 @@ import CollaboratorContextProvider, {
 } from '../../support/permission/MemberManager/context';
 import MyTooltip from '@fastgpt/web/components/common/MyTooltip';
 import { useSystemStore } from '@/web/common/system/useSystemStore';
+import { useI18n } from '@/web/context/I18n';
 
 const FolderSlideCard = ({
   refreshDeps,
@@ -52,6 +53,7 @@ const FolderSlideCard = ({
 }) => {
   const { t } = useTranslation();
   const { feConfigs } = useSystemStore();
+  const { commonT } = useI18n();
 
   const { ConfirmModal, openConfirm } = useConfirm({
     type: 'delete',
@@ -130,7 +132,7 @@ const FolderSlideCard = ({
 
             {!isInheritPermission && hasParent && (
               <Flex mt={5} alignItems={'start'} flexDirection={'column'}>
-                <Box fontSize="sm">已限制权限，不再继承父级文件夹的权限</Box>
+                <Box fontSize="sm">{commonT('permission.No InheritPermission')}</Box>
                 <Button
                   mt={2}
                   size="sm"
@@ -141,11 +143,11 @@ const FolderSlideCard = ({
                         resumeInheritPermission?.();
                       },
                       undefined,
-                      '是否恢复为继承父级文件夹的权限？'
+                      commonT('permission.Resume InheritPermission Confirm')
                     )();
                   }}
                 >
-                  恢复
+                  {commonT('Resume')}
                 </Button>
               </Flex>
             )}
@@ -164,7 +166,7 @@ const FolderSlideCard = ({
                       openCommonConfirm(
                         () => defaultPer.onChange(v),
                         undefined,
-                        '此操作会导致权限继承失效，是否进行？'
+                        commonT('permission.Remove InheritPermission Confirm')
                       )();
                     } else {
                       defaultPer.onChange(v);
